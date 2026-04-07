@@ -3869,7 +3869,7 @@
             overflow: visible;
             cursor: pointer;
             transition: transform .08s ease;
-            contain: style;
+            contain: layout style;
         }
 
         .board-stage[data-zoomed="true"] .tile {
@@ -5344,21 +5344,20 @@
             93.75%  { background-position: 100%      100%;     }
         }
 
-        /* ── Below-tile HP/MP bars (FFT-style) ── */
+        /* ── Below-sprite HP/MP bars ── */
         .unit-bars {
             position: absolute;
-            left: -4px;
-            right: -4px;
-            bottom: -18px;
-            z-index: 20;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            z-index: 25;
             display: flex;
             flex-direction: column;
             gap: 1px;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.82);
             border-radius: 2px;
             padding: 2px;
-            border: 1px solid rgba(200, 180, 150, 0.25);
         }
 
         .hp-bar, .mp-bar {
@@ -9960,11 +9959,6 @@
 
         .tile.has-unit .terrain-tag {
             display: none;
-        }
-
-        /* Lift unit tiles above neighbors so HP/MP bars below aren't clipped */
-        .tile.has-unit {
-            z-index: 2;
         }
 
         .tile.has-unit .coord {
