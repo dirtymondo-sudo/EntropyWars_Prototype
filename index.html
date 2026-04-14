@@ -330,7 +330,14 @@
                     <div class="me-top-actions">
                         <button class="me-btn me-btn-sm" onclick="window._meClear()">Clear</button>
                         <button class="me-btn me-btn-sm" onclick="window._meFill()">Fill</button>
-                        <button class="me-btn me-btn-sm" style="background:#7c4dff;color:#fff" onclick="window._meRandomize()">🎲 Randomize</button>
+                        <div style="display:inline-flex;align-items:center;gap:2px;background:rgba(124,77,255,0.15);border-radius:6px;padding:2px 4px">
+                            <button class="me-btn me-btn-sm" style="background:#7c4dff;color:#fff" onclick="window._meRandomize()">🎲 Randomize</button>
+                            <span style="font-size:10px;color:#bbb;margin:0 2px">Biomes:</span>
+                            <button class="me-biome-btn active" data-n="1" onclick="window._meSetBiomeCount(1)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#7c4dff;color:#fff;cursor:pointer">1</button>
+                            <button class="me-biome-btn" data-n="2" onclick="window._meSetBiomeCount(2)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">2</button>
+                            <button class="me-biome-btn" data-n="3" onclick="window._meSetBiomeCount(3)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">3</button>
+                            <button class="me-biome-btn" data-n="4" onclick="window._meSetBiomeCount(4)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">4</button>
+                        </div>
                         <button class="me-btn me-btn-sm" onclick="window._meExport()">Export</button>
                         <button class="me-btn me-btn-sm" onclick="window._meImport()">Import</button>
                     </div>
