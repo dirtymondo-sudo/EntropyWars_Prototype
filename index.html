@@ -209,7 +209,7 @@
                     </button>
                     <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()">
                         <span class="mm-icon">📜</span>
-                        <div><div class="mm-label">Campaign</div><div class="mm-desc-text">100-level adventure</div></div>
+                        <div><div class="mm-label">Campaign</div><div class="mm-desc-text">Fight for Humanity's Survival</div></div>
                     </button>
                     <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()">
                         <span class="mm-icon">🗺️</span>
@@ -340,7 +340,7 @@
             <div class="ccc-container">
                 <div class="ccc-top-bar">
                     <button class="ms-back-btn" onclick="window._campaignCharCreateBack()">← Back</button>
-                    <div class="ccc-title-text">Create Your Champion</div>
+                    <div class="ccc-title-text">Choose Your Vessel</div>
                     <div style="width:60px"></div>
                 </div>
                 <div class="ccc-body">
@@ -363,16 +363,24 @@
             </div>
         </div>
 
-        <!-- PAGE: Campaign World Map (placeholder — built in Step 3) -->
+        <!-- PAGE: Campaign World Map -->
         <div id="campaignMapPage" class="title-page">
             <div class="cmap-container">
                 <div class="cmap-top-bar">
                     <button class="ms-back-btn" onclick="window._campaignMapBack()">← Main Menu</button>
-                    <div class="cmap-title-text">Campaign</div>
-                    <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
+                    <div class="cmap-title-text">Fight for Humanity's Survival</div>
+                    <div class="cmap-top-right">
+                        <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
+                    </div>
                 </div>
                 <div class="cmap-body" id="cmapBody">
-                    <div class="cmap-placeholder">World Map — coming in Step 3</div>
+                    <div class="cmap-scroll-area" id="cmapScrollArea">
+                        <div class="cmap-node-grid" id="cmapNodeGrid"></div>
+                    </div>
+                </div>
+                <!-- Level detail slide-in panel -->
+                <div class="cmap-detail-panel" id="cmapDetailPanel">
+                    <div class="cmap-detail-inner" id="cmapDetailInner"></div>
                 </div>
             </div>
         </div>
