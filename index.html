@@ -207,9 +207,9 @@
                         <span class="mm-icon">⚔️</span>
                         <div><div class="mm-label">Multiplayer</div><div class="mm-desc-text">Battle online or vs CPU</div></div>
                     </button>
-                    <button class="mm-btn mm-btn-campaign mm-btn-disabled" disabled>
+                    <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()">
                         <span class="mm-icon">📜</span>
-                        <div><div class="mm-label">Campaign</div><div class="mm-desc-text">Coming soon</div></div>
+                        <div><div class="mm-label">Campaign</div><div class="mm-desc-text">100-level adventure</div></div>
                     </button>
                     <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()">
                         <span class="mm-icon">🗺️</span>
@@ -331,6 +331,48 @@
                     <div class="lobby-title">Both Players Joined</div>
                     <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the party builder…</div>
                     <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Campaign Character Creation -->
+        <div id="campaignCharCreatePage" class="title-page">
+            <div class="ccc-container">
+                <div class="ccc-top-bar">
+                    <button class="ms-back-btn" onclick="window._campaignCharCreateBack()">← Back</button>
+                    <div class="ccc-title-text">Create Your Champion</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="ccc-body">
+                    <div class="ccc-sprite-preview" id="cccSpritePreview"></div>
+                    <div class="ccc-form">
+                        <label class="ccc-label">Name</label>
+                        <input type="text" class="ccc-input" id="cccNameInput" maxlength="20" placeholder="Enter name…" autocomplete="off" spellcheck="false" />
+                        <label class="ccc-label">Gender</label>
+                        <div class="ccc-toggle-row" id="cccGenderRow">
+                            <button class="ccc-toggle active" data-val="male" onclick="window._cccSetGender('male')">♂ Male</button>
+                            <button class="ccc-toggle" data-val="female" onclick="window._cccSetGender('female')">♀ Female</button>
+                        </div>
+                        <label class="ccc-label">Job</label>
+                        <select class="ccc-select" id="cccJobSelect" onchange="window._cccOnJobChange()"></select>
+                    </div>
+                </div>
+                <div class="ccc-bottom-bar">
+                    <button class="ccc-confirm-btn" onclick="window._cccConfirm()">Begin Campaign →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Campaign World Map (placeholder — built in Step 3) -->
+        <div id="campaignMapPage" class="title-page">
+            <div class="cmap-container">
+                <div class="cmap-top-bar">
+                    <button class="ms-back-btn" onclick="window._campaignMapBack()">← Main Menu</button>
+                    <div class="cmap-title-text">Campaign</div>
+                    <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
+                </div>
+                <div class="cmap-body" id="cmapBody">
+                    <div class="cmap-placeholder">World Map — coming in Step 3</div>
                 </div>
             </div>
         </div>
