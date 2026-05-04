@@ -370,6 +370,8 @@
                     <button class="ms-back-btn" onclick="window._campaignMapBack()">← Main Menu</button>
                     <div class="cmap-title-text">Fight for Humanity's Survival</div>
                     <div class="cmap-top-right">
+                        <button class="cmap-newgame-btn" onclick="window._campaignNewGame()">🔄 New Game</button>
+                        <button class="cmap-shop-btn" onclick="window._cmapOpenShop()">🛒 Shop</button>
                         <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
                     </div>
                 </div>
@@ -381,6 +383,20 @@
                 <!-- Level detail slide-in panel -->
                 <div class="cmap-detail-panel" id="cmapDetailPanel">
                     <div class="cmap-detail-inner" id="cmapDetailInner"></div>
+                </div>
+                <!-- Campaign Shop overlay -->
+                <div class="cshop-overlay" id="cshopOverlay" style="display:none">
+                    <div class="cshop-container">
+                        <div class="cshop-top-bar">
+                            <button class="ms-back-btn" onclick="window._cshopClose()">← Back</button>
+                            <div class="cshop-tabs">
+                                <button class="cshop-tab cshop-tab-active" id="cshopTabRaces" onclick="window._cshopSwitchTab('races')">Races</button>
+                                <button class="cshop-tab" id="cshopTabSpells" onclick="window._cshopSwitchTab('spells')">Spells</button>
+                            </div>
+                            <div class="cshop-gold-display" id="cshopGoldDisplay">💰 0</div>
+                        </div>
+                        <div class="cshop-body" id="cshopBody"></div>
+                    </div>
                 </div>
             </div>
         </div>
