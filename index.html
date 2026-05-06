@@ -420,6 +420,7 @@
                         </div>
                         <button class="me-btn me-btn-sm" onclick="window._meExport()">Export</button>
                         <button class="me-btn me-btn-sm" onclick="window._meImport()">Import</button>
+                        <button class="me-btn me-btn-sm me-3d-btn" id="me3DToggle" onclick="window._meToggle3D()">🎲 3D Preview</button>
                     </div>
                 </div>
                 <div class="me-layout">
@@ -447,6 +448,32 @@
                             <button class="me-tool" id="meTool-spawn2" onclick="window._meSetTool('spawn2')">🔴 P2</button>
                             <button class="me-tool" id="meTool-sanct1" onclick="window._meSetTool('sanct1')">🔵 Sanct P1</button>
                             <button class="me-tool" id="meTool-sanct2" onclick="window._meSetTool('sanct2')">🔴 Sanct P2</button>
+                        </div>
+                        <div class="me-tool-row me-elev-row">
+                            <button class="me-tool" id="meTool-elevUp" onclick="window._meSetTool('elevUp')">⬆ Raise</button>
+                            <button class="me-tool" id="meTool-elevDown" onclick="window._meSetTool('elevDown')">⬇ Lower</button>
+                            <button class="me-tool" id="meTool-elevSet" onclick="window._meSetTool('elevSet')">📐 Set Height</button>
+                        </div>
+                        <div class="me-elev-picker-wrap">
+                            <span class="me-elev-label">Height:</span>
+                            <div class="me-elev-picker">
+                                <button class="me-hbtn me-hbtn-neg" id="meHBtn-n5" onclick="window._meSetHeight(-5)">-5</button>
+                                <button class="me-hbtn me-hbtn-neg" id="meHBtn-n4" onclick="window._meSetHeight(-4)">-4</button>
+                                <button class="me-hbtn me-hbtn-neg" id="meHBtn-n3" onclick="window._meSetHeight(-3)">-3</button>
+                                <button class="me-hbtn me-hbtn-neg" id="meHBtn-n2" onclick="window._meSetHeight(-2)">-2</button>
+                                <button class="me-hbtn me-hbtn-neg" id="meHBtn-n1" onclick="window._meSetHeight(-1)">-1</button>
+                                <button class="me-hbtn me-hbtn-zero" id="meHBtn-0" onclick="window._meSetHeight(0)">0</button>
+                                <button class="me-hbtn active" id="meHBtn-1" onclick="window._meSetHeight(1)">1</button>
+                                <button class="me-hbtn" id="meHBtn-2" onclick="window._meSetHeight(2)">2</button>
+                                <button class="me-hbtn" id="meHBtn-3" onclick="window._meSetHeight(3)">3</button>
+                                <button class="me-hbtn" id="meHBtn-4" onclick="window._meSetHeight(4)">4</button>
+                                <button class="me-hbtn" id="meHBtn-5" onclick="window._meSetHeight(5)">5</button>
+                                <button class="me-hbtn" id="meHBtn-6" onclick="window._meSetHeight(6)">6</button>
+                                <button class="me-hbtn" id="meHBtn-7" onclick="window._meSetHeight(7)">7</button>
+                                <button class="me-hbtn" id="meHBtn-8" onclick="window._meSetHeight(8)">8</button>
+                                <button class="me-hbtn" id="meHBtn-9" onclick="window._meSetHeight(9)">9</button>
+                                <button class="me-hbtn" id="meHBtn-10" onclick="window._meSetHeight(10)">10</button>
+                            </div>
                         </div>
                         <input type="text" class="me-search" id="meSearch" placeholder="Search tiles…" oninput="window._meOnSearch()" />
                         <div class="me-tab-row">
