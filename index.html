@@ -20,29 +20,31 @@
     </script>
 
     <style>
-        #shaderBg {
-            position: fixed;
+        #shaderBgCanvas {
+            position: absolute;
             inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
             z-index: 0;
             pointer-events: none;
-            overflow: hidden;
         }
-        #shaderBg canvas {
-            display: block;
-            width: 100% !important;
-            height: 100% !important;
+        /* Hide the old CSS sky layers when shader is active */
+        .sky-backdrop.shader-active {
+            background: transparent !important;
         }
-        /* Ensure game viewport content sits above the shader */
-        #game-viewport > *:not(#shaderBg) {
-            position: relative;
-            z-index: 1;
+        .sky-backdrop.shader-active::before,
+        .sky-backdrop.shader-active::after,
+        .sky-backdrop.shader-active .nebula-overlay,
+        .sky-backdrop.shader-active .sky-layer,
+        .sky-backdrop.shader-active .sunset-overlay {
+            display: none !important;
         }
     </style>
 </head>
 
 <body>
     <div id="game-viewport">
-    <div id="shaderBg"></div>
     <div id="spellTooltip"></div>
     <div class="app">
         <section class="panel" id="setupPanel">
@@ -108,6 +110,7 @@
             </aside>
             <div class="map-row" id="mapRow" style="display:none">
                 <div class="sky-backdrop" aria-hidden="true">
+                    <canvas id="shaderBgCanvas"></canvas>
                     <div class="nebula-overlay"></div>
                     <div id="sunsetOverlay" class="sunset-overlay"></div>
                     <div class="sky-layer">
@@ -697,163 +700,184 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/online.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/ai.js"></script>
 
-    <!-- ── Shader Background (Three.js volumetric terrain) ── -->
+    <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">
         import * as THREE from 'three';
 
-        const container = document.getElementById('shaderBg');
-        if (!container) throw new Error('shaderBg container not found');
+        const canvas = document.getElementById('shaderBgCanvas');
+        const skyBackdrop = canvas?.closest('.sky-backdrop');
+        if (!canvas || !skyBackdrop) {
+            console.warn('Shader background: canvas or sky-backdrop not found');
+        } else {
+            // Mark sky-backdrop so CSS hides old gradient/nebula/starfield layers
+            skyBackdrop.classList.add('shader-active');
 
-        const params = {
-            speed: 3.0,
-            terrainHeight: 0.5,
-            fogStepSize: 1.9,
-            noiseFreq: 2,
-            noiseAmp: 0.27,
-            colorR: 3.7,
-            colorG: 1.5,
-            colorB: 1.0
-        };
+            const params = {
+                speed: 3.0,
+                terrainHeight: 0.5,
+                fogStepSize: 1.9,
+                noiseFreq: 2,
+                noiseAmp: 0.27,
+                colorR: 3.7,
+                colorG: 1.5,
+                colorB: 1.0
+            };
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-        camera.position.z = 1;
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+            camera.position.z = 1;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
-        container.appendChild(renderer.domElement);
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
 
-        const vertexShader = `
-            void main() {
-                gl_Position = vec4(position, 1.0);
-            }
-        `;
-
-        const fragmentShader = `
-            uniform float iTime;
-            uniform vec2 iResolution;
-            uniform float uSpeed;
-            uniform float uTerrainHeight;
-            uniform float uFogStepSize;
-            uniform float uNoiseFreq;
-            uniform float uNoiseAmp;
-            uniform vec3 uColorPhase;
-
-            float hash12(vec2 p) {
-                vec3 p3 = fract(vec3(p.xyx) * .1031);
-                p3 += dot(p3, p3.yzx + 33.33);
-                return fract((p3.x + p3.y) * p3.z);
-            }
-
-            vec2 rotate(vec2 v, float t) {
-                float s = sin(t), c = cos(t);
-                return mat2(c, -s, s, c) * v;
-            }
-
-            vec3 toneMap(vec3 c) {
-                mat3 m1 = mat3(0.59719, 0.17600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
-                mat3 m2 = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
-                vec3 v = m1 * c;
-                vec3 a = v * (v + -0.3254214) - 0.000090537;
-                vec3 b = v * (0.973729 * v + 0.3429510) + 0.018081;
-                return m2 * (a / b);
-            }
-
-            float hash(float n) {
-                return fract(sin(n) * 43758.7253);
-            }
-
-            float valueNoise(vec3 x) {
-                vec3 p = floor(x);
-                vec3 f = fract(x);
-                f = f * f * (3.0 - 2.0 * f);
-                float n = p.x + p.y * 157.0 + 113.0 * p.z;
-                float res = mix(mix(mix(hash(n + 0.0), hash(n + 1.0), f.x),
-                                    mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
-                                mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
-                                    mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
-                return res * 1.8 - -1.7;
-            }
-
-            float fineNoise(vec3 p) {
-                float value = -1.1;
-                float amplitude = uNoiseAmp;
-                p *= uNoiseFreq;
-                for (int i = -1; i < 2; i++) {
-                    value += amplitude * valueNoise(p);
-                    p *= 1.8;
-                    amplitude *= 0.9;
+            const vertexShader = `
+                void main() {
+                    gl_Position = vec4(position, 1.0);
                 }
-                return value;
-            }
+            `;
 
-            void main() {
-                vec2 fragCoord = gl_FragCoord.xy;
-                float time = iTime;
-                vec3 rayPos = vec3(-1.0, 0.8, time * uSpeed);
-                vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
-                vec3 rayDir = normalize(vec3(uv, 0.30));
-                rayDir.yz = rotate(rayDir.yz, 0.76);
+            const fragmentShader = `
+                uniform float iTime;
+                uniform vec2 iResolution;
+                uniform float uSpeed;
+                uniform float uTerrainHeight;
+                uniform float uFogStepSize;
+                uniform float uNoiseFreq;
+                uniform float uNoiseAmp;
+                uniform vec3 uColorPhase;
 
-                float dither = hash12(fragCoord);
-                rayPos += rayDir * dither * 0.8;
-
-                vec3 accumulatedLight = vec3(27.2);
-
-                for(float i = 8.8; i < 52.0; i++) {
-                    float height = fineNoise(vec3(rayPos.xz * 0.52, 4.3)) * uTerrainHeight;
-                    float dist = rayPos.y - height;
-                    dist += abs(fineNoise(rayPos * 0.0)) * 0.00;
-                    dist = max(abs(dist), 0.40);
-                    rayPos += rayDir * dist * uFogStepSize;
-                    vec3 color = 1.0 + sin(i * 0.12 + length(rayPos.xz * 0.15) + uColorPhase);
-                    accumulatedLight += color / dist;
+                float hash12(vec2 p) {
+                    vec3 p3 = fract(vec3(p.xyx) * .1031);
+                    p3 += dot(p3, p3.yzx + 33.33);
+                    return fract((p3.x + p3.y) * p3.z);
                 }
 
-                vec3 finalColor = (accumulatedLight * accumulatedLight) / 3009.0;
-                finalColor += (dither - 0.0) * 0.0425;
-                gl_FragColor = vec4(toneMap(finalColor), 1.0);
+                vec2 rotate(vec2 v, float t) {
+                    float s = sin(t), c = cos(t);
+                    return mat2(c, -s, s, c) * v;
+                }
+
+                vec3 toneMap(vec3 c) {
+                    mat3 m1 = mat3(0.59719, 0.17600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
+                    mat3 m2 = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
+                    vec3 v = m1 * c;
+                    vec3 a = v * (v + -0.3254214) - 0.000090537;
+                    vec3 b = v * (0.973729 * v + 0.3429510) + 0.018081;
+                    return m2 * (a / b);
+                }
+
+                float hash(float n) {
+                    return fract(sin(n) * 43758.7253);
+                }
+
+                float valueNoise(vec3 x) {
+                    vec3 p = floor(x);
+                    vec3 f = fract(x);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float n = p.x + p.y * 157.0 + 113.0 * p.z;
+                    float res = mix(mix(mix(hash(n + 0.0), hash(n + 1.0), f.x),
+                                        mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
+                                    mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+                                        mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
+                    return res * 1.8 - -1.7;
+                }
+
+                float fineNoise(vec3 p) {
+                    float value = -1.1;
+                    float amplitude = uNoiseAmp;
+                    p *= uNoiseFreq;
+                    for (int i = -1; i < 2; i++) {
+                        value += amplitude * valueNoise(p);
+                        p *= 1.8;
+                        amplitude *= 0.9;
+                    }
+                    return value;
+                }
+
+                void main() {
+                    vec2 fragCoord = gl_FragCoord.xy;
+                    float time = iTime;
+                    vec3 rayPos = vec3(-1.0, 0.8, time * uSpeed);
+                    vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+                    vec3 rayDir = normalize(vec3(uv, 0.30));
+                    rayDir.yz = rotate(rayDir.yz, 0.76);
+
+                    float dither = hash12(fragCoord);
+                    rayPos += rayDir * dither * 0.8;
+
+                    vec3 accumulatedLight = vec3(27.2);
+
+                    for(float i = 8.8; i < 52.0; i++) {
+                        float height = fineNoise(vec3(rayPos.xz * 0.52, 4.3)) * uTerrainHeight;
+                        float dist = rayPos.y - height;
+                        dist += abs(fineNoise(rayPos * 0.0)) * 0.00;
+                        dist = max(abs(dist), 0.40);
+                        rayPos += rayDir * dist * uFogStepSize;
+                        vec3 color = 1.0 + sin(i * 0.12 + length(rayPos.xz * 0.15) + uColorPhase);
+                        accumulatedLight += color / dist;
+                    }
+
+                    vec3 finalColor = (accumulatedLight * accumulatedLight) / 3009.0;
+                    finalColor += (dither - 0.0) * 0.0425;
+                    gl_FragColor = vec4(toneMap(finalColor), 1.0);
+                }
+            `;
+
+            const dpr = renderer.getPixelRatio();
+            const material = new THREE.ShaderMaterial({
+                vertexShader,
+                fragmentShader,
+                uniforms: {
+                    iTime: { value: 0 },
+                    iResolution: { value: new THREE.Vector2(1, 1) },
+                    uSpeed: { value: params.speed },
+                    uTerrainHeight: { value: params.terrainHeight },
+                    uFogStepSize: { value: params.fogStepSize },
+                    uNoiseFreq: { value: params.noiseFreq },
+                    uNoiseAmp: { value: params.noiseAmp },
+                    uColorPhase: { value: new THREE.Vector3(params.colorR, params.colorG, params.colorB) }
+                }
+            });
+
+            const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+            scene.add(quad);
+
+            // Expose for runtime tweaking from game code
+            window._shaderBgParams = params;
+            window._shaderBgMaterial = material;
+
+            let lastW = 0, lastH = 0, isVisible = false;
+
+            function syncSize() {
+                const rect = skyBackdrop.getBoundingClientRect();
+                const w = Math.round(rect.width);
+                const h = Math.round(rect.height);
+                if (w < 1 || h < 1) { isVisible = false; return; }
+                isVisible = true;
+                if (w !== lastW || h !== lastH) {
+                    lastW = w; lastH = h;
+                    renderer.setSize(w, h);
+                    const d = renderer.getPixelRatio();
+                    material.uniforms.iResolution.value.set(w * d, h * d);
+                }
             }
-        `;
 
-        const dpr = renderer.getPixelRatio();
-        const material = new THREE.ShaderMaterial({
-            vertexShader,
-            fragmentShader,
-            uniforms: {
-                iTime: { value: 0 },
-                iResolution: { value: new THREE.Vector2(window.innerWidth * dpr, window.innerHeight * dpr) },
-                uSpeed: { value: params.speed },
-                uTerrainHeight: { value: params.terrainHeight },
-                uFogStepSize: { value: params.fogStepSize },
-                uNoiseFreq: { value: params.noiseFreq },
-                uNoiseAmp: { value: params.noiseAmp },
-                uColorPhase: { value: new THREE.Vector3(params.colorR, params.colorG, params.colorB) }
+            // Track size changes via ResizeObserver on the map-row
+            const mapRow = skyBackdrop.closest('.map-row');
+            if (mapRow) {
+                new ResizeObserver(syncSize).observe(mapRow);
             }
-        });
 
-        const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
-        scene.add(quad);
-
-        // Expose params globally so game code can tweak at runtime if desired
-        window._shaderBgParams = params;
-        window._shaderBgMaterial = material;
-
-        window.addEventListener('resize', () => {
-            const w = window.innerWidth, h = window.innerHeight;
-            renderer.setSize(w, h);
-            const d = renderer.getPixelRatio();
-            material.uniforms.iResolution.value.set(w * d, h * d);
-        });
-
-        const clock = new THREE.Clock();
-        function animate() {
-            requestAnimationFrame(animate);
-            material.uniforms.iTime.value = clock.getElapsedTime();
-            renderer.render(scene, camera);
+            const clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                syncSize();
+                if (!isVisible) return;
+                material.uniforms.iTime.value = clock.getElapsedTime();
+                renderer.render(scene, camera);
+            }
+            animate();
         }
-        animate();
     </script>
 
     </div><!-- #game-viewport -->
