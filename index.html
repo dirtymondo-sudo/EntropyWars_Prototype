@@ -879,6 +879,118 @@
 
             window._shaderBgGui = gui;
 
+            // ═══════════════════════════════════════════
+            // ── Audio-Reactive System (Web Audio API) ──
+            // ═══════════════════════════════════════════
+            const audioReact = {
+                enabled: true,
+                bassGain: 1.0,      // overall bass sensitivity
+                terrainPulse: 0.6,  // how much bass lifts terrain height
+                fogPulse: 0.4,      // how much bass thickens fog
+                noisePulse: 0.2,    // how much bass modulates noise amp
+                colorPulse: 0.3,    // how much bass shifts color phase
+                smoothing: 0.82     // exponential smoothing (0 = instant, 0.99 = glacial)
+            };
+            window._shaderAudioReact = audioReact;
+
+            // GUI folder for audio reactivity
+            const audioFolder = gui.addFolder('Audio Reactivity');
+            audioFolder.add(audioReact, 'enabled').name('Enabled');
+            audioFolder.add(audioReact, 'bassGain', 0.0, 3.0).name('Bass Sensitivity');
+            audioFolder.add(audioReact, 'terrainPulse', 0.0, 2.0).name('Terrain Pulse');
+            audioFolder.add(audioReact, 'fogPulse', 0.0, 2.0).name('Fog Pulse');
+            audioFolder.add(audioReact, 'noisePulse', 0.0, 1.0).name('Noise Pulse');
+            audioFolder.add(audioReact, 'colorPulse', 0.0, 2.0).name('Color Pulse');
+            audioFolder.add(audioReact, 'smoothing', 0.5, 0.98).name('Smoothing');
+
+            // Web Audio plumbing
+            let _reactCtx = null;
+            let _analyser = null;
+            let _freqData = null;
+            const _connectedEls = new Set(); // track which Audio els are wired
+            let _smoothBass = 0;
+            let _smoothMid = 0;
+
+            function ensureAnalyser() {
+                if (_analyser) return true;
+                try {
+                    _reactCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    _analyser = _reactCtx.createAnalyser();
+                    _analyser.fftSize = 512;
+                    _analyser.smoothingTimeConstant = 0.6;
+                    _freqData = new Uint8Array(_analyser.frequencyBinCount);
+                    // Connect analyser to output so audio still plays
+                    _analyser.connect(_reactCtx.destination);
+                    return true;
+                } catch (e) {
+                    console.warn('Audio reactivity: Web Audio not available', e);
+                    return false;
+                }
+            }
+
+            function connectTrack(audioEl) {
+                if (!audioEl || _connectedEls.has(audioEl)) return;
+                if (!ensureAnalyser()) return;
+                try {
+                    // Enable CORS so frequency data isn't zeroed
+                    if (!audioEl.crossOrigin) {
+                        audioEl.crossOrigin = 'anonymous';
+                    }
+                    const src = _reactCtx.createMediaElementSource(audioEl);
+                    src.connect(_analyser);
+                    _connectedEls.add(audioEl);
+                } catch (e) {
+                    // MediaElementSource already created, or CORS issue
+                    console.warn('Audio reactivity: could not connect track', e);
+                }
+            }
+
+            // Patch all existing audioTracks for CORS before they load
+            function patchAudioTracks() {
+                if (typeof audioTracks === 'undefined') return;
+                for (const key in audioTracks) {
+                    const t = audioTracks[key];
+                    if (t && !t.crossOrigin) {
+                        t.crossOrigin = 'anonymous';
+                    }
+                }
+            }
+            // Patch now (preload='none' means no fetch has happened yet)
+            patchAudioTracks();
+
+            // Returns [bass, mid] each in 0..1 range
+            function readAudioEnergy() {
+                if (!_analyser || !_freqData) return [0, 0];
+
+                // Auto-connect the currently playing track
+                if (typeof state !== 'undefined' && typeof audioTracks !== 'undefined' && state.currentMusic) {
+                    const el = audioTracks[state.currentMusic];
+                    if (el && !_connectedEls.has(el)) connectTrack(el);
+                }
+
+                // Resume context if suspended (browser autoplay policy)
+                if (_reactCtx && _reactCtx.state === 'suspended') {
+                    _reactCtx.resume().catch(() => {});
+                }
+
+                _analyser.getByteFrequencyData(_freqData);
+                const binCount = _analyser.frequencyBinCount; // 256 bins for fftSize 512
+
+                // Bass: bins 1-8  (~43-344 Hz at 44.1kHz) — kick drums, bass lines
+                let bassSum = 0;
+                const bassEnd = Math.min(8, binCount);
+                for (let i = 1; i < bassEnd; i++) bassSum += _freqData[i];
+                const bass = bassSum / ((bassEnd - 1) * 255);
+
+                // Mids: bins 8-32 (~344-1378 Hz) — snares, melody
+                let midSum = 0;
+                const midEnd = Math.min(32, binCount);
+                for (let i = 8; i < midEnd; i++) midSum += _freqData[i];
+                const mid = midSum / ((midEnd - 8) * 255);
+
+                return [bass, mid];
+            }
+
             let lastW = 0, lastH = 0, isVisible = false;
 
             function syncSize() {
@@ -918,6 +1030,37 @@
                 } else {
                     material.uniforms.uCamTilt.value = DEFAULT_TILT_RAD;
                     material.uniforms.uCamYaw.value  = 0.0;
+                }
+
+                // ── Audio-reactive uniform modulation ──
+                if (audioReact.enabled) {
+                    const [rawBass, rawMid] = readAudioEnergy();
+                    const bass = rawBass * audioReact.bassGain;
+                    const mid  = rawMid  * audioReact.bassGain;
+                    const sm   = audioReact.smoothing;
+
+                    // Exponential smoothing for buttery motion
+                    _smoothBass = _smoothBass * sm + bass * (1 - sm);
+                    _smoothMid  = _smoothMid  * sm + mid  * (1 - sm);
+
+                    const b = _smoothBass;
+                    const m = _smoothMid;
+
+                    // Modulate uniforms around their base GUI values
+                    material.uniforms.uTerrainHeight.value = params.terrainHeight + b * audioReact.terrainPulse;
+                    material.uniforms.uFogStepSize.value   = params.fogStepSize   - b * audioReact.fogPulse;
+                    material.uniforms.uNoiseAmp.value      = params.noiseAmp      + b * audioReact.noisePulse;
+                    material.uniforms.uColorPhase.value.set(
+                        params.colorR + m * audioReact.colorPulse,
+                        params.colorG + b * audioReact.colorPulse * 0.6,
+                        params.colorB + m * audioReact.colorPulse * 0.3
+                    );
+                } else {
+                    // No reactivity — use raw GUI values
+                    material.uniforms.uTerrainHeight.value = params.terrainHeight;
+                    material.uniforms.uFogStepSize.value   = params.fogStepSize;
+                    material.uniforms.uNoiseAmp.value      = params.noiseAmp;
+                    material.uniforms.uColorPhase.value.set(params.colorR, params.colorG, params.colorB);
                 }
 
                 material.uniforms.iTime.value = clock.getElapsedTime();
