@@ -14,7 +14,8 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js"
             }
         }
     </script>
@@ -39,6 +40,13 @@
         .sky-backdrop.shader-active .sky-layer,
         .sky-backdrop.shader-active .sunset-overlay {
             display: none !important;
+        }
+        /* lil-gui shader settings panel */
+        .lil-gui.root {
+            z-index: 9999;
+            position: fixed;
+            top: 8px;
+            right: 8px;
         }
     </style>
 </head>
@@ -703,6 +711,7 @@
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">
         import * as THREE from 'three';
+        import GUI from 'lil-gui';
 
         const canvas = document.getElementById('shaderBgCanvas');
         const skyBackdrop = canvas?.closest('.sky-backdrop');
@@ -845,6 +854,25 @@
             // Expose for runtime tweaking from game code
             window._shaderBgParams = params;
             window._shaderBgMaterial = material;
+
+            // ── Settings GUI ──
+            const gui = new GUI({ title: 'Sky Shader' });
+            gui.close(); // collapsed by default
+
+            gui.add(params, 'speed', 0.0, 20.0).name('Flight Speed').onChange(v => material.uniforms.uSpeed.value = v);
+            gui.add(params, 'terrainHeight', 0.0, 2.0).name('Terrain Height').onChange(v => material.uniforms.uTerrainHeight.value = v);
+            gui.add(params, 'fogStepSize', 0.1, 5.0).name('Fog Density').onChange(v => material.uniforms.uFogStepSize.value = v);
+
+            const fractalFolder = gui.addFolder('Fractal Noise');
+            fractalFolder.add(params, 'noiseFreq', 0.1, 5.0).name('Frequency').onChange(v => material.uniforms.uNoiseFreq.value = v);
+            fractalFolder.add(params, 'noiseAmp', 0.0, 1.0).name('Amplitude').onChange(v => material.uniforms.uNoiseAmp.value = v);
+
+            const colorFolder = gui.addFolder('Color Phase');
+            colorFolder.add(params, 'colorR', 0.0, 10.0).name('Red').onChange(v => material.uniforms.uColorPhase.value.x = v);
+            colorFolder.add(params, 'colorG', 0.0, 10.0).name('Green').onChange(v => material.uniforms.uColorPhase.value.y = v);
+            colorFolder.add(params, 'colorB', 0.0, 10.0).name('Blue').onChange(v => material.uniforms.uColorPhase.value.z = v);
+
+            window._shaderBgGui = gui;
 
             let lastW = 0, lastH = 0, isVisible = false;
 
