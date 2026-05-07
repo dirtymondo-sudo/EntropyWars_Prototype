@@ -849,7 +849,7 @@
                     uNoiseAmp: { value: params.noiseAmp },
                     uColorPhase: { value: new THREE.Vector3(params.colorR, params.colorG, params.colorB) },
                     uCamYaw: { value: 0.0 },
-                    uCamTilt: { value: 0.76 }
+                    uCamTilt: { value: 0.70 }
                 }
             });
 
@@ -1014,7 +1014,7 @@
             }
 
             const DEG2RAD = Math.PI / 180;
-            const DEFAULT_TILT_RAD = 0.76; // ~43.5° fallback when not in diorama
+            const DEFAULT_TILT_RAD = 0.70; // (90-50)° — matches default 50° diorama tilt
 
             const clock = new THREE.Clock();
             function animate() {
@@ -1025,7 +1025,7 @@
                 // Sync camera orientation from diorama state
                 const s = typeof state !== 'undefined' ? state : null;
                 if (s && s.dioramaMode) {
-                    material.uniforms.uCamTilt.value = (s.dioramaTiltDeg ?? 50) * DEG2RAD;
+                    material.uniforms.uCamTilt.value = (90 - (s.dioramaTiltDeg ?? 50)) * DEG2RAD;
                     material.uniforms.uCamYaw.value  = (s.dioramaYawDeg  ?? 0)  * DEG2RAD;
                 } else {
                     material.uniforms.uCamTilt.value = DEFAULT_TILT_RAD;
