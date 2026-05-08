@@ -15,6 +15,7 @@
         {
             "imports": {
                 "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
                 "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js"
             }
         }
@@ -22,6 +23,15 @@
 
     <style>
         #shaderBgCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            pointer-events: none;
+        }
+        #menuBgCanvas {
             position: absolute;
             inset: 0;
             width: 100%;
@@ -223,6 +233,7 @@
 
     <!-- ── UNIFIED TITLE / MODE SELECT / LOBBY ── -->
     <div id="startOverlay" class="title-overlay">
+        <canvas id="menuBgCanvas"></canvas>
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
@@ -1065,6 +1076,225 @@
 
                 material.uniforms.iTime.value = clock.getElapsedTime();
                 renderer.render(scene, camera);
+            }
+            animate();
+        }
+    </script>
+
+    <!-- ── Menu Background: Light Trails (Three.js) ── -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+        const canvas = document.getElementById('menuBgCanvas');
+        const overlay = document.getElementById('startOverlay');
+        if (!canvas || !overlay) { console.warn('Menu BG: canvas or overlay not found'); }
+        else {
+            /* ── Config (hardcoded — no GUI) ── */
+            const C = {
+                dpr: Math.min(window.devicePixelRatio, 1.5),
+                exposure: 3.65, brightness: 4.0,
+                bloomStrength: 0.2, bloomRadius: 0.29, bloomThreshold: 0.0,
+                speedMultiplier: 0.1,
+                linesCount: 70,
+                dotDensity: 70, dotSize: 0.25, dotSpeed: 1.5,
+                blurStrength: 3.5,
+                arcRadius: 10.0, bendStartZ: -150.0, floorLength: 132.75, wallHeight: 200.0,
+                colors: ['#004c94','#2e89ff','#003994','#004bad','#ff5900']
+            };
+
+            /* ── Curve ── */
+            class CycCurve extends THREE.Curve {
+                constructor(x, zStart, zBend, radius, yEnd) {
+                    super(); this.x=x; this.zStart=zStart; this.zBend=zBend; this.radius=radius; this.yEnd=yEnd;
+                    this.L_flat=Math.abs(zStart-(zBend+radius));
+                    this.L_arc=(Math.PI*radius)*0.5;
+                    this.L_up=Math.max(0.1,yEnd-radius);
+                    this.totalLength=this.L_flat+this.L_arc+this.L_up;
+                }
+                getPoint(t, o=new THREE.Vector3()) {
+                    const d=t*this.totalLength; let py=0,pz=0;
+                    if(d<=this.L_flat){ pz=this.zStart-d; }
+                    else if(d<=this.L_flat+this.L_arc){
+                        const n=(d-this.L_flat)/this.L_arc;
+                        const e=n*n*(3-2*n);
+                        const a=(n*0.4+e*0.6)*(Math.PI*0.5);
+                        py=this.radius*(1-Math.cos(a)); pz=(this.zBend+this.radius)-Math.sin(a)*this.radius;
+                    } else { py=this.radius+(d-(this.L_flat+this.L_arc)); pz=this.zBend; }
+                    return o.set(this.x,py,pz);
+                }
+            }
+
+            /* ── Scene ── */
+            const scene = new THREE.Scene(); scene.background = new THREE.Color(0x000000);
+            const camera = new THREE.PerspectiveCamera(55, 1, 1, 2000);
+            camera.position.set(0, 20, 140); camera.lookAt(0, 20, -50);
+
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference:'high-performance' });
+            renderer.setPixelRatio(C.dpr);
+            renderer.toneMapping = THREE.LinearToneMapping;
+            renderer.toneMappingExposure = C.exposure;
+
+            const rt = new THREE.WebGLRenderTarget(1,1,{ type:THREE.HalfFloatType, format:THREE.RGBAFormat });
+            const composer = new EffectComposer(renderer, rt);
+            composer.setPixelRatio(C.dpr);
+            composer.addPass(new RenderPass(scene, camera));
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(1,1), C.bloomStrength, C.bloomRadius, C.bloomThreshold);
+            composer.addPass(bloomPass);
+
+            /* foreground blur */
+            const blurShader = {
+                uniforms: {
+                    tDiffuse:{value:null},
+                    resolution:{value:new THREE.Vector2(1,1)},
+                    blurStrength:{value:C.blurStrength}
+                },
+                vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+                fragmentShader:`
+                    uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurStrength; varying vec2 vUv;
+                    void main(){
+                        float mask=1.0-smoothstep(0.0,0.35,vUv.y); float radius=mask*blurStrength;
+                        if(radius<0.1){ gl_FragColor=texture2D(tDiffuse,vUv); return; }
+                        vec4 c=vec4(0.0); float total=0.0; const float GA=2.3999632;
+                        for(int i=0;i<32;i++){ float f=float(i); float r=sqrt(f)*radius; float th=f*GA;
+                            vec2 off=vec2(cos(th),sin(th))*(r/resolution); c+=texture2D(tDiffuse,vUv+off); total+=1.0; }
+                        gl_FragColor=c/total;
+                    }`
+            };
+            const blurPass = new ShaderPass(blurShader);
+            composer.addPass(blurPass);
+            composer.addPass(new OutputPass());
+
+            /* ── Floor ── */
+            const floorMat = new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.85, depthWrite:false, side:THREE.DoubleSide });
+            const floorMesh = new THREE.Mesh(new THREE.BufferGeometry(), floorMat);
+            floorMesh.position.set(0,-0.5,-0.5); floorMesh.renderOrder=1; scene.add(floorMesh);
+
+            /* ── Trails ── */
+            const trailGroup = new THREE.Group(); scene.add(trailGroup);
+            const trailMats = [], trailObjs = [];
+
+            const trailVS = `
+                varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewPosition;
+                void main(){ vUv=uv; vNormal=normalMatrix*normal;
+                    vec4 mv=modelViewMatrix*vec4(position,1.0); vViewPosition=-mv.xyz; gl_Position=projectionMatrix*mv; }`;
+            const trailFS = `
+                varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewPosition;
+                uniform float uTime; uniform vec3 uColor; uniform float uSpeed; uniform float uOffset;
+                uniform float uTailLength; uniform float uIntensityMultiplier; uniform float uBendUv;
+                uniform float uIsReflection; uniform float uDotDensity; uniform float uDotSize;
+                uniform float uDotSpeed; uniform float uBrightness; uniform float uDirection;
+                float hash(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+                void main(){
+                    float t=fract(uTime*uSpeed*uDirection+uOffset);
+                    float dist=fract((t-vUv.x)*uDirection+1.0);
+                    float baseAlpha=smoothstep(uTailLength,0.0,dist);
+                    baseAlpha=pow(max(0.0,baseAlpha),1.2);
+                    vec3 viewDir=normalize(vViewPosition);
+                    float fresnel=abs(dot(normalize(vNormal),viewDir));
+                    float edgeSoftness=smoothstep(0.0,0.02,fresnel);
+                    baseAlpha*=edgeSoftness;
+                    float core=pow(max(0.0,baseAlpha),3.0)*1.5;
+                    float movingUV=vUv.x-(uTime*uSpeed*uDotSpeed*uDirection)-uOffset;
+                    float signalPos=movingUV*uDotDensity;
+                    float dotId=floor(signalPos); float dotLocal=fract(signalPos);
+                    float distToCenter=length(vec2((dotLocal-0.5)*2.0,(fract(vUv.y+0.5)-0.5)*6.0));
+                    float dotShape=1.0-smoothstep(0.0,max(0.001,uDotSize),distToCenter);
+                    float dotFinal=dotShape*step(0.6,hash(vec2(dotId,uOffset)))*(sin(uTime*4.0+hash(vec2(dotId))*6.28)*0.3+0.7)*baseAlpha;
+                    if(uIsReflection>0.5){
+                        float refFade=1.0-smoothstep(uBendUv-0.015,uBendUv,vUv.x);
+                        baseAlpha*=refFade; core*=refFade; dotFinal*=refFade*0.1;
+                        baseAlpha=pow(max(0.0,baseAlpha),0.5)*(0.7+hash(vUv*300.0+uTime*0.05)*0.3); core*=0.3;
+                    }
+                    vec3 trailColor=uColor*(baseAlpha+core*1.5)*uIntensityMultiplier*uBrightness;
+                    vec3 rgb=trailColor/max(1.0-clamp(dotFinal*1.8,0.0,0.95),0.001)+uColor*dotFinal*2.5*uIntensityMultiplier*uBrightness;
+                    gl_FragColor=vec4(rgb,(baseAlpha+dotFinal)*uIntensityMultiplier);
+                }`;
+
+            for(let i=0;i<C.linesCount;i++){
+                const norm=(i/(C.linesCount-1))*2-1;
+                const lin=norm, exp=Math.sign(norm)*Math.pow(Math.abs(norm),1.2);
+                let startX=(lin*0.5+exp*0.5)*80+(Math.random()-0.5)*2;
+                const thickness=Math.random()*0.2+0.1;
+                const ci=Math.floor(Math.random()*5);
+                const u={
+                    uTime:{value:0}, uColor:{value:new THREE.Color(C.colors[ci])}, uColorIndex:{value:ci},
+                    uSpeed:{value:Math.random()*0.5+0.2}, uOffset:{value:Math.random()},
+                    uTailLength:{value:Math.random()*0.4+0.3}, uIntensityMultiplier:{value:1.0},
+                    uBendUv:{value:0}, uIsReflection:{value:0}, uDotDensity:{value:C.dotDensity},
+                    uDotSize:{value:C.dotSize}, uDotSpeed:{value:C.dotSpeed},
+                    uBrightness:{value:C.brightness}, uDirection:{value:1.0}
+                };
+                const mat=new THREE.ShaderMaterial({vertexShader:trailVS,fragmentShader:trailFS,uniforms:u,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+                const mesh=new THREE.Mesh(new THREE.BufferGeometry(),mat);
+                const refMat=mat.clone(); refMat.uniforms.uIntensityMultiplier.value=0.4; refMat.uniforms.uIsReflection.value=1.0;
+                const refMesh=new THREE.Mesh(new THREE.BufferGeometry(),refMat);
+                refMesh.scale.y=-1; refMesh.position.y=-1.0;
+                trailGroup.add(mesh,refMesh);
+                trailMats.push(mat.uniforms, refMat.uniforms);
+                trailObjs.push({mesh,refMesh,startX,thickness});
+            }
+
+            /* ── Build geometry ── */
+            function rebuildGeo(){
+                if(floorMesh.geometry) floorMesh.geometry.dispose();
+                const fg=new THREE.PlaneGeometry(1000,1000,1,1500); fg.rotateX(-Math.PI*0.5);
+                const p=fg.attributes.position.array;
+                for(let i=0;i<p.length;i+=3){
+                    if(p[i+2]<C.bendStartZ){
+                        let d=C.bendStartZ-p[i+2], maxA=C.arcRadius*Math.PI*0.5;
+                        if(d<maxA){ let n=d/maxA, a=(n*0.4+(n*n*(3-2*n))*0.6)*(Math.PI*0.5);
+                            p[i+1]=C.arcRadius*(1-Math.cos(a)); p[i+2]=C.bendStartZ-Math.sin(a)*C.arcRadius;
+                        } else { p[i+1]=C.arcRadius+(d-maxA); p[i+2]=C.bendStartZ-C.arcRadius; }
+                    }
+                }
+                fg.computeVertexNormals(); floorMesh.geometry=fg;
+                const bendUv=Math.abs(C.floorLength-C.bendStartZ)/(Math.abs(C.floorLength-C.bendStartZ)+(Math.PI*C.arcRadius)*0.5+Math.max(0.1,C.wallHeight-C.arcRadius));
+                trailObjs.forEach(o=>{
+                    const path=new CycCurve(o.startX,C.floorLength,C.bendStartZ-C.arcRadius,C.arcRadius,C.wallHeight);
+                    const geo=new THREE.TubeGeometry(path,200,o.thickness,8,false);
+                    if(o.mesh.geometry) o.mesh.geometry.dispose();
+                    o.mesh.geometry=o.refMesh.geometry=geo;
+                    o.mesh.material.uniforms.uBendUv.value=o.refMesh.material.uniforms.uBendUv.value=bendUv;
+                });
+            }
+            rebuildGeo();
+
+            /* ── Resize ── */
+            function syncSize(){
+                const w=overlay.offsetWidth, h=overlay.offsetHeight;
+                if(w<1||h<1) return false;
+                camera.aspect=w/h; camera.updateProjectionMatrix();
+                renderer.setSize(w,h);
+                composer.setSize(w,h);
+                blurPass.uniforms.resolution.value.set(w*C.dpr,h*C.dpr);
+                bloomPass.resolution.set(w,h);
+                return true;
+            }
+            syncSize();
+            window.addEventListener('resize', syncSize);
+
+            /* ── Animate — pauses when overlay is hidden ── */
+            const clock = new THREE.Clock();
+            let globalTime = 0;
+            let _menuBgRunning = true;
+
+            window._menuBgSetActive = function(active) {
+                _menuBgRunning = active;
+                if (active) clock.getDelta(); // reset delta so no time jump
+            };
+
+            function animate(){
+                requestAnimationFrame(animate);
+                if(!_menuBgRunning) return;
+                if(overlay.classList.contains('hidden') || overlay.style.display==='none') return;
+                globalTime += clock.getDelta() * C.speedMultiplier;
+                trailMats.forEach(m => m.uTime.value = globalTime);
+                composer.render();
             }
             animate();
         }
