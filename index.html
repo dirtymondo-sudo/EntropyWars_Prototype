@@ -260,8 +260,8 @@
                         <div><div class="mm-label">Multiplayer</div><div class="mm-desc-text">Battle online or vs CPU</div></div>
                     </button>
                     <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()">
-                        <span class="mm-icon">📜</span>
-                        <div><div class="mm-label">Campaign</div><div class="mm-desc-text">Fight for Humanity's Survival</div></div>
+                        <span class="mm-icon">⚔️</span>
+                        <div><div class="mm-label">Challenge</div><div class="mm-desc-text">How many battles can you survive?</div></div>
                     </button>
                     <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()">
                         <span class="mm-icon">🗺️</span>
@@ -420,9 +420,9 @@
             <div class="cmap-container">
                 <div class="cmap-top-bar">
                     <button class="ms-back-btn" onclick="window._campaignMapBack()">← Main Menu</button>
-                    <div class="cmap-title-text">Fight for Humanity's Survival</div>
+                    <div class="cmap-title-text">Challenge Run</div>
                     <div class="cmap-top-right">
-                        <button class="cmap-newgame-btn" onclick="window._campaignNewGame()">🔄 New Game</button>
+                        <button class="cmap-newgame-btn" onclick="window._campaignNewGame()">🔄 New Run</button>
                         <button class="cmap-shop-btn" onclick="window._cmapOpenShop()">🛒 Shop</button>
                         <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
                     </div>
@@ -442,7 +442,8 @@
                         <div class="cshop-top-bar">
                             <button class="ms-back-btn" onclick="window._cshopClose()">← Back</button>
                             <div class="cshop-tabs">
-                                <button class="cshop-tab cshop-tab-active" id="cshopTabRaces" onclick="window._cshopSwitchTab('races')">Races</button>
+                                <button class="cshop-tab cshop-tab-active" id="cshopTabServices" onclick="window._cshopSwitchTab('services')">Services</button>
+                                <button class="cshop-tab" id="cshopTabRaces" onclick="window._cshopSwitchTab('races')">Races</button>
                                 <button class="cshop-tab" id="cshopTabSpells" onclick="window._cshopSwitchTab('spells')">Spells</button>
                             </div>
                             <div class="cshop-gold-display" id="cshopGoldDisplay">💰 0</div>
