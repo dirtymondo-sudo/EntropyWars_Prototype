@@ -263,6 +263,10 @@
                         <span class="mm-icon">⚔️</span>
                         <div><div class="mm-label">Challenge</div><div class="mm-desc-text">How many battles can you survive?</div></div>
                     </button>
+                    <button class="mm-btn mm-btn-codex" onclick="window._goToCodex()">
+                        <span class="mm-icon">📋</span>
+                        <div><div class="mm-label">Codex</div><div class="mm-desc-text">Classified subject dossiers</div></div>
+                    </button>
                     <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()">
                         <span class="mm-icon">🗺️</span>
                         <div><div class="mm-label">Map Editor</div><div class="mm-desc-text">Create & test custom maps</div></div>
@@ -280,6 +284,18 @@
 
         <!-- PAGE 2a: Settings -->
         <div id="settingsPage" class="title-page">
+
+        <!-- PAGE: CODEX (Classified Dossier) -->
+        <div id="codexPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._codexBack()">← Back</button>
+                    <div class="ms-title-text">CLASSIFIED DOSSIER INDEX</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="codex-body" id="codexBody"></div>
+            </div>
+        </div>
             <div class="ms-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._settingsBack()">← Back</button>
