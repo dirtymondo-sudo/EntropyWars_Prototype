@@ -309,56 +309,8 @@
         </div>
 
         <!-- PAGE 2b: Mode & Map Selector -->
-        <div id="modePage" class="title-page">
-            <div class="ms-container">
-                <div class="ms-top-bar">
-                    <button class="ms-back-btn" onclick="window._msBack()">← Back</button>
-                    <div class="ms-title-text">Select game mode</div>
-                    <div class="ms-toggles">
-                        <div class="ms-toggle-group">
-                            <span class="ms-toggle-label">Ranked</span>
-                            <div class="ms-toggle-track" id="msTogRanked" onclick="window._toggleMSRanked()">
-                                <div class="ms-toggle-thumb"></div>
-                            </div>
-                            <span class="ms-toggle-val" id="msTogRankedVal">Unranked</span>
-                        </div>
-                        <div class="ms-toggle-group">
-                            <span class="ms-toggle-label">Opponent</span>
-                            <div class="ms-toggle-track" id="msTogOnline" onclick="window._toggleMSOnline()">
-                                <div class="ms-toggle-thumb"></div>
-                            </div>
-                            <span class="ms-toggle-val" id="msTogOnlineVal">CPU</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="ms-layout">
-                    <div class="ms-col-modes">
-                        <div class="ms-gm-list" id="msGmList"></div>
-                    </div>
-                    <div class="ms-col-right">
-                        <div class="ms-info-bar" id="msInfoBar"></div>
-                        <div class="ms-map-header">
-                            <div class="ms-col-label">Map</div>
-                            <button class="ms-map-arrow" onclick="window._msPrevMap()">◀</button>
-                            <div class="ms-map-name" id="msMapName">—</div>
-                            <button class="ms-map-arrow" onclick="window._msNextMap()">▶</button>
-                        </div>
-                        <div class="ms-map-wrap">
-                            <div class="ms-map-preview" id="msMapPreview"></div>
-                        </div>
-                        <div class="ms-map-legend">
-                            <div class="ms-legend-item"><div class="ms-legend-dot ms-dot-sky"></div>Sky</div>
-                            <div class="ms-legend-item"><div class="ms-legend-dot ms-dot-earth"></div>Earth</div>
-                            <div class="ms-legend-item"><div class="ms-legend-dot ms-dot-under"></div>Underground</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="ms-bottom-bar">
-                    <button class="ms-confirm-btn" onclick="window._msConfirm()">Confirm →</button>
-                </div>
-                <div class="ms-coming-soon-toast" id="msComingSoonToast">Online multiplayer coming soon!</div>
-            </div>
-        </div>
+        <!-- modePage: React mount point for Match Select screen -->
+        <div id="modePage" class="title-page"></div>
 
         <!-- PAGE 3: Online Lobby (create / join) -->
         <div id="lobbyPage" class="title-page">
@@ -748,6 +700,7 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/ui.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/party-builder.js"></script>
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/match-select.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/online.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/ai.js"></script>
     <!-- React HUD overlay (Codex visual system) -->
