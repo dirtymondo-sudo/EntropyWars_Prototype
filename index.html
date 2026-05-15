@@ -123,6 +123,7 @@
 
         <section class="grid-wrap panel" id="battlePanel">
             <div id="builderOverlay"></div>
+            <div id="profileOverlay"></div>
             <aside class="battle-top-scoreboard">
                 <div class="scoreboard scoreboard-horizontal" id="scoreboard"></div>
             </aside>
@@ -264,6 +265,10 @@
                     <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()">
                         <span class="mm-icon">⚔️</span>
                         <div><div class="mm-label">Challenge</div><div class="mm-desc-text">How many battles can you survive?</div></div>
+                    </button>
+                    <button class="mm-btn mm-btn-profile" onclick="if(typeof window._mountReactProfile==='function') window._mountReactProfile();">
+                        <span class="mm-icon">👤</span>
+                        <div><div class="mm-label">Profile</div><div class="mm-desc-text">Stats, history & achievements</div></div>
                     </button>
                     <button class="mm-btn mm-btn-codex" onclick="window._goToCodex()">
                         <span class="mm-icon">📋</span>
@@ -699,6 +704,36 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d_effects.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/ui.js"></script>
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/profile.js"></script>
+    <script>
+    // First-launch: if no profile exists after migration, open profile creation on ENTER click
+    (function() {
+        if (!window.ProfileSystem) return;
+        if (window.ProfileSystem.getActiveProfileIndex() === null) {
+            // No profile — intercept the ENTER button to show create profile first
+            var _origEnter = null;
+            var enterBtn = document.getElementById('enterGameBtn');
+            if (enterBtn) {
+                var origClick = enterBtn.onclick;
+                enterBtn.addEventListener('click', function _firstProfileCheck(e) {
+                    if (window.ProfileSystem.getActiveProfileIndex() === null) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        window._mountReactProfile();
+                    }
+                    // Once profile exists, remove this listener
+                    if (window.ProfileSystem.getActiveProfileIndex() !== null) {
+                        enterBtn.removeEventListener('click', _firstProfileCheck);
+                    }
+                }, true); // capture phase to fire before existing handlers
+            }
+        }
+        // If migration set the rename flag, prompt on profile open
+        if (window._profileNeedsRename) {
+            // Will be handled by ProfilePage component showing editingName state
+        }
+    })();
+    </script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/party-builder.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/match-select.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/online.js"></script>
