@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-cinematic.css">
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-weather.css">
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-hud.css">
-    <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-vfx.css">
+
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-editor.css">
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-diorama.css">
     <!-- Three.js r128 for game board renderer -->
@@ -712,10 +712,9 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/battle.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-renderer.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-vfx.js"></script>
-    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-vfx-effects.js"></script>
-    <!-- vfx3d_effects.js MUST load before vfx3d.js — it sets window.VFX3D_EFFECTS and window.VFX3D_SPELL_MAP. -->
+    <!-- vfx3d_effects.js sets window.VFX3D_EFFECTS and window.VFX3D_SPELL_MAP — must load before three-vfx-effects.js -->
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d_effects.js"></script>
-    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d.js"></script>
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-vfx-effects.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/ui.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/profile.js"></script>
     <script>
