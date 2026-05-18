@@ -17,10 +17,8 @@
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-vfx.css">
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-editor.css">
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-diorama.css">
-    <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-pixi.css">
-
-    <!-- PixiJS 7.x WebGL renderer -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <!-- Three.js r128 for game board renderer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <!-- Three.js import map for shader background -->
     <script type="importmap">
@@ -710,10 +708,10 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/state.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/audio.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/map.js"></script>
-    <!-- PixiJS renderer — pixi-camera.js must load before pixi-renderer.js -->
-    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/pixi-camera.js"></script>
+    <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-camera.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/battle.js"></script>
-    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/pixi-renderer.js"></script>
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-renderer.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx.js"></script>
     <!-- vfx3d_effects.js MUST load before vfx3d.js — it sets window.VFX3D_EFFECTS and window.VFX3D_SPELL_MAP. -->
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/vfx3d_effects.js"></script>
