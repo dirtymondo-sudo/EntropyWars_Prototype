@@ -16,6 +16,14 @@
     <link rel="stylesheet" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/styles-editor.css">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 
     <!-- Three.js import map for shader background -->
     <script type="importmap">
@@ -707,6 +715,7 @@
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-camera.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/battle.js"></script>
+    <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-post.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-renderer.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-vfx.js"></script>
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/three-vfx-effects.js"></script>
