@@ -377,6 +377,35 @@
             </div>
         </div>
 
+        <!-- PAGE: Challenge Mode Picker -->
+        <div id="challengePickPage" class="title-page">
+            <div class="ccc-container">
+                <div class="ccc-top-bar">
+                    <button class="ms-back-btn" onclick="window._challengePickBack()">← Back</button>
+                    <div class="ccc-title-text">Challenge Mode</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="chpick-body">
+                    <div class="chpick-card" onclick="window._challengePickMode('gauntlet')">
+                        <div class="chpick-icon">🏆</div>
+                        <div class="chpick-info">
+                            <div class="chpick-name">Gauntlet</div>
+                            <div class="chpick-desc">100 battles · Save progress · Retry on loss · Speedrun</div>
+                        </div>
+                        <div class="chpick-arrow">→</div>
+                    </div>
+                    <div class="chpick-card" onclick="window._challengePickMode('survival')">
+                        <div class="chpick-icon">💀</div>
+                        <div class="chpick-info">
+                            <div class="chpick-name">Survival</div>
+                            <div class="chpick-desc">Endless battles · Permadeath · How far can you go?</div>
+                        </div>
+                        <div class="chpick-arrow">→</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- PAGE: Campaign Character Creation -->
         <div id="campaignCharCreatePage" class="title-page">
             <div class="ccc-container">
@@ -388,6 +417,8 @@
                 <div class="ccc-body">
                     <div class="ccc-sprite-preview" id="cccSpritePreview"></div>
                     <div class="ccc-form">
+                        <label class="ccc-label">Race</label>
+                        <div class="ccc-race-grid" id="cccRaceGrid"></div>
                         <label class="ccc-label">Name</label>
                         <input type="text" class="ccc-input" id="cccNameInput" maxlength="20" placeholder="Enter name…" autocomplete="off" spellcheck="false" />
                         <label class="ccc-label">Gender</label>
@@ -400,7 +431,7 @@
                     </div>
                 </div>
                 <div class="ccc-bottom-bar">
-                    <button class="ccc-confirm-btn" onclick="window._cccConfirm()">Begin Campaign →</button>
+                    <button class="ccc-confirm-btn" onclick="window._cccConfirm()">Begin Challenge →</button>
                 </div>
             </div>
         </div>
