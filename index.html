@@ -34,8 +34,7 @@
         {
             "imports": {
                 "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js"
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
         }
     </script>
@@ -70,12 +69,28 @@
         .sky-backdrop.shader-active .sunset-overlay {
             display: none !important;
         }
-        /* lil-gui shader settings panel */
+        /* lil-gui shader settings panel — hidden */
         .lil-gui.root {
-            z-index: 9999;
-            position: fixed;
-            top: 8px;
-            right: 8px;
+            display: none !important;
+        }
+        /* ── Online player counter ── */
+        .mm-online-count {
+            text-align: center;
+            font-family: 'DotGothic16', monospace;
+            font-size: 13px;
+            color: rgba(200, 210, 230, 0.7);
+            letter-spacing: 0.05em;
+            margin-top: 6px;
+        }
+        .mm-online-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #32aa50;
+            box-shadow: 0 0 6px #32aa50;
+            margin-right: 5px;
+            vertical-align: middle;
         }
         /* ── Ranked Queue Styles ── */
         .lobby-ranked-btn {
@@ -381,6 +396,10 @@
                 </div>
                 <div class="mm-elo-display">
                     <span class="mm-elo-tag" id="mmEloTag"></span>
+                </div>
+                <div class="mm-online-count" id="mmOnlineCount" style="display:none;">
+                    <span class="mm-online-dot"></span>
+                    <span id="mmOnlineNum">0</span> online
                 </div>
             </div>
         </div>
@@ -984,7 +1003,7 @@
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">
         import * as THREE from 'three';
-        import GUI from 'lil-gui';
+        // lil-gui removed — shader params available on window._shaderBgParams for console use
 
         const canvas = document.getElementById('shaderBgCanvas');
         const skyBackdrop = canvas?.closest('.sky-backdrop');
@@ -1129,28 +1148,9 @@
             const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
             scene.add(quad);
 
-            // Expose for runtime tweaking from game code
+            // Expose for runtime tweaking from game code (console only, no GUI)
             window._shaderBgParams = params;
             window._shaderBgMaterial = material;
-
-            // ── Settings GUI ──
-            const gui = new GUI({ title: 'Sky Shader' });
-            gui.close(); // collapsed by default
-
-            gui.add(params, 'speed', 0.0, 20.0).name('Flight Speed').onChange(v => material.uniforms.uSpeed.value = v);
-            gui.add(params, 'terrainHeight', 0.0, 2.0).name('Terrain Height').onChange(v => material.uniforms.uTerrainHeight.value = v);
-            gui.add(params, 'fogStepSize', 0.1, 5.0).name('Fog Density').onChange(v => material.uniforms.uFogStepSize.value = v);
-
-            const fractalFolder = gui.addFolder('Fractal Noise');
-            fractalFolder.add(params, 'noiseFreq', 0.1, 5.0).name('Frequency').onChange(v => material.uniforms.uNoiseFreq.value = v);
-            fractalFolder.add(params, 'noiseAmp', 0.0, 1.0).name('Amplitude').onChange(v => material.uniforms.uNoiseAmp.value = v);
-
-            const colorFolder = gui.addFolder('Color Phase');
-            colorFolder.add(params, 'colorR', 0.0, 10.0).name('Red').onChange(v => material.uniforms.uColorPhase.value.x = v);
-            colorFolder.add(params, 'colorG', 0.0, 10.0).name('Green').onChange(v => material.uniforms.uColorPhase.value.y = v);
-            colorFolder.add(params, 'colorB', 0.0, 10.0).name('Blue').onChange(v => material.uniforms.uColorPhase.value.z = v);
-
-            window._shaderBgGui = gui;
 
             // ═══════════════════════════════════════════
             // ── Audio-Reactive System (Web Audio API) ──
@@ -1165,16 +1165,6 @@
                 smoothing: 0.82     // exponential smoothing (0 = instant, 0.99 = glacial)
             };
             window._shaderAudioReact = audioReact;
-
-            // GUI folder for audio reactivity
-            const audioFolder = gui.addFolder('Audio Reactivity');
-            audioFolder.add(audioReact, 'enabled').name('Enabled');
-            audioFolder.add(audioReact, 'bassGain', 0.0, 3.0).name('Bass Sensitivity');
-            audioFolder.add(audioReact, 'terrainPulse', 0.0, 2.0).name('Terrain Pulse');
-            audioFolder.add(audioReact, 'fogPulse', 0.0, 2.0).name('Fog Pulse');
-            audioFolder.add(audioReact, 'noisePulse', 0.0, 1.0).name('Noise Pulse');
-            audioFolder.add(audioReact, 'colorPulse', 0.0, 2.0).name('Color Pulse');
-            audioFolder.add(audioReact, 'smoothing', 0.5, 0.98).name('Smoothing');
 
             // Web Audio plumbing
             let _reactCtx = null;
