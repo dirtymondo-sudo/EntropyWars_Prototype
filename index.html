@@ -77,6 +77,75 @@
             top: 8px;
             right: 8px;
         }
+        /* ── Ranked Queue Styles ── */
+        .lobby-ranked-btn {
+            background: linear-gradient(135deg, #dc3c82 0%, #9632b4 100%) !important;
+            font-size: 1.1rem !important;
+            letter-spacing: 0.05em;
+        }
+        .lobby-ranked-btn:hover {
+            filter: brightness(1.15);
+        }
+        .lobby-ranked-sizes {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 18px 0 14px;
+            flex-wrap: wrap;
+        }
+        .ranked-size-btn {
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.12);
+            color: #ccc;
+            font-family: 'DotGothic16', monospace;
+            font-size: 1rem;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 56px;
+        }
+        .ranked-size-btn:hover {
+            border-color: rgba(255,255,255,0.25);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        .ranked-size-btn.active {
+            border-color: #dc3c82;
+            background: rgba(220,60,130,0.15);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(220,60,130,0.3);
+        }
+        .lobby-ranked-info {
+            text-align: center;
+            margin: 10px 0 18px;
+        }
+        .lobby-ranked-elo {
+            font-family: 'DotGothic16', monospace;
+            font-size: 1.05rem;
+            color: #dcaa1e;
+            letter-spacing: 0.08em;
+        }
+        .lobby-queue-start {
+            background: linear-gradient(135deg, #dc3c82 0%, #9632b4 100%) !important;
+        }
+        .lobby-queue-timer {
+            font-family: 'DotGothic16', monospace;
+            font-size: 2rem;
+            color: #dc3c82;
+            text-align: center;
+            margin: 12px 0;
+            letter-spacing: 0.15em;
+        }
+        #lobbyQueueSearching {
+            text-align: center;
+        }
+        #lobbyQueueSearching .secondary-lobby {
+            margin-top: 10px;
+        }
+        .lobby-status.connected {
+            color: var(--green, #55d38a);
+        }
     </style>
 </head>
 
@@ -342,13 +411,35 @@
                 <div id="lobbyMain">
                     <div class="lobby-kicker">Online Multiplayer</div>
                     <div class="lobby-title">Find a Match</div>
-                    <div class="lobby-subtitle">One player creates a room, the other joins with a code.</div>
+                    <div class="lobby-subtitle">Queue for a ranked match or play a friend with a room code.</div>
                     <div class="lobby-actions">
-                        <button class="primary-lobby" onclick="lobbyCreateRoom()">Create Room</button>
+                        <button class="primary-lobby lobby-ranked-btn" onclick="lobbyShowRankedQueue()">⚔️ Find Ranked Match</button>
                         <div class="lobby-or">— or —</div>
-                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join Room</button>
+                        <button class="secondary-lobby" onclick="lobbyCreateRoom()">Create Friendly Room</button>
+                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join with Code</button>
                     </div>
                     <button class="lobby-back" onclick="window._lobbyBack()">← Back</button>
+                </div>
+                <div id="lobbyRankedQueue" style="display:none">
+                    <div class="lobby-player-badge p1">RANKED MATCHMAKING</div>
+                    <div class="lobby-kicker">Select Team Size</div>
+                    <div class="lobby-ranked-sizes" id="lobbyRankedSizes">
+                        <button class="ranked-size-btn" data-size="1" onclick="lobbySetQueueSize(1)">1v1</button>
+                        <button class="ranked-size-btn" data-size="2" onclick="lobbySetQueueSize(2)">2v2</button>
+                        <button class="ranked-size-btn active" data-size="4" onclick="lobbySetQueueSize(4)">4v4</button>
+                        <button class="ranked-size-btn" data-size="6" onclick="lobbySetQueueSize(6)">6v6</button>
+                        <button class="ranked-size-btn" data-size="8" onclick="lobbySetQueueSize(8)">8v8</button>
+                    </div>
+                    <div class="lobby-ranked-info">
+                        <div class="lobby-ranked-elo" id="lobbyQueueElo">ELO: 1200</div>
+                    </div>
+                    <button class="primary-lobby lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search for Opponent</button>
+                    <div id="lobbyQueueSearching" style="display:none">
+                        <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
+                        <div class="lobby-queue-timer" id="lobbyQueueTimer">0:00</div>
+                        <button class="secondary-lobby" onclick="lobbyLeaveQueue()">Cancel</button>
+                    </div>
+                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToMain()">← Back</button>
                 </div>
                 <div id="lobbyHosting" style="display:none">
                     <div class="lobby-player-badge p1">YOU ARE PLAYER 1 (BLUE)</div>
