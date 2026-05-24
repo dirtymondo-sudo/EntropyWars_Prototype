@@ -778,9 +778,18 @@ app.delete('/api/maps/:id', async (req, res) => {
 });
 
 
+// ── Broadcast online player count ──
+function broadcastPlayerCount() {
+    const count = io.engine.clientsCount;
+    io.emit('player-count', { count });
+}
+
 // ── Socket.IO ──
 io.on('connection', (socket) => {
     console.log(`[IO] Connected: ${socket.id}`);
+
+    // Send current player count to newly connected client + broadcast to all
+    broadcastPlayerCount();
 
     // ── Authenticate socket (attach player identity for ranked) ──
     socket.on('authenticate', async (data, callback) => {
@@ -1139,6 +1148,9 @@ io.on('connection', (socket) => {
     // ── Disconnect ──
     socket.on('disconnect', () => {
         console.log(`[IO] Disconnected: ${socket.id}`);
+
+        // Broadcast updated player count
+        broadcastPlayerCount();
 
         // Remove from matchmaking queues
         removeFromAllQueues(socket.id);
