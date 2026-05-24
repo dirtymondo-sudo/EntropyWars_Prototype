@@ -491,6 +491,45 @@
                     <div class="lobby-title">Share This Code</div>
                     <div class="lobby-subtitle">Send this code to your friend.</div>
                     <div class="lobby-code-display" id="lobbyRoomCode">-----</div>
+
+                    <!-- Host Config Panel -->
+                    <div id="friendlyConfigPanel" style="margin:16px 0 8px;">
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">GAME MODE</div>
+                            <div class="lobby-ranked-sizes" id="friendlyModeChips">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="domination" onclick="friendlySetMode('domination')">🚩 Dom</button>
+                                <button class="ranked-size-btn" data-mode="hotspot" onclick="friendlySetMode('hotspot')">🔥 Hot</button>
+                                <button class="ranked-size-btn" data-mode="ctf" onclick="friendlySetMode('ctf')">🏳️ CTF</button>
+                            </div>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">TEAM SIZE</div>
+                            <div class="lobby-ranked-sizes" id="friendlySizeChips">
+                                <button class="ranked-size-btn" data-size="1" onclick="friendlySetSize(1)">1v1</button>
+                                <button class="ranked-size-btn" data-size="2" onclick="friendlySetSize(2)">2v2</button>
+                                <button class="ranked-size-btn active" data-size="4" onclick="friendlySetSize(4)">4v4</button>
+                                <button class="ranked-size-btn" data-size="6" onclick="friendlySetSize(6)">6v6</button>
+                                <button class="ranked-size-btn" data-size="8" onclick="friendlySetSize(8)">8v8</button>
+                            </div>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">MAP</div>
+                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.12);color:#ccc;font-family:'DotGothic16',monospace;font-size:0.9rem;padding:8px 14px;border-radius:8px;width:100%;max-width:280px;cursor:pointer;">
+                                <!-- Populated dynamically by friendlyRefreshMaps() -->
+                            </select>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">ROUNDS</div>
+                            <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+                                <button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" style="min-width:36px;padding:8px 10px;">−</button>
+                                <span id="friendlyRoundDisplay" style="font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;">15</span>
+                                <button class="ranked-size-btn" onclick="friendlyStepRounds(5)" style="min-width:36px;padding:8px 10px;">+</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="lobby-status waiting" id="lobbyHostStatus">Waiting for Player 2…</div>
                     <div class="lobby-small">Keep this page open. The game starts once your friend connects.</div>
                     <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Cancel</button>
@@ -515,6 +554,7 @@
                     <div class="lobby-kicker">Connected!</div>
                     <div class="lobby-title">Both Players Joined</div>
                     <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the party builder…</div>
+                    <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
                     <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
                 </div>
             </div>
