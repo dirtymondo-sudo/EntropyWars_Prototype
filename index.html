@@ -346,9 +346,9 @@
                 <div class="mm-logo">ENTROPY WARS</div>
                 <div class="mm-sub">As above, so below</div>
                 <div class="mm-buttons">
-                    <button class="mm-btn mm-btn-multiplayer" onclick="window._goToModeSelector()">
+                    <button class="mm-btn mm-btn-multiplayer" onclick="window._goToPlayHub()">
                         <span class="mm-icon">⚔️</span>
-                        <div><div class="mm-label">Multiplayer</div><div class="mm-desc-text">Battle online or vs CPU</div></div>
+                        <div><div class="mm-label">Play</div><div class="mm-desc-text">Quick play, friendly match, or vs CPU</div></div>
                     </button>
                     <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()">
                         <span class="mm-icon">⚔️</span>
@@ -401,46 +401,90 @@
             </div>
         </div>
 
+        <!-- PAGE: PLAY HUB — Choose your path -->
+        <div id="playHubPage" class="title-page">
+            <div class="mm-wrap">
+                <div class="mm-logo" style="font-size:24px; margin-bottom:2px;">PLAY</div>
+                <div class="mm-sub" style="margin-bottom:28px;">Choose your path</div>
+                <div class="mm-buttons" style="width:340px; gap:12px;">
+                    <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()">
+                        <span class="mm-icon">⚡</span>
+                        <div><div class="mm-label">Quick Play</div><div class="mm-desc-text">Ranked online — find an opponent fast</div></div>
+                    </button>
+                    <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()">
+                        <span class="mm-icon">🤝</span>
+                        <div><div class="mm-label">Friendly Match</div><div class="mm-desc-text">Play a friend with a room code</div></div>
+                    </button>
+                    <button class="mm-btn mm-btn-vscpu" onclick="window._goToVsCpu()">
+                        <span class="mm-icon">🤖</span>
+                        <div><div class="mm-label">VS CPU</div><div class="mm-desc-text">Battle the computer offline</div></div>
+                    </button>
+                </div>
+                <div class="mm-elo-display" style="margin-top:20px;">
+                    <span class="mm-elo-tag" id="playHubEloTag"></span>
+                </div>
+                <button class="lobby-back" style="margin-top:16px;" onclick="window._playHubBack()">← Back</button>
+            </div>
+        </div>
+
         <!-- PAGE 2b: Mode & Map Selector -->
         <!-- modePage: React mount point for Match Select screen -->
         <div id="modePage" class="title-page"></div>
 
-        <!-- PAGE 3: Online Lobby (create / join) -->
+        <!-- PAGE 3: Online Lobby (Quick Play + Friendly) -->
         <div id="lobbyPage" class="title-page">
             <div class="mode-card lobby-inner">
-                <div id="lobbyMain">
-                    <div class="lobby-kicker">Online Multiplayer</div>
-                    <div class="lobby-title">Find a Match</div>
-                    <div class="lobby-subtitle">Queue for a ranked match or play a friend with a room code.</div>
-                    <div class="lobby-actions">
-                        <button class="primary-lobby lobby-ranked-btn" onclick="lobbyShowRankedQueue()">⚔️ Find Ranked Match</button>
-                        <div class="lobby-or">— or —</div>
-                        <button class="secondary-lobby" onclick="lobbyCreateRoom()">Create Friendly Room</button>
-                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join with Code</button>
-                    </div>
-                    <button class="lobby-back" onclick="window._lobbyBack()">← Back</button>
-                </div>
-                <div id="lobbyRankedQueue" style="display:none">
+                <!-- Quick Play: ranked queue with mode picker -->
+                <div id="lobbyQuickPlay" style="display:none">
                     <div class="lobby-player-badge p1">RANKED MATCHMAKING</div>
-                    <div class="lobby-kicker">Select Team Size</div>
-                    <div class="lobby-ranked-sizes" id="lobbyRankedSizes">
-                        <button class="ranked-size-btn" data-size="1" onclick="lobbySetQueueSize(1)">1v1</button>
-                        <button class="ranked-size-btn" data-size="2" onclick="lobbySetQueueSize(2)">2v2</button>
-                        <button class="ranked-size-btn active" data-size="4" onclick="lobbySetQueueSize(4)">4v4</button>
-                        <button class="ranked-size-btn" data-size="6" onclick="lobbySetQueueSize(6)">6v6</button>
-                        <button class="ranked-size-btn" data-size="8" onclick="lobbySetQueueSize(8)">8v8</button>
+                    <div class="lobby-kicker">Quick Play</div>
+                    <div class="lobby-subtitle" style="margin-bottom:14px;">Pick a mode and team size — server picks the map.</div>
+
+                    <div class="lobby-config-section">
+                        <div class="lobby-config-label">GAME MODE</div>
+                        <div class="lobby-ranked-sizes" id="lobbyQueueModes">
+                            <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
+                            <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
+                        </div>
                     </div>
+
+                    <div class="lobby-config-section">
+                        <div class="lobby-config-label">TEAM SIZE</div>
+                        <div class="lobby-ranked-sizes" id="lobbyRankedSizes">
+                            <button class="ranked-size-btn" data-size="1" onclick="lobbySetQueueSize(1)">1v1</button>
+                            <button class="ranked-size-btn" data-size="2" onclick="lobbySetQueueSize(2)">2v2</button>
+                            <button class="ranked-size-btn active" data-size="4" onclick="lobbySetQueueSize(4)">4v4</button>
+                            <button class="ranked-size-btn" data-size="6" onclick="lobbySetQueueSize(6)">6v6</button>
+                            <button class="ranked-size-btn" data-size="8" onclick="lobbySetQueueSize(8)">8v8</button>
+                        </div>
+                    </div>
+
                     <div class="lobby-ranked-info">
                         <div class="lobby-ranked-elo" id="lobbyQueueElo">ELO: 1200</div>
                     </div>
-                    <button class="primary-lobby lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search for Opponent</button>
+                    <button class="primary-lobby lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">⚔️ Search for Opponent</button>
                     <div id="lobbyQueueSearching" style="display:none">
                         <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
                         <div class="lobby-queue-timer" id="lobbyQueueTimer">0:00</div>
                         <button class="secondary-lobby" onclick="lobbyLeaveQueue()">Cancel</button>
                     </div>
-                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToMain()">← Back</button>
+                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">← Back</button>
                 </div>
+
+                <!-- Friendly: Create / Join -->
+                <div id="lobbyFriendlyMain" style="display:none">
+                    <div class="lobby-kicker">Friendly Match</div>
+                    <div class="lobby-title">Room Code</div>
+                    <div class="lobby-subtitle">One player creates a room, the other joins with a code.</div>
+                    <div class="lobby-actions">
+                        <button class="primary-lobby" onclick="lobbyCreateRoom()">Create Room</button>
+                        <div class="lobby-or">— or —</div>
+                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join Room</button>
+                    </div>
+                    <button class="lobby-back" onclick="lobbyBackToPlayHub()">← Back</button>
+                </div>
+
+                <!-- Friendly: Hosting (waiting for guest) -->
                 <div id="lobbyHosting" style="display:none">
                     <div class="lobby-player-badge p1">YOU ARE PLAYER 1 (BLUE)</div>
                     <div class="lobby-kicker">Room Created</div>
@@ -449,8 +493,10 @@
                     <div class="lobby-code-display" id="lobbyRoomCode">-----</div>
                     <div class="lobby-status waiting" id="lobbyHostStatus">Waiting for Player 2…</div>
                     <div class="lobby-small">Keep this page open. The game starts once your friend connects.</div>
-                    <button class="lobby-back" onclick="lobbyBackToMain()">← Cancel</button>
+                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Cancel</button>
                 </div>
+
+                <!-- Friendly: Joining -->
                 <div id="lobbyJoining" style="display:none">
                     <div class="lobby-player-badge p2">YOU WILL BE PLAYER 2 (RED)</div>
                     <div class="lobby-kicker">Join Room</div>
@@ -461,8 +507,10 @@
                         <button class="primary-lobby" style="width:auto" onclick="lobbyJoinRoom()">Join</button>
                     </div>
                     <div class="lobby-status" id="lobbyJoinStatus"></div>
-                    <button class="lobby-back" onclick="lobbyBackToMain()">← Back</button>
+                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Back</button>
                 </div>
+
+                <!-- Connected (shared by both Quick Play and Friendly) -->
                 <div id="lobbyConnected" style="display:none">
                     <div class="lobby-kicker">Connected!</div>
                     <div class="lobby-title">Both Players Joined</div>
