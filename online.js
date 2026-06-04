@@ -1551,6 +1551,24 @@
                         NET.role = 'guest';
                         NET.myPlayer = 2;
                         NET.opponentName = data.hostUsername || 'Player 1';
+                    } else {
+                        // Socket id didn't match either slot — this happens if the
+                        // socket reconnected (new id) between create/join and this
+                        // event. Fall back to the role we already chose when we
+                        // created vs joined the room (set in the create-room /
+                        // join-room callbacks). Without this the client would keep a
+                        // stale/null role and you can end up with two "guests" and no
+                        // authoritative host (match never starts / desyncs).
+                        if (NET.role === 'host') {
+                            NET.myPlayer = 1;
+                            NET.opponentName = data.guestUsername || 'Player 2';
+                        } else if (NET.role === 'guest') {
+                            NET.myPlayer = 2;
+                            NET.opponentName = data.hostUsername || 'Player 1';
+                        }
+                        console.warn('[NET] room-full: socket id ' + NET.socket.id +
+                            ' matched neither host(' + data.host + ') nor guest(' + data.guest +
+                            ') — falling back to self-assigned role "' + NET.role + '".');
                     }
 
                     NET.connected = true;
@@ -2172,6 +2190,33 @@
                     console.error('[NET] Serialize error:', e);
                 }
             };
+
+            // ── Host turn-handoff heartbeat ─────────────────────────────────
+            // During the REMOTE player's turn the host is idle (it has broadcast
+            // the handoff once and is now waiting for the guest's input), so it
+            // emits no further state-syncs. That makes the single turn-handoff
+            // packet a single point of failure: if the guest doesn't apply it
+            // (a battle-start / socket-ready race), it never learns the turn
+            // changed and the match DEADLOCKS with no recovery path.
+            //
+            // Fix: while it's the remote player's turn, periodically re-send the
+            // authoritative state (bypassing the lastSyncJson dedup) so a missed
+            // handoff self-heals within ~1.2s. Re-applying identical state on the
+            // guest is idempotent — _applyRemoteState preserves the guest's
+            // in-progress UI (_guestUIKeys), so it won't disturb an active player.
+            if (!window._NET._handoffHeartbeat) {
+                window._NET._handoffHeartbeat = setInterval(function() {
+                    try {
+                        var N = window._NET, st = window._gameState;
+                        if (!N || !N.online || N.role !== 'host' || !N.socket) return;
+                        if (!st || st.phase !== 'battle' || st.winner) return;
+                        var remoteP = N.myPlayer === 1 ? 2 : 1;
+                        if (st.activePlayer !== remoteP) return; // only while waiting on the guest
+                        N.lastSyncJson = '';                     // bypass dedup → force a resend
+                        if (window._broadcastState) window._broadcastState();
+                    } catch (e) { /* never let the heartbeat throw */ }
+                }, 1200);
+            }
 
             var _guestUIKeys = [
                 'selectedUnitId', 'focusedUnitId', 'hoverUnitId',
