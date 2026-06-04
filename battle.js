@@ -1,0 +1,20374 @@
+        function _skipVisuals() {
+            if (state.devAutoSim) return !state._devSimShowAnims;
+            return !!state.animationsDisabled;
+        }
+
+        function _vfxHeal(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(tx, ty);
+        }
+        function _vfxMana(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireMana) ThreeVFXEffects.fireMana(tx, ty);
+        }
+        function _vfxBuff(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBuff) ThreeVFXEffects.fireBuff(tx, ty);
+        }
+        function _vfxStatus(statusId, tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireStatus) ThreeVFXEffects.fireStatus(statusId, tx, ty);
+        }
+        function _vfxLevelUp(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireLevelUp) ThreeVFXEffects.fireLevelUp(tx, ty);
+        }
+        function _vfxDeath(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDeath) ThreeVFXEffects.fireDeath(tx, ty);
+        }
+        function _vfxBlood(tx, ty, tier) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBlood) ThreeVFXEffects.fireBlood(tx, ty, tier);
+        }
+        function _vfxDash(fromTx, fromTy, toTx, toTy) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDash) ThreeVFXEffects.fireDash(fromTx, fromTy, toTx, toTy);
+        }
+        function _vfxTeleport(fromTx, fromTy, toTx, toTy) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireTeleportLegacy) ThreeVFXEffects.fireTeleportLegacy(fromTx, fromTy, toTx, toTy);
+        }
+        function _vfxZone(centerTx, centerTy, radius, type) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type);
+        }
+        function _vfxCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireCombo) ThreeVFXEffects.fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy);
+        }
+        function _vfxProjectile(fromX, fromY, toX, toY, spellType, spellId, spellName, fromZ, toZ, flyMs) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined') {
+                ThreeVFXEffects.projectile(fromX, fromY, toX, toY, spellType, spellId, spellName, fromZ, toZ, flyMs);
+            }
+        }
+        function _vfxBeam(fromX, fromY, toX, toY, spellType, spellId, spellName, fromZ, toZ) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined') {
+                ThreeVFXEffects.beam(fromX, fromY, toX, toY, spellType, spellId, spellName, fromZ, toZ);
+            }
+        }
+        function _vfxAoe(cx, cy, spellType, spellId, spellName, z) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined') {
+                ThreeVFXEffects.aoe(cx, cy, spellType, spellId, spellName, z);
+            }
+        }
+
+        const MAX_CLIMB_HEIGHT = 1;
+
+        const FALL_DAMAGE_THRESHOLD = 3;
+        const FALL_DAMAGE_PER_LEVEL = 8;
+        const JUMP_HEIGHT = 2;
+        const HIGH_GROUND_RANGE_BONUS = 1;
+        const HIGH_GROUND_DEF_BONUS = 5;
+        const DOWNHILL_DAMAGE_BONUS = 0.1;
+
+        function rollStatusApply(sourceUnit, targetUnit, baseChance = 1) {
+            const chance = Math.max(0.05, Math.min(0.95, baseChance + getDebuffIntModifier(sourceUnit, targetUnit)));
+            return Math.random() <= chance;
+        }
+
+        function getHourglassPower(unit) {
+
+            return unit?.hourglassBuff || 0;
+        }
+
+        function getHourglassMoveBonus(unit) {
+
+            return Math.floor((unit?.hourglassBuff || 0) / 2);
+        }
+
+        function getHourglassDamageReduction(unit) {
+
+            return unit?.hourglassBuff || 0;
+        }
+
+        function getEffectiveMove(unit) {
+            const weatherMod = getWeatherStatMod(unit).move || 0;
+            const floorMoveBonus = getSectionBuffs(unit).move || 0;
+            const base = Math.max(1, (unit.move || 1) + getHourglassMoveBonus(unit) + getStatusMoveDelta(unit) + (getTerrainPreferenceModifier(unit).move || 0) + weatherMod + floorMoveBonus);
+            let total = Math.max(1, Math.round(base * getZodiacBonus(unit).mult));
+            return total;
+        }
+
+        function checkOpportunityAttack(unit, fromX, fromY) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            for (const enemy of enemies) {
+
+                if (Math.abs(enemy.x - fromX) > 1 || Math.abs(enemy.y - fromY) > 1) continue;
+
+                const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
+                const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
+                if (newDist <= oldDist) continue;
+
+                if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
+                    unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
+
+                const spdDiff = (enemy.spd || 0) - (unit.spd || 0);
+                const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
+                const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * 0.03 + awrDiff * 0.02));
+                if (Math.random() >= chance) continue;
+
+                const baseDmg = Math.max(1, Math.round((enemy.atk || 20) * 0.5));
+                const armor = getEffectiveArmor(unit);
+                const dmg = Math.max(1, baseDmg - armor);
+                applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
+                    sourceUnit: enemy,
+                    damageType: 'physical'
+                });
+                addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
+                showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
+                playSfx('physicalAttack');
+                flashUnit(unit.id, 'damage');
+
+                break;
+            }
+        }
+
+        function getEffectiveRange(unit) {
+            if (!unit) return 1;
+            const weatherMod = getWeatherStatMod(unit).rng || 0;
+            const mountainBonus = (isOnMountain(unit) && unitHasClimbingBoots(unit)) ? 1 : 0;
+            const overclockRangeBonus = (unitHasStatus(unit, 'overclock') && unit.types && unit.types.includes('tech')) ? 1 : 0;
+            const camoRangeBonus = unitHasStatus(unit, 'invisible') ? 1 : 0;
+
+            let highGroundRangeBonus = 0;
+            if (HIGH_GROUND_RANGE_BONUS && unit.range >= 2) {
+                const unitH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : (unit.z ?? 0);
+                if (unitH >= 2) highGroundRangeBonus = HIGH_GROUND_RANGE_BONUS;
+            }
+            return Math.max(1, (unit.range || 1) + 1 + weatherMod + mountainBonus + overclockRangeBonus + camoRangeBonus + highGroundRangeBonus);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SPELL_KIND_META — single source of truth for all spell-kind properties.
+        // Replaces 6+ duplicated arrays that previously had to stay in sync.
+        //
+        // Properties:
+        //   minRange:       0 or 1 (default 1)
+        //   offensive:      true if spell targets enemies (default false)
+        //   tileTargeted:   true if targets a tile rather than a unit (default false)
+        //   selfCast:       true if auto-targets caster / no target needed (default false)
+        //   directional:    true for line/beam kinds that pick a direction (default false)
+        //   fogExempt:      true if castable into fog without vision (default false)
+        //   breaksStealth:  true if casting breaks camouflage/invisibility (default false)
+        //   allyOnly:       true if spell only targets allies (default false)
+        //   noStrikeLeap:   true to suppress strike-leap even if physical+short-range (default false)
+        //   losRequired:    true if line-of-sight check applies (default: same as offensive)
+        // ═══════════════════════════════════════════════════════════════════
+        const SPELL_KIND_META = {
+            // ── Offensive single-target ──
+            damage:       { minRange: 1, offensive: true,  breaksStealth: true },
+            debuff:       { minRange: 1, offensive: true,  breaksStealth: true },
+            multiHit:     { minRange: 1, offensive: true,  breaksStealth: true },
+            ricochet:     { minRange: 1, offensive: true,  breaksStealth: true },
+            lifeDrain:    { minRange: 1, offensive: true,  breaksStealth: true },
+            pull:         { minRange: 1, offensive: true,  noStrikeLeap: true },
+            swap:         { minRange: 1, offensive: true,  noStrikeLeap: true },
+            displacement: { minRange: 1, offensive: true,  noStrikeLeap: true },
+
+            // ── Offensive AoE / area ──
+            aoe:          { minRange: 0, offensive: false, tileTargeted: true, breaksStealth: true },
+            barrage:      { minRange: 0, offensive: false, selfCast: true,     breaksStealth: true },
+            aoePull:      { minRange: 0, offensive: false, tileTargeted: true },
+            cross:        { minRange: 0, offensive: false, tileTargeted: true },
+
+            // ── Line / Beam (directional) ──
+            line:         { minRange: 0, offensive: true,  tileTargeted: true, directional: true, noStrikeLeap: true, breaksStealth: true },
+            linePush:     { minRange: 0, offensive: true,  tileTargeted: true, directional: true, noStrikeLeap: true, breaksStealth: true },
+            splitBeam:    { minRange: 1, offensive: true,  directional: true },
+
+            // ── Ally support ──
+            heal:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
+            shield:       { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
+            buff:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
+            cleanse:      { minRange: 0, offensive: false, allyOnly: true },
+            revive:       { minRange: 1, offensive: false, allyOnly: true },
+            aoeShield:    { minRange: 0, offensive: false, tileTargeted: true },
+
+            // ── Self-cast / AoE support ──
+            healAll:      { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            manaRestoreAll:{ minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            warCry:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            scan:         { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            encore:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            selfHeal:     { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
+            escape:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
+
+            // ── Movement / positioning ──
+            teleport:     { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            dash:         { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            warpRune:     { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+
+            // ── Deploy / terrain ──
+            bomb:         { minRange: 0, offensive: false, tileTargeted: true },
+            deployObject: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            deployPair:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            buildBridge:  { minRange: 0, offensive: false, tileTargeted: true },
+            terrainCreate:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            summonWeather:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            delayed:      { minRange: 0, offensive: false, tileTargeted: true },
+
+            // ── Zone effects ──
+            zoneDebuff:   { minRange: 0, offensive: false, tileTargeted: true },
+            zoneHeal:     { minRange: 0, offensive: false, tileTargeted: true },
+
+            // ── Seeds / tethers ──
+            seedHeal:     { minRange: 0, offensive: false, tileTargeted: true },
+            seedPoison:   { minRange: 0, offensive: false, tileTargeted: true },
+            leechSeed:    { minRange: 0, offensive: false, tileTargeted: true },
+
+            // ── Utility / vision ──
+            utility:      { minRange: 0, offensive: false, tileTargeted: true },
+            remoteView:   { minRange: 0, offensive: false, tileTargeted: true, fogExempt: true },
+
+            // ── Sky / elevation combat ──
+            skyDrop:      { minRange: 1, offensive: true },
+            skyThrow:     { minRange: 1, offensive: true },
+            skySlam:      { minRange: 1, offensive: true },
+            leapStrike:   { minRange: 1, offensive: true },
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // UNIT_ANIM_OVERRIDES — per-race animation override registry.
+        // Replaces scattered if-checks for quarterback/honda civic/sentai/etc.
+        //
+        // Properties:
+        //   projectileClass:  DOM projectile CSS class override (string or function(unit, spell) → string|null)
+        //   boltPreset:       3D bolt preset key override (string or function(unit, spell) → string|null)
+        //   castSprite:       sprite URL to swap to during spell cast (string or function(unit, spell) → string|null)
+        //   moveSprite:       sprite URL to swap to during movement (string or function(unit, spell) → string|null)
+        //   attackSprite:     sprite URL to swap to during basic attack (string or function(unit, spell) → string|null)
+        //   revertAfter:      true to revert _spriteOverride after cast/attack finishes (default false)
+        //   flipOnTravel:     true to set _spriteFlipX based on travel direction during move (default false)
+        //   applyTo:          'all' | array of spell IDs | function(spell) → bool — which spells get the override (default 'all')
+        // ═══════════════════════════════════════════════════════════════════
+        const UNIT_ANIM_OVERRIDES = {
+            'quarterback': {
+                projectileClass: 'proj-football',
+                applyTo: 'all',
+            },
+            'voidweaver': {
+                projectileClass: 'proj-spider',
+                applyTo: 'all',
+            },
+            'honda civic': {
+                castSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                moveSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.moving : null,
+                attackSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                revertAfter: true,
+                flipOnTravel: true,
+            },
+            'super sentai': {
+                castSprite: (_unit, spell) => {
+                    if (!spell?._sentaiColor || typeof SENTAI_SPRITES === 'undefined') return null;
+                    return spell._sentaiColor === 'megazord'
+                        ? SENTAI_SPRITES.megazord
+                        : (SENTAI_SPRITES[spell._sentaiColor] || null);
+                },
+                revertAfter: true,
+            },
+        };
+
+        /** Check if a unit override applies to a given spell/context */
+        function _overrideApplies(override, spell) {
+            if (!override) return false;
+            const a = override.applyTo;
+            if (!a || a === 'all') return true;
+            if (Array.isArray(a)) return spell && a.includes(spell.id);
+            if (typeof a === 'function') return spell && a(spell);
+            return true;
+        }
+
+        /** Resolve a potentially-callable override property */
+        function _resolveOverrideProp(prop, unit, spell) {
+            if (typeof prop === 'function') return prop(unit, spell);
+            return prop || null;
+        }
+
+        /** Apply cast/attack/move sprite override for a unit; returns true if applied */
+        function _applySpriteOverride(unit, spell, propName) {
+            const ov = UNIT_ANIM_OVERRIDES[unit?.race];
+            if (!ov) return false;
+            const spriteProp = ov[propName];
+            if (!spriteProp) return false;
+            if (propName === 'castSprite' && !_overrideApplies(ov, spell)) return false;
+            const url = _resolveOverrideProp(spriteProp, unit, spell);
+            if (!url) return false;
+            unit._spriteOverride = url;
+            if (propName === 'moveSprite' && ov.flipOnTravel) {
+                // flipX handled by caller based on travel direction
+            } else {
+                unit._spriteFlipX = false;
+            }
+            return true;
+        }
+
+        /** Revert sprite override if the race has revertAfter */
+        function _revertSpriteOverride(unit) {
+            const ov = UNIT_ANIM_OVERRIDES[unit?.race];
+            if (ov?.revertAfter && unit?._spriteOverride) {
+                unit._spriteOverride = null;
+                unit._spriteFlipX = false;
+            }
+        }
+
+        /** Get DOM projectile class override for a unit (basic attack or spell) */
+        function _getProjectileOverride(unit, spell) {
+            const ov = UNIT_ANIM_OVERRIDES[unit?.race];
+            if (!ov || !ov.projectileClass) return null;
+            if (!_overrideApplies(ov, spell)) return null;
+            return _resolveOverrideProp(ov.projectileClass, unit, spell);
+        }
+
+        /** Get 3D bolt preset override for a unit */
+        function _getBoltOverride(unit, spell) {
+            const ov = UNIT_ANIM_OVERRIDES[unit?.race];
+            if (!ov || !ov.boltPreset) return null;
+            if (!_overrideApplies(ov, spell)) return null;
+            return _resolveOverrideProp(ov.boltPreset, unit, spell);
+        }
+
+        // Helper lookups that replace inline array checks
+        function _kindMeta(spell) {
+            return SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SPELL_ANIM_PROFILES — per-kind animation descriptors.
+        // Describes WHICH animation phases fire and in what configuration.
+        // Phase 4 will wire these into executeSpellAnimation(); for now they
+        // are read-only reference data that can also be queried at runtime.
+        //
+        // Properties:
+        //   casterAnim:   'cast' | 'attack' | 'none'
+        //   camera:       'offensive' | 'focus' | 'none'
+        //   travel:       'auto' | 'strikeLeap' | 'bolt' | 'descent' | 'beam' |
+        //                 'aura' | 'teleport' | 'tether' | 'chain' | 'none'
+        //                 'auto' = resolved at runtime by resolveTravel()
+        //   impact:       'auto' | 'aura' | 'aoe' | 'ring' | 'none'
+        //                 'auto' = check ThreeVFXEffects mapping, fallback canvas
+        //   hitResponse:  'damage' | 'heal' | 'buff' | 'debuff' | 'status' | 'none'
+        //   bloodTier:    'auto' | 'none'   ('auto' = computed from effectiveness)
+        //   screenShake:  'always' | 'onKill' | 'none'
+        //   sfx:          string SFX key override, or null (default = spellLaunchSfx)
+        //   postEffects:  array of post-impact step names from:
+        //                 'chargeToTarget', 'selfStun', 'chain', 'drainHop',
+        //                 'swap', 'pull', 'push', 'displacement', 'aoeOnArrival',
+        //                 'leaveTerrain', 'terrainDeform', 'spawnDecoy'
+        // ═══════════════════════════════════════════════════════════════════
+        const SPELL_ANIM_PROFILES = {
+            // ── Offensive single-target ──
+            damage: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['chargeToTarget', 'selfStun', 'chain'],
+            },
+            debuff: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'debuff',
+                bloodTier: 'auto',
+                screenShake: 'none',
+                sfx: null, // resolved: spell.dmg ? spellLaunchSfx : 'debuff'
+                postEffects: [],
+            },
+            multiHit: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: [],
+            },
+            ricochet: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: [],
+            },
+            lifeDrain: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['drainHop'],
+            },
+            pull: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: ['pull'],
+            },
+            swap: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: ['swap'],
+            },
+            displacement: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: ['displacement'],
+            },
+
+            // ── Offensive AoE / area ──
+            aoe: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'aoe',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['leaveTerrain', 'terrainDeform'],
+            },
+            barrage: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aoe',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['leaveTerrain', 'terrainDeform'],
+            },
+            aoePull: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aoe',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: ['pull'],
+            },
+            cross: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'aoe',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['leaveTerrain'],
+            },
+
+            // ── Line / Beam (directional) ──
+            line: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'beam',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: [],
+            },
+            linePush: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'beam',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['push'],
+            },
+            splitBeam: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'beam',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Ally support ──
+            heal: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',  // projectile if target ≠ self, else none
+                impact: 'aura',
+                hitResponse: 'heal',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'healRegen',
+                postEffects: [],
+            },
+            shield: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'manaRegen',
+                postEffects: [],
+            },
+            buff: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'buff',
+                postEffects: [],
+            },
+            cleanse: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'healRegen',
+                postEffects: [],
+            },
+            revive: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'heal',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'healRegen',
+                postEffects: [],
+            },
+            aoeShield: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'manaRegen',
+                postEffects: [],
+            },
+
+            // ── Self-cast / AoE support ──
+            healAll: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'heal',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'healRegen',
+                postEffects: [],
+            },
+            manaRestoreAll: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'heal',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'manaRegen',
+                postEffects: [],
+            },
+            warCry: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'buff',
+                postEffects: [],
+            },
+            scan: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            encore: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'buff',
+                postEffects: [],
+            },
+            selfHeal: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'heal',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'healRegen',
+                postEffects: [],
+            },
+            escape: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'teleport',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'teleport',
+                postEffects: ['spawnDecoy'],
+            },
+
+            // ── Movement / positioning ──
+            teleport: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'teleport',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'teleport',
+                postEffects: ['aoeOnArrival'],
+            },
+            dash: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'teleport',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'teleport',
+                postEffects: [],
+            },
+            warpRune: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Deploy / terrain ──
+            bomb: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            deployObject: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            deployPair: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            deployTurret: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            buildBridge: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            terrainCreate: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            summonWeather: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            delayed: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Zone effects ──
+            zoneDebuff: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            zoneHeal: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'aura',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Seeds / tethers ──
+            seedHeal: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            seedPoison: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            leechSeed: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Utility / vision ──
+            utility: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+            remoteView: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
+
+            // ── Sky / elevation combat ──
+            skyDrop: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'descent',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'always',
+                sfx: null,
+                postEffects: ['terrainDeform'],
+            },
+            skyThrow: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'auto',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: [],
+            },
+            skySlam: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'strikeLeap',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'always',
+                sfx: null,
+                postEffects: ['terrainDeform'],
+            },
+            leapStrike: {
+                casterAnim: 'cast',
+                camera: 'offensive',
+                travel: 'strikeLeap',
+                impact: 'auto',
+                hitResponse: 'damage',
+                bloodTier: 'auto',
+                screenShake: 'onKill',
+                sfx: null,
+                postEffects: ['terrainDeform'],
+            },
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // resolveTravel() — given a spell, caster, and optional target,
+        // determines which travel animation type should be used.
+        // Returns one of: 'strikeLeap' | 'descent' | 'boulder' | 'iceSpear' |
+        //   'beam' | 'aura' | 'aoe' | 'teleport' | 'chain' | 'tether' |
+        //   'bolt' | 'domProjectile' | 'none'
+        //
+        // Priority order matches the current if/else cascade in doSpell's
+        // damage block — spell-level override first, then VFX3D mappings,
+        // then physical-melee strike leap, then bolt, then DOM fallback.
+        // ═══════════════════════════════════════════════════════════════════
+        function resolveTravel(spell, unit, target) {
+            if (!spell) return 'none';
+
+            const profile = SPELL_ANIM_PROFILES[spell.kind];
+
+            // 0. If the profile says 'none', respect it
+            if (profile && profile.travel === 'none') return 'none';
+
+            // 1. Spell-level animation override
+            if (spell._animOverride?.travel) return spell._animOverride.travel;
+
+            // 2. Profile-specified explicit travel (not 'auto')
+            if (profile && profile.travel !== 'auto' && profile.travel) return profile.travel;
+
+            // 3. VFX3D-driven resolution (data-driven, highest specificity)
+            const VFX = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+            if (VFX) {
+                if (VFX.hasMapping && VFX.hasMapping(spell.id, 'descent'))   return 'descent';
+                if (VFX.hasMapping && VFX.hasMapping(spell.id, 'beam'))      return 'beam';
+                if (VFX.hasMapping && VFX.hasMapping(spell.id, 'teleport'))  return 'teleport';
+                if (VFX.hasMapping && VFX.hasMapping(spell.id, 'chain') && spell.chainProfile?.length) return 'chain';
+                if (VFX.hasMapping && VFX.hasMapping(spell.id, 'aoe'))       return 'aoe';
+                if (VFX.hasBoulderProjectile && VFX.hasBoulderProjectile(spell.id)) return 'boulder';
+                if (VFX.hasIceProjectile && VFX.hasIceProjectile(spell.id))  return 'iceSpear';
+            }
+
+            // 4. Strike leap: physical, short range, no overrides
+            if (spell.damageType === 'physical'
+                && !spell.aoeOriginSelf
+                && !spell.projectileOverride
+                && !spell.chargeToTarget
+                && (spell.range || 0) <= 2
+                && !(VFX && VFX.hasBoulderProjectile && VFX.hasBoulderProjectile(spell.id))
+                && !_kindMeta(spell).noStrikeLeap) {
+                return 'strikeLeap';
+            }
+
+            // 5. 3D Bolt if VFX mapping exists
+            if (VFX && VFX.hasMapping && VFX.hasMapping(spell.id, 'bolt')) return 'bolt';
+
+            // 6. Self-cast / ally support with no range => no travel
+            const km = _kindMeta(spell);
+            if (km.selfCast && !target) return 'none';
+            if (target && unit && target.id === unit.id) return 'none';
+
+            // 7. Default DOM projectile fallback
+            return 'domProjectile';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TRAVEL_HANDLERS — one handler function per travel type.
+        // Each receives (ctx) where ctx = { unit, spell, target, tileXY, cam,
+        //   override, projectileDelay, spellPower, effectiveSpellCost }
+        // and returns { impactDelay, completionDelay }.
+        //
+        // Each handler is responsible for:
+        //   1. Scheduling the travel animation (projectile, leap, descent, etc.)
+        //   2. Computing impactDelay (when damage should apply)
+        //   3. Computing completionDelay (when finishAction should fire)
+        // ═══════════════════════════════════════════════════════════════════
+        const TRAVEL_HANDLERS = {
+            strikeLeap(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const impactDelay = projectileDelay + actionMs(260);
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    animateStrikeLeap(unit, target.x, target.y);
+                    playSfx(spellLaunchSfx(spell));
+                }, projectileDelay);
+
+                // Strike leap impact VFX (if mapping exists)
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'impact')) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        VFX.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                    }, impactDelay);
+                }
+
+                return { impactDelay, completionDelay };
+            },
+
+            descent(ctx) {
+                const { spell, target, cam, projectileDelay } = ctx;
+                const VFX = window.ThreeVFXEffects;
+                const descentMs = VFX.getDescentTotalMs(spell.id);
+                const impactDelay = Math.max(projectileDelay + actionMs(descentMs), actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    VFX.fire('descent', spell.id, { tx: target.x, ty: target.y });
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            boulder(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const travelMs = cam?.travelMs ?? actionMs(520);
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + travelMs + actionMs(80),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    const VFX = window.ThreeVFXEffects;
+                    VFX.spawnBoulderProjectile3D(
+                        unit.x, unit.y, target.x, target.y, travelMs);
+                    if (VFX.projectile) {
+                        VFX.projectile(
+                            unit.x, unit.y, target.x, target.y,
+                            spell.spellType, spell.id, spell.name,
+                            unit.z, target.z, travelMs);
+                    }
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            iceSpear(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const travelMs = cam?.travelMs ?? actionMs(450);
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + travelMs + actionMs(80),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    const VFX = window.ThreeVFXEffects;
+                    VFX.spawnIceSpearProjectile3D(
+                        unit.x, unit.y, target.x, target.y, travelMs);
+                    if (VFX.projectile) {
+                        VFX.projectile(
+                            unit.x, unit.y, target.x, target.y,
+                            spell.spellType, spell.id, spell.name,
+                            unit.z, target.z, travelMs);
+                    }
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            beam(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + actionMs(300),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX.hasMapping(spell.id, 'beam')) {
+                        VFX.fire('beam', spell.id, {
+                            sx: unit.x, sy: unit.y,
+                            tx: target.x, ty: target.y
+                        });
+                    }
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            aura(ctx) {
+                const { spell, target, cam } = ctx;
+                const impactDelay = actionMs(200);
+                const completionDelay = Math.max(impactDelay + actionMs(400),
+                    (cam?.totalMs ?? actionMs(800)) + actionMs(120));
+
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'aura')) {
+                        VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    } else {
+                        _vfxBuff(target.x, target.y);
+                    }
+                }
+
+                return { impactDelay, completionDelay };
+            },
+
+            aoe(ctx) {
+                const { spell, target, tileXY, cam, projectileDelay } = ctx;
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + actionMs(300),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'aoe')) {
+                        VFX.fire('aoe', spell.id, {
+                            tx: tileXY.x, ty: tileXY.y,
+                            radius: spell.aoeRadius || 1
+                        });
+                    }
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            teleport(ctx) {
+                const { unit, spell, target, tileXY } = ctx;
+                const impactDelay = actionMs(300);
+                const completionDelay = actionMs(800);
+
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'teleport')) {
+                        VFX.fire('teleport', spell.id, {
+                            sx: unit.x, sy: unit.y,
+                            tx: tileXY.x, ty: tileXY.y
+                        });
+                    }
+                }
+
+                return { impactDelay, completionDelay };
+            },
+
+            chain(ctx) {
+                const { spell, cam, projectileDelay } = ctx;
+                const chainCount = spell.chainProfile?.length || 1;
+                const staggerMs = actionMs(140);
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80),
+                    actionMs(620));
+                const chainTailMs = Math.max(0, chainCount - 1) * staggerMs;
+                const completionDelay = Math.max(
+                    impactDelay + chainTailMs + actionMs(280),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                return { impactDelay, completionDelay, staggerMs };
+            },
+
+            tether(ctx) {
+                const { unit, spell, target, cam } = ctx;
+                const impactDelay = actionMs(400);
+                const completionDelay = Math.max(impactDelay + actionMs(400),
+                    (cam?.totalMs ?? actionMs(800)) + actionMs(120));
+
+                return { impactDelay, completionDelay };
+            },
+
+            bolt(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const travelMs = cam?.travelMs ?? actionMs(480);
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + travelMs + actionMs(80),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                // 3D bolt fires via playProjectileToUnit which checks bolt mappings
+                window.setTimeout(() => {
+                    playProjectileToUnit(unit, target, 'damage', travelMs,
+                        spell.spellType, spell.projectileOverride || null, spell);
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            domProjectile(ctx) {
+                const { unit, spell, target, cam, projectileDelay } = ctx;
+                const travelMs = cam?.travelMs ?? actionMs(480);
+                const impactDelay = Math.max(
+                    (cam?.sourceHold ?? actionMs(900)) + travelMs + actionMs(80),
+                    actionMs(620));
+                const completionDelay = Math.max(impactDelay + actionMs(120),
+                    (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => {
+                    playProjectileToUnit(unit, target, 'damage', travelMs,
+                        spell.spellType, spell.projectileOverride || null, spell);
+                }, projectileDelay);
+
+                return { impactDelay, completionDelay };
+            },
+
+            none(ctx) {
+                const { cam } = ctx;
+                const impactDelay = actionMs(200);
+                const completionDelay = Math.max(impactDelay + actionMs(400),
+                    (cam?.totalMs ?? actionMs(600)) + actionMs(120));
+                return { impactDelay, completionDelay };
+            },
+        };
+
+        /** Get animation profile for a spell kind (returns default if unmapped) */
+        function _animProfile(spell) {
+            return SPELL_ANIM_PROFILES[spell?.kind] || SPELL_ANIM_PROFILES.damage;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _resolveOffensiveTarget() — common pre-targeting for offensive spells.
+        // Handles tower, turret, and deployed-object targets. If one of those
+        // is hit, the spell is fully handled and the function returns
+        // { handled: true, returnVal: 1 }. Otherwise returns { handled: false,
+        // target: <unit> } or { handled: true, returnVal: 0 } on error.
+        // ═══════════════════════════════════════════════════════════════════
+        function _resolveOffensiveTarget(unit, spell, x, y, z, effectiveSpellCost, spellPower, finishAction, spellApCost) {
+            let target = unitAt(x, y);
+
+            // Sky telescope: earth unit targeting above-section enemy
+            if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth') {
+                const skyTarget = state.units.find(u =>
+                    !u.dead && u.player !== unit.player
+                    && getSectionForUnit(u) === 'above'
+                    && u.x === x && u.y === y);
+                if (skyTarget) {
+                    const svr = getUnitVisionRange(unit);
+                    if ((Math.abs(unit.x - x) + Math.abs(unit.y - y)) <= svr) target = skyTarget;
+                }
+            }
+
+            // Tower targeting
+            const tower = !target ? towerAt(x, y) : null;
+            if (tower && tower.owner !== unit.player) {
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                let tDmg = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16);
+                tDmg = Math.max(1, tDmg - (tower.def || 0));
+                tDmg = Math.max(1, Math.round(tDmg * getTowerDamageMultiplier(tower.owner)));
+                tower.hp = Math.max(0, tower.hp - tDmg);
+                const shieldLayers = getTowerShieldLayers(tower.owner);
+                const sMsg = shieldLayers > 0 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
+                addLog(`🐉 ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Dragon for ${tDmg} damage!${sMsg} (Dragon HP: ${tower.hp}/${tower.maxHp})`);
+                grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                showFloatingTextAtTile(x, y, `-${tDmg}`, 'damage');
+                playSfx('spellDamage');
+                window.setTimeout(() => { finishAction(); }, actionMs(400));
+                return { handled: true, returnVal: 1 };
+            }
+
+            // Turret targeting
+            if (!target && state.turrets) {
+                const turret = state.turrets.find(t =>
+                    t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                if (turret) {
+                    pushUndoSnapshot(true);
+                    playSfx(spellLaunchSfx(spell));
+                    _spellFocusCamera(unit, x, y);
+                    unit.mp -= effectiveSpellCost;
+                    const tDmg = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16);
+                    damageTurretAt(x, y, tDmg, unit);
+                    spendAP(unit, spellApCost);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return { handled: true, returnVal: 1 };
+                }
+            }
+
+            // Deployed object targeting
+            if (!target && state._deployedObjects) {
+                const dobjIdx = state._deployedObjects.findIndex(o => {
+                    if (o.x !== x || o.y !== y || o.hp <= 0) return false;
+                    const isOwn = o.ownerPlayer === unit.player;
+                    if (isOwn && !(o.detonateOnAttack && o.blastRadius > 0)) return false;
+                    return true;
+                });
+                if (dobjIdx >= 0) {
+                    const dobj = state._deployedObjects[dobjIdx];
+                    pushUndoSnapshot(true);
+                    unit.mp -= effectiveSpellCost;
+                    if (dobj.detonateOnAttack && dobj.blastRadius > 0) {
+                        detonateDeployedObject(dobj, unit);
+                    } else {
+                        state._deployedObjects.splice(dobjIdx, 1);
+                        addLog(`${unitDisplayName(unit)} casts ${spell.name} and destroys ${dobj.spellName || 'deployed object'} at ${coordLabel(x, y)}!`);
+                        showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
+                        playSfx(spellLaunchSfx(spell));
+                    }
+                    spendAP(unit, spellApCost);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return { handled: true, returnVal: 1 };
+                }
+            }
+
+            // No valid target
+            if (!target || isAllyUnit(target, unit)) {
+                addLog('Choose an enemy target for that spell.');
+                playErrorSfx();
+                return { handled: true, returnVal: 0 };
+            }
+
+            return { handled: false, target };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _runPostEffects() — dispatches post-impact effects based on
+        // the spell definition and animation profile.
+        // ═══════════════════════════════════════════════════════════════════
+        function _runPostEffects(unit, spell, target) {
+            if (spell.chargeToTarget && !unit.dead) {
+                const fromX = unit.x, fromY = unit.y;
+                const adj = [
+                    { x: target.x - 1, y: target.y },
+                    { x: target.x + 1, y: target.y },
+                    { x: target.x, y: target.y - 1 },
+                    { x: target.x, y: target.y + 1 }
+                ];
+                adj.sort((a, b) =>
+                    (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
+                  - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+                const landTile = adj.find(t => canOccupy(t.x, t.y));
+                if (landTile) {
+                    unit.x = landTile.x;
+                    unit.y = landTile.y;
+                    if (typeof nearestWalkableZ === 'function') {
+                        unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
+                    }
+                    unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
+                    addLog(`${unitDisplayName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200);
+                }
+
+                if (spell.swapOnHit && !target.dead) {
+                    const behind = {
+                        x: target.x + Math.sign(target.x - unit.x),
+                        y: target.y + Math.sign(target.y - unit.y)
+                    };
+                    if (isInside(behind.x, behind.y) && canOccupy(behind.x, behind.y)) {
+                        const ux = unit.x, uy = unit.y;
+                        const tx = target.x, ty = target.y;
+                        unit.x = target.x; unit.y = target.y;
+                        target.x = ux; target.y = uy;
+                        if (typeof nearestWalkableZ === 'function') {
+                            unit.z = nearestWalkableZ(unit.x, unit.y, unit.z);
+                            target.z = nearestWalkableZ(target.x, target.y, target.z);
+                        }
+                        addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
+                        showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
+                        animateDisplacement(unit, ux, uy, tx, ty, 200);
+                        animateDisplacement(target, tx, ty, ux, uy, 200);
+                    }
+                }
+            }
+
+            if (spell.selfStun && !unit.dead) {
+                applyStatusEffects(unit, [{ id: 'stun', duration: spell.selfStun }],
+                    `${spell.name} recoil: `, unit);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _applyDamageSpellHit() — resolves damage for a single-target
+        // damage spell (kind: 'damage'). Handles bonus damage modifiers,
+        // chain profiles, cinematic damage display, and post-effects.
+        // ═══════════════════════════════════════════════════════════════════
+        function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
+            if (spell.chainProfile?.length) {
+                // Chain damage path
+                const allEnemies = aliveUnitsFor(enemyOf(unit.player));
+                const chain = [target];
+                let current = target;
+                for (let i = 1; i < spell.chainProfile.length; i++) {
+                    if (!current) break;
+                    const next = allEnemies
+                        .filter(e => !e.dead && !chain.includes(e)
+                            && Math.abs(e.x - current.x) + Math.abs(e.y - current.y)
+                               <= (spell.chainRadius || 1))
+                        .sort((a, b) => a.hp - b.hp)[0];
+                    if (!next) break;
+                    chain.push(next);
+                    current = next;
+                }
+
+                const staggerMs = actionMs(140);
+                const useVfx3dChain = window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'chain')
+                    && chain.length > 1;
+
+                if (useVfx3dChain && state.phase === 'battle' && !_skipVisuals()) {
+                    window.ThreeVFXEffects.fire('chain', spell.id, {
+                        chain: chain.map(c => ({ x: c.x, y: c.y })),
+                        staggerMs,
+                    });
+                }
+
+                chain.forEach((hopTarget, idx) => {
+                    const dmgDelay = useVfx3dChain ? idx * staggerMs : 0;
+                    const baseDamage = spell.chainProfile[idx];
+                    const applyHit = () => {
+                        if (!hopTarget || hopTarget.dead) return;
+                        applyDamageToUnit(hopTarget, Math.max(16, baseDamage + spellPower),
+                            idx === 0
+                                ? `${unitDisplayName(unit)} casts ${spell.name}: `
+                                : `${spell.name} chains to `,
+                            {
+                                sourceUnit: unit,
+                                allowMarkBonus: false,
+                                ignoreArmor: !!spell.ignoreArmor,
+                                statusEffects: idx === 0 ? spell.statusEffects : null,
+                                damageType: spell.damageType || 'magic',
+                                spellType: spell.spellType || null
+                            });
+                    };
+                    if (dmgDelay > 0) window.setTimeout(applyHit, dmgDelay);
+                    else applyHit();
+                });
+            } else {
+                // Single-hit damage path
+                let damage = Math.max(32, (spell.dmg || 0) + spellPower
+                    + Math.floor(Math.random() * 40) - 16);
+                if (spell.actedTargetBonus && unitFinished(target)) {
+                    damage += spell.actedTargetBonus;
+                }
+                if (spell.unholyBonus && target.types
+                    && (target.types.includes('unholy') || target.types.includes('anomaly'))) {
+                    damage += spell.unholyBonus;
+                }
+                if (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') {
+                    damage = Math.floor(damage * 1.5);
+                }
+                applyDamageToUnit(target, damage,
+                    `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        allowMarkBonus: false,
+                        ignoreArmor: !!spell.ignoreArmor,
+                        statusEffects: spell.statusEffects,
+                        damageType: spell.damageType || 'magic',
+                        spellType: spell.spellType || null
+                    });
+                if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
+                if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
+            }
+
+            // Post-effects (chargeToTarget, swap, selfStun)
+            _runPostEffects(unit, spell, target);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _applyMultiHitDamage() — resolves damage for multiHit spells.
+        // Staggers multiple hits with per-hit projectiles/strike leaps.
+        // Called at impactDelay; internally schedules subsequent hits.
+        // ═══════════════════════════════════════════════════════════════════
+        function _applyMultiHitDamage(unit, spell, target, spellPower, travelType, impactDelay) {
+            const hits = spell.hitDamages || [8, 8];
+            const hitGap = actionMs(340);
+            const _useStrikeLeap = travelType === 'strikeLeap';
+            const _useVfx3dImpact = window.ThreeVFXEffects
+                && window.ThreeVFXEffects.hasMapping(spell.id, 'impact');
+
+            hits.forEach((base, idx) => {
+                const hitTime = idx * hitGap; // relative to impactDelay
+
+                // Subsequent hits: re-fire projectile/leap before each hit
+                if (idx > 0) {
+                    window.setTimeout(() => {
+                        if (target.dead) return;
+                        if (_useStrikeLeap) {
+                            animateStrikeLeap(unit, target.x, target.y);
+                            playSfx(spellLaunchSfx(spell));
+                        } else {
+                            playProjectileToUnit(unit, target, 'damage', actionMs(280),
+                                spell.spellType, spell.projectileOverride || null, spell);
+                            playSfx(spellLaunchSfx(spell));
+                        }
+                    }, hitTime - actionMs(300));
+                }
+
+                // Apply hit damage
+                window.setTimeout(() => {
+                    if (target.dead) return;
+                    if (_useStrikeLeap && _useVfx3dImpact
+                        && state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                    }
+                    let bonus = 0;
+                    if (idx === 1 && unitHasStatus(target, 'marked')) {
+                        bonus += spell.markedSecondHitBonus || 0;
+                    }
+                    const dmg = base + bonus;
+                    applyDamageToUnit(target, dmg,
+                        idx === 0
+                            ? `${unitDisplayName(unit)} casts ${spell.name}: `
+                            : `${spell.name} hit ${idx + 1}: `,
+                        {
+                            sourceUnit: unit,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null
+                        });
+                    if (idx === 0 && _activeCinematic?.showDamage) {
+                        _activeCinematic.showDamage(`-${dmg}`, false);
+                    }
+                }, hitTime);
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _resolveMultiHitTower() — handles multiHit tower targeting.
+        // Returns { handled: true, returnVal } if tower was hit, else
+        // { handled: false }.
+        // ═══════════════════════════════════════════════════════════════════
+        function _resolveMultiHitTower(unit, spell, x, y, effectiveSpellCost, spellPower, finishAction) {
+            const target = unitAt(x, y);
+            const tower = !target ? towerAt(x, y) : null;
+            if (!tower || tower.owner === unit.player) return { handled: false };
+
+            pushUndoSnapshot(true);
+            playSfx(spellLaunchSfx(spell));
+            _spellFocusCamera(unit, x, y);
+            unit.mp -= effectiveSpellCost;
+            const hits = spell.hitDamages || [8, 8];
+            let totalDmg = 0;
+            const shieldMult = getTowerDamageMultiplier(tower.owner);
+            for (const base of hits) {
+                let tDmg = Math.max(16, base + spellPower);
+                tDmg = Math.max(1, tDmg - (tower.def || 0));
+                tDmg = Math.max(1, Math.round(tDmg * shieldMult));
+                tower.hp = Math.max(0, tower.hp - tDmg);
+                totalDmg += tDmg;
+            }
+            const sMsg = getTowerShieldLayers(tower.owner) > 0
+                ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
+            addLog(`🐉 ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Dragon for ${totalDmg} total damage!${sMsg} (Dragon HP: ${tower.hp}/${tower.maxHp})`);
+            showFloatingTextAtTile(x, y, `-${totalDmg}`, 'damage');
+            window.setTimeout(() => { finishAction(); }, actionMs(400));
+            return { handled: true, returnVal: 1 };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _applyRicochetDamage() — resolves damage for ricochet spells.
+        // Applies first-hit damage, then schedules bounce to nearest enemy.
+        // Called at impactDelay; bounceDelay/bounceProjectileMs computed
+        // relative to impactDelay=0.
+        // ═══════════════════════════════════════════════════════════════════
+        function _applyRicochetDamage(unit, spell, first, spellPower, bounceDelay, bounceProjectileMs) {
+            // Primary hit
+            const dmg = (spell.dmg || 0) + spellPower;
+            applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
+                sourceUnit: unit,
+                damageType: spell.damageType || 'physical',
+                spellType: spell.spellType || null
+            });
+            if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${dmg}`, false);
+
+            // Bounce to secondary target
+            window.setTimeout(() => {
+                if (first.dead && first._dying) return;
+                const others = state.units.filter(u =>
+                    !u.dead && u.player !== unit.player && u.id !== first.id
+                    && Math.abs(u.x - first.x) + Math.abs(u.y - first.y)
+                       <= (spell.bounceRadius || 2));
+                if (others.length > 0) {
+                    others.sort((a, b) => a.hp - b.hp);
+                    const second = others[0];
+                    playProjectile(first.x, first.y, second.x, second.y,
+                        'proj-ricochet', bounceProjectileMs, spell.spellType, null, spell);
+                    playSfx(spellLaunchSfx(spell));
+
+                    window.setTimeout(() => {
+                        if (second.dead) return;
+                        applyDamageToUnit(second,
+                            (spell.bounceDamage || 8) + spellPower,
+                            `Ricochet bounces to `, {
+                                sourceUnit: unit,
+                                damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null,
+                                shieldIgnore: spell.bounceShieldIgnore || 0
+                            });
+                    }, bounceProjectileMs + actionMs(60));
+                }
+            }, bounceDelay);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _applyAoeDamage() — shared area damage resolution for aoe, cross,
+        // aoePull, terrainCreate, and other tile-area offensive spells.
+        // Hits enemies, towers, turrets, deployed objects in `tiles`.
+        // Returns hitCount.
+        // opts: { waterBonus, statusEffects, damageType, spellType,
+        //         pushFromCenter, pullToCenter, leaveTerrain, terrainDeform,
+        //         deformCenter, log }
+        // ═══════════════════════════════════════════════════════════════════
+        function _applyAoeDamage(unit, spell, tiles, baseDmg, spellPower, opts = {}) {
+            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
+            let hitCount = 0;
+            for (const tile of tiles) {
+                const target = opts.findTarget
+                    ? opts.findTarget(tile)
+                    : enemies.find(e => e.x === tile.x && e.y === tile.y);
+                if (target && !target.dead) {
+                    const rng = opts.noRandom ? 0 : (Math.floor(Math.random() * (opts.rngRange || 32)) - Math.floor((opts.rngRange || 32) / 2));
+                    let dmg = Math.max(opts.minDmg || 32, Math.floor((baseDmg + rng) * waterMult));
+                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        allowMarkBonus: false,
+                        statusEffects: spell.statusEffects,
+                        damageType: spell.damageType || opts.damageType || 'magic',
+                        spellType: spell.spellType || opts.spellType || null
+                    });
+
+                    // Cross-style push
+                    if (spell.pushDistance && !target.dead && opts.pushFromCenter) {
+                        const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
+                        const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
+                        const _crFromX = target.x, _crFromY = target.y;
+                        const _crSteps = [];
+                        for (let p = 0; p < spell.pushDistance; p++) {
+                            const nx = target.x + pdx, ny = target.y + pdy;
+                            if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny }); }
+                            else break;
+                        }
+                        if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
+                    }
+
+                    // AoePull-style pull toward center
+                    if (!target.dead && spell.pullToCenter && opts.pullCenter) {
+                        const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
+                        const nx = target.x + pdx, ny = target.y + pdy;
+                        const _apOldX = target.x, _apOldY = target.y;
+                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180); }
+                    }
+
+                    // Ground airborne units
+                    if (!target.dead && opts.groundAirborne && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                        target.z = getHeightAt(target.x, target.y);
+                        showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                        addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                    }
+                    hitCount++;
+                }
+
+                // Tower damage
+                const _aoeTw = towerAt(tile.x, tile.y);
+                if (_aoeTw && _aoeTw.owner !== unit.player) {
+                    let tDmg = Math.max(32, baseDmg + Math.floor(Math.random() * 40) - 16);
+                    tDmg = Math.max(1, tDmg - (_aoeTw.def || 0));
+                    tDmg = Math.max(1, Math.round(tDmg * getTowerDamageMultiplier(_aoeTw.owner)));
+                    _aoeTw.hp = Math.max(0, _aoeTw.hp - tDmg);
+                    const _aoeSMsg = getTowerShieldLayers(_aoeTw.owner) > 0 ? ` [${getTowerShieldLabel(_aoeTw.owner)}]` : '';
+                    addLog(`🐉 ${spell.name} blasts Player ${_aoeTw.owner}'s Dragon for ${tDmg}!${_aoeSMsg} (Dragon HP: ${_aoeTw.hp}/${_aoeTw.maxHp})`);
+                    showFloatingTextAtTile(tile.x, tile.y, `-${tDmg}`, 'damage');
+                    playSfx('spellDamage');
+                    hitCount++;
+                }
+
+                // Turret damage
+                damageTurretAt(tile.x, tile.y, spell.dmg || 80, unit);
+
+                // Deployed object damage
+                if (state._deployedObjects) {
+                    const _aoeDObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && !o._detonated);
+                    if (_aoeDObj) {
+                        if ((_aoeDObj.detonateOnAttack || _aoeDObj.detonateOnFire) && _aoeDObj.blastRadius > 0) {
+                            detonateDeployedObject(_aoeDObj, unit);
+                        } else {
+                            addLog(`${spell.name} destroys ${_aoeDObj.spellName || 'deployed object'} at ${coordLabel(tile.x, tile.y)}!`);
+                            showFloatingTextAtTile(tile.x, tile.y, 'DESTROYED', 'damage');
+                            const _aoeDIdx = state._deployedObjects.indexOf(_aoeDObj);
+                            if (_aoeDIdx >= 0) state._deployedObjects.splice(_aoeDIdx, 1);
+                        }
+                    }
+                }
+
+                // Leave terrain
+                if (spell.leaveTerrain) {
+                    const current = getTerrainAt(tile.x, tile.y);
+                    if (current !== 'wall' && current !== spell.leaveTerrain) {
+                        setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
+                    }
+                }
+            }
+
+            if (spell.leaveTerrain) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+            }
+            if (spell.terrainDeform) {
+                const dc = opts.deformCenter || tiles[0] || { x: 0, y: 0 };
+                applyTerrainDeform(dc.x, dc.y, spell.aoeRadius || 1, spell.terrainDeform);
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+            }
+            return hitCount;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _setupAoeCameraAndTiming() — common offensive-camera + timing
+        // setup for area spells (aoe, cross, aoePull, etc.).
+        // Returns { cam, projectileDelay, impactDelay, completionDelay }.
+        // ═══════════════════════════════════════════════════════════════════
+        function _setupAoeCameraAndTiming(unit, spell, tx, ty, tiles) {
+            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const firstHit = enemies.find(e => tiles.some(t => t.x === e.x && t.y === e.y));
+            const extraTargets = firstHit ? enemies.filter(e => e !== firstHit && tiles.some(t => t.x === e.x && t.y === e.y)) : [];
+            const camTarget = firstHit || { x: tx, y: ty };
+            const cam = playOffensiveActionCamera(unit, camTarget, {
+                sourceHold: 900, targetHold: 900,
+                extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
+                attackName: spell.name
+            });
+            const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+
+            const VFX = window.ThreeVFXEffects;
+            const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
+            let impactDelay;
+            if (hasDescent) {
+                const descentMs = VFX.getDescentTotalMs(spell.id);
+                impactDelay = Math.max(projectileDelay + actionMs(descentMs), actionMs(620));
+            } else {
+                impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+            }
+            const completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+            return { cam, projectileDelay, impactDelay, completionDelay, hasDescent };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _fireAoeVfx() — fires the appropriate travel/impact VFX for an
+        // area spell (descent, aoe, or projectile+ring fallback).
+        // ═══════════════════════════════════════════════════════════════════
+        function _fireAoeVfx(unit, spell, tx, ty, cam, projectileDelay, impactDelay, opts = {}) {
+            const VFX = window.ThreeVFXEffects;
+            const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
+            const hasAoe = !hasDescent && VFX && VFX.hasMapping(spell.id, 'aoe');
+            const _useStrikeLeap = opts.useStrikeLeap || false;
+
+            if (_useStrikeLeap) {
+                window.setTimeout(() => {
+                    animateStrikeLeap(unit, tx, ty);
+                    playSfx(spellLaunchSfx(spell));
+                }, projectileDelay);
+                if (hasAoe) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        VFX.fire('aoe', spell.id, { tx, ty, cx: unit.x, cy: unit.y });
+                    }, impactDelay);
+                } else if (!hasDescent) {
+                    window.setTimeout(() => playAoeRing(tx, ty, spell.aoeRadius || spell.crossRadius || 1, spell.spellType, actionMs(550)), impactDelay);
+                }
+            } else if (hasDescent) {
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    VFX.fire('descent', spell.id, { tx, ty });
+                }, projectileDelay);
+            } else if (hasAoe) {
+                window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    VFX.fire('aoe', spell.id, { tx, ty, cx: unit.x, cy: unit.y });
+                }, impactDelay);
+            } else {
+                window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                window.setTimeout(() => playAoeRing(tx, ty, spell.aoeRadius || spell.crossRadius || 1, spell.spellType, actionMs(550)), impactDelay);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _applyLineDamage() — shared line-damage resolution for line and
+        // linePush spells. Traverses a line from (sx,sy) in direction (dx,dy)
+        // hitting enemies, turrets, objects. Returns hitTargets array.
+        // ═══════════════════════════════════════════════════════════════════
+        function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
+            const lineRange = Math.max(bw(), bh());
+            const hitTargets = [];
+            let cx = unit.x + dx, cy = unit.y + dy;
+            for (let i = 0; i < lineRange; i++) {
+                if (!isInside(cx, cy)) break;
+                if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                const hit = unitAt(cx, cy);
+                if (hit && hit.player !== unit.player && !hit.dead) {
+                    hitTargets.push(hit);
+                }
+                damageTurretAt(cx, cy, spell.dmg || 80, unit);
+                if (state._deployedObjects) {
+                    const _lnDObj = state._deployedObjects.find(o => o.x === cx && o.y === cy && o.hp > 0 && !o._detonated);
+                    if (_lnDObj) {
+                        if ((_lnDObj.detonateOnAttack || _lnDObj.detonateOnFire) && _lnDObj.blastRadius > 0) {
+                            detonateDeployedObject(_lnDObj, unit);
+                        } else {
+                            addLog(`${spell.name} destroys ${_lnDObj.spellName || 'deployed object'} at ${coordLabel(cx, cy)}!`);
+                            showFloatingTextAtTile(cx, cy, 'DESTROYED', 'damage');
+                            const _lnIdx = state._deployedObjects.indexOf(_lnDObj);
+                            if (_lnIdx >= 0) state._deployedObjects.splice(_lnIdx, 1);
+                        }
+                    }
+                }
+                if (spell.leaveTerrain) setTerrainAt(cx, cy, spell.leaveTerrain);
+                cx += dx; cy += dy;
+            }
+            const dmgBase = Math.max(32, baseDmg + spellPower);
+            for (const hit of hitTargets) {
+                const dmg = dmgBase + Math.floor(Math.random() * 24) - 12;
+                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                    sourceUnit: unit,
+                    damageType: spell.damageType || 'magic',
+                    spellType: spell.spellType || null
+                });
+                applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
+
+                // linePush: push targets away
+                if (spell.kind === 'linePush' && !hit.dead) {
+                    const pushDist = spell.pushDistance || 1;
+                    const _lpFromX = hit.x, _lpFromY = hit.y;
+                    const _lpFromZ = hit.z ?? 0;
+                    const _lpSteps = [];
+                    for (let p = 0; p < pushDist; p++) {
+                        const nx = hit.x + dx, ny = hit.y + dy;
+                        if (isInside(nx, ny) && canOccupy(nx, ny)) { hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny }); }
+                        else break;
+                    }
+                    if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `);
+                    if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
+                }
+            }
+            return hitTargets;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _executeAllySpellAnimation() — unified pipeline for ally-targeted
+        // support spells (heal, shield, buff, cleanse). Handles:
+        //   - ally target validation
+        //   - projectile-to-target if target ≠ self
+        //   - aura VFX (3D or canvas fallback)
+        //   - SFX from profile
+        //   - focus camera
+        //   - MP deduction
+        // Returns { target, completionDelay } or null on invalid target.
+        // The caller provides the effect-application callback.
+        // ═══════════════════════════════════════════════════════════════════
+        function _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, opts = {}) {
+            const target = unitAt(x, y);
+            const errMsg = opts.errorMsg || 'Choose a living ally for that spell.';
+            const allowDead = !!opts.allowDead;
+            if (!target || isEnemyUnit(target, unit) || (!allowDead && target.dead)) {
+                addLog(errMsg);
+                playErrorSfx();
+                return null;
+            }
+
+            const profile = _animProfile(spell);
+            focusUnitPanel(target.id);
+            playSfx(profile.sfx || spellLaunchSfx(spell));
+            _spellFocusCamera(unit, x, y);
+
+            // VFX: aura (3D or canvas fallback)
+            const VFX = window.ThreeVFXEffects;
+            const hasAura = VFX && VFX.hasMapping(spell.id, 'aura');
+            const vfxFallback = opts.vfxFallback || _vfxBuff;
+            const projKind = opts.projectileKind || 'shield';
+
+            if (target.id !== unit.id) {
+                // Projectile to target + delayed aura
+                playProjectileToUnit(unit, target, projKind, actionMs(400),
+                    spell.spellType, null, spell);
+                if (hasAura) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    }, actionMs(400));
+                } else {
+                    window.setTimeout(() => { vfxFallback(target.x, target.y); }, actionMs(400));
+                }
+            } else {
+                // Self-cast: immediate aura
+                if (hasAura) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    }
+                } else {
+                    vfxFallback(target.x, target.y);
+                }
+            }
+
+            unit.mp -= effectiveSpellCost;
+            return { target, completionDelay: actionMs(500) };
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // executeSpellAnimation() — unified spell animation pipeline.
+        // Phase 4: handles offensive single-target spells.
+        // Reads the kind's animation profile, resolves travel type,
+        // applies unit overrides, and runs animation phases in order.
+        //
+        // opts.damageResolver — optional custom function(impactCtx) called
+        //   at impactDelay instead of _applyDamageSpellHit. Receives
+        //   { unit, spell, target, spellPower, travel, impactDelay }.
+        // opts.timingOverride — optional function(baseTiming) → adjusted timing
+        //   for kinds that need custom completionDelay (multiHit, ricochet).
+        // opts.cameraOpts — override for offensive camera sourceHold/targetHold.
+        // opts.projectileKind — override projectile kind for travel handlers.
+        //
+        // Returns completionDelay (ms) — the total time before finishAction.
+        // The caller is responsible for calling finishAction at that time.
+        // ═══════════════════════════════════════════════════════════════════
+        function executeSpellAnimation(unit, spell, target, tileXY, effectiveSpellCost, spellPower, finishAction, spellApCost, opts = {}) {
+            const profile = _animProfile(spell);
+            const override = UNIT_ANIM_OVERRIDES[unit.race];
+            const travel = resolveTravel(spell, unit, target);
+
+            // Phase 2: Camera
+            let cam = null;
+            const camOpts = opts.cameraOpts || { sourceHold: 900, targetHold: 900 };
+            if (profile.camera === 'offensive' && target) {
+                cam = playOffensiveActionCamera(unit, target, {
+                    ...camOpts,
+                    attackName: spell.name
+                });
+            } else if (profile.camera === 'focus') {
+                _spellFocusCamera(unit, tileXY.x, tileXY.y);
+            }
+
+            // Phase 1: SFX (after camera so cinematic can set up)
+            playSfx(profile.sfx || spellLaunchSfx(spell));
+
+            // Focus unit panel on target
+            if (target) focusUnitPanel(target.id);
+
+            const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+
+            // Phase 3: Travel animation
+            const handler = TRAVEL_HANDLERS[travel];
+            if (!handler) {
+                console.warn('[executeSpellAnimation] No handler for travel type:', travel);
+                return actionMs(600);
+            }
+
+            const ctx = {
+                unit, spell, target, tileXY, cam, override,
+                projectileDelay, spellPower, effectiveSpellCost
+            };
+            const timing = handler(ctx);
+
+            // Allow callers to adjust timing (e.g. multiHit extends completionDelay)
+            let { impactDelay, completionDelay } = timing;
+            if (opts.timingOverride) {
+                const adjusted = opts.timingOverride({ impactDelay, completionDelay, cam, timing });
+                impactDelay = adjusted.impactDelay ?? impactDelay;
+                completionDelay = adjusted.completionDelay ?? completionDelay;
+            }
+
+            // Deduct MP
+            unit.mp -= effectiveSpellCost;
+
+            // Phase 4–6: Impact + damage + post-effects (scheduled at impactDelay)
+            if (opts.damageResolver) {
+                window.setTimeout(() => {
+                    opts.damageResolver({
+                        unit, spell, target, spellPower, travel, impactDelay,
+                        cam, projectileDelay
+                    });
+                }, impactDelay);
+            } else {
+                window.setTimeout(() => {
+                    _applyDamageSpellHit(unit, spell, target, spellPower, travel);
+                }, impactDelay);
+            }
+
+            return completionDelay;
+        }
+
+        function getEffectiveSpellRange(unit, spell) {
+            if (!unit || !spell) return spell?.range || 0;
+            let range = spell.range || 0;
+
+            if (HIGH_GROUND_RANGE_BONUS && range >= 2) {
+                const unitH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : (unit.z ?? 0);
+                if (unitH >= 2) range += HIGH_GROUND_RANGE_BONUS;
+            }
+            return range;
+        }
+
+        function getSpellRangeTiles(unit, spell) {
+            if (!unit || !spell || !spell.range) return [];
+            const tiles = [];
+            const effRange = getEffectiveSpellRange(unit, spell);
+            const size = bw(), sizeH = bh();
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+
+            const minR = (_kindMeta(spell).minRange ?? 1);
+
+            const skipLOS = spell.kind === 'teleport' || spell.ignoresLineOfSight === true;
+
+            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const _km = _kindMeta(spell);
+
+            for (let cy = 0; cy < sizeH; cy++) {
+                for (let cx = 0; cx < size; cx++) {
+                    const dxy = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
+                    let effectiveD = dxy;
+
+                    if (dxy === 0 && minR >= 1) {
+                        const colEnemy = (typeof unitsAtColumn === 'function')
+                            ? unitsAtColumn(cx, cy).find(u => u.id !== unit.id && u.player !== unit.player && (u.z ?? 0) !== (unit.z ?? 0))
+                            : null;
+                        if (colEnemy) effectiveD = 1;
+                    }
+                    if (effectiveD < minR || effectiveD > effRange) continue;
+
+                    if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
+
+                    if (fogLimit && dxy > 0 && !_km.fogExempt && !isInVision(unit, cx, cy)) continue;
+                    tiles.push({ x: cx, y: cy });
+                }
+            }
+            return tiles;
+        }
+
+        function renderStatusIcon(key, size = 'sm', altText = '') {
+            const meta = STATUS_META[key] || {};
+            const cls = size === 'sm' ? 'status-icon-sm' : 'status-icon';
+            const alt = escapeHtml(altText || meta.label || key || 'icon');
+            if (meta.iconSrc) return `<img class="${cls}" src="${meta.iconSrc}" alt="${alt}" title="${alt}">`;
+            return `<span class="status-glyph-fallback ${cls}" aria-label="${alt}" title="${alt}">${escapeHtml(meta.icon || meta.glyph || '•')}</span>`;
+        }
+
+        function ensureUnitStatus(unit) {
+            if (!unit) return {};
+            if (!unit.status || typeof unit.status !== 'object') unit.status = {};
+            return unit.status;
+        }
+
+        function getStatusValue(unit, key) {
+            return Number(ensureUnitStatus(unit)[key] || 0);
+        }
+
+        function getActiveStatusKeys(unit) {
+            return Object.keys(ensureUnitStatus(unit)).filter(key => getStatusValue(unit, key) > 0 && STATUS_DEFS[key]);
+        }
+
+        function clearStatus(unit, key) {
+            if (!unit?.status) return;
+            delete unit.status[key];
+        }
+
+        function getStatusArmorDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.armorDelta || 0), 0);
+        }
+
+        function getStatusAtkDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.atkDelta || 0), 0);
+        }
+
+        function getStatusMoveDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.moveDelta || 0), 0);
+        }
+
+        function getStatusMpCostDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.mpCostDelta || 0), 0);
+        }
+
+        function getStatusRangedDamageTakenMultiplier(unit) {
+            return getActiveStatusKeys(unit).reduce((mult, key) => mult * (STATUS_DEFS[key]?.rangedMult || 1), 1);
+        }
+
+        function getStatusEntries(unit) {
+            const entries = [];
+            if (!unit) return entries;
+
+            for (const key of getActiveStatusKeys(unit)) {
+                if (_STATUS_EFFECT_IDS.has(key)) continue;
+                const meta = STATUS_DEFS[key];
+                const value = getStatusValue(unit, key);
+                entries.push({
+                    key,
+                    text: `${meta.label} ${value}`.trim()
+                });
+            }
+            if (unit.shield > 0) entries.push({
+                key: 'shield',
+                text: `Shield ${unit.shield}`
+            });
+            if (unit.hourglasses > 0) entries.push({
+                key: 'hourglass',
+                text: `Carrying ×${unit.hourglasses}`
+            });
+            const unitBuff = unit.hourglassBuff || 0;
+            if (unitBuff > 0) entries.push({
+                key: 'hourglass',
+                text: `Temporal Buff Lv.${unitBuff}: +${unitBuff} ATK, +${unitBuff} DEF, +${Math.floor(unitBuff/2)} MOV`
+            });
+            if ((unit._killStreak || 0) >= 2) entries.push({
+                key: 'damage',
+                text: `🔥 ${unit._killStreak} Kill Streak (+${unit._streakAtkBonus || 0} ATK)`
+            });
+            if (unit._lastStandTriggered && !unit.dead) entries.push({
+                key: 'damage',
+                text: `💢 Last Stand (+${unit._lastStandAtkBonus || 0} ATK)`
+            });
+            return entries;
+        }
+
+        function getStatusLabels(unit) {
+            return getStatusEntries(unit).map(entry => entry.text.replace(/\s+\d+$/, ''));
+        }
+
+        function getStatusChips(unit) {
+            return getStatusEntries(unit).map(entry => renderStatusIcon(entry.key, 'sm', entry.text));
+        }
+
+        function iconBadge(key, text = '') {
+            const meta = STATUS_META[key] || {
+                icon: '•',
+                short: key
+            };
+            const label = text || meta.label || key;
+            return `<span class="inline-icon-badge">${renderStatusIcon(key, 'sm', label)}${escapeHtml(label)}</span>`;
+        }
+
+        function decorateTextWithIcons(text) {
+            return escapeHtml(text)
+                .replace(/\bBurn(?:ing)?\b/g, m => iconBadge('burn', m))
+                .replace(/\bSlow(?:ed)?\b/g, m => iconBadge('slow', m))
+                .replace(/\bSilence(?:d)?\b/g, m => iconBadge('silence', m))
+                .replace(/\bMarked\b/g, m => iconBadge('marked', m))
+                .replace(/\bStun(?:ned)?\b/gi, m => iconBadge('stun', m))
+                .replace(/\bStagger(?:ed)?\b/gi, m => iconBadge('stagger', m))
+                .replace(/\bPoison(?:ed)?\b/gi, m => iconBadge('poison', m))
+                .replace(/\bGuard Break\b/gi, m => iconBadge('guardBreak', m))
+                .replace(/\bGuard(?:ing)\b/gi, m => iconBadge('guarding', m))
+                .replace(/\bOverclock(?:ed)?\b/gi, m => iconBadge('overclock', m))
+                .replace(/\bInspired\b/gi, m => iconBadge('inspired', m))
+                .replace(/\bDiscord(?:ant)?\b/gi, m => iconBadge('discord', m))
+                .replace(/\bJammed\b/gi, m => iconBadge('jammed', m))
+                .replace(/\bDrowning\b/gi, m => iconBadge('drowning', m))
+                .replace(/\bProtect(?:ed)?\b/gi, m => iconBadge('protect', m))
+                .replace(/\bGlare(?:d)?\b/gi, m => iconBadge('glare', m))
+                .replace(/\bshield\b/gi, m => iconBadge('shield', m))
+                .replace(/⏳(\d+)?/g, (_, n) => iconBadge('hourglass', n ? `Hourglass ×${n}` : 'Hourglass'))
+                .replace(/\bHP\b/g, m => iconBadge('heal', m))
+                .replace(/\bMP\b/g, m => iconBadge('mana', m));
+        }
+
+        function escapeRegex(text) {
+            return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function colorizeCombatLogText(htmlText) {
+            let output = htmlText;
+
+            output = output
+                .replace(/\bPlayer 1\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="ally-text">Player 1</span>')
+                .replace(/\bPlayer 2\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="enemy-text">Player 2</span>')
+                .replace(/\bTemporal scan\b/g, '<span class="hourglass-text">Temporal scan</span>')
+                .replace(/\bhourglasses?\b/gi, m => `<span class="hourglass-text">${m}</span>`)
+                .replace(/It's super effective!/g, '<span style="color:#55d38a;font-weight:700">It\'s super effective!</span>')
+                .replace(/It wasn't very effective\.\.\./g, '<span style="color:#a9b0d0;font-style:italic">It wasn\'t very effective...</span>')
+                .replace(/CRITICAL HIT/g, '<span style="color:#ffd166;font-weight:900">CRITICAL HIT</span>')
+                .replace(/\bDODGE!\b/g, '<span style="color:#85a9ff;font-weight:700">DODGE!</span>')
+                .replace(/\bOVERKILL\b/g, '<span style="color:#b78cff;font-weight:900">OVERKILL</span>')
+                .replace(/\bLAST STAND\b/g, '<span style="color:#ff6b6b;font-weight:900">LAST STAND</span>')
+                .replace(/\b(Double Kill!|Triple Kill!|Rampage!|GODLIKE!)\b/g, m => `<span style="color:#f8d66d;font-weight:900">${m}</span>`)
+                .replace(/\breturned to the void\b/g, '<span style="color:#ff6b6b;font-weight:700">returned to the void</span>');
+
+            const viewer = getViewerPlayer();
+            const labels = [];
+            (state.units || []).forEach(unit => {
+                if (!unit) return;
+                const displayLabel = unitDisplayName(unit);
+                if (!displayLabel) return;
+                const sideClass = unit.player === viewer ? 'ally-text' : 'enemy-text';
+                labels.push({
+                    label: displayLabel,
+                    sideClass
+                });
+            });
+
+            labels
+                .sort((a, b) => b.label.length - a.label.length)
+                .forEach(({
+                    label,
+                    sideClass
+                }) => {
+                    const pattern = new RegExp(`(^|[^>\\w])(${escapeRegex(label)})(?=$|[^<\\w])`, 'g');
+                    output = output.replace(pattern, (match, prefix, found) => `${prefix}<span class="${sideClass}">${escapeHtml(found)}</span>`);
+                });
+
+            return output;
+        }
+
+        function formatCombatLogLine(text) {
+            return colorizeCombatLogText(decorateTextWithIcons(text));
+        }
+
+        function removeDebuffs(unit) {
+            if (!unit || !unit.status) return 0;
+            let removed = 0;
+            Object.keys(STATUS_DEFS).forEach(key => {
+                if (unit.status[key] > 0) removed += 1;
+                unit.status[key] = 0;
+            });
+            return removed;
+        }
+
+        function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
+            if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+            const status = ensureUnitStatus(target);
+            const meta = STATUS_DEFS[payload.id];
+            const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
+            if (isEnemyDebuff) {
+                const chance = getStatusApplyChance(sourceUnit, target, payload);
+                if (Math.random() > chance) {
+                    addLog(`${sourceLabel}${unitDisplayName(target)} resists ${meta.label}.`);
+                    return false;
+                }
+            }
+            const nextValue = Math.max(1, Number(payload.duration ?? payload.value ?? 1));
+            if (meta.stack === 'replace') {
+                status[payload.id] = nextValue;
+            } else {
+                status[payload.id] = Math.max(Number(status[payload.id] || 0), nextValue);
+            }
+            if (payload.bonusDamage && payload.id === 'marked') {
+                target.markBonus = Math.max(Number(target.markBonus || 0), Number(payload.bonusDamage || 0));
+            }
+            /* Track caster for mechanics that need it */
+            if (payload.id === 'sirenSong' && sourceUnit) target._sirenCasterId = sourceUnit.id;
+            if (payload.id === 'contract' && sourceUnit) target._contractCasterId = sourceUnit.id;
+            addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+
+            if (!_skipVisuals()) {
+                const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1 };
+                if (vfxStatusMap[payload.id]) _vfxStatus(payload.id, target.x, target.y);
+            }
+            if (isEnemyDebuff && !meta.onRoundEnd) playSfx('debuff');
+
+            if (!target._statusLog) target._statusLog = {};
+            target._statusLog[payload.id] = (target._statusLog[payload.id] || 0) + 1;
+            if (sourceUnit) {
+                if (!sourceUnit._statusesApplied) sourceUnit._statusesApplied = {};
+                sourceUnit._statusesApplied[payload.id] = (sourceUnit._statusesApplied[payload.id] || 0) + 1;
+
+                const meta = STATUS_DEFS[payload.id];
+                const isBeneficial = meta && (meta.kind === 'buff' || meta.category === 'buff' || meta.category === 'status' && meta.kind === 'buff');
+                if (isAllyUnit(sourceUnit, target) && isBeneficial) {
+                    grantXP(sourceUnit, XP_BUFF_APPLIED, 'buff');
+
+                    if (!target._xpBuffSources) target._xpBuffSources = {};
+                    target._xpBuffSources[sourceUnit.id] = (target._xpBuffSources[sourceUnit.id] || 0) + 1;
+                } else if (isEnemyUnit(sourceUnit, target)) {
+                    grantXP(sourceUnit, XP_DEBUFF_APPLIED, 'debuff');
+
+                    if (!target._debuffContributors) target._debuffContributors = {};
+                    target._debuffContributors[sourceUnit.id] = (target._debuffContributors[sourceUnit.id] || 0) + 1;
+                }
+            }
+
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            return true;
+        }
+
+        function applyStatusEffects(target, status = {}, sourceLabel = '', sourceUnit = null) {
+            if (!target || target.dead || !status) return;
+            if (Array.isArray(status)) {
+                status.forEach(payload => applyStatusPayload(target, payload, sourceLabel, sourceUnit));
+                return;
+            }
+            for (const [key, value] of Object.entries(status)) {
+                if (!value) continue;
+                const payload = typeof value === 'number' ? {
+                    id: key,
+                    duration: value
+                } : {
+                    ...(value || {}),
+                    id: key
+                };
+                applyStatusPayload(target, payload, sourceLabel, sourceUnit);
+            }
+        }
+
+        function processEndOfRoundStatuses(onDone) {
+
+            const affected = state.units.filter(u => {
+                if (u.dead) return false;
+                const keys = getActiveStatusKeys(u);
+                return keys.some(k => {
+                    const def = STATUS_DEFS[k];
+                    if (!def) return false;
+
+                    return def.onRoundEnd || _STATUS_EFFECT_IDS.has(k);
+                });
+            });
+
+            if (!affected.length || _skipVisuals()) {
+
+                _tickAllStatusDurations();
+                if (onDone) onDone();
+                return;
+            }
+
+            const viewer = getViewerPlayer();
+            let idx = 0;
+
+            function processNext() {
+                if (state.winner) { if (onDone) onDone(); return; }
+                if (idx >= affected.length) {
+
+                    _tickAllStatusDurations();
+                    scheduleBoardRender();
+                    if (onDone) onDone();
+                    return;
+                }
+
+                const unit = affected[idx++];
+                if (unit.dead) { processNext(); return; }
+
+                const activeKeys = getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k));
+                if (!activeKeys.length) { processNext(); return; }
+
+                const hasEffect = activeKeys.some(k => STATUS_DEFS[k]?.onRoundEnd);
+
+                const isVisible = _isUnitVisibleToViewer(unit, viewer);
+
+                if (isVisible && !state.cameraDisabled) {
+                    const _dotZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                    camera.moveTo({ x: unit.x, y: unit.y, zoom: _dotZoom, duration: 350, _fogAllowed: true });
+                }
+
+                const dlgMsgs = [];
+                for (const key of activeKeys) {
+                    const def = STATUS_DEFS[key];
+                    if (!def?.onRoundEnd) continue;
+                    const hpBefore = unit.hp;
+                    def.onRoundEnd(unit);
+
+                    if (unit.dead) {
+                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${unitDisplayName(unit)} was claimed by ${def.label || key}</span>`);
+                        break;
+                    }
+                    const hpLost = hpBefore - unit.hp;
+                    if (hpLost > 0) {
+                        dlgMsgs.push(`<span class="dlg-damage">${def.icon || '⚠'} ${unitDisplayName(unit)} takes ${hpLost} damage from ${def.label || key}!</span>`);
+                        if (isVisible) {
+                            showFloatingTextForUnit(unit, `-${hpLost}`, 'damage', { durationMs: 900 });
+                            triggerStatusWiggle(unit);
+
+                            const _dotSfxMap = { poison: 'poisonDamage', burn: 'burningDamage', drowning: 'drowningDamage', lava_burn: 'burningDamage' };
+                            playSfx(_dotSfxMap[key] || 'damage');
+                        }
+                    } else if (hpLost < 0) {
+                        dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${unitDisplayName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
+                        if (isVisible) {
+                            showFloatingTextForUnit(unit, `+${Math.abs(hpLost)}`, 'heal', { durationMs: 900 });
+                            _vfxHeal(unit.x, unit.y);
+                        }
+                    }
+                }
+
+                if (dlgMsgs.length === 0 && !hasEffect) {
+
+                    processNext();
+                    return;
+                }
+
+                if (dlgMsgs.length > 0) {
+                    showBattleDialogue(dlgMsgs, 1400 + dlgMsgs.length * 400);
+                }
+
+                scheduleBoardRender();
+
+                if (unit.dead) {
+                    checkWin();
+                    if (state.winner) { if (onDone) onDone(); return; }
+                }
+
+                const delay = dlgMsgs.length > 0 ? (1200 + dlgMsgs.length * 350) : 400;
+                window.setTimeout(processNext, delay);
+            }
+
+            processNext();
+        }
+
+        function processEndOfRoundZonesAndSeeds(onDone) {
+
+            const events = [];
+
+            if (state._activeZones?.length) {
+                state._activeZones = state._activeZones.filter(zone => {
+                    const area = getSquareArea(zone.x, zone.y, zone.radius || 1);
+                    if (zone.type === 'heal') {
+                        const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
+                        for (const ally of allies) {
+                            if (area.some(t => t.x === ally.x && t.y === ally.y)) {
+                                const healAmt = zone.healPerTurn || 48;
+                                const hpBefore = ally.hp;
+                                applyHealingToUnit(ally, healAmt, null);
+                                const healed = ally.hp - hpBefore;
+                                if (healed > 0) {
+                                    let evt = events.find(e => e.unit === ally);
+                                    if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
+                                    evt.msgs.push(`<span class="dlg-heal">✨ ${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
+                                    evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                                    addLog(`${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP.`);
+                                }
+                            }
+                        }
+                    } else if (zone.type === 'debuff') {
+                        const enemies = state.units.filter(u => !u.dead && u.player !== zone.ownerPlayer);
+                        for (const enemy of enemies) {
+                            if (area.some(t => t.x === enemy.x && t.y === enemy.y)) {
+                                for (const eff of (zone.statusEffects || [])) {
+                                    applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `);
+                                }
+                                let evt = events.find(e => e.unit === enemy);
+                                if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
+                                evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
+                                addLog(`${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
+                            }
+                        }
+                    }
+                    zone.duration--;
+                    if (zone.duration <= 0) {
+                        addLog(`${zone.spellName} zone at ${coordLabel(zone.x, zone.y)} fades.`);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (state.plantedSeeds?.length) {
+                for (let p = 1; p <= 2; p++) {
+                    applySeedTileEffects_endOfRound(p, events);
+                }
+            }
+
+            /* ── Siren Song pull: move afflicted enemies 1 tile toward the caster ── */
+            for (const unit of state.units) {
+                if (unit.dead) continue;
+                if (!unitHasStatus(unit, 'sirenSong')) continue;
+                const casterId = unit._sirenCasterId;
+                const caster = casterId ? state.units.find(u => u.id === casterId && !u.dead) : null;
+                if (!caster) continue;
+                const dx = caster.x - unit.x, dy = caster.y - unit.y;
+                if (dx === 0 && dy === 0) continue;
+                let stepX = 0, stepY = 0;
+                if (Math.abs(dx) >= Math.abs(dy)) stepX = dx > 0 ? 1 : -1;
+                else stepY = dy > 0 ? 1 : -1;
+                const nx = unit.x + stepX, ny = unit.y + stepY;
+                if (isInside(nx, ny) && !unitAt(nx, ny) && canOccupy(nx, ny)) {
+                    const oldX = unit.x, oldY = unit.y;
+                    unit.x = nx; unit.y = ny;
+                    let evt = events.find(e => e.unit === unit);
+                    if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                    evt.msgs.push(`<span class="dlg-damage">🎵 Siren Song pulls ${unitDisplayName(unit)} toward ${unitDisplayName(caster)}</span>`);
+                    addLog(`Siren Song pulls ${unitDisplayName(unit)} from ${coordLabel(oldX, oldY)} to ${coordLabel(nx, ny)}.`);
+                }
+            }
+
+            /* ── Totem aura healing: deployed objects with auraHeal ── */
+            if (state._deployedObjects) {
+                for (const obj of state._deployedObjects) {
+                    if (obj.hp <= 0 || !obj.auraHeal || !obj.auraRadius) continue;
+                    const allies = state.units.filter(u => !u.dead && u.player === obj.ownerPlayer);
+                    for (const ally of allies) {
+                        const dist = Math.abs(ally.x - obj.x) + Math.abs(ally.y - obj.y);
+                        if (dist > obj.auraRadius) continue;
+                        const hpBefore = ally.hp;
+                        applyHealingToUnit(ally, obj.auraHeal, null);
+                        const healed = ally.hp - hpBefore;
+                        if (healed > 0) {
+                            let evt = events.find(e => e.unit === ally);
+                            if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
+                            evt.msgs.push(`<span class="dlg-heal">✨ ${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
+                            evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                            addLog(`${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP.`);
+                        }
+                    }
+                }
+            }
+
+            /* ── Spawn Zone end-of-round effects ── */
+            if (state.spawnZones) {
+                for (const unit of state.units) {
+                    if (unit.dead) continue;
+                    const zoneOwner = getSpawnZoneOwnerAt(unit.x, unit.y);
+                    if (!zoneOwner) continue;
+
+                    if (unit.player === zoneOwner) {
+                        /* Friendly in own spawn zone: 15% HP/MP regen + debuff cleanse */
+                        const healAmt = Math.floor(unit.maxHp * SPAWN_ZONE_HEAL_PCT);
+                        const manaAmt = Math.floor(unit.maxMp * SPAWN_ZONE_HEAL_PCT);
+                        const hpBefore = unit.hp;
+                        applyHealingToUnit(unit, healAmt, null);
+                        const healed = unit.hp - hpBefore;
+                        if (unit.mp < unit.maxMp) {
+                            unit.mp = Math.min(unit.maxMp, unit.mp + manaAmt);
+                        }
+                        /* Debuff cleanse */
+                        let cleansedAny = false;
+                        if (unit.status) {
+                            for (const sid of Object.keys(unit.status)) {
+                                const sdef = typeof STATUS_EFFECTS !== 'undefined' ? STATUS_EFFECTS[sid] : null;
+                                if (sdef && (sdef.category === 'debuff' || sdef.kind === 'debuff')) {
+                                    delete unit.status[sid];
+                                    cleansedAny = true;
+                                }
+                            }
+                        }
+
+                        if (healed > 0 || manaAmt > 0 || cleansedAny) {
+                            let evt = events.find(e => e.unit === unit);
+                            if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                            if (healed > 0) {
+                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} for ${healed} HP</span>`);
+                                evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                            }
+                            if (manaAmt > 0) {
+                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
+                            }
+                            if (cleansedAny) {
+                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone cleanses ${unitDisplayName(unit)}</span>`);
+                            }
+                            addLog(`Spawn zone heals ${unitDisplayName(unit)} (+${healed} HP, +${manaAmt} MP)${cleansedAny ? ' and cleanses debuffs' : ''}.`);
+                        }
+                    } else {
+                        /* Enemy in opponent's spawn zone: 35% maxHP damage */
+                        const dmgAmt = Math.max(1, Math.floor(unit.maxHp * SPAWN_ZONE_ENEMY_DMG_PCT));
+                        const hpBefore = unit.hp;
+                        unit.hp = Math.max(0, unit.hp - dmgAmt);
+                        const dealt = hpBefore - unit.hp;
+
+                        let evt = events.find(e => e.unit === unit);
+                        if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                        evt.msgs.push(`<span class="dlg-damage">⚡ Spawn zone scorches ${unitDisplayName(unit)} for ${dealt} damage!</span>`);
+                        evt.floats.push({ text: `-${dealt}`, type: 'damage' });
+                        addLog(`Enemy spawn zone deals ${dealt} damage to ${unitDisplayName(unit)}.`);
+
+                        if (unit.hp <= 0) {
+                            /* Find the zone owner's nearest unit as "killer" for credit */
+                            const zoneOwnerUnits = state.units.filter(u => !u.dead && u.player === zoneOwner);
+                            const killer = zoneOwnerUnits.length > 0 ? zoneOwnerUnits[0] : null;
+                            defeatUnit(unit, killer);
+                        }
+                    }
+                }
+            }
+
+            if (!events.length || _skipVisuals()) {
+                if (onDone) onDone();
+                return;
+            }
+
+            const viewer = getViewerPlayer();
+
+            const allMsgs = [];
+            for (const evt of events) {
+                if (evt.unit.dead) continue;
+                const isVisible = _isUnitVisibleToViewer(evt.unit, viewer);
+                if (isVisible) {
+                    for (const f of evt.floats) {
+                        showFloatingTextForUnit(evt.unit, f.text, f.type, { durationMs: 1200 });
+                    }
+                    if (evt.floats.some(f => f.type === 'heal')) {
+                        flashHeal(evt.unit);
+                        _vfxHeal(evt.unit.x, evt.unit.y);
+                    }
+                    if (evt.floats.some(f => f.type === 'damage')) {
+                        triggerStatusWiggle(evt.unit);
+                    }
+                }
+                for (const m of evt.msgs) allMsgs.push(m);
+            }
+
+            if (allMsgs.length > 0) {
+                showBattleDialogue(allMsgs.slice(0, 8), 1800 + Math.min(allMsgs.length, 8) * 300);
+            }
+
+            scheduleBoardRender();
+            checkWin();
+            if (state.winner) { if (onDone) onDone(); return; }
+
+            const delay = allMsgs.length > 0 ? (1600 + Math.min(allMsgs.length, 8) * 250) : 600;
+            window.setTimeout(() => {
+                scheduleBoardRender();
+                if (onDone) onDone();
+            }, delay);
+        }
+
+        const REGEN_PERCENT = 0.05;
+        const MP_REGEN_PERCENT = 0.05;
+
+        function processEndOfRoundRegen(onDone) {
+            const viewer = getViewerPlayer();
+            const healed = [];
+            const manaRestored = [];
+
+            for (const u of state.units) {
+                if (u.dead || u._dying) continue;
+                if (u.hp < u.maxHp) {
+                    const amt = Math.max(1, Math.round(u.maxHp * REGEN_PERCENT));
+                    const before = u.hp;
+                    u.hp = Math.min(u.maxHp, u.hp + amt);
+                    const actual = u.hp - before;
+                    if (actual > 0) {
+                        u._trackHealReceived = (u._trackHealReceived || 0) + actual;
+                        healed.push({ unit: u, amount: actual });
+                    }
+                }
+
+                if ((u.mp || 0) < (u.maxMp || 0)) {
+                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * MP_REGEN_PERCENT));
+                    const mpBefore = u.mp || 0;
+                    u.mp = Math.min(u.maxMp || 0, mpBefore + mpAmt);
+                    const mpActual = u.mp - mpBefore;
+                    if (mpActual > 0) {
+                        manaRestored.push({ unit: u, amount: mpActual });
+                    }
+                }
+            }
+
+            if ((!healed.length && !manaRestored.length) || _skipVisuals()) {
+                if (onDone) onDone();
+                return;
+            }
+
+            for (const h of healed) {
+                if (h.unit) {
+                    const isVisible = _isUnitVisibleToViewer(h.unit, viewer);
+                    if (isVisible) {
+                        showFloatingTextForUnit(h.unit, `+${h.amount}`, 'heal', { durationMs: 1200 });
+                        flashHeal(h.unit);
+
+                        if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                            && window.ThreeVFXEffects.hasMapping('_eorHpRegen', 'aura')) {
+                            window.ThreeVFXEffects.fire('aura', '_eorHpRegen', { tx: h.unit.x, ty: h.unit.y });
+                        } else {
+                            _vfxHeal(h.unit.x, h.unit.y);
+                        }
+                    }
+                } else if (h.tower) {
+                    showFloatingTextAtTile(h.tower.x, h.tower.y, `+${h.amount}`, 'heal', { durationMs: 1200 });
+                }
+            }
+
+            for (const m of manaRestored) {
+                const isVisible = _isUnitVisibleToViewer(m.unit, viewer);
+                if (isVisible) {
+
+                    const hasHpRegen = healed.some(h => h.unit === m.unit);
+                    showFloatingTextForUnit(m.unit, `+${m.amount} MP`, 'mp', { durationMs: 1200, jitterY: hasHpRegen ? -18 : undefined });
+
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping('_eorMpRegen', 'aura')) {
+                        window.ThreeVFXEffects.fire('aura', '_eorMpRegen', { tx: m.unit.x, ty: m.unit.y });
+                    } else {
+                        _vfxMana(m.unit.x, m.unit.y);
+                    }
+                }
+            }
+            if (manaRestored.length > 0) {
+                playSfx('manaRegen');
+            }
+
+            const unitCount = healed.filter(h => h.unit).length;
+            const mpCount = manaRestored.length;
+            let logMsg = `💚 End-of-round regen: `;
+            if (unitCount > 0) logMsg += `${unitCount} unit${unitCount > 1 ? 's' : ''} healed (${Math.round(REGEN_PERCENT * 100)}% max HP)`;
+            if (unitCount > 0 && mpCount > 0) logMsg += ', ';
+            if (mpCount > 0) logMsg += `${mpCount} unit${mpCount > 1 ? 's' : ''} mana restored (${Math.round(MP_REGEN_PERCENT * 100)}% max MP)`;
+            addLog(logMsg);
+
+            scheduleBoardRender();
+
+            window.setTimeout(() => {
+                if (onDone) onDone();
+            }, 900);
+        }
+
+        function processPendingEarthquake(onDone) {
+            const eq = state._pendingEarthquake;
+            delete state._pendingEarthquake;
+            if (!eq || _skipVisuals()) {
+                if (onDone) onDone();
+                return;
+            }
+
+            shakeBoard('hard');
+
+            const viewer = getViewerPlayer();
+            for (const hit of eq.hits) {
+                const unit = state.units.find(u => u.id === hit.unitId);
+                if (!unit || unit.dead) continue;
+                applyDamageToUnit(unit, hit.amount, `${hit.text}`, { ignoreArmor: false });
+            }
+
+            if (eq.blowback) {
+                applyAreaBlowback(eq.blowback.cx, eq.blowback.cy, eq.blowback.tiles, null, '🌋 ');
+            }
+
+            scheduleBoardRender();
+            renderBattleUpdate();
+
+            const delay = eq.hits.length > 0 ? actionMs(1200) : actionMs(500);
+            window.setTimeout(() => {
+                if (onDone) onDone();
+            }, delay);
+        }
+
+        function applySeedTileEffects_endOfRound(player, events) {
+            if (!state.plantedSeeds) return;
+
+            state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                if (seed.type === 'poison') return true;
+                const t = getTerrainAt(seed.x, seed.y);
+                return t === 'grass';
+            });
+
+            if (state.activeWeather && state.activeWeather.length > 0) {
+                const droughtTiles = new Set();
+                for (const w of state.activeWeather) {
+                    if (w.type === 'drought') {
+                        for (const t of w.tiles) droughtTiles.add(posKey(t.x, t.y));
+                    }
+                }
+                if (droughtTiles.size > 0) {
+                    state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                        if (droughtTiles.has(posKey(seed.x, seed.y))) {
+                            addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            for (const seed of state.plantedSeeds) {
+                if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
+            }
+
+            state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
+
+            for (const unit of aliveUnitsFor(player)) {
+
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
+                for (const seed of seedsHere) {
+                    if (seed.type === 'heal' && unit.player === seed.owner) {
+                        const weatherHere = getWeatherAtTile(unit.x, unit.y);
+                        const isRaining = weatherHere.some(w => {
+                            const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === unit.x && t.y === unit.y));
+                            const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
+                            return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
+                        });
+                        const healAmt = isRaining ? 12 : 6;
+                        const hpBefore = unit.hp;
+                        const healed = applyHealingToUnit(unit, healAmt, null);
+                        if (healed > 0) {
+                            let evt = events.find(e => e.unit === unit);
+                            if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                            evt.msgs.push(`<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`);
+                            evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                            addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                        }
+                    } else if (seed.type === 'poison' && unit.player !== seed.owner) {
+                        const caster = unitFromId(seed.casterUnitId);
+                        const hpBefore = unit.hp;
+                        applyDamageToUnit(unit, 8, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
+                            ignoreArmor: true,
+                            damageType: 'dot',
+                            consumeMarked: false
+                        });
+                        const dmg = hpBefore - unit.hp;
+                        if (!unit.dead) {
+                            applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
+                        }
+                        let evt = events.find(e => e.unit === unit);
+                        if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                        if (unit.dead) {
+                            evt.msgs.push(`<span class="dlg-damage">🌿 Poison Seed claims ${unitDisplayName(unit)}</span>`);
+                        } else if (dmg > 0) {
+                            evt.msgs.push(`<span class="dlg-damage">🌿 Poison Seed stings ${unitDisplayName(unit)} for ${dmg}</span>`);
+                            evt.floats.push({ text: `-${dmg}`, type: 'damage' });
+                        }
+                    } else if (seed.type === 'leech') {
+                        if (unit.player !== seed.owner) {
+                            const hpBefore = unit.hp;
+                            applyDamageToUnit(unit, 4, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
+                                ignoreArmor: true,
+                                damageType: 'dot',
+                                consumeMarked: false
+                            });
+                            const dmg = hpBefore - unit.hp;
+                            if (dmg > 0) {
+                                let evt = events.find(e => e.unit === unit);
+                                if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                                evt.msgs.push(`<span class="dlg-damage">🌿 Leech Seed drains ${unitDisplayName(unit)} for ${dmg}</span>`);
+                                evt.floats.push({ text: `-${dmg}`, type: 'damage' });
+                            }
+
+                            const ownerAllies = aliveUnitsFor(seed.owner);
+                            if (ownerAllies.length > 0) {
+                                const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+                                const healed = applyHealingToUnit(target, 4, null);
+                                if (healed > 0) {
+                                    let hEvt = events.find(e => e.unit === target);
+                                    if (!hEvt) { hEvt = { unit: target, msgs: [], floats: [] }; events.push(hEvt); }
+                                    hEvt.msgs.push(`<span class="dlg-heal">🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}</span>`);
+                                    hEvt.floats.push({ text: `+${healed}`, type: 'heal' });
+                                    addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
+                                }
+                            }
+                        } else {
+
+                            const healed = applyHealingToUnit(unit, 3, null);
+                            if (healed > 0) {
+                                let evt = events.find(e => e.unit === unit);
+                                if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
+                                evt.msgs.push(`<span class="dlg-heal">🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP</span>`);
+                                evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                                addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function _isUnitVisibleToViewer(unit, viewer) {
+            if (!state.fogOfWar) return true;
+            if (unit.player === viewer) return true;
+
+            /* ── Smoke concealment: enemy units inside their own smoke zones are hidden unless viewer is adjacent ── */
+            if (state._activeZones?.length) {
+                for (const zone of state._activeZones) {
+                    if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
+                    const r = zone.radius || 1;
+                    if (Math.abs(unit.x - zone.x) <= r && Math.abs(unit.y - zone.y) <= r) {
+                        const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+                        let adj = false;
+                        for (const f of friendlies) {
+                            if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) { adj = true; break; }
+                        }
+                        if (!adj) return false;
+                    }
+                }
+            }
+
+            const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+            for (const f of friendlies) {
+                const dist = Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y);
+                const awr = f.awr || 3;
+                if (dist <= awr) return true;
+            }
+
+            if (state._visionWards?.length) {
+                for (const w of state._visionWards) {
+                    if (w.player === viewer) {
+                        const dist = Math.abs(w.x - unit.x) + Math.abs(w.y - unit.y);
+                        if (dist <= (w.radius || 3)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function _shouldCameraFollowUnit(unit) {
+            if (!state.fogOfWar) return true;
+            if (!unit) return false;
+            const viewer = getViewerPlayer();
+            if (unit.player === viewer) return true;
+            return _isUnitVisibleToViewer(unit, viewer);
+        }
+
+        function _isTileVisibleToViewer(tx, ty) {
+            if (!state.fogOfWar) return true;
+            const viewer = getViewerPlayer();
+            const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+            for (const f of friendlies) {
+                const dist = Math.abs(f.x - tx) + Math.abs(f.y - ty);
+                const awr = f.awr || 3;
+                if (dist <= awr) return true;
+            }
+            if (state._visionWards?.length) {
+                for (const w of state._visionWards) {
+                    if (w.player === viewer) {
+                        const dist = Math.abs(w.x - tx) + Math.abs(w.y - ty);
+                        if (dist <= (w.radius || 3)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function _tickAllStatusDurations() {
+            for (const u of state.units) {
+                if (u.dead) continue;
+                for (const key of [...getActiveStatusKeys(u)]) {
+
+                    const def = STATUS_DEFS[key];
+                    if (!def) continue;
+                    const next = getStatusValue(u, key) - 1;
+                    if (next > 0) u.status[key] = next;
+                    else {
+                        clearStatus(u, key);
+                        addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
+                    }
+                }
+            }
+        }
+
+        function unitHasStatus(unit, key) {
+            return getStatusValue(unit, key) > 0;
+        }
+
+        function focusUnitPanel(unitOrId, flashKind = null, source = 'program') {
+            const unitId = typeof unitOrId === 'string' ? unitOrId : unitOrId?.id;
+            if (!unitId) return;
+            const changed = state.focusedUnitId !== unitId;
+            if (source !== 'hover' && changed) playSfx('uiCursorMove');
+            state.focusedUnitId = unitId;
+
+            let floorChanged = false;
+            if (source !== 'hover' ) {
+                const u = state.units.find(u => u.id === unitId);
+                if (false) {
+
+                    floorChanged = true;
+                }
+            }
+            if (source === 'hover') {
+                state.hoverUnitId = unitId;
+                if (flashKind) flashSelectedUnitPanel(flashKind);
+                return;
+            }
+
+            if (floorChanged) {
+                render();
+            } else if (state.aiThinking) {
+                renderBattleSelectionUI({
+                    includeBoard: false
+                });
+            } else {
+                renderBattleSelectionUI();
+            }
+            if (flashKind) flashSelectedUnitPanel(flashKind);
+        }
+
+        function flashSelectedUnitPanel(kind = 'damage') {
+
+            if (_skipVisuals()) return;
+            state.selectedPanelFlash = kind;
+            renderSelectedUnitPanel();
+            window.setTimeout(() => {
+                state.selectedPanelFlash = null;
+                renderSelectedUnitPanel();
+            }, kind === 'heal' ? 450 : 420);
+        }
+
+        function flashUnit(unitId, kind = 'hit') {
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'flash', unitId, kind });
+                return;
+            }
+            _realFlashUnit_impl(unitId, kind);
+        }
+        function _realFlashUnit_impl(unitId, kind = 'hit') {
+            if (_skipVisuals()) {
+                focusUnitPanel(unitId, kind === 'heal' ? 'heal' : 'damage');
+                return;
+            }
+            const setRef = kind === 'heal' ? state.healFlashIds : state.hitFlashIds;
+            setRef.add(unitId);
+            focusUnitPanel(unitId, kind === 'heal' ? 'heal' : 'damage');
+            const _flashUnit = state.units.find(u => u.id === unitId);
+            const _v2 = window._v2UnitSystemActive?.();
+            if (_flashUnit && window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit: _flashUnit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                setRef.delete(unitId);
+                if (_flashUnit && window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit: _flashUnit });
+                if (!_v2) scheduleBoardRender();
+                renderSelectedUnitPanel();
+            }, kind === 'heal' ? 450 : 420);
+        }
+
+        function triggerStatusWiggle(unit) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const _v2 = window._v2UnitSystemActive?.();
+            state.statusWiggleIds.add(unit.id);
+            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                state.statusWiggleIds.delete(unit.id);
+                if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                if (!_v2) scheduleBoardRender();
+            }, 650);
+        }
+
+        function triggerAttackAnim(unit, tx, ty) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const _v2 = window._v2UnitSystemActive?.();
+            const dx = tx - unit.x;
+            const dy = ty - unit.y;
+            const mag = Math.max(1, Math.abs(dx) + Math.abs(dy));
+            state._attackAnimDir[unit.id] = {
+                dx: dx / mag,
+                dy: dy / mag
+            };
+            state.attackAnimIds.add(unit.id);
+            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                state.attackAnimIds.delete(unit.id);
+                delete state._attackAnimDir[unit.id];
+                if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                if (!_v2) scheduleBoardRender();
+            }, 350);
+        }
+
+        function triggerCastAnim(unit) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const _v2 = window._v2UnitSystemActive?.();
+            state.castAnimIds.add(unit.id);
+            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                state.castAnimIds.delete(unit.id);
+                if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                if (!_v2) scheduleBoardRender();
+            }, 500);
+        }
+
+        function triggerDodgeAnim(unit, attackerX, attackerY) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const _v2 = window._v2UnitSystemActive?.();
+            const dx = unit.x - attackerX;
+            const dy = unit.y - attackerY;
+            const mag = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+            const sign = Math.random() < 0.5 ? 1 : -1;
+            const perpDx = (-dy / mag) * sign;
+            const perpDy = (dx / mag) * sign;
+            state._dodgeAnimDir[unit.id] = { dx: perpDx, dy: perpDy };
+            state.dodgeAnimIds.add(unit.id);
+            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                state.dodgeAnimIds.delete(unit.id);
+                delete state._dodgeAnimDir[unit.id];
+                if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                if (!_v2) scheduleBoardRender();
+            }, 420);
+        }
+
+        const HIT_EFFECT_URLS = {
+            hit04: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit04.png',
+            hit02: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit02.png',
+            hit11: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit11.png',
+            spell_hit_01: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/spell_hit_01.png'
+        };
+
+        const HIT_EFFECT_8FRAME = { spell_hit_01: true };
+        (function _preloadHitSprites() {
+            for (const url of Object.values(HIT_EFFECT_URLS)) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.src = url;
+            }
+        })();
+
+        function playHitEffect(x, y, opts = {}) {
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'hitEffect', x, y, opts: { ...opts } });
+                return;
+            }
+            _realPlayHitEffect_impl(x, y, opts);
+        }
+        function _realPlayHitEffect_impl(x, y, opts = {}) {
+            if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
+            if (_skipVisuals()) return;
+            if (!isInside(x, y)) return;
+
+            const isCrit = opts.isCrit || false;
+            const variant = opts.variant || 'hit04';
+            const is8 = HIT_EFFECT_8FRAME[variant] || false;
+            const durationMs = opts.durationMs || (isCrit ? 480 : 380);
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.hitEffect(x, y, variant, isCrit, durationMs);
+                return;
+            }
+
+            const pos = tilePixelCenter(x, y);
+            const el = document.createElement('div');
+
+            const jX = (Math.random() - 0.5) * 12;
+            const jY = (Math.random() - 0.5) * 10;
+
+            el.className = 'hit-effect-sprite' + (is8 ? ' hit-fx-8frame' : '');
+            if (variant !== 'hit04') {
+                el.style.backgroundImage = `url('${HIT_EFFECT_URLS[variant] || HIT_EFFECT_URLS.hit04}')`;
+            }
+            el.style.left = `${pos.left + jX}px`;
+            el.style.top = `${pos.top + jY}px`;
+            const _hitUnit = unitAt(x, y);
+            const tileZ = _hitUnit ? unitElevationZ(_hitUnit) : tileElevationZ(x, y);
+            if (tileZ > 0) el.style.setProperty('--tile-elev-z', `${tileZ}px`);
+            const ts = CONFIG.tileSize || 128;
+            const liftY = ts * 0.45 + 30;
+            el.style.setProperty('--hit-lift-y', `-${liftY}px`);
+            el.style.setProperty('--hit-fx-ms', `${durationMs}ms`);
+
+            projectileLayerEl.appendChild(el);
+            window.setTimeout(() => el.remove(), durationMs + 60);
+        }
+
+        function triggerHitstop(durationMs) {
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'hitstop', durationMs });
+                return;
+            }
+            _realTriggerHitstop_impl(durationMs);
+        }
+        function _realTriggerHitstop_impl(durationMs) {
+            if (_skipVisuals()) return;
+
+            return;
+        }
+
+        function showBattleDialogue(messages, duration) {
+            if (!messages || messages.length === 0) return;
+            if (_skipVisuals()) return;
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'dialogue', messages: [...messages], duration });
+                return;
+            }
+            _realShowBattleDialogue_impl(messages, duration);
+        }
+        function _realShowBattleDialogue_impl(messages, duration) {
+            if (!messages || messages.length === 0) return;
+            if (_skipVisuals()) return;
+            const dur = duration || (1200 + messages.length * 600);
+            state.battleDialogueQueue = messages;
+
+            _renderDialogueBox(null);
+            if (state.battleDialogueTimer) clearTimeout(state.battleDialogueTimer);
+            state.battleDialogueTimer = setTimeout(() => {
+                state.battleDialogueQueue = [];
+                state.battleDialogueTimer = null;
+                _lastDialogueHtml = '';
+
+                const bar = document.getElementById('battleSubtitleBar');
+                if (bar) bar.classList.remove('visible');
+
+                markDirty('hud');
+                renderIfDirty();
+            }, dur);
+        }
+
+        function tilePixelCenter(x, y) {
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+            return {
+                left: pad + x * (CONFIG.tileSize + gap) + (CONFIG.tileSize / 2),
+                top: pad + y * (CONFIG.tileSize + gap) + (CONFIG.tileSize / 2)
+            };
+        }
+
+        function tileElevationZ(x, y) {
+
+            const baseH = state.boardHeights?.[y]?.[x] ?? 0;
+            let z = baseH !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(baseH) : 0;
+
+            const obj = (typeof getObjectAt === 'function') ? getObjectAt(x, y) : null;
+            if (obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[obj]?.roofWalkable) {
+                const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
+                if (oSpr && oSpr._roofZPx > 0) z += oSpr._roofZPx;
+            }
+            return z;
+        }
+
+        function unitElevationZ(unit) {
+            if (!unit) return 0;
+            if (canFly(unit) && isUnitAirborne(unit)) {
+
+                const unitZ = unit.z ?? 0;
+                return unitZ !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(unitZ) : 0;
+            }
+            return tileElevationZ(unit.x, unit.y);
+        }
+
+        function dioramaUnitZBoost() {
+            const tiltDeg = state.dioramaTiltDeg ?? 50;
+
+            return (CONFIG.tileSize || 128) * 0.4 * Math.max(0, (tiltDeg - 10) / 70);
+        }
+
+        function showFloatingTextAtTile(x, y, textValue, kind = 'damage', opts = {}) {
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'floatingText', x, y, text: textValue, kind, opts: {...opts} });
+                return;
+            }
+            _realShowFloatingTextAtTile(x, y, textValue, kind, opts);
+        }
+        function _realShowFloatingTextAtTile_impl(x, y, textValue, kind = 'damage', opts = {}) {
+            if (state.phase !== 'battle') return;
+
+            if (_skipVisuals()) return;
+            if (!isInside(x, y)) return;
+
+            const durationMs = Math.max(400, Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900)));
+            const jitterX = Number.isFinite(opts.jitterX) ? opts.jitterX : (Math.random() * 18 - 9);
+            const jitterY = Number.isFinite(opts.jitterY) ? opts.jitterY : (Math.random() * 10 - 5);
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.floatingText(x, y, String(textValue ?? ''), kind, durationMs, { jitterX, jitterY });
+                return;
+            }
+
+            const boardEl = document.getElementById('board');
+            if (!boardEl) return;
+            const _bw = bw();
+            const idx = y * _bw + x;
+            const tileEl = boardEl.children[idx];
+            if (!tileEl) return;
+
+            const el = document.createElement('div');
+            el.className = `dio-float-text ${kind}`;
+            el.innerHTML = String(textValue ?? '');
+            el.style.setProperty('--jx', `${jitterX}px`);
+            el.style.setProperty('--jy', `${jitterY}px`);
+            el.style.setProperty('--float-ms', `${durationMs}ms`);
+            const ts = CONFIG.tileSize || 128;
+            const floatY = ts * 1.2;
+            el.style.setProperty('--dio-float-y', `-${floatY}px`);
+
+            tileEl.appendChild(el);
+            window.setTimeout(() => el.remove(), durationMs + 80);
+        }
+
+        function showFloatingTextForUnit(unit, textValue, kind = 'damage', opts = {}) {
+            if (!unit) return;
+
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'floatingText', x: unit.x, y: unit.y, text: textValue, kind, opts: {...opts} });
+                return;
+            }
+
+            if (unit.dead && !unit._dying) return;
+            showFloatingTextAtTile(unit.x, unit.y, textValue, kind, opts);
+        }
+
+        function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
+            if (!target || target.dead || target._dying) return 0;
+            const rawAmount = Math.max(0, Math.round(Number(amount) || 0));
+            const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
+            if (actual <= 0) return 0;
+            target.hp = Math.min(target.maxHp, target.hp + actual);
+            if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
+            target._trackHealReceived = (target._trackHealReceived || 0) + actual;
+
+            if (sourceUnit && sourceUnit.id !== target.id) grantXP(sourceUnit, XP_HEAL_FLAT, 'heal');
+            flashHeal(target);
+            showFloatingTextForUnit(target, `+${actual}`, opts.kind || 'heal', opts);
+
+            if (window.RenderBus) window.RenderBus.emit('unit:healed', { unit: target, amount: actual });
+            return actual;
+        }
+
+        function shakeBoard(intensity = 'normal') {
+            if (state.animationsDisabled || !boardStageEl) return;
+            if (_skipVisuals()) return;
+            if (_bufferingRoundEvents) {
+                _rePushEvent({ type: 'shake', intensity });
+                return;
+            }
+            _realShakeBoard_impl(intensity);
+        }
+        function _realShakeBoard_impl(intensity = 'normal') {
+            if (state.animationsDisabled || !boardStageEl) return;
+            if (_skipVisuals()) return;
+
+            const shakeTarget = boardEl || boardStageEl;
+            shakeTarget.classList.remove('board-shake', 'board-shake-hard');
+
+            requestAnimationFrame(() => {
+                shakeTarget.classList.add(intensity === 'hard' ? 'board-shake-hard' : 'board-shake');
+            });
+            const dur = intensity === 'hard' ? 400 : 300;
+            window.setTimeout(() => shakeTarget.classList.remove('board-shake', 'board-shake-hard'), dur);
+        }
+
+        _realShowFloatingTextAtTile = _realShowFloatingTextAtTile_impl;
+        _realShowDeathBanner = _realShowDeathBanner_impl;
+        _realShakeBoard = _realShakeBoard_impl;
+        _realFlashUnit = _realFlashUnit_impl;
+
+        if (typeof window !== 'undefined') window.shakeBoard = shakeBoard;
+        _realShowBattleDialogue = _realShowBattleDialogue_impl;
+        _realShowCombatBanner = _realShowCombatBanner_impl;
+        _realPlayHitEffect = _realPlayHitEffect_impl;
+        _realTriggerHitstop = _realTriggerHitstop_impl;
+
+        function getCritChance(unit) {
+            if (!unit) return 0;
+            const baseChance = 0.08;
+            const awrBonus = Math.min(0.12, (getEffectiveAwr(unit) || 0) * 0.015);
+            const intBonus = Math.min(0.06, (getEffectiveInt(unit) || 0) * 0.004);
+            return Math.min(0.30, baseChance + awrBonus + intBonus);
+        }
+
+        function getCritMultiplier(unit) {
+            const base = 1.8;
+            return unit?.cls === 'Gunslinger' ? base + 0.2 : base;
+        }
+
+        function rollCrit(unit) {
+            return Math.random() < getCritChance(unit);
+        }
+
+        function getEvasionChance(unit) {
+            if (!unit) return 0;
+            const baseChance = 0.06;
+            const moveBonus = Math.min(0.10, (getEffectiveMove(unit) || 0) * 0.018);
+            const stunned = getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove);
+            if (stunned) return 0;
+            return Math.min(0.25, baseChance + moveBonus);
+        }
+
+        function rollEvasion(target) {
+            return Math.random() < getEvasionChance(target);
+        }
+
+        function getCounterChance(unit) {
+            if (!unit || unit.dead) return 0;
+            let base = 0.12;
+            if (unit.cls === 'Warrior') base = 0.30;
+            else if ((unit.def || 0) >= 12) base = 0.20;
+
+            if (unit._guardCounterBonus) base += unit._guardCounterBonus;
+            return Math.min(0.75, base);
+        }
+
+        function rollCounter(unit) {
+            if (!unit || unit.dead) return false;
+            return Math.random() < getCounterChance(unit);
+        }
+
+        function getCounterDamage(unit) {
+            return Math.max(24, Math.floor((unit.atk || 0) * 0.4) + randInt(24));
+        }
+
+        const STREAK_LABELS = {
+            2: {
+                text: 'Killstreak!',
+                icon: '⚔️'
+            },
+            3: {
+                text: 'Mega Streak!',
+                icon: '🔥'
+            },
+            4: {
+                text: 'Rampage!',
+                icon: '💀'
+            },
+            5: {
+                text: 'GODLIKE!',
+                icon: '👑'
+            }
+        };
+
+        const MULTIKILL_LABELS = {
+            2: {
+                text: 'Double Kill!',
+                icon: '⚔️'
+            },
+            3: {
+                text: 'Triple Kill!',
+                icon: '🔥'
+            },
+            4: {
+                text: 'Quadra Kill!',
+                icon: '💀'
+            },
+            5: {
+                text: 'PENTA KILL!',
+                icon: '👑'
+            }
+        };
+
+        function detonateDeployedObject(obj, sourceUnit) {
+            if (!obj || obj._detonated) return;
+            obj._detonated = true;
+            const bx = obj.x, by = obj.y;
+            const radius = obj.blastRadius || 1;
+            const dmg = obj.blastDmg || 160;
+
+            if (state._deployedObjects) {
+                const idx = state._deployedObjects.indexOf(obj);
+                if (idx >= 0) state._deployedObjects.splice(idx, 1);
+            }
+            addLog(`💥 ${obj.spellName || 'Deployed object'} at ${coordLabel(bx, by)} detonates!`);
+            showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
+            playSfx('fireball');
+            playAoeRing(bx, by, radius, 'tech', actionMs(450));
+
+            const blastArea = getSquareArea(bx, by, radius);
+            for (const tile of blastArea) {
+                const hit = unitAt(tile.x, tile.y);
+                if (hit && !hit.dead) {
+                    const blastDmg = dmg + Math.floor(Math.random() * 20) - 10;
+                    applyDamageToUnit(hit, blastDmg, `${obj.spellName || 'Explosion'}: `, {
+                        sourceUnit: sourceUnit || null,
+                        damageType: 'physical',
+                        spellType: 'tech'
+                    });
+                }
+
+                damageTurretAt(tile.x, tile.y, dmg, sourceUnit);
+
+                if (state._deployedObjects) {
+                    const chainObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && o.detonateOnAttack && !o._detonated);
+                    if (chainObj) detonateDeployedObject(chainObj, sourceUnit);
+                }
+            }
+            scheduleBoardRender();
+        }
+
+        function processKillStreak(killer) {
+            if (!killer || killer.dead) return;
+            killer._killStreak = (killer._killStreak || 0) + 1;
+            killer._matchKills = (killer._matchKills || 0) + 1;
+
+            killer._turnKills = (killer._turnKills || 0) + 1;
+
+            if (state.matchKills) {
+                state.matchKills[killer.player] = (state.matchKills[killer.player] || 0) + 1;
+            }
+
+            if (state.suddenDeathActive) {
+                const mpMode = getActiveMultiplayerMode();
+                if (mpMode.tiebreaker === 'sudden_death_kill' || mpMode.id === 'arena') {
+                    state.winner = killer.player;
+                    state._winCondition = 'sudden_death';
+                }
+            }
+
+            const turnKills = killer._turnKills;
+            if (turnKills >= 2) {
+                const mkLabel = MULTIKILL_LABELS[Math.min(turnKills, 5)];
+                if (mkLabel) {
+                    addLog(`${mkLabel.icon} ${unitDisplayName(killer)}: ${mkLabel.text} (${turnKills} kills this turn!)`);
+                    showFloatingTextForUnit(killer, mkLabel.text, 'streak', {
+                        durationMs: 1400
+                    });
+                    shakeBoard(turnKills >= 4 ? 'hard' : 'normal');
+                    if (turnKills === 2) checkAchievement('doubleKill', killer);
+                    if (turnKills === 3) checkAchievement('tripleKill', killer);
+                    if (turnKills >= 4) checkAchievement('rampage', killer);
+                }
+            }
+
+            const streak = killer._killStreak;
+            const label = STREAK_LABELS[Math.min(streak, 5)];
+            if (streak >= 2 && label && turnKills < 2) {
+                addLog(`${label.icon} ${unitDisplayName(killer)}: ${label.text} (${streak} kill streak)`);
+                showFloatingTextForUnit(killer, label.text, 'streak', {
+                    durationMs: 1400
+                });
+                shakeBoard(streak >= 4 ? 'hard' : 'normal');
+            }
+
+            if (streak >= 2) killer._streakAtkBonus = Math.min(3, streak - 1);
+
+            killer._maxKillStreak = Math.max(killer._maxKillStreak || 0, streak);
+        }
+
+        function resetKillStreak(unit) {
+            if (!unit) return;
+            unit._killStreak = 0;
+            unit._streakAtkBonus = 0;
+        }
+
+        function awardAssists(victim, killer) {
+            if (!killer || !victim) return;
+            const assistees = new Set();
+
+            const dmgContrib = victim._damageContributors || {};
+            for (const [unitId, dmg] of Object.entries(dmgContrib)) {
+                if (String(unitId) === String(killer.id)) continue;
+                const ally = state.units.find(u => u.id === Number(unitId) || u.id === unitId);
+                if (ally && !ally.dead && isAllyUnit(ally, killer) && dmg > 0) {
+                    assistees.add(ally);
+                }
+            }
+
+            const debuffContrib = victim._debuffContributors || {};
+            for (const [unitId] of Object.entries(debuffContrib)) {
+                if (String(unitId) === String(killer.id)) continue;
+                const ally = state.units.find(u => u.id === Number(unitId) || u.id === unitId);
+                if (ally && !ally.dead && isAllyUnit(ally, killer)) {
+                    assistees.add(ally);
+                }
+            }
+
+            const buffSources = killer._xpBuffSources || {};
+            for (const [unitId] of Object.entries(buffSources)) {
+                if (String(unitId) === String(killer.id)) continue;
+                const ally = state.units.find(u => u.id === Number(unitId) || u.id === unitId);
+                if (ally && !ally.dead && isAllyUnit(ally, killer)) {
+                    assistees.add(ally);
+                }
+            }
+
+            for (const ally of assistees) {
+                ally._matchAssists = (ally._matchAssists || 0) + 1;
+                ally._trackAssists = (ally._trackAssists || 0) + 1;
+                grantXP(ally, XP_ASSIST, 'assist');
+                ally.gold = (ally.gold || 0) + GOLD_PER_ASSIST;
+            }
+        }
+
+        function checkLastStand(unit) {
+            if (!unit || unit.dead || unit._lastStandTriggered) return;
+            if (unit.hp > 0 && unit.hp <= unit.maxHp * 0.20) {
+                unit._lastStandTriggered = true;
+                unit._lastStandAtkBonus = 3;
+                addLog(`💢 ${unitDisplayName(unit)} enters LAST STAND! (+3 ATK)`);
+                showFloatingTextForUnit(unit, 'LAST STAND!', 'laststd', {
+                    durationMs: 1200
+                });
+
+                shakeBoard('normal');
+                checkAchievement('lastStand', unit);
+            }
+        }
+
+        function processOverkill(killer, target, overkillAmount) {
+            if (!killer || killer.dead || overkillAmount < target.maxHp * 0.5) return;
+            const mpGain = Math.min(6, Math.floor(overkillAmount / 4));
+            if (mpGain > 0 && killer.maxMp > 0) {
+                const actual = Math.min(mpGain, killer.maxMp - killer.mp);
+                if (actual > 0) {
+                    killer.mp = Math.min(killer.maxMp, killer.mp + actual);
+                    showFloatingTextForUnit(killer, `+${actual} MP`, 'mp');
+                }
+            }
+            addLog(`💥 OVERKILL! ${unitDisplayName(killer)} obliterates ${unitDisplayName(target)}!`);
+            showFloatingTextForUnit(target, 'OVERKILL!', 'overkill', {
+                durationMs: 1200
+            });
+            shakeBoard('hard');
+            checkAchievement('overkill', killer);
+        }
+
+        const ACHIEVEMENT_DEFS = {
+            firstBlood: {
+                icon: '🩸',
+                name: 'First Blood',
+                desc: 'Get the first kill in a match'
+            },
+            doubleKill: {
+                icon: '⚔️',
+                name: 'Double Kill',
+                desc: 'Get 2 kills in the same turn with one unit'
+            },
+            tripleKill: {
+                icon: '🔥',
+                name: 'Triple Kill',
+                desc: 'Get 3 kills in the same turn with one unit'
+            },
+            rampage: {
+                icon: '💀',
+                name: 'Rampage',
+                desc: 'Get 4+ kills in the same turn with one unit'
+            },
+            overkill: {
+                icon: '💥',
+                name: 'Overkill',
+                desc: 'Deal 50%+ of target max HP as excess damage'
+            },
+            lastStand: {
+                icon: '💢',
+                name: 'Last Stand',
+                desc: 'Trigger Last Stand (drop below 20% HP)'
+            },
+            ace: {
+                icon: '🏆',
+                name: 'Ace',
+                desc: 'Win a match by elimination'
+            },
+            untouchable: {
+                icon: '🛡',
+                name: 'Untouchable',
+                desc: 'Win with a unit that took 0 damage'
+            },
+            critMaster: {
+                icon: '⚡',
+                name: 'Crit Master',
+                desc: 'Land 3+ critical hits in one match'
+            },
+            comboKing: {
+                icon: '🤝',
+                name: 'Combo King',
+                desc: 'Execute 3+ combo attacks in one match'
+            },
+            weatherSurvivor: {
+                icon: '🌪',
+                name: 'Storm Survivor',
+                desc: 'Win a match with 2+ active weather events'
+            },
+            perfectVictory: {
+                icon: '✨',
+                name: 'Perfect Victory',
+                desc: 'Win without losing any units'
+            },
+            winStreak3: {
+                icon: '🔥',
+                name: 'Hot Streak',
+                desc: 'Win 3 matches in a row'
+            },
+            winStreak5: {
+                icon: '🏅',
+                name: 'Unstoppable',
+                desc: 'Win 5 matches in a row'
+            }
+        };
+        window.ACHIEVEMENT_DEFS = ACHIEVEMENT_DEFS;
+
+        function loadAchievements() {
+            if (window.ProfileSystem) return window.ProfileSystem.loadAchievements();
+            try {
+                const raw = localStorage.getItem('entropy-wars-achievements-v1');
+                return raw ? JSON.parse(raw) : {};
+            } catch {
+                return {};
+            }
+        }
+
+        function saveAchievements(achievements) {
+            if (window.ProfileSystem) { window.ProfileSystem.saveAchievements(achievements); return; }
+            try {
+                localStorage.setItem('entropy-wars-achievements-v1', JSON.stringify(achievements));
+            } catch {}
+        }
+
+        function checkAchievement(id, unit) {
+            if (!ACHIEVEMENT_DEFS[id]) return;
+            const achievements = loadAchievements();
+            if (achievements[id]) return;
+            achievements[id] = {
+                unlockedAt: new Date().toISOString(),
+                unit: unit ? unitDisplayName(unit) : null
+            };
+            saveAchievements(achievements);
+
+            showAchievementToast(id);
+
+            state._matchAchievements = state._matchAchievements || [];
+            state._matchAchievements.push(id);
+        }
+
+        function showAchievementToast(id) {
+
+            if (_skipVisuals()) return;
+            const def = ACHIEVEMENT_DEFS[id];
+            if (!def) return;
+            const toast = document.createElement('div');
+            toast.className = 'achieve-toast';
+            toast.innerHTML = `<div class="achieve-toast-icon">${def.icon}</div><div><div class="achieve-toast-text">Achievement Unlocked!</div><div class="achieve-toast-sub">${def.name} — ${def.desc}</div></div>`;
+            (document.getElementById("game-viewport") || document.body).appendChild(toast);
+            window.setTimeout(() => toast.remove(), 4000);
+        }
+
+        function loadCareerStats() {
+            if (window.ProfileSystem) return window.ProfileSystem.loadCareerStats();
+            try {
+                const raw = localStorage.getItem('entropy-wars-career-v1');
+                const defaults = {
+                    matchesPlayed: 0,
+                    wins: 0,
+                    losses: 0,
+                    totalKills: 0,
+                    totalDamage: 0,
+                    totalHealing: 0,
+                    totalCrits: 0,
+                    totalDodges: 0,
+                    totalCounters: 0,
+                    currentWinStreak: 0,
+                    bestWinStreak: 0,
+                    classCounts: {},
+                    raceCounts: {},
+                    elo: 1000,
+                    peakElo: 1000,
+                    eloHistory: []
+                };
+                if (!raw) return defaults;
+                const parsed = JSON.parse(raw);
+                if (parsed.elo === undefined) parsed.elo = 1000;
+                if (parsed.peakElo === undefined) parsed.peakElo = parsed.elo;
+                if (!parsed.eloHistory) parsed.eloHistory = [];
+                return parsed;
+            } catch {
+                return {
+                    matchesPlayed: 0, wins: 0, losses: 0, totalKills: 0,
+                    totalDamage: 0, totalHealing: 0, totalCrits: 0,
+                    totalDodges: 0, totalCounters: 0, currentWinStreak: 0,
+                    bestWinStreak: 0, classCounts: {}, raceCounts: {},
+                    elo: 1000, peakElo: 1000, eloHistory: []
+                };
+            }
+        }
+
+        function saveCareerStats(stats) {
+            if (window.ProfileSystem) { window.ProfileSystem.saveCareerStats(stats); return; }
+            try {
+                localStorage.setItem('entropy-wars-career-v1', JSON.stringify(stats));
+            } catch {}
+        }
+
+        function getEloRankInfo(elo) {
+            if (elo >= 2000) return { icon: '👑', name: 'Grandmaster', color: '#ffd700' };
+            if (elo >= 1700) return { icon: '💎', name: 'Diamond', color: '#b9f2ff' };
+            if (elo >= 1400) return { icon: '🥇', name: 'Gold', color: '#ffd700' };
+            if (elo >= 1200) return { icon: '🥈', name: 'Silver', color: '#c0c0c0' };
+            if (elo >= 1000) return { icon: '🥉', name: 'Bronze', color: '#cd7f32' };
+            return { icon: '⚙️', name: 'Iron', color: '#888' };
+        }
+
+        function calculateEloChange(playerElo, opponentElo, playerWon) {
+            const stats = loadCareerStats();
+            const gamesPlayed = stats.matchesPlayed || 0;
+
+            const K = gamesPlayed < 10 ? 40 : gamesPlayed < 30 ? 32 : 24;
+
+            const expected = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
+            const actual = playerWon ? 1 : 0;
+            return Math.round(K * (actual - expected));
+        }
+
+        function getBotElo() {
+            const stats = loadCareerStats();
+            const playerElo = stats.elo || 1000;
+
+            return Math.max(800, Math.min(2000, playerElo - 50 + Math.round((Math.random() - 0.5) * 60)));
+        }
+
+        let _lastEloDelta = 0;
+        let _lastEloAfter = 1000;
+
+        function updateCareerStatsAfterMatch() {
+
+            if (state.winner === 0 || state.winner === null) return;
+            const stats = loadCareerStats();
+            stats.matchesPlayed += 1;
+            const viewer = getViewerPlayer();
+            const playerWon = state.winner === viewer;
+            if (playerWon) {
+                stats.wins += 1;
+                stats.currentWinStreak += 1;
+                stats.bestWinStreak = Math.max(stats.bestWinStreak, stats.currentWinStreak);
+                if (stats.currentWinStreak >= 3) checkAchievement('winStreak3', null);
+                if (stats.currentWinStreak >= 5) checkAchievement('winStreak5', null);
+            } else {
+                stats.losses += 1;
+                stats.currentWinStreak = 0;
+            }
+
+            for (const u of state.units.filter(u => u.player === viewer)) {
+                stats.totalKills += u._matchKills || 0;
+                stats.totalDamage += u._trackDmgDealt || 0;
+                stats.totalHealing += u._trackHealDone || 0;
+                stats.totalCrits += u._matchCrits || 0;
+                stats.totalDodges += u._matchDodges || 0;
+                stats.totalCounters += u._matchCounters || 0;
+                stats.classCounts[u.cls] = (stats.classCounts[u.cls] || 0) + 1;
+                stats.raceCounts[u.race] = (stats.raceCounts[u.race] || 0) + 1;
+            }
+
+            _lastEloDelta = 0;
+            _lastEloAfter = stats.elo || 1000;
+            if (state.isRankedMatch) {
+                const opponentElo = state._botElo || getBotElo();
+                const delta = calculateEloChange(stats.elo, opponentElo, playerWon);
+                _lastEloDelta = delta;
+                stats.elo = Math.max(0, (stats.elo || 1000) + delta);
+                _lastEloAfter = stats.elo;
+                stats.peakElo = Math.max(stats.peakElo || 0, stats.elo);
+
+                if (!stats.eloHistory) stats.eloHistory = [];
+                stats.eloHistory.push({ elo: stats.elo, match: stats.matchesPlayed, delta });
+                if (stats.eloHistory.length > 50) stats.eloHistory.shift();
+            }
+
+            saveCareerStats(stats);
+
+            if (window.ProfileSystem && typeof window._buildProfileMatchSummary === 'function') {
+                try {
+                    const viewer = getViewerPlayer();
+                    const viewerUnits = state.units.filter(u => u.player === viewer);
+                    const matchSummary = window._buildProfileMatchSummary();
+                    window.ProfileSystem.updatePostMatch(viewerUnits, playerWon, matchSummary);
+                } catch (e) { console.error('Profile post-match update failed:', e); }
+            }
+        }
+
+        function getStreakAtkBonus(unit) {
+            return (unit?._streakAtkBonus || 0) + (unit?._lastStandAtkBonus || 0);
+        }
+
+        function resolveProjectileClass(kind, spellType, overrideClass, casterUnit, spell) {
+
+            /* Unit animation override: race-specific projectile class (quarterback→football, etc.) */
+            const _raceProj = _getProjectileOverride(casterUnit, spell);
+            if (_raceProj) return _raceProj;
+
+            if (overrideClass) return overrideClass;
+            if (kind === 'heal' || kind === 'proj-heal') return 'proj-heal';
+            if (kind === 'shield' || kind === 'proj-shield') return 'proj-shield';
+            if (kind === 'proj-debuff') return 'proj-debuff';
+            if (kind === 'proj-bomb' || kind === 'bomb') return 'proj-bomb';
+            if (kind === 'proj-ricochet') return 'proj-ricochet';
+            if (kind === 'proj-lightning') return 'proj-lightning';
+            if (kind === 'proj-pull-hook') return 'proj-pull-hook';
+            if (kind && kind.startsWith('proj-bane-')) return kind;
+            if (spellType && ['divine', 'unholy', 'tech', 'alien', 'human', 'anomaly'].includes(spellType)) {
+                return 'proj-' + spellType;
+            }
+            return kind || 'attack';
+        }
+
+        function playProjectile(fromX, fromY, toX, toY, kind = 'attack', durationMs = 520, spellType = null, overrideClass = null, spellMeta = null) {
+            if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
+
+            if (_skipVisuals()) return;
+
+            if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
+                const viewer = getViewerPlayer();
+                const targetUnit = state.units.find(u => !u.dead && u.x === toX && u.y === toY && u.player === viewer);
+                if (!targetUnit) return;
+
+                const dx = fromX - toX, dy = fromY - toY;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const clampDist = 1.5;
+                fromX = toX + (dx / dist) * clampDist;
+                fromY = toY + (dy / dist) * clampDist;
+            }
+            const flyMs = Math.max(40, Number(durationMs) || 320);
+            const _projCaster = unitAt(Math.round(fromX), Math.round(fromY));
+            const projClass = resolveProjectileClass(kind, spellType, overrideClass, _projCaster, spellMeta);
+
+            /* ── Bolt system: bright 3D energy projectile from caster→target ──
+               Replaces both the DOM sprite projectile AND the particle trail.
+               The bolt handles its own travel animation + fires impact VFX on arrival.
+               Checks per-spell bolt mapping first, then per-unit bolt override.
+               SKIP bolt entirely if unit has a projectileClass override (e.g. quarterback
+               wants the actual football sprite rendered via DOM, not particle bolts). */
+            const _raceProj = _getProjectileOverride(_projCaster, spellMeta);
+            const _hasSpellBolt = !_raceProj && typeof window !== 'undefined' && window.ThreeVFXEffects
+                && window.ThreeVFXEffects.hasMapping && window.ThreeVFXEffects.hasMapping(spellMeta?.id, 'bolt');
+            const _unitBoltPreset = (!_raceProj && _projCaster) ? _getBoltOverride(_projCaster, spellMeta) : null;
+            const _useBolt = _hasSpellBolt || _unitBoltPreset;
+            if (_useBolt) {
+                const _boltFromU = unitAt(Math.round(fromX), Math.round(fromY));
+                const _boltToU = unitAt(Math.round(toX), Math.round(toY));
+                if (_hasSpellBolt) {
+                    // Per-spell bolt: standard path
+                    window.ThreeVFXEffects.fire('bolt', spellMeta.id, {
+                        fromX: fromX, fromY: fromY, toX: toX, toY: toY,
+                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs
+                    });
+                } else {
+                    // Per-unit bolt override: fire directly with the preset
+                    window.ThreeVFXEffects.fireBoltDirect(_unitBoltPreset, {
+                        fromX: fromX, fromY: fromY, toX: toX, toY: toY,
+                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs
+                    });
+                }
+                return;
+            }
+
+            const _threeActive = window.ThreeAnim && window.ThreeAnim.isActive();
+            if (_threeActive) {
+
+                const _fromUnit3 = unitAt(Math.round(fromX), Math.round(fromY));
+                const _toUnit3 = unitAt(Math.round(toX), Math.round(toY));
+                const fromZLevel = _fromUnit3 ? (_fromUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_fromUnit3.x, _fromUnit3.y) : 0))
+                                               : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
+                const toZLevel = _toUnit3 ? (_toUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_toUnit3.x, _toUnit3.y) : 0))
+                                           : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
+                window.ThreeAnim.projectile(fromX, fromY, toX, toY, projClass, flyMs, fromZLevel, toZLevel);
+            } else {
+
+                const from = tilePixelCenter(fromX, fromY);
+                const to = tilePixelCenter(toX, toY);
+                const el = document.createElement('div');
+                el.className = `projectile ${projClass}`;
+                el.style.left = `${from.left}px`;
+                el.style.top = `${from.top}px`;
+
+                const zBoost = dioramaUnitZBoost();
+                const _fromUnit = unitAt(Math.round(fromX), Math.round(fromY));
+                const _toUnit = unitAt(Math.round(toX), Math.round(toY));
+                const fromZ = (_fromUnit ? unitElevationZ(_fromUnit) : tileElevationZ(Math.round(fromX), Math.round(fromY))) + zBoost;
+                const toZ = (_toUnit ? unitElevationZ(_toUnit) : tileElevationZ(Math.round(toX), Math.round(toY))) + zBoost;
+                el.style.setProperty('--dx', `${to.left - from.left}px`);
+                el.style.setProperty('--dy', `${to.top - from.top}px`);
+                el.style.setProperty('--sz', `${fromZ}px`);
+                el.style.setProperty('--dz', `${toZ - fromZ}px`);
+
+                const _pdx = to.left - from.left, _pdy = to.top - from.top;
+                el.style.setProperty('--proj-rot', `${Math.atan2(_pdx, -_pdy) * (180 / Math.PI)}deg`);
+                el.style.setProperty('--projectile-ms', `${flyMs}ms`);
+                projectileLayerEl.appendChild(el);
+                window.setTimeout(() => el.remove(), flyMs + 40);
+            }
+
+            const _spIdRoute = spellMeta?.id || overrideClass || null;
+            const _useVfx3dImpact = typeof window !== 'undefined' && window.ThreeVFXEffects
+                && window.ThreeVFXEffects.hasMapping(spellMeta?.id, 'impact');
+            if (_useVfx3dImpact) {
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    window.ThreeVFXEffects.fire('impact', spellMeta.id, { tx: toX, ty: toY });
+                }, flyMs);
+            } else if (kind !== 'attack' && !(kind && kind.indexOf('proj-bane') === 0)) {
+
+                const _vfxFromU = unitAt(Math.round(fromX), Math.round(fromY));
+                const _vfxToU = unitAt(Math.round(toX), Math.round(toY));
+
+                const _spId = _spIdRoute;
+                const _spName = spellMeta?.name || kind || null;
+                _vfxProjectile(fromX, fromY, toX, toY, spellType, _spId, _spName, _vfxFromU?.z, _vfxToU?.z, flyMs);
+            }
+        }
+
+        function playProjectileToUnit(sourceUnit, target, kind = 'attack', durationMs = 520, spellType = null, overrideClass = null, spellMeta = null) {
+            if (!sourceUnit || !target) return;
+            playProjectile(sourceUnit.x, sourceUnit.y, target.x, target.y, kind, durationMs, spellType, overrideClass, spellMeta);
+        }
+
+        function playTetherEffect(fromX, fromY, toX, toY, tetherKind, durationMs, opts = {}) {
+            if (state.phase !== 'battle' || state.animationsDisabled) return null;
+            if (_skipVisuals()) return null;
+
+            const shootMs = opts.shootMs || Math.min(durationMs || 320, 300);
+
+            const _threeActive = window.ThreeAnim && window.ThreeAnim.isActive();
+            if (_threeActive) {
+                const _fromUnit3 = unitAt(Math.round(fromX), Math.round(fromY));
+                const _toUnit3 = unitAt(Math.round(toX), Math.round(toY));
+                const fromZLevel = _fromUnit3 ? (_fromUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_fromUnit3.x, _fromUnit3.y) : 0))
+                                                : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
+                const toZLevel = _toUnit3 ? (_toUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_toUnit3.x, _toUnit3.y) : 0))
+                                            : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
+                const threeHandle = window.ThreeAnim.tether(fromX, fromY, toX, toY, tetherKind, shootMs, fromZLevel, toZLevel);
+                if (threeHandle) {
+
+                    const handle = {
+                        el: null,
+                        retract(newToX, newToY, retractMs) {
+                            threeHandle.retract(newToX, newToY, retractMs);
+                        },
+                        remove(fadeMs) {
+                            threeHandle.remove(fadeMs || 200);
+                        }
+                    };
+                    if (durationMs && !opts.persistent) {
+                        window.setTimeout(() => handle.remove(180), durationMs);
+                    }
+                    return handle;
+                }
+                return null;
+            }
+
+            if (!projectileLayerEl) return null;
+
+            const from = tilePixelCenter(fromX, fromY);
+            const to = tilePixelCenter(toX, toY);
+
+            const zBoost = dioramaUnitZBoost();
+            const _fromUnit = unitAt(Math.round(fromX), Math.round(fromY));
+            const _toUnit = unitAt(Math.round(toX), Math.round(toY));
+            const fromZ = (_fromUnit ? unitElevationZ(_fromUnit) : tileElevationZ(Math.round(fromX), Math.round(fromY))) + zBoost;
+            const toZ = (_toUnit ? unitElevationZ(_toUnit) : tileElevationZ(Math.round(toX), Math.round(toY))) + zBoost;
+
+            const pdx = to.left - from.left;
+            const pdy = to.top - from.top;
+            const dist = Math.sqrt(pdx * pdx + pdy * pdy);
+            const angle = Math.atan2(pdy, pdx) * (180 / Math.PI);
+
+            const dz = toZ - fromZ;
+
+            const el = document.createElement('div');
+            el.className = `tether tether-${tetherKind}`;
+            el.style.left = `${from.left}px`;
+            el.style.top = `${from.top}px`;
+            el.style.width = `${dist}px`;
+            el.style.transformOrigin = 'left center';
+            const zTilt = dist > 0 ? Math.atan2(dz, dist) * (180 / Math.PI) : 0;
+            el.style.transform = `translate(0, -50%) translateZ(${fromZ}px) rotateZ(${angle}deg) rotateY(${-zTilt}deg)`;
+
+            const stepPx = 32;
+            const numSteps = Math.max(1, Math.ceil(dist / stepPx));
+
+            el.style.width = '0px';
+            el.animate([
+                { width: '0px' },
+                { width: `${dist}px` }
+            ], {
+                duration: shootMs,
+                easing: `steps(${numSteps}, end)`,
+                fill: 'forwards'
+            });
+
+            projectileLayerEl.appendChild(el);
+
+            const handle = {
+                el,
+                retract(newToX, newToY, retractMs) {
+                    const revHandle = playTetherEffect(newToX, newToY, fromX, fromY, tetherKind, 0, { persistent: true, shootMs: retractMs });
+                    window.setTimeout(() => {
+                        el.remove();
+                        if (revHandle) revHandle.remove(150);
+                    }, retractMs + 20);
+                },
+                remove(fadeMs) {
+                    const ms = fadeMs || 200;
+                    el.style.transition = `opacity ${ms}ms ease-out`;
+                    el.style.opacity = '0';
+                    window.setTimeout(() => el.remove(), ms + 20);
+                }
+            };
+
+            if (durationMs && !opts.persistent) {
+                window.setTimeout(() => handle.remove(180), durationMs);
+            }
+
+            return handle;
+        }
+
+        function _tetherKindForSpell(spell) {
+            if (!spell) return 'rope';
+            const st = spell.spellType;
+            if (st === 'anomaly' || st === 'unholy') return 'vine';
+            return 'rope';
+        }
+
+        function playBeamEffect(fromX, fromY, dx, dy, range, spellType, durationMs) {
+            if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
+            if (_skipVisuals()) return;
+
+            if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
+                const viewer = getViewerPlayer();
+                let beamHitsViewer = false;
+                for (let i = 0; i <= (range || 4); i++) {
+                    const bx = fromX + dx * i, by = fromY + dy * i;
+                    if (state.units.some(u => !u.dead && u.player === viewer && u.x === bx && u.y === by)) {
+                        beamHitsViewer = true; break;
+                    }
+                }
+                if (!beamHitsViewer) return;
+            }
+            const typeCls = spellType ? 'beam-' + spellType : '';
+            const isDiagonal = dx !== 0 && dy !== 0;
+            var angleDeg = 0;
+            if (dx === 1 && dy === 0) angleDeg = 0;
+            else if (dx === -1 && dy === 0) angleDeg = 180;
+            else if (dx === 0 && dy === 1) angleDeg = 90;
+            else if (dx === 0 && dy === -1) angleDeg = -90;
+            else if (dx === 1 && dy === 1) angleDeg = 0;
+            else if (dx === -1 && dy === -1) angleDeg = 180;
+            else if (dx === 1 && dy === -1) angleDeg = -90;
+            else if (dx === -1 && dy === 1) angleDeg = 90;
+            const flyMs = Math.max(200, Number(durationMs) || 600);
+            const tileSize = CONFIG.tileSize || 128;
+
+            const segSize = isDiagonal ? 64 : 32;
+            const segsPerTile = Math.round(tileSize / segSize);
+            const totalSegs = range * segsPerTile + 1;
+            for (var i = 0; i <= range; i++) {
+                const tx = fromX + dx * i;
+                const ty = fromY + dy * i;
+                if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) break;
+                const pos = tilePixelCenter(tx, ty);
+                const segZ = tileElevationZ(tx, ty) + dioramaUnitZBoost();
+                for (var s = 0; s < segsPerTile; s++) {
+
+                    if (i === range && s > 0) break;
+                    const segIdx = i * segsPerTile + s;
+                    const offset = (s - (segsPerTile - 1) / 2) * segSize;
+                    const seg = document.createElement('div');
+                    if (isDiagonal) {
+                        seg.className = 'beam-segment beam-diagonal ' + typeCls;
+                    } else {
+                        seg.className = 'beam-segment ' + (i === 0 && s === 0 ? 'beam-start' : 'beam-mid') + ' ' + typeCls;
+                    }
+
+                    const px = pos.left + (dx !== 0 ? offset * dx : 0);
+                    const py = pos.top + (dy !== 0 ? offset * dy : 0);
+                    seg.style.left = px + 'px';
+                    seg.style.top = py + 'px';
+                    seg.style.transform = 'translate(-50%, -50%) rotate(' + angleDeg + 'deg)' + (segZ > 0 ? ' translateZ(' + segZ + 'px)' : '');
+                    const delayMs = Math.floor((segIdx / Math.max(1, totalSegs)) * flyMs * 0.5);
+                    seg.style.animation = 'beamFlash ' + (flyMs - delayMs) + 'ms ease-out ' + delayMs + 'ms forwards';
+                    seg.style.opacity = '0';
+                    projectileLayerEl.appendChild(seg);
+                    window.setTimeout((function(el) { return function() { el.remove(); }; })(seg), flyMs + 80);
+                }
+            }
+
+            if (!_skipVisuals()) {
+                const beamToX = fromX + dx * range, beamToY = fromY + dy * range;
+                const _vfxBeamFromU = unitAt(Math.round(fromX), Math.round(fromY));
+                const _vfxBeamToU = unitAt(Math.round(beamToX), Math.round(beamToY));
+                _vfxBeam(fromX, fromY, beamToX, beamToY, spellType, null, null, _vfxBeamFromU?.z, _vfxBeamToU?.z);
+            }
+        }
+
+        function playAoeRing(cx, cy, radius, spellType, durationMs) {
+            if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
+            if (_skipVisuals()) return;
+
+            if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
+                const viewer = getViewerPlayer();
+                const viewerHit = state.units.some(u => !u.dead && u.player === viewer && (
+                    Math.abs(u.x - cx) + Math.abs(u.y - cy) <= radius ||
+                    (u.x === cx && Math.abs(u.y - cy) <= radius) ||
+                    (u.y === cy && Math.abs(u.x - cx) <= radius)
+                ));
+                if (!viewerHit) return;
+            }
+            const typeCls = spellType ? 'ring-' + spellType : '';
+            const pos = tilePixelCenter(cx, cy);
+            const ring = document.createElement('div');
+            ring.className = 'aoe-ring ' + typeCls;
+            ring.style.left = pos.left + 'px';
+            ring.style.top = pos.top + 'px';
+
+            const ringZ = tileElevationZ(cx, cy);
+            if (ringZ > 0) ring.style.transform = `translateZ(${ringZ}px)`;
+            const tileSize = state.tileSize || 128;
+            const targetScale = Math.max(2, (radius * 2 + 1) * tileSize / 32);
+            ring.style.setProperty('--ring-scale', targetScale);
+            const ms = durationMs || 550;
+            ring.style.animationDuration = ms + 'ms';
+            projectileLayerEl.appendChild(ring);
+            window.setTimeout(function() { ring.remove(); }, ms + 40);
+
+            if (!_skipVisuals()) {
+                const _vfxAoeU = unitAt(Math.round(cx), Math.round(cy));
+                _vfxAoe(cx, cy, spellType, null, null, _vfxAoeU?.z);
+            }
+        }
+
+        function _spawnSpiderwebFade(cx, cy, radius) {
+            if (!window.ThreeVFXEffects) return;
+            const area = getSquareArea(cx, cy, radius);
+            for (const t of area) {
+                window.ThreeVFXEffects.fire('webOverlay', 'raceWebSnare', { tx: t.x, ty: t.y });
+            }
+        }
+
+        const CINEMATIC_TERRAIN_BG = {
+            grass: {
+                skyTop: '#1a1820',
+                skyBot: '#2a2830',
+                ground: '#2a3020',
+                groundAlt: '#222818',
+                horizon: '#3a3828'
+            },
+            dirt: {
+                skyTop: '#1e1a18',
+                skyBot: '#2e2820',
+                ground: '#3a3028',
+                groundAlt: '#302618',
+                horizon: '#484030'
+            },
+            water: {
+                skyTop: '#141820',
+                skyBot: '#1e2830',
+                ground: '#183048',
+                groundAlt: '#102038',
+                horizon: '#283848'
+            },
+            deep_water: {
+                skyTop: '#0a1018',
+                skyBot: '#121828',
+                ground: '#0e1828',
+                groundAlt: '#08101e',
+                horizon: '#182030'
+            },
+            desert: {
+                skyTop: '#201818',
+                skyBot: '#302820',
+                ground: '#483820',
+                groundAlt: '#382810',
+                horizon: '#584828'
+            },
+            mountain: {
+                skyTop: '#181820',
+                skyBot: '#282830',
+                ground: '#303038',
+                groundAlt: '#282830',
+                horizon: '#383840'
+            },
+            mountain_top: {
+                skyTop: '#202028',
+                skyBot: '#303040',
+                ground: '#383840',
+                groundAlt: '#303038',
+                horizon: '#404048'
+            },
+            ice: {
+                skyTop: '#1a2028',
+                skyBot: '#283040',
+                ground: '#384050',
+                groundAlt: '#303848',
+                horizon: '#404858'
+            },
+            lava: {
+                skyTop: '#180808',
+                skyBot: '#281010',
+                ground: '#481808',
+                groundAlt: '#381008',
+                horizon: '#582010'
+            },
+            cave_floor: {
+                skyTop: '#080404',
+                skyBot: '#100808',
+                ground: '#1a0e0a',
+                groundAlt: '#120a08',
+                horizon: '#221410'
+            },
+            cave_wall: {
+                skyTop: '#060304',
+                skyBot: '#0c0608',
+                ground: '#100a08',
+                groundAlt: '#0c0808',
+                horizon: '#180e0c'
+            },
+            cave_entrance: {
+                skyTop: '#080404',
+                skyBot: '#100808',
+                ground: '#1a0e0a',
+                groundAlt: '#120a08',
+                horizon: '#221410'
+            },
+            cloud: {
+                skyTop: '#202838',
+                skyBot: '#303848',
+                ground: '#404858',
+                groundAlt: '#384050',
+                horizon: '#485060'
+            },
+            cloud_thick: {
+                skyTop: '#181828',
+                skyBot: '#282838',
+                ground: '#383848',
+                groundAlt: '#303040',
+                horizon: '#404050'
+            },
+            sky_open: {
+                skyTop: '#182030',
+                skyBot: '#283848',
+                ground: '#384858',
+                groundAlt: '#304050',
+                horizon: '#485868'
+            },
+            tree_top: {
+                skyTop: '#1a1820',
+                skyBot: '#2a2830',
+                ground: '#1a2810',
+                groundAlt: '#122008',
+                horizon: '#283018'
+            },
+        };
+
+        function _nightShift(hex) {
+            const r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+            return '#' + [r, g, b].map(c => Math.round(c * 0.35).toString(16).padStart(2, '0')).join('');
+        }
+
+        function _getCinematicBg(terrain) {
+            const bg = CINEMATIC_TERRAIN_BG[terrain] || CINEMATIC_TERRAIN_BG.grass;
+            const isNight = document.body.dataset.cycle === 'night';
+            if (!isNight) return bg;
+            return {
+                skyTop: _nightShift(bg.skyTop),
+                skyBot: _nightShift(bg.skyBot),
+                ground: _nightShift(bg.ground),
+                groundAlt: _nightShift(bg.groundAlt),
+                horizon: _nightShift(bg.horizon)
+            };
+        }
+
+        function _cinProjectileClass(unit) {
+            const wep = getUnitDominantWeapon(unit);
+            if (!wep) return '';
+            if (wep === 'sword' || wep === 'knife' || wep === 'scythe') return 'melee';
+            if (wep === 'wand' || wep === 'arcane_staff' || wep === 'healing_staff' || wep === 'tarot') return 'magic';
+            return '';
+        }
+
+        function _buildGroundSvg(bg) {
+            const s = 24,
+                cols = 48,
+                rows = 20;
+            let rects = '';
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const color = ((r + c) % 3 === 0) ? bg.groundAlt : ((r + c) % 5 === 0 ? bg.horizon : bg.ground);
+                    rects += `<rect x="${c*s}" y="${r*s}" width="${s}" height="${s}" fill="${color}"/>`;
+                }
+            }
+            return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${cols*s}" height="${rows*s}">${rects}</svg>`)}`;
+        }
+
+        function _buildSpeedLines(count) {
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                const angle = -60 + (120 * i / (count - 1));
+                const delay = Math.random() * 80;
+                html += `<div class="cin-speedline" style="transform:rotate(${angle}deg);animation-delay:${delay}ms"></div>`;
+            }
+            return html;
+        }
+
+        let _cutsceneEl = null;
+
+        function playCutscene(script, onDone) {
+            if (!script || !script.lines || !script.lines.length) { if (onDone) onDone(); return; }
+            if (_skipVisuals()) { if (onDone) onDone(); return; }
+
+            if (_cutsceneEl) { _cutsceneEl.remove(); _cutsceneEl = null; }
+
+            const viewport = document.getElementById('game-viewport') || document.body;
+            const lines = script.lines;
+            const speakers = script.speakers || {};
+            let lineIdx = 0;
+            let typeTimer = null;
+            let typeDone = false;
+            let fullText = '';
+            let skipHoldStart = 0;
+            let skipRaf = null;
+
+            let _slotLeft = null;
+            let _slotRight = null;
+            let _prevSpeakerKey = null;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'cs-overlay';
+            overlay.innerHTML = `
+                <div class="cs-bg-board"></div>
+                <div class="cs-vignette"></div>
+                <div class="cs-scanlines"></div>
+                <div class="cs-particles"></div>
+                <div class="cs-shake-wrap">
+                    <div class="cs-speakers"></div>
+                    <div class="cs-location-card" style="display:none">
+                        <div class="cs-loc-name">${escapeHtml(script.location || '')}</div>
+                        <div class="cs-loc-line"></div>
+                        <div class="cs-loc-sub">${escapeHtml(script.subtitle || '')}</div>
+                    </div>
+                    <div class="cs-battle-slam" style="display:none">
+                        <div class="cs-battle-text">Battle Start</div>
+                        <div class="cs-battle-sub">Prepare your forces</div>
+                    </div>
+                    <div class="cs-speed-lines" style="display:none"></div>
+                </div>
+                <div class="cs-dialogue" style="display:none">
+                    <div class="cs-dlg-speaker"></div>
+                    <div class="cs-dlg-text"></div>
+                    <div class="cs-dlg-hint">tap to continue ▸</div>
+                </div>
+                <div class="cs-bar cs-bar-top"></div>
+                <div class="cs-bar cs-bar-bot"></div>
+                <div class="cs-skip-btn">
+                    <div class="cs-skip-fill"></div>
+                    <span>Hold to Skip</span>
+                </div>
+                <div class="cs-flash" style="display:none"></div>
+            `;
+            viewport.appendChild(overlay);
+            _cutsceneEl = overlay;
+
+            const speakersEl = overlay.querySelector('.cs-speakers');
+            const locCard = overlay.querySelector('.cs-location-card');
+            const dlgBox = overlay.querySelector('.cs-dialogue');
+            const dlgSpeaker = overlay.querySelector('.cs-dlg-speaker');
+            const dlgText = overlay.querySelector('.cs-dlg-text');
+            const dlgHint = overlay.querySelector('.cs-dlg-hint');
+            const shakeWrap = overlay.querySelector('.cs-shake-wrap');
+            const battleSlam = overlay.querySelector('.cs-battle-slam');
+            const speedLines = overlay.querySelector('.cs-speed-lines');
+            const flashEl = overlay.querySelector('.cs-flash');
+            const skipBtn = overlay.querySelector('.cs-skip-btn');
+            const skipFill = overlay.querySelector('.cs-skip-fill');
+            const particlesEl = overlay.querySelector('.cs-particles');
+
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'cs-particle';
+                const sz = 1 + Math.random() * 3;
+                const clr = Math.random() > 0.4 ? '#ff4433' : '#ffaa33';
+                p.style.cssText = `left:${Math.random()*100}%;bottom:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:${clr};box-shadow:0 0 ${sz*2}px ${clr};animation-duration:${3+Math.random()*5}s;animation-delay:${Math.random()*4}s;`;
+                particlesEl.appendChild(p);
+            }
+
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                setTimeout(() => processLine(), 800);
+            });
+
+            function startTypewriter(text) {
+                fullText = text;
+                typeDone = false;
+                dlgHint.style.opacity = '0';
+                let idx = 0;
+                dlgText.textContent = '';
+                if (typeTimer) clearInterval(typeTimer);
+                typeTimer = setInterval(() => {
+                    idx++;
+                    if (idx >= text.length) {
+                        dlgText.textContent = text;
+                        typeDone = true;
+                        dlgHint.style.opacity = '1';
+                        clearInterval(typeTimer);
+                        typeTimer = null;
+                    } else {
+                        dlgText.textContent = text.slice(0, idx);
+                    }
+                }, 28);
+            }
+
+            function completeTypewriter() {
+                if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+                dlgText.textContent = fullText;
+                typeDone = true;
+                dlgHint.style.opacity = '1';
+            }
+
+            function _createSpeakerEl(key, side) {
+                const sp = speakers[key];
+                if (!sp) return null;
+                const spriteUrl = sp.sprite || getBattleMapSpriteUrl(sp.unit || {});
+                const el = document.createElement('div');
+                el.className = `cs-unit cs-unit-${side}`;
+                el.dataset.speaker = key;
+                el.style.backgroundImage = `url('${spriteUrl}')`;
+                speakersEl.appendChild(el);
+                requestAnimationFrame(() => el.classList.add('visible'));
+                return { key, el, side };
+            }
+
+            function _removeSpeakerSlot(slot) {
+                if (!slot) return;
+                slot.el.classList.remove('visible');
+                const el = slot.el;
+                setTimeout(() => el.remove(), 500);
+            }
+
+            function updateVisibleSpeakers(currentKey) {
+                const curr = speakers[currentKey];
+                if (!curr) return;
+                const currSide = curr.side || 'left';
+                const oppSide = currSide === 'left' ? 'right' : 'left';
+
+                const oppKey = (_prevSpeakerKey && _prevSpeakerKey !== currentKey) ? _prevSpeakerKey : null;
+
+                const currSlotRef = currSide === 'left' ? _slotLeft : _slotRight;
+                const oppSlotRef  = currSide === 'left' ? _slotRight : _slotLeft;
+
+                if (currSlotRef && currSlotRef.key === currentKey) {
+
+                } else {
+
+                    if (oppSlotRef && oppSlotRef.key === currentKey) {
+
+                        _removeSpeakerSlot(oppSlotRef);
+                        if (oppSide === 'left') _slotLeft = null; else _slotRight = null;
+                    }
+
+                    if (currSlotRef && currSlotRef.key !== currentKey) {
+                        _removeSpeakerSlot(currSlotRef);
+                    }
+
+                    const newSlot = _createSpeakerEl(currentKey, currSide);
+                    if (currSide === 'left') _slotLeft = newSlot; else _slotRight = newSlot;
+                }
+
+                const updatedOppSlot = oppSide === 'left' ? _slotLeft : _slotRight;
+                if (oppKey) {
+                    if (updatedOppSlot && updatedOppSlot.key === oppKey) {
+
+                    } else {
+
+                        if (updatedOppSlot && updatedOppSlot.key !== oppKey) {
+                            _removeSpeakerSlot(updatedOppSlot);
+                        }
+
+                        const prevSlot = _createSpeakerEl(oppKey, oppSide);
+                        if (oppSide === 'left') _slotLeft = prevSlot; else _slotRight = prevSlot;
+                    }
+                } else {
+
+                    if (updatedOppSlot && updatedOppSlot.key !== currentKey) {
+                        _removeSpeakerSlot(updatedOppSlot);
+                        if (oppSide === 'left') _slotLeft = null; else _slotRight = null;
+                    }
+                }
+
+                _prevSpeakerKey = currentKey;
+            }
+
+            function setSpeaking(key) {
+                speakersEl.querySelectorAll('.cs-unit').forEach(el => {
+                    el.classList.toggle('speaking', el.dataset.speaker === key);
+                });
+
+                const sp = speakers[key];
+                if (sp) {
+
+                    const actualSide = (_slotLeft && _slotLeft.key === key) ? 'left'
+                        : (_slotRight && _slotRight.key === key) ? 'right'
+                        : (sp.side || 'left');
+                    shakeWrap.style.setProperty('--cs-glow-color', sp.factionColor || '#fff');
+                    shakeWrap.style.setProperty('--cs-glow-side', actualSide === 'left' ? '0%' : '100%');
+                }
+            }
+
+            function doShake() {
+                shakeWrap.classList.remove('cs-shaking');
+                void shakeWrap.offsetWidth;
+                shakeWrap.classList.add('cs-shaking');
+                setTimeout(() => shakeWrap.classList.remove('cs-shaking'), 500);
+            }
+
+            function doFlash() {
+                flashEl.style.display = '';
+                flashEl.classList.remove('cs-flash-anim');
+                void flashEl.offsetWidth;
+                flashEl.classList.add('cs-flash-anim');
+                setTimeout(() => { flashEl.style.display = 'none'; }, 400);
+            }
+
+            function processLine() {
+                if (lineIdx >= lines.length) { finish(); return; }
+                const line = lines[lineIdx];
+
+                if (line.direction === 'fade_in') {
+                    setTimeout(() => { lineIdx++; processLine(); }, 1200);
+                    return;
+                }
+
+                if (line.direction === 'location_card') {
+                    locCard.style.display = '';
+                    dlgBox.style.display = 'none';
+                    return;
+                }
+
+                if (line.direction === 'battle_start') {
+                    doBattleStart();
+                    return;
+                }
+
+                if (line.speaker) {
+                    locCard.style.display = 'none';
+                    updateVisibleSpeakers(line.speaker);
+                    setSpeaking(line.speaker);
+
+                    if (line.enterNew) {
+                        doShake();
+                        doFlash();
+                    }
+
+                    const sp = speakers[line.speaker];
+                    dlgBox.style.display = '';
+                    dlgBox.classList.add('visible');
+                    dlgSpeaker.textContent = sp ? sp.name : '';
+                    dlgSpeaker.style.color = sp ? (sp.factionColor || '#fff') : '#fff';
+                    if (sp && sp.faction) {
+                        dlgSpeaker.innerHTML = `${escapeHtml(sp.name)}<span class="cs-dlg-faction">${escapeHtml(sp.faction)} Faction</span>`;
+                        dlgSpeaker.style.color = sp.factionColor || '#fff';
+                    }
+                    startTypewriter(line.text || '');
+                }
+            }
+
+            function doBattleStart() {
+                dlgBox.style.display = 'none';
+                dlgBox.classList.remove('visible');
+                locCard.style.display = 'none';
+                battleSlam.style.display = '';
+                doShake();
+
+                let linesHtml = '';
+                for (let i = 0; i < 20; i++) {
+                    const top = Math.random() * 100;
+                    const w = 30 + Math.random() * 70;
+                    const h = 1 + Math.random() * 2;
+                    const d = Math.random() * 0.6;
+                    const dur = 0.3 + Math.random() * 0.4;
+                    linesHtml += `<div class="cs-speed-line" style="top:${top}%;width:${w}%;height:${h}px;animation-delay:${d}s;animation-duration:${dur}s"></div>`;
+                }
+                speedLines.innerHTML = linesHtml;
+                speedLines.style.display = '';
+
+                flashEl.style.display = '';
+                flashEl.classList.remove('cs-flash-anim');
+                flashEl.className = 'cs-flash cs-battle-flash-anim';
+
+                skipBtn.style.display = 'none';
+
+                setTimeout(() => finish(), 2500);
+            }
+
+            function finish() {
+                if (typeTimer) clearInterval(typeTimer);
+                if (skipRaf) cancelAnimationFrame(skipRaf);
+                overlay.classList.add('fade-out');
+                setTimeout(() => {
+                    overlay.remove();
+                    if (_cutsceneEl === overlay) _cutsceneEl = null;
+                    if (onDone) onDone();
+                }, 400);
+            }
+
+            function startSkipHold(e) {
+                e.stopPropagation();
+                skipHoldStart = Date.now();
+                function tick() {
+                    const pct = Math.min((Date.now() - skipHoldStart) / 1500, 1);
+                    skipFill.style.width = (pct * 100) + '%';
+                    if (pct >= 1) {
+                        doBattleStart();
+                        return;
+                    }
+                    skipRaf = requestAnimationFrame(tick);
+                }
+                skipRaf = requestAnimationFrame(tick);
+            }
+            function endSkipHold() {
+                if (skipRaf) cancelAnimationFrame(skipRaf);
+                skipFill.style.width = '0%';
+            }
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target.closest('.cs-skip-btn')) return;
+                if (!typeDone && typeTimer) {
+                    completeTypewriter();
+                    return;
+                }
+                lineIdx++;
+                processLine();
+            });
+
+            skipBtn.addEventListener('mousedown', startSkipHold);
+            skipBtn.addEventListener('mouseup', endSkipHold);
+            skipBtn.addEventListener('mouseleave', endSkipHold);
+            skipBtn.addEventListener('touchstart', startSkipHold);
+            skipBtn.addEventListener('touchend', endSkipHold);
+        }
+
+        function getCutsceneForCurrentLevel() {
+            if (!state.isCampaign || !state.campaignLevelId) return null;
+            const lvlId = state.campaignLevelId;
+            const lvl = (typeof CAMPAIGN_LEVELS !== 'undefined' && CAMPAIGN_LEVELS[lvlId - 1])
+                ? CAMPAIGN_LEVELS[lvlId - 1] : null;
+            if (!lvl || !lvl.cutsceneScript) return null;
+
+            const script = lvl.cutsceneScript;
+            if (script.speakers) {
+                for (const key in script.speakers) {
+                    const sp = script.speakers[key];
+
+                    if (sp.race && !sp.sprite) {
+                        const raceKey = sp.race.toLowerCase();
+                        sp.sprite = (typeof RACE_SPRITES !== 'undefined' && RACE_SPRITES[raceKey])
+                            ? RACE_SPRITES[raceKey]
+                            : `${_S}/${raceKey}.png`;
+                    }
+                }
+            }
+            return script;
+        }
+
+        let _cinematicEl = null;
+        let _activeCinematic = null;
+
+        function playCinematicAttack(attacker, defender, opts = {}) {
+            if (!attacker || !defender) return null;
+            if (!state.cinematicMode) return null;
+            if (_skipVisuals() || state.cameraDisabled) return null;
+            if (_gamePaused) return null;
+
+            if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
+                return null;
+            }
+
+            const defUnit = defender.cls ? defender : unitAt(defender.x, defender.y);
+            if (!defUnit) return null;
+
+            if (attacker.cls === 'Gunslinger' && defUnit.cls === 'Gunslinger') {
+                playGunslingerDuelStinger();
+            }
+
+            const extraDefenders = [];
+            if (opts.extraTargets && Array.isArray(opts.extraTargets)) {
+                for (const et of opts.extraTargets) {
+                    if (et && et.cls && et.id !== defUnit.id && extraDefenders.length < 3) {
+                        extraDefenders.push(et);
+                    }
+                }
+            }
+
+            const terrain = getTerrainAt(attacker.x, attacker.y);
+            const bg = _getCinematicBg(terrain);
+            const atkSprite = getBattleMapSpriteUrl(attacker);
+            const defSprite = getBattleMapSpriteUrl(defUnit);
+            const projClass = _cinProjectileClass(attacker);
+            const groundSvg = _buildGroundSvg(bg);
+
+            const weaponCat = getUnitDominantWeapon(attacker);
+            const WEAPON_EMOJI = {
+                sword: '⚔️',
+                knife: '🗡️',
+                revolver: '🔫',
+                arcane_staff: '🪄',
+                healing_staff: '✨',
+                bomb: '💣',
+                shield: '🛡️',
+                tarot: '🃏',
+                wand: '⭐',
+                scythe: '🌙'
+            };
+            const weaponEmoji = weaponCat ? (WEAPON_EMOJI[weaponCat] || '') : '';
+
+            if (_cinematicEl) {
+                _cinematicEl.remove();
+                _cinematicEl = null;
+            }
+
+            let extraDefHtml = '';
+            for (let i = 0; i < extraDefenders.length; i++) {
+                const ed = extraDefenders[i];
+                const edSprite = getBattleMapSpriteUrl(ed);
+                extraDefHtml += `<div class="cin-defender-extra slot-${i + 1}" style="background-image:url('${edSprite}')"></div>`;
+            }
+
+            const atkPlayerNum = attacker.player || 1;
+            const defPlayerNum = defUnit.player || 2;
+            const atkName = unitDisplayName(attacker);
+            const defName = unitDisplayName(defUnit);
+            const atkFaction = attacker.faction || '';
+            const defFaction = defUnit.faction || '';
+            const atkFactionLabel = atkFaction ? atkFaction.charAt(0).toUpperCase() + atkFaction.slice(1) + ' Faction' : '';
+            const defFactionLabel = defFaction ? defFaction.charAt(0).toUpperCase() + defFaction.slice(1) + ' Faction' : '';
+
+            const overlay = document.createElement('div');
+            overlay.className = 'cin-overlay';
+
+            const viewerP = getViewerPlayer();
+            const atkIsViewer = atkPlayerNum === viewerP;
+            const defIsViewer = defPlayerNum === viewerP;
+            overlay.style.setProperty('--cin-atk-rgb', atkIsViewer ? '120, 200, 255' : '255, 130, 130');
+            overlay.style.setProperty('--cin-def-rgb', defIsViewer ? '120, 200, 255' : '255, 130, 130');
+
+            overlay.innerHTML = `
+        <div class="cin-scene">
+          <div class="cin-intro">
+            <div class="cin-intro-sprite" style="background-image:url('${atkSprite}')"></div>
+            ${weaponEmoji ? `<div style="position:absolute;bottom:18%;right:18%;font-size:72px;z-index:12;filter:drop-shadow(0 0 12px rgba(255,200,100,0.8));animation:cinIntroZoom 500ms ease-out forwards;opacity:0">${weaponEmoji}</div>` : ''}
+            <div class="cin-intro-vignette"></div>
+            <div class="cin-intro-border"></div>
+            <div class="cin-intro-slash"></div>
+          </div>
+          <div class="cin-sky" style="background:linear-gradient(180deg,${bg.skyTop} 0%,${bg.skyBot} 100%)"></div>
+          <div class="cin-horizon-glow"></div>
+          <div class="cin-ground-wrap">
+            <div class="cin-ground">
+              <div class="cin-ground-fill" style="background-image:url('${groundSvg}');background-size:24px 24px;background-repeat:repeat;"></div>
+            </div>
+          </div>
+          <div class="cin-unit cin-attacker" style="background-image:url('${atkSprite}')"></div>
+          <div class="cin-unit cin-defender" style="background-image:url('${defSprite}')"></div>
+          ${extraDefHtml}
+          <div class="cin-def-shadow"></div>
+          <div class="cin-projectile ${projClass}"></div>
+          <div class="cin-speedlines">${_buildSpeedLines(12)}</div>
+          <div class="cin-impact"></div>
+          <div class="cin-vignette"></div>
+          <div class="cin-scanlines"></div>
+          <div class="cin-dmg"></div>
+          <div class="cin-float-dmg"></div>
+          <div class="cin-float-crit-label"></div>
+          <div class="cin-ko"></div>
+          <div class="cin-dodge-label"></div>
+          <div class="cin-counter-label"></div>
+          <div class="cin-type-effect"></div>
+          <div class="cin-bar cin-bar-top"></div>
+          <div class="cin-bar cin-bar-bot"></div>
+          <div class="cin-attack-name"></div>
+          <div class="cin-skip-hint">Click anywhere to skip</div>
+          <div class="cin-player-label cin-label-attacker">
+            <div class="cin-label-player">P${atkPlayerNum}</div>
+            <div class="cin-label-name">${atkName}</div>
+            ${atkFactionLabel ? `<div class="cin-label-faction faction-${atkFaction}">${atkFactionLabel}</div>` : ''}
+            <div class="cin-label-hp" data-cin-hp="atk">HP ${attacker.hp}/${attacker.maxHp}</div>
+          </div>
+          <div class="cin-player-label cin-label-defender">
+            <div class="cin-label-player">P${defPlayerNum}</div>
+            <div class="cin-label-name">${defName}</div>
+            ${defFactionLabel ? `<div class="cin-label-faction faction-${defFaction}">${defFactionLabel}</div>` : ''}
+            <div class="cin-label-hp" data-cin-hp="def">HP ${defUnit.hp}/${defUnit.maxHp}</div>
+          </div>
+        </div>
+      `;
+            (document.getElementById("game-viewport") || document.body).appendChild(overlay);
+            _cinematicEl = overlay;
+
+            const scene = overlay.querySelector('.cin-scene');
+            const intro = overlay.querySelector('.cin-intro');
+            const atkEl = overlay.querySelector('.cin-attacker');
+            const defEl = overlay.querySelector('.cin-defender');
+            const projEl = overlay.querySelector('.cin-projectile');
+            const speedEl = overlay.querySelector('.cin-speedlines');
+            const impactEl = overlay.querySelector('.cin-impact');
+            const dmgEl = overlay.querySelector('.cin-dmg');
+            const floatDmgEl = overlay.querySelector('.cin-float-dmg');
+            const critLabelEl = overlay.querySelector('.cin-float-crit-label');
+            const atkLabelEl = overlay.querySelector('.cin-label-attacker');
+            const defLabelEl = overlay.querySelector('.cin-label-defender');
+            const extraDefEls = overlay.querySelectorAll('.cin-defender-extra');
+
+            requestAnimationFrame(() => overlay.classList.add('active'));
+
+            const _allTimers = [];
+            const _cinTimeout = (fn, ms) => { const id = setTimeout(fn, ms); _allTimers.push(id); return id; };
+
+            _cinTimeout(() => intro.classList.add('done'), 550);
+
+            const cinNameEl = overlay.querySelector('.cin-attack-name');
+            if (cinNameEl) {
+                const attackLabel = opts.attackName || (weaponCat ? (WEAPON_EMOJI[weaponCat] || '') + ' Attack' : 'Attack');
+                cinNameEl.textContent = attackLabel;
+                _cinTimeout(() => cinNameEl.classList.add('visible'), 750);
+                _cinTimeout(() => cinNameEl.classList.add('fade-out'), 2200);
+            }
+
+            _cinTimeout(() => {
+                if (atkLabelEl) atkLabelEl.classList.add('visible');
+            }, 700);
+            _cinTimeout(() => {
+                if (defLabelEl) defLabelEl.classList.add('visible');
+            }, 780);
+
+            _cinTimeout(() => atkEl.classList.add('in'), 700);
+            _cinTimeout(() => defEl.classList.add('in'), 800);
+
+            extraDefEls.forEach((el, i) => {
+                _cinTimeout(() => el.classList.add('in'), 850 + i * 100);
+            });
+
+            _cinTimeout(() => {
+                atkEl.classList.add('lunge');
+            }, 1300);
+
+            _cinTimeout(() => {
+                const atkRect = atkEl.getBoundingClientRect();
+                const defRect = defEl.getBoundingClientRect();
+                const startX = atkRect.right - 40;
+                const startY = atkRect.top + atkRect.height * 0.35;
+                const endX = defRect.left + defRect.width * 0.3;
+                const endY = defRect.top + defRect.height * 0.35;
+                projEl.style.left = startX + 'px';
+                projEl.style.top = startY + 'px';
+                projEl.style.opacity = '1';
+                projEl.style.transition = 'left 380ms cubic-bezier(.15,.6,.3,1), top 380ms cubic-bezier(.15,.6,.3,1)';
+                requestAnimationFrame(() => {
+                    projEl.style.left = endX + 'px';
+                    projEl.style.top = endY + 'px';
+                });
+            }, 1550);
+
+            const IMPACT_TIME = 1950;
+            let _impactFired = false;
+            let _pendingDamage = null;
+            let _pendingKO = false;
+            let _pendingDodge = false;
+            let _pendingCounter = false;
+
+            _cinTimeout(() => {
+                projEl.style.opacity = '0';
+                impactEl.classList.add('flash');
+                scene.classList.add('shake');
+                speedEl.classList.add('active');
+
+                defEl.classList.add('hit');
+                _cinTimeout(() => {
+                    defEl.classList.remove('hit');
+                    defEl.classList.add('recoil');
+                }, 120);
+
+                extraDefEls.forEach((el) => {
+                    el.classList.add('hit');
+                    _cinTimeout(() => {
+                        el.classList.remove('hit');
+                        el.classList.add('recoil');
+                    }, 120);
+                });
+
+                atkEl.classList.remove('lunge');
+
+                _impactFired = true;
+
+                if (_pendingDodge) _execDodge();
+                if (_pendingCounter) _execCounter();
+                if (_pendingDamage) _execDamage(_pendingDamage.text, _pendingDamage.isCrit);
+
+                if (_pendingKO) _cinTimeout(() => _execKO(), 350);
+            }, IMPACT_TIME);
+
+            const _execDamage = (text, isCrit) => {
+                if (dmgEl) {
+                    dmgEl.textContent = text;
+                    if (isCrit) dmgEl.classList.add('crit');
+                    if (text === 'DODGE!' || text === 'MISS!') dmgEl.classList.add('dodge');
+                    dmgEl.classList.add('pop');
+                }
+                if (floatDmgEl) {
+                    floatDmgEl.textContent = text;
+                    if (isCrit) floatDmgEl.classList.add('crit');
+                    if (text === 'DODGE!' || text === 'MISS!') floatDmgEl.classList.add('dodge');
+                    floatDmgEl.classList.add('pop');
+                }
+                if (isCrit && critLabelEl) {
+                    critLabelEl.textContent = '⚡ CRITICAL HIT!';
+                    critLabelEl.classList.add('pop');
+                }
+            };
+
+            const koEl = overlay.querySelector('.cin-ko');
+            const _execKO = () => {
+                if (koEl) {
+                    koEl.textContent = 'K.O.';
+                    koEl.classList.add('pop');
+
+                    if (defEl) defEl.classList.add('cin-death');
+                    extraDefEls.forEach(el => el.classList.add('cin-death'));
+
+                    if (_fadeTimer) clearTimeout(_fadeTimer);
+                    if (_cleanTimer) clearTimeout(_cleanTimer);
+                    _fadeTimer = _cinTimeout(() => overlay.classList.add('fade-out'), 2200);
+                    _cleanTimer = _cinTimeout(() => {
+                        if (_cinematicEl === overlay) { overlay.remove(); _cinematicEl = null; }
+                        if (_activeCinematic?.overlay === overlay) _activeCinematic = null;
+                    }, 2600);
+                }
+            };
+
+            const dodgeLabelEl = overlay.querySelector('.cin-dodge-label');
+            const _execDodge = () => {
+                if (defEl) defEl.classList.add('cin-dodge');
+                if (dodgeLabelEl) {
+                    dodgeLabelEl.textContent = 'DODGE!';
+                    dodgeLabelEl.classList.add('pop');
+                }
+            };
+
+            const counterLabelEl = overlay.querySelector('.cin-counter-label');
+            const _execCounter = () => {
+                if (defEl) {
+                    defEl.classList.remove('recoil');
+                    defEl.classList.add('cin-counter-strike');
+                }
+                if (counterLabelEl) {
+                    counterLabelEl.textContent = '⚔ COUNTER!';
+                    counterLabelEl.classList.add('pop');
+                }
+            };
+
+            const showDamage = (text, isCrit) => {
+                if (_impactFired) {
+                    _execDamage(text, isCrit);
+                } else {
+                    _pendingDamage = { text, isCrit };
+                }
+            };
+
+            const showKO = () => {
+                if (_impactFired) {
+                    setTimeout(() => _execKO(), 350);
+                } else {
+                    _pendingKO = true;
+                }
+            };
+
+            const showDodge = () => {
+                if (_impactFired) {
+                    _execDodge();
+                } else {
+                    _pendingDodge = true;
+                }
+            };
+
+            const showCounter = () => {
+                if (_impactFired) {
+                    _execCounter();
+                } else {
+                    _pendingCounter = true;
+                }
+            };
+
+            const typeEffectEl = overlay.querySelector('.cin-type-effect');
+            const showTypeEffect = (typeNote) => {
+                if (!typeEffectEl || !typeNote) return;
+                if (typeNote.includes('super effective')) {
+                    typeEffectEl.textContent = "It's super effective!";
+                    typeEffectEl.classList.add('super-effective');
+                } else if (typeNote.includes("wasn't very effective")) {
+                    typeEffectEl.textContent = "Not very effective...";
+                    typeEffectEl.classList.add('not-effective');
+                } else {
+                    return;
+                }
+
+                const doShow = () => typeEffectEl.classList.add('pop');
+                if (_impactFired) {
+                    setTimeout(doShow, 250);
+                } else {
+                    setTimeout(doShow, IMPACT_TIME + 250);
+                }
+            };
+
+            let _fadeTimer = null;
+            let _cleanTimer = null;
+
+            let _skipped = false;
+            const _skipCinematic = () => {
+                if (_skipped) return;
+                _skipped = true;
+
+                for (const tid of _allTimers) clearTimeout(tid);
+                if (_fadeTimer) clearTimeout(_fadeTimer);
+                if (_cleanTimer) clearTimeout(_cleanTimer);
+
+                overlay.classList.remove('active');
+                overlay.classList.add('fade-out');
+                setTimeout(() => {
+                    if (_cinematicEl === overlay) { overlay.remove(); _cinematicEl = null; }
+                    if (_activeCinematic?.overlay === overlay) _activeCinematic = null;
+                }, 200);
+            };
+            overlay.addEventListener('click', _skipCinematic, { passive: true });
+            overlay.addEventListener('touchend', (e) => { e.preventDefault(); _skipCinematic(); }, { passive: false });
+
+            _fadeTimer = setTimeout(() => overlay.classList.add('fade-out'), 2800);
+            _cleanTimer = setTimeout(() => {
+                if (_cinematicEl === overlay) {
+                    overlay.remove();
+                    _cinematicEl = null;
+                }
+                if (_activeCinematic?.overlay === overlay) _activeCinematic = null;
+            }, 3200);
+
+            const handle = {
+                showDamage,
+                showKO,
+                showDodge,
+                showCounter,
+                showTypeEffect,
+                skip: _skipCinematic,
+                totalMs: 3200,
+                overlay
+            };
+            _activeCinematic = handle;
+            return handle;
+        }
+
+        function isCinematicActive() {
+            return !!(_cinematicEl && _cinematicEl.classList.contains('active') && !_cinematicEl.classList.contains('fade-out'));
+        }
+
+        function isCinematicPresent() {
+            return !!_cinematicEl;
+        }
+
+        let boardCameraResetTimer = null;
+        let boardCameraSequenceId = 0;
+
+        const camera = {
+
+            x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
+            _elevOverride: -1,
+
+            _tx: 0, _ty: 0, _tz: 1, _tt: 50, _tyaw: 0, _tcz: 900, _tElev: -1,
+
+            _startTime: 0,
+            _duration: 0,
+            _fromX: 0, _fromY: 0, _fromZ: 1, _fromT: 50, _fromYaw: 0, _fromCZ: 900, _fromElev: -1,
+            _yawDelta: 0,
+            _easing: 'easeOut',
+            _rafId: null,
+
+            _lastCssTilt: null,
+            _lastCssYaw: null,
+            _lastCssTiltNum: null,
+            _lastCssZoomRounded: -1,
+
+            _smoothTilt: 50,
+            _smoothYaw: 0,
+            _smoothX: 0,
+            _smoothY: 0,
+            _smoothZoom: 1,
+            _smoothCamZ: 900,
+            _smoothElevZ: 0,
+            _smoothInited: false,
+            _smoothLastTime: 0,
+            _userInputFrames: 0,
+            _busy: false,
+            _busyTimer: null,
+            _savedState: null,
+            _seqId: 0,
+            _isP2: null,
+
+            _ease(t, type) {
+                if (type === 'linear') return t;
+                if (type === 'easeInOut') return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+                return 1 - Math.pow(1 - t, 3);
+            },
+
+            _apply() {
+                if (!boardStageEl) return;
+                const ts = CONFIG.tileSize || 58;
+                const gap = CONFIG.tileGap ?? 0;
+                const pad = CONFIG.boardPadding ?? 2;
+                const _bw = bw(), _bh = bh();
+                const stageWidth  = pad * 2 + _bw * ts + (_bw - 1) * gap;
+                const stageHeight = pad * 2 + _bh * ts + (_bh - 1) * gap;
+
+                if (!_layoutCache.valid && boardStageEl.parentElement) {
+                    const parent = boardStageEl.parentElement;
+                    _layoutCache.parentW = parent.clientWidth || stageWidth;
+                    _layoutCache.parentH = parent.clientHeight || stageHeight;
+                    _layoutCache.stageOffY = boardStageEl.offsetTop || 0;
+                    _layoutCache.valid = true;
+                }
+                const parentWidth  = _layoutCache.parentW || stageWidth;
+                const parentHeight = _layoutCache.parentH || stageHeight;
+                const stageOriginX = Math.max(0, (parentWidth - stageWidth) / 2);
+                const stageOriginY = _layoutCache.stageOffY || 0;
+
+                const isP2Viewer = this._isP2 ?? (this._isP2 = document.body.classList.contains('is-p2-viewer'));
+
+                {
+
+                    const _SMOOTH_TIME = 0.12;
+                    const _SMOOTH_FAST = 0.06;
+                    const _now = performance.now() / 1000;
+                    const _dt = this._smoothLastTime > 0
+                        ? Math.min(_now - this._smoothLastTime, 0.05) : 0.016;
+                    this._smoothLastTime = _now;
+
+                    const _st = this._userInputFrames > 0 ? _SMOOTH_FAST : _SMOOTH_TIME;
+                    if (this._userInputFrames > 0) this._userInputFrames--;
+                    const _dampFn = (cur, tgt) => {
+                        const f = 1 - Math.exp(-_dt / Math.max(_st, 0.001));
+                        return cur + (tgt - cur) * f;
+                    };
+
+                    if (!this._smoothInited) {
+                        this._smoothTilt = this.tilt;
+                        this._smoothYaw = this.yaw;
+                        this._smoothX = this.x;
+                        this._smoothY = this.y;
+                        this._smoothZoom = this.zoom;
+                        this._smoothCamZ = this.camZ;
+                        this._smoothInited = true;
+                    } else {
+                        this._smoothX    = _dampFn(this._smoothX,    this.x);
+                        this._smoothY    = _dampFn(this._smoothY,    this.y);
+                        this._smoothTilt = _dampFn(this._smoothTilt, this.tilt);
+
+                        let _yd = this.yaw - this._smoothYaw;
+                        _yd = ((_yd % 360) + 540) % 360 - 180;
+                        this._smoothYaw = this._smoothYaw + _yd * (1 - Math.exp(-_dt / Math.max(_st, 0.001)));
+                        this._smoothZoom = _dampFn(this._smoothZoom, this.zoom);
+                        this._smoothCamZ = _dampFn(this._smoothCamZ, this.camZ);
+                    }
+
+                    const tiltDeg = this._smoothTilt;
+                    const yawDeg = this._smoothYaw;
+                    const userCamZ = this._smoothCamZ;
+
+                    const center = tilePixelCenter(this._smoothX, this._smoothY);
+                    let cx = center.left, cy = center.top;
+                    if (isP2Viewer) { cx = stageWidth - cx; cy = stageHeight - cy; }
+                    const boardDiag = Math.sqrt(stageWidth * stageWidth + stageHeight * stageHeight);
+                    const effCamZ = Math.max(userCamZ, boardDiag * 1.8);
+                    state._effectiveCamZ = effCamZ;
+
+                    const screenCX = parentWidth / 2 - stageOriginX;
+                    const screenCY = parentHeight / 2 - stageOriginY;
+
+                    let elevZ = 0;
+                    if (this._elevOverride >= 0) {
+
+                        elevZ = this._elevOverride;
+                    } else if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
+                        const floorX = Math.floor(this.x), floorY = Math.floor(this.y);
+                        const ceilX = Math.ceil(this.x),   ceilY = Math.ceil(this.y);
+                        if (floorX === ceilX && floorY === ceilY) {
+
+                            const _camUnit = (typeof unitAt === 'function') ? unitAt(floorX, floorY) : null;
+                            if (_camUnit && typeof canFly === 'function' && canFly(_camUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(_camUnit)) {
+                                const unitZ = _camUnit.z ?? 0;
+                                elevZ = unitZ > 0 ? window._getElevationPx(unitZ) : 0;
+                            } else {
+                                const h = getHeightAt(floorX, floorY);
+                                if (h > 0) elevZ = window._getElevationPx(h);
+                            }
+
+                            if (_camUnit && !_camUnit.dead) {
+                                elevZ += ts * 0.55;
+                            }
+                        } else {
+                            const fx = this.x - floorX, fy = this.y - floorY;
+                            const h00 = Math.max(0, getHeightAt(floorX, floorY));
+                            const h10 = Math.max(0, getHeightAt(ceilX, floorY));
+                            const h01 = Math.max(0, getHeightAt(floorX, ceilY));
+                            const h11 = Math.max(0, getHeightAt(ceilX, ceilY));
+                            const hInterp = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy)
+                                           + h01 * (1 - fx) * fy + h11 * fx * fy;
+                            if (hInterp > 0) elevZ = window._getElevationPx(hInterp);
+                        }
+                    }
+
+                    this._computedElevZ = elevZ;
+
+                    boardStageEl.style.transform =
+                        `translate(${screenCX}px, ${screenCY}px) ` +
+                        `scale(${this._smoothZoom}) ` +
+                        `perspective(${effCamZ}px) ` +
+                        `rotateX(${tiltDeg}deg) ` +
+                        `rotateZ(${yawDeg}deg) ` +
+                        `translate3d(${-cx}px, ${-cy}px, ${-elevZ}px)`;
+
+                    const _cssTilt = `${tiltDeg}deg`;
+                    const _cssYaw = `${yawDeg}deg`;
+                    const _cssTiltNum = `${tiltDeg}`;
+                    if (_cssTilt !== this._lastCssTilt) {
+                        boardStageEl.style.setProperty('--dio-tilt', _cssTilt);
+                        this._lastCssTilt = _cssTilt;
+                    }
+                    if (_cssYaw !== this._lastCssYaw) {
+                        boardStageEl.style.setProperty('--dio-yaw', _cssYaw);
+                        this._lastCssYaw = _cssYaw;
+                    }
+                    if (_cssTiltNum !== this._lastCssTiltNum) {
+                        boardStageEl.style.setProperty('--dio-tilt-num', _cssTiltNum);
+                        this._lastCssTiltNum = _cssTiltNum;
+                    }
+
+                    state.dioramaTiltDeg = tiltDeg;
+                    state.dioramaYawDeg  = yawDeg;
+                    state.dioramaCamZ    = this.camZ;
+                    state._camFocalPxX   = cx;
+                    state._camFocalPxY   = cy;
+                }
+
+                this._updateZoomState(this._smoothZoom);
+                if (typeof _updateCameraFocal === 'function') _updateCameraFocal(this._smoothX, this._smoothY);
+
+                if (!this._rafId && !this._convergenceRaf) {
+                    const _eps = 0.01;
+                    const _notConverged =
+                        Math.abs(this._smoothX - this.x) > _eps ||
+                        Math.abs(this._smoothY - this.y) > _eps ||
+                        Math.abs(this._smoothTilt - this.tilt) > _eps ||
+                        Math.abs(this._smoothYaw - this.yaw) > _eps ||
+                        Math.abs(this._smoothZoom - this.zoom) > 0.001 ||
+                        Math.abs(this._smoothCamZ - this.camZ) > _eps;
+                    if (_notConverged) {
+                        this._convergenceRaf = requestAnimationFrame(() => {
+                            this._convergenceRaf = null;
+                            this._apply();
+                        });
+                    }
+                }
+            },
+            _convergenceRaf: null,
+
+            _lastZoomRounded: -1,
+            _updateZoomState(zoom) {
+                if (!boardStageEl) return;
+                const rounded = Math.round(zoom * 100);
+                if (rounded === this._lastZoomRounded) return;
+                this._lastZoomRounded = rounded;
+                boardStageEl.dataset.zoomed = zoom > 1.05 ? 'true' : 'false';
+                boardStageEl.style.setProperty('--board-scale', zoom.toFixed(4));
+                let zi = document.getElementById('zoomLevelIndicator');
+                if (!zi) {
+                    zi = document.createElement('div');
+                    zi.id = 'zoomLevelIndicator';
+                    zi.style.cssText = 'position:absolute;bottom:8px;right:8px;z-index:9999;background:rgba(0,0,0,0.7);color:#d4c8b0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;pointer-events:none;font-family:DotGothic16,monospace;border:1px solid rgba(200,180,150,0.2)';
+                    (document.getElementById("game-viewport") || document.body).appendChild(zi);
+                }
+                zi.textContent = `Zoom: ${zoom.toFixed(2)}x`;
+            },
+
+            _tick(now) {
+                if (!this._duration) { this._rafId = null; return; }
+                const t = Math.min(1, (now - this._startTime) / this._duration);
+                const e = this._ease(t, this._easing);
+
+                this.x    = this._fromX   + (this._tx   - this._fromX)   * e;
+                this.y    = this._fromY   + (this._ty   - this._fromY)   * e;
+                this.zoom = this._fromZ   + (this._tz   - this._fromZ)   * e;
+                this.tilt = this._fromT   + (this._tt   - this._fromT)   * e;
+                this.yaw  = this._fromYaw + this._yawDelta * e;
+                this.camZ = this._fromCZ  + (this._tcz  - this._fromCZ)  * e;
+
+                if (this._fromElev >= 0 && this._tElev >= 0) {
+                    this._elevOverride = this._fromElev + (this._tElev - this._fromElev) * e;
+                } else {
+                    this._elevOverride = this._tElev;
+                }
+
+                this._apply();
+
+                if (t < 1) {
+                    this._rafId = requestAnimationFrame((n) => this._tick(n));
+                } else {
+
+                    this.x = this._tx; this.y = this._ty; this.zoom = this._tz;
+                    this.tilt = this._tt; this.yaw = this._tyaw; this.camZ = this._tcz;
+                    this._elevOverride = this._tElev;
+                    this._apply();
+                    this._rafId = null;
+                    this._duration = 0;
+                }
+            },
+
+            _stop() {
+                if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+                if (this._convergenceRaf) { cancelAnimationFrame(this._convergenceRaf); this._convergenceRaf = null; }
+                this._duration = 0;
+            },
+
+            _fogBlocked(fogAllowed) {
+                if (!state.fogOfWar) return false;
+                if (fogAllowed || state._fogCameraAllowed) return false;
+                return state.activePlayer !== getViewerPlayer();
+            },
+
+            snap(opts) {
+                if (state.cameraDisabled && !opts._force) return;
+                this._stop();
+
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                this._busy = false;
+                if (opts.x    !== undefined) this.x    = opts.x;
+                if (opts.y    !== undefined) this.y    = opts.y;
+                if (opts.zoom !== undefined) this.zoom = opts.zoom;
+                if (opts.tilt !== undefined) this.tilt = opts.tilt;
+                if (opts.yaw  !== undefined) this.yaw  = opts.yaw;
+                if (opts.camZ !== undefined) this.camZ = opts.camZ;
+                this._elevOverride = opts.elevZ ?? -1;
+
+                this._tx = this.x; this._ty = this.y; this._tz = this.zoom;
+                this._tt = this.tilt; this._tyaw = this.yaw; this._tcz = this.camZ;
+                this._tElev = this._elevOverride;
+
+                if (opts._force) {
+                    this._smoothInited = false;
+                }
+
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.markUserInput) ThreeCamera.markUserInput();
+                this._userInputFrames = 10;
+                this._apply();
+            },
+
+            moveTo(opts) {
+                if (state.cameraDisabled) return;
+
+                if (state.thirdPersonCamera && !opts._force) return;
+                if (this._fogBlocked(opts._fogAllowed)) return;
+                if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
+
+                this._stop();
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+
+                this._fromX = this.x; this._fromY = this.y; this._fromZ = this.zoom;
+                this._fromT = this.tilt; this._fromYaw = this.yaw; this._fromCZ = this.camZ;
+                this._fromElev = this._elevOverride;
+
+                this._tx   = opts.x    ?? this.x;
+                this._ty   = opts.y    ?? this.y;
+
+                if (opts._allowZoomChange) {
+                    const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? this.zoom));
+                    this._tz = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
+                } else {
+                    this._tz = this.zoom;
+                }
+                this._tt   = opts.tilt ?? this.tilt;
+                this._tyaw = opts.yaw  ?? this.yaw;
+                this._tcz  = opts.camZ ?? this.camZ;
+                this._tElev = opts.elevZ ?? -1;
+
+                let yd = this._tyaw - this._fromYaw;
+                this._yawDelta = ((yd % 360) + 540) % 360 - 180;
+
+                this._duration = Math.max(100, opts.duration ?? 400);
+                this._easing   = opts.easing || 'easeOut';
+                this._startTime = performance.now();
+                this._rafId = requestAnimationFrame((n) => this._tick(n));
+            },
+
+            panTo(tx, ty, opts = {}) {
+                const userZoom = getUserZoomScale();
+                const zoom = opts.zoom ?? (userZoom > 1.05 ? userZoom : getDefaultZoom());
+                this.moveTo({
+                    x: tx, y: ty, zoom,
+                    duration: opts.duration ?? 600,
+                    easing: opts.easing || 'easeInOut',
+                    _fogAllowed: opts._fogAllowed,
+                    _bypassCap: opts._bypassCap
+                });
+            },
+
+            save() {
+                this._savedState = { x: this.x, y: this.y, zoom: this.zoom,
+                    camZ: this.camZ, elevZ: this._elevOverride };
+            },
+            restore(opts = {}) {
+                const s = this._savedState;
+                this._savedState = null;
+                if (!s) return;
+                const dur = opts.duration ?? actionMs(700);
+                this._busy = true;
+                const seq = ++this._seqId;
+                this.moveTo({ ...s, duration: dur, easing: 'easeInOut' });
+                if (this._busyTimer) clearTimeout(this._busyTimer);
+                this._busyTimer = setTimeout(() => {
+                    if (this._seqId === seq) this._busy = false;
+                    this._busyTimer = null;
+                }, dur);
+            },
+
+            isBusy() { return this._busy || this._duration > 0; },
+
+            reset(immediate) {
+                if (!boardStageEl) return;
+                ++boardCameraSequenceId;
+                this._stop();
+                this._isP2 = null;
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                if (state._fullMapOverview) {
+                    state._fullMapOverview = false;
+                    const ovBtn = document.getElementById('overviewBtn');
+                    if (ovBtn) ovBtn.classList.remove('active');
+                }
+                if (state.cameraDisabled) {
+
+                    return;
+                }
+                const target = this._getBestResetTarget();
+                const userZoom = getUserZoomScale();
+                const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                if (immediate) {
+                    if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+                    this.snap({ x: target.x, y: target.y, zoom });
+                } else {
+                    this.moveTo({ x: target.x, y: target.y, zoom, duration: actionMs(600),
+                        _fogAllowed: true, easing: 'easeInOut' });
+                }
+            },
+
+            softResetToUnit(targetUnit) {
+                if (!boardStageEl || state.cameraDisabled) { this.reset(); this._savedState = null; return; }
+                ++boardCameraSequenceId;
+                this._stop();
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                const focusUnit = targetUnit && !targetUnit.dead ? targetUnit : getSelectedUnit();
+                const saved = this._savedState;
+                this._savedState = null;
+
+                if (saved && focusUnit) {
+
+                    const dur = actionMs(800);
+                    this._busy = true;
+                    const seq = ++this._seqId;
+                    this.moveTo({ ...saved, duration: dur, easing: 'easeInOut' });
+                    if (this._busyTimer) clearTimeout(this._busyTimer);
+                    this._busyTimer = setTimeout(() => {
+                        if (this._seqId === seq) this._busy = false;
+                        this._busyTimer = null;
+                    }, dur);
+                } else if (focusUnit) {
+
+                    const userZoom = getUserZoomScale();
+                    const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                    const dur = actionMs(650);
+                    this._busy = true;
+                    const seq = ++this._seqId;
+                    this.moveTo({ x: focusUnit.x, y: focusUnit.y, zoom, duration: dur, easing: 'easeInOut' });
+                    if (this._busyTimer) clearTimeout(this._busyTimer);
+                    this._busyTimer = setTimeout(() => {
+                        if (this._seqId === seq) this._busy = false;
+                        this._busyTimer = null;
+                    }, dur);
+                } else {
+                    this.reset();
+                }
+            },
+
+            focusOnTiles(points, opts = {}) {
+                if (!boardStageEl || !points?.length || state.phase !== 'battle' || state.cameraDisabled) return;
+                if (this._fogBlocked(opts._fogAllowed)) return;
+                this._stop();
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+
+                const avgX = points.reduce((s, p) => s + p.x, 0) / points.length;
+                const avgY = points.reduce((s, p) => s + p.y, 0) / points.length;
+
+                let focusElevZ = -1;
+                if (typeof window._getElevationPx === 'function') {
+                    let maxZ = 0;
+                    let hasUnit = false;
+                    for (const p of points) {
+                        const ix = Math.round(p.x), iy = Math.round(p.y);
+                        const u = (typeof unitAt === 'function') ? unitAt(ix, iy) : null;
+                        if (u && !u.dead) hasUnit = true;
+                        if (u && typeof canFly === 'function' && canFly(u)
+                            && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
+                            const uz = u.z ?? 0;
+                            if (uz > maxZ) maxZ = uz;
+                        } else {
+                            const h = (typeof getHeightAt === 'function') ? getHeightAt(ix, iy) : 0;
+                            if (h > maxZ) maxZ = h;
+                        }
+                    }
+                    if (maxZ > 0) {
+                        const ts = CONFIG.tileSize || 128;
+                        const baseElevPx = window._getElevationPx(maxZ);
+
+                        const spriteOffset = hasUnit ? (ts * 0.55) : 0;
+                        focusElevZ = baseElevPx + spriteOffset;
+                    }
+                }
+
+                this.moveTo({
+                    x: avgX, y: avgY,
+                    duration: opts.transitionMs ?? 600,
+                    easing: 'easeInOut',
+                    elevZ: focusElevZ,
+                    _fogAllowed: opts._fogAllowed,
+                    _bypassCap: opts._bypassCap
+                });
+                if (!opts.persist) {
+                    const holdMs = Math.max(400, opts.holdMs ?? 1200);
+                    boardCameraResetTimer = setTimeout(() => this.reset(), holdMs);
+                }
+            },
+
+            _getBestResetTarget() {
+                const sel = getSelectedUnit();
+                if (sel) return { x: sel.x, y: sel.y };
+                if (state._blitzActiveUnitId) {
+                    const bu = state.units.find(u => u.id === state._blitzActiveUnitId && !u.dead);
+                    if (bu) return { x: bu.x, y: bu.y };
+                }
+                if (Number.isFinite(this.x) && Number.isFinite(this.y)) return { x: this.x, y: this.y };
+                return { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
+            }
+        };
+
+        function stopBoardCameraAnimation() { camera._stop(); }
+        function setBoardCameraFocusPoint(x, y, opts = {}) {
+            if (state.cameraDisabled) return;
+            if (camera._fogBlocked(opts._fogAllowed)) return;
+            if (!boardStageEl || !Number.isFinite(x) || !Number.isFinite(y) || (state.phase !== 'battle' && state.phase !== 'editor')) return;
+            const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? getDefaultZoom()));
+            const zoom = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
+
+            camera.x = x; camera.y = y; camera.zoom = zoom;
+            camera._tx = x; camera._ty = y; camera._tz = zoom;
+            camera._elevOverride = -1; camera._tElev = -1;
+            camera._apply();
+        }
+        function setBoardZoomState(z) { camera._updateZoomState(z); }
+        function resetBoardCamera(immediate) { camera.reset(immediate); }
+        function _softResetCameraToUnit(unit) { camera.softResetToUnit(unit); }
+        function focusBoardCameraOnTiles(points, opts) { camera.focusOnTiles(points, opts); }
+        function _saveCameraState() { camera.save(); }
+        function _popSavedCameraState() { const s = camera._savedState; camera._savedState = null; return s; }
+
+        function animateBoardCamera3D(from, to, opts = {}) {
+            if (state.cameraDisabled) return;
+            if (camera._fogBlocked(opts._fogAllowed)) return;
+
+            camera.x = from.x; camera.y = from.y; camera.zoom = from.zoom;
+            camera.tilt = from.tilt; camera.yaw = from.yaw; camera.camZ = from.camZ;
+            camera.moveTo({
+                x: to.x, y: to.y, zoom: to.zoom,
+                tilt: to.tilt, yaw: to.yaw, camZ: to.camZ,
+                duration: opts.duration ?? 600,
+                easing: 'easeInOut',
+                _fogAllowed: opts._fogAllowed
+            });
+        }
+
+        function animateBoardCameraPath(fromPoint, toPoint, opts = {}) {
+            if (!fromPoint || !toPoint || state.phase !== 'battle') return;
+            if (camera._fogBlocked(opts._fogAllowed)) return;
+            camera.moveTo({
+                x: toPoint.x, y: toPoint.y,
+                zoom: opts.zoom ?? getDefaultZoom(),
+                duration: opts.duration ?? 1400,
+                easing: 'easeInOut',
+                _fogAllowed: opts._fogAllowed
+            });
+        }
+
+        Object.defineProperty(window, '_cameraBusyUntil', {
+            get() { return camera.isBusy() ? Date.now() + 100 : 0; }
+        });
+
+        window._lastCamFocalX = null;
+        window._lastCamFocalY = null;
+        Object.defineProperty(window, '_lastCamFocalX', { get() { return camera.x; } });
+        Object.defineProperty(window, '_lastCamFocalY', { get() { return camera.y; } });
+
+        function getUserZoomScale() {
+            const z = state.userZoomScale;
+            if (!z || z < 0.01) { state.userZoomScale = getDefaultZoom(); return state.userZoomScale; }
+            return z;
+        }
+        function getUserZoomLabel() {
+            const z = state.userZoomScale || 1;
+            return z <= 1.05 ? '🔍 Overview' : `🔎 ${Math.round(z * 100)}%`;
+        }
+
+        const MAX_AUTO_ZOOM_OUT_TILES = 14;
+        const _zoomMemo = new Map();
+        let _zoomMemoKey = '';
+
+        window._clearZoomMemo = function() { _zoomMemo.clear(); _zoomMemoKey = ''; };
+        function _zoomMemoRefreshKey() {
+            const ts = CONFIG.tileSize || 58;
+            const gap = CONFIG.tileGap ?? 0;
+            const parentH = _layoutCache.valid ? _layoutCache.parentH
+                : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+            const parentW = _layoutCache.valid ? _layoutCache.parentW
+                : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
+            const tiltRound = Math.round(state.dioramaTiltDeg ?? 50);
+            const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound;
+            if (key !== _zoomMemoKey) { _zoomMemoKey = key; _zoomMemo.clear(); }
+            return { ts, gap, parentH, parentW };
+        }
+        function computeZoomForVisibleTiles(targetRows) {
+            const { ts, gap, parentH } = _zoomMemoRefreshKey();
+            const cached = _zoomMemo.get(targetRows);
+            if (cached !== undefined) return cached;
+
+            const tiltDeg = state.dioramaTiltDeg ?? 50;
+            const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
+            const zoom = Math.max(0.15, Math.min(10.0, (parentH * tiltFactor) / (targetRows * (ts + gap))));
+            _zoomMemo.set(targetRows, zoom);
+            return zoom;
+        }
+        function getMaxAutoZoomOut() { return computeZoomForVisibleTiles(MAX_AUTO_ZOOM_OUT_TILES); }
+        function clampAutoZoom(zoom, bypassCap) {
+            if (bypassCap) return Math.max(0.15, Math.min(10.0, zoom));
+            return Math.max(getMaxAutoZoomOut(), Math.min(10.0, zoom));
+        }
+
+        function _getBattleZoom() {
+
+            const rows = bh() || 10;
+            const cols = bw() || 10;
+            const targetTiles = Math.max(rows, cols) + 4;
+            return clampAutoZoom(computeZoomForVisibleTiles(targetTiles));
+        }
+        function getDefaultZoom()    { return _getBattleZoom(); }
+        function getCloseZoom()      { return _getBattleZoom(); }
+        function getMediumZoom()     { return _getBattleZoom(); }
+        function getWideZoom()       { return _getBattleZoom(); }
+        function getCinematicZoom()  { return _getBattleZoom(); }
+        function getFullMapZoom() {
+            const ts = CONFIG.tileSize || 58, gap = CONFIG.tileGap ?? 0, pad = CONFIG.boardPadding ?? 2;
+            const rows = bh() || 10, cols = bw() || 10;
+            const bpH = pad * 2 + rows * ts + (rows - 1) * gap;
+            const bpW = pad * 2 + cols * ts + (cols - 1) * gap;
+            const vH = _layoutCache.valid ? _layoutCache.parentH : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+            const vW = _layoutCache.valid ? _layoutCache.parentW : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
+            return Math.max(0.15, Math.min(10.0, Math.min(vH / bpH, vW / bpW)));
+        }
+
+        function cycleUserZoom() {
+            if ((state.userZoomScale || 1) > 1.05) {
+                state.userZoomScale = 1;
+            } else {
+                state.userZoomScale = getDefaultZoom();
+            }
+            const btn = document.getElementById('zoomToggleBtn');
+            if (btn) { btn.textContent = getUserZoomLabel(); btn.classList.toggle('active', (state.userZoomScale || 1) > 1.05); }
+            if (state._fullMapOverview && (state.userZoomScale || 1) > 1.05) {
+                state._fullMapOverview = false;
+                const ovBtn = document.getElementById('overviewBtn');
+                if (ovBtn) ovBtn.classList.remove('active');
+            }
+            const unit = getSelectedUnit();
+            const z = state.userZoomScale;
+            if (z > 1.05) {
+                const t = unit || { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
+
+                camera.snap({ x: t.x, y: t.y, zoom: z });
+            } else {
+                camera.snap({ zoom: _getBattleZoom() });
+            }
+        }
+
+        function showFullMapOverview() {
+            if (state._fullMapOverview) {
+                state._fullMapOverview = false;
+                const ovBtn = document.getElementById('overviewBtn');
+                if (ovBtn) ovBtn.classList.remove('active');
+                camera.reset();
+                return;
+            }
+            state._fullMapOverview = true;
+            const ovBtn = document.getElementById('overviewBtn');
+            if (ovBtn) ovBtn.classList.add('active');
+            camera.moveTo({
+                x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
+                zoom: getFullMapZoom(), duration: 380, _bypassCap: true, _allowZoomChange: true
+            });
+        }
+
+        function getOffensiveCameraTimings(sourceUnit, target, opts = {}) {
+            const distance = Math.max(1, Math.abs((sourceUnit?.x ?? 0) - (target?.x ?? 0)) + Math.abs((sourceUnit?.y ?? 0) - (target?.y ?? 0)));
+
+            const zoom = opts.zoom ?? _getBattleZoom();
+            const sourceHold = actionMs(opts.sourceHold ?? 1240);
+            const travelMs = actionMs(opts.travelMs ?? Math.max(220, Math.min(520, 140 + (distance * 54))));
+            const targetHold = actionMs(opts.targetHold ?? 1140);
+            const resetBuffer = actionMs(opts.resetBuffer ?? 210);
+            return {
+                distance,
+                zoom,
+                sourceHold,
+                travelMs,
+                targetHold,
+                resetBuffer,
+                totalMs: sourceHold + travelMs + targetHold + resetBuffer
+            };
+        }
+
+        function _unitElevZ(unit) {
+            if (!unit) return 0;
+            if (typeof canFly === 'function' && canFly(unit)
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                return unit.z ?? 0;
+            }
+            return (typeof getHeightAt === 'function') ? getHeightAt(unit.x, unit.y) : 0;
+        }
+
+        function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
+            if (!sourceUnit || !target || state.phase !== 'battle') return null;
+
+            if (!opts._noCinematic) {
+                playCinematicAttack(sourceUnit, target, opts);
+            }
+
+            if (state.cameraDisabled) {
+                return { sequenceId: 0, sourceHold: 0, travelMs: 0, targetHold: 0,
+                    resetBuffer: 0, totalMs: actionMs(100), zoom: 1 };
+            }
+
+            const isAiFogTurn = state.fogOfWar && state.activePlayer !== getViewerPlayer();
+            if (isAiFogTurn) {
+                const viewer = getViewerPlayer();
+                const srcVisible = _isUnitVisibleToViewer(sourceUnit, viewer);
+                const tgtVisible = _isUnitVisibleToViewer(target, viewer);
+
+                if (!srcVisible && tgtVisible) {
+
+                    state._fogAnchorUnitId = target.id;
+                    if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
+                    state._fogRevealTiles.add(posKey(target.x, target.y));
+                    scheduleBoardRender();
+                    const sequenceId = ++boardCameraSequenceId;
+                    const holdMs = actionMs(1600);
+                    const _fogTgtZ = _unitElevZ(target);
+                    const _fogElevZ = (_fogTgtZ > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(_fogTgtZ) : -1;
+                    camera.moveTo({ x: target.x, y: target.y, zoom: 2.2,
+                        duration: actionMs(420), _fogAllowed: true, elevZ: _fogElevZ });
+                    camera._busy = true;
+                    const seq = ++camera._seqId;
+                    boardCameraResetTimer = setTimeout(() => {
+                        if (sequenceId !== boardCameraSequenceId) return;
+                        if (camera._seqId === seq) camera._busy = false;
+                        const overlay = document.getElementById('turnBannerOverlay');
+                        if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
+                        clearTimeout(state._fogRevealTimer);
+                        state._fogRevealTimer = setTimeout(() => { state._fogRevealTiles = null; scheduleBoardRender(); }, 800);
+                    }, holdMs);
+                    return { sequenceId, sourceHold: 0, travelMs: 0, targetHold: holdMs,
+                        resetBuffer: 0, totalMs: holdMs, zoom: 2.2 };
+                } else if (!srcVisible && !tgtVisible) {
+                    return { sequenceId: 0, sourceHold: 0, travelMs: 0, targetHold: 0,
+                        resetBuffer: 0, totalMs: actionMs(100), zoom: 1 };
+                }
+
+            }
+
+            const _fogPassthrough = isAiFogTurn;
+            const sequenceId = ++boardCameraSequenceId;
+            const timings = getOffensiveCameraTimings(sourceUnit, target, opts);
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+
+            camera.save();
+            camera._busy = true;
+            const camSeq = ++camera._seqId;
+
+            const focusX = (sourceUnit.x + target.x) / 2;
+            const focusY = (sourceUnit.y + target.y) / 2;
+
+            let actionElevZ = -1;
+            if (typeof window._getElevationPx === 'function') {
+                const srcZ = _unitElevZ(sourceUnit);
+                const tgtZ = _unitElevZ(target);
+                const maxZ = Math.max(srcZ, tgtZ);
+                if (maxZ > 0) {
+                    const ts = CONFIG.tileSize || 128;
+                    actionElevZ = window._getElevationPx(maxZ) + ts * 0.55;
+                }
+            }
+
+            camera.moveTo({
+                x: focusX, y: focusY,
+                duration: actionMs(500), easing: 'easeInOut',
+                elevZ: actionElevZ,
+                _fogAllowed: _fogPassthrough || undefined
+            });
+
+            boardCameraResetTimer = setTimeout(() => {
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (camera._seqId === camSeq) camera._busy = false;
+                const overlay = document.getElementById('turnBannerOverlay');
+                if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
+            }, timings.totalMs);
+
+            return { sequenceId, ...timings };
+        }
+
+        function flashHeal(target) {
+            if (!target || target.dead) return;
+            flashUnit(target.id, 'heal');
+        }
+
+        function applyDamageToUnit(target, damage, sourceText, opts = {}) {
+            if (!target || target.dead || target._dying) return false;
+
+            const sourceUnit_pre = opts.sourceUnit || null;
+            if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sourceUnit_pre.player !== target.player) {
+                const humanPlayer = getViewerPlayer();
+                if (humanPlayer && (target.player === humanPlayer || sourceUnit_pre.player === humanPlayer)) {
+
+                    const humanTarget = target.player === humanPlayer ? target : sourceUnit_pre;
+                    if (humanTarget.player === humanPlayer) {
+                        state._fogAnchorUnitId = humanTarget.id;
+                    }
+                    if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
+
+                    if (target.player === humanPlayer) {
+                        state._fogRevealTiles.add(posKey(target.x, target.y));
+                    }
+                    if (sourceUnit_pre.player === humanPlayer) {
+                        state._fogRevealTiles.add(posKey(sourceUnit_pre.x, sourceUnit_pre.y));
+                    }
+                    scheduleBoardRender();
+                    if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+
+                    clearTimeout(state._fogRevealTimer);
+                    state._fogRevealTimer = setTimeout(() => {
+                        state._fogRevealTiles = null;
+                        scheduleBoardRender();
+                        if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                    }, 2200);
+                }
+            }
+
+            const invulnStatus = getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);
+            if (invulnStatus) {
+                addLog(`${sourceText}${unitDisplayName(target)} is protected and takes no damage!`);
+                flashUnit(target.id, 'heal');
+                showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
+
+                showCombatBanner(`🛡️ ${unitDisplayName(target)} is Protected!`, 'Immune to all damage this turn', 'protect');
+                return false;
+            }
+
+            let finalDamage = Math.max(0, damage);
+            const sourceUnit = opts.sourceUnit || null;
+            const damageType = opts.damageType || 'physical';
+
+            const typeNote = sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '';
+            if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
+                finalDamage += getEffectiveAttackBonus(sourceUnit);
+                finalDamage = Math.max(1, Math.round(finalDamage * getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null)));
+
+                if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
+                    const srcH = getUnitStandingHeight(sourceUnit);
+                    const tgtH = getUnitStandingHeight(target);
+                    if (srcH > tgtH) {
+
+                        const heightAdv = srcH - tgtH;
+                        finalDamage = Math.max(1, Math.round(finalDamage * (1 + DOWNHILL_DAMAGE_BONUS * heightAdv)));
+                    } else if (tgtH > srcH) {
+
+                        const heightAdv = tgtH - srcH;
+                        finalDamage = Math.max(1, finalDamage - HIGH_GROUND_DEF_BONUS * heightAdv);
+                    }
+                }
+            }
+
+            const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
+                finalDamage += opts.markBonus ?? target.markBonus ?? 40;
+                clearStatus(target, 'marked');
+                target.markBonus = 0;
+                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
+            }
+
+            const hourglassReduction = opts.ignoreArmor ? 0 : getHourglassDamageReduction(target);
+            const effectiveArmor = opts.ignoreArmor ? 0 : getEffectiveArmor(target);
+            if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
+            if (hourglassReduction > 0) finalDamage = Math.max(1, finalDamage - hourglassReduction);
+            if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
+                finalDamage = Math.max(1, Math.round(finalDamage * getStatusRangedDamageTakenMultiplier(target)));
+            }
+
+            if (target.shield > 0) {
+                const shieldIgnore = Math.max(0, Number(opts.shieldIgnore || 0));
+                const effectiveShield = Math.max(0, target.shield - shieldIgnore);
+                const absorbed = Math.min(effectiveShield, finalDamage);
+                if (absorbed > 0) {
+                    target.shield -= absorbed;
+                    finalDamage -= absorbed;
+                    addLog(`${unitDisplayName(target)}'s shield absorbs ${absorbed} HP damage.`);
+                    showFloatingTextForUnit(target, `${absorbed}`, 'mp');
+                }
+            }
+
+            if (finalDamage > 0) {
+                target.hp -= finalDamage;
+                target._tookDamageThisRound = true;
+                target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
+                if (sourceUnit) {
+                    sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
+
+                    target._lastDamageSource = sourceUnit;
+                    if (!target._damageContributors) target._damageContributors = {};
+                    target._damageContributors[sourceUnit.id] = (target._damageContributors[sourceUnit.id] || 0) + finalDamage;
+
+                    grantXP(sourceUnit, XP_DAMAGE_FLAT, 'damage');
+
+                    if (typeNote && typeNote.includes('super effective')) grantXP(sourceUnit, XP_SUPER_EFFECTIVE, 'superEffective');
+
+                    if (hasEnvironmentalBonus(sourceUnit)) grantXP(sourceUnit, XP_ENV_BONUS_HIT, 'envBonus');
+
+                    if (sourceUnit._xpBuffSources) {
+                        for (const bufferId of Object.keys(sourceUnit._xpBuffSources)) {
+                            if (bufferId === String(sourceUnit.id)) continue;
+                            const buffer = state.units.find(u => u.id === bufferId);
+                            if (buffer && !buffer.dead && buffer.player === sourceUnit.player) {
+                                grantXP(buffer, XP_BUFF_ASSIST, 'buffAssist');
+                            }
+                        }
+                    }
+                }
+                /* ── Contract lifesteal: caster heals 40% of damage dealt to contracted target ── */
+                if (unitHasStatus(target, 'contract') && target._contractCasterId) {
+                    const contractor = state.units.find(u => u.id === target._contractCasterId && !u.dead);
+                    if (contractor && contractor.player !== target.player) {
+                        const contractHeal = Math.round(finalDamage * 0.4);
+                        if (contractHeal > 0) {
+                            const hpBefore = contractor.hp;
+                            applyHealingToUnit(contractor, contractHeal, null);
+                            const healed = contractor.hp - hpBefore;
+                            if (healed > 0) {
+                                addLog(`Contract: ${unitDisplayName(contractor)} drains ${healed} HP from ${unitDisplayName(target)}'s suffering.`);
+                                showFloatingTextForUnit(contractor, `+${healed}`, 'heal');
+                            }
+                        }
+                    }
+                }
+                flashUnit(target.id, 'hit');
+                showFloatingTextForUnit(target, `-${finalDamage}`, 'damage');
+
+                if (window.RenderBus) window.RenderBus.emit('unit:damaged', { unit: target, damage: finalDamage });
+
+                if (damageType !== 'dot') {
+                    const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
+                    playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
+                }
+
+                if (damageType !== 'dot') {
+                    const isPhysical = damageType === 'physical';
+                    const isBigHit = finalDamage >= 60;
+                    const isKill = target.hp <= 0;
+                    const isBasicAttack = isPhysical && !opts.spellType;
+                    const isPhysicalAbility = isPhysical && !!opts.spellType;
+
+                    const variant = isPhysical && (isBigHit || isKill) ? 'hit11'
+                        : isBasicAttack ? 'hit04'
+                        : isPhysicalAbility ? 'hit02'
+                        : 'spell_hit_01';
+                    playHitEffect(target.x, target.y, {
+                        isCrit: isBigHit || isKill,
+                        variant
+                    });
+
+                    if (finalDamage >= 30) {
+                        triggerHitstop(finalDamage >= 80 ? 100 : finalDamage >= 50 ? 75 : 55);
+                    }
+
+                    const _bloodIsKill = target.hp <= 0;
+                    const _bloodIsSuperEff = typeNote && typeNote.includes('super effective');
+                    const _bloodIsResist = typeNote && typeNote.includes('not very effective');
+                    const _bloodIsCrit = finalDamage >= 60;
+                    const _bloodTier = _bloodIsKill ? 'killing_blow'
+                        : _bloodIsSuperEff ? 'super_effective'
+                        : _bloodIsCrit ? 'critical'
+                        : _bloodIsResist ? 'resist'
+                        : 'normal';
+                    _vfxBlood(target.x, target.y, _bloodTier);
+                }
+                addLog(`${sourceText}${unitDisplayName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
+
+                if (sourceUnit && typeNote) {
+                    const dlg = [];
+                    if (typeNote.includes('super effective')) dlg.push(`<span class="dlg-effective">⚡ It's super effective!</span>`);
+                    else if (typeNote.includes('not very effective')) dlg.push(`<span class="dlg-resist">🛡 Not very effective...</span>`);
+                    if (dlg.length > 0) showBattleDialogue(dlg, 1500);
+                }
+            } else {
+                showFloatingTextForUnit(target, '0', 'damage');
+                addLog(`${sourceText}${unitDisplayName(target)} blocks the hit.`);
+            }
+
+            if (opts.statusEffects || opts.status) applyStatusEffects(target, opts.statusEffects || opts.status, '', sourceUnit);
+
+            if (sourceUnit && state.plantedSeeds && !target.dead) {
+                const seedIdx = state.plantedSeeds.findIndex(s => s.x === target.x && s.y === target.y && s.owner !== sourceUnit.player);
+                if (seedIdx >= 0) {
+                    const destroyed = state.plantedSeeds[seedIdx];
+                    state.plantedSeeds.splice(seedIdx, 1);
+                    const seedName = destroyed.type === 'heal' ? 'Healing' : destroyed.type === 'poison' ? 'Poison' : 'Leech';
+                    addLog(`🌿💥 The attack destroys a ${seedName} Seed at ${coordLabel(target.x, target.y)}!`);
+                }
+            }
+
+            if (sourceUnit && state.wards) {
+                const wardIdx = state.wards.findIndex(w => w.x === target.x && w.y === target.y && w.owner !== sourceUnit.player);
+                if (wardIdx >= 0) {
+                    state.wards.splice(wardIdx, 1);
+                    addLog(`👁💥 The attack destroys a Ward at ${coordLabel(target.x, target.y)}!`);
+                    if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                }
+            }
+
+            if (target.hp <= 0) {
+
+                const killer = sourceUnit || target._lastDamageSource || null;
+                if (killer) {
+                    killer._trackKills = (killer._trackKills || 0) + 1;
+
+                    grantXP(killer, XP_KILL, 'kill');
+
+                    killer.gold = (killer.gold || 0) + GOLD_PER_KILL;
+                    showFloatingTextForUnit(killer, `+${GOLD_PER_KILL}g`, 'pickup');
+
+                    awardAssists(target, killer);
+
+                    processKillStreak(killer);
+
+                    processOverkill(killer, target, Math.abs(target.hp));
+
+                    const totalKillsThisMatch = state.units.reduce((s, u) => s + (u._matchKills || 0), 0);
+                    if (totalKillsThisMatch === 1) checkAchievement('firstBlood', killer);
+                }
+
+                if (target._isBoss) {
+                    handleBossKill(target, killer);
+                }
+                defeatUnit(target, killer);
+
+                target._damageContributors = {};
+                target._debuffContributors = {};
+                target._lastDamageSource = null;
+                return true;
+            }
+
+            checkLastStand(target);
+            return false;
+        }
+
+        // Towers are static objectives — they never move from their placed position.
+        function moveTowers() {
+        }
+
+        function towerAutoAttack(player) {
+
+        }
+
+        function processPlayerTurrets(player) {
+            if (!state.turrets || !state.turrets.length) return;
+            const turrets = state.turrets.filter(t => t.owner === player && t.hp > 0);
+            for (const turret of turrets) {
+
+                if (turret.auraDebuff) continue;
+                const enemies = aliveUnitsOnFloor(enemyOf(player), 'ground')
+                    .filter(e => Math.abs(e.x - turret.x) + Math.abs(e.y - turret.y) <= turret.range)
+                    .sort((a, b) => a.hp - b.hp);
+                if (enemies.length > 0) {
+                    const target = enemies[0];
+                    turret.facingAngle = Math.atan2(target.y - turret.y, target.x - turret.x);
+                    if (_bufferingRoundEvents) _reBeginGroup(`🔧 Turret → ${unitDisplayName(target)}`);
+                    const dmg = Math.max(24, turret.dmg + randInt(24) - 8);
+                    addLog(`🔧 Turret at ${coordLabel(turret.x, turret.y)} fires at ${unitDisplayName(target)} for ${dmg} damage!`);
+
+                    if (!_skipVisuals() && typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && typeof window.ThreeVFXEffects.hasMapping === 'function'
+                        && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
+                        const _tdx = target.x - turret.x;
+                        const _tdy = target.y - turret.y;
+                        const _tDist = Math.max(Math.abs(_tdx), Math.abs(_tdy));
+                        window.ThreeVFXEffects.fire('beam', '_turretBlast', {
+                            fromX: turret.x, fromY: turret.y,
+                            dx: _tDist ? Math.sign(_tdx) : 0,
+                            dy: _tDist ? Math.sign(_tdy) : 0,
+                            range: _tDist,
+                            hitTiles: [{ x: target.x, y: target.y }]
+                        });
+                    }
+                    const turretCaster = turret.casterUnitId ? unitFromId(turret.casterUnitId) : null;
+                    applyDamageToUnit(target, dmg, `🔧 Turret blast: `, {
+                        ignoreArmor: false,
+                        damageType: 'physical',
+                        sourceUnit: turretCaster || undefined
+                    });
+                    scheduleBoardRender();
+                }
+            }
+        }
+
+        function damageTurretAt(x, y, dmg, attackerUnit) {
+            if (!state.turrets) return false;
+            const turret = state.turrets.find(t => t.x === x && t.y === y && t.hp > 0);
+            if (!turret) return false;
+            if (turret.hitsToKill) {
+
+                turret.hp = Math.max(0, turret.hp - 1);
+                addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'} at ${coordLabel(x, y)} takes a hit! (${turret.hp}/${turret.maxHp} hits remaining)`);
+                showFloatingTextAtTile(x, y, `-1 HIT`, 'damage', {
+                    durationMs: 700
+                });
+            } else {
+                turret.hp = Math.max(0, turret.hp - dmg);
+                addLog(`🔧 Turret at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`);
+                showFloatingTextAtTile(x, y, `-${dmg}`, 'damage', {
+                    durationMs: 700
+                });
+            }
+            if (turret.hp <= 0) {
+                addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
+                state.turrets = state.turrets.filter(t => t !== turret);
+                scheduleBoardRender();
+            }
+            return true;
+        }
+
+        function applySeedTileEffects(player) {
+            if (!state.plantedSeeds) return;
+
+            state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                if (seed.type === 'poison') return true;
+                const t = getTerrainAt(seed.x, seed.y);
+                return t === 'grass';
+            });
+
+            if (state.activeWeather && state.activeWeather.length > 0) {
+                const droughtTiles = new Set();
+                for (const w of state.activeWeather) {
+                    if (w.type === 'drought') {
+                        for (const t of w.tiles) droughtTiles.add(posKey(t.x, t.y));
+                    }
+                }
+                if (droughtTiles.size > 0) {
+                    const before = state.plantedSeeds.length;
+                    state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                        if (droughtTiles.has(posKey(seed.x, seed.y))) {
+                            addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            for (const seed of state.plantedSeeds) {
+                if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
+            }
+
+            const expiring = state.plantedSeeds.filter(s => s.duration !== undefined && s.duration !== null && s.duration <= 0);
+            state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
+            for (const unit of aliveUnitsFor(player)) {
+
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
+                for (const seed of seedsHere) {
+                    if (seed.type === 'heal' && unit.player === seed.owner) {
+
+                        const weatherHere = getWeatherAtTile(unit.x, unit.y);
+                        const isRaining = weatherHere.some(w => {
+                            const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === unit.x && t.y === unit.y));
+                            const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
+                            return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
+                        });
+                        const healAmt = isRaining ? 12 : 6;
+                        const healed = applyHealingToUnit(unit, healAmt, null);
+                        if (healed > 0) addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                    } else if (seed.type === 'poison' && unit.player !== seed.owner) {
+
+                        const caster = unitFromId(seed.casterUnitId);
+                        applyDamageToUnit(unit, 8, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
+                            ignoreArmor: true,
+                            damageType: 'dot',
+                            consumeMarked: false
+                        });
+
+                        if (!unit.dead) {
+                            applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
+                        }
+                    } else if (seed.type === 'leech') {
+                        if (unit.player !== seed.owner) {
+                            applyDamageToUnit(unit, 4, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
+                                ignoreArmor: true,
+                                damageType: 'dot',
+                                consumeMarked: false
+                            });
+
+                            const ownerAllies = aliveUnitsFor(seed.owner);
+                            if (ownerAllies.length > 0) {
+                                const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+                                const healed = applyHealingToUnit(target, 4, null);
+                                if (healed > 0) addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
+                            }
+                        } else {
+
+                            const healed = applyHealingToUnit(unit, 3, null);
+                            if (healed > 0) addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
+                        }
+                    }
+                }
+            }
+        }
+
+        function unitFromId(id) {
+            return state.units.find(u => u.id === id) || null;
+        }
+
+        function getSquareArea(cx, cy, radius = 1) {
+            const out = [];
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (isInside(nx, ny)) out.push({
+                        x: nx,
+                        y: ny
+                    });
+                }
+            }
+            return out;
+        }
+
+        function getOrientedLineTiles(cx, cy, count, orientation) {
+            const out = [];
+            const half = Math.floor(count / 2);
+            for (let i = -half; i < count - half; i++) {
+                const nx = orientation === 'vertical' ? cx : cx + i;
+                const ny = orientation === 'vertical' ? cy + i : cy;
+                if (isInside(nx, ny)) out.push({ x: nx, y: ny });
+            }
+            return out;
+        }
+
+        function normalizeLoadoutForClass(loadout, cls) {
+            const normalized = emptyLoadout();
+
+            normalized.spells = [];
+
+            for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
+                const cap = getItemCapForClass(cls, iKey);
+                normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
+            }
+            let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
+            while (totalItems > CONFIG.unitItemSlots) {
+
+                const trimOrder = Object.keys(normalized.items)
+                    .filter(k => normalized.items[k] > 0)
+                    .sort((a, b) => normalized.items[b] - normalized.items[a]);
+                let trimmed = false;
+                for (const k of trimOrder) { if (normalized.items[k] > 0) { normalized.items[k]--; trimmed = true; break; } }
+                if (!trimmed) break;
+                totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
+            }
+
+            normalized.equipment = { accessory1: null, accessory2: null };
+            if (loadout?.equipment) {
+                normalized.equipment.accessory1 = loadout.equipment.accessory1 || null;
+                normalized.equipment.accessory2 = loadout.equipment.accessory2 || null;
+            }
+            return normalized;
+        }
+
+        function getEffectiveEquipCost(spell, cls, race) {
+            return 0;
+        }
+
+        function getLoadoutPoints(loadout, cls, race) {
+            return 0;
+        }
+
+        function getItemCapForClass(cls, itemKey) {
+            if (itemKey === 'scanner') return cls === 'Agent' ? 2 : 1;
+            return ITEM_RULES[itemKey].max;
+        }
+
+        function getTotalItemCount(unit) {
+            return Object.values(unit.items || {}).reduce((a, b) => a + b, 0);
+        }
+
+        function unitItemsFull(unit) {
+            return getTotalItemCount(unit) >= CONFIG.unitItemSlots;
+        }
+
+        function canUseItemNow(unit, itemKey) {
+            if (!unit || unit.dead) return false;
+            if ((unit.items?.[itemKey] || 0) <= 0) return false;
+            if (itemKey === 'healPotion') {
+                return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
+            }
+            if (itemKey === 'manaPotion') {
+                return state.units.some(t => !t.dead && t.player === unit.player && (t.maxMp || 0) > 0 && t.mp < t.maxMp);
+            }
+            if (itemKey === 'scanner') return true;
+            if (itemKey === 'panacea') {
+
+                if (!unit.status) return false;
+                return Object.keys(unit.status).some(k => STATUS_DEFS[k]?.kind === 'debuff');
+            }
+            if (itemKey === 'warpStone') return true;
+            return true;
+        }
+
+        const TRADEABLE_ITEM_KEYS = ['healPotion', 'manaPotion', 'scanner', 'panacea', 'warpStone', 'humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'];
+
+        function canTradeWithUnit(source, target) {
+            if (!source || !target || source.id === target.id) return false;
+            if (source.dead || target.dead) return false;
+            if (source.player !== target.player) return false;
+            return Math.max(Math.abs(source.x - target.x), Math.abs(source.y - target.y)) <= 1;
+        }
+
+        function moveSingleItemBetweenUnits(fromUnit, toUnit, itemKey) {
+            if (!fromUnit || !toUnit || !itemKey) return false;
+            if ((fromUnit.items?.[itemKey] || 0) <= 0) return false;
+            const cap = getItemCapForClass(toUnit.cls, itemKey);
+            if ((toUnit.items?.[itemKey] || 0) >= cap) return false;
+            if (unitItemsFull(toUnit)) return false;
+            fromUnit.items[itemKey] -= 1;
+            toUnit.items[itemKey] = (toUnit.items[itemKey] || 0) + 1;
+            return true;
+        }
+
+        function findMovePath(unit, destX, destY, destZ) {
+            if (!unit || !isInside(destX, destY)) return [];
+            const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            const unitZ = unit.z ?? 0;
+
+            if (destZ === undefined || destZ === null) {
+                if (canFly(unit) && isUnitAirborne(unit)) {
+                    const _fpMinZ = getMinFlyingZ(destX, destY);
+                    const _fpMaxZ = getMaxFlyingZ(destX, destY);
+                    const _fpCurGround = getHeightAt(unit.x, unit.y);
+                    const _fpClearance = unitZ - _fpCurGround;
+                    const _fpDestGround = getHeightAt(destX, destY);
+                    destZ = Math.max(_fpMinZ, Math.min(_fpMaxZ, _fpDestGround + _fpClearance));
+                } else {
+                    destZ = _has3D ? (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(destX, destY, unitZ) : 0) : 0;
+                }
+            }
+            const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
+            const goalKey = _has3D ? posKey3(destX, destY, destZ) : posKey(destX, destY);
+            const parents = new Map();
+            const costs = new Map([
+                [startKey, 0]
+            ]);
+            const open = [{
+                x: unit.x,
+                y: unit.y,
+                z: unitZ,
+                cost: 0
+            }];
+            const _pathFlies = canFly(unit);
+            const maxMove = getEffectiveMove(unit);
+            while (open.length) {
+                let minI = 0;
+                for (let i = 1; i < open.length; i++) {
+                    if (open[i].cost < open[minI].cost) minI = i;
+                }
+                const cur = open[minI];
+                open[minI] = open[open.length - 1];
+                open.pop();
+                const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
+                if (curKey === goalKey) break;
+                if (cur.cost > (costs.get(curKey) ?? Infinity)) continue;
+                for (const [dx, dy] of [
+                        [1, 0], [-1, 0], [0, 1], [0, -1],
+                        [1, 1], [1, -1], [-1, 1], [-1, -1]
+                    ]) {
+                    const nx = cur.x + dx;
+                    const ny = cur.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    if (objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
+
+                    const _pathIsAirborne = _pathFlies && isUnitAirborne(unit);
+                    let neighborSurfaces;
+                    if (_pathIsAirborne) {
+                        const _fpMinZ = getMinFlyingZ(nx, ny);
+                        const _fpMaxZ = getMaxFlyingZ(nx, ny);
+                        const _fpCurGnd = getHeightAt(cur.x, cur.y);
+                        const _fpClr = cur.z - _fpCurGnd;
+                        const _fpNbrGnd = getHeightAt(nx, ny);
+                        const _fpZ = Math.max(_fpMinZ, Math.min(_fpMaxZ, _fpNbrGnd + _fpClr));
+                        neighborSurfaces = [_fpZ];
+                    } else {
+                        neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
+                    }
+                    for (const nz of neighborSurfaces) {
+
+                        if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) continue;
+
+                        if (dx !== 0 && dy !== 0) {
+                            const canPassX = isInside(cur.x + dx, cur.y) && unitCanTraverse(unit, cur.x + dx, cur.y, _has3D ? cur.z : undefined);
+                            const canPassY = isInside(cur.x, cur.y + dy) && unitCanTraverse(unit, cur.x, cur.y + dy, _has3D ? cur.z : undefined);
+                            if (!canPassX && !canPassY) continue;
+                        }
+                        const _hd = Math.abs(cur.z - nz);
+                        if (!_pathIsAirborne && _hd > MAX_CLIMB_HEIGHT) {
+                            const _ct = getTerrainAt(cur.x, cur.y);
+                            const _nt = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
+                            const _co = (typeof getObjectAt === 'function') ? getObjectAt(cur.x, cur.y) : null;
+                            const _no = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+                            const _sr = _ct === 'barrier_passage' || _nt === 'barrier_passage' || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
+
+                            const _coR = _co ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_co] : null) : null;
+                            const _noR = _no ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null) : null;
+                            const _bldgAccess = (_coR && _coR.roofWalkable) || (_noR && _noR.roofWalkable);
+                            if (!_sr && !_bldgAccess) {
+
+                                const _signedHd = nz - cur.z;
+                                if (_signedHd > JUMP_HEIGHT) continue;
+                            }
+                        }
+
+                        const _pathBlocker = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
+                        if ((nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && _pathBlocker.player !== unit.player) continue;
+                        let _deployBlocks = false;
+                        if (state._deployedObjects) {
+                            for (const dObj of state._deployedObjects) {
+                                if (dObj.x === nx && dObj.y === ny && dObj.hp > 0 && (dObj.isDecoy || dObj.blocksMovement)) { _deployBlocks = true; break; }
+                            }
+                        }
+                        if (_deployBlocks) continue;
+
+                        let _pathElevCost = 0;
+                        if (!_pathIsAirborne && _hd > 0) {
+                            const _nTerr = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
+                            const _nObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+                            const _ramp = _nTerr === 'barrier_passage' || _nObj === 'stairs' || _nObj === 'stairs_2';
+                            _pathElevCost = _ramp ? _hd * 0.25 : _hd * 0.5;
+                        }
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + _pathElevCost + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        if (nextCost > maxMove) continue;
+                        const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
+                        if (nextCost >= (costs.get(nKey) ?? Infinity)) continue;
+                        costs.set(nKey, nextCost);
+                        parents.set(nKey, curKey);
+                        open.push({ x: nx, y: ny, z: nz, cost: nextCost });
+                    }
+                }
+            }
+            if (!costs.has(goalKey)) return [];
+            const path = [];
+            let curKey = goalKey;
+            while (curKey && curKey !== startKey) {
+                const parts = curKey.split(',').map(Number);
+                path.push({
+                    x: parts[0],
+                    y: parts[1],
+                    z: parts.length > 2 ? parts[2] : 0
+                });
+                curKey = parents.get(curKey);
+            }
+            path.reverse();
+            return path;
+        }
+
+        function getPathPickupEvent(unit, x, y) {
+
+            const _airborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+            if (!_airborne) {
+                const bomb = state.bombs.find(b => b.x === x && b.y === y && b.owner !== unit.player) || null;
+                if (bomb) return {
+                    kind: 'bomb',
+                    x,
+                    y
+                };
+                /* ── detonateOnStep trap check ── */
+                if (state._deployedObjects) {
+                    const trap = state._deployedObjects.find(o =>
+                        o.x === x && o.y === y && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
+                    );
+                    if (trap) return { kind: 'trap', x, y, trap };
+                }
+            }
+            const visibleHourglasses = groundHourglassesAt(x, y).filter(h => h.visibleTo?.[unit.player]);
+
+            return null;
+        }
+
+        function revealGroundPickupsForUnit(unit, x, y) {
+
+            return { revealedHourglasses: 0, revealedItems: 0 };
+        }
+
+        function finishMoveAt(unit, x, y, opts = {}) {
+            const stopReason = opts.stopReason || null;
+            const moveLabel = opts.destinationLabel || coordLabel(x, y);
+            const dist = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.max(1, dist);
+            playSfx('moveStep');
+
+            const _originX = unit.x, _originY = unit.y;
+
+            const _wasAirborne = canFly(unit) && isUnitAirborne(unit);
+            const _fromZ = unit.z ?? 0;
+            unit.x = x;
+            unit.y = y;
+
+            if (_wasAirborne) {
+
+                const _fmOldGround = getHeightAt(_originX, _originY);
+                const _fmClearance = (unit.z ?? 0) - _fmOldGround;
+                const _fmNewGround = getHeightAt(x, y);
+                const minZ = getMinFlyingZ(x, y);
+                const maxZ = getMaxFlyingZ(x, y);
+                unit.z = Math.max(minZ, Math.min(maxZ, _fmNewGround + _fmClearance));
+            } else if (typeof nearestWalkableZ === 'function') {
+                unit.z = nearestWalkableZ(x, y, unit.z);
+            }
+
+            if (!_wasAirborne && (unit.z ?? 0) < _fromZ && typeof applyFallDamage === 'function') {
+                applyFallDamage(unit, _fromZ, unit.z ?? 0, 'Fall: ');
+            }
+
+            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: _originX, fromY: _originY });
+            unit.movesThisTurn = (unit.movesThisTurn || 0) + 1;
+            updateTerrainStay(unit);
+            spendAP(unit, AP_COST_ACTION);
+
+            const _postMoveCanMove = canUnitMove(unit);
+            const _postMoveCanJump = !_postMoveCanMove && (unit.ap || 0) > 0
+                && typeof getJumpTiles === 'function' && !(canFly(unit) && isUnitAirborne(unit))
+                && getJumpTiles(unit).length > 0;
+            if (_postMoveCanMove) {
+
+                state.actionMode = 'move';
+                state.pendingTarget = null;
+            } else if (_postMoveCanJump) {
+
+                state.actionMode = 'jump';
+                state.pendingTarget = null;
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
+            }
+            addLog(`${unitDisplayName(unit)} moves to ${moveLabel}.`, unit.player);
+
+            checkOpportunityAttack(unit, _originX, _originY);
+
+            if (!_wasAirborne) {
+                const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
+                if (bombIndex >= 0) {
+                    const bomb = state.bombs.splice(bombIndex, 1)[0];
+                    detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
+                }
+                /* ── detonateOnStep: trigger traps when a unit steps on them ── */
+                if (state._deployedObjects) {
+                    const trapIdx = state._deployedObjects.findIndex(o =>
+                        o.x === x && o.y === y && o.hp > 0 && o.detonateOnStep && o.ownerPlayer !== unit.player && !o._detonated
+                    );
+                    if (trapIdx >= 0) {
+                        const trap = state._deployedObjects[trapIdx];
+                        trap._detonated = true;
+                        addLog(`${trap.spellName || 'Trap'} triggers on ${unitDisplayName(unit)} at ${coordLabel(x, y)}!`);
+                        /* Apply blast damage if any */
+                        if (trap.blastRadius > 0 && trap.blastDmg > 0) {
+                            detonateDeployedObject(trap, unit);
+                        } else {
+                            /* Apply status effects from the trap's spell data */
+                            const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
+                            const trapEffects = spellDef?.statusEffects || trap.statusEffects || [];
+                            for (const eff of trapEffects) {
+                                const casterUnit = state.units.find(u => u.id === trap.ownerId);
+                                applyStatusPayload(unit, { id: eff.id, duration: eff.duration || 1 }, `${trap.spellName || 'Trap'} → `, casterUnit || null);
+                            }
+                            if (trapEffects.length) {
+                                showFloatingTextForUnit(unit, trap.spellName || 'TRAPPED!', 'damage');
+                                playSfx('debuff');
+                            }
+                            /* Remove the trap after triggering */
+                            state._deployedObjects.splice(trapIdx, 1);
+                        }
+                        scheduleBoardRender();
+                    }
+                }
+            }
+        }
+
+        function moveHourglassesBetweenUnits(fromUnit, toUnit, amount = 1) {
+            if (!fromUnit || !toUnit || amount <= 0 || (fromUnit.hourglasses || 0) <= 0) return 0;
+            const carried = state.hourglasses.filter(h => h.carriedBy === fromUnit.id);
+            if (!carried.length) return 0;
+            const moveCount = Math.max(0, Math.min(amount, carried.length));
+            for (let i = 0; i < moveCount; i++) {
+                carried[i].carriedBy = toUnit.id;
+            }
+            fromUnit.hourglasses = Math.max(0, (fromUnit.hourglasses || 0) - moveCount);
+            toUnit.hourglasses = (toUnit.hourglasses || 0) + moveCount;
+
+            const buffTransfer = Math.min(fromUnit.hourglassBuff || 0, moveCount);
+            fromUnit.hourglassBuff = Math.max(0, (fromUnit.hourglassBuff || 0) - buffTransfer);
+            toUnit.hourglassBuff = (toUnit.hourglassBuff || 0) + buffTransfer;
+
+            if (fromUnit.player !== toUnit.player && buffTransfer > 0) {
+                state.hourglassBuffs[fromUnit.player] = Math.max(0, (state.hourglassBuffs[fromUnit.player] || 0) - buffTransfer);
+                state.hourglassBuffs[toUnit.player] = (state.hourglassBuffs[toUnit.player] || 0) + buffTransfer;
+            }
+            return moveCount;
+        }
+
+        function openTradeDialog(source, target) {
+
+            state.uiDialog = {
+                type: 'trade',
+                sourceId: source.id,
+                targetId: target.id,
+                staged: {
+                    srcHourglasses: source.hourglasses || 0,
+                    tgtHourglasses: target.hourglasses || 0,
+                    srcItems: Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, source.items?.[k] || 0])),
+                    tgtItems: Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, target.items?.[k] || 0]))
+                },
+                hasChanges: false
+            };
+            markDirty('dialog', 'board', 'selectedUnit');
+            renderIfDirty();
+        }
+
+        function doTrade(unit, x, y) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return 0;
+            }
+            const target = unitAt(x, y);
+            if (!target || !canTradeWithUnit(unit, target)) {
+                addLog('Choose a nearby living ally to trade with.');
+                playErrorSfx();
+                return 0;
+            }
+            state._actionExecuting = false;
+            openTradeDialog(unit, target);
+            return 0;
+        }
+
+        function lootCorpseItems(looter, corpse) {
+            if (!looter || !corpse || !corpse.dead || corpse.id === looter.id) return 0;
+            let looted = 0;
+            const itemOrder = Object.keys(ITEM_RULES);
+            for (const itemKey of itemOrder) {
+                while ((corpse.items?.[itemKey] || 0) > 0) {
+                    const cap = getItemCapForClass(looter.cls, itemKey);
+                    if ((looter.items?.[itemKey] || 0) >= cap) break;
+                    if (unitItemsFull(looter)) break;
+                    looter.items[itemKey] = (looter.items[itemKey] || 0) + 1;
+                    corpse.items[itemKey] -= 1;
+                    looted += 1;
+                }
+            }
+            return looted;
+        }
+
+        function getLoadoutValidation(loadout, cls, race) {
+            const pointsUsed = getLoadoutPoints(loadout, cls, race);
+            const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
+            const crossClassCount = countCrossClassSpells(loadout.spells || [], cls);
+            return {
+                pointsUsed,
+                pointsRemaining: CONFIG.unitSpellBudget - pointsUsed,
+                totalItems,
+                itemSlotsRemaining: CONFIG.unitItemSlots - totalItems,
+                scannerCap: getItemCapForClass(cls, 'scanner'),
+                crossClassCount,
+                valid: totalItems <= CONFIG.unitItemSlots && (loadout.items.scanner || 0) <= getItemCapForClass(cls, 'scanner') && crossClassCount <= CONFIG.maxCrossClassSpells
+            };
+        }
+
+        function syncPartyBuildsFromInputs() {
+            repairPartyBuilderState();
+
+            if (typeof syncBuilderCenter === 'function') syncBuilderCenter();
+
+            [1, 2].forEach(player => {
+                const slotCount = Math.max(CONFIG.teamSize, state.partyBuilds[player]?.length || 0);
+                for (let i = 0; i < slotCount; i++) {
+                    const cls = state.partyBuilds[player][i];
+                    if (!state.loadouts[player]) state.loadouts[player] = [];
+                    if (!state.loadouts[player][i]) state.loadouts[player][i] = emptyLoadout();
+                    const lo = state.loadouts[player][i];
+
+                    if (!lo.items || Object.values(lo.items).reduce((a,b) => a+b, 0) === 0) {
+                        lo.items = Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, 0]));
+                        lo.items.healPotion = 1;
+                        lo.items.manaPotion = 1;
+                        lo.items.panacea = 1;
+                    }
+
+                    if (!lo.equipment) lo.equipment = emptyEquipment();
+
+                    state.loadouts[player][i] = normalizeLoadoutForClass(lo, cls);
+                }
+            });
+        }
+
+        function validateBuilderLoadouts(showAlert = true) {
+            syncPartyBuildsFromInputs();
+            return true;
+        }
+
+        function canPlaceHourglassAt(x, y) {
+            return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
+        }
+
+        function canPlaceHiddenItemAt(x, y, floor) {
+            const f = floor || 'ground';
+            if (state.hourglasses.some(h => h.carriedBy === null && h.x === x && h.y === y)) return false;
+            return !state.hiddenItems.some(item => item.collectedBy === null && item.x === x && item.y === y);
+        }
+
+        function rollHiddenItemType() {
+            const roll = Math.random();
+            if (roll < 0.35) return 'healPotion';
+            if (roll < 0.70) return 'manaPotion';
+            if (roll < 0.82) return 'scanner';
+
+            const baneTypes = ['humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'];
+            return baneTypes[randInt(baneTypes.length)];
+        }
+
+        function _spawnHiddenItemsOnly() {
+
+        }
+
+        function randomizeSharedObjectives() {
+            const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+
+            if (mpMode && mpMode.hasHourglasses === false) {
+                state.hourglasses = [];
+                state.hiddenItems = [];
+
+                _spawnHiddenItemsOnly();
+                return;
+            }
+
+            const candidates = [];
+            for (let y = 0; y < bh(); y++) {
+                for (let x = 0; x < bw(); x++) {
+                    if (!unitAt(x, y) && isTerrainPassable(x, y)) candidates.push({
+                        x,
+                        y
+                    });
+                }
+            }
+
+            const w = bw();
+            const centerSpan = w >= 20 ? 4 : (w >= 8 ? 2 : w);
+            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
+            const centerMaxX = centerMinX + centerSpan - 1;
+
+            function getCenterCandidatesForFloor(floorId, terrain) {
+                const floorCandidates = [];
+                if (!terrain) return floorCandidates;
+                for (let y = 0; y < terrain.length; y++) {
+                    for (let x = 0; x < (terrain[y]?.length || 0); x++) {
+                        if (x < centerMinX || x > centerMaxX) continue;
+                        const t = terrain[y][x];
+                        if (floorId === 'ground' && !unitAt(x, y) && isTerrainPassable(x, y)) {
+                            floorCandidates.push({ x, y });
+                        } else if (floorId === 'sky' && t && t !== 'sky_void' && t !== 'sky_open') {
+                            floorCandidates.push({ x, y });
+                        } else if (floorId === 'underground' && t && t !== 'cave_wall' && t !== 'void') {
+                            floorCandidates.push({ x, y });
+                        }
+                    }
+                }
+                return floorCandidates;
+            }
+
+            function spawnHourglassesOnFloor(floorId, terrain, count) {
+                let placed = 0;
+
+                let pool = getCenterCandidatesForFloor(floorId, terrain);
+                pool.sort(() => Math.random() - 0.5);
+                for (const spot of pool) {
+                    if (canPlaceHourglassAt(spot.x, spot.y)) {
+                        state.hourglasses.push({
+                            id: `hg-${state.hourglasses.length + 1}`,
+                            x: spot.x,
+                            y: spot.y,
+                            floor: floorId,
+                            visibleTo: { 1: false, 2: false },
+                            carriedBy: null
+                        });
+                        placed++;
+                        if (placed >= count) return placed;
+                    }
+                }
+
+                if (placed < count) {
+                    let fallback = [];
+                    if (floorId === 'ground') {
+                        fallback = candidates.filter(c => c.x < centerMinX || c.x > centerMaxX);
+                    } else if (terrain) {
+                        for (let y = 0; y < terrain.length; y++) {
+                            for (let x = 0; x < (terrain[y]?.length || 0); x++) {
+                                if (x >= centerMinX && x <= centerMaxX) continue;
+                                const t = terrain[y][x];
+                                if (floorId === 'sky' && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
+                                if (floorId === 'underground' && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
+                            }
+                        }
+                    }
+                    fallback.sort(() => Math.random() - 0.5);
+                    for (const spot of fallback) {
+                        if (canPlaceHourglassAt(spot.x, spot.y)) {
+                            state.hourglasses.push({
+                                id: `hg-${state.hourglasses.length + 1}`,
+                                x: spot.x,
+                                y: spot.y,
+                                floor: floorId,
+                                visibleTo: { 1: false, 2: false },
+                                carriedBy: null
+                            });
+                            placed++;
+                            if (placed >= count) return placed;
+                        }
+                    }
+                }
+                return placed;
+            }
+
+            const hgPerSection = Math.max(1, Math.ceil(CONFIG.winHourglasses / (MAP_HAS_FLOORS ? 3 : 1)));
+            spawnHourglassesOnFloor('earth', state.boardTerrain, MAP_HAS_FLOORS ? hgPerSection : CONFIG.winHourglasses);
+            if (MAP_HAS_FLOORS) {
+                spawnHourglassesOnFloor('above', state.boardTerrain, hgPerSection);
+                spawnHourglassesOnFloor('below', state.boardTerrain, hgPerSection);
+            }
+        }
+
+        function spawnPeriodicHourglasses() {
+            const RESPAWN_COUNT = 3;
+            const MAX_UNCOLLECTED_GROUND = 6;
+
+            const uncollectedGround = state.hourglasses.filter(
+                h => h.carriedBy === null
+            ).length;
+            const canSpawn = Math.min(RESPAWN_COUNT, MAX_UNCOLLECTED_GROUND - uncollectedGround);
+            if (canSpawn <= 0) return;
+
+            const w = bw(), h = bh();
+            const centerSpan = w >= 20 ? 6 : (w >= 8 ? 4 : w);
+            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
+            const centerMaxX = centerMinX + centerSpan - 1;
+
+            const centerPool = [];
+            const terrain = state.boardTerrain || state.boardTerrain;
+            for (let y = 0; y < h; y++) {
+                for (let x = centerMinX; x <= centerMaxX; x++) {
+                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)) {
+                        centerPool.push({ x, y });
+                    }
+                }
+            }
+            centerPool.sort(() => Math.random() - 0.5);
+
+            let placed = 0;
+            for (const spot of centerPool) {
+                if (placed >= canSpawn) break;
+
+                if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
+                if (unitAt(spot.x, spot.y)) continue;
+                state.hourglasses.push({
+                    id: `hg-${state.hourglasses.length + 1}`,
+                    x: spot.x,
+                    y: spot.y,
+                    floor: 'ground',
+                    visibleTo: { 1: false, 2: false },
+                    carriedBy: null
+                });
+                placed++;
+            }
+
+            if (placed > 0) {
+                addLog(`⏳ ${placed} new hourglass${placed > 1 ? 'es' : ''} materialized in the center of the battlefield!`);
+            }
+        }
+
+        function isBossUnit() { return false; }
+        function getBossOccupiedTiles(unit) { return [{ x: unit.x, y: unit.y }]; }
+        function isTileOccupiedByBoss() { return null; }
+        function getBossSpriteUrl() { return ''; }
+        function checkBossSpawns() {}
+        function processBossPassiveAbility() {}
+        function processBossTurn() {}
+        function handleBossKill() {}
+
+        function makeUnitsFromBuilds() {
+            repairPartyBuilderState();
+            const out = [];
+            [1, 2].forEach(player => {
+                state.partyBuilds[player].forEach((clsName, idx) => {
+                    clsName = normalizeClassName(clsName, DEFAULT_BUILDS[player]?.[idx]);
+                    const spawn = SPAWNS[player]?.[idx] || SPAWNS[player]?.[0] || { x: 1 + idx, y: player === 1 ? 1 : (CONFIG.boardHeight || CONFIG.boardSize || 16) - 2 };
+                    const template = CLASS_TEMPLATES[clsName] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+                    const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName);
+                    ensurePartyMeta();
+                    const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
+                    const fallbackName = getDefaultUnitName(clsName);
+                    unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], fallbackName);
+                    out.push(unit);
+                });
+            });
+            return out;
+        }
+
+        function randomizeEquipmentForClass(cls) {
+
+            const accPool = Object.keys(EQUIP_DEFS).filter(id => EQUIP_DEFS[id]?.slot === 'accessory1');
+            const shuffled = accPool.slice().sort(() => Math.random() - 0.5);
+            return {
+                accessory1: shuffled[0] || null,
+                accessory2: shuffled.find(a => a !== shuffled[0]) || shuffled[1] || null
+            };
+        }
+
+        function randomSpellLoadoutForClass(cls, race) {
+            const loadout = emptyLoadout();
+            const pool = getEligibleSpellsForClass(cls, race).slice().sort(() => Math.random() - 0.5);
+            let slot = 0;
+            let crossClassCount = 0;
+            for (const spell of pool) {
+                if (slot >= CONFIG.unitSkillSlots) break;
+                const isCross = !isSpellNativeToClass(spell, cls);
+                if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                loadout.spells[slot] = spell.id;
+                slot += 1;
+                if (isCross) crossClassCount++;
+            }
+
+            if (slot < CONFIG.unitSkillSlots) {
+                const usedIds = new Set(loadout.spells.filter(Boolean));
+                const remaining = getEligibleSpellsForClass(cls, race)
+                    .filter(s => !usedIds.has(s.id));
+                for (const spell of remaining) {
+                    if (slot >= CONFIG.unitSkillSlots) break;
+                    const isCross = !isSpellNativeToClass(spell, cls);
+                    if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                    loadout.spells[slot] = spell.id;
+                    slot += 1;
+                    if (isCross) crossClassCount++;
+                }
+            }
+
+            const allItemKeys = Object.keys(ITEM_RULES);
+            let remainingItems = CONFIG.unitItemSlots;
+
+            while (remainingItems > 0) {
+                const pick = allItemKeys[Math.floor(Math.random() * allItemKeys.length)];
+                const cap = getItemCapForClass(cls, pick);
+                if ((loadout.items[pick] || 0) >= cap) continue;
+                loadout.items[pick] = (loadout.items[pick] || 0) + 1;
+                remainingItems--;
+            }
+
+            loadout.equipment = randomizeEquipmentForClass(cls);
+
+            return normalizeLoadoutForClass(loadout, cls);
+        }
+
+        function randomizeParty(player) {
+            if (isOnlineMatch() && player !== getLocalPlayer()) {
+                addLog("You can only randomize your own team.");
+                return;
+            }
+            syncPartyBuildsFromInputs();
+            const classNames = Object.keys(CLASS_TEMPLATES);
+
+            state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize);
+            state.partyBuilds[player] = state.partyMeta[player].map(meta => {
+                const race = meta.race || 'homosapien';
+                const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
+                return lockedJob || classNames[randInt(classNames.length)];
+            });
+            state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
+            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+
+            state.partyBuilds[player].forEach((cls, idx) => {
+                if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
+            });
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.hourglasses = [];
+            state.hourglassBuffs = {
+                1: 0,
+                2: 0
+            };
+            state.hiddenItems = [];
+            state.foundByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.scannedByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.boardTerrain = [];
+            state.placed = false;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state.setupStep = 'builder';
+            state.bombs = [];
+            state.plantedSeeds = [];
+            state.warpRunes = [];
+            state.wards = [];
+            state.turrets = [];
+            state._deployedObjects = [];
+            state._delayedSpells = [];
+            state._gatePairs = [];
+            state._flairRevealTiles = {
+                1: null,
+                2: null
+            };
+            addLog(`Player ${player} party randomized with a fresh loadout.`);
+            state.teamLockedIn = false;
+            render();
+        }
+
+        function randomizeUnitSlot(player, idx) {
+            if (isOnlineMatch() && player !== getLocalPlayer()) {
+                addLog("You can only change your own team.");
+                return;
+            }
+            syncPartyBuildsFromInputs();
+            const classNames = Object.keys(CLASS_TEMPLATES);
+            ensurePartyMeta();
+            state.partyMeta[player][idx] = randomizeIdentity();
+            const slotRace = state.partyMeta[player][idx]?.race || '';
+            const lockedJob = (slotRace !== 'homosapien' && RACE_DEFAULT_JOBS[slotRace]) ? RACE_DEFAULT_JOBS[slotRace] : null;
+            const cls = lockedJob || classNames[randInt(classNames.length)];
+            state.partyBuilds[player][idx] = cls;
+            state.partyNames[player][idx] = getDefaultUnitName(cls);
+            state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, slotRace);
+
+            if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
+            state.units = makeUnitsFromBuilds();
+            addLog(`Randomized Player ${player} Slot ${idx + 1} as ${cls}.`);
+            state.teamLockedIn = false;
+            render();
+        }
+
+        function randomizeAllTeams() {
+            if (!state.devAutoSim) syncPartyBuildsFromInputs();
+            _buildersToUpdate().forEach(player => {
+                const classNames = Object.keys(CLASS_TEMPLATES);
+                state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize);
+                state.partyBuilds[player] = state.partyMeta[player].map(meta => {
+                    const race = meta.race || 'homosapien';
+                    const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
+                    return lockedJob || classNames[randInt(classNames.length)];
+                });
+                state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
+                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+
+                state.partyBuilds[player].forEach((cls, idx) => {
+                    if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
+                });
+            });
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.teamLockedIn = false;
+            addLog('Both parties randomized with unique loadouts — all slots filled.');
+            render();
+        }
+
+        function optimizeCurrentTeams() {
+            syncPartyBuildsFromInputs();
+            _buildersToUpdate().forEach(player => {
+                state.partyBuilds[player].forEach((cls, idx) => {
+                    const race = state.partyMeta?.[player]?.[idx]?.race || '';
+                    const loadout = state.loadouts[player][idx] || emptyLoadout();
+
+                    if (!loadout.equipment) loadout.equipment = emptyEquipment();
+                    const accessoryPrefs = {
+                        'Agent': ['binoculars', 'telescope'],
+                        'Gunslinger': ['telescope', 'binoculars'],
+                        'Black Mage': ['flair', 'binoculars'],
+                        'White Mage': ['walkie_talkie', 'ward'],
+                        'Warrior': ['ward', 'flair'],
+                        'Psychic': ['walkie_talkie', 'ward'],
+                        'Harvester': ['ward', 'walkie_talkie']
+                    } [cls] || ['ward', 'binoculars'];
+                    for (const accSlot of ['accessory1', 'accessory2']) {
+                        if (!loadout.equipment[accSlot]) {
+                            const pick = accessoryPrefs.find(a => a !== loadout.equipment.accessory1 && a !== loadout.equipment.accessory2);
+                            if (pick) {
+                                loadout.equipment[accSlot] = pick;
+                                accessoryPrefs.splice(accessoryPrefs.indexOf(pick), 1);
+                            }
+                        }
+                    }
+
+                    const existingSpells = (loadout.spells || []).slice();
+                    let crossClassCount = countCrossClassSpells(existingSpells, cls);
+                    const usedSpellIds = new Set(existingSpells.filter(Boolean));
+
+                    const preferred = {
+                        'Agent': ['empBurst', 'taser', 'electroDart', 'placeBomb', 'scanPulse'],
+                        'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
+                        'White Mage': ['divineIntervention', 'healAll', 'revive1', 'heal1', 'protect1'],
+                        'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
+                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'shoot'],
+                        'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
+                        'Harvester': ['overgrowth', 'lifeDrain', 'leechSeed', 'healingSeed', 'poisonSeed'],
+                        'Engineer': ['siegeTurret', 'fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret', 'buildBridge'],
+                        'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
+                        'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
+                        'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
+                        'Freelancer': ['wildcard', 'mimic', 'jackOfAll', 'improvise']
+                    } [cls] || [];
+                    const eligible = getEligibleSpellsForClass(cls, race);
+                    const candidateIds = [...preferred, ...eligible.map(s => s.id)];
+                    const seen = new Set();
+                    const uniqueCandidates = candidateIds.filter(id => {
+                        if (seen.has(id) || usedSpellIds.has(id)) return false;
+                        seen.add(id);
+                        return true;
+                    });
+
+                    for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
+                        if (existingSpells[s]) continue;
+                        for (let c = 0; c < uniqueCandidates.length; c++) {
+                            const spellId = uniqueCandidates[c];
+                            const spell = getSpellById(spellId);
+                            if (!spell) continue;
+                            const isCross = !isSpellNativeToClass(spell, cls);
+                            if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                            existingSpells[s] = spellId;
+                            if (isCross) crossClassCount++;
+                            uniqueCandidates.splice(c, 1);
+                            break;
+                        }
+                    }
+                    loadout.spells = existingSpells;
+
+                    const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
+                    let remaining = CONFIG.unitItemSlots - totalItems;
+                    if (remaining > 0) {
+
+                        const scannerCap = getItemCapForClass(cls, 'scanner');
+                        if ((loadout.items.scanner || 0) < scannerCap && (cls === 'Agent' || cls === 'Gunslinger') && remaining > 0) {
+                            const toAdd = Math.min(remaining, scannerCap - (loadout.items.scanner || 0));
+                            loadout.items.scanner = (loadout.items.scanner || 0) + toAdd;
+                            remaining -= toAdd;
+                        }
+
+                        const _hasBane = Object.keys(ITEM_RULES).some(k => ITEM_RULES[k].baneType && (loadout.items[k] || 0) > 0);
+                        if (!_hasBane && remaining > 0) {
+                            const _bKeys = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType);
+                            const _pick = _bKeys[Math.floor(Math.random() * _bKeys.length)];
+                            loadout.items[_pick] = 1;
+                            remaining -= 1;
+                        }
+
+                        const healFirst = ['Warrior', 'White Mage', 'Harvester'].includes(cls);
+                        if (healFirst) {
+                            const healAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
+                            loadout.items.healPotion = (loadout.items.healPotion || 0) + healAdd;
+                            remaining -= healAdd;
+                            loadout.items.manaPotion = (loadout.items.manaPotion || 0) + remaining;
+                        } else {
+                            const manaAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
+                            loadout.items.manaPotion = (loadout.items.manaPotion || 0) + manaAdd;
+                            remaining -= manaAdd;
+                            loadout.items.healPotion = (loadout.items.healPotion || 0) + remaining;
+                        }
+                    }
+
+                    state.loadouts[player][idx] = normalizeLoadoutForClass(loadout, cls);
+                });
+            });
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.teamLockedIn = false;
+            addLog(isOnlineMatch() ? `Player ${getLocalPlayer()}'s empty slots auto-filled.` : 'Auto-filled empty slots without changing existing selections.');
+            render();
+        }
+
+        function defaultAllTeams() {
+            syncPartyBuildsFromInputs();
+            _buildersToUpdate().forEach(player => {
+                state.partyBuilds[player].forEach((cls, idx) => {
+                    const race = state.partyMeta?.[player]?.[idx]?.race || '';
+                    state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race);
+                });
+            });
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.teamLockedIn = false;
+            addLog(isOnlineMatch() ? `Player ${getLocalPlayer()}'s loadouts randomized.` : 'Both parties randomized with fresh loadouts.');
+            render();
+        }
+
+        function autoFillUnitLoadout(player, idx) {
+            if (isOnlineMatch() && player !== getLocalPlayer()) {
+                addLog("You can only auto-fill your own team.");
+                return;
+            }
+            syncPartyBuildsFromInputs();
+            const cls = state.partyBuilds[player][idx];
+            const race = state.partyMeta?.[player]?.[idx]?.race || '';
+            const loadout = state.loadouts[player][idx] || emptyLoadout();
+
+            if (!loadout.equipment) loadout.equipment = emptyEquipment();
+            const accPrefs2 = ({
+                'Agent': ['binoculars', 'telescope'],
+                'Gunslinger': ['telescope', 'binoculars'],
+                'Black Mage': ['flair', 'binoculars'],
+                'White Mage': ['walkie_talkie', 'ward'],
+                'Warrior': ['ward', 'flair'],
+                'Psychic': ['walkie_talkie', 'ward'],
+                'Harvester': ['ward', 'walkie_talkie']
+            } [cls] || ['ward', 'binoculars']).slice();
+            for (const accSlot of ['accessory1', 'accessory2']) {
+                if (!loadout.equipment[accSlot]) {
+                    const pick = accPrefs2.find(a => a !== loadout.equipment.accessory1 && a !== loadout.equipment.accessory2);
+                    if (pick) {
+                        loadout.equipment[accSlot] = pick;
+                        accPrefs2.splice(accPrefs2.indexOf(pick), 1);
+                    }
+                }
+            }
+            const existingSpells = (loadout.spells || []).slice();
+            let crossClassCount = countCrossClassSpells(existingSpells, cls);
+            const usedSpellIds = new Set(existingSpells.filter(Boolean));
+
+            const preferred = {
+                'Agent': ['empBurst', 'taser', 'electroDart', 'placeBomb', 'scanPulse'],
+                'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
+                'White Mage': ['divineIntervention', 'healAll', 'revive1', 'heal1', 'protect1'],
+                'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
+                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'shoot'],
+                'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
+                'Harvester': ['overgrowth', 'lifeDrain', 'leechSeed', 'healingSeed', 'poisonSeed'],
+                'Engineer': ['siegeTurret', 'fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret', 'buildBridge'],
+                'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
+                'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
+                'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
+                'Freelancer': ['wildcard', 'mimic', 'jackOfAll', 'improvise']
+            } [cls] || [];
+            const eligible = getEligibleSpellsForClass(cls, race);
+            const candidateIds = [...preferred, ...eligible.map(s => s.id)];
+            const seen = new Set();
+            const uniqueCandidates = candidateIds.filter(id => {
+                if (seen.has(id) || usedSpellIds.has(id)) return false;
+                seen.add(id);
+                return true;
+            });
+
+            for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
+                if (existingSpells[s]) continue;
+                for (let c = 0; c < uniqueCandidates.length; c++) {
+                    const spellId = uniqueCandidates[c];
+                    const spell = getSpellById(spellId);
+                    if (!spell) continue;
+                    const isCross = !isSpellNativeToClass(spell, cls);
+                    if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                    existingSpells[s] = spellId;
+                    if (isCross) crossClassCount++;
+                    uniqueCandidates.splice(c, 1);
+                    break;
+                }
+            }
+            loadout.spells = existingSpells;
+
+            const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
+            let remaining = CONFIG.unitItemSlots - totalItems;
+            if (remaining > 0) {
+                const scannerCap = getItemCapForClass(cls, 'scanner');
+                if ((loadout.items.scanner || 0) < scannerCap && (cls === 'Agent' || cls === 'Gunslinger') && remaining > 0) {
+                    const toAdd = Math.min(remaining, scannerCap - (loadout.items.scanner || 0));
+                    loadout.items.scanner = (loadout.items.scanner || 0) + toAdd;
+                    remaining -= toAdd;
+                }
+
+                const _hasBane2 = Object.keys(ITEM_RULES).some(k => ITEM_RULES[k].baneType && (loadout.items[k] || 0) > 0);
+                if (!_hasBane2 && remaining > 0) {
+                    const _bKeys2 = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType);
+                    const _pick2 = _bKeys2[Math.floor(Math.random() * _bKeys2.length)];
+                    loadout.items[_pick2] = 1;
+                    remaining -= 1;
+                }
+                const healFirst = ['Warrior', 'White Mage', 'Harvester'].includes(cls);
+                if (healFirst) {
+                    const healAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
+                    loadout.items.healPotion = (loadout.items.healPotion || 0) + healAdd;
+                    remaining -= healAdd;
+                    loadout.items.manaPotion = (loadout.items.manaPotion || 0) + remaining;
+                } else {
+                    const manaAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
+                    loadout.items.manaPotion = (loadout.items.manaPotion || 0) + manaAdd;
+                    remaining -= manaAdd;
+                    loadout.items.healPotion = (loadout.items.healPotion || 0) + remaining;
+                }
+            }
+
+            state.loadouts[player][idx] = normalizeLoadoutForClass(loadout, cls);
+            const fallback = getDefaultUnitName(cls);
+            state.partyNames[player][idx] = sanitizeUnitName(state.partyNames[player][idx], fallback);
+            addLog(`Auto-filled empty slots for Player ${player} Slot ${idx + 1} (${cls}).`);
+            state.teamLockedIn = false;
+            render();
+        }
+
+        function saveCurrentTeams() {
+            syncPartyBuildsFromInputs();
+            const payload = {
+                partyBuilds: JSON.parse(JSON.stringify(state.partyBuilds)),
+                partyNames: JSON.parse(JSON.stringify(state.partyNames)),
+                loadouts: JSON.parse(JSON.stringify(state.loadouts)),
+                partyMeta: JSON.parse(JSON.stringify(state.partyMeta || {})),
+                savedAt: new Date().toISOString()
+            };
+            const storageKey = window.ProfileSystem && window.ProfileSystem.getActiveProfileIndex() !== null
+                ? 'ew-profile-teams-' + window.ProfileSystem.getActiveProfileIndex()
+                : 'ew_saved_teams_v2';
+            ewSaveLoadModal({
+                storageKey: storageKey,
+                type: 'Team',
+                mode: 'save',
+                maxSlots: 10,
+                defaultName: 'Team ' + (Object.keys(JSON.parse(localStorage.getItem(storageKey) || '{}')).length + 1),
+                onSave: function(name) {
+                    try {
+                        const slots = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                        slots[name] = payload;
+                        localStorage.setItem(storageKey, JSON.stringify(slots));
+                        addLog('Team "' + name + '" saved.');
+                        ewToast('Team "' + name + '" saved.');
+                    } catch(e) {
+                        ewToast('Could not save team.');
+                    }
+                }
+            });
+        }
+
+        function loadSavedTeams() {
+            const storageKey = window.ProfileSystem && window.ProfileSystem.getActiveProfileIndex() !== null
+                ? 'ew-profile-teams-' + window.ProfileSystem.getActiveProfileIndex()
+                : 'ew_saved_teams_v2';
+            ewSaveLoadModal({
+                storageKey: storageKey,
+                type: 'Team',
+                mode: 'load',
+                maxSlots: 10,
+                onLoad: function(name, slots) {
+                    try {
+                        repairPartyBuilderState();
+                        const payload = slots[name];
+                        if (!payload) { ewToast('Save not found.'); return; }
+                        [1, 2].forEach(player => {
+                            state.partyBuilds[player] = (payload.partyBuilds?.[player] || DEFAULT_BUILDS[player]).slice(0, CONFIG.teamSize);
+                            while (state.partyBuilds[player].length < CONFIG.teamSize) state.partyBuilds[player].push(DEFAULT_BUILDS[player][state.partyBuilds[player].length] || Object.keys(CLASS_TEMPLATES)[0]);
+                            state.partyNames[player] = state.partyBuilds[player].map((cls, idx) => normalizeDisplayedUnitName(payload.partyNames?.[player]?.[idx], cls, player, idx));
+                            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => normalizeLoadoutForClass(payload.loadouts?.[player]?.[idx] || emptyLoadout(), cls));
+                            if (payload.partyMeta?.[player]) {
+                                if (!state.partyMeta) state.partyMeta = {};
+                                state.partyMeta[player] = JSON.parse(JSON.stringify(payload.partyMeta[player]));
+                            }
+                        });
+                        state.units = makeUnitsFromBuilds();
+                        state.teamLockedIn = false;
+                        addLog('Team "' + name + '" loaded.');
+                        ewToast('Team "' + name + '" loaded.');
+                        render();
+                    } catch(e) {
+                        ewToast('Could not load team.');
+                    }
+                }
+            });
+        }
+
+        let _logRenderQueued = false;
+        let _logThrottleTimer = null;
+
+        function addLog(msg, vis) {
+            if (!msg) return;
+            if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
+            state.logEntries = state.logEntries || [];
+            const entry = (vis === 1 || vis === 2) ? {
+                m: msg,
+                v: vis
+            } : msg;
+            state.logEntries.push(entry);
+
+            if (!state._fullLogEntries) state._fullLogEntries = [];
+            state._fullLogEntries.push(entry);
+
+            if (state.devAutoSim && state.logEntries.length > 2000) state.logEntries = state.logEntries.slice(-2000);
+
+            if (state.devAutoSim) {
+                if (!_logThrottleTimer) {
+                    _logThrottleTimer = setTimeout(() => {
+                        _logThrottleTimer = null;
+                        renderLog();
+                    }, 200);
+                }
+                return;
+            }
+            if (!_logRenderQueued) {
+                _logRenderQueued = true;
+                window.requestAnimationFrame(() => {
+                    _logRenderQueued = false;
+                    renderLog();
+                    renderAudioControls();
+                    renderTimer();
+                });
+            }
+        }
+
+        function _logMsg(entry) {
+            return typeof entry === 'string' ? entry : (entry && entry.m) || '';
+        }
+
+        function _logVis(entry) {
+            return (typeof entry === 'object' && entry && entry.v) ? entry.v : 0;
+        }
+
+        function _logVisible(entry) {
+            const v = _logVis(entry);
+            const viewer = getViewerPlayer();
+
+            if (v !== 0) {
+                if (ONLINE_RULES.active) return v === viewer;
+                if (state.fogOfWar) return v === viewer;
+                return true;
+            }
+
+            return _logFogVisible(entry);
+        }
+
+        const _coordPattern = /\b([A-Z])(\d{1,2})\b/g;
+        let _fogVisCache = null;
+        let _fogVisCacheFrame = -1;
+        function _logFogVisible(entry) {
+            if (!state.fogOfWar) return true;
+            const viewer = getViewerPlayer();
+            if (!viewer) return true;
+            const msg = _logMsg(entry).replace(/<[^>]+>/g, '');
+            if (!msg) return true;
+
+            const enemyUnits = (state.units || []).filter(u => u.player !== viewer);
+            let mentionsEnemy = false;
+            for (const u of enemyUnits) {
+                const name = unitDisplayName(u);
+                if (name && msg.includes(name)) { mentionsEnemy = true; break; }
+            }
+            if (!mentionsEnemy) return true;
+
+            const coords = [];
+            let m;
+            _coordPattern.lastIndex = 0;
+            while ((m = _coordPattern.exec(msg)) !== null) {
+                const cx = m[1].charCodeAt(0) - 65;
+                const cy = parseInt(m[2], 10) - 1;
+                if (cx >= 0 && cx < bw() && cy >= 0 && cy < bh()) {
+                    coords.push({ x: cx, y: cy });
+                }
+            }
+            if (coords.length === 0) return true;
+
+            const frame = state.round * 1000 + (state.activePlayer || 0);
+            if (_fogVisCacheFrame !== frame || !_fogVisCache) {
+                _fogVisCache = computeVisibleTiles(viewer);
+                _fogVisCacheFrame = frame;
+            }
+            for (const c of coords) {
+                if (!_fogVisCache.has(posKey(c.x, c.y))) return false;
+            }
+            return true;
+        }
+
+        const _dialogueSkipPatterns = [
+            /moves to [A-Z]\d/i,
+            /stops on a visible/i,
+            /uncovers a hidden.*keeps moving/i,
+            /^Reset Player/i,
+            /copied\.$/, /^Pasted/i,
+            /locked in/i,
+            /^waiting for/i,
+            /map size changed/i,
+
+            /^Invalid move\./i,
+            /^Select a unit first\./i,
+            /^Not this unit/i,
+            /already acted this round/i,
+            /already used all its moves/i,
+            /^No item selected/i,
+            /^No spell selected/i,
+            /already pinged/i,
+            /^Cannot place/i,
+            /^Cannot deploy/i,
+            /^Cannot mimic/i,
+            /^Cannot teleport/i,
+            /^No valid position/i,
+            /already a bomb/i,
+            /already at full MP/i,
+            /^Cannot place a rune/i,
+            /^Cannot place a turret/i,
+        ];
+        function _isDialogueWorthy(entry) {
+            const msg = _logMsg(entry).replace(/<[^>]+>/g, '');
+            if (!msg || msg.length < 3) return false;
+            for (const pat of _dialogueSkipPatterns) {
+                if (pat.test(msg)) return false;
+            }
+            return true;
+        }
+
+        let _lastDialogueHtml = '';
+        function _renderDialogueBox(col) {
+
+            const bar = document.getElementById('battleSubtitleBar');
+            const textEl = document.getElementById('battleSubtitleText');
+            if (!bar || !textEl) return;
+
+            const bdq = state.battleDialogueQueue || [];
+            if (bdq.length > 0) {
+                const html = bdq[bdq.length - 1];
+                if (html !== _lastDialogueHtml) {
+                    textEl.innerHTML = html;
+                    _lastDialogueHtml = html;
+                }
+                bar.classList.add('visible');
+                return;
+            }
+
+            const entries = state.logEntries || [];
+            let lastEntry = null;
+            for (let i = entries.length - 1; i >= 0; i--) {
+                const e = entries[i];
+                if (_logVisible(e) && _isDialogueWorthy(e)) {
+                    lastEntry = e;
+                    break;
+                }
+            }
+
+            if (lastEntry) {
+                const raw = _logMsg(lastEntry).replace(/<[^>]+>/g, '');
+                const colorized = formatCombatLogLine(raw);
+                if (colorized !== _lastDialogueHtml) {
+                    textEl.innerHTML = colorized;
+                    _lastDialogueHtml = colorized;
+                }
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+                _lastDialogueHtml = '';
+            }
+        }
+
+        function _isFFA() {
+            const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            return !!(mode && mode.isFFA);
+        }
+        function isAllyUnit(a, b) {
+            if (!a || !b) return false;
+            if (a.id === b.id) return true;
+            if (_isFFA()) return false;
+            return a.player === b.player;
+        }
+        function isEnemyUnit(a, b) {
+            if (!a || !b) return false;
+            if (a.id === b.id) return false;
+            if (_isFFA()) return true;
+            return a.player !== b.player;
+        }
+
+        function aliveUnitsFor(player, refUnit) {
+
+            if (_isFFA() && refUnit) {
+                return refUnit.dead || refUnit._dying ? [] : [refUnit];
+            }
+            return state.units.filter(u => u.player === player && !u.dead && !u._dying)
+                .sort((a, b) => (b.spd || 5) - (a.spd || 5));
+        }
+
+        function getHostileUnits(player, refUnit) {
+            if (_isFFA() && refUnit) {
+
+                return state.units.filter(u => !u.dead && !u._dying && u.id !== refUnit.id);
+            }
+            return state.units.filter(u => !u.dead && !u._dying && u.player !== player);
+        }
+
+        function aliveUnitsOnFloor(player, _floor) {
+
+            return state.units.filter(u => u.player === player && !u.dead && !u._dying);
+        }
+
+        function getSelectedUnit() {
+            return state.units.find(u => u.id === state.selectedUnitId && !u.dead && !u._dying) || null;
+        }
+
+        function getFocusedUnit() {
+            return state.units.find(u => u.id === (state.focusedUnitId || state.selectedUnitId)) || null;
+        }
+
+        const UNIT_MAX_AP = 3;
+        const AP_COST_SPELL = 2;
+        const AP_COST_ACTION = 1;
+        const UNIT_MAX_MOVES = 2;
+        const COMBO_AP_COST_INITIATOR = 2;
+        const COMBO_AP_COST_PARTNER = 1;
+
+        const XP_MAX_LEVEL = 10;
+        const XP_THRESHOLDS = [0, 32, 76, 136, 210, 300, 405, 530, 675, 845];
+
+        const XP_STAT_UPGRADE_PER_LEVEL = { 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2 };
+
+        const XP_PASSIVE_PER_ROUND   = 2;
+        const XP_KILL               = 14;
+        const XP_ASSIST             = 6;
+        const XP_DAMAGE_FLAT        = 4;
+        const XP_SUPER_EFFECTIVE    = 3;
+        const XP_HEAL_FLAT          = 4;
+        const XP_BUFF_APPLIED       = 3;
+        const XP_DEBUFF_APPLIED     = 3;
+        const XP_INSPECT            = 3;
+        const XP_SCAN               = 4;
+        const XP_TOWER_DAMAGE_FLAT  = 5;
+        const XP_COUNTER            = 4;
+        const XP_DODGE              = 3;
+        const XP_SPELL_CAST         = 2;
+        const XP_COLLECT_HOURGLASS  = 10;
+        const XP_ENV_BONUS_HIT      = 2;
+        const XP_BUFF_ASSIST        = 2;
+        const XP_COMBO              = 5;
+
+        function getUnitLevel(unit) {
+            if (!unit) return 1;
+            const xp = unit._xp || 0;
+            for (let lvl = XP_MAX_LEVEL; lvl >= 2; lvl--) {
+                if (xp >= XP_THRESHOLDS[lvl - 1]) return lvl;
+            }
+            return 1;
+        }
+
+        function getXPForNextLevel(unit) {
+            const lvl = getUnitLevel(unit);
+            if (lvl >= XP_MAX_LEVEL) return null;
+            return XP_THRESHOLDS[lvl];
+        }
+
+        function getXPProgressPct(unit) {
+            const lvl = getUnitLevel(unit);
+            if (lvl >= XP_MAX_LEVEL) return 100;
+            const xp = unit._xp || 0;
+            const currentThreshold = XP_THRESHOLDS[lvl - 1];
+            const nextThreshold = XP_THRESHOLDS[lvl];
+            const range = nextThreshold - currentThreshold;
+            if (range <= 0) return 100;
+            return Math.min(100, Math.max(0, ((xp - currentThreshold) / range) * 100));
+        }
+
+        function grantXP(unit, amount, reason) {
+            if (!unit || unit.dead || !amount || amount <= 0) return;
+            if (state.phase !== 'battle' || state.winner) return;
+            const amt = Math.max(0, Math.round(amount));
+            if (amt <= 0) return;
+            const prevLevel = getUnitLevel(unit);
+            unit._xp = (unit._xp || 0) + amt;
+            const newLevel = getUnitLevel(unit);
+
+            if (newLevel > prevLevel) {
+                for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
+                    applyLevelUpRewards(unit, lvl);
+                }
+                playSfx('levelUp');
+                if (!unit.dead) _vfxLevelUp(unit.x, unit.y);
+            }
+        }
+
+        function applyLevelUpRewards(unit, level) {
+            if (!unit) return;
+            const name = unitDisplayName(unit);
+            const cls = unit.job || unit.cls;
+
+            const gains = (typeof LEVEL_UP_GAINS !== 'undefined') ? LEVEL_UP_GAINS[level] : null;
+            if (gains) {
+                unit.maxHp = (unit.maxHp || 0) + gains.hp;
+                unit.hp = Math.min((unit.hp || 0) + gains.hp, unit.maxHp);
+                unit.maxMp = (unit.maxMp || unit.mp || 0) + gains.mp;
+                unit.mp = Math.min((unit.mp || 0) + gains.mp, unit.maxMp);
+                unit.atk = (unit.atk || 0) + gains.atk;
+                unit.def = (unit.def || 0) + gains.def;
+                unit.intStat = (unit.intStat || 0) + gains.int;
+            }
+
+            const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[cls] : null;
+
+            let spellsToLearn = [];
+            if (learnOrder) {
+                if (level === 1) {
+                    spellsToLearn = [learnOrder[0], learnOrder[1]].filter(Boolean);
+                } else if (level === 2) {
+                    spellsToLearn = [learnOrder[2]].filter(Boolean);
+                } else if (level === 3) {
+                    spellsToLearn = [learnOrder[3]].filter(Boolean);
+                } else if (level === 5) {
+                    spellsToLearn = [learnOrder[4]].filter(Boolean);
+                }
+            }
+            for (const spellId of spellsToLearn) {
+                learnSpellForUnit(unit, spellId);
+            }
+
+            let milestoneMsg = '';
+            const gainStr = gains ? `+${gains.hp} HP, +${gains.atk} ATK, +${gains.def} DEF, +${gains.int} INT` : '';
+            const _inBattle = state.phase === 'battle';
+            if (level === 2) {
+                milestoneMsg = gainStr;
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.2! ${gainStr}`);
+            } else if (level === 3) {
+                milestoneMsg = 'Spell Shop unlocks!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.3! Spell Shop unlocks! ${gainStr}`);
+            } else if (level === 4) {
+                if (_inBattle) unit._pendingSecondaryJobPick = true;
+                milestoneMsg = 'Choose a Secondary Job!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.4! Choose a Secondary Job! ${gainStr}`);
+            } else if (level === 5) {
+                milestoneMsg = 'All spell slots filled!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.5! All spell slots filled! ${gainStr}`);
+            } else if (level === 6) {
+                unit._xpBonusAP = (unit._xpBonusAP || 0) + 1;
+                unit.ap = Math.min(unit.ap + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
+                milestoneMsg = '+1 AP cap!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.6! +1 AP cap! ${gainStr}`);
+            } else if (level === 7) {
+                milestoneMsg = 'Combo attacks unlocked!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.7! Combo attacks unlocked! ${gainStr}`);
+            } else if (level === 8) {
+                milestoneMsg = 'Advanced techniques!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.8! Advanced techniques unlocked! ${gainStr}`);
+            } else if (level === 9) {
+                unit._xpBonusAP = (unit._xpBonusAP || 0) + 1;
+                unit.ap = Math.min(unit.ap + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
+                milestoneMsg = '+1 AP cap (2nd)!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.9! +1 AP cap (2nd)! ${gainStr}`);
+            } else if (level === 10) {
+                milestoneMsg = '✨ ASCENSION!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.10! ✨ ASCENSION! ${gainStr}`);
+            }
+            if (level > 1 && !_skipVisuals() && state.phase === 'battle') {
+                showFloatingTextForUnit(unit, `⬆ LEVEL ${level}!`, 'levelup', { durationMs: 1800 });
+                playSfx('uiButtonConfirm');
+
+                const dlgLines = [];
+                dlgLines.push(`<span class="dlg-levelup">⬆ ${escapeHtml(name)} — LEVEL ${level}!</span>`);
+                if (milestoneMsg) {
+                    dlgLines.push(`<span class="dlg-levelup" style="font-size:16px">${escapeHtml(milestoneMsg)}</span>`);
+                }
+                for (const spellId of spellsToLearn) {
+                    const sp = getSpellById(spellId);
+                    if (sp) dlgLines.push(`<span class="dlg-spell-learn">✨ Learned ${escapeHtml(sp.name)}!</span>`);
+                }
+                showBattleDialogue(dlgLines, 2200 + spellsToLearn.length * 400);
+            }
+            markDirty('selectedUnit', 'actions', 'board');
+        }
+
+        function learnSpellForUnit(unit, spellId) {
+            if (!unit || !spellId) return;
+            const cls = unit.job || unit.cls;
+            const spell = getSpellById(spellId);
+            if (!spell) return;
+
+            if (unit.spells && unit.spells.some(s => s && s.id === spellId)) return;
+            const adjusted = adjustSpellForClass(spell, cls);
+            if (!adjusted) return;
+
+            if (!unit._spellSlots) unit._spellSlots = [];
+            const maxSlots = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6;
+            if (unit._spellSlots.length >= maxSlots) return;
+            unit._spellSlots.push(spellId);
+
+            if (!unit.spells) unit.spells = [];
+            unit.spells.push(adjusted);
+
+        }
+
+        function applySecondaryJob(unit, jobName) {
+            if (!unit || !jobName) return;
+            unit._secondaryJob = jobName;
+            unit._pendingSecondaryJobPick = false;
+
+            if (typeof computeSecJobBonuses === 'function') {
+                const b = computeSecJobBonuses(jobName);
+                unit.maxHp += b.hp; unit.hp = Math.min(unit.hp + Math.max(0, b.hp), unit.maxHp);
+                unit.maxMp += b.mp; unit.mp = Math.min(unit.mp + Math.max(0, b.mp), unit.maxMp);
+                unit.atk += b.atk; unit.def += b.def;
+                unit.intStat += b.int; unit.spd += b.spd;
+                unit.move = Math.max(1, unit.move + b.move);
+                unit.awr = Math.max(1, unit.awr + b.awr);
+            }
+
+            const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[jobName] : null;
+            if (learnOrder && learnOrder[0]) {
+                learnSpellForUnit(unit, learnOrder[0]);
+            }
+
+            const name = unitDisplayName(unit);
+            if (state.phase === 'battle') addLog(`🎭 ${name} chose ${jobName} as secondary job!`);
+            if (!_skipVisuals() && state.phase === 'battle') {
+                const spellLearned = learnOrder?.[0] ? getSpellById(learnOrder[0]) : null;
+                const dlgLines = [
+                    `<span class="dlg-sec-job">🎭 ${escapeHtml(name)} — ${escapeHtml(jobName)}!</span>`,
+                    `<span class="dlg-sec-job" style="font-size:16px">Secondary Job Chosen</span>`
+                ];
+                if (spellLearned) {
+                    dlgLines.push(`<span class="dlg-spell-learn">✨ Learned ${escapeHtml(spellLearned.name)}!</span>`);
+                }
+                showBattleDialogue(dlgLines, 2400);
+            }
+            markDirty('selectedUnit', 'actions', 'board');
+        }
+
+        function aiPickSecondaryJob(unit) {
+            if (!unit) return;
+            const mainJob = unit.job || unit.cls;
+            const allJobs = typeof JOB_MODIFIERS !== 'undefined' ? Object.keys(JOB_MODIFIERS) : [];
+            const eligible = allJobs.filter(j => j !== mainJob);
+            if (eligible.length === 0) return;
+
+            const team = state.units.filter(u => u.player === unit.player && !u.dead);
+            const teamJobs = new Set(team.map(u => u.job || u.cls));
+            const teamSecondaryJobs = new Set(team.map(u => u._secondaryJob).filter(Boolean));
+
+            const healers = ['White Mage', 'Harvester'];
+            const tanks = ['Warrior', 'Engineer'];
+            const ranged = ['Gunslinger', 'Sniper', 'Black Mage'];
+            const support = ['Harbinger', 'Psychic', 'White Mage'];
+            const melee = ['Warrior', 'Raider', 'Agent', 'Freelancer'];
+
+            const scores = eligible.map(job => {
+                let score = 10;
+
+                if (!teamJobs.has(job) && !teamSecondaryJobs.has(job)) score += 8;
+                else if (!teamSecondaryJobs.has(job)) score += 3;
+
+                const isMainMelee = melee.includes(mainJob);
+                const isMainRanged = ranged.includes(mainJob);
+                const isMainSupport = support.includes(mainJob) || healers.includes(mainJob);
+
+                if (isMainMelee && ranged.includes(job)) score += 5;
+                if (isMainMelee && support.includes(job)) score += 3;
+                if (isMainRanged && melee.includes(job)) score += 4;
+                if (isMainRanged && tanks.includes(job)) score += 3;
+                if (isMainSupport && melee.includes(job)) score += 5;
+                if (isMainSupport && ranged.includes(job)) score += 4;
+
+                if (['Black Mage', 'Gunslinger', 'Sniper', 'Raider'].includes(job)) score += 2;
+
+                const teamHasHealer = team.some(u => healers.includes(u.job || u.cls));
+                if (!teamHasHealer && healers.includes(job)) score += 6;
+
+                score += Math.random() * 3;
+
+                return { job, score };
+            });
+
+            scores.sort((a, b) => b.score - a.score);
+            applySecondaryJob(unit, scores[0].job);
+        }
+
+        function unitMeetsSpellTierReq(unit, spell) {
+            return true;
+        }
+
+        function unitCanCombo(unit) {
+            return getUnitLevel(unit) >= 7;
+        }
+
+        function getUnitMaxAP(unit) {
+            return UNIT_MAX_AP + (unit?._xpBonusAP || 0);
+        }
+
+        function hasEnvironmentalBonus(unit) {
+            if (!unit) return false;
+            const sleepMod = getSleepAffinityModifier(unit);
+            if (sleepMod.atk > 0 || sleepMod.int > 0) return true;
+            const terrainMod = getTerrainPreferenceModifier(unit);
+            if (terrainMod.atk > 0) return true;
+            const weatherMod = getWeatherStatMod(unit);
+            if (weatherMod.atk > 0 || weatherMod.int > 0) return true;
+            const zodiac = getZodiacBonus(unit);
+            if (zodiac.mult > 1) return true;
+            const sky = getSkyEventBonus(unit);
+            if (sky.atkMult > 1) return true;
+            const floor = getSectionBuffs(unit);
+            if (floor.atk > 0) return true;
+            return false;
+        }
+
+        function canUnitAct(unit) {
+            return unit && !unit.dead && !unit._dying && (unit.ap || 0) > 0;
+        }
+
+        function canUnitMove(unit) {
+            if (!canUnitAct(unit)) return false;
+            if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) return false;
+
+            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove)) return false;
+            return true;
+        }
+
+        function unitFinished(unit) {
+            return (unit.ap || 0) <= 0;
+        }
+
+        function spendAP(unit, cost) {
+            unit.ap = Math.max(0, (unit.ap || 0) - cost);
+        }
+
+        function getSpellApCost(spell) {
+            return (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
+        }
+
+        function canAffordSpell(unit, spell) {
+            const cost = spell ? getSpellApCost(spell) : AP_COST_SPELL;
+            if ((unit.ap || 0) < cost) return false;
+            if (spell && !unitMeetsSpellTierReq(unit, spell)) return false;
+            return true;
+        }
+
+        function canCastAnySpell(unit) {
+            const mpPenalty = getStatusMpCostDelta(unit);
+            const allSpells = (unit.spells || []);
+            return allSpells.some(s => canAffordSpell(unit, s) && unit.mp >= (s.cost + mpPenalty) && !unitHasStatus(unit, 'silence'));
+        }
+
+        function hasSpellTargetInRange(unit, spell) {
+            if (!spell) return false;
+            const kind = spell.kind;
+            const range = getEffectiveSpellRange(unit, spell) || 1;
+
+            if (['healAll', 'manaRestoreAll', 'warCry', 'scan', 'barrage', 'remoteView', 'selfHeal', 'escape'].includes(kind)) return true;
+
+            // aoeOriginSelf spells always have a valid target (centered on caster)
+            if (spell.aoeOriginSelf) return true;
+
+            if (kind === 'line' || kind === 'linePush') return true;
+
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam'].includes(kind)) {
+                const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
+                const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
+                const hasEnemy = enemies.some(e => {
+                    const d = distToTarget(unit.x, unit.y, e, unit.z);
+                    return d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z));
+                });
+                if (hasEnemy) return true;
+                if (['damage', 'multiHit', 'ricochet'].includes(kind) && state.towers) {
+                    const tw = state.towers[enemyOf(unit.player)];
+                    if (tw && tw.hp > 0) {
+                        const d = combatDist(unit.x, unit.y, unit.z ?? 0, tw.x, tw.y, tw.z ?? 0);
+                        if (d >= 1 && d <= range && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unit.z))) return true;
+                    }
+                }
+                return false;
+            }
+
+            if (kind === 'heal') {
+                const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
+                return allies.some(a => {
+                    if (a.hp >= a.maxHp) return false;
+                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                    return d <= range;
+                });
+            }
+
+            if (['buff', 'shield', 'cleanse'].includes(kind)) {
+                const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
+                return allies.some(a => {
+                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                    return d <= range;
+                });
+            }
+
+            if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash'].includes(kind)) {
+                return range > 0 || true;
+            }
+
+            if (kind === 'encore') {
+                return aliveUnitsOnFloor(unit.player).some(a => {
+                    if (a.id === unit.id) return false;
+                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                    return d >= 1 && d <= range;
+                });
+            }
+
+            if (kind === 'revive') {
+                return state.units.some(u => u.player === unit.player && u.dead);
+            }
+
+            if (kind === 'teleport') {
+                const all = state.units.filter(u => !u.dead);
+                return all.some(u => {
+                    const d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
+                    return d >= 1 && d <= range;
+                });
+            }
+
+            return true;
+        }
+
+        function canCastAnySpellWithTargets(unit) {
+            const mpPenalty = getStatusMpCostDelta(unit);
+            const silenced = unitHasStatus(unit, 'silence');
+            if (silenced) return false;
+            const allSpells = (unit.spells || []);
+            return allSpells.some(s =>
+                s && canAffordSpell(unit, s) && unit.mp >= (s.cost + mpPenalty) && hasSpellTargetInRange(unit, s)
+            );
+        }
+
+        function getViewerPlayer() {
+
+            if (window._NET && window._NET.online && window._NET.myPlayer) return window._NET.myPlayer;
+
+            if (state.controllers[1] === CTRL.LOCAL && state.controllers[2] === CTRL.LOCAL) {
+                return state.activePlayer || 1;
+            }
+
+            return 1;
+        }
+
+        function unitDisplayName(unit) {
+            if (!unit) return 'Unit';
+            const mode = state.nametagMode || 'race';
+            if (mode === 'race' && unit.race) {
+                return unit.race.charAt(0).toUpperCase() + unit.race.slice(1);
+            }
+            if (mode === 'job') {
+                return unit.cls || unit.name || 'Unit';
+            }
+            return unit.name || unit.cls || 'Unit';
+        }
+
+        function getNametagText(unit) {
+            if (!unit) return '';
+            const lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
+            const lvlStr = `Lv${lvl}`;
+            const mode = state.nametagMode || 'name';
+            if (mode === 'none') return lvlStr;
+            let label = '';
+            if (mode === 'job') label = getJobDisplayName(unit.cls) || unit.name || '';
+            else if (mode === 'race') label = unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : (unit.name || '');
+            else label = unit.name || unit.cls || '';
+            return label ? `${lvlStr} ${label}` : lvlStr;
+        }
+
+        function getDevSimSpeedMultiplier() {
+            const base = Math.max(1, Number(state.devSimSpeed) || 1);
+
+            return state.devAutoSim ? base * 4 : base;
+        }
+
+        function actionMs(ms) {
+            return Math.max(1, Math.round((Number(ms) || 0) / getDevSimSpeedMultiplier()));
+        }
+
+        function scaleDevSimDelay(ms, min = 0) {
+            return Math.max(min, Math.round((Number(ms) || 0) / getDevSimSpeedMultiplier()));
+        }
+
+        function setDevSimSpeed(speed) {
+            const next = [1, 2, 4].includes(Number(speed)) ? Number(speed) : 1;
+            if (state.devSimSpeed === next) return;
+            state.devSimSpeed = next;
+            addLog(`Dev sim speed set to x${next}.`);
+            render();
+        }
+
+        function setDevAutoSim(enabled) {
+            if (isOnlineMatch() && enabled) return;
+            state.devAutoSim = !!enabled;
+            if (!state.devAutoSim && state.devSimTimer) {
+                clearTimeout(state.devSimTimer);
+                state.devSimTimer = null;
+            }
+            if (state.devAutoSim) {
+
+                state._devSimShowAnims = false;
+
+                state._preDevSimControllers = {
+                    ...state.controllers
+                };
+                state.controllers[1] = CTRL.AI;
+                state.controllers[2] = CTRL.AI;
+            } else if (state._preDevSimControllers) {
+                state._devSimShowAnims = false;
+
+                state.controllers[1] = state._preDevSimControllers[1] || CTRL.LOCAL;
+                state.controllers[2] = state._preDevSimControllers[2] || CTRL.AI;
+                state._preDevSimControllers = null;
+            }
+            render();
+        }
+
+        function randomizeBothTeamsForDevSim() {
+            randomizeAllTeams();
+            state.matchNumber = Math.max(1, state.matchNumber || 1);
+        }
+
+        function _mirrorRandomizeTeams() {
+
+            const classNames = Object.keys(CLASS_TEMPLATES);
+            state.partyMeta[1] = randomizePartyIdentities(CONFIG.teamSize);
+            state.partyBuilds[1] = state.partyMeta[1].map(meta => {
+                const race = meta.race || 'homosapien';
+                const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
+                return lockedJob || classNames[randInt(classNames.length)];
+            });
+            state.partyNames[1] = state.partyBuilds[1].map(cls => getDefaultUnitName(cls));
+            state.loadouts[1] = state.partyBuilds[1].map((cls, idx) =>
+                randomSpellLoadoutForClass(cls, state.partyMeta[1][idx]?.race || '')
+            );
+            state.partyBuilds[1].forEach((cls, idx) => {
+                if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[1][idx], cls);
+            });
+
+            state.partyMeta[2] = JSON.parse(JSON.stringify(state.partyMeta[1]));
+            state.partyBuilds[2] = state.partyBuilds[1].slice();
+            state.partyNames[2] = state.partyBuilds[2].map(cls => getDefaultUnitName(cls));
+            state.loadouts[2] = JSON.parse(JSON.stringify(state.loadouts[1]));
+
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.teamLockedIn = false;
+            state.matchNumber = Math.max(1, state.matchNumber || 1);
+        }
+
+        function restartDevSimFromBuilder(delay = null) {
+            if (!state.devAutoSim) return;
+            if (state.devSimTimer) {
+                clearTimeout(state.devSimTimer);
+                state.devSimTimer = null;
+            }
+
+            transitionTo(GS.PARTY_BUILDER);
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            hideResultOverlay();
+            render();
+
+            const queuedDelay = delay == null ? scaleDevSimDelay(80, 12) : delay;
+            state.devSimTimer = setTimeout(() => {
+                state.devSimTimer = null;
+                if (!state.devAutoSim) return;
+
+                try {
+
+                    if (_aiTrainingMode) {
+                        _mirrorRandomizeTeams();
+                    } else {
+                        randomizeBothTeamsForDevSim();
+                    }
+
+                    window.setTimeout(() => {
+                        if (!state.devAutoSim) return;
+                        try {
+                            applyPartyBuild(false);
+                            window.setTimeout(() => {
+                                if (!state.devAutoSim) return;
+                                try {
+                                    startMatch();
+                                } catch (err) {
+                                    console.error('Dev auto-sim failed to start the match from builder.', err);
+                                }
+                            }, 35);
+                        } catch (err) {
+                            console.error('Dev auto-sim failed to apply builds from builder.', err);
+                        }
+                    }, 35);
+                } catch (err) {
+                    console.error('Dev auto-sim failed to restart from builder.', err);
+                }
+            }, queuedDelay);
+        }
+
+        function toggleDevAutoSim() {
+            if (!ONLINE_RULES.devSimAllowed) {
+                addLog('Dev Sim is disabled in online PvP.');
+                return;
+            }
+            if (state.devAutoSim) {
+                setDevAutoSim(false);
+                addLog('Developer auto-sim disabled.');
+                return;
+            }
+            addLog('Developer auto-sim enabled: both teams randomize, both sides autoplay, and new matches start automatically.');
+            if (state.phase === 'setup') {
+                setDevAutoSim(true);
+                restartDevSimFromBuilder(40);
+            } else {
+                setDevAutoSim(true);
+                if (state.activePlayer) maybeTriggerComputerTurn();
+            }
+        }
+
+        function showResultOverlay() {
+            const viewer = getViewerPlayer();
+            const isNoContest = state.winner === 0;
+            const playerWon = isNoContest ? false : (ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1));
+            const wonClass = isNoContest ? 'defeat' : (playerWon ? 'victory' : 'defeat');
+
+            const vicSky = document.getElementById('vicSky');
+            const vicGround = document.getElementById('vicGround');
+            const vicTitle = document.getElementById('vicTitle');
+            const vicSubtitle = document.getElementById('vicSubtitle');
+            const vicMatchInfo = document.getElementById('vicMatchInfo');
+            const vicParty = document.getElementById('vicParty');
+            const vicAwards = document.getElementById('vicAwards');
+            const vicParticles = document.getElementById('vicParticles');
+
+            vicSky.className = 'vic-sky ' + wonClass;
+            vicGround.className = 'vic-ground ' + wonClass;
+            vicTitle.textContent = isNoContest ? 'No Contest' : (playerWon ? 'Victory' : 'Defeat');
+            vicTitle.className = 'vic-title ' + wonClass;
+
+            const careerStats = loadCareerStats();
+            const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
+            const streakHtml = !isNoContest && careerStats.currentWinStreak >= 2 ? ` <span class="vic-streak">🔥 ${careerStats.currentWinStreak} Win Streak</span>` : '';
+            const namePrefix = _profileUsername ? `<span style="color:#5ab0ff;font-weight:700">${_profileUsername}</span> — ` : '';
+            vicSubtitle.innerHTML = isNoContest
+                ? `Match ${state.matchNumber} voided — units could not engage.`
+                : (namePrefix + (playerWon ? 'You won' : 'You lost') + ` match ${state.matchNumber}.` + streakHtml);
+
+            let particleHtml = '';
+            if (playerWon) {
+                for (let i = 0; i < 30; i++) {
+                    const x = Math.random() * 100;
+                    const y = 20 + Math.random() * 60;
+                    const delay = Math.random() * 4;
+                    const size = 1 + Math.random() * 2;
+                    particleHtml += `<div class="vic-particle" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-delay:${delay}s"></div>`;
+                }
+            }
+            vicParticles.innerHTML = particleHtml;
+
+            const winnerPlayer = state.winner;
+            const loserPlayer = state.winner === 1 ? 2 : 1;
+            const winnerUnits = (state.units || []).filter(u => u.player === winnerPlayer);
+            const loserUnits = (state.units || []).filter(u => u.player === loserPlayer);
+
+            const POSITIONS = [{
+                    scale: 1.6,
+                    bottom: '8%',
+                    zIdx: 10,
+                    mx: '0px'
+                },
+                {
+                    scale: 1.3,
+                    bottom: '12%',
+                    zIdx: 8,
+                    mx: '-120px'
+                },
+                {
+                    scale: 1.3,
+                    bottom: '12%',
+                    zIdx: 8,
+                    mx: '120px'
+                },
+                {
+                    scale: 1.0,
+                    bottom: '16%',
+                    zIdx: 6,
+                    mx: '-220px'
+                },
+                {
+                    scale: 1.0,
+                    bottom: '16%',
+                    zIdx: 6,
+                    mx: '220px'
+                },
+                {
+                    scale: 0.85,
+                    bottom: '18%',
+                    zIdx: 4,
+                    mx: '-310px'
+                },
+            ];
+            const LOSER_POS = [{
+                    scale: 0.55,
+                    bottom: '28%',
+                    zIdx: 2,
+                    mx: '-70px'
+                },
+                {
+                    scale: 0.55,
+                    bottom: '28%',
+                    zIdx: 2,
+                    mx: '70px'
+                },
+                {
+                    scale: 0.45,
+                    bottom: '30%',
+                    zIdx: 1,
+                    mx: '-150px'
+                },
+                {
+                    scale: 0.45,
+                    bottom: '30%',
+                    zIdx: 1,
+                    mx: '150px'
+                },
+                {
+                    scale: 0.4,
+                    bottom: '31%',
+                    zIdx: 1,
+                    mx: '0px'
+                },
+                {
+                    scale: 0.4,
+                    bottom: '31%',
+                    zIdx: 1,
+                    mx: '220px'
+                },
+            ];
+
+            let partyHtml = '';
+
+            const sortedWinners = [...winnerUnits].sort((a, b) => {
+                if (a.dead !== b.dead) return a.dead ? 1 : -1;
+                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+            });
+
+            for (let i = 0; i < sortedWinners.length && i < POSITIONS.length; i++) {
+                const u = sortedWinners[i];
+                const p = POSITIONS[i];
+                const sprite = getBattleMapSpriteUrl(u);
+                const px = Math.round(128 * p.scale);
+                const nameClass = u.player === 1 ? 'p1' : 'p2';
+                partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx}">
+          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated"></div>
+          <div class="vic-unit-shadow" style="width:${px * 0.7}px"></div>
+          <div class="vic-unit-name ${nameClass}">${escapeHtml(unitDisplayName(u))}</div>
+        </div>`;
+            }
+
+            const sortedLosers = [...loserUnits].sort((a, b) => (a.dead ? 1 : -1) - (b.dead ? 1 : -1));
+            for (let i = 0; i < sortedLosers.length && i < LOSER_POS.length; i++) {
+                const u = sortedLosers[i];
+                const p = LOSER_POS[i];
+                const sprite = getBattleMapSpriteUrl(u);
+                const px = Math.round(128 * p.scale);
+                const nameClass = u.player === 1 ? 'p1' : 'p2';
+                partyHtml += `<div class="vic-unit dead" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx};opacity:0.5">
+          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;filter:grayscale(0.6) brightness(0.6) drop-shadow(0 2px 8px rgba(0,0,0,0.5))"></div>
+          <div class="vic-unit-shadow" style="width:${px * 0.5}px"></div>
+        </div>`;
+            }
+
+            vicParty.innerHTML = partyHtml;
+
+            vicAwards.innerHTML = buildVicAwards();
+
+            const matchAchs = state._matchAchievements || [];
+            if (matchAchs.length > 0) {
+                let achHtml = '<div class="vic-achievements"><div class="vic-ach-title">Achievements Unlocked</div><div class="vic-ach-grid">';
+                for (const id of matchAchs) {
+                    const def = ACHIEVEMENT_DEFS[id];
+                    if (!def) continue;
+                    achHtml += `<div class="vic-ach-item"><span class="vic-ach-icon">${def.icon}</span><span class="vic-ach-name">${def.name}</span></div>`;
+                }
+                achHtml += '</div></div>';
+                vicAwards.innerHTML += achHtml;
+            }
+
+            const allAchs = loadAchievements();
+            const totalUnlocked = Object.keys(allAchs).length;
+            const totalPossible = Object.keys(ACHIEVEMENT_DEFS).length;
+            if (totalUnlocked > 0) {
+                let allAchHtml = `<div class="vic-achievements vic-all-achievements"><div class="vic-ach-title">Achievements (${totalUnlocked}/${totalPossible})</div><div class="vic-ach-grid">`;
+                for (const [id, def] of Object.entries(ACHIEVEMENT_DEFS)) {
+                    const unlocked = !!allAchs[id];
+                    allAchHtml += `<div class="vic-ach-item${unlocked ? '' : ' locked'}" title="${def.desc}"><span class="vic-ach-icon">${unlocked ? def.icon : '🔒'}</span><span class="vic-ach-name">${def.name}</span></div>`;
+                }
+                allAchHtml += '</div></div>';
+                vicAwards.innerHTML += allAchHtml;
+            }
+
+            const durationMs = Date.now() - (state.startTime || Date.now());
+            const durationMin = Math.floor(durationMs / 60000);
+            const durationSec = Math.floor((durationMs % 60000) / 1000);
+            const durationStr = durationMin > 0 ? `${durationMin}m ${durationSec}s` : `${durationSec}s`;
+
+            const _vicRl = state.matchClock && state.matchClock.roundLimit ? state.matchClock.roundLimit : 0;
+            const _vicPast = _vicRl > 0 && (state.round || 0) > _vicRl;
+            const _vicRoundStr = _vicPast ? '⏱ TIME' : `Round ${state.round || '?'}`;
+            vicMatchInfo.innerHTML = `${_vicRoundStr} · ${durationStr} · <span style="color:var(--p1-score)">${(state.units||[]).filter(u=>u.player===1&&!u.dead).length}</span> vs <span style="color:var(--p2-score)">${(state.units||[]).filter(u=>u.player===2&&!u.dead).length}</span> alive`;
+
+            const _winCondLabels = {
+                wipeout: '💀 Wipeout',
+                tower_destroyed: '🏰 Dragon Slain',
+                hourglasses_collected: '⏳ Hourglasses Collected',
+                most_kills: '🗡 Most Kills',
+                most_points: '🚩 Most Points',
+                most_captures: '🏳️ Most Captures',
+                flag_captures: '🏳️ Capture Target Reached',
+                sudden_death: '⚡ Sudden Death',
+                arena_composite: '⏱ Arena Score',
+                draw: '🤝 Draw',
+                no_contest: '⚖️ No Contest',
+            };
+            if (state._winCondition && _winCondLabels[state._winCondition]) {
+                vicMatchInfo.innerHTML += `<br><span style="font-size:12px;color:var(--muted);letter-spacing:0.5px">${_winCondLabels[state._winCondition]}</span>`;
+            }
+
+            const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+
+            if (_mpMode && _mpMode.id === 'arena') {
+                const ARENA_PTS = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+                function _vicArenaScore(p) {
+                    const enemy = p === 1 ? 2 : 1;
+                    let pts = 0, details = [];
+                    const kills = state.matchKills?.[p] || 0;
+                    const killPts = kills * ARENA_PTS.kill;
+                    pts += killPts;
+                    details.push({ label: 'Kills', raw: kills, pts: killPts, icon: '🗡' });
+
+                    const eTw = state.towers?.[enemy];
+                    let tDmg = 0;
+                    if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
+                    const tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                    pts += tDmgPts;
+                    details.push({ label: 'Tower Dmg', raw: tDmg, pts: tDmgPts, icon: '🏰' });
+
+                    let hgCount = 0;
+                    if (state.hourglasses) {
+                        hgCount = state.hourglasses.filter(h => {
+                            if (!h.carriedBy) return false;
+                            const c = state.units.find(u => u.id === h.carriedBy);
+                            return c && !c.dead && c.player === p;
+                        }).length;
+                    }
+                    const hgPts = hgCount * ARENA_PTS.hourglass;
+                    pts += hgPts;
+                    details.push({ label: 'Hourglasses', raw: hgCount, pts: hgPts, icon: '⏳' });
+
+                    const nexRounds = state._arenaNexusControl?.[p] || 0;
+                    const nexPts = nexRounds * ARENA_PTS.nexusRound;
+                    pts += nexPts;
+                    details.push({ label: 'Nexus Rnds', raw: nexRounds, pts: nexPts, icon: '⬡' });
+
+                    return { pts, details };
+                }
+                const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
+
+                let tallyRows = '';
+                for (let i = 0; i < as1.details.length; i++) {
+                    const d1 = as1.details[i], d2 = as2.details[i];
+                    tallyRows += `<tr>
+                        <td style="text-align:right;color:var(--p1-score);padding:1px 6px">${d1.pts}</td>
+                        <td style="text-align:center;color:var(--muted);font-size:10px;padding:1px 4px;white-space:nowrap">${d1.icon} ${d1.label}</td>
+                        <td style="text-align:left;color:var(--p2-score);padding:1px 6px">${d2.pts}</td>
+                    </tr>`;
+                }
+                let sdNote = state.suddenDeathActive ? ' · <span style="color:#ff4444">⚡ Sudden Death</span>' : '';
+                vicMatchInfo.innerHTML += `<br>
+                <div style="margin-top:4px;font-size:13px">
+                    <span style="color:var(--p1-score);font-weight:700;font-size:16px">${as1.pts}</span>
+                    <span style="color:var(--muted);margin:0 4px">–</span>
+                    <span style="color:var(--p2-score);font-weight:700;font-size:16px">${as2.pts}</span>
+                    <span style="color:var(--muted);font-size:11px;margin-left:4px">Arena Score</span>${sdNote}
+                </div>
+                <table style="margin:4px auto 0;border-collapse:collapse;font-size:11px">${tallyRows}</table>`;
+            } else if (_mpMode && _mpMode.id !== 'arena') {
+                let modeLine = '';
+                const k1 = state.matchKills?.[1] || 0, k2 = state.matchKills?.[2] || 0;
+                const s1 = state.matchScores?.[1] || 0, s2 = state.matchScores?.[2] || 0;
+                if (_mpMode.id === 'tdm' || _mpMode.id === 'ffa') {
+                    modeLine = `💀 Kills: <span style="color:var(--p1-score)">${k1}</span> – <span style="color:var(--p2-score)">${k2}</span>`;
+                } else if (_mpMode.id === 'domination' || _mpMode.id === 'hotspot') {
+                    modeLine = `🚩 Points: <span style="color:var(--p1-score)">${s1}</span> – <span style="color:var(--p2-score)">${s2}</span>`;
+                } else if (_mpMode.id === 'ctf') {
+                    modeLine = `🏳️ Captures: <span style="color:var(--p1-score)">${s1}</span> – <span style="color:var(--p2-score)">${s2}</span>`;
+                }
+                if (state.suddenDeathActive) modeLine += ' · <span style="color:#ff4444">⚡ Sudden Death</span>';
+                if (modeLine) {
+                    vicMatchInfo.innerHTML += `<br><span style="font-size:13px">${_mpMode.label} — ${modeLine}</span>`;
+                }
+            }
+
+            const vicEloBadge = document.getElementById('vicEloBadge');
+            if (vicEloBadge) {
+                if (state.isRankedMatch && !isNoContest) {
+                    const ri = getEloRankInfo(_lastEloAfter);
+                    const deltaSign = _lastEloDelta > 0 ? '+' : '';
+                    const deltaClass = _lastEloDelta > 0 ? 'positive' : _lastEloDelta < 0 ? 'negative' : 'neutral';
+                    vicEloBadge.innerHTML = `
+                        <div class="vic-elo-badge">
+                            <span class="vic-elo-rank-icon">${ri.icon}</span>
+                            <div class="vic-elo-info">
+                                <span class="vic-elo-label">${ri.name}</span>
+                                <span class="vic-elo-value">${_lastEloAfter}</span>
+                            </div>
+                        </div>
+                        <div class="vic-elo-delta ${deltaClass}">${deltaSign}${_lastEloDelta}</div>
+                    `;
+                } else {
+                    vicEloBadge.innerHTML = state.isRankedMatch ? '' : '';
+                }
+            }
+
+            const vicTeamDmgBar = document.getElementById('vicTeamDmgBar');
+            const vicTeamDmgLabels = document.getElementById('vicTeamDmgLabels');
+            if (vicTeamDmgBar && vicTeamDmgLabels) {
+                const p1Dmg = (state.units||[]).filter(u=>u.player===1).reduce((s,u) => s + (u._trackDmgDealt||0), 0);
+                const p2Dmg = (state.units||[]).filter(u=>u.player===2).reduce((s,u) => s + (u._trackDmgDealt||0), 0);
+                const total = Math.max(1, p1Dmg + p2Dmg);
+                const p1Pct = Math.round((p1Dmg / total) * 100);
+                const p2Pct = 100 - p1Pct;
+                vicTeamDmgBar.innerHTML = `<div class="vic-team-dmg-fill-p1" style="width:${p1Pct}%"></div><div class="vic-team-dmg-fill-p2" style="width:${p2Pct}%"></div>`;
+                vicTeamDmgLabels.innerHTML = `<span class="p1-lbl">${p1Dmg} dmg</span><span style="font-size:8px;color:var(--muted)">TEAM DAMAGE</span><span class="p2-lbl">${p2Dmg} dmg</span>`;
+            }
+
+            const vicStatsWrap = document.getElementById('vicStatsTableWrap');
+            if (vicStatsWrap) {
+                vicStatsWrap.innerHTML = buildVicStatsTable();
+            }
+
+            if (ONLINE_RULES.active) {
+                if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
+                if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
+            }
+
+            nextMatchBtn.disabled = false;
+            if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
+            if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
+            resultOverlay.classList.remove('hidden');
+        }
+
+        function buildVicAwards() {
+            const allUnits = state.units || [];
+            if (!allUnits.length) return '';
+
+            const awards = [];
+            const topDmg = [...allUnits].sort((a, b) => (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0))[0];
+            if (topDmg && (topDmg._trackDmgDealt || 0) > 0) {
+                awards.push({
+                    icon: '⚔️',
+                    label: 'The Chosen One',
+                    name: unitDisplayName(topDmg),
+                    stat: `${topDmg._trackDmgDealt} dmg`,
+                    player: topDmg.player,
+                    gold: true,
+                    unit: topDmg
+                });
+            }
+            const topKills = [...allUnits].sort((a, b) => (b._matchKills || 0) - (a._matchKills || 0))[0];
+            if (topKills && (topKills._matchKills || 0) > 0) {
+                awards.push({
+                    icon: '💀',
+                    label: 'The Reaper',
+                    name: unitDisplayName(topKills),
+                    stat: `${topKills._matchKills} kill${topKills._matchKills !== 1 ? 's' : ''}`,
+                    player: topKills.player,
+                    unit: topKills
+                });
+            }
+            const topHeal = [...allUnits].sort((a, b) => (b._trackHealDone || 0) - (a._trackHealDone || 0))[0];
+            if (topHeal && (topHeal._trackHealDone || 0) > 0) {
+                awards.push({
+                    icon: '💚',
+                    label: 'The Witness',
+                    name: unitDisplayName(topHeal),
+                    stat: `${topHeal._trackHealDone} HP`,
+                    player: topHeal.player,
+                    unit: topHeal
+                });
+            }
+            const topStreak = [...allUnits].sort((a, b) => (b._maxKillStreak || 0) - (a._maxKillStreak || 0))[0];
+            if (topStreak && (topStreak._maxKillStreak || 0) >= 2) {
+                awards.push({
+                    icon: '🔥',
+                    label: 'The Unchained',
+                    name: unitDisplayName(topStreak),
+                    stat: `${topStreak._maxKillStreak} kills`,
+                    player: topStreak.player,
+                    unit: topStreak
+                });
+            }
+            const topCrits = [...allUnits].sort((a, b) => (b._matchCrits || 0) - (a._matchCrits || 0))[0];
+            if (topCrits && (topCrits._matchCrits || 0) > 0) {
+                awards.push({
+                    icon: '⚡',
+                    label: 'The Harbinger',
+                    name: unitDisplayName(topCrits),
+                    stat: `${topCrits._matchCrits} crit${topCrits._matchCrits !== 1 ? 's' : ''}`,
+                    player: topCrits.player,
+                    unit: topCrits
+                });
+            }
+            const topDodge = [...allUnits].sort((a, b) => (b._matchDodges || 0) - (a._matchDodges || 0))[0];
+            if (topDodge && (topDodge._matchDodges || 0) > 0) {
+                awards.push({
+                    icon: '💨',
+                    label: 'The Phantom',
+                    name: unitDisplayName(topDodge),
+                    stat: `${topDodge._matchDodges} dodge${topDodge._matchDodges !== 1 ? 's' : ''}`,
+                    player: topDodge.player,
+                    unit: topDodge
+                });
+            }
+            const topTank = [...allUnits].filter(u => !u.dead).sort((a, b) => (b._trackDmgReceived || 0) - (a._trackDmgReceived || 0))[0];
+            if (topTank && (topTank._trackDmgReceived || 0) > 15) {
+                awards.push({
+                    icon: '🛡',
+                    label: 'The Martyr',
+                    name: unitDisplayName(topTank),
+                    stat: `${topTank._trackDmgReceived} tanked`,
+                    player: topTank.player,
+                    unit: topTank
+                });
+            }
+
+            if (!awards.length) return '';
+
+            return awards.map(a => {
+                const spriteHtml = a.unit ? `<div class="vic-award-sprite" style="background-image:url('${getBattleMapSpriteUrl(a.unit)}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : '';
+                return `<div class="vic-award${a.gold ? ' gold' : ''}">
+          ${spriteHtml}
+          <div class="vic-award-icon">${a.icon}</div>
+          <div class="vic-award-detail">
+            <div class="vic-award-label">${a.label}</div>
+            <div class="vic-award-name">${a.name}</div>
+            <div class="vic-award-stat">${a.stat}</div>
+          </div>
+        </div>`;
+            }).join('');
+        }
+
+        function buildVicStatsTable() {
+            const allUnits = state.units || [];
+            if (!allUnits.length) return '';
+
+            const p1Units = allUnits.filter(u => u.player === 1);
+            const p2Units = allUnits.filter(u => u.player === 2);
+
+            const cols = ['_matchKills', '_matchDeaths', '_matchAssists', '_trackDmgDealt', '_trackDmgReceived', '_trackHealDone', '_matchCrits'];
+            const best = {};
+            for (const c of cols) {
+                const max = Math.max(...allUnits.map(u => u[c] || 0));
+                best[c] = max > 0 ? max : -1;
+            }
+
+            function unitRow(u) {
+                const sprite = typeof getUnitSprite === 'function' ? getUnitSprite(u.cls, u.player, u) : '';
+                const deadClass = u.dead ? ' dead-unit' : '';
+                const lvl = u._level || 1;
+                function cell(key) {
+                    const v = u[key] || 0;
+                    const cls = v === 0 ? 'stat-zero' : (v === best[key] && v > 0 ? 'stat-best' : '');
+                    return `<td class="${cls}">${v}</td>`;
+                }
+                return `<tr class="${deadClass}">
+                    <td><div class="unit-sprite-cell">
+                        ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
+                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}</span>
+                    </div></td>
+                    <td style="font-size:10px;color:var(--muted)">${u.cls}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    ${cell('_matchKills')}
+                    ${cell('_matchDeaths')}
+                    ${cell('_matchAssists')}
+                    ${cell('_trackDmgDealt')}
+                    ${cell('_trackDmgReceived')}
+                    ${cell('_trackHealDone')}
+                    ${cell('_matchCrits')}
+                </tr>`;
+            }
+
+            const sortFn = (a, b) => {
+                if (a.dead !== b.dead) return a.dead ? 1 : -1;
+                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+            };
+            const p1Sorted = [...p1Units].sort(sortFn);
+            const p2Sorted = [...p2Units].sort(sortFn);
+
+            function teamTotals(units, pClass) {
+                const k = units.reduce((s,u) => s + (u._matchKills||0), 0);
+                const a = units.reduce((s,u) => s + (u._matchAssists||0), 0);
+                const d = units.reduce((s,u) => s + (u._trackDmgDealt||0), 0);
+                const r = units.reduce((s,u) => s + (u._trackDmgReceived||0), 0);
+                const h = units.reduce((s,u) => s + (u._trackHealDone||0), 0);
+                const c = units.reduce((s,u) => s + (u._matchCrits||0), 0);
+                const dt = units.reduce((s,u) => s + (u._matchDeaths||0), 0);
+                return `<tr class="team-header ${pClass}"><td colspan="2">Total</td><td>${k}</td><td>${dt}</td><td>${a}</td><td>${d}</td><td>${r}</td><td>${h}</td><td>${c}</td></tr>`;
+            }
+
+            return `<table class="vic-stats-table">
+                <caption>Match Performance</caption>
+                <thead><tr>
+                    <th>Unit</th><th>Class</th><th>K</th><th>D</th><th>A</th><th>Dmg</th><th>Recv</th><th>Heal</th><th>Crit</th>
+                </tr></thead>
+                <tbody>
+                    <tr class="team-header p1-hdr"><td colspan="9">Player 1</td></tr>
+                    ${p1Sorted.map(unitRow).join('')}
+                    ${teamTotals(p1Units, 'p1-hdr')}
+                    <tr class="team-header p2-hdr"><td colspan="9">Player 2</td></tr>
+                    ${p2Sorted.map(unitRow).join('')}
+                    ${teamTotals(p2Units, 'p2-hdr')}
+                </tbody>
+            </table>`;
+        }
+
+        function hideResultOverlay() {
+            resultOverlay.classList.add('hidden');
+        }
+
+        function revealAllHourglasses() {
+            for (const h of state.hourglasses) {
+                h.visibleTo[1] = true;
+                h.visibleTo[2] = true;
+            }
+        }
+
+        function startCampaignBattle(lvlId) {
+            const save = state.campaignSave;
+            if (!save) { console.error('[Campaign] No save loaded'); return; }
+            const lvl = (typeof CAMPAIGN_LEVELS !== 'undefined' && CAMPAIGN_LEVELS[lvlId - 1])
+                ? CAMPAIGN_LEVELS[lvlId - 1] : null;
+            if (!lvl) { console.error('[Campaign] Invalid level:', lvlId); return; }
+
+            state.isCampaign = true;
+            state.campaignLevelId = lvlId;
+
+            applyGameMode(lvl.mapId);
+
+            activeMultiplayerMode = lvl.multiplayerMode || 'tdm';
+
+            CONFIG.teamSize = lvl.teamSize;
+
+            const gm = GAME_MODES[lvl.mapId];
+            if (gm) {
+                SPAWNS[1] = gm.spawns[1].slice(0, lvl.teamSize);
+                SPAWNS[2] = gm.spawns[2].slice(0, lvl.teamSize);
+                DEFAULT_BUILDS[1] = gm.defaultBuilds[1].slice(0, lvl.teamSize);
+                DEFAULT_BUILDS[2] = gm.defaultBuilds[2].slice(0, lvl.teamSize);
+            }
+
+            state.partyBuilds[1] = [];
+            state.partyNames[1] = [];
+            state.loadouts[1] = [];
+            state.partyMeta[1] = [];
+            const rosterSlots = save.partySlots.slice(0, lvl.teamSize);
+            for (let i = 0; i < lvl.teamSize; i++) {
+                const rosterId = rosterSlots[i];
+                const rInst = rosterId ? save.roster.find(r => r.id === rosterId) : null;
+                if (rInst) {
+                    state.partyBuilds[1][i] = rInst.job || 'Freelancer';
+                    state.partyNames[1][i] = rInst.name || rInst.race;
+                    state.loadouts[1][i] = emptyLoadout();
+
+                    if (rInst.loadout && rInst.loadout.items) {
+                        state.loadouts[1][i].items = { ...rInst.loadout.items };
+                    }
+                    if (rInst.loadout && rInst.loadout.equipment) {
+                        state.loadouts[1][i].equipment = { ...rInst.loadout.equipment };
+                    }
+                    state.partyMeta[1][i] = {
+                        race: rInst.race,
+                        gender: rInst.gender,
+                        _campaignRosterId: rInst.id,
+                        _campaignLevel: rInst.level || 1,
+                        _campaignXp: rInst.xp || 0,
+                        _campaignSpells: (rInst.spells || []).slice(),
+                        customSpells: (rInst.loadout && rInst.loadout.spells) ? rInst.loadout.spells.slice() : (rInst.spells || []).slice()
+                    };
+                } else if (lvl.allyRacePool && lvl.allyRacePool.length) {
+
+                    const pool = lvl.allyRacePool.filter(r => {
+
+                        return !state.partyMeta[1].some(m => m && m.race === r);
+                    });
+                    const allyRace = (pool.length ? pool : lvl.allyRacePool)[
+                        Math.floor(Math.random() * (pool.length || lvl.allyRacePool.length))
+                    ];
+                    const allyJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[allyRace])
+                        ? RACE_DEFAULT_JOBS[allyRace] : 'Freelancer';
+                    const validGenders = (typeof getAvailableGendersForRace === 'function')
+                        ? getAvailableGendersForRace(allyRace) : ['male', 'female'];
+                    const allyGender = validGenders[Math.floor(Math.random() * validGenders.length)];
+                    const allyName = allyRace.charAt(0).toUpperCase() + allyRace.slice(1);
+
+                    state.partyBuilds[1][i] = allyJob;
+                    state.partyNames[1][i] = allyName;
+                    state.loadouts[1][i] = emptyLoadout();
+                    state.partyMeta[1][i] = {
+                        race: allyRace,
+                        gender: allyGender,
+                        _campaignAlly: true,
+                        _campaignLevel: 1,
+                        _campaignXp: 0,
+                        _campaignSpells: []
+                    };
+
+                    state._campaignAllyRace = allyRace;
+                } else {
+
+                    state.partyBuilds[1][i] = 'Freelancer';
+                    state.partyNames[1][i] = 'Recruit';
+                    state.loadouts[1][i] = emptyLoadout();
+                    state.partyMeta[1][i] = { race: 'homosapien', gender: 'male' };
+                }
+            }
+
+            state.partyBuilds[2] = [];
+            state.partyNames[2] = [];
+            state.loadouts[2] = [];
+            state.partyMeta[2] = [];
+            const enemyRaces = lvl.enemyRaces || [];
+
+            for (let i = 0; i < lvl.teamSize; i++) {
+
+                const [minLvl, maxLvl] = lvl.enemyLevelRange || [1, 1];
+                const eLvl = minLvl + Math.floor(Math.random() * (maxLvl - minLvl + 1));
+                const eXp = (eLvl >= 2 && eLvl <= XP_MAX_LEVEL) ? XP_THRESHOLDS[eLvl - 1] : 0;
+
+                {
+
+                    const eRace = enemyRaces[i % enemyRaces.length];
+                    const eJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[eRace])
+                        ? RACE_DEFAULT_JOBS[eRace] : 'Freelancer';
+                    const validGenders = (typeof getAvailableGendersForRace === 'function')
+                        ? getAvailableGendersForRace(eRace) : ['male', 'female'];
+                    const eGender = validGenders[Math.floor(Math.random() * validGenders.length)];
+
+                    state.partyBuilds[2][i] = eJob;
+                    state.partyNames[2][i] = eRace.charAt(0).toUpperCase() + eRace.slice(1);
+                    state.loadouts[2][i] = emptyLoadout();
+                    state.partyMeta[2][i] = {
+                        race: eRace,
+                        gender: eGender,
+                        _campaignEnemyLevel: eLvl,
+                        _campaignEnemyXp: eXp
+                    };
+                }
+            }
+
+            state.controllers[1] = CTRL.LOCAL;
+            state.controllers[2] = CTRL.AI;
+
+            state._campaignModifiers = lvl.modifiers || [];
+
+            state._challengeAiMult = (typeof lvl._challengeAiMult === 'number') ? lvl._challengeAiMult : 1.0;
+
+            startMatch();
+        }
+        window.startCampaignBattle = startCampaignBattle;
+
+        function _campaignCalcStars() { return 1; }
+
+        function finalizeCampaignBattle() {
+            const save = state.campaignSave;
+            if (!save) return null;
+            const lvlId = state.campaignLevelId;
+            const lvl = (typeof CAMPAIGN_LEVELS !== 'undefined' && CAMPAIGN_LEVELS[lvlId - 1])
+                ? CAMPAIGN_LEVELS[lvlId - 1] : null;
+            if (!lvl) return null;
+
+            const viewer = getViewerPlayer();
+            const playerWon = state.winner === viewer;
+
+            const unitResults = [];
+            const p1Units = (state.units || []).filter(u => u.player === 1);
+            for (const unit of p1Units) {
+                const rosterId = unit._campaignRosterId;
+                const rInst = rosterId ? save.roster.find(r => r.id === rosterId) : null;
+                const battleXp = (unit._xp || 0);
+                const prevXp = unit._campaignStartXp || 0;
+                const xpGained = Math.max(0, battleXp - prevXp);
+                const prevLevel = unit._campaignStartLevel || 1;
+
+                if (rInst) {
+                    rInst.xp = (rInst.xp || 0) + xpGained;
+                    let newLevel = 1;
+                    for (let lv = XP_MAX_LEVEL; lv >= 2; lv--) {
+                        if (rInst.xp >= XP_THRESHOLDS[lv - 1]) { newLevel = lv; break; }
+                    }
+                    rInst.level = newLevel;
+
+                    if (unit._spellSlots && unit._spellSlots.length > 0) {
+                        const existingSet = new Set(rInst.spells || []);
+                        for (const sid of unit._spellSlots) {
+                            if (sid && !existingSet.has(sid)) {
+                                rInst.spells.push(sid);
+                                existingSet.add(sid);
+                            }
+                        }
+                    }
+                    if (rInst.loadout) {
+                        rInst.loadout.spells = (rInst.spells || []).slice();
+                    }
+
+                    const _cType = save.challengeType || 'survival';
+                    if (unit.dead && _cType !== 'gauntlet') {
+                        rInst._dead = true;
+                    }
+                }
+
+                unitResults.push({
+                    name: unitDisplayName(unit),
+                    race: unit.race,
+                    gender: unit.gender,
+                    job: unit.job || unit.cls,
+                    rosterId,
+                    xpGained,
+                    prevLevel,
+                    newLevel: rInst ? rInst.level : prevLevel,
+                    leveledUp: rInst ? rInst.level > prevLevel : false,
+                    dead: !!unit.dead
+                });
+            }
+
+            let goldEarned = 0;
+            let goldBreakdown = null;
+
+            const cType = save.challengeType || 'survival';
+            const isGauntlet = (cType === 'gauntlet');
+
+            if (playerWon) {
+                const baseGold = lvl.goldReward || 50;
+                let unitGold = 0;
+                for (const u of p1Units) {
+                    unitGold += (u.gold || 0);
+                }
+                goldEarned = baseGold + unitGold;
+                goldBreakdown = {
+                    base: baseGold,
+                    starMult: 1,
+                    starBonus: 0,
+                    unitGold,
+                    replayDeduction: 0,
+                    total: goldEarned
+                };
+                save.gold = (save.gold || 0) + goldEarned;
+                save.totalGoldEarned = (save.totalGoldEarned || 0) + goldEarned;
+                save.totalBattlesWon = (save.totalBattlesWon || 0) + 1;
+                save.runWins = (save.runWins || 0) + 1;
+                save.currentBattle = (save.currentBattle || 1) + 1;
+                if (save.runWins > (save.bestStreak || 0)) {
+                    save.bestStreak = save.runWins;
+                }
+
+                if (isGauntlet && save.gauntletStartTime) {
+                    save.gauntletTotalTime = (save.gauntletTotalTime || 0) + (Date.now() - save.gauntletStartTime);
+                    save.gauntletStartTime = Date.now();
+                }
+            } else {
+                if (isGauntlet) {
+
+                    save.gauntletRetries = (save.gauntletRetries || 0) + 1;
+
+                    for (const r of (save.roster || [])) delete r._dead;
+                } else {
+
+                    if ((save.runWins || 0) > (save.bestStreak || 0)) {
+                        save.bestStreak = save.runWins || 0;
+                    }
+                    save._runOver = true;
+                    save._finalStreak = save.runWins || 0;
+                }
+            }
+
+            state._campaignAllyRace = null;
+            saveCampaign(save);
+
+            return {
+                playerWon,
+                stars: 0,
+                goldEarned,
+                goldBreakdown,
+                unitResults,
+                recruitment: null,
+                lvlId,
+                lvlName: lvl.name,
+                battleNum: lvlId,
+                runWins: save.runWins || 0,
+                bestStreak: save.bestStreak || 0,
+                runOver: isGauntlet ? false : !playerWon,
+                challengeType: cType,
+                gauntletRetries: save.gauntletRetries || 0
+            };
+        }
+
+        function showCampaignResultOverlay(result) {
+            if (!result) { showResultOverlay(); return; }
+
+            const vicSky = document.getElementById('vicSky');
+            const vicGround = document.getElementById('vicGround');
+            const vicTitle = document.getElementById('vicTitle');
+            const vicSubtitle = document.getElementById('vicSubtitle');
+            const vicMatchInfo = document.getElementById('vicMatchInfo');
+            const vicParty = document.getElementById('vicParty');
+            const vicAwards = document.getElementById('vicAwards');
+            const vicParticles = document.getElementById('vicParticles');
+            const vicBottom = document.getElementById('vicBottom');
+
+            const wonClass = result.playerWon ? 'victory' : 'defeat';
+            vicSky.className = 'vic-sky ' + wonClass;
+            vicGround.className = 'vic-ground ' + wonClass;
+
+            const cType = result.challengeType || 'survival';
+            const isGauntlet = (cType === 'gauntlet');
+            const maxLevel = (typeof GAUNTLET_MAX_LEVEL !== 'undefined') ? GAUNTLET_MAX_LEVEL : 100;
+            const gauntletDone = isGauntlet && result.playerWon && result.battleNum >= maxLevel;
+
+            if (gauntletDone) {
+                vicTitle.textContent = 'Gauntlet Complete!';
+                vicTitle.className = 'vic-title victory';
+            } else {
+                vicTitle.textContent = result.playerWon ? 'Victory' : (isGauntlet ? 'Defeat' : 'Run Over');
+                vicTitle.className = 'vic-title ' + wonClass;
+            }
+
+            if (result.playerWon) {
+                if (gauntletDone) {
+                    vicSubtitle.innerHTML = `All ${maxLevel} battles cleared! · Retries: ${result.gauntletRetries || 0}`;
+                } else if (isGauntlet) {
+                    vicSubtitle.innerHTML = `Battle ${result.battleNum} / ${maxLevel} cleared`;
+                } else {
+                    vicSubtitle.innerHTML = `Battle ${result.battleNum} cleared · Streak: ${result.runWins}`;
+                }
+            } else {
+                if (isGauntlet) {
+                    const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(result.battleNum) : 50;
+                    const save = state.campaignSave;
+                    const canRetry = save && save.gold >= retryCost;
+                    vicSubtitle.innerHTML = `Battle ${result.battleNum} / ${maxLevel} failed · Retry cost: 💰 ${retryCost}`
+                        + (canRetry ? '' : ' <span style="color:#a33">(not enough gold)</span>');
+                } else {
+                    vicSubtitle.innerHTML = `You fell on Battle ${result.battleNum}. `
+                        + `Final streak: <b>${result.runWins}</b> · Best streak: <b>${result.bestStreak}</b>`;
+                }
+            }
+
+            let particleHtml = '';
+            if (result.playerWon) {
+                for (let i = 0; i < 30; i++) {
+                    const x = Math.random() * 100;
+                    const y = 20 + Math.random() * 60;
+                    const delay = Math.random() * 4;
+                    const size = 1 + Math.random() * 2;
+                    particleHtml += `<div class="vic-particle" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-delay:${delay}s"></div>`;
+                }
+            }
+            vicParticles.innerHTML = particleHtml;
+
+            let infoHtml = '';
+            if (result.playerWon && result.goldBreakdown) {
+                const gb = result.goldBreakdown;
+                let goldHtml = `<div class="camp-gold-section">`;
+                goldHtml += `<div class="camp-gold-row"><span>Battle Reward</span><span class="camp-gold-val">${gb.base}g</span></div>`;
+                if (gb.unitGold > 0) goldHtml += `<div class="camp-gold-row"><span>Unit Gold</span><span class="camp-gold-val">+${gb.unitGold}g</span></div>`;
+                goldHtml += `<div class="camp-gold-row total"><span>Total Gold</span><span class="camp-gold-val">${gb.total}g</span></div>`;
+                goldHtml += `</div>`;
+                infoHtml += goldHtml;
+            } else if (!result.playerWon) {
+                const cType2 = result.challengeType || 'survival';
+                if (cType2 === 'gauntlet') {
+                    const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(result.battleNum) : 50;
+                    infoHtml += `<div class="camp-gold-section">
+                        <div class="camp-gold-row"><span>Retry Cost</span><span class="camp-gold-val">-${retryCost}g</span></div>
+                        <div class="camp-gold-row"><span>Retries This Run</span><span class="camp-gold-val">${result.gauntletRetries || 0}</span></div>
+                    </div>`;
+                } else {
+                    infoHtml += `<div class="camp-gold-section">
+                        <div class="camp-gold-row total"><span>Final Streak</span><span class="camp-gold-val">${result.runWins}</span></div>
+                        <div class="camp-gold-row"><span>Best Streak</span><span class="camp-gold-val">${result.bestStreak}</span></div>
+                    </div>`;
+                }
+            }
+            vicMatchInfo.innerHTML = infoHtml;
+
+            const winnerPlayer = state.winner;
+            const winnerUnits = (state.units || []).filter(u => u.player === winnerPlayer);
+            const POSITIONS = [
+                { scale: 1.6, bottom: '8%', zIdx: 10, mx: '0px' },
+                { scale: 1.3, bottom: '12%', zIdx: 8, mx: '-120px' },
+                { scale: 1.3, bottom: '12%', zIdx: 8, mx: '120px' },
+                { scale: 1.0, bottom: '16%', zIdx: 6, mx: '-220px' },
+                { scale: 1.0, bottom: '16%', zIdx: 6, mx: '220px' },
+                { scale: 0.85, bottom: '18%', zIdx: 4, mx: '-310px' },
+            ];
+            const sorted = [...winnerUnits].sort((a, b) => {
+                if (a.dead !== b.dead) return a.dead ? 1 : -1;
+                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+            });
+            let partyHtml = '';
+            for (let i = 0; i < sorted.length && i < POSITIONS.length; i++) {
+                const u = sorted[i];
+                const p = POSITIONS[i];
+                const sprite = getBattleMapSpriteUrl(u);
+                const px = Math.round(128 * p.scale);
+                partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx}">
+                    <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated"></div>
+                    <div class="vic-unit-shadow" style="width:${px * 0.7}px"></div>
+                    <div class="vic-unit-name p1">${escapeHtml(unitDisplayName(u))}</div>
+                </div>`;
+            }
+            vicParty.innerHTML = partyHtml;
+
+            let awardsHtml = '<div class="camp-xp-section"><div class="camp-xp-title">Unit Progress</div>';
+            for (const ur of result.unitResults) {
+                const sprite = (typeof getR2RaceSpriteUrl === 'function')
+                    ? getR2RaceSpriteUrl(ur.race, ur.gender, ur.job) : '';
+                const lvlUpTag = ur.leveledUp
+                    ? `<span class="camp-lvlup">⬆ LVL ${ur.newLevel}!</span>` : '';
+                const fallenTag = ur.dead ? `<span class="camp-lvlup" style="background:#a33;color:#fff">✝ Fallen</span>` : '';
+                awardsHtml += `<div class="camp-xp-row${ur.dead ? ' dead' : ''}">
+                    <div class="camp-xp-sprite" style="background-image:url('${sprite}')"></div>
+                    <div class="camp-xp-info">
+                        <div class="camp-xp-name">${escapeHtml(ur.name)}</div>
+                        <div class="camp-xp-detail">Lv.${ur.newLevel} · +${ur.xpGained} XP ${lvlUpTag} ${fallenTag}</div>
+                    </div>
+                </div>`;
+            }
+            awardsHtml += '</div>';
+            vicAwards.innerHTML = awardsHtml;
+
+            const vicEloBadge = document.getElementById('vicEloBadge');
+            if (vicEloBadge) vicEloBadge.innerHTML = '';
+            const vicTeamDmgBar = document.getElementById('vicTeamDmgBar');
+            if (vicTeamDmgBar) vicTeamDmgBar.innerHTML = '';
+            const vicTeamDmgLabels = document.getElementById('vicTeamDmgLabels');
+            if (vicTeamDmgLabels) vicTeamDmgLabels.innerHTML = '';
+            const vicStatsWrap = document.getElementById('vicStatsTableWrap');
+            if (vicStatsWrap) vicStatsWrap.innerHTML = '';
+
+            vicBottom.innerHTML = '';
+            if (result.playerWon) {
+                vicBottom.innerHTML = `
+                    <button class="primary camp-btn" onclick="window._campaignContinue()">Continue →</button>
+                    <button class="warn camp-btn" onclick="window._campaignBackToMap()">Back to Map</button>
+                `;
+            } else {
+                const cType3 = result.challengeType || 'survival';
+                if (cType3 === 'gauntlet') {
+                    const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(result.battleNum) : 50;
+                    const save = state.campaignSave;
+                    const canRetry = save && save.gold >= retryCost;
+                    vicBottom.innerHTML = `
+                        <button class="primary camp-btn${canRetry ? '' : ' camp-btn-disabled'}" onclick="window._gauntletRetry()"${canRetry ? '' : ' disabled'}>
+                            🔄 Retry (💰 ${retryCost})
+                        </button>
+                        <button class="warn camp-btn" onclick="window._campaignBackToMap()">Back to Map</button>
+                    `;
+                } else {
+                    vicBottom.innerHTML = `
+                        <button class="primary camp-btn" onclick="window._challengeNewRun()">Start New Run</button>
+                        <button class="warn camp-btn" onclick="window._campaignBackToMap()">Back to Main Menu</button>
+                    `;
+                }
+            }
+
+            resultOverlay.classList.remove('hidden');
+        }
+
+        window._challengeNewRun = function() {
+            playSfx('uiButtonConfirm');
+            const oldSave = state.campaignSave;
+            if (oldSave) {
+                const carryBestStreak = oldSave.bestStreak || 0;
+                oldSave.currentBattle = 1;
+                oldSave.runWins = 0;
+                oldSave.runSeed = (Math.random() * 0x7FFFFFFF) | 0;
+                oldSave._runOver = false;
+                oldSave._finalStreak = 0;
+                oldSave.gauntletRetries = 0;
+                oldSave.gauntletStartTime = (oldSave.challengeType === 'gauntlet') ? Date.now() : null;
+                oldSave.gauntletTotalTime = 0;
+                for (const r of (oldSave.roster || [])) delete r._dead;
+                oldSave.bestStreak = carryBestStreak;
+                if (typeof saveCampaign === 'function') saveCampaign(oldSave);
+            }
+            _campaignReturnToMap();
+        };
+
+        window._gauntletRetry = function() {
+            const save = state.campaignSave;
+            if (!save) return;
+            const battleNum = save.currentBattle || 1;
+            const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(battleNum) : 50;
+            if (save.gold < retryCost) {
+                playSfx('uiError');
+                return;
+            }
+            playSfx('uiButtonConfirm');
+            save.gold -= retryCost;
+
+            for (const r of (save.roster || [])) delete r._dead;
+            if (typeof saveCampaign === 'function') saveCampaign(save);
+            _campaignReturnToMap();
+        };
+
+        window._campaignContinue = function() {
+            playSfx('uiButtonConfirm');
+            _campaignReturnToMap();
+        };
+
+        window._campaignRetry = function() {
+            const save = state.campaignSave;
+            if (save && save.challengeType === 'gauntlet') {
+                window._gauntletRetry();
+            } else {
+                playSfx('uiError');
+            }
+        };
+
+        window._campaignBackToMap = function() {
+            playSfx('uiButtonConfirm');
+            _campaignReturnToMap();
+        };
+
+        function _campaignReturnToMap() {
+            hideResultOverlay();
+            state.winner = null;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state._challengeAiMult = null;
+            state.phase = 'setup';
+
+            const startOverlay = document.getElementById('startOverlay');
+            if (startOverlay) {
+                startOverlay.classList.remove('hidden');
+                startOverlay.style.display = '';
+                startOverlay.style.pointerEvents = '';
+                startOverlay.setAttribute('aria-hidden', 'false');
+            }
+
+            const _builderOv = document.getElementById('builderOverlay');
+            const _mapRow = document.getElementById('mapRow');
+            if (_builderOv) _builderOv.style.display = '';
+            if (_mapRow) _mapRow.style.display = 'none';
+
+            transitionTo(GS.CAMPAIGN_MAP);
+            state.titleScreenVisible = true;
+
+            const pages = startOverlay?.querySelectorAll('.title-page');
+            if (pages) {
+                pages.forEach(p => {
+                    if (p.id === 'campaignMapPage') {
+                        p.classList.remove('exit-left');
+                        p.classList.add('active');
+                    } else {
+                        p.classList.remove('active', 'exit-left');
+                    }
+                });
+            }
+
+            if (typeof renderCampaignMap === 'function') renderCampaignMap();
+            syncMusicToState();
+        }
+
+        function _restoreResultOverlayButtons() {
+            const vicBottom = document.getElementById('vicBottom');
+            if (!vicBottom) return;
+            vicBottom.innerHTML = `
+                <button id="nextMatchBtn" class="primary">Find Next Match</button>
+                <button id="exportLastMatchBtn">Export Last Match</button>
+                <button id="exportMatchHistoryBtn">Export Match History</button>
+                <button id="startOverBtn" class="warn">Back to Party Builder</button>
+            `;
+            const nmb = document.getElementById('nextMatchBtn');
+            const sob = document.getElementById('startOverBtn');
+            const elm = document.getElementById('exportLastMatchBtn');
+            const emh = document.getElementById('exportMatchHistoryBtn');
+            if (nmb) nmb.onclick = continueToNextMatch;
+            if (sob) sob.onclick = backToPartyBuilder;
+            if (elm) elm.onclick = exportLastMatch;
+            if (emh) emh.onclick = exportMatchHistory;
+        }
+
+        let _finalizing = false;
+
+        function finalizeMatch() {
+            if (_finalizing) return;
+            _finalizing = true;
+            _stopMatchClockInterval();
+            revealAllHourglasses();
+            revealAllHiddenItems();
+            state.aiThinking = false;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._matchAchievements = state._matchAchievements || [];
+            clearAiSafetyTimer();
+            recordCompletedMatch();
+
+            if (_aiTrainingMode && state.winner != null) {
+                recordTrainingMatch(state.winner);
+                renderTrainingDashboard();
+            }
+
+            if (state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
+                try {
+                    downloadJson(`entropy-wars-batch-${state.matchHistory.length}.json`, state.matchHistory);
+                } catch (e) {
+                    console.error('Auto-export failed:', e);
+                }
+            }
+
+            const _viewer = getViewerPlayer();
+            if (state.winner === _viewer) {
+                checkAchievement('ace', null);
+
+                if (aliveUnitsFor(_viewer).length === state.units.filter(u => u.player === _viewer).length) {
+                    checkAchievement('perfectVictory', null);
+                }
+
+                for (const u of aliveUnitsFor(_viewer)) {
+                    if ((u._trackDmgReceived || 0) === 0) {
+                        checkAchievement('untouchable', u);
+                        break;
+                    }
+                }
+
+                if ((state.activeWeather || []).length >= 2) {
+                    checkAchievement('weatherSurvivor', null);
+                }
+            }
+
+            updateCareerStatsAfterMatch();
+
+            transitionTo(GS.POST_MATCH);
+
+            if (!state.devAutoSim) {
+                if (state.winner === _viewer) {
+                    playStinger('victory');
+                } else if (state.winner) {
+                    playStinger('defeat');
+                }
+            } else {
+                stopStingers();
+            }
+            render();
+            if (state.devAutoSim) {
+
+                state.matchNumber += 1;
+                state.winner = null;
+                state._winLogged = false;
+                state._winCondition = null;
+                state._endingReason = null;
+                state._stalemateRounds = 0;
+                state._lastActivityTotal = 0;
+                stopStingers();
+                restartDevSimFromBuilder(120);
+                return;
+            }
+            _finalizing = false;
+            setTimeout(() => {
+                if (state.isCampaign) {
+                    const campResult = finalizeCampaignBattle();
+                    showCampaignResultOverlay(campResult);
+                } else {
+                    showResultOverlay();
+                }
+            }, 50);
+        }
+
+        function prepareBattleStateFromCurrentBuilds() {
+            _finalizing = false;
+            _invalidateBoardGrid();
+
+            if (!(state.devAutoSim && state.cameraDisabled)) {
+                state.userZoomScale = 0;
+            }
+
+            if (boardStageEl && !(state.devAutoSim && state.cameraDisabled)) {
+
+                const _initCamZ = Math.max(state.dioramaCamZ ?? 900, 2400);
+                const _initTilt = state.dioramaTiltDeg ?? 50;
+                const _initYaw = state.dioramaYawDeg ?? 0;
+                boardStageEl.style.transform = `perspective(${_initCamZ}px) rotateX(${_initTilt}deg) rotateZ(${_initYaw}deg)`;
+
+                boardStageEl.style.setProperty('--dio-tilt', `${_initTilt}deg`);
+                boardStageEl.style.setProperty('--dio-yaw', `${_initYaw}deg`);
+                boardStageEl.style.setProperty('--dio-tilt-num', `${_initTilt}`);
+            }
+            _zoomMemo.clear();
+            state.units = makeUnitsFromBuilds();
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.hourglasses = [];
+            state.hourglassBuffs = {
+                1: 0,
+                2: 0
+            };
+            state.hiddenItems = [];
+            state.foundByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.scannedByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.placed = false;
+            state.winner = null;
+            state.currentBattleTrackKey = null;
+            state.bombs = [];
+            state.plantedSeeds = [];
+            state.warpRunes = [];
+            state.wards = [];
+            state.turrets = [];
+            state._deployedObjects = [];
+            state._delayedSpells = [];
+            state._gatePairs = [];
+            state._flairRevealTiles = {
+                1: null,
+                2: null
+            };
+            state._fogRevealTiles = null;
+            state._fogAnchorUnitId = null;
+            if (state._fogRevealTimer) {
+                clearTimeout(state._fogRevealTimer);
+                state._fogRevealTimer = null;
+            }
+            state.aiThinking = false;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state._matchAchievements = [];
+            state.logEntries = [];
+            state._fullLogEntries = [];
+            _logRenderedCount = 0;
+            state.hitFlashIds = new Set();
+            state.healFlashIds = new Set();
+            state.statusWiggleIds = new Set();
+            state.battleDialogueQueue = []; _lastDialogueHtml = "";
+            state.battleDialogueTimer = null;
+            state.selectedPanelFlash = null;
+
+            state.bosses = {};
+            state._bossesSpawned = { hellspawn: false, angel: false };
+
+            if (state.devAutoSim) {
+                state.controllers[1] = CTRL.AI;
+                state.controllers[2] = CTRL.AI;
+            }
+
+            state.showPlayer2Builder = false;
+
+            const groundBoard = generateTerrainBoard();
+            const reserved = new Set();
+            Object.values(SPAWNS).flat().forEach(pos => reserved.add(posKey(pos.x, pos.y)));
+            initMap(groundBoard, reserved);
+
+            for (const u of state.units) {
+                if (u.dead) continue;
+                const t = state.boardTerrain?.[u.y]?.[u.x];
+                const tRule = t ? getTerrainRule(t) : null;
+                const isStuck = !t || !tRule || tRule.passable === false || isTowerTile(u.x, u.y);
+                if (!isStuck) continue;
+                for (let radius = 1; radius <= Math.max(bw(), bh()); radius++) {
+                    let found = false;
+                    for (let dy = -radius; dy <= radius && !found; dy++) {
+                        for (let dx = -radius; dx <= radius && !found; dx++) {
+                            if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                            const nx = u.x + dx, ny = u.y + dy;
+                            if (nx < 0 || ny < 0 || ny >= bh() || nx >= bw()) continue;
+                            const nt = state.boardTerrain[ny]?.[nx];
+                            if (!nt || getTerrainRule(nt).passable === false) continue;
+                            if (state.units.some(other => other !== u && !other.dead && other.x === nx && other.y === ny)) continue;
+                            u.x = nx;
+                            u.y = ny;
+                            if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(nx, ny);
+                            found = true;
+                        }
+                    }
+                    if (found) break;
+                }
+            }
+
+            const _ffaMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (_ffaMode && _ffaMode.isFFA) {
+                const allUnits = state.units.filter(u => !u.dead);
+
+                const perimeterTiles = [];
+                const margin = 1;
+                for (let y = margin; y < bh() - margin; y++) {
+                    for (let x = margin; x < bw() - margin; x++) {
+
+                        const isEdge = x <= margin + 1 || x >= bw() - margin - 2 || y <= margin + 1 || y >= bh() - margin - 2;
+                        if (!isEdge) continue;
+                        const t = state.boardTerrain?.[y]?.[x];
+                        if (!t || !getTerrainRule(t) || getTerrainRule(t).passable === false) continue;
+                        if (isTowerTile(x, y)) continue;
+                        perimeterTiles.push({ x, y });
+                    }
+                }
+
+                if (perimeterTiles.length >= allUnits.length) {
+                    const step = Math.floor(perimeterTiles.length / allUnits.length);
+
+                    const p1Units = allUnits.filter(u => u.player === 1);
+                    const p2Units = allUnits.filter(u => u.player === 2);
+                    const interleaved = [];
+                    const maxLen = Math.max(p1Units.length, p2Units.length);
+                    for (let i = 0; i < maxLen; i++) {
+                        if (i < p1Units.length) interleaved.push(p1Units[i]);
+                        if (i < p2Units.length) interleaved.push(p2Units[i]);
+                    }
+                    const used = new Set();
+                    interleaved.forEach((u, idx) => {
+                        let pos = perimeterTiles[idx * step % perimeterTiles.length];
+
+                        let best = pos, bestDist = 0;
+                        for (const p of perimeterTiles) {
+                            if (used.has(posKey(p.x, p.y))) continue;
+                            const minDist = [...used].reduce((m, k) => {
+                                const [px, py] = k.split(',').map(Number);
+                                return Math.min(m, Math.abs(p.x - px) + Math.abs(p.y - py));
+                            }, Infinity);
+                            if (minDist > bestDist) { bestDist = minDist; best = p; }
+                        }
+                        u.x = best.x;
+                        u.y = best.y;
+                        used.add(posKey(best.x, best.y));
+                    });
+                }
+            }
+
+            if (typeof ensureUnitZCoords === 'function') ensureUnitZCoords();
+            beginPlacement();
+            transitionTo(GS.BATTLE);
+            state.round = 1;
+            state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+            state.activePlayer = state.startingPlayer;
+            for (const u of state.units) {
+                u.ap = getUnitMaxAP(u);
+                u._aiFailedSpells = null;
+                u._aiFailedCombos = null;
+                u._aiSkipAttack = false;
+
+                u._aiLoopCount = 0;
+                u._encoreThisRound = false;
+                u.movesThisTurn = 0;
+                u._reshapeThisTurn = 0;
+                u._altitudeChangesThisTurn = 0;
+                u._turnKills = 0;
+
+                u._guardCounterBonus = 0;
+            }
+
+            if (state.isCampaign && state._campaignModifiers && state._campaignModifiers.length > 0) {
+                const mods = state._campaignModifiers;
+                if (mods.includes('fog_dense')) {
+
+                    for (const u of state.units) {
+                        u.awr = Math.max(1, (u.awr || 3) - 1);
+                    }
+                }
+                if (mods.includes('weather_storm')) {
+
+                    state.activeWeather = state.activeWeather || [];
+                    if (!state.activeWeather.some(w => w.type === 'storm')) {
+                        state.activeWeather.push({ type: 'storm', duration: 999 });
+                    }
+                }
+                if (mods.includes('no_items')) {
+
+                    for (const u of state.units) {
+                        if (u.items) {
+                            for (const k of Object.keys(u.items)) u.items[k] = 0;
+                        }
+                    }
+                    state.hiddenItems = [];
+                }
+            }
+            hideResultOverlay();
+        }
+
+        async function continueToNextMatch() {
+            playSfx('uiButtonConfirm');
+            state.matchNumber += 1;
+
+            if (_aiTrainingMode && _trainMapSetting === 'rotate') {
+                const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
+                applyGameMode(nextMap);
+            }
+
+            if (state.devAutoSim) {
+                if (_aiTrainingMode) {
+
+                    _mirrorRandomizeTeams();
+                } else {
+                    randomizeBothTeamsForDevSim();
+                }
+            } else {
+                rerollOpponentForNextMatch();
+            }
+
+            if (state.isRankedMatch) {
+                if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                state._botElo = getBotElo();
+            }
+            prepareBattleStateFromCurrentBuilds();
+            refillBattleShuffleBag();
+            state.currentBattleTrackKey = chooseBattleTrackKey();
+
+            state.round = 1;
+
+            if (_aiTrainingMode) {
+                state.startingPlayer = (state.matchNumber % 2 === 0) ? 1 : 2;
+            } else {
+                state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+            }
+            state.activePlayer = state.startingPlayer;
+            state._blitzActiveUnitId = null;
+            state._skippedUnit = null;
+            _blitzTurnGen++;
+
+            for (const u of state.units) {
+                if (!u.dead) {
+                    u.ap = getUnitMaxAP(u);
+                    u.movesThisTurn = 0;
+                    u._reshapeThisTurn = 0;
+                    u._altitudeChangesThisTurn = 0;
+                    u._skippedTurn = false;
+                }
+            }
+
+            buildBlitzTurnOrder();
+            beginBlitzRound();
+
+            addLog(state.devAutoSim ?
+                `Dev sim match ${state.matchNumber} started. Both teams were rerandomized and a fresh objective-and-consumable roll was generated.` :
+                `⚡ Match ${state.matchNumber} started. Units act in speed order!`);
+            if (state.isRankedMatch && !state.devAutoSim) {
+                const cs = loadCareerStats();
+                const ri = getEloRankInfo(cs.elo);
+                const _pName = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'You';
+                addLog(`🏆 RANKED MATCH — ${_pName} ${ri.icon} ${ri.name} (${cs.elo} Elo) vs Bot (~${state._botElo || '?'} Elo)`);
+            }
+            addLog(`⚡ Round ${state.round}`);
+            await syncMusicToState();
+
+            invalidateLayoutCache();
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            render();
+
+            window.requestAnimationFrame(() => {
+                invalidateLayoutCache();
+                renderBoard();
+
+                if (!state.cameraDisabled) {
+                    resetBoardCamera(true);
+                }
+                showRoundBanner(state.round, () => {
+                    maybeAdvanceTurn();
+                });
+            });
+        }
+
+        async function backToPartyBuilder() {
+            playSfx('uiButtonConfirm');
+            transitionTo(GS.PARTY_BUILDER);
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.winner = null;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            hideResultOverlay();
+
+            if (state.devAutoSim) {
+                addLog('Dev auto-sim returned to the party builder and is starting the next randomized match.');
+                restartDevSimFromBuilder(40);
+                return;
+            }
+
+            setDevAutoSim(false);
+            await syncMusicToState();
+            addLog('Returned to the party builder with your current party and loadouts preserved.');
+            render();
+        }
+
+        function toggleAutoMode() {
+            if (state.phase !== 'battle' || state.winner) return;
+            const p = getLocalPlayer();
+            if (state.controllers[p] === CTRL.LOCAL) {
+                state.controllers[p] = CTRL.AI;
+                addLog(`Player ${p} auto mode enabled.`);
+            } else if (state.controllers[p] === CTRL.AI) {
+                state.controllers[p] = CTRL.LOCAL;
+                addLog(`Player ${p} auto mode disabled.`);
+            }
+            render();
+            if (state.controllers[p] === CTRL.AI && state.activePlayer === p) {
+                maybeTriggerComputerTurn();
+            }
+        }
+
+        function forfeitMatch() {
+            if (state.phase !== 'battle' || state.winner) return;
+            clearAiSafetyTimer();
+            state.aiThinking = false;
+            const localP = getLocalPlayer();
+            const enemyP = localP === 1 ? 2 : 1;
+            state.winner = enemyP;
+            addLog(`Player ${localP} forfeits the match.`);
+            checkWin();
+        }
+
+        function resetGame() {
+            _invalidateBoardGrid();
+            clearAiSafetyTimer();
+            transitionTo(GS.PARTY_BUILDER);
+            state.activePlayer = 1;
+            state.round = 0;
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.partyBuilds = structuredClone(DEFAULT_BUILDS);
+            state.partyNames = buildDefaultPartyNames();
+            state.partyMeta = makeDefaultPartyMeta();
+            state.loadouts = buildDefaultLoadouts(state.partyMeta);
+            optimizeRandomizeParty(2);
+            state.units = makeUnitsFromBuilds();
+            state.hourglasses = [];
+            state.hourglassBuffs = {
+                1: 0,
+                2: 0
+            };
+            state.hiddenItems = [];
+            state.foundByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.scannedByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.placed = false;
+            state.winner = null;
+            state.currentBattleTrackKey = null;
+            state.bombs = [];
+            state.plantedSeeds = [];
+            state.warpRunes = [];
+            state.wards = [];
+            state.turrets = [];
+            state._deployedObjects = [];
+            state._delayedSpells = [];
+            state._gatePairs = [];
+            state._flairRevealTiles = {
+                1: null,
+                2: null
+            };
+            state._fogRevealTiles = null;
+            state._fogAnchorUnitId = null;
+            state.squadLeaderUnitId = null;
+            clearUndoStack();
+            if (state._fogRevealTimer) {
+                clearTimeout(state._fogRevealTimer);
+                state._fogRevealTimer = null;
+            }
+            state.aiThinking = false;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state.matchNumber = 1;
+            state.hitFlashIds = new Set();
+            state.healFlashIds = new Set();
+            state.statusWiggleIds = new Set();
+            state.battleDialogueQueue = []; _lastDialogueHtml = "";
+            state.battleDialogueTimer = null;
+            state.selectedPanelFlash = null;
+
+            state.devAutoSim = false;
+            if (state.devSimTimer) {
+                clearTimeout(state.devSimTimer);
+                state.devSimTimer = null;
+            }
+            state.showPlayer2Builder = false;
+            state.teamLockedIn = false;
+
+            state.boardTerrain = [];
+            hideResultOverlay();
+            state.logEntries = [];
+            state._fullLogEntries = [];
+            _logRenderedCount = 0;
+            _lastFclHtml = '';
+            _lastHudSbHtml = '';
+            _lastDialogueHtml = '';
+            renderLog();
+            addLog('Game reset. Build both parties, then start the match. Hourglasses grant stacking team buffs — every 3rd triggers Time Travel!');
+            if (!state.titleScreenVisible) syncMusicToState();
+            render();
+        }
+
+        function applyPartyBuild(showLog = true) {
+            if (!validateBuilderLoadouts(showLog)) return false;
+
+            [1, 2].forEach(player => {
+                if (state.controllers[player] === CTRL.AI) {
+                    state.partyBuilds[player].forEach((cls, idx) => {
+                        const race = state.partyMeta?.[player]?.[idx]?.race || '';
+                        state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race);
+                    });
+                }
+            });
+
+            const warnings = [];
+            [1, 2].forEach(player => {
+
+                if (state.controllers[player] === CTRL.AI) return;
+                state.partyBuilds[player].forEach((cls, idx) => {
+                    const loadout = state.loadouts[player][idx];
+                    const emptySlots = [];
+                    const totalItems = Object.values(loadout?.items || {}).reduce((a, b) => a + b, 0);
+                    if (totalItems === 0) emptySlots.push('no items');
+                    if (emptySlots.length > 0) {
+                        const unitName = state.partyNames[player]?.[idx] || cls;
+                        warnings.push(`P${player} ${unitName} (${cls}): ${emptySlots.join(', ')}`);
+                    }
+                });
+            });
+
+            if (warnings.length > 0 && showLog) {
+
+                if (!state.devAutoSim) {
+
+                    let canAutoFill = false;
+                    [1, 2].forEach(p => {
+                        if (state.controllers[p] === CTRL.AI) return;
+                        state.partyBuilds[p].forEach((c, i) => {
+                            const lo = state.loadouts[p][i];
+                            const r = state.partyMeta?.[p]?.[i]?.race || '';
+                            const usedIds = new Set((lo?.spells || []).filter(Boolean));
+                            const eq = lo?.equipment || {};
+                            const hasEmpty = (lo?.spells || []).some((s, si) => si < CONFIG.unitSkillSlots && !s);
+                            if (hasEmpty) {
+                                const hasCandidate = getEligibleSpellsForClass(c, r).some(sp =>
+                                    !usedIds.has(sp.id)
+                                );
+                                if (hasCandidate) canAutoFill = true;
+                            }
+                        });
+                    });
+
+                    const _doAutoFill = function() {
+                        [1, 2].forEach(p => {
+                            if (state.controllers[p] === CTRL.AI) return;
+                            state.partyBuilds[p].forEach((c, i) => {
+                                const lo = state.loadouts[p][i];
+                                const r = state.partyMeta?.[p]?.[i]?.race || '';
+                                const eq = lo?.equipment || {};
+                                const existingSpells = (lo?.spells || []).slice();
+                                let ccCount = countCrossClassSpells ? countCrossClassSpells(existingSpells, c) : 0;
+                                const usedIds = new Set(existingSpells.filter(Boolean));
+                                const eligible = getEligibleSpellsForClass(c, r)
+                                    .filter(sp => !usedIds.has(sp.id));
+                                for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
+                                    if (existingSpells[s]) continue;
+                                    for (const spell of eligible) {
+                                        if (usedIds.has(spell.id)) continue;
+                                        const isCross = !isSpellNativeToClass(spell, c);
+                                        if (isCross && ccCount >= CONFIG.maxCrossClassSpells) continue;
+                                        existingSpells[s] = spell.id;
+                                        usedIds.add(spell.id);
+                                        if (isCross) ccCount++;
+                                        break;
+                                    }
+                                }
+                                lo.spells = existingSpells;
+                            });
+                        });
+                        state.units = makeUnitsFromBuilds();
+                    };
+
+                    const _finishApply = function() {
+                        state.units = makeUnitsFromBuilds();
+                        state.selectedUnitId = null;
+                        state.focusedUnitId = null;
+                        state.hoverUnitId = null;
+                        state.actionMode = null;
+                        state.actionMenuView = 'root';
+                        state.selectedTool = null;
+                        state.pendingTarget = null;
+                        state.hourglasses = [];
+                        state.hourglassBuffs = { 1: 0, 2: 0 };
+                        state.hiddenItems = [];
+                        state.teamLockedIn = true;
+                        if (showLog) addLog('Party builds locked in. Ready to fight!');
+                        render();
+                    };
+
+                    if (canAutoFill) {
+                        const msg = 'Some party members have empty spell slots.\n\n' + warnings.join('\n') + '\n\nWould you like to auto-fill remaining slots?';
+                        ewConfirm(msg, function() {
+                            _doAutoFill();
+                            _finishApply();
+                        }, function() {
+                            _finishApply();
+                        }, { okLabel: 'Auto-fill & Lock In', cancelLabel: 'Lock In As-Is' });
+                        return true;
+                    } else {
+                        const otherWarnings = warnings.filter(w => !w.includes('empty spell slot'));
+                        if (otherWarnings.length > 0) {
+                            const msg = 'Some party members have empty slots:\n\n' + otherWarnings.join('\n') + '\n\nLock in anyway?';
+                            ewConfirm(msg, function() {
+                                _finishApply();
+                            }, null, { okLabel: 'Lock In', cancelLabel: 'Cancel' });
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            state.units = makeUnitsFromBuilds();
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.hourglasses = [];
+            state.hourglassBuffs = {
+                1: 0,
+                2: 0
+            };
+            state.hiddenItems = [];
+            state.foundByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.scannedByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.placed = false;
+            state.setupStep = 'builder';
+            state.bombs = [];
+            state.plantedSeeds = [];
+            state.warpRunes = [];
+            state.wards = [];
+            state.turrets = [];
+            state._deployedObjects = [];
+            state._delayedSpells = [];
+            state._gatePairs = [];
+            state._flairRevealTiles = {
+                1: null,
+                2: null
+            };
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state.currentBattleTrackKey = null;
+            state.teamLockedIn = true;
+            if (showLog) addLog('Team locked in! Ready to start match.');
+            render();
+            return true;
+        }
+
+        function beginPlacement() {
+
+            state.activePlayer = 1;
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.hourglasses = [];
+            state.hourglassBuffs = {
+                1: 0,
+                2: 0
+            };
+            state.hiddenItems = [];
+            state.foundByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.scannedByPlayer = {
+                1: new Set(),
+                2: new Set()
+            };
+            state.placed = false;
+
+            randomizeSharedObjectives();
+
+            state.placed = true;
+
+            for (const u of state.units) {
+                if (u.dead) continue;
+                if (canFly(u)) {
+                    const groundZ = getHeightAt(u.x, u.y);
+                    const minZ = getMinFlyingZ(u.x, u.y);
+                    if ((u.z ?? 0) <= groundZ) {
+                        u.z = minZ;
+                    }
+                }
+            }
+            const _mpCheck = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (_mpCheck && _mpCheck.hasHourglasses === false) {
+
+            } else if (state.hourglasses.length < CONFIG.winHourglasses) {
+                addLog('Could not place all hourglasses with spacing rules on this roll.');
+            } else {
+                addLog(`${CONFIG.winHourglasses} hourglasses scattered across the battlefield. Collect hourglasses for permanent team buffs!`);
+            }
+            render();
+        }
+
+        function showVSSplash(onDone) {
+
+            if (_skipVisuals()) { if (onDone) onDone(); return; }
+
+            const p1Units = (state.units || []).filter(u => u.player === 1);
+            const p2Units = (state.units || []).filter(u => u.player === 2);
+            if (!p1Units.length || !p2Units.length) { if (onDone) onDone(); return; }
+
+            let dismissed = false;
+            function dismiss() {
+                if (dismissed) return;
+                dismissed = true;
+                overlay.style.pointerEvents = 'none';
+                overlay.classList.add('vs-fade-out');
+                setTimeout(() => {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                    if (onDone) onDone();
+                }, 380);
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = 'vs-splash-overlay';
+            overlay.addEventListener('click', dismiss);
+
+            const stage = document.createElement('div');
+            stage.className = 'vs-stage';
+            overlay.appendChild(stage);
+
+            const slash = document.createElement('div');
+            slash.className = 'vs-slash-line';
+            stage.appendChild(slash);
+
+            function buildPanel(units, side) {
+                const panel = document.createElement('div');
+                panel.className = `vs-panel vs-panel-${side}`;
+
+                const count = units.length;
+                let spriteSize;
+                if (count <= 4) spriteSize = 'clamp(100px, 18vw, 160px)';
+                else if (count <= 6) spriteSize = 'clamp(72px, 12vw, 110px)';
+                else if (count <= 8) spriteSize = 'clamp(56px, 9vw, 88px)';
+                else spriteSize = 'clamp(44px, 7vw, 72px)';
+                panel.style.setProperty('--vs-sprite-size', spriteSize);
+
+                const row = document.createElement('div');
+                row.className = 'vs-sprite-row';
+
+                units.forEach((u, i) => {
+                    const slot = document.createElement('div');
+                    slot.className = 'vs-sprite-slot';
+                    slot.dataset.index = i;
+
+                    const spriteDiv = document.createElement('div');
+                    spriteDiv.className = 'vs-sprite-big';
+                    const spriteUrl = typeof getUnitSprite === 'function'
+                        ? getUnitSprite(u.cls, u.player, u)
+                        : '';
+                    if (spriteUrl) {
+                        spriteDiv.style.backgroundImage = `url('${spriteUrl}')`;
+                    }
+
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'vs-sprite-name';
+                    const raceName = u.race ? u.race.charAt(0).toUpperCase() + u.race.slice(1) : '';
+                    const jobName = u.cls || '';
+                    nameEl.textContent = raceName || jobName || 'Unit';
+
+                    slot.appendChild(spriteDiv);
+                    slot.appendChild(nameEl);
+                    row.appendChild(slot);
+                });
+
+                const teamLabel = document.createElement('div');
+                teamLabel.className = 'vs-team-label';
+
+                const viewerP = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+                if (side === 'left') {
+                    teamLabel.textContent = viewerP === 1 ? 'Player 1' : 'Player 2';
+                } else {
+                    teamLabel.textContent = viewerP === 1 ? 'Player 2' : 'Player 1';
+                }
+
+                panel.appendChild(row);
+                panel.appendChild(teamLabel);
+                return panel;
+            }
+
+            const viewerP = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+            const myUnits = viewerP === 1 ? p1Units : p2Units;
+            const oppUnits = viewerP === 1 ? p2Units : p1Units;
+            const leftPanel = buildPanel(myUnits, 'left');
+            const rightPanel = buildPanel(oppUnits, 'right');
+            stage.appendChild(leftPanel);
+            stage.appendChild(rightPanel);
+
+            const vsCenter = document.createElement('div');
+            vsCenter.className = 'vs-center';
+
+            const vsBurst = document.createElement('div');
+            vsBurst.className = 'vs-burst';
+            vsCenter.appendChild(vsBurst);
+
+            const vsText = document.createElement('div');
+            vsText.className = 'vs-text';
+            vsText.textContent = 'VS';
+            vsCenter.appendChild(vsText);
+
+            stage.appendChild(vsCenter);
+
+            const flash = document.createElement('div');
+            flash.className = 'vs-flash';
+            overlay.appendChild(flash);
+
+            const barTop = document.createElement('div');
+            barTop.className = 'vs-letterbox vs-letterbox-top';
+            overlay.appendChild(barTop);
+            const barBot = document.createElement('div');
+            barBot.className = 'vs-letterbox vs-letterbox-bot';
+            overlay.appendChild(barBot);
+
+            const bsWrap = document.createElement('div');
+            bsWrap.className = 'vs-battle-start-wrap';
+            const bsBanner = document.createElement('div');
+            bsBanner.className = 'vs-battle-start-banner';
+            bsBanner.textContent = 'BATTLE START';
+            bsWrap.appendChild(bsBanner);
+            overlay.appendChild(bsWrap);
+
+            const skipHint = document.createElement('div');
+            skipHint.className = 'vs-skip-hint';
+            skipHint.textContent = 'tap to skip';
+            overlay.appendChild(skipHint);
+
+            overlay.style.opacity = '1';
+            overlay.style.pointerEvents = 'auto';
+            document.body.appendChild(overlay);
+
+            const t = (ms) => ms;
+
+            requestAnimationFrame(() => {
+                overlay.classList.add('vs-active');
+
+                setTimeout(() => {
+                    if (dismissed) return;
+                    leftPanel.classList.add('vs-slide-in');
+                    rightPanel.classList.add('vs-slide-in');
+                    slash.classList.add('vs-slash-visible');
+                    barTop.classList.add('vs-letterbox-in');
+                    barBot.classList.add('vs-letterbox-in');
+                    playSfx('uiButtonConfirm');
+                }, t(60));
+
+                const spriteBaseDelay = t(300);
+                const spriteStagger = t(70);
+                const allSlots = overlay.querySelectorAll('.vs-sprite-slot');
+                allSlots.forEach((slot) => {
+                    const idx = Number(slot.dataset.index) || 0;
+                    setTimeout(() => {
+                        if (dismissed) return;
+                        slot.classList.add('vs-sprite-enter');
+                    }, spriteBaseDelay + idx * spriteStagger);
+                });
+
+                setTimeout(() => {
+                    if (dismissed) return;
+                    vsCenter.classList.add('vs-slam');
+                    vsBurst.classList.add('vs-burst-flash');
+                    playSfx('newRound');
+                }, t(650));
+
+                setTimeout(() => {
+                    if (dismissed) return;
+                    overlay.querySelectorAll('.vs-team-label').forEach(el => el.classList.add('vs-fade-up'));
+                }, t(850));
+
+                setTimeout(() => {
+                    if (dismissed) return;
+                    stage.classList.add('vs-charge');
+                }, t(1800));
+
+                setTimeout(() => {
+                    if (dismissed) return;
+                    flash.classList.add('vs-flash-on');
+                }, t(2050));
+
+                setTimeout(() => {
+                    if (dismissed) return;
+
+                    stage.classList.add('vs-stage-clear');
+
+                    bsWrap.classList.add('vs-sweep-active');
+                    overlay.classList.add('vs-shake');
+                    requestAnimationFrame(() => {
+                        bsBanner.classList.add('vs-sweep-in');
+                    });
+                    playSfx('newRound');
+                }, t(2100));
+
+                setTimeout(() => {
+                    dismiss();
+                }, t(3050));
+            });
+        }
+
+        function startMatch() {
+            state.startTime = Date.now();
+
+            const mpMode = getActiveMultiplayerMode();
+            state.matchKills = { 1: 0, 2: 0 };
+            state.matchScores = { 1: 0, 2: 0 };
+            state._arenaNexusControl = { 1: 0, 2: 0 };
+            state.suddenDeathActive = false;
+            state.flags = null;
+            state.roamingNexus = null;
+
+            state.matchClock = {
+                roundLimit: state._customRoundLimit || mpMode.roundLimit || 0,
+                paused: false,
+                startedAt: Date.now(),
+            };
+            state._customRoundLimit = 0;
+
+            state.shotClock = { startedAt: 0, limitSec: 30, active: false };
+
+            _startMatchClockInterval();
+
+            const gm = GAME_MODES[activeGameMode];
+            if (gm) {
+                gm._runtimeHasTowers = mpMode.hasTowers;
+            }
+            if (!validateBuilderLoadouts(true)) {
+                playErrorSfx();
+                return;
+            }
+            playSfx('uiButtonConfirm');
+
+            if (state.isRankedMatch) {
+                state._botElo = getBotElo();
+            }
+            refillBattleShuffleBag();
+            state.currentBattleTrackKey = chooseBattleTrackKey();
+            state.zodiacOffset = randInt(ZODIAC_CYCLE.length);
+            state.activeZodiac = getActiveZodiac(1);
+            state.skyEvent = null;
+            state.activeWeather = [];
+            state.announcementQueue = [];
+            prepareBattleStateFromCurrentBuilds();
+            clearUndoStack();
+
+            const _builderOv = document.getElementById('builderOverlay');
+            const _mapRow = document.getElementById('mapRow');
+            if (_builderOv) _builderOv.style.display = 'none';
+            if (_mapRow) _mapRow.style.display = '';
+
+            const _cutsceneScript = getCutsceneForCurrentLevel();
+            const _launchVSSplash = () => showVSSplash(function _afterVSSplash() {
+
+            if (mpMode.hasFlags) {
+                /* Place flags at the center of each team's spawn zone */
+                const z1 = state.spawnZones?.[1] || [];
+                const z2 = state.spawnZones?.[2] || [];
+                const mid1 = z1[Math.floor(z1.length / 2)] || { x: 1, y: 0 };
+                const mid2 = z2[Math.floor(z2.length / 2)] || { x: bw() - 2, y: 0 };
+                state.flags = {
+                    1: { x: mid1.x, y: mid1.y, carriedBy: null, atBase: true, owner: 1 },
+                    2: { x: mid2.x, y: mid2.y, carriedBy: null, atBase: true, owner: 2 },
+                };
+                addLog('🏳️ Capture the Flag! Steal the enemy flag and return it to your spawn zone to score.');
+            }
+
+            if (mpMode.hasRoamingNexus) {
+                _spawnRoamingNexus();
+                addLog('🔥 Hotspot! One Nexus spawns at a time. Capture it to score — then it moves!');
+            }
+
+            if (mpMode.id === 'tdm' || mpMode.id === 'ffa') {
+                const rl = mpMode.roundLimit || '?';
+                addLog(`💀 ${mpMode.label}! ${rl}-round limit. Most kills wins. Wipeout also wins instantly.`);
+            } else if (mpMode.id === 'domination') {
+                addLog('🚩 Domination! Capture Nexus points to earn points every round. Most points when rounds end wins.');
+            } else if (mpMode.id === 'arena') {
+                const rl = mpMode.roundLimit || '?';
+                addLog(`🏰 Arena! ${rl}-round limit. Destroy the tower, collect hourglasses, or wipe out the enemy. Composite score decides if no winner.`);
+            }
+
+            if (getActiveGameMode().blitzMode) {
+                buildBlitzTurnOrder();
+            }
+
+            if (state.squadLeaderMode) {
+                const firstP1 = state.units.find(u => u.player === 1 && !u.dead);
+                state.squadLeaderUnitId = firstP1 ? firstP1.id : null;
+                state.fogOfWar = true;
+                state.teamVision = false;
+                if (firstP1) addLog(`🎖 ${unitDisplayName(firstP1)} is your Squad Leader. You control them — AI handles the rest of your team.`);
+            }
+
+            beginBlitzRound();
+            addLog(state.devAutoSim ?
+                `Dev sim battle started for match ${state.matchNumber}. Both teams are automated and running at accelerated pace.` :
+                `⚡ Battle started for match ${state.matchNumber}. Units act in speed order!`);
+            if (state.isRankedMatch && !state.devAutoSim) {
+                const cs = loadCareerStats();
+                const ri = getEloRankInfo(cs.elo);
+                const _pName2 = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'You';
+                addLog(`🏆 RANKED MATCH — ${_pName2} ${ri.icon} ${ri.name} (${cs.elo} Elo) vs Bot (~${state._botElo || '?'} Elo)`);
+            }
+            addLog(`⚡ Round ${state.round}`);
+            syncMusicToState();
+
+            invalidateLayoutCache();
+            render();
+
+            window.requestAnimationFrame(() => {
+                invalidateLayoutCache();
+                renderBoard();
+
+                if (!state.cameraDisabled) {
+                    resetBoardCamera(true);
+                }
+                showRoundBanner(state.round, () => {
+                    maybeAdvanceTurn();
+                });
+            });
+
+            });
+
+            if (_cutsceneScript) {
+                playCutscene(_cutsceneScript, _launchVSSplash);
+            } else {
+                _launchVSSplash();
+            }
+        }
+
+        const PING_TYPES = {
+            danger: {
+                icon: '⚠️',
+                label: 'Danger',
+                color: '#ff6b6b'
+            },
+            missing: {
+                icon: '❓',
+                label: 'Missing',
+                color: '#ffb84d'
+            },
+            loot: {
+                icon: '💰',
+                label: 'Loot',
+                color: '#f8d66d'
+            },
+            help: {
+                icon: '🆘',
+                label: 'Help',
+                color: '#ff6b6b'
+            },
+            gather: {
+                icon: '🏁',
+                label: 'Gather',
+                color: '#85a9ff'
+            },
+            retreat: {
+                icon: '🔙',
+                label: 'Retreat',
+                color: '#b78cff'
+            }
+        };
+
+        function doPing(unit, x, y) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return 0;
+            }
+            if (!isInside(x, y)) {
+                addLog('Invalid ping target.');
+                return 0;
+            }
+
+            if (state.pings.some(p => p.x === x && p.y === y && p.player === unit.player)) {
+                addLog('This tile is already pinged.');
+                return 0;
+            }
+            const pingType = state.selectedTool || 'danger';
+            const pingDef = PING_TYPES[pingType];
+            if (!pingDef) {
+                addLog('Unknown ping type.');
+                return 0;
+            }
+            pushUndoSnapshot(false);
+            state.pings.push({
+                x,
+                y,
+                player: unit.player,
+                type: pingType,
+                icon: pingDef.icon,
+                round: state.round
+            });
+            addLog(`${unitDisplayName(unit)} pings ${coordLabel(x, y)}: ${pingDef.icon} ${pingDef.label}`);
+            spendAP(unit, AP_COST_ACTION);
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            endUnitIfDone(unit);
+            renderAfterMinorAction();
+            return actionMs(300);
+        }
+
+        function updateEnemySightings(viewerPlayer) {
+            const enemies = state.units.filter(u => u.player !== viewerPlayer);
+            const visibleTiles = computeVisibleTiles(viewerPlayer);
+            for (const enemy of enemies) {
+                const key = enemy.id;
+                if (!enemy.dead && visibleTiles.has(posKey(enemy.x, enemy.y))) {
+
+                    state.enemySightings[viewerPlayer][key] = {
+                        id: enemy.id,
+                        name: enemy.name,
+                        cls: enemy.cls,
+                        race: enemy.race,
+                        types: enemy.types ? [...enemy.types] : [],
+                        faction: enemy.faction,
+                        hp: enemy.hp,
+                        maxHp: enemy.maxHp,
+                        mp: enemy.mp,
+                        maxMp: enemy.maxMp,
+                        x: enemy.x,
+                        y: enemy.y,
+                        dead: false,
+                        statuses: getActiveStatusKeys(enemy),
+                        equipment: enemy.equipment,
+                        round: state.round,
+                        discovered: true,
+                        currentlyVisible: true
+                    };
+                } else if (enemy.dead && state.enemySightings[viewerPlayer][key]) {
+
+                    state.enemySightings[viewerPlayer][key].dead = true;
+                    state.enemySightings[viewerPlayer][key].currentlyVisible = false;
+                    state.enemySightings[viewerPlayer][key]._respawnIn = enemy._respawnIn || null;
+                } else if (state.enemySightings[viewerPlayer][key]) {
+
+                    state.enemySightings[viewerPlayer][key].currentlyVisible = false;
+                }
+            }
+
+            for (const enemy of enemies) {
+                if (!state.enemySightings[viewerPlayer][enemy.id]) {
+                    state.enemySightings[viewerPlayer][enemy.id] = {
+                        id: enemy.id,
+                        name: null,
+                        cls: null,
+                        race: null,
+                        types: [],
+                        faction: null,
+                        hp: null,
+                        maxHp: null,
+                        mp: null,
+                        maxMp: null,
+                        x: null,
+                        y: null,
+                        dead: enemy.dead,
+                        statuses: [],
+                        equipment: null,
+                        round: null,
+                        discovered: false,
+                        currentlyVisible: false
+                    };
+                }
+            }
+        }
+
+        function switchCtrlTab(tab) {
+            state._ctrlTab = tab;
+            document.querySelectorAll('.ctrl-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            document.querySelectorAll('.ctrl-tab-content').forEach(c => c.classList.toggle('active', c.dataset.tab === tab));
+        }
+        window.switchCtrlTab = switchCtrlTab;
+
+        function renderEnemyRoster() {
+
+            const panel = document.getElementById('enemyRosterPanel');
+            if (!panel) return;
+            if (state.phase !== 'battle') {
+                panel.innerHTML = '<h3>Enemy Intel</h3><div id="enemyRosterList"></div>';
+                return;
+            }
+            const viewerPlayer = getViewerPlayer();
+            const sightings = state.enemySightings[viewerPlayer] || {};
+            const entries = Object.values(sightings);
+            if (!entries.length) {
+                panel.innerHTML = '<div class="small" style="color:var(--muted);padding:8px">No intel yet. Discover enemies by moving units into their line of sight.</div>';
+                return;
+            }
+
+            entries.sort((a, b) => {
+                if (a.dead !== b.dead) return a.dead ? 1 : -1;
+                if (a.currentlyVisible !== b.currentlyVisible) return a.currentlyVisible ? -1 : 1;
+                if (a.discovered !== b.discovered) return a.discovered ? -1 : 1;
+                return 0;
+            });
+            panel.innerHTML = entries.map(s => {
+        if (!s.discovered) {
+          return `<div class="enemy-roster-card undiscovered">
+            <div class="enemy-roster-icon">❓</div>
+            <div class="enemy-roster-info">
+              <div class="enemy-roster-name">Unknown Unit</div>
+              <div class="enemy-roster-stats">Not yet discovered</div>
+            </div>
+          </div>`;
+        }
+        const hpPct = s.maxHp ? Math.max(0, Math.min(100, (s.hp / s.maxHp) * 100)) : 0;
+        const staleRounds = s.currentlyVisible ? 0 : (state.round - (s.round || 0));
+        const staleLabel = s.currentlyVisible ? '<span style="color:var(--green);font-size:9px">● Visible</span>' : staleRounds > 0 ? `<span class="enemy-roster-stale">Last seen ${staleRounds} round${staleRounds !== 1 ? 's' : ''} ago</span>` : '';
+            const deadClass = s.dead ? ' dead-enemy' : '';
+            const statusIcons = (s.statuses || []).map(k => {
+                const m = typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS[k] : null;
+                return m ? (m.icon || '') : '';
+            }).filter(Boolean).join('');
+            const posLabel = s.x !== null ? coordLabel(s.x, s.y) : '??';
+            return `<div class="enemy-roster-card${deadClass}">
+          <div class="enemy-roster-icon">${s.dead ? '☠' : '⚔'}</div>
+          <div class="enemy-roster-info">
+            <div class="enemy-roster-name">${escapeHtml(s.name || s.cls || '?')}${statusIcons ? ' ' + statusIcons : ''}</div>
+            <div class="enemy-roster-stats">${s.race || '?'} · ${s.cls || '?'} · ${posLabel}${s.dead ? ` · VOID${s._respawnIn ? ' (' + s._respawnIn + ' rnd)' : ''}` : ` · ${s.hp}/${s.maxHp} HP`}</div>
+            ${!s.dead ? `<div class="enemy-mini-bar"><div class="enemy-mini-fill" style="width:${hpPct}%"></div></div>` : ''}
+            ${staleLabel}
+          </div>
+        </div>`;
+        }).join('');
+    }
+
+    function showTurnBanner(player, roundNum, isNewRound, blitzUnit) {
+      const overlay = document.getElementById('turnBannerOverlay');
+      if (!overlay) return;
+
+      if (_skipVisuals()) return;
+
+      _waitForAnimationsThen(() => _showTurnBannerNow(overlay, player, roundNum, isNewRound, blitzUnit));
+    }
+
+    function _showTurnBannerNow(overlay, player, roundNum, isNewRound, blitzUnit) {
+
+      if (state.winner || _skipVisuals()) return;
+      const roundText = isNewRound ? `Round ${roundNum}` : '';
+      const viewer = getViewerPlayer();
+      const isEnemyTurn = blitzUnit ? (blitzUnit.player !== viewer) : (player !== viewer);
+
+      overlay.classList.toggle('enemy-turn', isEnemyTurn);
+
+      const detailPlaceholder = !isEnemyTurn ? '<div class="tb-unit-detail" id="tbUnitDetail"></div>' : '';
+
+      let cardHtml;
+      if (blitzUnit && typeof blitzUnit === 'object') {
+        const spriteSrc = getBattleMapSpriteUrl(blitzUnit);
+        const name = unitDisplayName(blitzUnit);
+        const spdText = `SPD ${blitzUnit.spd || 0} · ${blitzUnit.cls}`;
+        const pLabel = `P${blitzUnit.player}`;
+        const autoLabel = state.autoPlayers?.[blitzUnit.player] ? ' · CPU' : '';
+        const pClass = blitzUnit.player;
+
+        const turnOwnerLabel = isEnemyTurn ? (
+          ONLINE_RULES.active ? "Opponent's Turn" :
+          `Player ${blitzUnit.player}'s Turn`) : '';
+        cardHtml = `<div class="turn-banner-card">
+          ${roundText ? `<div class="turn-banner-round">${roundText}</div>` : ''}
+          ${turnOwnerLabel ? `<div class="turn-banner-player p${pClass}">${turnOwnerLabel}</div>` : ''}
+          <div class="turn-banner-blitz">
+            <div class="turn-banner-sprite" style="background-image:url('${spriteSrc}')"></div>
+            <div class="turn-banner-info">
+              <div class="turn-banner-unitname p${pClass}">${escapeHtml(name)}</div>
+              <div class="turn-banner-unitsub"><span class="turn-banner-ptag p${pClass}">${pLabel}</span>${spdText}${autoLabel}</div>
+            </div>
+          </div>
+          ${detailPlaceholder}
+        </div>`;
+      } else {
+
+        const isMyTurn = player === viewer;
+        const playerLabel = ONLINE_RULES.active
+          ? (isMyTurn ? 'Your Turn' : "Opponent's Turn")
+          : `Player ${player}'s Turn`;
+        const subLabel = ONLINE_RULES.active
+          ? `Player ${player} · ${state.autoPlayers?.[player] ? 'Auto' : (isMyTurn ? 'You' : 'Opponent')}`
+          : `Player ${player} · ${state.autoPlayers?.[player] ? 'CPU' : 'Human'}`;
+        cardHtml = `<div class="turn-banner-card">${roundText ? `<div class="turn-banner-round">${roundText}</div>` : ''}<div class="turn-banner-player p${player}">${playerLabel}</div><div class="turn-banner-sub">${subLabel}</div>${detailPlaceholder}</div>`;
+      }
+
+      overlay.innerHTML = cardHtml;
+        overlay.classList.add('visible');
+        if (state._turnBannerTimer) clearTimeout(state._turnBannerTimer);
+        state._turnBannerTimer = null;
+
+        }
+
+        function hideTurnBanner() {
+            const overlay = document.getElementById('turnBannerOverlay');
+            if (overlay) overlay.classList.remove('visible');
+            if (state._turnBannerTimer) { clearTimeout(state._turnBannerTimer); state._turnBannerTimer = null; }
+        }
+
+        function showRoundBanner(roundNum, onDone) {
+            if (_skipVisuals()) { if (onDone) onDone(); return; }
+            let overlay = document.getElementById('roundBannerOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'roundBannerOverlay';
+                overlay.className = 'round-banner-overlay';
+                document.body.appendChild(overlay);
+            }
+            overlay.innerHTML = `<div class="round-banner-content">
+                <div class="round-banner-label">Round</div>
+                <div class="round-banner-number">${roundNum}</div>
+                <div class="round-banner-line"></div>
+            </div>`;
+            overlay.classList.remove('visible');
+
+            void overlay.offsetWidth;
+            overlay.classList.add('visible');
+            playSfx('newRound');
+            const showDuration = actionMs(1800);
+            const fadeDuration = 350;
+            setTimeout(() => {
+                overlay.classList.remove('visible');
+                setTimeout(() => {
+                    if (onDone) onDone();
+                }, fadeDuration);
+            }, showDuration);
+        }
+
+        function maybeAdvanceTurn() {
+
+            const mode = getActiveGameMode();
+            if (mode.blitzMode) {
+                if (state.winner) return;
+                hideTurnBanner();
+
+                if (boardCameraResetTimer) {
+                    window.clearTimeout(boardCameraResetTimer);
+                    boardCameraResetTimer = null;
+                }
+
+                state.selectedUnitId = null;
+                state.focusedUnitId = null;
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.showUnitInfo = false;
+                state._blitzActiveUnitId = null;
+
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                clearSpellRangePreview();
+                clearAttackRangePreview();
+                scheduleBoardRender();
+
+                state._fogCameraAllowed = false;
+
+                _blitzTurnGen++;
+                state.aiThinking = false;
+                clearAiSafetyTimer();
+                if (state._runComputerTurnTimer) { clearTimeout(state._runComputerTurnTimer); state._runComputerTurnTimer = null; }
+
+                let nextUnit = getNextBlitzUnit();
+
+                if (!nextUnit) {
+
+                    processEndOfRoundStatuses(function _afterStatusPhase() {
+                    if (state.winner) return;
+
+                    processEndOfRoundZonesAndSeeds(function _afterZoneSeedPhase() {
+                    if (state.winner) return;
+
+                    processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
+                    if (state.winner) return;
+
+                    processEndOfRoundRegen(function _afterRegenPhase() {
+                    if (state.winner) return;
+
+                    tickSkyEvent();
+                    tickWeather();
+                    state.round += 1;
+                    tickMatchClock();
+                    checkZodiacRotation();
+                    checkNewSkyEvent();
+
+                    if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+
+                    _reStartBuffering();
+                    _reBeginGroup('🌦 Weather spawn');
+                    spawnWeather();
+
+                    _reBeginGroup('🔄 Respawns');
+                    processRespawns();
+
+                    const _smMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+                    if (!_smMode || !_smMode.roundLimit)
+                    {
+                        const totalDmgNow = state.units.reduce((s, u) => s + (u._trackDmgDealt || 0) + (u._trackDmgReceived || 0), 0);
+                        const totalSpellsCast = state.units.reduce((s, u) => s + (u._trackSpellsCast || 0), 0);
+                        const totalFloorMoves = 0;
+                        const activityNow = totalDmgNow + totalSpellsCast + totalFloorMoves;
+                        if (!state._lastActivityTotal) state._lastActivityTotal = 0;
+                        if (!state._stalemateRounds) state._stalemateRounds = 0;
+                        if (activityNow > state._lastActivityTotal) {
+                            state._stalemateRounds = 0;
+                        } else {
+                            state._stalemateRounds++;
+                        }
+                        state._lastActivityTotal = activityNow;
+                        let stalemateThreshold = 20;
+                        {
+                            const p1Sections = new Set(state.units.filter(u => !u.dead && u.player === 1).map(u => getSectionForUnit(u)));
+                            const p2Sections = new Set(state.units.filter(u => !u.dead && u.player === 2).map(u => getSectionForUnit(u)));
+                            const teamsShareSection = [...p1Sections].some(f => p2Sections.has(f));
+                            if (!teamsShareSection) stalemateThreshold = 30;
+                        }
+                        if (state._stalemateRounds >= stalemateThreshold && !state.winner) {
+                            addLog(`⚖️ NO CONTEST — ${stalemateThreshold} rounds with no combat or activity. Match voided.`);
+                            state.winner = 0;
+                            state._winLogged = true;
+                            state._winCondition = 'no_contest';
+                            state._endingReason = 'stalemate_no_contest';
+                            state.stalemateRounds = stalemateThreshold;
+                            addLog('Match does not count toward records. Units could not find each other.');
+                            setTimeout(() => finalizeMatch(), 0);
+                            return;
+                        }
+                    }
+
+                    for (const u of state.units) {
+                        if (!u.dead) {
+                            if (u._justRespawned) { u._justRespawned = false; continue; }
+                            u.ap = getUnitMaxAP(u);
+                            u.movesThisTurn = 0;
+                            u._reshapeThisTurn = 0;
+                            u._altitudeChangesThisTurn = 0;
+                            u._turnKills = 0;
+                            u._aiFailedSpells = null;
+                            u._aiFailedCombos = null;
+                            u._aiSkipAttack = false;
+                            u._aiLoopCount = 0;
+                            u._encoreThisRound = false;
+
+                            u._guardCounterBonus = 0;
+                            u._skippedTurn = false;
+                            const stunned = getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove);
+                            if (stunned) addLog(`${unitDisplayName(u)} is stunned and cannot move!`);
+
+                        }
+                    }
+                    state._skippedUnit = null;
+
+                    buildBlitzTurnOrder();
+
+                    beginBlitzRound();
+
+                    _reStopBuffering();
+
+                    addLog(`⚡ Round ${state.round} — Blitz!`);
+
+                    for (const u of state.units) {
+                        if (!u.dead) grantXP(u, XP_PASSIVE_PER_ROUND, 'round');
+                    }
+
+                    processPassiveGoldIncome();
+                    processNexusIncome();
+
+                    for (const u of state.units) {
+                        if (u._recallCooldown > 0) u._recallCooldown--;
+                    }
+
+                    if (state.round > 1 && state.round % 10 === 0) {
+                        const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+                        if (!_hgMode || _hgMode.hasHourglasses) {
+                            spawnPeriodicHourglasses();
+                        }
+                    }
+
+                    checkBossSpawns();
+
+                    const savedGen = _blitzTurnGen;
+                    showRoundBanner(state.round, () => {
+                    if (_blitzTurnGen !== savedGen || state.winner) return;
+                    playBufferedRoundEvents(() => {
+                        if (_blitzTurnGen !== savedGen || state.winner) return;
+
+                        showNextAnnouncement(() => {
+                            if (_blitzTurnGen !== savedGen || state.winner) return;
+
+                            processPendingEarthquake(() => {
+                            if (_blitzTurnGen !== savedGen || state.winner) return;
+
+                            const firstUnit = getNextBlitzUnit();
+                            _continueBlitzWithUnit(firstUnit);
+                            });
+                        });
+                    });
+                    });
+                    });
+                    });
+                    });
+                    });
+                    return;
+                }
+
+                _continueBlitzWithUnit(nextUnit);
+                return;
+            }
+        }
+
+        function processTurnStartTowerDamage(unit, onDone) {
+            if (!unit || unit.dead) { if (onDone) onDone(); return; }
+
+            const hits = [];
+
+            if (state.turrets?.length) {
+                const enemyTurrets = state.turrets.filter(t => t.owner !== unit.player && t.hp > 0 && !t.auraDebuff);
+                for (const turret of enemyTurrets) {
+                    if (getSectionForUnit(unit) !== 'earth') continue;
+                    const dist = Math.abs(unit.x - turret.x) + Math.abs(unit.y - turret.y);
+                    if (dist > turret.range) continue;
+                    turret.facingAngle = Math.atan2(unit.y - turret.y, unit.x - turret.x);
+                    const dmg = Math.max(24, turret.dmg + randInt(24) - 8);
+                    hits.push({ kind: 'turret', srcX: turret.x, srcY: turret.y, dmg });
+                }
+                if (hits.length) scheduleBoardRender();
+            }
+
+            if (hits.length === 0) { if (onDone) onDone(); return; }
+
+            const mainHit = hits[0];
+            const pseudoSource = { x: mainHit.srcX, y: mainHit.srcY, player: unit.player === 1 ? 2 : 1 };
+
+            if (state.cameraDisabled) {
+                _applyTowerHits(unit, hits);
+                if (onDone) onDone();
+                return;
+            }
+
+            const camZoom = getDefaultZoom();
+            camera.moveTo({ x: mainHit.srcX, y: mainHit.srcY, zoom: camZoom,
+                duration: actionMs(350), _fogAllowed: true });
+
+            const holdMs = actionMs(600);
+            const travelMs = actionMs(500);
+            window.setTimeout(() => {
+                if (state.winner) { if (onDone) onDone(); return; }
+                camera.moveTo({ x: unit.x, y: unit.y, zoom: camZoom,
+                    duration: travelMs, easing: 'easeInOut', _fogAllowed: true });
+                for (const h of hits) {
+
+                    if (!_skipVisuals() && typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && typeof window.ThreeVFXEffects.hasMapping === 'function'
+                        && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
+                        const _tdx = unit.x - h.srcX;
+                        const _tdy = unit.y - h.srcY;
+                        const _tDist = Math.max(Math.abs(_tdx), Math.abs(_tdy));
+                        window.ThreeVFXEffects.fire('beam', '_turretBlast', {
+                            fromX: h.srcX, fromY: h.srcY,
+                            dx: _tDist ? Math.sign(_tdx) : 0,
+                            dy: _tDist ? Math.sign(_tdy) : 0,
+                            range: _tDist,
+                            hitTiles: [{ x: unit.x, y: unit.y }]
+                        });
+                    } else {
+                        playProjectile(h.srcX, h.srcY, unit.x, unit.y, 'damage', travelMs);
+                    }
+                }
+            }, holdMs);
+
+            window.setTimeout(() => {
+                if (state.winner) { if (onDone) onDone(); return; }
+                camera.snap({ x: unit.x, y: unit.y, zoom: camZoom });
+                _applyTowerHits(unit, hits);
+                scheduleBoardRender();
+            }, holdMs + travelMs);
+
+            const totalMs = holdMs + travelMs + actionMs(700);
+            window.setTimeout(() => {
+                if (onDone) onDone();
+            }, totalMs);
+        }
+
+        function _applyTowerHits(unit, hits) {
+            for (const h of hits) {
+                if (unit.dead || unit._dying) break;
+
+                if (h.kind === 'turret') {
+                    addLog(`🔧 Turret fires at ${unitDisplayName(unit)} for ${h.dmg} damage!`);
+                    applyDamageToUnit(unit, h.dmg, `🔧 Turret blast: `, { ignoreArmor: false, damageType: 'physical' });
+                }
+            }
+        }
+
+        function _waitForAnimationsThen(callback) {
+            const MAX_WAIT = 8000;
+            const POST_ANIM_DWELL = 350;
+            const start = Date.now();
+            var _dwellStart = 0;
+            function check() {
+                if (state.winner) return;
+                if (Date.now() - start > MAX_WAIT) { callback(); return; }
+
+                if (_walkAnimActive) {
+                    _dwellStart = 0;
+                    setTimeout(check, 100);
+                    return;
+                }
+
+                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) {
+                    _dwellStart = 0;
+                    setTimeout(check, 200);
+                    return;
+                }
+
+                if (state.units.some(u => u._dying)) {
+                    _dwellStart = 0;
+                    setTimeout(check, 200);
+                    return;
+                }
+
+                if (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) {
+                    _dwellStart = 0;
+                    setTimeout(check, 200);
+                    return;
+                }
+
+                if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
+                    (state.healFlashIds && state.healFlashIds.size > 0)) {
+                    _dwellStart = 0;
+                    setTimeout(check, 120);
+                    return;
+                }
+
+                if (projectileLayerEl && projectileLayerEl.childElementCount > 0) {
+                    _dwellStart = 0;
+                    setTimeout(check, 100);
+                    return;
+                }
+
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
+                    && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) {
+                    _dwellStart = 0;
+                    setTimeout(check, 100);
+                    return;
+                }
+
+                if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
+                    && ThreeVFX.hasActiveParticles()) {
+                    _dwellStart = 0;
+                    setTimeout(check, 100);
+                    return;
+                }
+
+                if (camera.isBusy()) {
+                    _dwellStart = 0;
+                    setTimeout(check, 80);
+                    return;
+                }
+
+                if (!state.devAutoSim && POST_ANIM_DWELL > 0) {
+                    if (_dwellStart === 0) {
+                        _dwellStart = Date.now();
+                        setTimeout(check, POST_ANIM_DWELL);
+                        return;
+                    }
+
+                    if (Date.now() - _dwellStart < POST_ANIM_DWELL) {
+                        setTimeout(check, 60);
+                        return;
+                    }
+                }
+                callback();
+            }
+            check();
+        }
+
+        function _continueBlitzWithUnit(nextUnit) {
+                if (!nextUnit) return;
+                if (state.winner) return;
+
+                _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit));
+        }
+
+        function _continueBlitzWithUnit_impl(nextUnit) {
+                if (!nextUnit) return;
+                if (state.winner) return;
+
+                state.activePlayer = nextUnit.player;
+                state._blitzActiveUnitId = nextUnit.id;
+
+                state._fogCameraAllowed = (state.autoPlayers?.[nextUnit.player] && _shouldCameraFollowUnit(nextUnit)) || false;
+
+                renderTurnClock();
+
+                const allAliveHaveAp = state.units.filter(u => !u.dead && !u._skippedTurn).every(u => (u.ap || 0) > 0 || u.id === nextUnit.id);
+                const isNewRound = allAliveHaveAp;
+                showTurnBanner(nextUnit.player, state.round, isNewRound, nextUnit);
+
+                {
+                    const dlgLines = [];
+
+                    if (nextUnit._showRespawnBanner) {
+                        nextUnit._showRespawnBanner = false;
+                        dlgLines.push(`<span class="dlg-heal">🔄 ${unitDisplayName(nextUnit)} has respawned!</span>`);
+                    }
+
+                    if (state._recentDefeats?.length) {
+                        const viewer = getViewerPlayer();
+                        for (const d of state._recentDefeats) {
+                            const isEnemy = d.player !== viewer;
+                            const cls = isEnemy ? 'dlg-effective' : 'dlg-damage';
+                            const icon = isEnemy ? '⚔' : '💀';
+                            dlgLines.push(`<span class="${cls}">${icon} ${d.name} returned to the void</span>`);
+                        }
+                        state._recentDefeats.length = 0;
+                    }
+                    if (dlgLines.length > 0) showBattleDialogue(dlgLines, 2000);
+                }
+
+                {
+                    const debuffKeys = Object.entries(nextUnit.status || {})
+                        .filter(([k, v]) => v > 0 && STATUS_DEFS[k]?.kind === 'debuff')
+                        .map(([k]) => k);
+                    if (debuffKeys.length > 0) {
+                        triggerStatusWiggle(nextUnit);
+                        const dlgMsgs = debuffKeys.map(k => {
+                            const def = STATUS_DEFS[k];
+                            const icon = def?.icon || def?.glyph || '⚠';
+                            const label = def?.label || k;
+                            const turns = nextUnit.status[k];
+                            return `<span class="dlg-status">${icon} ${unitDisplayName(nextUnit)}</span> is <span class="dlg-status">${label}</span> (${turns} rnd)`;
+                        });
+                        showBattleDialogue(dlgMsgs, 1800);
+                    }
+                }
+
+                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : 650;
+
+                const _tookDmgRecently = !state.devAutoSim && !state.autoPlayers?.[nextUnit.player] && nextUnit._tookDamageThisRound;
+                const humanDelay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_tookDmgRecently ? 900 : 280);
+
+                if (nextUnit._tookDamageThisRound) nextUnit._tookDamageThisRound = false;
+                const pendingUnitId = nextUnit.id;
+
+                processTurnStartTowerDamage(nextUnit, function _afterTowerDamage() {
+                if (nextUnit.dead || nextUnit._dying) {
+
+                    checkWin();
+                    if (state.winner) return;
+                    scheduleBoardRender();
+                    window.setTimeout(() => maybeAdvanceTurn(), state.devAutoSim ? 0 : 900);
+                    return;
+                }
+
+                if (nextUnit._pendingSecondaryJobPick) {
+                    if (state.autoPlayers?.[nextUnit.player]) {
+
+                        aiPickSecondaryJob(nextUnit);
+                        renderBoard();
+                        render();
+
+                    } else {
+
+                        const gen = _blitzTurnGen;
+                        window.setTimeout(() => {
+                            if (_blitzTurnGen !== gen || state.winner) return;
+                            const u = state.units.find(u => u.id === pendingUnitId && !u.dead);
+                            if (!u) { maybeAdvanceTurn(); return; }
+                            state.uiDialog = {
+                                type: 'secondaryJobPick',
+                                unitId: pendingUnitId,
+                                onComplete: function() {
+
+                                    state._blitzActiveUnitId = pendingUnitId;
+                                    state.activePlayer = u.player;
+                                    playUnitSwitchChime();
+                                    selectUnit(pendingUnitId);
+                                }
+                            };
+                            markDirty('dialog');
+                            renderIfDirty();
+                        }, humanDelay);
+                        return;
+                    }
+                }
+
+                if (state.controllers?.[nextUnit.player] === CTRL.AI) {
+
+                    _stopShotClock();
+                    if (!state.cameraDisabled && _shouldCameraFollowUnit(nextUnit)) {
+                        invalidateLayoutCache();
+                        renderBoard();
+                        const baseZoom = getUserZoomScale();
+                        const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                        focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
+                            zoom,
+                            holdMs: 99999,
+                            persist: true,
+                            transitionMs: 750,
+                            _fogAllowed: true
+                        });
+                    }
+                    const gen = _blitzTurnGen;
+                    window.setTimeout(() => {
+                        if (_blitzTurnGen !== gen) return;
+                        maybeTriggerComputerTurn();
+                    }, delay);
+                } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
+
+                    _stopShotClock();
+                    if (!state.cameraDisabled && _shouldCameraFollowUnit(nextUnit)) {
+                        invalidateLayoutCache();
+                        renderBoard();
+                        const baseZoom = getUserZoomScale();
+                        const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                        focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
+                            zoom,
+                            holdMs: 99999,
+                            persist: true,
+                            transitionMs: 750,
+                            _fogAllowed: true
+                        });
+                    }
+
+                    if (window._broadcastState) window._broadcastState();
+                } else {
+
+                    window.setTimeout(() => {
+                        if (state.winner) return;
+                        const u = state.units.find(u => u.id === pendingUnitId && !u.dead);
+                        if (!u || unitFinished(u)) return;
+
+                        if (state.battleDialogueTimer) { clearTimeout(state.battleDialogueTimer); state.battleDialogueTimer = null; }
+                        state.battleDialogueQueue = [];
+                        _lastDialogueHtml = '';
+
+                        state._blitzActiveUnitId = pendingUnitId;
+                        state.activePlayer = u.player;
+                        _startShotClock();
+                        playUnitSwitchChime();
+                        selectUnit(pendingUnitId);
+                    }, humanDelay);
+                }
+                });
+        }
+
+        let _aiSafetyTimer = null;
+
+        let _blitzTurnGen = 0;
+        let _aiActionGen = 0;
+
+        function clearAiSafetyTimer() {
+            if (_aiSafetyTimer) {
+                clearTimeout(_aiSafetyTimer);
+                _aiSafetyTimer = null;
+            }
+        }
+
+        function maybeTriggerComputerTurn() {
+            if (state.phase !== 'battle' || state.winner || state.aiThinking) return;
+
+            const _shouldAIRun = () => {
+                if (state._blitzActiveUnitId) {
+                    const bUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    return bUnit && state.controllers?.[bUnit.player] === CTRL.AI;
+                }
+                if (state.controllers?.[state.activePlayer] === CTRL.AI) return true;
+                if (state.squadLeaderMode && state.activePlayer === 1) {
+                    const nextUnit = aliveUnitsFor(1).find(u => (u.ap || 0) > 0);
+                    if (nextUnit && nextUnit.id !== state.squadLeaderUnitId) return true;
+                    const leader = state.units.find(u => u.id === state.squadLeaderUnitId);
+                    if (leader && leader.dead && nextUnit) return true;
+                }
+                return false;
+            };
+            if (!_shouldAIRun()) return;
+
+            const _famRoot = document.getElementById('famRoot');
+            const _famSub = document.getElementById('famSub');
+            if (_famRoot) _famRoot.innerHTML = '';
+            if (_famSub) _famSub.innerHTML = '';
+            if (state.uiDialog?.type === 'pickupDecision') {
+                state.uiDialog = null;
+                renderUiDialog();
+            }
+            state.aiThinking = true;
+            clearAiSafetyTimer();
+            const safetyGen = _blitzTurnGen;
+            _aiSafetyTimer = setTimeout(() => {
+                if (state.aiThinking && state.phase === 'battle' && !state.winner) {
+
+                    if (_blitzTurnGen !== safetyGen) return;
+                    state.aiThinking = false;
+                    state.actionMode = null;
+                    state.comboPartner = null;
+                    state.selectedTool = null;
+                    if (state._blitzActiveUnitId) {
+                        const stuckUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                        if (stuckUnit && state.controllers?.[stuckUnit.player] === CTRL.AI) {
+                            stuckUnit.ap = 0;
+                            endUnitIfDone(stuckUnit);
+                        } else {
+                            maybeTriggerComputerTurn();
+                        }
+                    } else {
+                        maybeTriggerComputerTurn();
+                    }
+                }
+            }, 3000);
+
+            if (state._runComputerTurnTimer) clearTimeout(state._runComputerTurnTimer);
+            const _rctGen = _blitzTurnGen;
+            state._runComputerTurnTimer = setTimeout(() => {
+                state._runComputerTurnTimer = null;
+
+                if (_blitzTurnGen !== _rctGen) { state.aiThinking = false; return; }
+                runComputerTurn();
+            }, state.devAutoSim ? scaleDevSimDelay(35, 8) : 350);
+        }
+
+        const AI_WEIGHT_SCHEMA_VERSION = 10;
+
+        const AI_WEIGHT_DEFAULTS = {
+
+            healPotionHpPct_v1:       { value: 0.583, min: 0.20, max: 0.70, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
+
+            killBonusScore_v1:        { value: 39.435, min: 10,  max: 50,   label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            markedTargetBonus_v1:     { value: 4.275, min: 2,    max: 15,   label: 'Marked Target Bonus', desc: 'Score bonus for attacking marked targets' },
+            hourglassTargetBonus_v1:  { value: 10,    min: 10,   max: 50,   label: 'HG Carrier Bonus', desc: 'Score bonus for attacking hourglass carriers' },
+            comboSynergyBonus_v1:     { value: 14.856, min: 4,   max: 25,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            statusEffectBonus_v1:     { value: 17.469, min: 2,   max: 20,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
+
+            engageAdvantage_v1:       { value: -0.41, min: -0.5, max: 0.3,  label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            hgCarrierFleeAdv_v1:      { value: -0.038, min: -0.3, max: 0.4,  label: 'HG Carrier Flee Threshold', desc: 'Advantage below which HG carriers retreat' },
+
+            safeEnemyDistWeight_v1:   { value: 10.5,  min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
+            safeAllyProximity_v1:     { value: 4.426, min: 1,    max: 15,   label: 'Safe Move: Ally Proximity Bonus', desc: 'Bonus for staying near allies when retreating' },
+
+            towerLowHpPush_v1:       { value: 25,    min: 25,   max: 90,   label: 'Tower Low HP Push', desc: 'Score bonus when enemy tower is nearly destroyed' },
+            towerMidHpPush_v1:       { value: 38.407, min: 10,   max: 55,   label: 'Tower Mid HP Push', desc: 'Score bonus when enemy tower is at half HP' },
+
+            towerBaseBonus_v1:       { value: 26.446, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerClearBonus_v1:      { value: 60.5,  min: 20,   max: 80,   label: 'Tower Clear Bonus', desc: 'Score bonus for tower attack when no enemies on ground' },
+
+            levelAggressionMod_v1:   { value: 0.014, min: 0.0,  max: 0.15, label: 'Level Aggression Mod', desc: 'Per-level aggression bonus (higher level = more aggressive)' },
+            nearLevelUpBonus_v1:     { value: 3.5,   min: 0,    max: 20,   label: 'Near Level-Up Bonus', desc: 'Score bonus for combat actions when unit is close to leveling up' },
+
+            hgSeekPriority_v1:       { value: 0,     min: 0,    max: 25,   label: 'HG Seek Priority', desc: 'How aggressively AI hunts hidden hourglasses (higher = earlier inspect/move to center)' },
+
+            antiOscillationPen_v1:   { value: -4.335, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+
+            recallBonus_v1:          { value: 6.25,  min: 0,    max: 25,   label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
+            scannerPriority_v1:      { value: 23.75, min: 5,    max: 35,   label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+
+            nexusCapBonus_v1:        { value: 21.25, min: 10,   max: 50,   label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            towerDefendBonus_v1:     { value: 40.798, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+
+            earlyExploreBonus_v1:    { value: 21.375, min: 0,    max: 25,   label: 'Early Explore Bonus', desc: 'Score for spreading out and exploring in rounds 1-3' },
+
+            healAllyThreshold_v1:    { value: 0.8,   min: 0.3,  max: 0.8,  label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
+
+            mpPotionPriority_v1:     { value: 220,   min: 40,   max: 280,  label: 'Mana Potion Priority', desc: 'Base score for using mana potion (scales with spell value unlocked)' },
+
+            jumpHighGroundRanged_v1: { value: 12.756, min: 4,    max: 25,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
+            jumpHighGroundMelee_v1:  { value: 3,     min: 1,    max: 15,   label: 'Jump: Melee High Ground', desc: 'Per-level score for melee units jumping to higher ground' },
+            jumpAttackEnable_v1:     { value: 23.625, min: 10,   max: 45,   label: 'Jump: Attack Enable', desc: 'Base score for jump that puts enemy in attack range' },
+            jumpTraversalBonus_v1:   { value: 12.8,  min: 8,    max: 40,   label: 'Jump: Traversal', desc: 'Bonus when jump reaches closer to goal than any walk tile' },
+            jumpStuckCritical_v1:    { value: 30.407, min: 15,   max: 50,   label: 'Jump: Stuck Escape', desc: 'Bonus when jump is the only way to move toward goal' },
+            jumpDownPenalty_v1:      { value: 2,     min: 2,    max: 15,   label: 'Jump: Downhill Penalty', desc: 'Per-level penalty for jumping to lower ground' },
+            jumpThreatPenalty_v1:    { value: 4.875, min: 3,    max: 20,   label: 'Jump: Threat Penalty', desc: 'Per-threat penalty for jumping into danger zones' },
+
+            reshapeRangedRaise_v1:   { value: 13.363, min: 2,    max: 20,   label: 'Reshape: Ranged Raise Base', desc: 'Base score for ranged units raising their own tile' },
+            reshapePerEnemy_v1:      { value: 2.5,   min: 1,    max: 12,   label: 'Reshape: Per-Enemy Gain', desc: 'Score per enemy that we gain height advantage over by raising' },
+            reshapeDefensive_v1:     { value: 4,     min: 2,    max: 15,   label: 'Reshape: Defensive Raise', desc: 'Score for raising tile defensively when enemies approach' },
+
+            moveHighGroundRanged_v1: { value: 0.3,   min: 0.3,  max: 4,    label: 'Move: Ranged Height Pref', desc: 'Per-level score bonus for ranged units moving to higher tiles' },
+            moveHighGroundMelee_v1:  { value: 0.5,   min: 0,    max: 2,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
+            moveRetreatHeight_v1:    { value: 1.25,  min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
+
+            enemySpawnZonePenalty_v1: { value: 18,    min: 5,    max: 40,   label: 'Enemy Spawn Zone Penalty', desc: 'Penalty for moving into enemy spawn zone' },
+
+            landToChannelBonus_v1:   { value: 20,    min: 8,    max: 45,   label: 'Land to Channel Bonus', desc: 'Score for landing specifically to channel a nexus' },
+
+            flyEscapeMeleeBonus_v1:  { value: 14,    min: 4,    max: 30,   label: 'Fly: Escape Melee Bonus', desc: 'Score for ascending to escape melee threats' },
+            flyRangedHeightBonus_v1: { value: 10,    min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
+        };
+
+        let _aiTrainedWeights = null;
+        let _aiP2ChallengerWeights = null;
+        let _aiTrainingStats = null;
+        let _aiTrainingMode = false;
+        let _aiTrainingBatchSize = 40;
+
+        let _abExperiment = null;
+        let _abWeightQueue = [];
+        let _abPassNumber = 0;
+        let _abCompletedExperiments = [];
+
+        function getAIWeight(key, player) {
+            const p = player || state.activePlayer || 1;
+
+            if (_aiTrainingMode && _abExperiment && key === _abExperiment.key) {
+                const matchIdx = _abExperiment.matchIndex || 0;
+
+                const p1GetsMax = (matchIdx % 2 === 0);
+                const def = AI_WEIGHT_DEFAULTS[key];
+                const testHigh = _abExperiment.highVal ?? def.max;
+                const testLow = _abExperiment.lowVal ?? def.min;
+                if (p === 1) return p1GetsMax ? testHigh : testLow;
+                if (p === 2) return p1GetsMax ? testLow : testHigh;
+            }
+
+            let val = (_aiTrainedWeights && _aiTrainedWeights[key] != null)
+                ? _aiTrainedWeights[key]
+                : (AI_WEIGHT_DEFAULTS[key] ? AI_WEIGHT_DEFAULTS[key].value : 0);
+
+            if (p === 2 && state.isCampaign && typeof state._challengeAiMult === 'number') {
+                const mult = state._challengeAiMult;
+                if (mult !== 1) {
+                    val = val * mult;
+                }
+            }
+            return val;
+        }
+
+        function _startNextExperiment() {
+            const keys = Object.keys(AI_WEIGHT_DEFAULTS);
+
+            if (!_abWeightQueue || _abWeightQueue.length === 0) {
+                _abPassNumber = (_abPassNumber || 0) + 1;
+
+                const tested = new Set((_abCompletedExperiments || []).map(e => e.key));
+                const untested = keys.filter(k => !tested.has(k));
+                const retested = keys.filter(k => tested.has(k));
+
+                const shuffle = arr => arr.slice().sort(() => Math.random() - 0.5);
+                _abWeightQueue = [...shuffle(untested), ...shuffle(retested)];
+
+                addLog(`🧪 A/B Training Pass ${_abPassNumber}: testing ${keys.length} weights × ${_aiTrainingBatchSize} matches each (${untested.length} new).`);
+            }
+
+            const nextKey = _abWeightQueue.shift();
+            const def = AI_WEIGHT_DEFAULTS[nextKey];
+            const current = (_aiTrainedWeights && _aiTrainedWeights[nextKey] != null)
+                ? _aiTrainedWeights[nextKey] : def.value;
+
+            let highVal, lowVal;
+            const range = def.max - def.min;
+
+            if (_abPassNumber <= 1) {
+
+                highVal = Math.round(Math.min(def.max, current + range * 0.35) * 1000) / 1000;
+                lowVal = Math.round(Math.max(def.min, current - range * 0.35) * 1000) / 1000;
+
+                if (highVal - lowVal < range * 0.2) {
+                    highVal = Math.round(Math.min(def.max, current + range * 0.5) * 1000) / 1000;
+                    lowVal = Math.round(Math.max(def.min, current - range * 0.5) * 1000) / 1000;
+                }
+            } else {
+
+                const midHigh = Math.round(((current + def.max) / 2) * 1000) / 1000;
+                const midLow = Math.round(((current + def.min) / 2) * 1000) / 1000;
+
+                if (Math.abs(midHigh - midLow) < range * 0.05) {
+
+                    if (_abWeightQueue.length > 0) {
+                        _startNextExperiment();
+                    } else {
+                        addLog(`🧪 A/B Training Pass ${_abPassNumber} complete. All weights converged.`);
+                    }
+                    return;
+                }
+                highVal = midHigh;
+                lowVal = midLow;
+            }
+
+            _abExperiment = {
+                key: nextKey,
+                label: def.label || nextKey,
+                matchIndex: 0,
+                maxWins: 0,
+                minWins: 0,
+                highVal,
+                lowVal,
+                currentVal: current,
+                results: [],
+            };
+
+            _syncChallengerFromExperiment();
+
+            addLog(`🧪 Experiment: ${def.label} — testing ${lowVal} vs ${highVal} (current: ${current})`);
+        }
+
+        function _syncChallengerFromExperiment() {
+            _aiP2ChallengerWeights = {};
+            const keys = Object.keys(AI_WEIGHT_DEFAULTS);
+            for (const k of keys) {
+
+                _aiP2ChallengerWeights[k] = getAIWeight(k, 2);
+            }
+        }
+
+        function _generateChallengerWeights() {
+            if (_abExperiment) {
+                _syncChallengerFromExperiment();
+            }
+        }
+
+        async function _aiStorageGet(key) {
+            try {
+                if (typeof window.storage !== 'undefined' && window.storage?.get) {
+                    const result = await window.storage.get(key);
+                    if (result && result.value) return result.value;
+                }
+            } catch (e) {  }
+            try {
+                const val = localStorage.getItem(key);
+                if (val) return val;
+            } catch (e) {  }
+            return null;
+        }
+
+        async function _aiStorageSet(key, value) {
+            try {
+                if (typeof window.storage !== 'undefined' && window.storage?.set) {
+                    await window.storage.set(key, value);
+                }
+            } catch (e) {  }
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {  }
+        }
+
+        async function loadAIWeights() {
+            try {
+                const raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
+                if (raw) _aiTrainedWeights = JSON.parse(raw);
+            } catch (e) {
+                _aiTrainedWeights = null;
+            }
+            try {
+                const statsRaw = await _aiStorageGet('ai-training-stats-v' + AI_WEIGHT_SCHEMA_VERSION);
+                if (statsRaw) _aiTrainingStats = JSON.parse(statsRaw);
+            } catch (e) {
+                _aiTrainingStats = null;
+            }
+
+            if (!_aiTrainingStats) {
+                _aiTrainingStats = {
+                    totalMatches: 0,
+                    p1Wins: 0,
+                    p2Wins: 0,
+                    noContests: 0,
+                    batchMatches: 0,
+                    batchP1Wins: 0,
+                    batchWeightSnapshots: [],
+                    weightHistory: [],
+                    generation: 0,
+                };
+            }
+
+            if (_aiTrainingStats.noContests == null) _aiTrainingStats.noContests = 0;
+
+            await _loadAbExperiments();
+        }
+
+        async function saveAIWeights() {
+            try {
+                if (_aiTrainedWeights) {
+                    await _aiStorageSet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION, JSON.stringify(_aiTrainedWeights));
+                }
+                if (_aiTrainingStats) {
+                    await _aiStorageSet('ai-training-stats-v' + AI_WEIGHT_SCHEMA_VERSION, JSON.stringify(_aiTrainingStats));
+                }
+            } catch (e) {
+            }
+        }
+
+        async function resetAIWeights() {
+            _aiTrainedWeights = {};
+            for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                _aiTrainedWeights[key] = AI_WEIGHT_DEFAULTS[key].value;
+            }
+            _aiTrainingStats = {
+                totalMatches: 0, p1Wins: 0, p2Wins: 0, noContests: 0,
+                batchMatches: 0, batchP1Wins: 0,
+                batchWeightSnapshots: [],
+                weightHistory: [],
+                generation: 0,
+            };
+            await saveAIWeights();
+        }
+
+        function recordTrainingMatch(winnerPlayer) {
+
+            if (!_aiTrainingStats) {
+                _aiTrainingStats = {
+                    totalMatches: 0, p1Wins: 0, p2Wins: 0, noContests: 0,
+                    batchMatches: 0, batchP1Wins: 0,
+                    batchWeightSnapshots: [], weightHistory: [], generation: 0,
+                };
+            }
+            if (!_aiTrainingMode) return;
+
+            if (winnerPlayer === 0 || winnerPlayer === null) {
+                _aiTrainingStats.noContests = (_aiTrainingStats.noContests || 0) + 1;
+                _aiTrainingStats.totalMatches++;
+                saveAIWeights();
+                return;
+            }
+
+            _aiTrainingStats.totalMatches++;
+            _aiTrainingStats.batchMatches++;
+            if (winnerPlayer === 1) { _aiTrainingStats.p1Wins++; _aiTrainingStats.batchP1Wins++; }
+            else { _aiTrainingStats.p2Wins++; }
+
+            if (_abExperiment) {
+                const exp = _abExperiment;
+                const matchIdx = exp.matchIndex || 0;
+                const p1GetsMax = (matchIdx % 2 === 0);
+                const maxPlayerWon = (p1GetsMax && winnerPlayer === 1) || (!p1GetsMax && winnerPlayer === 2);
+
+                if (maxPlayerWon) {
+                    exp.maxWins++;
+                } else {
+                    exp.minWins++;
+                }
+                exp.results.push({ winner: winnerPlayer, p1GetsMax, maxPlayerWon });
+                exp.matchIndex++;
+
+                if (exp.matchIndex >= _aiTrainingBatchSize) {
+                    _finalizeExperiment();
+                } else {
+
+                    _syncChallengerFromExperiment();
+                }
+            }
+
+            saveAIWeights();
+        }
+
+        function _finalizeExperiment() {
+            const exp = _abExperiment;
+            if (!exp) return;
+
+            const def = AI_WEIGHT_DEFAULTS[exp.key];
+            const total = exp.maxWins + exp.minWins;
+            const maxWR = total > 0 ? exp.maxWins / total : 0.5;
+            const minWR = total > 0 ? exp.minWins / total : 0.5;
+
+            const DECISIVE_THRESHOLD = 0.60;
+            const STRONG_THRESHOLD = 0.55;
+            let adopted = null;
+            let newVal = exp.currentVal;
+
+            if (maxWR >= DECISIVE_THRESHOLD) {
+
+                newVal = exp.highVal;
+                adopted = 'high';
+                addLog(`🧪 ✓ ${exp.label}: HIGH wins ${exp.maxWins}-${exp.minWins} → adopting ${newVal}`);
+            } else if (minWR >= DECISIVE_THRESHOLD) {
+
+                newVal = exp.lowVal;
+                adopted = 'low';
+                addLog(`🧪 ✓ ${exp.label}: LOW wins ${exp.minWins}-${exp.maxWins} → adopting ${newVal}`);
+            } else if (maxWR >= STRONG_THRESHOLD) {
+
+                newVal = Math.round(((exp.currentVal + exp.highVal) / 2) * 1000) / 1000;
+                adopted = 'lean-high';
+                addLog(`🧪 ~ ${exp.label}: HIGH leans ${exp.maxWins}-${exp.minWins} → nudging to ${newVal}`);
+            } else if (minWR >= STRONG_THRESHOLD) {
+
+                newVal = Math.round(((exp.currentVal + exp.lowVal) / 2) * 1000) / 1000;
+                adopted = 'lean-low';
+                addLog(`🧪 ~ ${exp.label}: LOW leans ${exp.minWins}-${exp.maxWins} → nudging to ${newVal}`);
+            } else {
+
+                adopted = 'inconclusive';
+                addLog(`🧪 ≈ ${exp.label}: ${exp.maxWins}-${exp.minWins} — no clear winner, keeping ${exp.currentVal}`);
+            }
+
+            if (!_aiTrainedWeights) {
+                _aiTrainedWeights = {};
+                for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                    _aiTrainedWeights[k] = AI_WEIGHT_DEFAULTS[k].value;
+                }
+            }
+            const oldVal = _aiTrainedWeights[exp.key] ?? def.value;
+            _aiTrainedWeights[exp.key] = Math.max(def.min, Math.min(def.max, newVal));
+
+            const histEntry = {
+                generation: _aiTrainingStats.generation,
+                key: exp.key,
+                label: exp.label,
+                matches: total,
+                maxWins: exp.maxWins,
+                minWins: exp.minWins,
+                highVal: exp.highVal,
+                lowVal: exp.lowVal,
+                oldVal,
+                newVal: _aiTrainedWeights[exp.key],
+                adopted,
+                pass: _abPassNumber,
+                timestamp: Date.now(),
+            };
+            _abCompletedExperiments.push(histEntry);
+
+            _aiTrainingStats.weightHistory.push({
+                generation: _aiTrainingStats.generation,
+                matches: total,
+                winRate: exp.maxWins / Math.max(1, total),
+                adjustments: { [exp.key]: { from: oldVal, to: _aiTrainedWeights[exp.key] } },
+                timestamp: Date.now(),
+            });
+            if (_aiTrainingStats.weightHistory.length > 50) {
+                _aiTrainingStats.weightHistory = _aiTrainingStats.weightHistory.slice(-50);
+            }
+
+            _aiTrainingStats.batchMatches = 0;
+            _aiTrainingStats.batchP1Wins = 0;
+            _aiTrainingStats.batchWeightSnapshots = [];
+            _aiTrainingStats.generation++;
+
+            _saveAbExperiments();
+
+            _abExperiment = null;
+            _startNextExperiment();
+
+            saveAIWeights();
+        }
+
+        async function _saveAbExperiments() {
+            try {
+                const data = {
+                    queue: _abWeightQueue,
+                    pass: _abPassNumber,
+                    current: _abExperiment,
+                    completed: _abCompletedExperiments.slice(-100),
+                };
+                await _aiStorageSet('ai-ab-experiments-v' + AI_WEIGHT_SCHEMA_VERSION, JSON.stringify(data));
+            } catch (e) {  }
+        }
+
+        async function _loadAbExperiments() {
+            try {
+                const raw = await _aiStorageGet('ai-ab-experiments-v' + AI_WEIGHT_SCHEMA_VERSION);
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    _abWeightQueue = data.queue || [];
+                    _abPassNumber = data.pass || 0;
+                    _abExperiment = data.current || null;
+                    _abCompletedExperiments = data.completed || [];
+                    return;
+                }
+            } catch (e) {  }
+            _abWeightQueue = [];
+            _abPassNumber = 0;
+            _abExperiment = null;
+            _abCompletedExperiments = [];
+        }
+
+        function renderTrainingDashboard() {
+            const panel = document.getElementById('trainingPanel');
+            if (!panel) return;
+            const stats = _aiTrainingStats || {};
+            const gen = stats.generation || 0;
+            const totalM = stats.totalMatches || 0;
+            const nc = stats.noContests || 0;
+            const decisiveM = (stats.p1Wins || 0) + (stats.p2Wins || 0);
+            const champWins = stats.p1Wins || 0;
+            const challWins = stats.p2Wins || 0;
+            const champWR = decisiveM > 0 ? Math.round(champWins / decisiveM * 100) : 50;
+
+            const exp = _abExperiment;
+            const totalWeights = Object.keys(AI_WEIGHT_DEFAULTS).length;
+            const queueLeft = (_abWeightQueue || []).length;
+            const passProgress = totalWeights > 0 ? totalWeights - queueLeft - (exp ? 1 : 0) : 0;
+
+            let expHtml = '';
+            if (exp) {
+                const expTotal = exp.maxWins + exp.minWins;
+                const maxWR = expTotal > 0 ? Math.round(exp.maxWins / expTotal * 100) : 50;
+                const matchIdx = exp.matchIndex || 0;
+                const p1GetsMax = (matchIdx % 2 === 0);
+
+                let dotsHtml = '';
+                for (let i = 0; i < _aiTrainingBatchSize; i++) {
+                    const r = exp.results[i];
+                    let color = 'rgba(140,140,200,0.08)';
+                    if (r) color = r.maxPlayerWon ? 'var(--green)' : 'var(--red)';
+                    dotsHtml += `<span class="train-batch-dot" style="background:${color}"></span>`;
+                }
+
+                expHtml = `
+                <div class="train-group">
+                    <div class="train-group-title">Current Experiment</div>
+                    <div style="text-align:center;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">${exp.label}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:4px">
+                        <span style="color:var(--green)">▲ HIGH ${exp.highVal}</span>
+                        <span style="color:var(--muted)">vs</span>
+                        <span style="color:var(--red)">▼ LOW ${exp.lowVal}</span>
+                    </div>
+                    <div style="text-align:center;font-size:10px;color:var(--muted);margin-bottom:6px">current: ${exp.currentVal}</div>
+                    <div class="train-batch-bar">
+                        <div class="train-batch-side" style="color:var(--green)">▲ ${exp.maxWins}</div>
+                        <div class="train-batch-dots">${dotsHtml}</div>
+                        <div class="train-batch-side" style="color:var(--red)">${exp.minWins} ▼</div>
+                    </div>
+                    <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">
+                        ${expTotal} / ${_aiTrainingBatchSize} matches · HIGH WR: ${maxWR}%
+                        · Next: ${p1GetsMax ? 'P1=▲ P2=▼' : 'P1=▼ P2=▲'}
+                    </div>
+                </div>`;
+            } else {
+                expHtml = `<div class="train-group">
+                    <div class="train-group-title">Experiment</div>
+                    <div style="text-align:center;color:var(--muted);font-size:10px;padding:8px 0">Waiting for next match...</div>
+                </div>`;
+            }
+
+            const recent = (_abCompletedExperiments || []).slice(-8).reverse();
+            let histHtml = '';
+            if (recent.length > 0) {
+                histHtml = recent.map(h => {
+                    const total = h.maxWins + h.minWins;
+                    const maxWR = total > 0 ? Math.round(h.maxWins / total * 100) : 50;
+                    let icon, iconColor;
+                    if (h.adopted === 'high' || h.adopted === 'low') {
+                        icon = '✓'; iconColor = 'var(--green)';
+                    } else if (h.adopted === 'lean-high' || h.adopted === 'lean-low') {
+                        icon = '~'; iconColor = 'var(--gold)';
+                    } else {
+                        icon = '≈'; iconColor = 'var(--muted)';
+                    }
+                    const valChange = h.oldVal !== h.newVal
+                        ? `<span style="color:var(--muted)">${h.oldVal}</span> → <span style="font-weight:700">${h.newVal}</span>`
+                        : `<span style="color:var(--muted)">kept ${h.oldVal}</span>`;
+                    return `<div class="train-hist-row">
+                        <span style="color:${iconColor};font-weight:700;width:14px">${icon}</span>
+                        <span class="train-hist-gen" style="flex:1">${h.label}</span>
+                        <span style="color:var(--green);min-width:20px;text-align:right">${h.maxWins}</span>
+                        <span style="color:var(--muted)">-</span>
+                        <span style="color:var(--red);min-width:20px">${h.minWins}</span>
+                        <span style="font-size:9px;min-width:70px;text-align:right">${valChange}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            const changedWeights = [];
+            const champW = _aiTrainedWeights || {};
+            for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const def = AI_WEIGHT_DEFAULTS[key];
+                const cv = champW[key] ?? def.value;
+                const moved = Math.abs(cv - def.value) > 0.005;
+                if (moved) {
+                    changedWeights.push({ key, def, cv });
+                }
+            }
+
+            const fmtVal = (v) => typeof v === 'number' && Math.abs(v) < 1 ? v.toFixed(3) : typeof v === 'number' ? Math.round(v * 100) / 100 : v;
+            let weightRowsHtml = '';
+            if (changedWeights.length > 0) {
+                weightRowsHtml = changedWeights.map(w => {
+                    const range = w.def.max - w.def.min;
+                    const pct = ((w.cv - w.def.min) / range) * 100;
+                    const diffFromDefault = w.cv - w.def.value;
+                    const diffIcon = diffFromDefault > 0 ? '▲' : '▼';
+                    const diffColor = diffFromDefault > 0 ? 'var(--green)' : 'var(--red)';
+                    return `<div class="train-wt-row" title="${w.def.desc}">
+                        <span class="train-wt-name">${w.def.label}</span>
+                        <span class="train-wt-val" style="color:${diffColor}">${diffIcon} ${fmtVal(w.cv)}</span>
+                        <div class="train-wt-bar-wrap"><div class="train-wt-bar" style="width:${pct}%;background:var(--gold)"></div></div>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px">def: ${fmtVal(w.def.value)}</span>
+                    </div>`;
+                }).join('');
+            } else {
+                weightRowsHtml = '<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">All weights at defaults</div>';
+            }
+
+            panel.innerHTML = `
+                <div class="train-drag-handle" id="trainDragHandle">
+                    <div class="train-title" style="margin:0">AI Training — A/B</div>
+                    <span class="train-drag-grip">⠿ drag</span>
+                </div>
+                <div class="train-subtitle">Mirror · ${_aiTrainingBatchSize} matches per weight · Pass ${_abPassNumber || 1}</div>
+
+                <div class="train-cards">
+                    <div class="train-card">
+                        <span class="train-card-label">Pass ${_abPassNumber || 1}</span>
+                        <span class="train-card-value">${passProgress}/${totalWeights}</span>
+                    </div>
+                    <div class="train-card">
+                        <span class="train-card-label">Matches</span>
+                        <span class="train-card-value">${totalM}</span>
+                    </div>
+                    <div class="train-card">
+                        <span class="train-card-label">Tuned</span>
+                        <span class="train-card-value">${changedWeights.length}</span>
+                    </div>
+                    <div class="train-card">
+                        <span class="train-card-label">Experiments</span>
+                        <span class="train-card-value">${(_abCompletedExperiments || []).length}</span>
+                    </div>
+                </div>
+
+                ${expHtml}
+
+                ${histHtml ? `
+                <div class="train-group">
+                    <div class="train-group-title">Recent Experiments</div>
+                    <div class="train-hist">${histHtml}</div>
+                </div>` : ''}
+
+                <div class="train-group">
+                    <div class="train-group-title">Trained Weights <span style="font-weight:400;text-transform:none;letter-spacing:0">(${changedWeights.length} / ${totalWeights} changed)</span></div>
+                    <div class="train-wt-list">${weightRowsHtml}</div>
+                </div>
+
+                <div class="train-btns">
+                    <button class="train-btn danger" onclick="if(confirm('Reset all trained weights and experiments?')){resetAIWeights().then(()=>{_abExperiment=null;_abWeightQueue=[];_abPassNumber=0;_abCompletedExperiments=[];_saveAbExperiments();_startNextExperiment();renderTrainingDashboard();addLog('AI weights and experiments reset.');});}">Reset</button>
+                    <button class="train-btn" onclick="_abExperiment=null;_startNextExperiment();renderTrainingDashboard();addLog('Skipped to next experiment.');">Skip</button>
+                    <button class="train-btn" onclick="_exportTrainedWeights()">Export</button>
+                    <button class="train-btn" onclick="_importTrainedWeights()">Import</button>
+                </div>
+            `;
+
+            _initTrainPanelDrag(panel);
+        }
+
+        function _initTrainPanelDrag(panel) {
+            const handle = document.getElementById('trainDragHandle');
+            if (!handle) return;
+            handle.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                const rect = panel.getBoundingClientRect();
+                const offX = e.clientX - rect.left;
+                const offY = e.clientY - rect.top;
+
+                panel.style.right = 'auto';
+                panel.style.left = rect.left + 'px';
+                panel.style.top = rect.top + 'px';
+                const onMove = (ev) => {
+                    const nx = Math.max(0, Math.min(window.innerWidth - 60, ev.clientX - offX));
+                    const ny = Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - offY));
+                    panel.style.left = nx + 'px';
+                    panel.style.top = ny + 'px';
+                };
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            };
+
+            handle.ontouchstart = (e) => {
+                const t = e.touches[0];
+                const rect = panel.getBoundingClientRect();
+                const offX = t.clientX - rect.left;
+                const offY = t.clientY - rect.top;
+                panel.style.right = 'auto';
+                panel.style.left = rect.left + 'px';
+                panel.style.top = rect.top + 'px';
+                const onMove = (ev) => {
+                    ev.preventDefault();
+                    const mt = ev.touches[0];
+                    const nx = Math.max(0, Math.min(window.innerWidth - 60, mt.clientX - offX));
+                    const ny = Math.max(0, Math.min(window.innerHeight - 40, mt.clientY - offY));
+                    panel.style.left = nx + 'px';
+                    panel.style.top = ny + 'px';
+                };
+                const onEnd = () => {
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onEnd);
+                };
+                document.addEventListener('touchmove', onMove, { passive: false });
+                document.addEventListener('touchend', onEnd);
+            };
+        }
+
+        function _exportTrainedWeights() {
+            const w = _aiTrainedWeights || {};
+            const stats = _aiTrainingStats || {};
+            const gen = stats.generation || 0;
+            const totalM = stats.totalMatches || 0;
+            const champWR = (stats.p1Wins && (stats.p1Wins + stats.p2Wins) > 0)
+                ? Math.round(stats.p1Wins / (stats.p1Wins + stats.p2Wins) * 100) : '?';
+
+            const exportData = {
+                _meta: {
+                    game: 'Entropy Wars',
+                    generation: gen,
+                    totalMatches: totalM,
+                    championWinRate: champWR + '%',
+                    exportedAt: new Date().toISOString()
+                },
+                weights: {}
+            };
+            for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const def = AI_WEIGHT_DEFAULTS[key];
+                const val = w[key] ?? def.value;
+                exportData.weights[key] = { value: val, default: def.value, min: def.min, max: def.max };
+            }
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ew-ai-weights-gen${gen}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog(`Exported weights to ew-ai-weights-gen${gen}.json`);
+        }
+
+        async function _importTrainedWeights() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    if (!data.weights || typeof data.weights !== 'object') {
+                        addLog('⚠️ Invalid weight file — no "weights" object found.');
+                        return;
+                    }
+                    if (!_aiTrainedWeights) _aiTrainedWeights = {};
+                    let imported = 0, skipped = 0;
+                    for (const key of Object.keys(data.weights)) {
+                        const def = AI_WEIGHT_DEFAULTS[key];
+                        if (!def) { skipped++; continue; }
+                        const entry = data.weights[key];
+                        const val = typeof entry === 'number' ? entry : (entry?.value ?? null);
+                        if (val == null || typeof val !== 'number') { skipped++; continue; }
+
+                        _aiTrainedWeights[key] = Math.max(def.min, Math.min(def.max, val));
+                        imported++;
+                    }
+
+                    if (_aiTrainingStats) {
+                        if (data._meta?.generation) _aiTrainingStats.generation = data._meta.generation;
+                        if (data._meta?.totalMatches) _aiTrainingStats.totalMatches = data._meta.totalMatches;
+                    }
+                    await saveAIWeights();
+                    addLog(`✅ Imported ${imported} weights from gen${data._meta?.generation || '?'} (${skipped} skipped). Saved.`);
+                    if (typeof renderTrainingDashboard === 'function') renderTrainingDashboard();
+                } catch (err) {
+                    addLog(`⚠️ Failed to import weights: ${err.message}`);
+                }
+            };
+            input.click();
+        }
+
+        loadAIWeights();
+
+        function finishComputerAction() {
+
+            if (_aiActionGen !== _blitzTurnGen) {
+                return;
+            }
+            state.aiThinking = false;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.comboPartner = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            clearAiSafetyTimer();
+            if (state.winner) return;
+
+            if (!state._blitzActiveUnitId) return;
+
+            const savedGen = _blitzTurnGen;
+            _waitForAnimationsThen(() => {
+
+                if (savedGen !== _blitzTurnGen) return;
+                if (state.winner) return;
+                if (!state._blitzActiveUnitId) return;
+                const curUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                if (curUnit && !curUnit.dead && !unitFinished(curUnit)) {
+
+                    maybeTriggerComputerTurn();
+                } else {
+                    maybeAdvanceTurn();
+                }
+            });
+        }
+
+        function queueComputerAction(actionFn, target = null, delay = 150) {
+            const safeAction = () => {
+                try {
+                    actionFn();
+                } catch (err) {
+                    console.error('AI action threw error:', err);
+                    state.actionMode = null;
+                    state.comboPartner = null;
+                    state.selectedTool = null;
+                    state.aiThinking = false;
+                    clearAiSafetyTimer();
+                    maybeTriggerComputerTurn();
+                }
+            };
+            if (target?.id) {
+                focusUnitPanel(target.id);
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+
+                const isDevSim = state.devAutoSim;
+                const telegraphMs = isDevSim ? 0 : 220;
+                const actionDelay = isDevSim ? scaleDevSimDelay(delay, 12) : delay;
+                if (!isDevSim && target.x !== undefined && target.y !== undefined) {
+
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                        ThreeRenderer.flashTelegraph(target.x, target.y);
+                    } else if (boardEl) {
+                        const tIdx = target.y * bw() + target.x;
+                        const tileEl = boardEl.children[tIdx];
+                        if (tileEl) {
+                            tileEl.classList.add('ai-telegraph');
+                            window.setTimeout(() => tileEl.classList.remove('ai-telegraph'), 450);
+                        }
+                    }
+                }
+                window.setTimeout(safeAction, telegraphMs + actionDelay);
+            } else {
+                safeAction();
+            }
+        }
+
+        function runComputerTurn() {
+            if (state.phase !== 'battle' || state.winner) {
+                state.aiThinking = false;
+                clearAiSafetyTimer();
+                return;
+            }
+            const unit = state._blitzActiveUnitId
+                ? state.units.find(u => u.id === state._blitzActiveUnitId && !u.dead && (u.ap || 0) > 0)
+                : null;
+
+            if (unit) {
+                state._fogCameraAllowed = _shouldCameraFollowUnit(unit);
+            }
+            if (!unit) {
+
+                state.aiThinking = false;
+                clearAiSafetyTimer();
+
+                if (state._blitzActiveUnitId) {
+                    const stuck = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    if (stuck && (stuck.dead || unitFinished(stuck))) {
+                        maybeAdvanceTurn();
+                    }
+                }
+                return;
+            }
+
+            if (state.controllers?.[unit.player] !== CTRL.AI) {
+                state.aiThinking = false;
+                clearAiSafetyTimer();
+                return;
+            }
+            _aiActionGen = _blitzTurnGen;
+
+            if (false) {
+
+            }
+
+            if (typeof window.aiTakeTurn === 'function') {
+                try {
+                    window.aiTakeTurn(unit);
+                } catch (err) {
+                    console.error('AI error:', err);
+                    unit.ap = 0;
+                    state.actionMode = null;
+                    state.comboPartner = null;
+                    state.selectedTool = null;
+                    finishComputerAction();
+                }
+            } else {
+                unit.ap = 0;
+                finishComputerAction();
+            }
+        }
+
+        window.GAME = {
+
+            get state() { return state; },
+            get devAutoSim() { return state.devAutoSim; },
+
+            bw, bh, posKey, posKey3, isInside,
+
+            getColumn, getBlockAt, setBlockAt, removeBlockAt,
+            getWalkableSurfaces, nearestWalkableZ, canOccupy3D,
+            unitAt3D, unitsAtColumn, getTerrainAt3D, dist3D, distXY, combatDist,
+            buildColumnsFromLegacy, buildColumnsFromVoxels, ensureUnitZCoords,
+
+            aliveUnitsFor, aliveUnitsOnFloor, enemyOf, unitDisplayName,
+            getHostileUnits, isBossUnit, getBossOccupiedTiles,
+            isAllyUnit, isEnemyUnit, _isFFA,
+            unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
+            canFlyToSky, canDescendUnderground, canReturnToGround,
+            unitHasJetpack, unitHasSpelunkingGear,
+            SKY_RACES, UNDERGROUND_RACES, unitFinished,
+            getEffectiveRange, getEffectiveSpellRange, getEffectiveMove, getEffectiveAwr,
+            getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
+            getUnitLevel, getXPProgressPct,
+
+            canUnitAct, canUnitMove,
+            canAffordSpell, getSpellApCost,
+            getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
+            getJumpTiles, canJump,
+            isRangeBlockedByTerrain, getLinePoints,
+            unitHasStatus, unitHasFlair, unitHasWard,
+            unitHasTelescope, getTelescopeSkyTargets,
+
+            getTerrainAt, getTerrainRule, getEntranceAt, getHeightAt, getBaseHeightAt, getUnitStandingHeight,
+            getObjectAt, getObjectRule, objectBlocksLanding, objectBlocksEdge,
+            getSectionForRow, getSectionForUnit, getSectionForTile, isBarrierRow,
+            unitCanTraverse,
+
+            MAX_CLIMB_HEIGHT, FALL_DAMAGE_THRESHOLD, FALL_DAMAGE_PER_LEVEL,
+            JUMP_HEIGHT, HIGH_GROUND_RANGE_BONUS, HIGH_GROUND_DEF_BONUS, DOWNHILL_DAMAGE_BONUS,
+
+            computeVisibleTiles, isInVision, scanKey,
+            _shouldCameraFollowUnit,
+
+            getComboPartners, getComboForUnits, getComboTypeSynergy,
+
+            doMove, doAttack, doSpell, doItem, doInspect, doReshape, canReshapeTile, applyTerrainDeform,
+            doAltitudeChange, canChangeAltitude,
+            doComboAttack, doDetonate, doJump,
+            get doFlair() { return doFlair; },
+            get doWard() { return doWard; },
+            get doGuard() { return doGuard; },
+            transitionUnitToFloor, switchToFloor,
+            get channelNexus() { return channelNexus; },
+            get doRecall() { return doRecall; },
+            get getNexusAtUnit() { return getNexusAtUnit; },
+            get isInNexusZone() { return isInNexusZone; },
+            get isInSpawnZone() { return isInSpawnZone; },
+
+            spendAP, get pushUndoSnapshot() { return pushUndoSnapshot; }, addLog,
+            showFloatingTextForUnit,
+
+            finishComputerAction, queueComputerAction,
+            focusUnitPanel, get scheduleBoardRender() { return scheduleBoardRender; },
+            focusBoardCameraOnTiles, actionMs, scaleDevSimDelay,
+            markDirty, renderIfDirty,
+            maybeTriggerComputerTurn, maybeAdvanceTurn,
+
+            getAIWeight,
+
+            get blitzTurnOrderIds() { return state._blitzTurnOrderIds || []; },
+
+            get AP_COST_ACTION() { return AP_COST_ACTION; },
+            get AP_COST_SPELL() { return AP_COST_SPELL; },
+            get TERRAIN_RESHAPE_CONFIG() { return TERRAIN_RESHAPE_CONFIG; },
+            get FLYING_ALTITUDE_CONFIG() { return FLYING_ALTITUDE_CONFIG; },
+            get COMBO_AP_COST_INITIATOR() { return COMBO_AP_COST_INITIATOR; },
+            get COMBO_AP_COST_PARTNER() { return COMBO_AP_COST_PARTNER; },
+            get UNIT_MAX_MOVES() { return UNIT_MAX_MOVES; },
+            get XP_MAX_LEVEL() { return XP_MAX_LEVEL; },
+            get SPELL_SLOT_MAX() { return typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6; },
+            get CLASS_SPELL_LEARN_ORDER() { return typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER : {}; },
+            get SPELL_SHOP_PRICES() { return typeof SPELL_SHOP_PRICES !== 'undefined' ? SPELL_SHOP_PRICES : {}; },
+            learnSpellForUnit,
+            applySecondaryJob,
+            aiPickSecondaryJob,
+            get getSpawnZone() { return getSpawnZone; },
+            get getSpawnZoneOwnerAt() { return getSpawnZoneOwnerAt; },
+            get STATUS_DEFS() { return STATUS_DEFS; },
+            get TERRAIN_RULES() { return TERRAIN_RULES; },
+            get ITEM_RULES() { return ITEM_RULES; },
+
+            applySeedTileEffects,
+
+            get camFocalX() { return _lastCamFocalX; },
+            get camFocalY() { return _lastCamFocalY; },
+            getUserZoomScale,
+
+            playCutscene,
+
+            selectUnit, findMovePath, getSelectedUnit,
+            get renderBattleSelectionUI() { return renderBattleSelectionUI; },
+            get clearSpellRangePreview() { return clearSpellRangePreview; },
+            get clearAttackRangePreview() { return clearAttackRangePreview; },
+        };
+
+        (function initCameraDebugOverlay() {
+            let _camDbgEl = null;
+            let _camDbgRaf = null;
+            let _camDbgActive = false;
+
+            function _buildOverlay() {
+                const el = document.createElement('div');
+                el.id = 'cam-debug-overlay';
+                el.style.cssText = `
+                    position:fixed; bottom:12px; left:12px; z-index:999999;
+                    background:rgba(0,0,0,0.82); color:#0f0; font-family:monospace;
+                    font-size:12px; padding:10px 14px; border-radius:6px;
+                    pointer-events:auto; user-select:text; line-height:1.6;
+                    border:1px solid rgba(0,255,0,0.25); min-width:220px;
+                    backdrop-filter:blur(4px);
+                `;
+                el.innerHTML = `
+                    <div style="color:#0f0;font-weight:bold;margin-bottom:4px;font-size:11px;letter-spacing:1px;">📷 CAMERA DEBUG</div>
+                    <pre id="cam-debug-vals" style="margin:0;white-space:pre;font-size:12px;color:#0f0;"></pre>
+                    <button id="cam-debug-copy" style="
+                        margin-top:6px;padding:3px 10px;font-size:11px;cursor:pointer;
+                        background:#222;color:#0f0;border:1px solid #0f0;border-radius:3px;
+                        font-family:monospace;
+                    ">Copy</button>
+                `;
+                document.body.appendChild(el);
+                el.querySelector('#cam-debug-copy').addEventListener('click', () => {
+                    const data = _getCameraSnapshot();
+                    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+                        const btn = el.querySelector('#cam-debug-copy');
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = 'Copy', 1200);
+                    });
+                });
+                return el;
+            }
+
+            function _getCameraSnapshot() {
+                return {
+                    tilt: +(state.dioramaTiltDeg ?? 50).toFixed(1),
+                    yaw:  +(state.dioramaYawDeg  ?? 0).toFixed(1),
+                    camZ: +(state.dioramaCamZ     ?? 900).toFixed(0),
+                    zoom: +(getUserZoomScale()).toFixed(3),
+                    focalX: camera.x != null ? +camera.x.toFixed(2) : null,
+                    focalY: camera.y != null ? +camera.y.toFixed(2) : null,
+                    camZoom: camera.zoom != null ? +camera.zoom.toFixed(3) : null,
+                    diorama: true,
+                    camBusy: camera.isBusy() ? 1 : 0,
+                };
+            }
+
+            function _updateLoop() {
+                if (!_camDbgActive) return;
+                const d = _getCameraSnapshot();
+                const valsEl = document.getElementById('cam-debug-vals');
+                if (valsEl) {
+                    valsEl.textContent =
+                        `tilt   ${String(d.tilt).padStart(7)}\n` +
+                        `yaw    ${String(d.yaw).padStart(7)}\n` +
+                        `camZ   ${String(d.camZ).padStart(7)}\n` +
+                        `zoom   ${String(d.zoom).padStart(7)}\n` +
+                        `focal  ${d.focalX ?? '—'},${d.focalY ?? '—'}\n` +
+                        `busy   ${d.camBusy > 0 ? d.camBusy + 'ms' : '—'}\n` +
+                        `mode   3D diorama`;
+                }
+                _camDbgRaf = requestAnimationFrame(_updateLoop);
+            }
+
+            function toggleCamDebug() {
+                _camDbgActive = !_camDbgActive;
+                if (_camDbgActive) {
+                    if (!_camDbgEl) _camDbgEl = _buildOverlay();
+                    _camDbgEl.style.display = '';
+                    _updateLoop();
+                } else {
+                    if (_camDbgEl) _camDbgEl.style.display = 'none';
+                    if (_camDbgRaf) { cancelAnimationFrame(_camDbgRaf); _camDbgRaf = null; }
+                }
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '`' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+                    e.preventDefault();
+                    toggleCamDebug();
+                }
+            });
+
+            window.toggleCamDebug = toggleCamDebug;
+            window.getCameraSnapshot = _getCameraSnapshot;
+        })();
+
+        function endUnitIfDone(unit) {
+            if (!unit) return;
+
+            if (!unitFinished(unit) && !unit.dead) return;
+            _stopShotClock();
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            scheduleBoardRender();
+            _waitForAnimationsThen(() => maybeAdvanceTurn());
+        }
+
+        function selectUnit(unitId) {
+            const unit = state.units.find(u => u.id === unitId && !u.dead);
+            if (!unit || state.phase !== 'battle') return;
+
+            if (state._blitzActiveUnitId && unitId !== state._blitzActiveUnitId) {
+
+                if (state._skippedUnit && state._skippedUnit.id === unitId &&
+                    unit.player === state.activePlayer && unit._skippedTurn && !unit.dead) {
+
+                    const currentUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    if (currentUnit && !currentUnit.dead) {
+                        currentUnit.ap = 0;
+                        addLog(`${unitDisplayName(currentUnit)}'s turn is auto-skipped — ${unitDisplayName(unit)} takes over!`);
+                    }
+
+                    unit._skippedTurn = false;
+                    state._skippedUnit = null;
+                    state._blitzActiveUnitId = unitId;
+                    state.activePlayer = unit.player;
+
+                } else {
+
+                    focusUnitPanel(unitId);
+                    return;
+                }
+            }
+
+            if (state.squadLeaderMode && unit.player === 1 && unitId !== state.squadLeaderUnitId) {
+                focusUnitPanel(unitId);
+                return;
+            }
+            playSfx('uiCursorMove');
+            state.selectedUnitId = unitId;
+            state.focusedUnitId = unitId;
+            state.hoverUnitId = null;
+            state.showUnitInfo = false;
+            state.actionMenuView = 'root';
+            state.actionMode = null;
+            state._actionExecuting = false;
+            state._enemyActionTargetId = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._teleportingUnit = null;
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+
+            if (unit.player === getViewerPlayer()) state._fogAnchorUnitId = unitId;
+            renderBattleSelectionUI({ includeBoard: false });
+
+            if (typeof renderHudActions === 'function') renderHudActions(unit);
+
+            if (!state.cameraDisabled) {
+
+                invalidateLayoutCache();
+                renderBoard();
+                if (state._userPanning) {
+
+                    state._deferredTurnPanUnitId = unitId;
+                } else {
+                    state._deferredTurnPanUnitId = null;
+                    const baseZoom = getUserZoomScale();
+                    const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                    focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                        zoom,
+                        holdMs: 99999,
+                        persist: true,
+                        transitionMs: 380
+                    });
+                }
+            }
+            scheduleBoardRender();
+
+            if (window.RenderBus) window.RenderBus.emit('selection:changed', { unit, unitId });
+        }
+
+        function useRosterItemButton(unitId, itemKey) {
+            const unit = unitFromId(unitId);
+            if (!unit || unit.dead || state.phase !== 'battle' || state.winner) return;
+
+            const humanTurn = !state.autoPlayers?.[state.activePlayer];
+            const canControlUnit = humanTurn && unit.player === state.activePlayer && canUnitAct(unit);
+
+            if (!canControlUnit) {
+                focusUnitPanel(unitId);
+                markDirty('selectedUnit', 'hud');
+                renderIfDirty();
+                return;
+            }
+
+            if (!canUseItemNow(unit, itemKey)) {
+                const itemName = ITEM_RULES[itemKey]?.name || 'That item';
+                addLog(`${itemName} cannot be used right now.`);
+                playErrorSfx();
+                markDirty('log', 'selectedUnit');
+                renderIfDirty();
+                return;
+            }
+
+            state.selectedUnitId = unitId;
+            state.focusedUnitId = unitId;
+            state.hoverUnitId = null;
+            state.actionMode = 'item';
+            state.selectedTool = itemKey;
+            state.pendingTarget = null;
+            playSfx('uiConfirm');
+            markDirty('board', 'selectedUnit', 'hud', 'buttons');
+            renderIfDirty();
+        }
+
+        function setTool(mode, toolName) {
+            if (state.activePlayer === state.aiPlayer) return;
+            playSfx('uiConfirm');
+            state._enemyActionTargetId = null;
+            const unit = getSelectedUnit();
+            if (!unit) {
+                addLog('Select one of your units first.');
+                return;
+            }
+            if (!canUnitAct(unit)) {
+                addLog(`${unitDisplayName(unit)} already acted this round.`);
+                return;
+            }
+            if (mode === 'spell' && unitHasStatus(unit, 'silence')) {
+                addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
+                return;
+            }
+            state.actionMode = mode;
+            state._actionExecuting = false;
+            state.hoverUnitId = null;
+            state.selectedTool = toolName;
+            state.pendingTarget = null;
+            clearAoePreview();
+
+            if (mode === 'spell' && unit) {
+                const spell = (unit.spells || []).find(s => s.name === toolName);
+                const range = spell?.range || 3;
+
+                const rangeRows = range * 2 + 1;
+
+                const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
+                const userZoom = getUserZoomScale();
+
+                const zoom = Math.max(userZoom, rangeZoom);
+                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                    zoom,
+                    holdMs: 99999,
+                    persist: true,
+                    transitionMs: 350
+                });
+            } else {
+                _softResetCameraToUnit(unit);
+            }
+
+            if (mode === 'spell' && unit) {
+                const spell = (unit.spells || []).find(s => s.name === toolName);
+
+                if (spell && spell.orientable && !state._spellOrientation) {
+                    state.actionMenuView = 'spellOrientation';
+                    renderBattleSelectionUI({ includeBoard: false });
+                    scheduleBoardRender();
+                    return;
+                }
+                if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
+
+                    const targets = _getSpellValidTargets(unit, spell);
+
+                    if (targets.length === 1 && targets[0].unit && targets[0].unit.id === unit.id) {
+                        state._actionExecuting = true;
+                        clearAoePreview();
+                        clearHoveredTarget();
+                        clearSpellRangePreview();
+                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                        doSpell(unit, unit.x, unit.y);
+                        scheduleBoardRender();
+                    } else {
+                        state.actionMenuView = 'spellTargets';
+                        state._spellCycleTargets = targets;
+                        state._spellCycleIndex = 0;
+                        if (targets.length > 0) {
+                            state.pendingTarget = { x: targets[0].x, y: targets[0].y, mode: 'spell', tool: toolName, viaHover: false };
+                            updateAoePreview(targets[0].x, targets[0].y);
+                        }
+                    }
+                } else if (spell && isSpellSelfCast(spell)) {
+
+                    state._actionExecuting = true;
+                    clearAoePreview();
+                    clearHoveredTarget();
+                    clearSpellRangePreview();
+                    if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                    doSpell(unit, unit.x, unit.y);
+                    scheduleBoardRender();
+                } else {
+
+                    state.actionMenuView = 'spells';
+                    if (spell) {
+                        const targets = _getSpellValidTargets(unit, spell);
+                        state._spellCycleTargets = targets;
+                        state._spellCycleIndex = 0;
+                        if (targets.length > 0) {
+                            state.pendingTarget = { x: targets[0].x, y: targets[0].y };
+                            updateAoePreview(targets[0].x, targets[0].y);
+                        }
+                    }
+                }
+            } else {
+                state.actionMenuView = mode === 'item' ? 'items' : mode === 'ping' ? 'pings' : (state.actionMenuView || 'root');
+            }
+
+            renderBattleSelectionUI({
+                includeBoard: false
+            });
+            scheduleBoardRender();
+        }
+
+        function setSpellOrientation(orientation) {
+            if (orientation !== 'horizontal' && orientation !== 'vertical') return;
+            state._spellOrientation = orientation;
+            const tool = state.selectedTool;
+
+            setTool('spell', tool);
+        }
+        window.setSpellOrientation = setSpellOrientation;
+
+        function _getSpellValidTargets(unit, spell) {
+            if (!unit || !spell) return [];
+            const targets = [];
+            const _skm = _kindMeta(spell);
+            const minRange = _skm.minRange ?? 1;
+            const isOffensive = !!_skm.offensive;
+            const effRange = getEffectiveSpellRange(unit, spell);
+            const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport';
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            for (const u of state.units) {
+                if (u.dead) continue;
+
+                let d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
+                if (u._isBoss && u._bossSize === 2) {
+                    d = Math.min(d,
+                        Math.abs(u.x + 1 - unit.x) + Math.abs(u.y - unit.y),
+                        Math.abs(u.x - unit.x) + Math.abs(u.y + 1 - unit.y),
+                        Math.abs(u.x + 1 - unit.x) + Math.abs(u.y + 1 - unit.y)
+                    );
+                }
+                if (d < minRange || d > effRange) continue;
+                if (!skipLOS && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
+                if (isOffensive && isAllyUnit(u, unit)) continue;
+                if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                targets.push({ x: u.x, y: u.y, dist: d, unit: u });
+            }
+            targets.sort((a, b) => a.dist - b.dist);
+            return targets;
+        }
+
+        function isSpellTileTargeted(spell) {
+            if (!spell) return false;
+            return !!_kindMeta(spell).tileTargeted;
+        }
+        function isSpellSelfCast(spell) {
+            if (!spell) return false;
+            if (_kindMeta(spell).selfCast) return true;
+            // Range-0 buff/shield/cleanse spells are self-cast (e.g. Jack of All, Camouflage)
+            if (spell.range === 0 && _kindMeta(spell).allyOnly) return true;
+            // aoeOriginSelf spells center on caster — no tile target needed (e.g. EMP Burst, Quake, Whirlwind)
+            if (spell.aoeOriginSelf) return true;
+            return false;
+        }
+
+        function _getAttackValidTargets(unit) {
+            if (!unit) return [];
+            const targets = [];
+            const effRange = getEffectiveRange(unit);
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+
+            const enemies = getHostileUnits(unit.player);
+            for (const e of enemies) {
+                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, e.x, e.y)) continue;
+                const d = distToTarget(unit.x, unit.y, e, unit.z);
+                if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unitZ)) {
+                    targets.push({ x: e.x, y: e.y, dist: d, unit: e, kind: 'unit' });
+                }
+            }
+
+            if (state.towers) {
+                const tw = state.towers[enemyOf(unit.player)];
+                if (tw && tw.hp > 0) {
+                    const d = Math.abs(tw.x - unit.x) + Math.abs(tw.y - unit.y);
+                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)) {
+                        targets.push({ x: tw.x, y: tw.y, dist: d, tower: tw, kind: 'tower' });
+                    }
+                }
+            }
+
+            if (state.turrets) {
+                for (const t of state.turrets) {
+                    if (t.owner !== unit.player && t.hp > 0) {
+                        const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
+                        if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y, unitZ)) {
+                            targets.push({ x: t.x, y: t.y, dist: d, turret: t, kind: 'turret' });
+                        }
+                    }
+                }
+            }
+
+            if (state._deployedObjects) {
+                for (const obj of state._deployedObjects) {
+                    if (obj.hp > 0) {
+
+                        const isOwn = obj.ownerPlayer === unit.player;
+                        if (isOwn && !(obj.detonateOnAttack && obj.blastRadius > 0)) continue;
+                        const d = Math.abs(obj.x - unit.x) + Math.abs(obj.y - unit.y);
+                        if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y, unitZ)) {
+                            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, obj.x, obj.y)) continue;
+                            targets.push({ x: obj.x, y: obj.y, dist: d, deployedObj: obj, kind: 'deployedObj' });
+                        }
+                    }
+                }
+            }
+
+            if (state.plantedSeeds) {
+                for (const s of state.plantedSeeds) {
+                    if (s.owner !== unit.player) {
+                        const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
+                        if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
+                            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, s.x, s.y)) continue;
+                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+                            targets.push({ x: s.x, y: s.y, dist: d, seed: s, seedName, kind: 'seed' });
+                        }
+                    }
+                }
+            }
+            targets.sort((a, b) => a.dist - b.dist);
+            return targets;
+        }
+
+        function selectTargetFromMenu(x, y) {
+            const unit = getSelectedUnit();
+            if (!unit) return;
+            if (state._actionExecuting) return;
+            if (!canUnitAct(unit)) {
+
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                resetBoardCamera(true);
+                renderBattleSelectionUI({ includeBoard: false });
+                return;
+            }
+
+            if (state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y) {
+
+                state._actionExecuting = true;
+                clearAoePreview();
+                clearHoveredTarget();
+                state.pendingTarget = null;
+
+                if (state.actionMode === 'attack') { doAttack(unit, x, y, state._clickedZ); }
+                else if (state.actionMode === 'spell') { doSpell(unit, x, y, state._clickedZ); }
+                scheduleBoardRender();
+                return;
+            }
+
+            state.pendingTarget = { x, y, mode: state.actionMode, tool: state.selectedTool, viaHover: false };
+            playSfx('uiCursorFocus');
+            updateAoePreview(x, y);
+            renderBattleSelectionUI({ includeBoard: false });
+            scheduleBoardRender();
+        }
+        window.selectTargetFromMenu = selectTargetFromMenu;
+
+        function cycleSpellTarget(direction) {
+            if (state.actionMode !== 'spell' || !state._spellCycleTargets?.length) return;
+            const len = state._spellCycleTargets.length;
+            state._spellCycleIndex = ((state._spellCycleIndex || 0) + direction + len) % len;
+            const t = state._spellCycleTargets[state._spellCycleIndex];
+            if (t) {
+                state.pendingTarget = { x: t.x, y: t.y };
+                updateAoePreview(t.x, t.y);
+                scheduleBoardRender();
+            }
+        }
+        window.cycleSpellTarget = cycleSpellTarget;
+
+        function setActionMode(mode) {
+            if (state.activePlayer === state.aiPlayer) return;
+            playSfx('uiConfirm');
+            state._enemyActionTargetId = null;
+            const unit = getSelectedUnit();
+            if (!unit) {
+                addLog('Select one of your units first.');
+                return;
+            }
+            if (!canUnitAct(unit)) {
+                addLog(`${unitDisplayName(unit)} already acted this round.`);
+                return;
+            }
+            if (mode === 'spell' && unitHasStatus(unit, 'silence')) {
+                addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
+                return;
+            }
+            state.actionMode = mode;
+            state._actionExecuting = false;
+            state.hoverUnitId = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+
+            if (unit._skyThrowGrab) { unit._skyThrowGrab = null; }
+            if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
+            clearAoePreview();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+
+            if (mode === 'attack') {
+                state.actionMenuView = 'attackTargets';
+
+                const targets = _getAttackValidTargets(unit);
+                if (targets.length > 0) {
+                    state.pendingTarget = { x: targets[0].x, y: targets[0].y, mode: 'attack', tool: null, viaHover: false };
+                }
+            } else {
+                state.actionMenuView = 'root';
+            }
+            renderBattleSelectionUI({
+                includeBoard: false
+            });
+            scheduleBoardRender();
+        }
+
+        let _spellRangePreviewTiles = [];
+
+        function previewSpellRange(spellName) {
+            clearSpellRangePreview();
+            const unit = getSelectedUnit();
+            if (!unit) return;
+            const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
+            if (!spell || !spell.range) return;
+
+            const isDirectional = !!_kindMeta(spell).directional;
+            const isCross = spell.kind === 'cross';
+            let rangeTiles;
+
+            if (isDirectional || isCross) {
+                rangeTiles = [];
+                const effRange = getEffectiveSpellRange(unit, spell);
+
+                const lineLen = isCross ? (spell.crossRadius || effRange) : (isDirectional ? Math.max(bw(), bh()) : effRange);
+                const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+                for (const [dx, dy] of dirs) {
+                    for (let i = 1; i <= lineLen; i++) {
+                        const tx = unit.x + dx * i;
+                        const ty = unit.y + dy * i;
+                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) break;
+
+                        if (!isDirectional || (typeof isTerrainPassable === 'function' && !isTerrainPassable(tx, ty) && !spell.destroysObstacles)) {
+                            if (isDirectional) break;
+
+                        }
+                        rangeTiles.push({ x: tx, y: ty });
+                    }
+                }
+            } else {
+
+                rangeTiles = getSpellRangeTiles(unit, spell);
+            }
+
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                let rangeColor = 0xaa33ff;
+                const k = spell.kind;
+                if (['damage', 'aoe', 'barrage', 'multiHit', 'ricochet', 'bomb', 'delayed', 'line', 'linePush', 'splitBeam', 'cross', 'leapStrike'].includes(k)) {
+                    rangeColor = 0xff5544;
+                } else if (['heal', 'healAll', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(k)) {
+                    rangeColor = 0x33cc55;
+                } else if (['buff', 'shield', 'aoeShield', 'warCry'].includes(k)) {
+                    rangeColor = 0x4488ff;
+                } else if (['debuff', 'zoneDebuff', 'lifeDrain', 'leechSeed', 'seedPoison'].includes(k)) {
+                    rangeColor = 0xcc44aa;
+                }
+                ThreeRenderer.setOverlay('spellRange', rangeTiles, rangeColor, 0.45);
+                return;
+            }
+
+            const size = bw();
+            const tiles = boardEl.children;
+            for (const t of rangeTiles) {
+                const idx = t.y * size + t.x;
+                const tile = tiles[idx];
+                if (tile) {
+                    tile.classList.add('spell-range-preview');
+                    _spellRangePreviewTiles.push(tile);
+                }
+            }
+        }
+        window.previewSpellRange = previewSpellRange;
+
+        function clearSpellRangePreview() {
+            for (const t of _spellRangePreviewTiles) t.classList.remove('spell-range-preview');
+            _spellRangePreviewTiles = [];
+            if (typeof ThreeRenderer !== 'undefined') ThreeRenderer.clearOverlay('spellRange');
+        }
+        window.clearSpellRangePreview = clearSpellRangePreview;
+
+        let _attackRangePreviewTiles = [];
+
+        function previewAttackRange() {
+            clearAttackRangePreview();
+            const unit = getSelectedUnit();
+            if (!unit) return;
+
+            const rangeTiles = getAttackTiles(unit);
+
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                ThreeRenderer.setOverlay('attackRange', rangeTiles, 0xff3333, 0.45);
+                return;
+            }
+
+            const size = bw();
+            const tiles = boardEl.children;
+            for (const t of rangeTiles) {
+                const idx = t.y * size + t.x;
+                const tile = tiles[idx];
+                if (tile) {
+                    tile.classList.add('attack-range-preview');
+                    _attackRangePreviewTiles.push(tile);
+                }
+            }
+        }
+        window.previewAttackRange = previewAttackRange;
+
+        function clearAttackRangePreview() {
+            for (const t of _attackRangePreviewTiles) t.classList.remove('attack-range-preview');
+            _attackRangePreviewTiles = [];
+            if (typeof ThreeRenderer !== 'undefined') ThreeRenderer.clearOverlay('attackRange');
+        }
+        window.clearAttackRangePreview = clearAttackRangePreview;
+
+        function showSpellTooltip(btnEl) {
+            const tip = document.getElementById('spellTooltip');
+            if (!tip || !btnEl) return;
+            const name = btnEl.dataset.spellName || '';
+            const cost = btnEl.dataset.spellCost || '';
+            const range = btnEl.dataset.spellRange || '';
+            const desc = btnEl.dataset.spellDesc || '';
+            if (!name) return;
+            tip.innerHTML = `<span class="shc-name">${name}</span><span class="shc-cost">MP ${cost} · Range ${range}</span>${desc ? `<span class="shc-desc">${desc}</span>` : ''}`;
+            tip.classList.add('visible');
+            const rect = btnEl.getBoundingClientRect();
+            let left = rect.left + rect.width / 2 - 110;
+            let top = rect.top - 8;
+
+            const tipH = tip.offsetHeight || 80;
+            if (top - tipH < 4) {
+                top = rect.bottom + 8;
+            } else {
+                top = top - tipH;
+            }
+            left = Math.max(4, Math.min(window.innerWidth - 228, left));
+            top = Math.max(4, top);
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+        }
+        window.showSpellTooltip = showSpellTooltip;
+
+        function hideSpellTooltip() {
+            const tip = document.getElementById('spellTooltip');
+            if (tip) tip.classList.remove('visible');
+        }
+        window.hideSpellTooltip = hideSpellTooltip;
+
+        function actionModeNeedsTargetConfirm() {
+            return state.actionMode === 'attack' ||
+                state.actionMode === 'spell' ||
+                state.actionMode === 'trade' ||
+                state.actionMode === 'combo' ||
+                (state.actionMode === 'item' && (state.selectedTool === 'healPotion' || state.selectedTool === 'manaPotion' || ITEM_RULES[state.selectedTool]?.baneType));
+        }
+
+        function updateHoveredTarget(x, y) {
+            if (state._actionExecuting) return false;
+            if (!actionModeNeedsTargetConfirm()) return false;
+
+            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
+                const unit = getSelectedUnit();
+                if (!unit) return false;
+
+                if (unit._skyThrowGrab && state._skyThrowHighlight) {
+                    const hl = state._skyThrowHighlight;
+                    const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
+                    if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) return false;
+                } else {
+                    let validTargets;
+                    if (state.actionMenuView === 'attackTargets') {
+                        validTargets = _getAttackValidTargets(unit);
+                    } else {
+                        const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        validTargets = spell ? _getSpellValidTargets(unit, spell) : [];
+                    }
+                    const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
+                    if (!isValidTarget) return false;
+                }
+            }
+
+            if (state.actionMode === 'spell' && state.actionMenuView === 'spells') {
+                const unit = getSelectedUnit();
+                if (unit) {
+                    const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                    if (spell) {
+
+                        const isLineSp = spell.kind === 'line' || spell.kind === 'linePush';
+                        if (!isLineSp) {
+                            const rangeTiles = getSpellRangeTiles(unit, spell);
+                            const inRange = rangeTiles.some(t => t.x === x && t.y === y);
+                            if (!inRange) {
+
+                                clearAoePreview();
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const next = {
+                x,
+                y,
+                mode: state.actionMode,
+                tool: state.selectedTool,
+                viaHover: true
+            };
+            const current = state.pendingTarget;
+            const changed = !current || current.x !== next.x || current.y !== next.y || current.mode !== next.mode || current.tool !== next.tool || !current.viaHover;
+            if (changed) {
+                state.pendingTarget = next;
+                updateAoePreview(x, y);
+            }
+            return changed;
+        }
+
+        function clearHoveredTarget(x = null, y = null) {
+            const current = state.pendingTarget;
+            if (!current?.viaHover) return false;
+            if (x != null && y != null && (current.x !== x || current.y !== y)) return false;
+            state.pendingTarget = null;
+
+            let _isSelfCast = false;
+            if (state.actionMode === 'spell') {
+                const unit = getSelectedUnit();
+                if (unit) {
+                    const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                    _isSelfCast = spell && isSpellSelfCast(spell);
+                }
+            }
+            if (!_isSelfCast) clearAoePreview();
+            return true;
+        }
+
+        function _exitModeAndShowUnitMenu(actingUnit, clickedUnit) {
+            if (!clickedUnit || clickedUnit.dead) return false;
+            const canControl = !state.autoPlayers?.[state.activePlayer]
+                && actingUnit.player === state.activePlayer
+                && canUnitAct(actingUnit) && !state.winner;
+            if (!canControl) {
+
+                focusUnitPanel(clickedUnit.id);
+                return true;
+            }
+
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.comboPartner = null;
+            state._actionExecuting = false;
+            clearAoePreview();
+            clearHoveredTarget();
+
+            if (clickedUnit.id === actingUnit.id) {
+                state._enemyActionTargetId = null;
+                state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+                playSfx('uiCursorFocus');
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+                return true;
+            }
+
+            if (clickedUnit.player !== actingUnit.player) {
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = clickedUnit.id;
+                focusUnitPanel(clickedUnit.id);
+                playSfx('uiCursorFocus');
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+                return true;
+            }
+
+            focusUnitPanel(clickedUnit.id);
+            state._enemyActionTargetId = null;
+            state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+            playSfx('uiCursorFocus');
+            markDirty('board', 'selectedUnit', 'hud');
+            renderIfDirty();
+            return true;
+        }
+
+        function clickTile(x, y, z) {
+            if (state.phase === 'setup') {
+                return;
+            }
+
+            state._clickedZ = z;
+
+            if (state.phase === 'editor') {
+                if (typeof window._meEditorClickTile === 'function') {
+                    window._meEditorClickTile(x, y);
+                }
+                return;
+            }
+
+            if (state.phase !== 'battle' || state.winner) return;
+
+            if (state.autoPlayers?.[state.activePlayer]) return;
+
+            if (state._actionExecuting) return;
+
+            if (isCinematicActive()) return;
+
+            if (state.fogOfWar) {
+                const vis = computeVisibleTiles(state.activePlayer);
+                if (!vis.has(posKey(x, y))) {
+
+                    const isMoving = state.actionMode === 'move';
+
+                    const spell = getSelectedUnit()?.spells?.find(s => s.name === state.selectedTool);
+
+                    const isFlairing = state.actionMode === 'flair';
+
+                    const _actUnit = getSelectedUnit();
+                    const _isTelescopeAction = (state.actionMode === 'attack' || state.actionMode === 'spell') && _actUnit && unitHasTelescope(_actUnit) &&
+                        true &&
+                        state.units.some(u => !u.dead && u.player !== _actUnit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell?.kind === 'teleport' && state._teleportingUnit)) {
+                        return;
+                    }
+                }
+            }
+
+            const actingUnit = getSelectedUnit();
+            const clickedUnit = unitAt(x, y);
+
+            if (!actingUnit) {
+                if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) selectUnit(clickedUnit.id);
+                else if (clickedUnit && !clickedUnit.dead) { focusUnitPanel(clickedUnit.id); }
+                else if (clickedUnit) focusUnitPanel(clickedUnit.id);
+                return;
+            }
+
+            if (!state.actionMode) {
+                const humanTurn = !state.autoPlayers?.[state.activePlayer];
+                const canControl = humanTurn && actingUnit.player === state.activePlayer && canUnitAct(actingUnit) && !state.winner;
+
+                if (clickedUnit && clickedUnit.id === actingUnit.id) {
+                    if (canControl) {
+                        state._enemyActionTargetId = null;
+                        if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
+                            state._tileActionTarget = null;
+                        } else {
+                            state._tileActionTarget = { x, y };
+                        }
+                        playSfx('uiCursorFocus');
+                        markDirty('hud');
+                        renderIfDirty();
+                    } else {
+                        selectUnit(clickedUnit.id);
+                    }
+                    return;
+                }
+
+                if (clickedUnit && !clickedUnit.dead) {
+
+                    if (canControl && clickedUnit.player !== actingUnit.player) {
+
+                        if ((state.actionMenuView || 'root') !== 'root') {
+                            state.actionMenuView = 'root';
+                            state.actionMode = null;
+                            state.selectedTool = null;
+                            state.pendingTarget = null;
+                        }
+
+                        state._tileActionTarget = null;
+
+                        if (state._enemyActionTargetId === clickedUnit.id) {
+                            state._enemyActionTargetId = null;
+                        } else {
+                            state._enemyActionTargetId = clickedUnit.id;
+                        }
+                        focusUnitPanel(clickedUnit.id);
+                        playSfx('uiCursorFocus');
+                        markDirty('hud');
+                        renderIfDirty();
+                        return;
+                    }
+
+                    const _menuView = state.actionMenuView || 'root';
+                    if (_menuView !== 'root' && clickedUnit.player === state.activePlayer) {
+                        selectUnit(clickedUnit.id);
+                        return;
+                    }
+
+                    focusUnitPanel(clickedUnit.id);
+                    state._enemyActionTargetId = null;
+                    state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+                    playSfx('uiCursorFocus');
+                    markDirty('hud');
+                    renderIfDirty();
+                    return;
+                }
+
+                if (canControl && !clickedUnit && state._deployedObjects) {
+                    const _clickedDeploy = state._deployedObjects.find(o => o.x === x && o.y === y && o.hp > 0 && o.ownerPlayer !== actingUnit.player);
+                    if (_clickedDeploy) {
+                        const dDist = Math.abs(actingUnit.x - x) + Math.abs(actingUnit.y - y);
+                        const dRange = getEffectiveRange(actingUnit);
+                        if (dDist >= 1 && dDist <= dRange && !isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, x, y, actingUnit.z)) {
+                            return doAttack(actingUnit, x, y);
+                        }
+
+                        state._enemyActionTargetId = null;
+                        if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
+                            state._tileActionTarget = null;
+                        } else {
+                            state._tileActionTarget = { x, y };
+                        }
+                        playSfx('uiCursorFocus');
+                        markDirty('hud');
+                        renderIfDirty();
+                        return;
+                    }
+                }
+
+                if (!clickedUnit) {
+                    state._enemyActionTargetId = null;
+                    if (canControl) {
+
+                        if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
+                            state._tileActionTarget = null;
+                        } else {
+                            state._tileActionTarget = { x, y };
+                        }
+                        playSfx('uiCursorFocus');
+                    } else {
+                        state._tileActionTarget = null;
+                    }
+                    markDirty('hud');
+                    renderIfDirty();
+                    return;
+                }
+                if (clickedUnit) focusUnitPanel(clickedUnit.id);
+                return;
+            }
+
+            const needsConfirm = actionModeNeedsTargetConfirm();
+            if (clickedUnit) focusUnitPanel(clickedUnit.id);
+
+            if (needsConfirm && (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets')) {
+
+                if (actingUnit._skyThrowGrab && state._skyThrowHighlight) {
+                    const hl = state._skyThrowHighlight;
+                    const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
+                    if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) {
+                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                            return;
+                        }
+                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
+                            selectUnit(clickedUnit.id);
+                        }
+                        return;
+                    }
+                } else {
+                    let validTargets;
+                    if (state.actionMenuView === 'attackTargets') {
+                        validTargets = _getAttackValidTargets(actingUnit);
+                    } else {
+                        const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool);
+                        validTargets = spell ? _getSpellValidTargets(actingUnit, spell) : [];
+                    }
+                    const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
+                    if (!isValidTarget) {
+
+                        // ── Stale highlight fix: clear + re-render + notify ──
+                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                        addLog('Target is no longer valid.', actingUnit.player);
+                        playErrorSfx();
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+
+                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                            return;
+                        }
+                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
+                            selectUnit(clickedUnit.id);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if (needsConfirm && state.actionMode === 'spell' && state.actionMenuView === 'spells') {
+                const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                    || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (spell) {
+
+                    const _isLineSp = spell.kind === 'line' || spell.kind === 'linePush';
+                    if (!_isLineSp) {
+                    const rangeTiles = getSpellRangeTiles(actingUnit, spell);
+                    const inRange = rangeTiles.some(t => t.x === x && t.y === y);
+                    if (!inRange) {
+
+                        // ── Stale highlight fix: clear + re-render + notify ──
+                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                        addLog('Target is no longer in range or line of sight.', actingUnit.player);
+                        playErrorSfx();
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+
+                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                            return;
+                        }
+                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
+                            selectUnit(clickedUnit.id);
+                        }
+
+                        return;
+                    }
+                    }
+                }
+            }
+
+            if (needsConfirm) {
+                let sameTarget = state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool;
+                if (!sameTarget && state.pendingTarget && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool) {
+                    const prevUnit = unitAt(state.pendingTarget.x, state.pendingTarget.y);
+                    if (prevUnit && prevUnit._isBoss && prevUnit._bossSize === 2 && clickedUnit === prevUnit) {
+                        sameTarget = true;
+                    }
+                }
+                if (!sameTarget) {
+                    state.pendingTarget = {
+                        x,
+                        y,
+                        mode: state.actionMode,
+                        tool: state.selectedTool,
+                        viaHover: false
+                    };
+                    playSfx('uiCursorFocus');
+                    markDirty('board', 'selectedUnit', 'hud');
+                    renderIfDirty();
+                    return;
+                }
+                state.pendingTarget = null;
+            }
+
+            state._actionExecuting = true;
+
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+
+            if (state.actionMode === 'move') {
+
+                if (x === actingUnit.x && y === actingUnit.y) {
+                    state._actionExecuting = false;
+                    state.actionMode = null;
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    markDirty('board', 'hud', 'selectedUnit');
+                    renderIfDirty();
+                    return;
+                }
+
+                /* Only intercept click if the user physically clicked on a unit sprite
+                   (not the tile beneath an airborne unit). _clickedUnitId is set by the
+                   renderer when screenToUnit detects a sprite hit. */
+                const _directlyClickedUnit = state._clickedUnitId && clickedUnit &&
+                    clickedUnit.id === state._clickedUnitId;
+                if (_directlyClickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id) {
+                    state._actionExecuting = false;
+                    _exitModeAndShowUnitMenu(actingUnit, clickedUnit);
+                    return;
+                }
+
+                const _r1Tiles = getMoveTiles(actingUnit);
+                const _r1Match = _r1Tiles.find(t => t.x === x && t.y === y);
+                if (_r1Match) {
+
+                    if (_r1Match._takeoff && canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
+                        const _toResult = doAltitudeChange(actingUnit, 'ascend');
+                        if (_toResult !== 0) {
+                            return doMove(actingUnit, x, y, _r1Match.z);
+                        }
+                        state._actionExecuting = false;
+                        return false;
+                    }
+                    return doMove(actingUnit, x, y, state._clickedZ);
+                }
+
+                if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES) {
+
+                    const savedX = actingUnit.x, savedY = actingUnit.y, savedZ = actingUnit.z;
+                    let bestInterm = null;
+                    let bestCost = Infinity;
+                    for (const t1 of _r1Tiles) {
+                        actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
+                        const r2 = getMoveTiles(actingUnit);
+                        if (r2.some(t2 => t2.x === x && t2.y === y) && (t1.cost || 0) < bestCost) {
+                            bestCost = t1.cost || 0;
+                            bestInterm = t1;
+                        }
+                    }
+                    actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
+                    if (bestInterm) {
+
+                        const path1 = findMovePath(actingUnit, bestInterm.x, bestInterm.y, bestInterm.z ?? savedZ);
+
+                        actingUnit.x = bestInterm.x; actingUnit.y = bestInterm.y;
+                        actingUnit.z = bestInterm.z ?? savedZ;
+
+                        let destZ;
+                        if (canFly(actingUnit) && isUnitAirborne(actingUnit)) {
+                            const _flyMinZ2 = getMinFlyingZ(x, y);
+                            const _flyMaxZ2 = getMaxFlyingZ(x, y);
+                            const _r2CurGnd = getHeightAt(actingUnit.x, actingUnit.y);
+                            const _r2Clr = (actingUnit.z ?? 0) - _r2CurGnd;
+                            const _r2DestGnd = getHeightAt(x, y);
+                            destZ = Math.max(_flyMinZ2, Math.min(_flyMaxZ2, _r2DestGnd + _r2Clr));
+                        } else {
+                            destZ = state._clickedZ ?? (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, actingUnit.z) : 0);
+                        }
+                        const path2 = findMovePath(actingUnit, x, y, destZ);
+                        actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
+
+                        const combinedPath = [...path1, ...path2];
+                        if (combinedPath.length > 0) {
+                            const isHuman = !state.autoPlayers?.[actingUnit.player];
+                            const _skipAnim = state._wasdMoveSkipAnim;
+                            if (_skipAnim) state._wasdMoveSkipAnim = false;
+                            if (isHuman && !_skipAnim && !state.cameraDisabled) {
+                                animateWalkPath(actingUnit, combinedPath);
+
+                                const stepMs = Math.max(80, Math.min(160, 140 - combinedPath.length * 8));
+                                const walkDurationMs = combinedPath.length * stepMs;
+                                animateBoardCameraPath(
+                                    { x: savedX, y: savedY },
+                                    { x: x, y: y },
+                                    { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                );
+                            }
+                            pushUndoSnapshot(false);
+
+                            actingUnit.x = x; actingUnit.y = y;
+                            actingUnit.z = destZ;
+
+                            actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 2;
+                            actingUnit._trackTilesMoved = (actingUnit._trackTilesMoved || 0) + combinedPath.length;
+                            spendAP(actingUnit, AP_COST_ACTION);
+                            spendAP(actingUnit, AP_COST_ACTION);
+                            playSfx('moveStep');
+                            addLog(`${unitDisplayName(actingUnit)} moves to ${coordLabel(x, y)}.`, actingUnit.player);
+
+                            checkOpportunityAttack(actingUnit, savedX, savedY);
+                            updateTerrainStay(actingUnit);
+
+                            const _inlineAirborne = typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+                            if (!_inlineAirborne && state.bombs) {
+                                const bombIdx = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== actingUnit.player);
+                                if (bombIdx >= 0) {
+                                    const bomb = state.bombs.splice(bombIdx, 1)[0];
+                                    detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
+                                }
+                            }
+                            if (!_inlineAirborne) checkWarpRuneTrigger(actingUnit);
+
+                            if (!_inlineAirborne && destZ < savedZ && typeof applyFallDamage === 'function') {
+                                applyFallDamage(actingUnit, savedZ, destZ, 'Fall: ');
+                            }
+
+                            state._actionExecuting = false;
+
+                            const _2apCanJump = (actingUnit.ap || 0) > 0
+                                && typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))
+                                && getJumpTiles(actingUnit).length > 0;
+                            if (_2apCanJump) {
+                                state.actionMode = 'jump';
+                                state.pendingTarget = null;
+                            } else {
+                                state.actionMode = null;
+                                state.actionMenuView = 'root';
+                                state.selectedTool = null;
+                                state.pendingTarget = null;
+                                state._tileActionTarget = null;
+                                state._enemyActionTargetId = null;
+                            }
+                            checkWin();
+                            endUnitIfDone(actingUnit);
+                            markDirty('board', 'selectedUnit', 'hud');
+                            renderIfDirty();
+                            return true;
+                        }
+                    }
+                }
+
+                if (canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
+                    const _toTiles = _r1Tiles.filter(t => t._takeoff);
+                    const _toMatch = _toTiles.find(t => t.x === x && t.y === y);
+                    if (_toMatch) {
+
+                        const _toResult = doAltitudeChange(actingUnit, 'ascend');
+                        if (_toResult !== 0) {
+
+                            return doMove(actingUnit, x, y, _toMatch.z);
+                        }
+
+                        state._actionExecuting = false;
+                        return false;
+                    }
+                }
+
+                if (typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))) {
+                    const _jumpTiles = getJumpTiles(actingUnit);
+                    if (_jumpTiles.some(t => t.x === x && t.y === y)) {
+
+                        state.actionMode = 'jump';
+                        return doJump(actingUnit, x, y, state._clickedZ);
+                    }
+
+                    if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES) {
+                        const _mjSavedX = actingUnit.x, _mjSavedY = actingUnit.y, _mjSavedZ = actingUnit.z;
+                        let _mjBestInterm = null;
+                        let _mjBestCost = Infinity;
+                        for (const t1 of _r1Tiles) {
+                            if (t1._jump) continue;
+                            actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? _mjSavedZ;
+                            const _jt2 = getJumpTiles(actingUnit);
+                            if (_jt2.some(jt => jt.x === x && jt.y === y) && (t1.cost || 0) < _mjBestCost) {
+                                _mjBestCost = t1.cost || 0;
+                                _mjBestInterm = t1;
+                            }
+                        }
+                        actingUnit.x = _mjSavedX; actingUnit.y = _mjSavedY; actingUnit.z = _mjSavedZ;
+                        if (_mjBestInterm) {
+
+                            const moveResult = doMove(actingUnit, _mjBestInterm.x, _mjBestInterm.y, _mjBestInterm.z);
+                            if (moveResult) {
+
+                                return doJump(actingUnit, x, y, state._clickedZ);
+                            }
+                        }
+                    }
+
+                    // ── 3-AP: move+move+jump (find best 2-move path to intermediate, then jump) ──
+                    if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES && (actingUnit.ap || 0) >= 3) {
+                        const _3apSavedX = actingUnit.x, _3apSavedY = actingUnit.y, _3apSavedZ = actingUnit.z;
+                        let _3apBestR1 = null;
+                        let _3apBestR2 = null;
+                        let _3apBestCost = Infinity;
+
+                        for (const t1 of _r1Tiles) {
+                            if (t1._jump || t1._takeoff) continue;
+                            actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? _3apSavedZ;
+                            const r2Tiles = getMoveTiles(actingUnit);
+                            for (const t2 of r2Tiles) {
+                                if (t2._jump || t2._takeoff) continue;
+                                actingUnit.x = t2.x; actingUnit.y = t2.y; actingUnit.z = t2.z ?? t1.z ?? _3apSavedZ;
+                                const _jt3 = getJumpTiles(actingUnit);
+                                if (_jt3.some(jt => jt.x === x && jt.y === y)) {
+                                    const totalCost = (t1.cost || 0) + (t2.cost || 0);
+                                    if (totalCost < _3apBestCost) {
+                                        _3apBestCost = totalCost;
+                                        _3apBestR1 = t1;
+                                        _3apBestR2 = t2;
+                                    }
+                                }
+                            }
+                        }
+
+                        actingUnit.x = _3apSavedX; actingUnit.y = _3apSavedY; actingUnit.z = _3apSavedZ;
+                        if (_3apBestR1 && _3apBestR2) {
+                            // Execute: move to R1, move to R2, jump to target
+                            const _3apPath1 = findMovePath(actingUnit, _3apBestR1.x, _3apBestR1.y, _3apBestR1.z ?? _3apSavedZ);
+                            actingUnit.x = _3apBestR1.x; actingUnit.y = _3apBestR1.y; actingUnit.z = _3apBestR1.z ?? _3apSavedZ;
+                            const _3apPath2 = findMovePath(actingUnit, _3apBestR2.x, _3apBestR2.y, _3apBestR2.z ?? actingUnit.z);
+                            actingUnit.x = _3apSavedX; actingUnit.y = _3apSavedY; actingUnit.z = _3apSavedZ;
+
+                            const _3apCombinedPath = [..._3apPath1, ..._3apPath2];
+                            if (_3apCombinedPath.length > 0) {
+                                const isHuman = !state.autoPlayers?.[actingUnit.player];
+                                if (isHuman && !state.cameraDisabled) {
+                                    animateWalkPath(actingUnit, _3apCombinedPath);
+                                    const stepMs = Math.max(80, Math.min(160, 140 - _3apCombinedPath.length * 8));
+                                    const walkDurationMs = _3apCombinedPath.length * stepMs;
+                                    animateBoardCameraPath(
+                                        { x: _3apSavedX, y: _3apSavedY },
+                                        { x: _3apBestR2.x, y: _3apBestR2.y },
+                                        { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                    );
+                                }
+                                pushUndoSnapshot(false);
+
+                                const _r2Z = _3apBestR2.z ?? _3apBestR1.z ?? _3apSavedZ;
+                                actingUnit.x = _3apBestR2.x; actingUnit.y = _3apBestR2.y;
+                                actingUnit.z = _r2Z;
+                                actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 2;
+                                actingUnit._trackTilesMoved = (actingUnit._trackTilesMoved || 0) + _3apCombinedPath.length;
+                                spendAP(actingUnit, AP_COST_ACTION);
+                                spendAP(actingUnit, AP_COST_ACTION);
+                                playSfx('moveStep');
+                                addLog(`${unitDisplayName(actingUnit)} moves to ${coordLabel(_3apBestR2.x, _3apBestR2.y)}.`, actingUnit.player);
+
+                                checkOpportunityAttack(actingUnit, _3apSavedX, _3apSavedY);
+                                updateTerrainStay(actingUnit);
+
+                                const _3apAirborne = typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+                                if (!_3apAirborne && state.bombs) {
+                                    const bombIdx = state.bombs.findIndex(b => b.x === _3apBestR2.x && b.y === _3apBestR2.y && b.owner !== actingUnit.player);
+                                    if (bombIdx >= 0) {
+                                        const bomb = state.bombs.splice(bombIdx, 1)[0];
+                                        detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(_3apBestR2.x, _3apBestR2.y)}.`);
+                                    }
+                                }
+                                if (!_3apAirborne) checkWarpRuneTrigger(actingUnit);
+
+                                if (!_3apAirborne && _r2Z < _3apSavedZ && typeof applyFallDamage === 'function') {
+                                    applyFallDamage(actingUnit, _3apSavedZ, _r2Z, 'Fall: ');
+                                }
+
+                                state._actionExecuting = false;
+                                // Now execute the jump (3rd AP)
+                                return doJump(actingUnit, x, y, state._clickedZ);
+                            }
+                        }
+                    }
+
+                    // ── 3-AP: jump+move+move (jump first, then 2-move to target) ──
+                    if ((actingUnit.ap || 0) >= 3 && (actingUnit.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES) {
+                        const _jmmSavedX = actingUnit.x, _jmmSavedY = actingUnit.y, _jmmSavedZ = actingUnit.z;
+                        const _jmmR1Jumps = getJumpTiles(actingUnit);
+                        let _jmmBestJump = null;
+                        let _jmmBestR2 = null;
+                        let _jmmBestCost = Infinity;
+
+                        for (const j1 of _jmmR1Jumps) {
+                            actingUnit.x = j1.x; actingUnit.y = j1.y; actingUnit.z = j1.z ?? _jmmSavedZ;
+                            const _postJumpR1 = getMoveTiles(actingUnit);
+                            // Direct 2-move from jump tile
+                            if (_postJumpR1.some(t => t.x === x && t.y === y && !t._jump)) {
+                                const match = _postJumpR1.find(t => t.x === x && t.y === y && !t._jump);
+                                if ((match.cost || 0) < _jmmBestCost) {
+                                    _jmmBestCost = match.cost || 0;
+                                    _jmmBestJump = j1;
+                                    _jmmBestR2 = null; // direct move from jump position
+                                }
+                            }
+                            // 2-move via intermediate
+                            for (const pm of _postJumpR1) {
+                                if (pm._jump || pm._takeoff) continue;
+                                actingUnit.x = pm.x; actingUnit.y = pm.y; actingUnit.z = pm.z ?? j1.z ?? _jmmSavedZ;
+                                const _postR2 = getMoveTiles(actingUnit);
+                                if (_postR2.some(t => t.x === x && t.y === y && !t._jump)) {
+                                    const totalCost = (pm.cost || 0);
+                                    if (totalCost < _jmmBestCost) {
+                                        _jmmBestCost = totalCost;
+                                        _jmmBestJump = j1;
+                                        _jmmBestR2 = pm;
+                                    }
+                                }
+                            }
+                        }
+
+                        actingUnit.x = _jmmSavedX; actingUnit.y = _jmmSavedY; actingUnit.z = _jmmSavedZ;
+                        if (_jmmBestJump) {
+                            // Execute: jump to j1, then move (1 or 2 moves) to target
+                            const jumpResult = doJump(actingUnit, _jmmBestJump.x, _jmmBestJump.y, _jmmBestJump.z);
+                            if (jumpResult) {
+                                if (_jmmBestR2) {
+                                    // 2 moves after jump
+                                    const moveR1 = doMove(actingUnit, _jmmBestR2.x, _jmmBestR2.y, _jmmBestR2.z);
+                                    if (moveR1) {
+                                        return doMove(actingUnit, x, y, state._clickedZ);
+                                    }
+                                } else {
+                                    // 1 move after jump
+                                    return doMove(actingUnit, x, y, state._clickedZ);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                state._actionExecuting = false;
+                if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                    return;
+                }
+                return doMove(actingUnit, x, y, state._clickedZ);
+            }
+
+            function _execAction(fn) {
+                let result;
+                try {
+                    result = fn();
+                } catch (e) {
+                    console.error('[_execAction] action threw:', e);
+                    state._actionExecuting = false;
+                    state.actionMode = null;
+                    scheduleBoardRender();
+                    return 0;
+                }
+                if (result === 0 || result === false) {
+                    state._actionExecuting = false;
+                    scheduleBoardRender();
+                } else {
+
+                    clearTimeout(state._actionExecutingWatchdog);
+                    state._actionExecutingWatchdog = setTimeout(() => {
+                        if (state._actionExecuting) {
+                            console.warn('[_execAction] watchdog: _actionExecuting was stuck true — force-clearing');
+                            state._actionExecuting = false;
+                            if (state.phase === 'battle' && !state.winner) {
+                                markDirty('board', 'hud', 'selectedUnit');
+                                renderIfDirty();
+                            }
+                        }
+                    }, 8000);
+                }
+                return result;
+            }
+
+            if (state.actionMode === 'attack') return _execAction(() => doAttack(actingUnit, x, y, state._clickedZ));
+            if (state.actionMode === 'jump') {
+
+                /* Same pattern as move: only intercept if user physically clicked a unit sprite,
+                   not the tile beneath an airborne unit */
+                const _jumpDirectClick = state._clickedUnitId && clickedUnit &&
+                    clickedUnit.id === state._clickedUnitId;
+                if (_jumpDirectClick && !clickedUnit.dead) {
+                    state._actionExecuting = false;
+                    _exitModeAndShowUnitMenu(actingUnit, clickedUnit);
+                    return;
+                }
+                return _execAction(() => doJump(actingUnit, x, y, state._clickedZ));
+            }
+            if (state.actionMode === 'inspect') return _execAction(() => doInspect(actingUnit, x, y));
+            if (state.actionMode === 'ping') return _execAction(() => doPing(actingUnit, x, y));
+            if (state.actionMode === 'trade') return _execAction(() => doTrade(actingUnit, x, y));
+            if (state.actionMode === 'item') return _execAction(() => doItem(actingUnit, x, y));
+            if (state.actionMode === 'warpStone') return _execAction(() => executeWarpStone(actingUnit, x, y));
+            if (state.actionMode === 'ward') return _execAction(() => doWard(actingUnit, x, y));
+            if (state.actionMode === 'flair') return _execAction(() => doFlair(actingUnit, x, y));
+            if (state.actionMode === 'spell') return _execAction(() => doSpell(actingUnit, x, y, state._clickedZ));
+            if (state.actionMode === 'combo') {
+
+                if (!state.comboPartner) {
+
+                    state._actionExecuting = false;
+                    const clickedUnit = unitAt(x, y);
+                    if (clickedUnit && clickedUnit.player === actingUnit.player && !clickedUnit.dead) {
+                        const partners = getComboPartners(actingUnit);
+                        if (partners.some(p => p.id === clickedUnit.id)) {
+                            state.comboPartner = clickedUnit;
+                            const combo = getComboForUnits(actingUnit, clickedUnit);
+                            const syn = getComboTypeSynergy(actingUnit, clickedUnit);
+                            addLog(`Partner selected: ${unitDisplayName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
+                            state.pendingTarget = null;
+                            renderBattleSelectionUI();
+                        } else {
+                            addLog('That ally cannot combo with this unit.');
+                        }
+                    } else {
+                        addLog('Click an adjacent ally to choose a combo partner.');
+                    }
+                    return;
+                } else {
+
+                    return _execAction(() => doComboAttack(actingUnit, state.comboPartner, x, y));
+                }
+            }
+        }
+
+        function detonateBomb(bomb, triggerText) {
+            addLog(triggerText);
+
+            if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                && window.ThreeVFXEffects.hasMapping('placeBomb', 'aoe')) {
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    window.ThreeVFXEffects.fire('aoe', 'placeBomb', { tx: bomb.x, ty: bomb.y });
+                    playSfx('physicalAbility');
+                }
+            }
+            const area = getSquareArea(bomb.x, bomb.y, 1);
+            for (const tile of area) {
+                const target = unitAt(tile.x, tile.y);
+                if (target && target.player !== bomb.owner) {
+                    applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
+                        allowMarkBonus: false
+                    });
+                }
+            }
+
+            applyAreaBlowback(bomb.x, bomb.y, area, bomb.owner, '💥 ');
+            checkWin();
+        }
+
+        function completeMoveAlongPath(unit, stopX, stopY, stopKind, fallbackX = stopX, fallbackY = stopY) {
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            finishMoveAt(unit, stopX, stopY, {
+                stopReason: stopKind || null,
+                destinationLabel: coordLabel(stopX, stopY)
+            });
+
+            if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
+
+            if (state.wards && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                const wardIdx = state.wards.findIndex(w => w.x === unit.x && w.y === unit.y && w.owner !== unit.player);
+                if (wardIdx >= 0) {
+                    state.wards.splice(wardIdx, 1);
+                    addLog(`👁💥 ${unitDisplayName(unit)} destroys an enemy Ward at ${coordLabel(unit.x, unit.y)}!`);
+                    if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                }
+            }
+            checkWin();
+            endUnitIfDone(unit);
+            renderAfterMove();
+
+            if (!state.cameraDisabled && !unit.dead) {
+                const baseZoom = getUserZoomScale();
+                const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                    zoom,
+                    holdMs: 99999,
+                    persist: true,
+                    transitionMs: actionMs(380)
+                });
+            }
+
+            if (!unit.dead && unit.ap >= 1 && !state.autoPlayers?.[unit.player]) {
+
+                const isViewerUnit = !ONLINE_RULES.active || unit.player === getViewerPlayer();
+                if (isViewerUnit) {
+                    const landTerrain = getTerrainAt(unit.x, unit.y);
+                    const landRule = getTerrainRule(landTerrain);
+                    if (landRule.isDoor && landRule.doorTarget) {
+                        setTimeout(() => showFloorTransitionBanner(landRule.doorTarget), 250);
+                    }
+                }
+            }
+        }
+
+        function openPickupDecisionDialog(unit, event, onPickUp, onLeave) {
+            const kindLabel = event.kind === 'hiddenHourglass' ? 'Hidden Hourglass' : 'Hidden Pickup';
+            const badgeLabel = event.kind === 'hiddenHourglass' ?
+                '⏳ Something important was uncovered' :
+                '📦 Something hidden was found';
+            if (state.autoPlayers?.[unit.player] || state.devAutoSim) {
+                state.uiDialog = null;
+                if (typeof onPickUp === 'function') onPickUp();
+                return;
+            }
+
+            if (ONLINE_RULES.active && unit.player !== getViewerPlayer()) {
+
+                state._pendingRemotePickup = {
+                    onPickUp,
+                    onLeave,
+                    unitId: unit.id
+                };
+                _emit('relay', {
+                    type: 'pickup-dialog',
+                    unitId: unit.id,
+                    event: {
+                        kind: event.kind,
+                        x: event.x,
+                        y: event.y
+                    },
+                    kindLabel,
+                    badgeLabel
+                });
+
+                return;
+            }
+            state.uiDialog = {
+                type: 'pickupDecision',
+                unitId: unit.id,
+                event,
+                kindLabel,
+                badgeLabel,
+                onConfirm: onPickUp,
+                onCancel: onLeave
+            };
+            markDirty('board', 'dialog', 'status');
+            renderIfDirty();
+        }
+
+        function checkWarpRuneTrigger(unit) {
+            if (!state.warpRunes || !unit || unit.dead) return false;
+
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            const runeIdx = state.warpRunes.findIndex(r => r.x === unit.x && r.y === unit.y);
+            if (runeIdx === -1) return false;
+            const rune = state.warpRunes[runeIdx];
+            state.warpRunes.splice(runeIdx, 1);
+
+            const candidates = [];
+            for (let cy = 0; cy < bh(); cy++) {
+                for (let cx = 0; cx < bw(); cx++) {
+                    if (canOccupy(cx, cy) && !(cx === unit.x && cy === unit.y)) candidates.push({
+                        x: cx,
+                        y: cy
+                    });
+                }
+            }
+            if (!candidates.length) return false;
+            const dest = candidates[Math.floor(Math.random() * candidates.length)];
+            const oldLabel = coordLabel(unit.x, unit.y);
+            unit.x = dest.x;
+            unit.y = dest.y;
+            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(dest.x, dest.y);
+            playSfx('teleport');
+            addLog(`🔮 ${unitDisplayName(unit)} triggers a Warp Rune at ${oldLabel} and is teleported to ${coordLabel(dest.x, dest.y)}!`);
+
+            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: unit.x, fromY: unit.y });
+
+            if (!state.cameraDisabled) {
+                _softResetCameraToUnit(unit);
+                scheduleBoardRender();
+            }
+            return true;
+        }
+
+        function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0) {
+            for (let i = startIndex; i < path.length; i++) {
+                const step = path[i];
+                const event = getPathPickupEvent(unit, step.x, step.y);
+                if (!event) continue;
+
+                completeMoveAlongPath(unit, event.x, event.y, event.kind, destinationX, destinationY);
+                return;
+            }
+            completeMoveAlongPath(unit, destinationX, destinationY, null);
+        }
+
+        let _walkAnimActive = false;
+        let _walkAnimUnitId = null;
+
+        function _dioGhostTransform(tiltDeg, yawDeg, elevPx) {
+            const tz = elevPx ? `translateZ(${elevPx}px) ` : '';
+            return `${tz}rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+        }
+
+        function _buildBatSwarmGhostHtml(unit, tileSize) {
+            const batCount = 8;
+            let seed = 13;
+            const idStr = String(unit.id || '0');
+            for (let c = 0; c < idStr.length; c++) seed = (seed * 31 + idStr.charCodeAt(c)) | 0;
+            seed = Math.abs(seed);
+            const spread = tileSize * 0.35;
+            let html = '<div class="bat-swarm-ghost">';
+            for (let i = 0; i < batCount; i++) {
+                const url = BAT_SPRITES[i % BAT_SPRITES.length];
+                const s1 = ((seed + i * 2654435761) >>> 0) % 10000 / 10000;
+                const s2 = ((seed + i * 2246822519 + 7) >>> 0) % 10000 / 10000;
+                const s3 = ((seed + i * 3266489917 + 19) >>> 0) % 10000 / 10000;
+                const bx = ((s1 - 0.5) * 2 * spread).toFixed(1);
+                const by = ((s2 - 0.5) * 2 * spread * 0.7).toFixed(1);
+                const bobDelay = (s3 * 1.2).toFixed(2);
+                const idleDur = (1.2 + s1 * 0.6).toFixed(2);
+                const driftX = ((s2 - 0.5) * 8).toFixed(1);
+                const driftY = ((-3 - s3 * 6)).toFixed(1);
+                const driftX2 = ((s3 - 0.5) * 6).toFixed(1);
+                const driftY2 = ((s1 - 0.5) * 5).toFixed(1);
+                const tiltA = (-8 + s1 * 16).toFixed(1);
+                const tiltB = (-8 + s2 * 16).toFixed(1);
+                html += `<div class="swarm-bat" style="background-image:url('${url}');--bat-x:${bx}px;--bat-y:${by}px;--bat-bob-delay:${bobDelay}s;--bat-idle-dur:${idleDur}s;--bat-drift-x:${driftX}px;--bat-drift-y:${driftY}px;--bat-drift-x2:${driftX2}px;--bat-drift-y2:${driftY2}px;--bat-tilt-a:${tiltA}deg;--bat-tilt-b:${tiltB}deg"></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function animateWalkPath(unit, path, onComplete) {
+            _walkAnimUnitId = unit.id;
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.walkPath(unit, path);
+                if (!path?.length || _skipVisuals()) {
+                    if (onComplete) onComplete();
+                    return;
+                }
+
+                _walkAnimActive = true;
+                const stepMs = Math.max(140, Math.min(220, 200 - path.length * 5));
+                const totalMs = stepMs * path.length + 120;
+                setTimeout(() => {
+                    _walkAnimActive = false;
+                    _walkAnimUnitId = null;
+                    if (onComplete) onComplete();
+                }, totalMs);
+                return;
+            }
+            if (!boardEl || !path?.length || _skipVisuals()) {
+                if (onComplete) onComplete();
+                return;
+            }
+            _walkAnimActive = true;
+
+            const sprite = getBattleMapSpriteUrl(unit);
+            const tileSize = CONFIG.tileSize || 64;
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+
+            const _isFlying = canFly(unit) && isUnitAirborne(unit);
+            const ghost = document.createElement('div');
+            ghost.className = _isFlying ? 'fly-ghost' : 'walk-ghost';
+            ghost.style.width = tileSize + 'px';
+            ghost.style.height = tileSize + 'px';
+
+            const _isBatGhost = _isFlying && unit.race === 'vampire'
+                && typeof BAT_SPRITES !== 'undefined' && BAT_SPRITES.length;
+            if (_isBatGhost) {
+                ghost.innerHTML = _buildBatSwarmGhostHtml(unit, tileSize);
+            } else {
+                const img = document.createElement('img');
+                img.src = sprite;
+
+                if (unit._spriteFlipX) {
+                    img.style.transform = 'scaleX(-1)';
+                }
+                ghost.appendChild(img);
+            }
+
+            const fullPath = [{
+                x: unit.x,
+                y: unit.y,
+                z: unit.z ?? 0
+            }, ...path];
+            const startLeft = pad + fullPath[0].x * (tileSize + gap);
+            const startTop = pad + fullPath[0].y * (tileSize + gap);
+            ghost.style.left = startLeft + 'px';
+            ghost.style.top = startTop + 'px';
+            ghost.style.zIndex = 100 + fullPath[0].y;
+
+                const startZ = unit.z ?? 0;
+                const tiltDeg = state.dioramaTiltDeg ?? 50;
+                const yawDeg = state.dioramaYawDeg ?? 0;
+
+                let elevPx = 0;
+                const _wgObj = (typeof getObjectAt === 'function') ? getObjectAt(fullPath[0].x, fullPath[0].y) : null;
+                let _wgOnRoof = false;
+                if (_wgObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_wgObj]?.roofWalkable) {
+                    const _wgSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_wgObj] : null;
+                    if (_wgSpr && _wgSpr._roofZPx > 0) {
+                        const _wgBaseH = state.boardHeights?.[fullPath[0].y]?.[fullPath[0].x] ?? 0;
+                        elevPx = (_wgBaseH > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(_wgBaseH) : 0;
+                        elevPx += _wgSpr._roofZPx;
+                        _wgOnRoof = true;
+                    }
+                }
+                if (!_wgOnRoof && startZ > 0 && typeof window._getElevationPx === 'function') {
+                    elevPx = window._getElevationPx(startZ);
+                }
+                ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+            boardEl.appendChild(ghost);
+
+            let stepIndex = 1;
+            const stepMs = Math.max(140, Math.min(220, 200 - path.length * 5));
+
+            function stepNext() {
+                if (stepIndex >= fullPath.length) {
+
+                    setTimeout(() => {
+                        ghost.remove();
+                        _walkAnimActive = false;
+                        _walkAnimUnitId = null;
+
+                        markDirty('board');
+                        renderIfDirty();
+                    }, 120);
+                    if (onComplete) onComplete();
+                    return;
+                }
+                const pt = fullPath[stepIndex];
+                const prevPt = fullPath[stepIndex - 1];
+                const newLeft = pad + pt.x * (tileSize + gap);
+                const newTop = pad + pt.y * (tileSize + gap);
+
+                const _prevZ = (prevPt.z !== undefined && prevPt.z !== null) ? prevPt.z
+                    : ((typeof getHeightAt === 'function') ? getHeightAt(prevPt.x, prevPt.y) : 0);
+                const _stepZ = (pt.z !== undefined && pt.z !== null) ? pt.z
+                    : ((typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0);
+                const _stepHDiff = Math.abs(_stepZ - _prevZ);
+                const _isJumpStep = _stepHDiff > MAX_CLIMB_HEIGHT && !_isFlying;
+
+                if (_isJumpStep && typeof animateJumpArc === 'function' && !_skipVisuals()) {
+
+                    ghost.style.visibility = 'hidden';
+
+                    animateJumpArc(unit, prevPt.x, prevPt.y, pt.x, pt.y, _prevZ, _stepZ, 400);
+
+                    const _autoJumpHDiff = _stepZ - _prevZ;
+                    if (_autoJumpHDiff > 0) {
+                        setTimeout(() => showFloatingTextForUnit(unit, `⬆ JUMP +${_autoJumpHDiff}`, 'buff', { durationMs: 1200 }), 350);
+                    } else if (_autoJumpHDiff < 0) {
+                        setTimeout(() => showFloatingTextForUnit(unit, `⬇ DROP ${_autoJumpHDiff}`, 'neutral', { durationMs: 1200 }), 350);
+                    }
+
+                    setTimeout(() => {
+
+                        ghost.style.transition = 'none';
+                        ghost.style.left = newLeft + 'px';
+                        ghost.style.top = newTop + 'px';
+                        ghost.style.zIndex = 100 + pt.y;
+                            const tiltDeg = state.dioramaTiltDeg ?? 50;
+                            const yawDeg = state.dioramaYawDeg ?? 0;
+                            let elevPx = 0;
+
+                            const _pjObj = (typeof getObjectAt === 'function') ? getObjectAt(pt.x, pt.y) : null;
+                            let _pjOnRoof = false;
+                            if (_pjObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_pjObj]?.roofWalkable) {
+                                const _pjSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_pjObj] : null;
+                                if (_pjSpr && _pjSpr._roofZPx > 0) {
+                                    const _pjBaseH = state.boardHeights?.[pt.y]?.[pt.x] ?? 0;
+                                    elevPx = (_pjBaseH > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(_pjBaseH) : 0;
+                                    elevPx += _pjSpr._roofZPx;
+                                    _pjOnRoof = true;
+                                }
+                            }
+                            if (!_pjOnRoof && _stepZ > 0 && typeof window._getElevationPx === 'function') elevPx = window._getElevationPx(_stepZ);
+                            ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+
+                        ghost.style.visibility = '';
+
+                        ghost.offsetHeight;
+                        ghost.style.transition = '';
+                        stepIndex++;
+                        setTimeout(stepNext, 60);
+                    }, 460);
+                    return;
+                }
+
+                ghost.style.left = newLeft + 'px';
+                ghost.style.top = newTop + 'px';
+                ghost.style.zIndex = 100 + pt.y;
+
+                    const stepH = (pt.z !== undefined && pt.z !== null) ? pt.z :
+                        ((typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0);
+                    const tiltDeg = state.dioramaTiltDeg ?? 50;
+                    const yawDeg = state.dioramaYawDeg ?? 0;
+
+                    let elevPx = 0;
+                    const _wsObj = (typeof getObjectAt === 'function') ? getObjectAt(pt.x, pt.y) : null;
+                    let _wsOnRoof = false;
+                    if (_wsObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_wsObj]?.roofWalkable) {
+                        const _wsSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_wsObj] : null;
+                        if (_wsSpr && _wsSpr._roofZPx > 0) {
+                            const _wsBaseH = state.boardHeights?.[pt.y]?.[pt.x] ?? 0;
+                            elevPx = (_wsBaseH > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(_wsBaseH) : 0;
+                            elevPx += _wsSpr._roofZPx;
+                            _wsOnRoof = true;
+                        }
+                    }
+                    if (!_wsOnRoof && stepH > 0 && typeof window._getElevationPx === 'function') elevPx = window._getElevationPx(stepH);
+                    ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+                stepIndex++;
+                setTimeout(stepNext, stepMs);
+            }
+
+            requestAnimationFrame(() => setTimeout(stepNext, 30));
+        }
+
+        let _displaceAnimUnitIds = new Set();
+
+        function animateDisplacement(unit, fromX, fromY, toX, toY, durationMs) {
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs);
+                return;
+            }
+            if (!boardEl || _skipVisuals()) return;
+            if (fromX === toX && fromY === toY) return;
+
+            const sprite = getBattleMapSpriteUrl(unit);
+            const tileSize = CONFIG.tileSize || 64;
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+            const ms = durationMs || 220;
+
+            _displaceAnimUnitIds.add(unit.id);
+            scheduleBoardRender();
+
+            const ghost = document.createElement('div');
+            ghost.className = 'displace-ghost';
+            ghost.style.width = tileSize + 'px';
+            ghost.style.height = tileSize + 'px';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.zIndex = String(100 + Math.max(fromY, toY));
+            ghost.style.transition = `left ${ms}ms cubic-bezier(.22,.58,.36,1), top ${ms}ms cubic-bezier(.22,.58,.36,1), transform ${ms}ms cubic-bezier(.22,.58,.36,1)`;
+            ghost.style.imageRendering = 'pixelated';
+
+            const img = document.createElement('img');
+            img.src = sprite;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center bottom';
+            img.style.imageRendering = 'pixelated';
+            img.style.filter = 'drop-shadow(0 0 6px rgba(80, 130, 140, 0.6))';
+            ghost.appendChild(img);
+
+            ghost.style.left = (pad + fromX * (tileSize + gap)) + 'px';
+            ghost.style.top = (pad + fromY * (tileSize + gap)) + 'px';
+
+                const fromZ = unit.z ?? 0;
+                const tiltDeg = state.dioramaTiltDeg ?? 50;
+                const yawDeg = state.dioramaYawDeg ?? 0;
+                const elevPx = (fromZ > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(fromZ) : 0;
+                ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+            boardEl.appendChild(ghost);
+
+            requestAnimationFrame(() => {
+                ghost.style.left = (pad + toX * (tileSize + gap)) + 'px';
+                ghost.style.top = (pad + toY * (tileSize + gap)) + 'px';
+
+                    const toH = (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') ? getHeightAt(toX, toY) : 0;
+                    const tiltDeg = state.dioramaTiltDeg ?? 50;
+                    const yawDeg = state.dioramaYawDeg ?? 0;
+                    const elevPx = (toH > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(toH) : 0;
+                    ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+            });
+
+            setTimeout(() => {
+                ghost.remove();
+                _displaceAnimUnitIds.delete(unit.id);
+                markDirty('board');
+                renderIfDirty();
+            }, ms + 40);
+        }
+
+        function animateDisplacementPath(unit, fromX, fromY, steps, perStepMs) {
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive() && steps && steps.length) {
+                var last = steps[steps.length - 1];
+                window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length);
+                return;
+            }
+            if (!boardEl || _skipVisuals()) return;
+            if (!steps || !steps.length) return;
+
+            const sprite = getBattleMapSpriteUrl(unit);
+            const tileSize = CONFIG.tileSize || 64;
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+            const stepMs = perStepMs || 150;
+
+            _displaceAnimUnitIds.add(unit.id);
+            scheduleBoardRender();
+
+            const ghost = document.createElement('div');
+            ghost.className = 'displace-ghost';
+            ghost.style.width = tileSize + 'px';
+            ghost.style.height = tileSize + 'px';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.zIndex = String(100 + fromY);
+            ghost.style.transition = `left ${stepMs}ms cubic-bezier(.22,.58,.36,1), top ${stepMs}ms cubic-bezier(.22,.58,.36,1), transform ${stepMs}ms cubic-bezier(.22,.58,.36,1)`;
+            ghost.style.imageRendering = 'pixelated';
+
+            const img = document.createElement('img');
+            img.src = sprite;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center bottom';
+            img.style.imageRendering = 'pixelated';
+            img.style.filter = 'drop-shadow(0 0 6px rgba(80, 130, 140, 0.6))';
+            ghost.appendChild(img);
+
+            ghost.style.left = (pad + fromX * (tileSize + gap)) + 'px';
+            ghost.style.top = (pad + fromY * (tileSize + gap)) + 'px';
+
+                const fZ = unit.z ?? 0;
+                const tiltDeg = state.dioramaTiltDeg ?? 50;
+                const yawDeg = state.dioramaYawDeg ?? 0;
+                const elevPx = (fZ > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(fZ) : 0;
+                ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+            boardEl.appendChild(ghost);
+
+            let stepIdx = 0;
+            function slideNext() {
+                if (stepIdx >= steps.length) {
+                    setTimeout(() => {
+                        ghost.remove();
+                        _displaceAnimUnitIds.delete(unit.id);
+                        markDirty('board');
+                        renderIfDirty();
+                    }, 40);
+                    return;
+                }
+                const pt = steps[stepIdx];
+                ghost.style.left = (pad + pt.x * (tileSize + gap)) + 'px';
+                ghost.style.top = (pad + pt.y * (tileSize + gap)) + 'px';
+                ghost.style.zIndex = String(100 + pt.y);
+
+                    const stepZ = (pt.z !== undefined && pt.z !== null) ? pt.z :
+                        ((typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0);
+                    const tiltDeg = state.dioramaTiltDeg ?? 50;
+                    const yawDeg = state.dioramaYawDeg ?? 0;
+                    const elevPx = (stepZ > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(stepZ) : 0;
+                    ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
+                stepIdx++;
+                setTimeout(slideNext, stepMs);
+            }
+
+            requestAnimationFrame(() => setTimeout(slideNext, 20));
+        }
+
+        function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+                return;
+            }
+            if (!boardEl || _skipVisuals()) return;
+            if (fromX === toX && fromY === toY) return;
+
+            const sprite = getBattleMapSpriteUrl(unit);
+            const tileSize = CONFIG.tileSize || 64;
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+            const ms = durationMs || 480;
+
+            _displaceAnimUnitIds.add(unit.id);
+            scheduleBoardRender();
+
+            const ghost = document.createElement('div');
+            ghost.className = 'displace-ghost jump-arc-ghost';
+            ghost.style.width = tileSize + 'px';
+            ghost.style.height = tileSize + 'px';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.zIndex = String(200 + Math.max(fromY, toY));
+            ghost.style.imageRendering = 'pixelated';
+            ghost.style.willChange = 'transform, left, top';
+
+            const img = document.createElement('img');
+            img.src = sprite;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center bottom';
+            img.style.imageRendering = 'pixelated';
+            img.style.filter = 'drop-shadow(0 0 8px rgba(120, 180, 255, 0.7))';
+            ghost.appendChild(img);
+
+            const shadow = document.createElement('div');
+            shadow.className = 'jump-shadow';
+            shadow.style.position = 'absolute';
+            shadow.style.width = (tileSize * 0.6) + 'px';
+            shadow.style.height = (tileSize * 0.2) + 'px';
+            shadow.style.borderRadius = '50%';
+            shadow.style.background = 'rgba(0,0,0,0.25)';
+            shadow.style.pointerEvents = 'none';
+            shadow.style.zIndex = '99';
+            shadow.style.willChange = 'left, top, transform';
+
+            const startLeft = pad + fromX * (tileSize + gap);
+            const startTop = pad + fromY * (tileSize + gap);
+            const endLeft = pad + toX * (tileSize + gap);
+            const endTop = pad + toY * (tileSize + gap);
+
+            ghost.style.left = startLeft + 'px';
+            ghost.style.top = startTop + 'px';
+            shadow.style.left = (startLeft + tileSize * 0.2) + 'px';
+            shadow.style.top = (startTop + tileSize * 0.85) + 'px';
+
+            const _isDio = true;
+            const _tilt = state.dioramaTiltDeg ?? 50;
+            const _yaw = state.dioramaYawDeg ?? 0;
+            const _getElev = typeof window._getElevationPx === 'function' ? window._getElevationPx : null;
+
+            let fromElevPx = 0;
+            let toElevPx = 0;
+            if (_isDio && _getElev) {
+
+                const _jFromObj = (typeof getObjectAt === 'function') ? getObjectAt(fromX, fromY) : null;
+                let _jFromOnRoof = false;
+                if (_jFromObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_jFromObj]?.roofWalkable) {
+                    const _jFromSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_jFromObj] : null;
+                    if (_jFromSpr && _jFromSpr._roofZPx > 0) {
+                        const _jFromBaseH = state.boardHeights?.[fromY]?.[fromX] ?? 0;
+                        fromElevPx = _jFromBaseH > 0 ? _getElev(_jFromBaseH) : 0;
+                        fromElevPx += _jFromSpr._roofZPx;
+                        _jFromOnRoof = true;
+                    }
+                }
+                if (!_jFromOnRoof && fromZ > 0) fromElevPx = _getElev(fromZ);
+
+                const _jToObj = (typeof getObjectAt === 'function') ? getObjectAt(toX, toY) : null;
+                let _jToOnRoof = false;
+                if (_jToObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_jToObj]?.roofWalkable) {
+                    const _jToSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_jToObj] : null;
+                    if (_jToSpr && _jToSpr._roofZPx > 0) {
+                        const _jToBaseH = state.boardHeights?.[toY]?.[toX] ?? 0;
+                        toElevPx = _jToBaseH > 0 ? _getElev(_jToBaseH) : 0;
+                        toElevPx += _jToSpr._roofZPx;
+                        _jToOnRoof = true;
+                    }
+                }
+                if (!_jToOnRoof && toZ > 0) toElevPx = _getElev(toZ);
+            }
+
+            const dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
+            const heightDelta = Math.abs((toZ || 0) - (fromZ || 0));
+            const arcPeakPx = Math.max(tileSize * 0.6, tileSize * 0.35 * dist + heightDelta * 12);
+
+            if (_isDio) {
+                ghost.style.transform = _dioGhostTransform(_tilt, _yaw, fromElevPx);
+            }
+
+            boardEl.appendChild(ghost);
+            boardEl.appendChild(shadow);
+
+            const startTime = performance.now();
+
+            function tick(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / ms, 1);
+
+                const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+                const curLeft = startLeft + (endLeft - startLeft) * ease;
+                const curTop = startTop + (endTop - startTop) * ease;
+
+                const arc = arcPeakPx * 4 * t * (1 - t);
+
+                ghost.style.left = curLeft + 'px';
+                ghost.style.top = curTop + 'px';
+
+                shadow.style.left = (curLeft + tileSize * 0.2) + 'px';
+                shadow.style.top = (curTop + tileSize * 0.85) + 'px';
+
+                const shadowScale = Math.max(0.3, 1 - (arc / arcPeakPx) * 0.6);
+                shadow.style.transform = `scale(${shadowScale})`;
+                shadow.style.opacity = String(Math.max(0.15, 0.3 * shadowScale));
+
+                if (_isDio) {
+
+                    const elevNow = fromElevPx + (toElevPx - fromElevPx) * ease;
+                    const tz = elevNow + arc;
+                    ghost.style.transform = _dioGhostTransform(_tilt, _yaw, tz);
+                } else {
+
+                    ghost.style.transform = `translateY(${-arc}px)`;
+                }
+
+                const stretch = 1 + 0.12 * Math.sin(t * Math.PI);
+                const squash = 1 - 0.08 * Math.sin(t * Math.PI);
+                img.style.transform = `scaleX(${squash}) scaleY(${stretch})`;
+
+                if (t < 1) {
+                    requestAnimationFrame(tick);
+                } else {
+
+                    img.style.transform = 'scaleX(1.15) scaleY(0.85)';
+                    setTimeout(() => {
+                        img.style.transform = 'scaleX(1) scaleY(1)';
+                    }, 80);
+                    setTimeout(() => {
+                        ghost.remove();
+                        shadow.remove();
+                        _displaceAnimUnitIds.delete(unit.id);
+                        markDirty('board');
+                        renderIfDirty();
+                    }, 120);
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function animateStrikeLeap(unit, tx, ty, opts) {
+
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.strikeLeap(unit, tx, ty, opts);
+                return;
+            }
+            if (!boardEl || !unit || unit.dead || _skipVisuals()) return;
+            if (unit.x === tx && unit.y === ty) return;
+
+            const {
+                leapMs   = 260,
+                holdMs   = 70,
+                returnMs = 220,
+                arcScale = 0.55,
+                onImpact = null,
+            } = opts || {};
+
+            const sprite = getBattleMapSpriteUrl(unit);
+            const tileSize = CONFIG.tileSize || 64;
+            const gap = CONFIG.tileGap ?? 0;
+            const pad = CONFIG.boardPadding ?? 2;
+
+            _displaceAnimUnitIds.add(unit.id);
+            scheduleBoardRender();
+
+            const ghost = document.createElement('div');
+            ghost.className = 'displace-ghost strike-leap-ghost';
+            ghost.style.width = tileSize + 'px';
+            ghost.style.height = tileSize + 'px';
+            ghost.style.position = 'absolute';
+            ghost.style.pointerEvents = 'none';
+            ghost.style.zIndex = String(200 + Math.max(unit.y, ty));
+            ghost.style.imageRendering = 'pixelated';
+            ghost.style.willChange = 'transform, left, top';
+
+            const _isBatLeap = unit.race === 'vampire'
+                && typeof canFly === 'function' && typeof isUnitAirborne === 'function'
+                && canFly(unit) && isUnitAirborne(unit)
+                && typeof BAT_SPRITES !== 'undefined' && BAT_SPRITES.length;
+            let img = null;
+            if (_isBatLeap) {
+                ghost.innerHTML = _buildBatSwarmGhostHtml(unit, tileSize);
+            } else {
+                img = document.createElement('img');
+                img.src = sprite;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.objectPosition = 'center bottom';
+                img.style.imageRendering = 'pixelated';
+                ghost.appendChild(img);
+            }
+
+            const shadow = document.createElement('div');
+            shadow.className = 'jump-shadow';
+            shadow.style.position = 'absolute';
+            shadow.style.width = (tileSize * 0.6) + 'px';
+            shadow.style.height = (tileSize * 0.2) + 'px';
+            shadow.style.borderRadius = '50%';
+            shadow.style.background = 'rgba(0,0,0,0.25)';
+            shadow.style.pointerEvents = 'none';
+            shadow.style.zIndex = '99';
+            shadow.style.willChange = 'left, top, transform';
+
+            const fromX = unit.x, fromY = unit.y;
+            const startLeft = pad + fromX * (tileSize + gap);
+            const startTop  = pad + fromY * (tileSize + gap);
+            const endLeft   = pad + tx * (tileSize + gap);
+            const endTop    = pad + ty * (tileSize + gap);
+
+            ghost.style.left = startLeft + 'px';
+            ghost.style.top  = startTop + 'px';
+            shadow.style.left = (startLeft + tileSize * 0.2) + 'px';
+            shadow.style.top  = (startTop + tileSize * 0.85) + 'px';
+
+            const _isDio = true;
+            const _tilt = state.dioramaTiltDeg ?? 50;
+            const _yaw  = state.dioramaYawDeg ?? 0;
+            const _getElev = typeof window._getElevationPx === 'function' ? window._getElevationPx : null;
+
+            let fromElevPx = 0;
+            let toElevPx = 0;
+            if (_isDio && _getElev) {
+                const unitZ = unit.z ?? 0;
+                if (unitZ > 0) fromElevPx = _getElev(unitZ);
+
+                const _slFromObj = (typeof getObjectAt === 'function') ? getObjectAt(fromX, fromY) : null;
+                if (_slFromObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_slFromObj]?.roofWalkable) {
+                    const _slFromSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_slFromObj] : null;
+                    if (_slFromSpr && _slFromSpr._roofZPx > 0) {
+                        const _slBaseH = state.boardHeights?.[fromY]?.[fromX] ?? 0;
+                        fromElevPx = _slBaseH > 0 ? _getElev(_slBaseH) : 0;
+                        fromElevPx += _slFromSpr._roofZPx;
+                    }
+                }
+
+                const targetZ = state.boardHeights?.[ty]?.[tx] ?? 0;
+                if (targetZ > 0) toElevPx = _getElev(targetZ);
+                const _slToObj = (typeof getObjectAt === 'function') ? getObjectAt(tx, ty) : null;
+                if (_slToObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_slToObj]?.roofWalkable) {
+                    const _slToSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_slToObj] : null;
+                    if (_slToSpr && _slToSpr._roofZPx > 0) {
+                        toElevPx = targetZ > 0 ? _getElev(targetZ) : 0;
+                        toElevPx += _slToSpr._roofZPx;
+                    }
+                }
+            }
+
+            const dist = Math.abs(tx - fromX) + Math.abs(ty - fromY);
+            const arcPeakPx = Math.max(tileSize * 0.45, tileSize * arcScale * dist);
+
+            if (_isDio) {
+                ghost.style.transform = _dioGhostTransform(_tilt, _yaw, fromElevPx);
+            }
+
+            boardEl.appendChild(ghost);
+            boardEl.appendChild(shadow);
+
+            const totalMs = leapMs + holdMs + returnMs;
+            const startTime = performance.now();
+            let impactFired = false;
+
+            function tick(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / totalMs, 1);
+
+                let phase, phaseT;
+                if (elapsed < leapMs) {
+
+                    phase = 'leap';
+                    phaseT = elapsed / leapMs;
+                } else if (elapsed < leapMs + holdMs) {
+
+                    phase = 'hold';
+                    phaseT = 1;
+                } else {
+
+                    phase = 'return';
+                    phaseT = (elapsed - leapMs - holdMs) / returnMs;
+                }
+
+                const ease = (v) => v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
+
+                let posT, arcT;
+                if (phase === 'leap') {
+                    posT = ease(phaseT);
+                    arcT = posT;
+                } else if (phase === 'hold') {
+                    posT = 1;
+                    arcT = 1;
+                } else {
+                    posT = 1 - ease(phaseT);
+                    arcT = posT;
+                }
+
+                const arc = arcPeakPx * 4 * arcT * (1 - arcT);
+
+                const curLeft = startLeft + (endLeft - startLeft) * posT;
+                const curTop  = startTop + (endTop - startTop) * posT;
+
+                ghost.style.left = curLeft + 'px';
+                ghost.style.top  = curTop + 'px';
+                shadow.style.left = (curLeft + tileSize * 0.2) + 'px';
+                shadow.style.top  = (curTop + tileSize * 0.85) + 'px';
+
+                const shadowScale = Math.max(0.3, 1 - (arc / Math.max(1, arcPeakPx)) * 0.6);
+                shadow.style.transform = `scale(${shadowScale})`;
+                shadow.style.opacity = String(Math.max(0.15, 0.3 * shadowScale));
+
+                if (_isDio) {
+                    const elevNow = fromElevPx + (toElevPx - fromElevPx) * posT;
+                    ghost.style.transform = _dioGhostTransform(_tilt, _yaw, elevNow + arc);
+                } else {
+                    ghost.style.transform = `translateY(${-arc}px)`;
+                }
+
+                if (img) {
+                    if (phase === 'leap') {
+                        const stretch = 1 + 0.14 * Math.sin(phaseT * Math.PI);
+                        const squash  = 1 - 0.10 * Math.sin(phaseT * Math.PI);
+                        img.style.transform = `scaleX(${squash}) scaleY(${stretch})`;
+                    } else if (phase === 'hold') {
+
+                        img.style.transform = 'scaleX(1.18) scaleY(0.82)';
+                        if (!impactFired) {
+                            impactFired = true;
+                            if (onImpact) onImpact();
+                        }
+                    } else {
+                        const stretch = 1 + 0.10 * Math.sin(phaseT * Math.PI);
+                        const squash  = 1 - 0.06 * Math.sin(phaseT * Math.PI);
+                        img.style.transform = `scaleX(${squash}) scaleY(${stretch})`;
+                    }
+                } else {
+                    if (phase === 'hold' && !impactFired) {
+                        impactFired = true;
+                        if (onImpact) onImpact();
+                    }
+                }
+
+                if (t < 1) {
+                    requestAnimationFrame(tick);
+                } else {
+
+                    if (img) {
+                        img.style.transform = 'scaleX(1.12) scaleY(0.88)';
+                        setTimeout(() => {
+                            img.style.transform = 'scaleX(1) scaleY(1)';
+                        }, 70);
+                    }
+                    setTimeout(() => {
+                        ghost.remove();
+                        shadow.remove();
+                        _displaceAnimUnitIds.delete(unit.id);
+                        markDirty('board');
+                        renderIfDirty();
+                    }, 100);
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function doMove(unit, x, y, z) {
+            if (!canUnitMove(unit)) {
+                if (!state.autoPlayers?.[unit.player]) {
+                    addLog((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES ? 'That unit already used all its moves this turn.' : 'That unit already acted this round.', unit.player);
+                }
+                return false;
+            }
+            const moveTiles = getMoveTiles(unit);
+
+            {
+                const matches = moveTiles.filter(t => t.x === x && t.y === y);
+                if (matches.length > 0) {
+                    const unitZ = unit.z ?? 0;
+                    matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
+                    z = matches[0].z;
+                } else if (z === undefined || z === null) {
+                    z = (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, unit.z) : 0);
+                }
+            }
+            const legalMove = moveTiles.some(tile => tile.x === x && tile.y === y && (tile.z === undefined || tile.z === z));
+            if (!legalMove || unitAt(x, y, z) || !unitCanTraverse(unit, x, y, z)) {
+
+                if (state.autoPlayers?.[unit.player]) {
+                    unit.movesThisTurn = UNIT_MAX_MOVES;
+                } else {
+                    addLog('Invalid move.', unit.player);
+                    playErrorSfx();
+                }
+                return false;
+            }
+
+            const path = findMovePath(unit, x, y, z);
+            const isHuman = !state.autoPlayers?.[unit.player];
+            const startX = unit.x,
+                startY = unit.y;
+
+            const _skipWasdAnim = state._wasdMoveSkipAnim;
+            if (_skipWasdAnim) state._wasdMoveSkipAnim = false;
+            const shouldAnimate = !_skipWasdAnim && !state.cameraDisabled && path.length > 0;
+            let _aiWalkAnimDelay = 0;
+
+            /* Unit animation override: race-specific moving sprite */
+            if (_applySpriteOverride(unit, null, 'moveSprite')) {
+                const ov = UNIT_ANIM_OVERRIDES[unit.race];
+                if (ov?.flipOnTravel) {
+                    const _travelDx = x - unit.x;
+                    unit._spriteFlipX = (_travelDx > 0);
+                }
+                markDirty('board');
+            }
+
+            if (isHuman && shouldAnimate) {
+                animateWalkPath(unit, path);
+            } else if (!isHuman && shouldAnimate) {
+                const unitCurrentlyVisible = _shouldCameraFollowUnit(unit);
+                const destVisible = _isTileVisibleToViewer(x, y);
+
+                if (unitCurrentlyVisible) {
+                    if (destVisible) {
+
+                        animateWalkPath(unit, path);
+                        const stepMs = Math.max(80, Math.min(160, 140 - path.length * 8));
+                        const walkDurationMs = path.length * stepMs;
+                        animateBoardCameraPath(
+                            { x: startX, y: startY },
+                            { x: x, y: y },
+                            { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                        );
+                        playSfx('moveStep');
+                        _aiWalkAnimDelay = walkDurationMs + 180;
+                    } else {
+
+                        const fullPath = [{ x: startX, y: startY }, ...path];
+                        let lastVisibleIdx = 0;
+                        for (let i = 0; i < fullPath.length; i++) {
+                            if (_isTileVisibleToViewer(fullPath[i].x, fullPath[i].y)) {
+                                lastVisibleIdx = i;
+                            }
+                        }
+
+                        const visibleSteps = fullPath.slice(1, lastVisibleIdx + 1);
+                        if (visibleSteps.length > 0) {
+                            animateWalkPath(unit, visibleSteps);
+                            const stepMs = Math.max(80, Math.min(160, 140 - visibleSteps.length * 8));
+                            const walkDurationMs = visibleSteps.length * stepMs;
+                            const lastVisible = fullPath[lastVisibleIdx];
+                            animateBoardCameraPath(
+                                { x: startX, y: startY },
+                                { x: lastVisible.x, y: lastVisible.y },
+                                { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                            );
+                            playSfx('moveStep');
+                            _aiWalkAnimDelay = walkDurationMs + 180;
+                        }
+
+                        state._fogCameraAllowed = false;
+                    }
+                } else if (destVisible) {
+
+                    const fullPath = [{ x: startX, y: startY }, ...path];
+                    let firstVisibleIdx = -1;
+                    for (let i = 0; i < fullPath.length; i++) {
+                        if (_isTileVisibleToViewer(fullPath[i].x, fullPath[i].y)) {
+                            firstVisibleIdx = i;
+                            break;
+                        }
+                    }
+                    if (firstVisibleIdx >= 0 && firstVisibleIdx < fullPath.length - 1) {
+
+                        const visiblePath = fullPath.slice(firstVisibleIdx);
+
+                        const visibleSteps = visiblePath.slice(1);
+                        if (visibleSteps.length > 0) {
+
+                            const entryX = visiblePath[0].x, entryY = visiblePath[0].y;
+                            const origX = unit.x, origY = unit.y;
+                            unit.x = entryX; unit.y = entryY;
+                            animateWalkPath(unit, visibleSteps);
+                            unit.x = origX; unit.y = origY;
+                            const stepMs = Math.max(80, Math.min(160, 140 - visibleSteps.length * 8));
+                            const walkDurationMs = visibleSteps.length * stepMs;
+
+                            animateBoardCameraPath(
+                                { x: entryX, y: entryY },
+                                { x: x, y: y },
+                                { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                            );
+                            playSfx('moveStep');
+                            _aiWalkAnimDelay = walkDurationMs + 180;
+
+                            state._fogCameraAllowed = true;
+                        }
+                    }
+                }
+
+            }
+
+            pushUndoSnapshot(_moveWillGainInfo(unit, x, y));
+
+            if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
+            unit._aiRecentTiles.push(posKey(unit.x, unit.y));
+            if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+
+            /* Unit animation override: revert race-specific moving sprite */
+            const _hadMoveSprite = !!unit._spriteOverride;
+            _revertSpriteOverride(unit);
+            if (_hadMoveSprite && !unit._spriteOverride) markDirty('board');
+
+            resolveMovePath(unit, path, x, y);
+
+            checkWarpRuneTrigger(unit);
+
+            if (_aiWalkAnimDelay > 0) {
+                return _aiWalkAnimDelay;
+            }
+            return true;
+        }
+
+        function getJumpTiles(unit) {
+            if (!unit || unit.dead) return [];
+            if (canFly(unit) && isUnitAirborne(unit)) return [];
+            const unitZ = unit.z ?? 0;
+            const tiles = [];
+            const tileSet = new Set();
+            const jumpRange = 1;
+            const has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            for (let dy = -jumpRange; dy <= jumpRange; dy++) {
+                for (let dx = -jumpRange; dx <= jumpRange; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (Math.abs(dx) + Math.abs(dy) > jumpRange) continue;
+                    const nx = unit.x + dx;
+                    const ny = unit.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    const surfaces = has3D ? getWalkableSurfaces(nx, ny) : [0];
+                    for (const nz of surfaces) {
+                        if (!unitCanTraverse(unit, nx, ny, nz)) continue;
+                        const hDiff = nz - unitZ;
+
+                        if (hDiff > JUMP_HEIGHT) {
+                            const _jObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+                            const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
+                            if (!(_jRule && _jRule.roofWalkable)) continue;
+                        }
+
+                        // Skip tile if occupied — but ignore airborne units at different z
+                        const _jOccupant = unitAt(nx, ny, nz);
+                        if (_jOccupant) {
+                            // If occupant is airborne and at a different z, they don't block ground landing
+                            if (typeof isUnitAirborne === 'function' && isUnitAirborne(_jOccupant) && (_jOccupant.z ?? 0) !== nz) {
+                                // airborne unit overhead — doesn't block
+                            } else {
+                                continue;
+                            }
+                        }
+                        const nKey = posKey3(nx, ny, nz);
+                        if (tileSet.has(nKey)) continue;
+                        tileSet.add(nKey);
+                        tiles.push({ x: nx, y: ny, z: nz, hDiff });
+                    }
+                }
+            }
+            return tiles;
+        }
+
+        function canJump(unit) {
+            if (!unit || unit.dead) return false;
+            if (canFly(unit) && isUnitAirborne(unit)) return false;
+            if (!canUnitAct(unit)) return false;
+            return getJumpTiles(unit).length > 0;
+        }
+
+        function doJump(unit, x, y, z) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return false;
+            }
+            if (canFly(unit) && isUnitAirborne(unit)) {
+                addLog('Airborne units don\'t need to jump.');
+                return false;
+            }
+            const jumpTiles = getJumpTiles(unit);
+            if (z === undefined || z === null) {
+                const match = jumpTiles.find(t => t.x === x && t.y === y);
+                z = match ? match.z : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, unit.z) : 0);
+            }
+            const legal = jumpTiles.some(t => t.x === x && t.y === y && t.z === z);
+            if (!legal) {
+                if (!state.autoPlayers?.[unit.player]) {
+                    addLog('Invalid jump target.');
+                    playErrorSfx();
+                }
+                return false;
+            }
+
+            pushUndoSnapshot(`${unitDisplayName(unit)} jumps to ${coordLabel(x, y)}`);
+            const fromX = unit.x, fromY = unit.y, fromZ = unit.z ?? 0;
+            unit.x = x;
+            unit.y = y;
+            unit.z = z;
+            spendAP(unit, AP_COST_ACTION);
+
+            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
+            addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
+            playSfx('moveStep');
+            const hDiff = z - fromZ;
+
+            if (hDiff < 0 && typeof applyFallDamage === 'function') {
+                applyFallDamage(unit, fromZ, z, 'Jump: ');
+            }
+
+            const _hasArc = typeof animateJumpArc === 'function' && boardEl && !_skipVisuals();
+            if (_hasArc) {
+                animateJumpArc(unit, fromX, fromY, x, y, fromZ, z, 480);
+            }
+
+            const _jumpTextDelay = _hasArc ? 420 : 0;
+            if (hDiff > 0) {
+                setTimeout(() => showFloatingTextForUnit(unit, `⬆ JUMP +${hDiff}`, 'buff', { durationMs: 1200 }), _jumpTextDelay);
+            } else if (hDiff < 0) {
+                setTimeout(() => showFloatingTextForUnit(unit, `⬇ DROP ${hDiff}`, 'neutral', { durationMs: 1200 }), _jumpTextDelay);
+            }
+
+            if (!state.cameraDisabled) {
+                const isHuman = !state.autoPlayers?.[unit.player];
+                if (isHuman) {
+
+                    const _curZoom = typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05
+                        ? getUserZoomScale()
+                        : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
+                    if (typeof animateBoardCameraPath === 'function') {
+                        animateBoardCameraPath(
+                            { x: fromX, y: fromY },
+                            { x: x, y: y },
+                            { duration: 400, zoom: _curZoom, _fogAllowed: true }
+                        );
+                    }
+                } else if (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
+                    const _curZoom = typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05
+                        ? getUserZoomScale()
+                        : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
+                    if (typeof animateBoardCameraPath === 'function') {
+                        animateBoardCameraPath(
+                            { x: fromX, y: fromY },
+                            { x: x, y: y },
+                            { duration: 400, zoom: _curZoom, _fogAllowed: true }
+                        );
+                    }
+                }
+            }
+
+            const _jumpAnimMs = (!boardEl || _skipVisuals()) ? 0 : 650;
+            const _doPostJump = () => {
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
+                checkWin();
+                endUnitIfDone(unit);
+                if (typeof renderAfterMove === 'function') renderAfterMove();
+            };
+            if (_jumpAnimMs > 0) {
+                setTimeout(_doPostJump, _jumpAnimMs);
+            } else {
+                _doPostJump();
+            }
+            scheduleBoardRender();
+            return true;
+        }
+
+        function doAttack(unit, x, y, z) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return 0;
+            }
+
+            const _clickedTarget = unitAt(x, y, z);
+
+            let d;
+            if (_clickedTarget && _clickedTarget._isBoss && _clickedTarget._bossSize === 2) {
+                d = distToTarget(unit.x, unit.y, _clickedTarget, unit.z);
+            } else {
+                const _tz = _clickedTarget ? (_clickedTarget.z ?? 0) : (z ?? 0);
+                d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
+            }
+
+            if (d < 1 && d !== 0 || d > getEffectiveRange(unit)) {
+                addLog('Target tile is out of range.');
+                return 0;
+            }
+            if (d === 0) {
+
+                let hasObj0 = false;
+                if (state.turrets) hasObj0 = hasObj0 || state.turrets.some(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                if (state._deployedObjects) hasObj0 = hasObj0 || state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
+                if (state.plantedSeeds) hasObj0 = hasObj0 || state.plantedSeeds.some(s => s.x === x && s.y === y && s.owner !== unit.player);
+                if (!hasObj0) {
+                    addLog('Target tile is out of range.');
+                    return 0;
+                }
+            }
+            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
+                addLog('Terrain blocks the attack path.');
+                return 0;
+            }
+
+            const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
+                state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, x, y) && !_isSkyTelescopeTarget) {
+                addLog('Target is hidden in the fog.');
+                playErrorSfx();
+                return 0;
+            }
+            let target = z != null ? unitAt(x, y, z) : unitAt(x, y);
+
+            if (target && target.id === unit.id) {
+                const colEnemy = unitsAtColumn(x, y).find(u => u.id !== unit.id && u.player !== unit.player);
+                target = colEnemy || null;
+            }
+
+            if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true) {
+                const skyTarget = state.units.find(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+                if (skyTarget) {
+                    const vr = getUnitVisionRange(unit);
+                    if ((Math.abs(unit.x - x) + Math.abs(unit.y - y)) <= vr) {
+                        target = skyTarget;
+
+                        if (state.fogOfWar) {
+                            if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
+                            const revealRadius = Math.max(3, vr);
+                            for (let dy = -revealRadius; dy <= revealRadius; dy++) {
+                                for (let dx = -revealRadius; dx <= revealRadius; dx++) {
+                                    if (Math.abs(dx) + Math.abs(dy) <= revealRadius) {
+                                        state._fogRevealTiles.add(posKey(x + dx, y + dy));
+                                    }
+                                }
+                            }
+                            state._fogRevealTiles.add(posKey(unit.x, unit.y));
+                            scheduleBoardRender();
+                            clearTimeout(state._fogRevealTimer);
+                            state._fogRevealTimer = setTimeout(() => {
+                                state._fogRevealTiles = null;
+                                scheduleBoardRender();
+                            }, 3500);
+                        }
+                    }
+                }
+            }
+
+            const tw = towerAt(x, y);
+            if (tw && !target && tw.owner !== unit.player) {
+                pushUndoSnapshot(true);
+                animateStrikeLeap(unit, x, y);
+                let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+
+                damage = Math.max(1, damage - (tw.def || 0));
+
+                spendAP(unit, AP_COST_ACTION);
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+
+                if (state.cameraDisabled) {
+                    tw.hp = Math.max(0, tw.hp - damage);
+                    addLog(`🐉 ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Dragon for ${damage} damage! (Dragon HP: ${tw.hp}/${tw.maxHp})`);
+                    grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                    playSfx('uiConfirm');
+                    showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
+                    checkWin();
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return damage;
+                }
+
+                const _twFogAI = state.fogOfWar && state.activePlayer !== getViewerPlayer();
+                const _twAttackerVisible = _twFogAI && _shouldCameraFollowUnit(unit);
+
+                const towerCamZoom = getCloseZoom ? getCloseZoom() : getDefaultZoom();
+                if (_twFogAI && !_twAttackerVisible) {
+                    camera.moveTo({ x: x, y: y, zoom: towerCamZoom, duration: actionMs(350), _fogAllowed: true });
+                } else {
+                    camera.moveTo({ x: unit.x, y: unit.y, zoom: towerCamZoom, duration: actionMs(350), _fogAllowed: true });
+                }
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+
+                const sourceHoldMs = (_twFogAI && !_twAttackerVisible) ? actionMs(400) : actionMs(800);
+                const travelMs = actionMs(480);
+                const impactDelay = sourceHoldMs + travelMs;
+
+                window.setTimeout(() => {
+                    if (state.winner) return;
+                    playSfx('basicAttack');
+                    if (_twFogAI && !_twAttackerVisible) {
+                        const dx = unit.x - x, dy = unit.y - y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        const clampDist = 1.5;
+                        const fakeFromX = x + (dx / dist) * clampDist;
+                        const fakeFromY = y + (dy / dist) * clampDist;
+                        playProjectile(fakeFromX, fakeFromY, x, y, 'attack', travelMs);
+                    } else {
+                        playProjectile(unit.x, unit.y, x, y, 'attack', travelMs);
+                        camera.moveTo({ x: x, y: y, zoom: towerCamZoom,
+                            duration: travelMs, easing: 'easeInOut', _fogAllowed: true });
+                    }
+                }, sourceHoldMs);
+
+                window.setTimeout(() => {
+                    if (state.winner) return;
+                    camera.snap({ x: x, y: y, zoom: towerCamZoom });
+                    tw.hp = Math.max(0, tw.hp - damage);
+                    addLog(`🐉 ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Dragon for ${damage} damage! (Dragon HP: ${tw.hp}/${tw.maxHp})`);
+                    grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                    showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
+                    playHitEffect(x, y);
+                    playSfx('damage');
+                    shakeBoard('normal');
+                    scheduleBoardRender();
+                }, impactDelay);
+
+                const settleMs = impactDelay + actionMs(700);
+                window.setTimeout(() => {
+                    checkWin();
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                }, settleMs);
+
+                return damage;
+            }
+
+            if ((!target || target.id === unit.id) && state.turrets) {
+                const enemyTurret = state.turrets.find(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                if (enemyTurret) {
+                    pushUndoSnapshot(true);
+                    animateStrikeLeap(unit, x, y);
+                    let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+                    damageTurretAt(x, y, damage, unit);
+                    playSfx('damage');
+                    spendAP(unit, AP_COST_ACTION);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    checkWin();
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return damage;
+                }
+            }
+
+            if ((!target || target.id === unit.id) && state._deployedObjects) {
+                const dObjIdx = state._deployedObjects.findIndex(o => {
+                    if (o.x !== x || o.y !== y || o.hp <= 0) return false;
+                    const isOwn = o.ownerPlayer === unit.player;
+
+                    if (isOwn && !(o.detonateOnAttack && o.blastRadius > 0)) return false;
+                    return true;
+                });
+                if (dObjIdx >= 0) {
+                    const dObj = state._deployedObjects[dObjIdx];
+                    pushUndoSnapshot(true);
+                    animateStrikeLeap(unit, x, y);
+
+                    if (dObj.detonateOnAttack && dObj.blastRadius > 0) {
+                        detonateDeployedObject(dObj, unit);
+                    } else {
+
+                        dObj.hp = 0;
+                        addLog(`${unitDisplayName(unit)} destroys ${dObj.spellName || 'deployed object'} at ${coordLabel(x, y)}!`);
+                        showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
+                        playSfx('uiConfirm');
+                        state._deployedObjects.splice(dObjIdx, 1);
+                    }
+                    spendAP(unit, AP_COST_ACTION);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return 1;
+                }
+            }
+
+            if ((!target || target.id === unit.id) && state.plantedSeeds) {
+                const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
+                if (seedIdx >= 0) {
+                    const seed = state.plantedSeeds[seedIdx];
+                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech';
+                    pushUndoSnapshot(true);
+                    animateStrikeLeap(unit, x, y);
+                    state.plantedSeeds.splice(seedIdx, 1);
+                    addLog(`${unitDisplayName(unit)} destroys a ${seedName} Seed at ${coordLabel(x, y)}!`);
+                    showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
+                    playSfx('uiConfirm');
+                    spendAP(unit, AP_COST_ACTION);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return 1;
+                }
+            }
+            if (!target || isAllyUnit(target, unit)) {
+                addLog('Choose an enemy on an attack-highlighted tile.');
+                playErrorSfx();
+                return 0;
+            }
+
+            if (unitHasStatus(target, 'invisible')) {
+                addLog(`${unitDisplayName(target)} is camouflaged and cannot be targeted.`);
+                playErrorSfx();
+                return 0;
+            }
+
+            pushUndoSnapshot(true);
+
+            if (unitHasStatus(unit, 'invisible')) {
+                clearStatus(unit, 'invisible');
+                addLog(`${unitDisplayName(unit)} breaks camouflage!`);
+            }
+
+            const evaded = rollEvasion(target);
+
+            const isCrit = !evaded && rollCrit(unit);
+
+            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+            if (isCrit) {
+                damage = Math.floor(damage * getCritMultiplier(unit));
+                unit._matchCrits = (unit._matchCrits || 0) + 1;
+                if (unit._matchCrits >= 3) checkAchievement('critMaster', unit);
+            }
+
+            focusUnitPanel(target.id);
+
+            /* Unit animation override: race-specific attack sprite */
+            if (_applySpriteOverride(unit, null, 'attackSprite')) {
+                scheduleBoardRender();
+            }
+
+            const _sneakBonus = false;
+            const cam = playOffensiveActionCamera(unit, target, {
+                sourceHold: 1150,
+                targetHold: 1050,
+                attackName: 'Attack',
+                _noCinematic: true
+            });
+            markDirty('board', 'selectedUnit', 'hud');
+            renderIfDirty();
+
+            const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(1150));
+            const _isMeleeStrike = d <= 1;
+            const lungeLeadMs = _isMeleeStrike ? 0 : actionMs(150);
+            let impactDelay;
+            if (_isMeleeStrike) {
+
+                impactDelay = projectileDelay + actionMs(260);
+            } else {
+                impactDelay = Math.max(projectileDelay + lungeLeadMs + actionMs(180), (cam?.sourceHold ?? actionMs(1150)) + lungeLeadMs + (cam?.travelMs ?? actionMs(480)) + actionMs(80));
+            }
+            let totalDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+            if (_isMeleeStrike) {
+
+                window.setTimeout(() => {
+                    animateStrikeLeap(unit, target.x, target.y);
+                    playSfx('basicAttack');
+                }, projectileDelay);
+            } else {
+
+                window.setTimeout(() => {
+                    triggerAttackAnim(unit, target.x, target.y);
+                }, projectileDelay);
+
+                window.setTimeout(() => {
+                    playSfx('basicAttack');
+
+                    const _atkProjOverride = _getProjectileOverride(unit, null);
+                    playProjectileToUnit(unit, target, 'attack', cam?.travelMs ?? actionMs(480), null, _atkProjOverride);
+                }, projectileDelay + lungeLeadMs);
+            }
+
+            window.setTimeout(() => {
+                if (evaded) {
+
+                    target._matchDodges = (target._matchDodges || 0) + 1;
+
+                    grantXP(target, XP_DODGE, 'dodge');
+                    addLog(`${unitDisplayName(target)} dodges ${unitDisplayName(unit)}'s attack!`);
+                    showBattleDialogue([`<span class="dlg-resist">💨 ${unitDisplayName(target)} dodges the attack!</span>`], 1200);
+                    showFloatingTextForUnit(target, 'DODGE!', 'dodge', {
+                        durationMs: 1000
+                    });
+                    playSfx('dodge');
+                    triggerDodgeAnim(target, unit.x, unit.y);
+                    if (_activeCinematic?.showDamage) _activeCinematic.showDamage('DODGE!', false);
+                    if (_activeCinematic?.showDodge) _activeCinematic.showDodge();
+                } else {
+
+                    const preHp = target.hp;
+                    if (isCrit) {
+                        addLog(`⚡ CRITICAL HIT!`);
+                        showBattleDialogue([`<span class="dlg-effective">⚡ CRITICAL HIT!</span>`], 1200);
+                        showFloatingTextForUnit(unit, 'CRIT!', 'crit', {
+                            durationMs: 1100,
+                            jitterY: -20
+                        });
+                        shakeBoard('normal');
+                    }
+                    if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, isCrit);
+
+                    if (_activeCinematic?.showTypeEffect) {
+                        const _typeNote = getTypeCombatNote(unit, target);
+                        if (_typeNote) _activeCinematic.showTypeEffect(_typeNote);
+                    }
+                    const killed = applyDamageToUnit(target, damage, `${unitDisplayName(unit)} attacks${isCrit ? ' (CRIT!)' : ''}: `, {
+                        sourceUnit: unit
+                    });
+
+                    if (killed) {
+                        const matchOver = checkWinConditionOnly();
+                        const killCin = playCinematicAttack(unit, target, {
+                            _forceBasicKill: true
+                        });
+
+                        if (killCin?.showDamage) killCin.showDamage(`-${damage}`, isCrit);
+                        if (killCin?.showKO) killCin.showKO();
+                        if (matchOver) {
+                            checkWin();
+                            renderBattleUpdate();
+                            return;
+                        }
+                    }
+                }
+
+                unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
+                spendAP(unit, AP_COST_ACTION);
+                state._actionExecuting = false;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
+
+                const _atkPrevView = state.actionMenuView;
+                if (!unitFinished(unit) && !unit.dead && _atkPrevView === 'attackTargets') {
+                    state.actionMode = 'attack';
+                    state.actionMenuView = 'attackTargets';
+                } else if (!unitFinished(unit) && !unit.dead && (_atkPrevView === 'spells' || _atkPrevView === 'spellTargets')) {
+                    state.actionMode = null;
+                    state.actionMenuView = 'spells';
+                } else {
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                }
+                state.selectedTool = null;
+                state.pendingTarget = null;
+
+                if (!evaded && !target.dead && !target._dying && d === 1 && rollCounter(target)) {
+                    const counterDmg = getCounterDamage(target);
+                    target._matchCounters = (target._matchCounters || 0) + 1;
+
+                    grantXP(target, XP_COUNTER, 'counter');
+                    addLog(`⚔️ ${unitDisplayName(target)} counter-attacks for ${counterDmg} damage!`);
+                    const _counterTarget = target;
+                    const _counterAttacker = unit;
+                    window.setTimeout(() => {
+                        showFloatingTextForUnit(_counterTarget, 'COUNTER!', 'counter', {
+                            durationMs: 1000
+                        });
+                        if (_activeCinematic?.showCounter) _activeCinematic.showCounter();
+                        applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
+                            sourceUnit: _counterTarget,
+                            ignoreArmor: false
+                        });
+                        checkWin();
+                    }, actionMs(500));
+                }
+
+                /* Unit animation override: revert race-specific attack sprite */
+                _revertSpriteOverride(unit);
+
+                endUnitIfDone(unit);
+                renderBattleUpdate();
+            }, impactDelay);
+            return totalDelay;
+        }
+
+        function doInspect(unit, x, y) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return;
+            }
+            const inspectReach = getEffectiveInspect(unit);
+            if (inspectReach <= 0) {
+                addLog(`${unitDisplayName(unit)} cannot inspect right now.`);
+                return;
+            }
+            const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
+            if (d > inspectReach) {
+                addLog('That inspect target is out of reach.');
+                return;
+            }
+            if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
+                addLog('Terrain blocks that scan line.');
+                return;
+            }
+
+            pushUndoSnapshot(true);
+
+            const tileCount = getInspectTileCount(unit);
+            const candidates = [];
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const tx = x + dx,
+                        ty = y + dy;
+                    if (tx < 0 || tx >= bw() || ty < 0 || ty >= bh()) continue;
+                    const dist = Math.abs(dx) + Math.abs(dy);
+                    candidates.push({
+                        x: tx,
+                        y: ty,
+                        dist
+                    });
+                }
+            }
+
+            candidates.sort((a, b) => a.dist - b.dist);
+            const toReveal = candidates.slice(0, tileCount);
+
+            let totalHourglasses = 0;
+            let lootedNow = 0;
+            for (const tile of toReveal) {
+                const key = scanKey(tile.x, tile.y);
+                state.scannedByPlayer[unit.player].add(key);
+
+                const tileHG = state.hourglasses.filter(h => h.carriedBy === null && h.x === tile.x && h.y === tile.y);
+                for (const h of tileHG) {
+                    h.carriedBy = unit.id;
+                    h.visibleTo[1] = true;
+                    h.visibleTo[2] = true;
+                    unit.hourglasses += 1;
+                    const prevBuff = unit.hourglassBuff || 0;
+                    unit.hourglassBuff = prevBuff + 1;
+                    state.hourglassBuffs[unit.player] = (state.hourglassBuffs[unit.player] || 0) + 1;
+                    totalHourglasses++;
+                }
+
+                const deadUnit = state.units.find(u => u.dead && u.x === tile.x && u.y === tile.y);
+                if (deadUnit) {
+                    const preLoot = lootedNow;
+                    lootedNow += lootCorpseItems(unit, deadUnit);
+                    if (lootedNow > preLoot) {
+                        showFloatingTextForUnit(unit, `📦 Looted ${lootedNow - preLoot} item${(lootedNow - preLoot) > 1 ? 's' : ''}`, 'pickup', { durationMs: 1200 });
+                    }
+                }
+
+                const bombIndex = state.bombs.findIndex(b => b.x === tile.x && b.y === tile.y && b.owner !== unit.player);
+                if (bombIndex >= 0) {
+                    const bomb = state.bombs.splice(bombIndex, 1)[0];
+                    detonateBomb(bomb, `Scan triggers a hidden bomb at ${coordLabel(tile.x, tile.y)}.`);
+                }
+            }
+
+            if (totalHourglasses > 0) {
+                const newLevel = unit.hourglassBuff || 0;
+                const buffDesc = `+${newLevel} ATK, +${newLevel} DEF, +${Math.floor(newLevel/2)} MOV`;
+                grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
+                unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
+                showFloatingTextForUnit(unit, `⏳ +${totalHourglasses}`, 'streak');
+                showCombatBanner(`⏳ Hourglass Found!`, `Buff Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
+                shakeBoard('normal');
+            }
+
+            addLog(`${unitDisplayName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`, unit.player);
+
+            grantXP(unit, XP_INSPECT, 'inspect');
+            if (totalHourglasses > 0) {
+                addLog(`⏳ Inspection uncovers ${totalHourglasses} hourglass${totalHourglasses !== 1 ? 'es' : ''}! Buff Lv.${unit.hourglassBuff}.`, unit.player);
+            }
+
+            if (totalHourglasses === 0) {
+                addLog(`Nothing found here.`, unit.player);
+            }
+
+            if (lootedNow > 0) {
+                addLog(`${unitDisplayName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
+            }
+
+            focusBoardCameraOnTiles([{
+                x,
+                y
+            }], {
+                zoom: getWideZoom(),
+                holdMs: 800
+            });
+
+            spendAP(unit, AP_COST_ACTION);
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'more';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            checkWin();
+            renderBattleUpdate();
+            const _inspectDelay = 700;
+            const _inspectUnit = unit;
+            const _inspectPlayer = unit.player;
+            const _inspectKeys = toReveal.map(t => scanKey(t.x, t.y));
+            window.setTimeout(() => {
+
+                if (state.scannedByPlayer && state.scannedByPlayer[_inspectPlayer]) {
+
+                    if (!state._scanFadingKeys) state._scanFadingKeys = new Set();
+                    for (const k of _inspectKeys) state._scanFadingKeys.add(k);
+
+                    for (const k of _inspectKeys) state.scannedByPlayer[_inspectPlayer].delete(k);
+                    renderBattleUpdate();
+
+                    window.setTimeout(() => {
+                        if (state._scanFadingKeys) {
+                            for (const k of _inspectKeys) state._scanFadingKeys.delete(k);
+                        }
+                        renderBattleUpdate();
+                    }, 600);
+                }
+                endUnitIfDone(_inspectUnit);
+                renderBattleUpdate();
+            }, _inspectDelay);
+            return _inspectDelay;
+        }
+
+        function isObjectiveTile(x, y) {
+            if (isTowerTile(x, y)) return true;
+            if (typeof isInNexusZone === 'function' && isInNexusZone(x, y)) return true;
+
+            if (state.roamingNexus) {
+                const rn = state.roamingNexus;
+                if (x >= rn.zoneX && x < rn.zoneX + rn.zoneSize &&
+                    y >= rn.zoneY && y < rn.zoneY + rn.zoneSize) return true;
+            }
+
+            if (typeof isInAnySpawnZone === 'function' && isInAnySpawnZone(x, y)) return true;
+            return false;
+        }
+
+        function canChangeAltitude(unit, mode) {
+            if (!unit || unit.dead || unit._dying) return { ok: false, reason: 'Unit is dead.' };
+            if (!canFly(unit)) return { ok: false, reason: 'Only flying units can change altitude.' };
+            const cfg = FLYING_ALTITUDE_CONFIG;
+            if ((unit.ap || 0) < cfg.apCost) return { ok: false, reason: 'Not enough AP.' };
+
+            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
+                return { ok: false, reason: 'Unit is stunned.' };
+            }
+
+            const used = unit._altitudeChangesThisTurn || 0;
+            if (used >= cfg.maxPerTurn) {
+                return { ok: false, reason: `Already changed altitude ${cfg.maxPerTurn} times this turn.` };
+            }
+
+            const unitZ = unit.z ?? 0;
+            const groundZ = getHeightAt(unit.x, unit.y);
+            const minZ = getMinFlyingZ(unit.x, unit.y);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y);
+
+            if (mode === 'ascend') {
+                if (unitZ >= maxZ) {
+                    return { ok: false, reason: 'Already at maximum altitude.' };
+                }
+            } else if (mode === 'descend') {
+
+                if (unitZ <= groundZ) {
+                    return { ok: false, reason: 'Already on the ground.' };
+                }
+
+            }
+            return { ok: true };
+        }
+
+        function _triggerBatTransform(unit, dir) {
+            if (!state._batTransformIds) state._batTransformIds = new Map();
+            const cls = dir === 'in' ? 'bat-transform-in' : 'bat-transform-out';
+            state._batTransformIds.set(unit.id, cls);
+            markDirty('board');
+            renderIfDirty();
+
+            window.setTimeout(() => {
+                if (state._batTransformIds) state._batTransformIds.delete(unit.id);
+                markDirty('board');
+                renderIfDirty();
+            }, 500);
+        }
+
+        function doAltitudeChange(unit, mode) {
+
+            const checkMode = (mode === 'land') ? 'descend' : mode;
+            const check = canChangeAltitude(unit, checkMode);
+            if (!check.ok) {
+                addLog(check.reason);
+                if (typeof playErrorSfx === 'function') playErrorSfx();
+                return 0;
+            }
+
+            pushUndoSnapshot(true);
+
+            const oldZ = unit.z ?? 0;
+            const groundZ = getHeightAt(unit.x, unit.y);
+            const minZ = getMinFlyingZ(unit.x, unit.y);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y);
+
+            if (mode === 'ascend') {
+                let newZ = oldZ + 1;
+
+                if (oldZ <= groundZ) newZ = minZ;
+
+                newZ = Math.min(newZ, maxZ);
+                unit.z = newZ;
+
+                if (unit.race === 'vampire' && oldZ <= groundZ) {
+                    _triggerBatTransform(unit, 'in');
+                }
+                playSfx('buff');
+                const altAboveGround = newZ - groundZ;
+                showFloatingTextForUnit(unit, `⬆ TAKE OFF (Alt ${altAboveGround})`, 'buff', { durationMs: 900 });
+                addLog(`${unitDisplayName(unit)} takes off to altitude ${altAboveGround} above ground! (Z ${oldZ} → ${newZ})`);
+            } else {
+
+                const newZ = groundZ;
+
+                if (unit.race === 'vampire' && oldZ > groundZ) {
+                    _triggerBatTransform(unit, 'out');
+                }
+                unit.z = newZ;
+                playSfx('moveStep');
+                showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
+                addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${newZ})`);
+            }
+
+            unit._altitudeChangesThisTurn = (unit._altitudeChangesThisTurn || 0) + 1;
+
+            spendAP(unit, FLYING_ALTITUDE_CONFIG.apCost);
+
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'more';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+
+            checkWin();
+            renderBattleUpdate();
+
+            focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], { zoom: getWideZoom(), holdMs: 400 });
+
+            const _altDelay = 500;
+            const _altUnit = unit;
+            window.setTimeout(() => {
+                endUnitIfDone(_altUnit);
+                renderBattleUpdate();
+            }, _altDelay);
+            return _altDelay;
+        }
+
+        function canReshapeTile(unit, mode) {
+            if (!unit || unit.dead || unit._dying) return { ok: false, reason: 'Unit is dead.' };
+
+            if (canFly(unit)) return { ok: false, reason: 'Flying units change altitude instead of reshaping terrain.' };
+            if ((unit.ap || 0) < TERRAIN_RESHAPE_CONFIG.apCost) return { ok: false, reason: 'Not enough AP.' };
+
+            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
+                return { ok: false, reason: 'Unit is stunned.' };
+            }
+            const x = unit.x, y = unit.y;
+            if (!isInside(x, y)) return { ok: false, reason: 'Out of bounds.' };
+
+            if (isObjectiveTile(x, y)) return { ok: false, reason: 'Objective tiles cannot be reshaped.' };
+
+            const obj = getObjectAt(x, y);
+            if (obj) {
+                const rule = getObjectRule(obj);
+                if (rule && !rule.walkable) return { ok: false, reason: 'An object blocks reshaping here.' };
+            }
+
+            const used = unit._reshapeThisTurn || 0;
+            if (used >= TERRAIN_RESHAPE_CONFIG.maxDeltaPerTurn) {
+                return { ok: false, reason: `Already reshaped ${TERRAIN_RESHAPE_CONFIG.maxDeltaPerTurn} times this turn.` };
+            }
+
+            const currentHeight = getBaseHeightAt(x, y);
+            if (mode === 'raise' && currentHeight >= TERRAIN_RESHAPE_CONFIG.maxHeight) {
+                return { ok: false, reason: 'Already at maximum height.' };
+            }
+            if (mode === 'lower' && currentHeight <= TERRAIN_RESHAPE_CONFIG.minHeight) {
+                return { ok: false, reason: 'Already at minimum height.' };
+            }
+
+            return { ok: true };
+        }
+
+        function doReshape(unit, mode) {
+            const check = canReshapeTile(unit, mode);
+            if (!check.ok) {
+                addLog(check.reason);
+                if (typeof playErrorSfx === 'function') playErrorSfx();
+                return 0;
+            }
+
+            pushUndoSnapshot(true);
+
+            const x = unit.x, y = unit.y;
+            const oldHeight = getBaseHeightAt(x, y);
+            const terrain = getTerrainAt(x, y);
+
+            if (mode === 'raise') {
+
+                const newZ = oldHeight + 1;
+                setBlockAt(x, y, newZ, terrain);
+
+                unit.z = newZ;
+                playSfx('physicalAbility');
+                showFloatingTextForUnit(unit, '🔺 RAISE', 'buff', { durationMs: 900 });
+                addLog(`${unitDisplayName(unit)} raises the ground beneath them! (Height ${oldHeight} → ${newZ})`);
+            } else {
+
+                removeBlockAt(x, y, oldHeight);
+                const newHeight = oldHeight - 1;
+
+                unit.z = Math.max(0, newHeight);
+                playSfx('physicalAbility');
+                showFloatingTextForUnit(unit, '🔻 LOWER', 'neutral', { durationMs: 900 });
+                addLog(`${unitDisplayName(unit)} lowers the ground beneath them! (Height ${oldHeight} → ${newHeight})`);
+            }
+
+            unit._reshapeThisTurn = (unit._reshapeThisTurn || 0) + 1;
+
+            spendAP(unit, TERRAIN_RESHAPE_CONFIG.apCost);
+
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+
+            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: x, fromY: y });
+
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'more';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+
+            checkWin();
+            renderBattleUpdate();
+
+            focusBoardCameraOnTiles([{ x, y }], { zoom: getWideZoom(), holdMs: 400 });
+
+            const _reshapeDelay = 500;
+            const _reshapeUnit = unit;
+            window.setTimeout(() => {
+                endUnitIfDone(_reshapeUnit);
+                renderBattleUpdate();
+            }, _reshapeDelay);
+            return _reshapeDelay;
+        }
+
+        function applyTerrainDeform(cx, cy, radius, deform) {
+            if (!deform || !state.boardHeights) return;
+            const minH = TERRAIN_RESHAPE_CONFIG.minHeight;
+            const maxH = TERRAIN_RESHAPE_CONFIG.maxHeight;
+            const cDelta = deform.centerDelta || 0;
+            const eDelta = deform.edgeDelta || 0;
+            if (cDelta === 0 && eDelta === 0) return;
+
+            const modified = [];
+
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const tx = cx + dx, ty = cy + dy;
+                    if (!isInside(tx, ty)) continue;
+
+                    const terrain = getTerrainAt(tx, ty);
+                    if (terrain === 'wall') continue;
+                    if (terrain === 'mountain' && cDelta < 0) continue;
+                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) continue;
+                    const obj = getObjectAt(tx, ty);
+                    if (obj) {
+                        const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
+                        if (rule && !rule.walkable) continue;
+                    }
+
+                    const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                    let delta;
+                    if (dist === 0) {
+                        delta = cDelta;
+                    } else if (radius <= 1 || dist >= radius) {
+                        delta = eDelta;
+                    } else {
+
+                        const t = dist / radius;
+                        delta = Math.round(cDelta + (eDelta - cDelta) * t);
+                    }
+                    if (delta === 0) continue;
+
+                    const oldH = getBaseHeightAt(tx, ty);
+                    const newH = Math.max(minH, Math.min(maxH, oldH + delta));
+                    if (newH === oldH) continue;
+
+                    if (newH > oldH) {
+
+                        for (let z = oldH + 1; z <= newH; z++) {
+                            setBlockAt(tx, ty, z, terrain || 'grass');
+                        }
+                    } else {
+
+                        for (let z = oldH; z > newH; z--) {
+                            removeBlockAt(tx, ty, z);
+                        }
+                    }
+
+                    modified.push({ x: tx, y: ty, oldH, newH });
+                }
+            }
+
+            if (modified.length === 0) return;
+
+            for (const m of modified) {
+                const u = unitAt(m.x, m.y);
+                if (u && !u.dead) {
+                    u.z = m.newH;
+                    if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: m.x, fromY: m.y });
+                }
+            }
+
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+        }
+
+        function doDetonate(unit) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return 0;
+            }
+            const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
+            if (!ownedBombs.length) {
+                addLog('No bombs on the field to detonate.');
+                playErrorSfx();
+                return 0;
+            }
+            playSfx('uiConfirm');
+            const bombsCopy = [...ownedBombs];
+            state.bombs = state.bombs.filter(b => b.ownerUnitId !== unit.id);
+            for (const bomb of bombsCopy) {
+                detonateBomb(bomb, `${unitDisplayName(unit)} detonates bomb at ${coordLabel(bomb.x, bomb.y)}!`);
+            }
+            spendAP(unit, AP_COST_ACTION);
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'more';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            clearAoePreview();
+            endUnitIfDone(unit);
+            renderBattleUpdate();
+            return actionMs(600);
+        }
+
+        function doComboAttack(initiator, partner, targetX, targetY) {
+            if (!initiator || !partner || initiator.dead || partner.dead) return 0;
+            if ((initiator.ap || 0) < COMBO_AP_COST_INITIATOR || (partner.ap || 0) < COMBO_AP_COST_PARTNER) {
+                addLog('Combo requires 3 AP total (2 from initiator, 1 from partner).');
+                return 0;
+            }
+            if (Math.abs(initiator.x - partner.x) + Math.abs(initiator.y - partner.y) !== 1) {
+                addLog('Combo partner must be adjacent.');
+                return 0;
+            }
+            const combo = getComboForUnits(initiator, partner);
+            if (!combo) {
+                addLog('No combo available for that weapon pair.');
+                return 0;
+            }
+
+            const target = unitAt(targetX, targetY);
+            const isOffensive = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+            const _comboTargetZ = target ? (target.z ?? 0) : 0;
+            const d = combatDist(initiator.x, initiator.y, initiator.z ?? 0, targetX, targetY, _comboTargetZ);
+            const _comboDxy = Math.abs(initiator.x - targetX) + Math.abs(initiator.y - targetY);
+            const comboRange = combo.range || 3;
+
+            if (isOffensive) {
+                if (!target || target.player === initiator.player) {
+                    addLog('Choose an enemy target for the combo attack.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (d < 1 || d > comboRange) {
+                    addLog('Combo target is out of range.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (_comboDxy >= 1 && isRangeBlockedByTerrain(initiator.x, initiator.y, targetX, targetY, initiator.z)) {
+                    addLog('Terrain blocks the combo attack.');
+                    return 0;
+                }
+            }
+
+            pushUndoSnapshot(true);
+
+            const synergy = isOffensive && target ?
+                getComboTypeSynergyVsTarget(initiator, partner, target) :
+                getComboTypeSynergy(initiator, partner);
+            const synergyMult = synergy.mult;
+            const synergyLabel = synergy.label ? ` ${synergy.label}` : '';
+
+            const _comboStatKey = combo.damageType === 'physical' ? 'atk' : 'intStat';
+            const _comboStatBonus = Math.floor(((initiator[_comboStatKey] || 0) + (partner[_comboStatKey] || 0)) * 0.5 * 0.35);
+            const combinedPower = (initiator.spellPower || 0) + (partner.spellPower || 0) + getHourglassPower(initiator) + getHourglassPower(partner) + _comboStatBonus;
+
+            spendAP(initiator, COMBO_AP_COST_INITIATOR);
+            spendAP(partner, COMBO_AP_COST_PARTNER);
+
+            initiator._lastComboRound = state.round;
+            partner._lastComboRound = state.round;
+
+            playSfx('fireball');
+
+            if (target) {
+                const comboTypeA = (initiator.types || [])[0] || 'human';
+                const comboTypeB = (partner.types || [])[0] || 'human';
+                _vfxCombo(initiator.x, initiator.y, partner.x, partner.y, target.x, target.y, comboTypeA, comboTypeB);
+            }
+            if (target) {
+                animateStrikeLeap(initiator, target.x, target.y);
+                animateStrikeLeap(partner, target.x, target.y);
+            }
+            addLog(`${unitDisplayName(initiator)} & ${unitDisplayName(partner)} perform ${combo.name}!${synergyLabel}`);
+
+            initiator._matchCombos = (initiator._matchCombos || 0) + 1;
+            partner._matchCombos = (partner._matchCombos || 0) + 1;
+
+            grantXP(initiator, XP_COMBO, 'combo');
+            grantXP(partner, XP_COMBO, 'combo');
+            const playerCombos = state.units.filter(u => u.player === initiator.player).reduce((s, u) => s + (u._matchCombos || 0), 0);
+            if (playerCombos >= 3) checkAchievement('comboKing', initiator);
+            shakeBoard('normal');
+
+            let completionDelay = actionMs(800);
+
+            if (combo.kind === 'damage' && target) {
+                const baseDmg = (combo.dmg || 160) + combinedPower;
+                const totalDmg = Math.max(1, Math.round(baseDmg * synergyMult));
+                applyDamageToUnit(target, totalDmg, `${combo.name}: `, {
+                    sourceUnit: initiator,
+                    damageType: combo.damageType,
+                    spellType: combo.spellType || null
+                });
+
+                for (const eff of (combo.statusEffects || [])) {
+                    if (rollStatusApply(initiator, target, 0.85)) {
+                        applyStatusPayload(target, eff, `${combo.name}: `, initiator);
+                    }
+                }
+            }
+
+            else if (combo.kind === 'multiHit' && target) {
+                const hits = combo.hitDamages || [combo.dmg || 10];
+                const comboHitGap = actionMs(300);
+                hits.forEach((hitDmg, idx) => {
+                    window.setTimeout(() => {
+                        if (target.dead) return;
+                        const totalHit = Math.max(1, Math.round((hitDmg + Math.floor(combinedPower / hits.length)) * synergyMult));
+
+                        if (idx > 0) {
+                            playProjectileToUnit(initiator, target, 'damage', actionMs(240), combo.spellType);
+                            playSfx('fireball');
+                        }
+                        applyDamageToUnit(target, totalHit, `${combo.name} hit ${idx + 1}: `, {
+                            sourceUnit: initiator,
+                            damageType: combo.damageType,
+                            spellType: combo.spellType || null
+                        });
+                    }, idx * comboHitGap);
+                });
+                completionDelay = Math.max(completionDelay, (hits.length - 1) * comboHitGap + actionMs(500));
+
+                window.setTimeout(() => {
+                    for (const eff of (combo.statusEffects || [])) {
+                        if (!target.dead && rollStatusApply(initiator, target, 0.75)) {
+                            applyStatusPayload(target, eff, `${combo.name}: `, initiator);
+                        }
+                    }
+                }, (hits.length - 1) * comboHitGap + actionMs(100));
+            }
+
+            else if (combo.kind === 'aoe') {
+                const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
+                const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
+                for (const tile of area) {
+                    const hit = enemies.find(e => e.x === tile.x && e.y === tile.y);
+                    if (hit && !hit.dead) {
+                        const aoeDmg = Math.max(1, Math.round(((combo.dmg || 16) + combinedPower) * synergyMult));
+                        applyDamageToUnit(hit, aoeDmg, `${combo.name}: `, {
+                            sourceUnit: initiator,
+                            damageType: combo.damageType,
+                            spellType: combo.spellType || null
+                        });
+                        for (const eff of (combo.statusEffects || [])) {
+                            if (!hit.dead && rollStatusApply(initiator, hit, 0.7)) {
+                                applyStatusPayload(hit, eff, `${combo.name}: `, initiator);
+                            }
+                        }
+                    }
+                }
+            }
+
+            else if (combo.kind === 'healAll') {
+                const healAmt = Math.round((combo.heal || 20) * synergyMult);
+                for (const ally of aliveUnitsFor(initiator.player)) {
+                    const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
+                    if (hpGain > 0) {
+                        applyHealingToUnit(ally, hpGain, initiator);
+                        addLog(`${combo.name} heals ${unitDisplayName(ally)} for ${hpGain} HP.`);
+                    }
+                }
+            }
+
+            else if (combo.kind === 'shield') {
+                const shieldAmt = Math.round((combo.shield || 16) * synergyMult);
+                const cap = Math.floor((initiator.maxHp || 100) * (combo.shieldCapPct || 0.30));
+                const gain = Math.min(shieldAmt, cap - (initiator.shield || 0));
+                if (gain > 0) {
+                    initiator.shield = (initiator.shield || 0) + gain;
+                    addLog(`${combo.name} grants ${unitDisplayName(initiator)} ${gain} shield.`);
+                }
+                const gain2 = Math.min(shieldAmt, cap - (partner.shield || 0));
+                if (gain2 > 0) {
+                    partner.shield = (partner.shield || 0) + gain2;
+                    addLog(`${combo.name} grants ${unitDisplayName(partner)} ${gain2} shield.`);
+                }
+            }
+
+            else if (combo.kind === 'buff') {
+                for (const eff of (combo.statusEffects || [])) {
+                    applyStatusPayload(initiator, eff, `${combo.name}: `, initiator);
+                    applyStatusPayload(partner, eff, `${combo.name}: `, initiator);
+                }
+                addLog(`${combo.name} buffs both ${unitDisplayName(initiator)} and ${unitDisplayName(partner)}.`);
+            }
+
+            if (combo.comboHeal && combo.comboHeal > 0) {
+                const healAmt = Math.round(combo.comboHeal * synergyMult);
+                for (const ally of aliveUnitsFor(initiator.player)) {
+                    const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
+                    if (hpGain > 0) {
+                        applyHealingToUnit(ally, hpGain, initiator);
+                        addLog(`${combo.name} also heals ${unitDisplayName(ally)} for ${hpGain} HP.`);
+                    }
+                }
+            }
+
+            state.actionMode = null;
+            state._actionExecuting = false;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.comboPartner = null;
+            checkWin();
+            endUnitIfDone(initiator);
+            endUnitIfDone(partner);
+            renderBattleUpdate();
+            return completionDelay;
+        }
+
+        function doItem(unit, x, y) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return;
+            }
+
+            const target = unitAt(x, y);
+            let chebyshev = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
+
+            if (target && target._isBoss && target._bossSize === 2) {
+                chebyshev = Math.min(chebyshev,
+                    Math.max(Math.abs(unit.x - (target.x + 1)), Math.abs(unit.y - target.y)),
+                    Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - (target.y + 1))),
+                    Math.max(Math.abs(unit.x - (target.x + 1)), Math.abs(unit.y - (target.y + 1)))
+                );
+            }
+
+            if (state.selectedTool === 'healPotion') {
+                if (unit.items.healPotion <= 0) {
+                    addLog('No healing potions left.');
+                    playErrorSfx();
+                    return;
+                }
+                if (!target || isEnemyUnit(target, unit) || target.dead) {
+                    addLog('Choose a living friendly unit for Healing Potion.');
+                    playErrorSfx();
+                    return;
+                }
+                if (target.hp >= target.maxHp) {
+                    addLog(`${unitDisplayName(target)} is already at full HP.`);
+                    playErrorSfx();
+                    return;
+                }
+                focusUnitPanel(target.id);
+                playSfx('healRegen');
+
+                if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                    focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                        zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(),
+                        holdMs: 99999, persist: true, transitionMs: 350,
+                        _fogAllowed: true
+                    });
+                } else {
+                    _spellFocusCamera(unit, x, y);
+                }
+                pushUndoSnapshot(true);
+                unit.items.healPotion -= 1;
+                const heal = Math.max(1, Math.round(96 * getTerrainHealMultiplier(target.x, target.y)));
+                const healed = applyHealingToUnit(target, heal, unit);
+                flashSelectedUnitPanel('heal');
+                addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
+            } else if (state.selectedTool === 'manaPotion') {
+                if (unit.items.manaPotion <= 0) {
+                    addLog('No mana potions left.');
+                    playErrorSfx();
+                    return;
+                }
+                if (!target || isEnemyUnit(target, unit) || target.dead) {
+                    addLog('Choose a living friendly unit for Mana Potion.');
+                    playErrorSfx();
+                    return;
+                }
+                if (target.maxMp <= 0) {
+                    addLog('That target has no MP to restore.');
+                    playErrorSfx();
+                    return;
+                }
+                if (target.mp >= target.maxMp) {
+                    addLog('That target is already at full MP.');
+                    playErrorSfx();
+                    return;
+                }
+                focusUnitPanel(target.id);
+                playSfx('manaRegen');
+
+                if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                    focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                        zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(),
+                        holdMs: 99999, persist: true, transitionMs: 350,
+                        _fogAllowed: true
+                    });
+                } else {
+                    _spellFocusCamera(unit, x, y);
+                }
+                pushUndoSnapshot(true);
+                unit.items.manaPotion -= 1;
+                const restore = 40;
+                const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
+                target.mp = Math.min(target.maxMp, target.mp + restore);
+                flashSelectedUnitPanel('heal');
+                if (mpGain > 0) showFloatingTextForUnit(target, `+${mpGain} MP`, 'mp');
+                addLog(`${unitDisplayName(unit)} uses Mana Potion on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
+            } else if (state.selectedTool === 'scanner') {
+                if (unit.items.scanner <= 0) {
+                    addLog('No scanners left.');
+                    playErrorSfx();
+                    return;
+                }
+                if (chebyshev > 0) {
+                    addLog('Scanner currently centers on the acting unit.');
+                    playErrorSfx();
+                    return;
+                }
+                const effectiveAwr = getEffectiveAwr(unit);
+                if (effectiveAwr <= 0) {
+                    addLog(`${unitDisplayName(unit)} cannot use Scanner while jammed.`);
+                    playErrorSfx();
+                    return;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                pushUndoSnapshot(true);
+                unit.items.scanner -= 1;
+                const scanRadius = 1;
+                const area = getSquareArea(x, y, scanRadius);
+                for (const tile of area) {
+                    const key = scanKey(tile.x, tile.y);
+                    state.scannedByPlayer[unit.player].add(key);
+                }
+                const side = scanRadius * 2 + 1;
+
+                grantXP(unit, XP_SCAN, 'scan');
+
+                const remaining = state.hourglasses.filter(h => h.carriedBy === null && !h.visibleTo[unit.player]);
+                if (remaining.length > 0) {
+                    let bestDist = Infinity;
+                    for (const h of remaining) {
+                        const dist = Math.abs(h.x - unit.x) + Math.abs(h.y - unit.y);
+                        if (dist < bestDist) bestDist = dist;
+                    }
+                    let temp;
+                    if (bestDist <= 3) temp = '🔴 SCORCHING — An hourglass is very close!';
+                    else if (bestDist <= 6) temp = '🟠 HOT — An hourglass is nearby.';
+                    else if (bestDist <= 10) temp = '🟡 WARM — An hourglass is in the area.';
+                    else if (bestDist <= 16) temp = '🔵 COOL — An hourglass is fairly far away.';
+                    else temp = '❄️ FREEZING — Hourglasses are very far away.';
+                    addLog(`📡 Scanner detects hourglass energy: ${temp}`, unit.player);
+                    showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
+                } else {
+                    addLog(`Scanner sweep finds nothing in the ${side}x${side} area.`, unit.player);
+                }
+
+                focusBoardCameraOnTiles([{
+                    x,
+                    y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 800
+                });
+
+                spendAP(unit, AP_COST_ACTION);
+                if (!unit._itemLog) unit._itemLog = {};
+                unit._itemLog['scanner'] = (unit._itemLog['scanner'] || 0) + 1;
+                state._actionExecuting = false;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
+                if (!unitFinished(unit) && !unit.dead) {
+                    state.actionMode = null;
+                    state.actionMenuView = 'items';
+                } else {
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                }
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                renderBattleUpdate();
+                const _scanUnit = unit;
+                const _scanPlayer = unit.player;
+                const _scanKeys = area.map(t => scanKey(t.x, t.y));
+                window.setTimeout(() => {
+
+                    if (state.scannedByPlayer && state.scannedByPlayer[_scanPlayer]) {
+                        if (!state._scanFadingKeys) state._scanFadingKeys = new Set();
+                        for (const k of _scanKeys) state._scanFadingKeys.add(k);
+                        for (const k of _scanKeys) state.scannedByPlayer[_scanPlayer].delete(k);
+                        renderBattleUpdate();
+                        window.setTimeout(() => {
+                            if (state._scanFadingKeys) {
+                                for (const k of _scanKeys) state._scanFadingKeys.delete(k);
+                            }
+                            renderBattleUpdate();
+                        }, 600);
+                    }
+                    endUnitIfDone(_scanUnit);
+                    renderBattleUpdate();
+                }, 800);
+                return;
+            } else if (ITEM_RULES[state.selectedTool]?.baneType) {
+
+                const baneKey = state.selectedTool;
+                const baneRule = ITEM_RULES[baneKey];
+                if ((unit.items[baneKey] || 0) <= 0) {
+                    addLog(`No ${baneRule.name} left.`);
+                    playErrorSfx();
+                    return;
+                }
+                if (!target || isAllyUnit(target, unit) || target.dead) {
+                    addLog(`Choose a living enemy for ${baneRule.name}.`);
+                    playErrorSfx();
+                    return;
+                }
+                const baneRange = getEffectiveRange(unit) + 1;
+                if (chebyshev > baneRange) {
+                    addLog(`Target is out of range for ${baneRule.name}.`);
+                    playErrorSfx();
+                    return;
+                }
+                focusUnitPanel(target.id);
+                _spellFocusCamera(unit, x, y);
+                pushUndoSnapshot(true);
+                unit.items[baneKey] -= 1;
+                const isBaneEffective = (target.types || []).includes(baneRule.baneType);
+                let damage = baneRule.baseDmg + (isBaneEffective ? baneRule.baneDmg : 0);
+                damage = Math.max(1, damage - Math.floor((target.def || 0) * 0.3));
+                const _throwTravelMs = actionMs(520);
+
+                triggerAttackAnim(unit, target.x, target.y);
+                window.setTimeout(() => {
+                    playSfx('itemThrow');
+                    playProjectileToUnit(unit, target, 'proj-bane-' + baneRule.baneType, _throwTravelMs);
+                }, actionMs(120));
+
+                const _baneImpactMs = actionMs(120) + _throwTravelMs + actionMs(80);
+                window.setTimeout(() => {
+                    applyDamageToUnit(target, damage, `${unitDisplayName(unit)} throws ${baneRule.name} at `, {
+                        sourceUnit: unit,
+                        allowMarkBonus: false,
+                        damageType: 'magic'
+                    });
+                    if (isBaneEffective) {
+                        const _bSprite = baneRule.baneType ? `<div class="bane-sprite bane-${baneRule.baneType}" style="width:16px;height:16px;background-size:16px 16px;display:inline-block;vertical-align:middle"></div>` : '';
+                        addLog(`${_bSprite} It's super effective against ${target.types.join('/')} type!`, unit.player);
+
+                        window.setTimeout(() => {
+                            showFloatingTextForUnit(target, 'SUPER EFFECTIVE!', 'streak');
+                        }, actionMs(400));
+                    }
+                }, _baneImpactMs);
+
+                const _baneSettleMs = _baneImpactMs + actionMs(500);
+                window.setTimeout(() => {
+                    spendAP(unit, AP_COST_ACTION);
+                    if (!unit._itemLog) unit._itemLog = {};
+                    unit._itemLog[baneKey] = (unit._itemLog[baneKey] || 0) + 1;
+                    state._actionExecuting = false;
+                    state._tileActionTarget = null;
+                    state._enemyActionTargetId = null;
+                    if (!unitFinished(unit) && !unit.dead) {
+                        state.actionMode = null;
+                        state.actionMenuView = 'items';
+                    } else {
+                        state.actionMode = null;
+                        state.actionMenuView = 'root';
+                    }
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    if (!unit.dead) _softResetCameraToUnit(unit);
+                    checkWin();
+                    endUnitIfDone(unit);
+                    renderBattleUpdate();
+                }, _baneSettleMs);
+                return;
+            } else {
+                addLog('No item selected.');
+                return;
+            }
+
+            spendAP(unit, AP_COST_ACTION);
+            if (!unit._itemLog) unit._itemLog = {};
+            unit._itemLog[state.selectedTool || 'unknown'] = (unit._itemLog[state.selectedTool || 'unknown'] || 0) + 1;
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (!unitFinished(unit) && !unit.dead) {
+                state.actionMode = null;
+                state.actionMenuView = 'items';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            endUnitIfDone(unit);
+            renderBattleUpdate();
+        }
+
+        function spellLaunchSfx(spell) {
+            return ((spell?.damageType === 'physical') || (spell?.kind === 'dash') || (spell?.kind === 'grapple')) ? 'physicalAbility' : 'fireball';
+        }
+
+        function getSpellStatBonus(unit, spell) {
+            if (!unit || !spell) return 0;
+            if (spell.damageType === 'physical') {
+                return Math.floor((unit.atk || 0) * 0.35);
+            }
+
+            return Math.floor((unit.intStat || 0) * 0.35);
+        }
+
+        function _spellFocusCamera(casterUnit, tx, ty, opts = {}) {
+            if (state.cameraDisabled) return;
+
+            const points = [];
+            if (casterUnit && !casterUnit.dead) {
+                points.push({ x: casterUnit.x, y: casterUnit.y });
+            }
+            points.push({ x: tx, y: ty });
+
+            const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
+            const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
+
+            focusBoardCameraOnTiles([{ x: cx, y: cy }], {
+                zoom: _getBattleZoom(),
+                holdMs: 99999,
+                persist: true,
+                transitionMs: opts.transitionMs ?? 380,
+                _fogAllowed: true
+            });
+        }
+
+        function doSpell(unit, x, y, z) {
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return 0;
+            }
+            const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!spell) {
+                addLog('No spell selected.');
+                state._teleportingUnit = null;
+                playErrorSfx();
+                return 0;
+            }
+
+            if (spell.kind !== 'teleport') state._teleportingUnit = null;
+
+            if (z === undefined || z === null) {
+                z = (typeof nearestWalkableZ === 'function')
+                    ? nearestWalkableZ(x, y, unit.z ?? 0)
+                    : (state.boardHeights?.[y]?.[x] ?? 0);
+            }
+            if (unitHasStatus(unit, 'silence')) {
+                addLog(`${unitDisplayName(unit)} is silenced and cannot cast spells this turn.`);
+                state._teleportingUnit = null;
+                return 0;
+            }
+            const _rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+
+            const _spellClickTarget = unitAt(x, y, z);
+
+            let d;
+            if (_spellClickTarget && _spellClickTarget._isBoss && _spellClickTarget._bossSize === 2) {
+                d = distToTarget(unit.x, unit.y, _spellClickTarget, unit.z);
+            } else {
+                const _tz = _spellClickTarget ? (_spellClickTarget.z ?? 0) : (z ?? 0);
+                d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
+            }
+            const dEff = d;
+            const minRange = _kindMeta(spell).minRange ?? 1;
+
+            const isTeleportPhase2 = spell.kind === 'teleport' && state._teleportingUnit;
+
+            const isLineDirection = spell.kind === 'line' || spell.kind === 'linePush';
+            if (!isTeleportPhase2 && !isLineDirection) {
+                const effSpellRange = getEffectiveSpellRange(unit, spell);
+                if (dEff < minRange || dEff > effSpellRange) {
+                    addLog('Spell target is out of range.');
+                    state._teleportingUnit = null;
+                    playErrorSfx();
+                    return 0;
+                }
+
+                const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+                if (spell.kind !== 'teleport' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+                    addLog('Terrain blocks the spell path.');
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+
+            const _isSpellSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
+                state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && d > 0) {
+                if (!isInVision(unit, x, y) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
+                    addLog('Target is hidden in the fog.');
+                    state._teleportingUnit = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+
+            if (_isSpellSkyTelescopeTarget && state.fogOfWar && !state.devAutoSim) {
+                if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
+                const _teleVr = getUnitVisionRange(unit);
+                const _revR = Math.max(3, _teleVr);
+                for (let _dy = -_revR; _dy <= _revR; _dy++) {
+                    for (let _dx = -_revR; _dx <= _revR; _dx++) {
+                        if (Math.abs(_dx) + Math.abs(_dy) <= _revR) {
+                            state._fogRevealTiles.add(posKey(x + _dx, y + _dy));
+                        }
+                    }
+                }
+                state._fogRevealTiles.add(posKey(unit.x, unit.y));
+                scheduleBoardRender();
+                clearTimeout(state._fogRevealTimer);
+                state._fogRevealTimer = setTimeout(() => {
+                    state._fogRevealTiles = null;
+                    scheduleBoardRender();
+                }, 3500);
+            }
+            if (!canAffordSpell(unit, spell)) {
+                const needed = getSpellApCost(spell);
+                addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
+                state._teleportingUnit = null;
+                playErrorSfx();
+                return 0;
+            }
+            const discordPenalty = getStatusMpCostDelta(unit);
+            const effectiveSpellCost = spell.cost + discordPenalty;
+            if (unit.mp < effectiveSpellCost) {
+                addLog(discordPenalty > 0 ? `Not enough MP. Discord increases spell cost by ${discordPenalty}.` : 'Not enough MP.');
+                state._teleportingUnit = null;
+                playErrorSfx();
+                return 0;
+            }
+
+            pushUndoSnapshot(true);
+
+            triggerCastAnim(unit);
+
+            /* Unit animation override: race-specific cast sprite */
+            if (_applySpriteOverride(unit, spell, 'castSprite')) {
+                scheduleBoardRender();
+            }
+
+            const _useStrikeLeap = spell.damageType === 'physical'
+                && !spell.aoeOriginSelf
+                && !spell.projectileOverride
+                && !spell.chargeToTarget
+                && (spell.range || 0) <= 2
+                && !(window.ThreeVFXEffects && window.ThreeVFXEffects.hasBoulderProjectile
+                     && window.ThreeVFXEffects.hasBoulderProjectile(spell.id))
+                && !_kindMeta(spell).noStrikeLeap;
+
+            if (unitHasStatus(unit, 'invisible') && _kindMeta(spell).breaksStealth) {
+                clearStatus(unit, 'invisible');
+                addLog(`${unitDisplayName(unit)} breaks camouflage!`);
+            }
+
+            const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell);
+            let panelFocusTarget = null;
+            let completionDelay = 0;
+            const spellApCost = getSpellApCost(spell);
+            const finishAction = () => {
+                unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
+
+                /* Unit animation override: revert race-specific cast sprite */
+                _revertSpriteOverride(unit);
+
+                grantXP(unit, XP_SPELL_CAST, 'spell');
+                if (!unit._spellLog) unit._spellLog = {};
+                unit._spellLog[spell.id] = (unit._spellLog[spell.id] || 0) + 1;
+
+                state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
+                spendAP(unit, spellApCost);
+                state._actionExecuting = false;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
+
+                const _prevView = state.actionMenuView;
+                if (!unitFinished(unit) && !unit.dead && (_prevView === 'spells' || _prevView === 'spellTargets')) {
+                    state.actionMode = null;
+                    state.actionMenuView = 'spells';
+                } else {
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                }
+                state.selectedTool = null;
+                state.pendingTarget = null;
+
+                if (!unit.dead) _softResetCameraToUnit(unit);
+                checkWin();
+                endUnitIfDone(unit);
+                markDirty('board', 'selectedUnit', 'hud');
+                renderIfDirty();
+            };
+
+            if (spell.kind === 'damage') {
+                // Phase 4 migration: damage kind uses unified pipeline
+                const _tgtResult = _resolveOffensiveTarget(
+                    unit, spell, x, y, z, effectiveSpellCost, spellPower, finishAction, spellApCost);
+                if (_tgtResult.handled) return _tgtResult.returnVal;
+                const target = _tgtResult.target;
+                panelFocusTarget = target;
+
+                completionDelay = executeSpellAnimation(
+                    unit, spell, target, { x, y },
+                    effectiveSpellCost, spellPower, finishAction, spellApCost);
+            } else if (spell.kind === 'heal') {
+                // Phase 4 migration: heal uses ally support pipeline
+                const _healResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
+                    errorMsg: 'Choose a living ally to heal.',
+                    vfxFallback: _vfxHeal,
+                    projectileKind: 'heal'
+                });
+                if (!_healResult) return 0;
+                panelFocusTarget = _healResult.target;
+                const _ht = _healResult.target;
+                const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+                let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
+                if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
+                const healed = applyHealingToUnit(_ht, healAmount, unit);
+                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
+            } else if (spell.kind === 'shield') {
+                // Phase 4 migration: shield uses ally support pipeline
+                const _shResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
+                    errorMsg: 'Choose a living ally to shield.'
+                });
+                if (!_shResult) return 0;
+                panelFocusTarget = _shResult.target;
+                const _st = _shResult.target;
+                const shieldCap = Math.ceil(_st.maxHp * (spell.shieldCapPct || 0.5));
+                const shieldGain = Math.min((spell.shield || 0) + getHourglassPower(unit), Math.max(0, shieldCap - _st.shield));
+                _st.shield += shieldGain;
+                addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
+            } else if (spell.kind === 'buff') {
+                // Phase 4 migration: buff uses ally support pipeline
+                const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
+                    errorMsg: 'Choose a living ally for that spell.'
+                });
+                if (!_buffResult) return 0;
+                panelFocusTarget = _buffResult.target;
+                applyStatusEffects(_buffResult.target, spell.statusEffects, `${spell.name}: `, unit);
+            } else if (spell.kind === 'debuff') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Choose an enemy target for that spell.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spell.dmg ? spellLaunchSfx(spell) : 'debuff');
+                const cam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 900,
+                    targetHold: 900,
+                    attackName: spell.name
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                window.setTimeout(() => playProjectileToUnit(unit, target, 'proj-debuff', cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), projectileDelay);
+
+                /* ── Grey alien UFO flyover for debuff spells ── */
+                const _greyUfoSpells = ['raceProbe', 'raceAbductionBeam', 'raceImplant'];
+                if (_greyUfoSpells.includes(spell.id) && !_skipVisuals() && boardEl) {
+                    const _guTs = CONFIG.tileSize || 64;
+                    const _guGap = CONFIG.tileGap ?? 0;
+                    const _guPad = CONFIG.boardPadding ?? 2;
+                    const _guSize = Math.round(_guTs * 2);
+                    const _guHoverZ = 280;
+
+                    const guEl = document.createElement('div');
+                    guEl.style.cssText = `
+                        position: absolute; pointer-events: none;
+                        width: ${_guSize}px; height: ${_guSize}px;
+                        image-rendering: pixelated; z-index: 9999;
+                        transition: transform 600ms cubic-bezier(.22,.58,.36,1), opacity 400ms ease;
+                        opacity: 0;
+                    `;
+                    const guImg = document.createElement('img');
+                    guImg.src = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/ufo.png';
+                    guImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
+                    guEl.appendChild(guImg);
+
+                    const _guOff = (_guSize - _guTs) / 2;
+                    /* Position over target tile */
+                    guEl.style.left = (_guPad + target.x * (_guTs + _guGap) - _guOff) + 'px';
+                    guEl.style.top = (_guPad + target.y * (_guTs + _guGap) - _guOff) + 'px';
+
+                    const _guTargZ = (typeof getHeightAt === 'function') ? getHeightAt(target.x, target.y) : 0;
+                    const _guElevPx = (_guTargZ > 0 && typeof window._getElevationPx === 'function')
+                        ? window._getElevationPx(_guTargZ) : 0;
+                    const tiltDeg = state.dioramaTiltDeg ?? 50;
+                    const yawDeg = state.dioramaYawDeg ?? 0;
+                    const _guTotalZ = _guElevPx + _guHoverZ;
+                    guEl.style.transform = `translateZ(${_guTotalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+
+                    boardEl.appendChild(guEl);
+
+                    /* Fade in at projectile impact time */
+                    window.setTimeout(() => {
+                        guEl.style.opacity = '0.9';
+                    }, projectileDelay);
+
+                    /* After hovering, ascend and fade out */
+                    window.setTimeout(() => {
+                        guEl.style.transition = 'transform 600ms ease-in, opacity 600ms ease-in';
+                        requestAnimationFrame(() => {
+                            const ascentZ = _guElevPx + _guHoverZ + 200;
+                            guEl.style.transform = `translateZ(${ascentZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+                            guEl.style.opacity = '0';
+                        });
+                        setTimeout(() => { guEl.remove(); }, 700);
+                    }, impactDelay + actionMs(400));
+                }
+                unit.mp -= effectiveSpellCost;
+                window.setTimeout(() => {
+                    if (spell.dmg) {
+                        const _debDmg = spell.dmg + spellPower;
+                        applyDamageToUnit(target, _debDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                            sourceUnit: unit,
+                            allowMarkBonus: false,
+                            damageType: spell.damageType || 'magic',
+                            spellType: spell.spellType || null
+                        });
+                        if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_debDmg}`, false);
+                    }
+
+                    let effectsToApply = spell.statusEffects;
+                    if (unit.cls === 'Psychic' && effectsToApply) {
+                        effectsToApply = effectsToApply.map(e => e.id === 'glare' ? {
+                            ...e,
+                            duration: (e.duration || 2) + 1
+                        } : e);
+                    }
+                    applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
+                }, impactDelay);
+            } else if (spell.kind === 'revive') {
+                const target = state.units.find(u => u.player === unit.player && u.dead && u.x === x && u.y === y);
+                if (!target) {
+                    addLog('Choose a fallen ally tile to revive.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.oneRevivePerUnitPerMatch && target.reviveLocked) {
+                    addLog(`${unitDisplayName(target)} cannot be revived again this match.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('healRegen');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                target.dead = false;
+                target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+                target.shield = 0;
+                target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
+                removeDebuffs(target);
+                flashHeal(target);
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    }
+                }
+                showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
+                addLog(`${unitDisplayName(unit)} revives ${unitDisplayName(target)} with ${target.hp} HP.`);
+            } else if (spell.kind === 'bomb') {
+                const _bombOccupant = unitAt(x, y);
+                if (_bombOccupant && _bombOccupant.player === unit.player) {
+                    addLog('Cannot place a bomb on a friendly unit.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
+                if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
+                if (state.bombs.some(b => b.x === x && b.y === y)) {
+                    addLog('There is already a bomb on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                state.bombs.push({
+                    x,
+                    y,
+                    z,
+                    owner: unit.player,
+                    ownerUnitId: unit.id,
+                    dmg: spell.dmg + spellPower,
+                    radius: spell.blastRadius || 1
+                });
+                addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+            } else if (spell.kind === 'scan') {
+                const effectiveAwr = getEffectiveAwr(unit);
+                if (effectiveAwr <= 0) {
+                    addLog(`${unitDisplayName(unit)} cannot emit Scan Pulse while jammed.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                const radius = 1;
+                playSfx('uiConfirm');
+                unit.mp -= effectiveSpellCost;
+                const side = radius * 2 + 1;
+
+                const _spScanKeys = [];
+                for (let yy = Math.max(0, unit.y - radius); yy <= Math.min(bh() - 1, unit.y + radius); yy++) {
+                    for (let xx = Math.max(0, unit.x - radius); xx <= Math.min(bw() - 1, unit.x + radius); xx++) {
+                        const _spk = scanKey(xx, yy);
+                        state.scannedByPlayer[unit.player].add(_spk);
+                        _spScanKeys.push(_spk);
+                    }
+                }
+                const remaining = state.hourglasses.filter(h => h.carriedBy === null);
+                if (remaining.length > 0) {
+                    let bestDist = Infinity;
+                    for (const h of remaining) {
+                        const dist = Math.abs(h.x - unit.x) + Math.abs(h.y - unit.y);
+                        if (dist < bestDist) bestDist = dist;
+                    }
+                    let temp;
+                    if (bestDist <= 3) temp = '🔴 SCORCHING — An hourglass is very close!';
+                    else if (bestDist <= 6) temp = '🟠 HOT — An hourglass is nearby.';
+                    else if (bestDist <= 10) temp = '🟡 WARM — An hourglass is in the area.';
+                    else if (bestDist <= 16) temp = '🔵 COOL — An hourglass is fairly far away.';
+                    else temp = '❄️ FREEZING — Hourglasses are very far away.';
+                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
+                    showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
+                } else {
+                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). No hourglasses remain.`, unit.player);
+                }
+
+                focusBoardCameraOnTiles([{
+                    x: unit.x,
+                    y: unit.y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 800
+                });
+
+                const _spPlayer = unit.player;
+                window.setTimeout(() => {
+                    if (state.scannedByPlayer && state.scannedByPlayer[_spPlayer]) {
+                        if (!state._scanFadingKeys) state._scanFadingKeys = new Set();
+                        for (const k of _spScanKeys) state._scanFadingKeys.add(k);
+                        for (const k of _spScanKeys) state.scannedByPlayer[_spPlayer].delete(k);
+                        renderBattleUpdate();
+                        window.setTimeout(() => {
+                            if (state._scanFadingKeys) {
+                                for (const k of _spScanKeys) state._scanFadingKeys.delete(k);
+                            }
+                            renderBattleUpdate();
+                        }, 600);
+                    }
+                }, actionMs(800));
+                completionDelay = actionMs(800);
+            } else if (spell.kind === 'summonWeather') {
+                if (!isInside(x, y)) {
+                    addLog('Choose a tile on the map.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const wType = spell.weatherType || 'thunderstorm';
+                const wDef = WEATHER_REGISTRY[wType];
+                const dur = spell.weatherDuration ?
+                    spell.weatherDuration[0] + randInt(spell.weatherDuration[1] - spell.weatherDuration[0] + 1) :
+                    3;
+                const tiles = rollWeatherTiles(spell.weatherTiles || wDef.tiles, null);
+
+                const seedX = tiles[0]?.x || x,
+                    seedY = tiles[0]?.y || y;
+                const dx = x - seedX,
+                    dy = y - seedY;
+                const size = bw(),
+                    sizeH = bh();
+                const shifted = tiles.map(t => ({
+                    x: Math.max(0, Math.min(size - 1, t.x + dx)),
+                    y: Math.max(0, Math.min(sizeH - 1, t.y + dy))
+                }));
+                const seen = new Set();
+                const deduped = shifted.filter(t => {
+                    const k = posKey(t.x, t.y);
+                    if (seen.has(k)) return false;
+                    seen.add(k);
+                    return true;
+                });
+                const direction = wDef.roaming ? rollWeatherDirection() : null;
+                const weather = {
+                    type: wType,
+                    tiles: deduped,
+                    direction,
+                    remaining: dur,
+                    id: `w_${Date.now()}_${randInt(9999)}`
+                };
+                if (!state.activeWeather) state.activeWeather = [];
+                weather._casterUnitId = unit?.id ?? null;
+                state.activeWeather.push(weather);
+                addLog(`${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
+                queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
+
+                if (!_skipVisuals() && window.ThreeVFXEffects) {
+                    if (window.ThreeVFXEffects.hasMapping(spell.id, 'aoe')) {
+                        window.ThreeVFXEffects.fire('aoe', spell.id, { tx: x, ty: y, aoeRadius: 1 });
+                    } else if (window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: 1 });
+                    } else if (window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
+                        window.ThreeVFXEffects.fire('impact', spell.id, { tx: x, ty: y });
+                    }
+                }
+            } else if (spell.kind === 'multiHit') {
+                // Phase 4 migration: multiHit tower pre-check (unique multi-hit tower logic)
+                const _mhTowerResult = _resolveMultiHitTower(
+                    unit, spell, x, y, effectiveSpellCost, spellPower, finishAction);
+                if (_mhTowerResult.handled) return _mhTowerResult.returnVal;
+
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Choose an enemy target for that spell.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+
+                const hits = spell.hitDamages || [8, 8];
+                const hitGap = actionMs(340);
+
+                completionDelay = executeSpellAnimation(
+                    unit, spell, target, { x, y },
+                    effectiveSpellCost, spellPower, finishAction, spellApCost, {
+                        damageResolver(ctx) {
+                            _applyMultiHitDamage(ctx.unit, ctx.spell, ctx.target,
+                                ctx.spellPower, ctx.travel, ctx.impactDelay);
+                        },
+                        timingOverride({ impactDelay, completionDelay: baseCd, cam }) {
+                            const lastHitTime = impactDelay + (hits.length - 1) * hitGap;
+                            return {
+                                impactDelay,
+                                completionDelay: Math.max(lastHitTime + actionMs(400),
+                                    (cam?.totalMs ?? (lastHitTime + actionMs(360))) + actionMs(120))
+                            };
+                        }
+                    });
+            } else if (spell.kind === 'ricochet') {
+                // Phase 4 migration: ricochet tower pre-check (reuses standard offensive target)
+                const _ricTgtResult = _resolveOffensiveTarget(
+                    unit, spell, x, y, z, effectiveSpellCost, spellPower, finishAction, spellApCost);
+                if (_ricTgtResult.handled) return _ricTgtResult.returnVal;
+                const first = _ricTgtResult.target;
+                panelFocusTarget = first;
+
+                const bounceProjectileMs = actionMs(420);
+
+                completionDelay = executeSpellAnimation(
+                    unit, spell, first, { x, y },
+                    effectiveSpellCost, spellPower, finishAction, spellApCost, {
+                        cameraOpts: { sourceHold: 1200, targetHold: 900 },
+                        damageResolver(ctx) {
+                            const bounceDelay = actionMs(380);
+                            _applyRicochetDamage(ctx.unit, ctx.spell, ctx.target,
+                                ctx.spellPower, bounceDelay, bounceProjectileMs);
+                        },
+                        timingOverride({ impactDelay, cam }) {
+                            const bounceDelay = impactDelay + actionMs(380);
+                            const bounceImpact = bounceDelay + bounceProjectileMs + actionMs(60);
+                            return {
+                                impactDelay,
+                                completionDelay: Math.max(bounceImpact + actionMs(300),
+                                    (cam?.totalMs ?? (bounceImpact + actionMs(360))) + actionMs(120))
+                            };
+                        }
+                    });
+            } else if (spell.kind === 'healAll') {
+                playSfx('healRegen');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const allies = aliveUnitsFor(unit.player);
+
+                const _useVfx3dHealAll = (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'descent'));
+
+                const _useVfx3dHealAllAura = !_useVfx3dHealAll
+                    && (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'aura'));
+                if (_useVfx3dHealAll) {
+                    const _descentVfxMs = window.ThreeVFXEffects.getDescentTotalMs(spell.id);
+                    const _allyStagger = actionMs(80);
+                    let totalHealed = 0;
+                    allies.forEach((ally, idx) => {
+                        const startDelay = idx * _allyStagger;
+                        const healLanding = startDelay + actionMs(_descentVfxMs);
+
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            if (ally.dead) return;
+                            window.ThreeVFXEffects.fire('descent', spell.id, { tx: ally.x, ty: ally.y });
+                        }, startDelay);
+
+                        window.setTimeout(() => {
+                            if (ally.dead) return;
+                            const _bh = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+                            let healAmount = _bh + getEffectiveHealBonus(unit, _bh, ally) + getHourglassPower(unit);
+                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            if (healAmount > 0) {
+                                const healed = applyHealingToUnit(ally, healAmount, unit);
+                                totalHealed += healed;
+                            }
+                        }, healLanding);
+                    });
+                    completionDelay = Math.max(
+                        actionMs(_descentVfxMs) + Math.max(0, (allies.length - 1)) * _allyStagger + actionMs(280),
+                        actionMs(800)
+                    );
+
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
+                } else if (_useVfx3dHealAllAura) {
+                    const _allyStagger = actionMs(80);
+                    const _healLandingDelay = actionMs(280);
+                    let totalHealed = 0;
+                    allies.forEach((ally, idx) => {
+                        const startDelay = idx * _allyStagger;
+                        const healLanding = startDelay + _healLandingDelay;
+
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            if (ally.dead) return;
+                            window.ThreeVFXEffects.fire('aura', spell.id, { tx: ally.x, ty: ally.y });
+                        }, startDelay);
+
+                        window.setTimeout(() => {
+                            if (ally.dead) return;
+
+                            const baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+                            let healAmount = baseHeal + getEffectiveHealBonus(unit, baseHeal, ally) + getHourglassPower(unit);
+                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            if (healAmount > 0) {
+                                const healed = applyHealingToUnit(ally, healAmount, unit);
+                                totalHealed += healed;
+                            }
+
+                            if (spell.cleanse) {
+                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
+                                const toCleanse = debuffs.slice(0, cleanseCount);
+                                for (const k of toCleanse) clearStatus(ally, k);
+                            }
+                        }, healLanding);
+                    });
+                    completionDelay = Math.max(
+                        Math.max(0, (allies.length - 1)) * _allyStagger + _healLandingDelay + actionMs(300),
+                        actionMs(800)
+                    );
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
+                } else {
+
+                    _vfxHeal(unit.x, unit.y);
+                    let totalHealed = 0;
+                    for (const ally of allies) {
+                        const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+                        let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
+                        healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                        if (healAmount > 0) {
+                            const healed = applyHealingToUnit(ally, healAmount, unit);
+                            totalHealed += healed;
+                        }
+                    }
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`);
+                }
+            } else if (spell.kind === 'manaRestoreAll') {
+                playSfx('manaRegen');
+                _vfxMana(unit.x, unit.y);
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const allies = aliveUnitsFor(unit.player);
+                let totalRestored = 0;
+                for (const ally of allies) {
+                    const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
+                    if (restoreAmount > 0) {
+                        ally.mp += restoreAmount;
+                        totalRestored += restoreAmount;
+                        showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
+                    }
+                }
+                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalRestored} total MP across ${allies.length} allies.`);
+            } else if (spell.kind === 'aoe') {
+                // Phase 4 migration: aoe uses shared AoE helpers
+                playSfx(spellLaunchSfx(spell));
+                const _aoeArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _aoeArea);
+                completionDelay = timing.completionDelay;
+
+                _fireAoeVfx(unit, spell, x, y, timing.cam, timing.projectileDelay, timing.impactDelay, { useStrikeLeap: _useStrikeLeap });
+
+                // Spiderweb special case
+                if (spell.id === 'raceWebSnare') {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        _spawnSpiderwebFade(x, y, spell.aoeRadius || 1);
+                    }, timing.impactDelay);
+                }
+                unit.mp -= effectiveSpellCost;
+                window.setTimeout(() => {
+                    const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const hitCount = _applyAoeDamage(unit, spell, area,
+                        (spell.dmg || 0) + spellPower, spellPower, {
+                            waterBonus: spell.waterBonus,
+                            rngRange: 40, minDmg: 32,
+                            deformCenter: { x, y }
+                        });
+                    if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
+                }, timing.impactDelay);
+            } else if (spell.kind === 'barrage') {
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                if (spell.aoeOriginSelf && typeof window !== 'undefined'
+                    && window.ThreeVFXEffects && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, {
+                            tx: unit.x, ty: unit.y,
+                            aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 2,
+                        });
+                    }
+                }
+                const _barrageWaterMult = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
+                const barrageRange = (spell.aoeOriginSelf && spell.aoeRadius) ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
+                const _barrageSrcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+                const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => {
+                    const dist = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                    return dist >= 1 && dist <= barrageRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, _barrageSrcZ));
+                });
+                if (enemies.length === 0) {
+                    _spellFocusCamera(unit, x, y);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name} but no enemies are in range.`);
+                } else {
+
+                    const cam = playOffensiveActionCamera(unit, enemies[0], {
+                        sourceHold: 900,
+                        targetHold: 900,
+                        attackName: spell.name
+                    });
+                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                    const barrageGap = actionMs(200);
+                    window.setTimeout(() => {
+                        enemies.forEach((enemy, idx) => {
+                            window.setTimeout(() => {
+                                if (enemy.dead) return;
+                                let dmg = Math.max(32, Math.floor(((spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16) * _barrageWaterMult));
+                                playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
+                                playSfx(spellLaunchSfx(spell));
+                                window.setTimeout(() => {
+                                    if (enemy.dead) return;
+                                    applyDamageToUnit(enemy, dmg, `${unitDisplayName(unit)}'s ${spell.name} hits `, {
+                                        sourceUnit: unit,
+                                        allowMarkBonus: false,
+                                        statusEffects: spell.statusEffects,
+                                        damageType: spell.damageType || 'physical',
+                                        spellType: spell.spellType || null
+                                    });
+                                }, actionMs(400));
+                            }, idx * barrageGap);
+                        });
+                    }, impactDelay);
+                    addLog(`${spell.name} hits ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
+                    completionDelay = Math.max(impactDelay + (enemies.length - 1) * barrageGap + actionMs(700),
+                        (cam?.totalMs ?? (impactDelay + actionMs(600))) + actionMs(120));
+                }
+            }
+
+            else if (spell.kind === 'cleanse') {
+                // Phase 4 migration: cleanse uses ally support pipeline
+                const _clResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
+                    errorMsg: 'Invalid target for Cleanse.',
+                    vfxFallback: _vfxHeal
+                });
+                if (!_clResult) return 0;
+                panelFocusTarget = _clResult.target;
+                const _ct = _clResult.target;
+                const debuffKeys = getActiveStatusKeys(_ct).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                let cleansedCount = 0;
+                for (const key of debuffKeys) {
+                    clearStatus(_ct, key);
+                    cleansedCount++;
+                }
+                addLog(`${unitDisplayName(unit)} cleanses ${unitDisplayName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
+                showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
+                flashUnit(_ct.id, 'heal');
+                completionDelay = actionMs(500);
+            }
+
+            else if (spell.kind === 'displacement') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const cam = playOffensiveActionCamera(unit, target, { sourceHold: 600, targetHold: 900, attackName: spell.name });
+
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(600));
+                window.setTimeout(() => playProjectileToUnit(unit, target, 'proj-pull-hook', cam?.travelMs ?? actionMs(400), spell.spellType, null, spell), projectileDelay);
+
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(600)) + (cam?.travelMs ?? actionMs(400)) + actionMs(80), actionMs(620));
+                window.setTimeout(() => {
+                    let damage = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 32) - 16);
+
+                    const dx = Math.sign(target.x - unit.x) || 1;
+                    const dy = Math.sign(target.y - unit.y);
+                    const dist = spell.displaceDistance || 2;
+                    let flung = 0;
+                    let hitObstacle = false;
+                    const _displaceFromX = target.x, _displaceFromY = target.y;
+                    const _displaceFromZ = target.z ?? 0;
+                    const _displaceSteps = [];
+                    for (let i = 0; i < dist; i++) {
+                        const nx = target.x + dx;
+                        const ny = target.y + dy;
+                        if (!isInside(nx, ny) || !isTerrainPassable(nx, ny)) { hitObstacle = true; break; }
+                        if (unitAt(nx, ny)) { hitObstacle = true; break; }
+                        target.x = nx;
+                        target.y = ny;
+                        if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
+                        _displaceSteps.push({ x: nx, y: ny });
+                        flung++;
+                    }
+                    if (hitObstacle && spell.collisionBonus) damage += spell.collisionBonus;
+
+                    if (typeof applyFallDamage === 'function') {
+                        applyFallDamage(target, _displaceFromZ, target.z ?? 0, `${spell.name}: `);
+                    }
+                    applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'magic',
+                        spellType: spell.spellType || null
+                    });
+                    if (hitObstacle) {
+                        addLog(`${unitDisplayName(target)} slams into an obstacle for bonus damage!`);
+                        showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
+                    }
+
+                    if (_displaceSteps.length > 0) {
+                        animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120);
+
+                        if (!state.cameraDisabled) {
+                            ++boardCameraSequenceId;
+                            stopBoardCameraAnimation();
+                            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                            const flingAnimMs = _displaceSteps.length * 120;
+                            const _flingZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                            animateBoardCameraPath(
+                                { x: _displaceFromX, y: _displaceFromY },
+                                { x: target.x, y: target.y },
+                                { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: true }
+                            );
+                        }
+                    } else if (!state.cameraDisabled) {
+                        ++boardCameraSequenceId;
+                        _softResetCameraToUnit(target);
+                    }
+                    scheduleBoardRender();
+                }, impactDelay);
+                const flingMs = actionMs(120 * ((spell.displaceDistance || 2) + 1));
+                completionDelay = Math.max(impactDelay + flingMs + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+            }
+
+            else if (spell.kind === 'line' || spell.kind === 'linePush') {
+                // Phase 4 migration: line/linePush uses shared line-damage helper
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const dx = Math.sign(x - unit.x);
+                const dy = Math.sign(y - unit.y);
+
+                if (dx === 0 && dy === 0) { addLog('Invalid line direction.'); completionDelay = 200; }
+                else {
+                    const lineRange = Math.max(bw(), bh());
+                    let _lineFirstHit = null;
+                    for (let i = 1; i <= lineRange; i++) {
+                        const tx = unit.x + dx * i, ty = unit.y + dy * i;
+                        if (!isInside(tx, ty)) break;
+                        const _lu = unitAt(tx, ty);
+                        if (_lu && _lu.player !== unit.player && !_lu.dead) { _lineFirstHit = _lu; break; }
+                    }
+                    const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
+                    const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
+                        sourceHold: 900, targetHold: 900, attackName: spell.name
+                    });
+                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                    completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                    // Beam VFX
+                    const _useVfx3dBeam = (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && typeof window.ThreeVFXEffects.hasMapping === 'function'
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'beam'));
+                    if (_useVfx3dBeam) {
+                        const _beamTiles = [];
+                        { let _bx = unit.x + dx, _by = unit.y + dy;
+                            for (let _bi = 0; _bi < lineRange; _bi++) {
+                                if (!isInside(_bx, _by)) break;
+                                if (!isTerrainPassable(_bx, _by) && !spell.destroysObstacles) break;
+                                _beamTiles.push({ x: _bx, y: _by });
+                                _bx += dx; _by += dy;
+                            }
+                        }
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            window.ThreeVFXEffects.fire('beam', spell.id, {
+                                fromX: unit.x, fromY: unit.y,
+                                dx, dy, range: lineRange,
+                                hitTiles: _beamTiles
+                            });
+                        }, impactDelay - actionMs(100));
+                    } else {
+                        window.setTimeout(() => playBeamEffect(unit.x, unit.y, dx, dy, lineRange, spell.spellType, actionMs(500)), impactDelay - actionMs(100));
+                    }
+
+                    // Damage resolution
+                    window.setTimeout(() => {
+                        const hitTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower);
+                        addLog(`${spell.name} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
+                        scheduleBoardRender();
+                    }, impactDelay);
+                }
+            }
+
+            else if (spell.kind === 'cross') {
+                // Phase 4 migration: cross uses shared AoE helpers
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const cx = spell.aoeOriginSelf ? unit.x : x;
+                const cy = spell.aoeOriginSelf ? unit.y : y;
+                const radius = spell.crossRadius || 1;
+                const crossTiles = [{ x: cx, y: cy }];
+                for (let i = 1; i <= radius; i++) {
+                    crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy }, { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                }
+
+                const timing = _setupAoeCameraAndTiming(unit, spell, cx, cy, crossTiles);
+                completionDelay = timing.completionDelay;
+
+                _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.impactDelay);
+
+                window.setTimeout(() => {
+                    const hitCount = _applyAoeDamage(unit, spell, crossTiles,
+                        Math.max(32, (spell.dmg || 0) + spellPower), spellPower, {
+                            rngRange: 24, minDmg: 32,
+                            pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null,
+                            deformCenter: { x: cx, y: cy }
+                        });
+                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a cross pattern.`);
+                    scheduleBoardRender();
+                }, timing.impactDelay);
+            }
+
+            else if (spell.kind === 'pull') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target for pull.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+
+                const _pullTetherKind = _tetherKindForSpell(spell);
+                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280) });
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y });
+                    }
+                }
+                unit.mp -= effectiveSpellCost;
+                const pullDist = spell.pullDistance || 3;
+                const pdx = Math.sign(unit.x - target.x);
+                const pdy = Math.sign(unit.y - target.y);
+                let pulled = 0;
+                const _pullFromX = target.x, _pullFromY = target.y;
+                const _pullFromZ = target.z ?? 0;
+                const _pullSteps = [];
+                for (let i = 0; i < pullDist; i++) {
+                    const nx = target.x + pdx, ny = target.y + pdy;
+                    if (!isInside(nx, ny) || !isTerrainPassable(nx, ny)) break;
+                    if (unitAt(nx, ny)) break;
+                    if (nx === unit.x && ny === unit.y) break;
+
+                    if (spell.pullThroughHazards) {
+                        const terrain = getTerrainAt(nx, ny);
+                        if (terrain === 'lava' || terrain === 'poison') {
+                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null });
+                        }
+                    }
+                    target.x = nx;
+                    target.y = ny;
+                    if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
+                    _pullSteps.push({ x: nx, y: ny });
+                    pulled++;
+                }
+
+                if (typeof applyFallDamage === 'function') {
+                    applyFallDamage(target, _pullFromZ, target.z ?? 0, `${spell.name}: `);
+                }
+
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                    const _pullGroundZ = getHeightAt(target.x, target.y);
+                    target.z = _pullGroundZ;
+                    showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                    addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                }
+                if (spell.dmg) {
+                    const dmg = Math.max(16, (spell.dmg || 0) + spellPower);
+                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null
+                    });
+                }
+                addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
+
+                if (_pullSteps.length > 0) {
+                    animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120);
+                    const pullAnimMs = _pullSteps.length * 120;
+
+                    if (spell.id === 'raceTractorBeam' && !_skipVisuals() && boardEl) {
+                        const _ufoTs = CONFIG.tileSize || 64;
+                        const _ufoGap = CONFIG.tileGap ?? 0;
+                        const _ufoPad = CONFIG.boardPadding ?? 2;
+                        const _ufoStepMs = 120;
+
+                        const _ufoSize = Math.round(_ufoTs * 2);
+
+                        const _ufoHoverZ = 280;
+
+                        const ufoEl = document.createElement('div');
+                        ufoEl.style.cssText = `
+                            position: absolute; pointer-events: none;
+                            width: ${_ufoSize}px; height: ${_ufoSize}px;
+                            image-rendering: pixelated; z-index: 9999;
+                            transition: left ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
+                                        top ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
+                                        transform ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
+                                        opacity 400ms ease;
+                            opacity: 0;
+                        `;
+                        const ufoImg = document.createElement('img');
+                        ufoImg.src = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/ufo.png';
+                        ufoImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
+                        ufoEl.appendChild(ufoImg);
+
+                        const _ufoOff = (_ufoSize - _ufoTs) / 2;
+                        ufoEl.style.left = (_ufoPad + _pullFromX * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
+                        ufoEl.style.top = (_ufoPad + _pullFromY * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
+
+                            const _fromZ = (typeof getHeightAt === 'function') ? getHeightAt(_pullFromX, _pullFromY) : 0;
+                            const _fromElevPx = (_fromZ > 0 && typeof window._getElevationPx === 'function')
+                                ? window._getElevationPx(_fromZ) : 0;
+                            const tiltDeg = state.dioramaTiltDeg ?? 50;
+                            const yawDeg = state.dioramaYawDeg ?? 0;
+                            const totalZ = _fromElevPx + _ufoHoverZ;
+                            ufoEl.style.transform = `translateZ(${totalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+
+                        boardEl.appendChild(ufoEl);
+
+                        requestAnimationFrame(() => { ufoEl.style.opacity = '0.9'; });
+
+                        let _ufoStepIdx = 0;
+                        function _ufoSlide() {
+                            if (_ufoStepIdx >= _pullSteps.length) {
+
+                                ufoEl.style.transition = 'transform 600ms ease-in, opacity 600ms ease-in';
+                                requestAnimationFrame(() => {
+                                        const lastPt = _pullSteps[_pullSteps.length - 1];
+                                        const _arrZ = (typeof getHeightAt === 'function') ? getHeightAt(lastPt.x, lastPt.y) : 0;
+                                        const _arrElevPx = (_arrZ > 0 && typeof window._getElevationPx === 'function')
+                                            ? window._getElevationPx(_arrZ) : 0;
+                                        const tiltDeg = state.dioramaTiltDeg ?? 50;
+                                        const yawDeg = state.dioramaYawDeg ?? 0;
+                                        const ascentZ = _arrElevPx + _ufoHoverZ + 200;
+                                        ufoEl.style.transform = `translateZ(${ascentZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+                                    ufoEl.style.opacity = '0';
+                                });
+                                setTimeout(() => { ufoEl.remove(); }, 700);
+
+                                if (typeof window.__playFx === 'function') {
+                                    const lastPt = _pullSteps[_pullSteps.length - 1];
+                                    window.__playFx('raceTractorBeam_arrive', lastPt.x, lastPt.y);
+                                }
+                                return;
+                            }
+                            const pt = _pullSteps[_ufoStepIdx];
+                            ufoEl.style.left = (_ufoPad + pt.x * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
+                            ufoEl.style.top = (_ufoPad + pt.y * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
+                            ufoEl.style.zIndex = String(9999);
+
+                                const stepZ = (typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0;
+                                const tiltDeg = state.dioramaTiltDeg ?? 50;
+                                const yawDeg = state.dioramaYawDeg ?? 0;
+                                const elevPx = (stepZ > 0 && typeof window._getElevationPx === 'function')
+                                    ? window._getElevationPx(stepZ) : 0;
+                                const totalZ = elevPx + _ufoHoverZ;
+                                ufoEl.style.transform = `translateZ(${totalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
+
+                            if (typeof window.__playFx === 'function') {
+                                window.__playFx('raceTractorBeam_step', pt.x, pt.y);
+                            }
+                            _ufoStepIdx++;
+                            setTimeout(_ufoSlide, _ufoStepMs);
+                        }
+
+                        requestAnimationFrame(() => setTimeout(_ufoSlide, 30));
+                    }
+
+                    if (_pullTether) {
+                        _pullTether.retract(target.x, target.y, pullAnimMs);
+                    }
+
+                    if (!state.cameraDisabled) {
+                        stopBoardCameraAnimation();
+                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                        const _pullZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                        animateBoardCameraPath(
+                            { x: _pullFromX, y: _pullFromY },
+                            { x: target.x, y: target.y },
+                            { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: true }
+                        );
+                    }
+                } else {
+
+                    if (_pullTether) {
+                        const _shootMs = actionMs(280);
+                        window.setTimeout(() => {
+                            _pullTether.retract(unit.x, unit.y, actionMs(250));
+                        }, _shootMs + actionMs(120));
+                    }
+                    if (!state.cameraDisabled) _softResetCameraToUnit(target);
+                }
+                scheduleBoardRender();
+                completionDelay = actionMs(600);
+            }
+
+            else if (spell.kind === 'swap') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target for swap.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const ux = unit.x, uy = unit.y;
+                const tx = target.x, ty = target.y;
+                unit.x = target.x; unit.y = target.y;
+                target.x = ux; target.y = uy;
+                if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
+                addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
+                showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
+
+                if (!state.cameraDisabled) {
+                    stopBoardCameraAnimation();
+                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                    const _swapZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                    animateBoardCameraPath(
+                        { x: ux, y: uy },
+                        { x: tx, y: ty },
+                        { duration: 250, zoom: _swapZoom, _fogAllowed: true }
+                    );
+                }
+
+                animateDisplacement(unit, ux, uy, tx, ty, 250);
+                animateDisplacement(target, tx, ty, ux, uy, 250);
+                scheduleBoardRender();
+                completionDelay = actionMs(500);
+            }
+
+            else if (spell.kind === 'escape') {
+                playSfx('teleport');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+
+                if (spell.cleanse) {
+                    const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                    const toCleanse = debuffs.slice(0, spell.cleanse);
+                    for (const k of toCleanse) clearStatus(unit, k);
+                    if (toCleanse.length) addLog(`${unitDisplayName(unit)} cleanses ${toCleanse.length} debuff${toCleanse.length > 1 ? 's' : ''}.`);
+                }
+
+                const decoyX = unit.x, decoyY = unit.y;
+
+                const dist = spell.teleportDistance || 2;
+                const candidates = [];
+                for (let dy = -dist; dy <= dist; dy++) {
+                    for (let dx = -dist; dx <= dist; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = unit.x + dx, ny = unit.y + dy;
+                        if (Math.abs(dx) + Math.abs(dy) <= dist && isInside(nx, ny) && canOccupy(nx, ny)) {
+                            candidates.push({ x: nx, y: ny });
+                        }
+                    }
+                }
+                if (candidates.length) {
+
+                    const enemies = aliveUnitsFor(enemyOf(unit.player));
+                    candidates.sort((a, b) => {
+                        const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
+                        const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
+                        return bMin - aMin;
+                    });
+                    const _escFromX = unit.x, _escFromY = unit.y;
+                    unit.x = candidates[0].x;
+                    unit.y = candidates[0].y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
+                    animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, 220);
+
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                fromX: _escFromX, fromY: _escFromY,
+                                toX: candidates[0].x, toY: candidates[0].y,
+                            });
+                        }
+                    }
+
+                    if (!state.cameraDisabled) {
+                        stopBoardCameraAnimation();
+                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                        const _escZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                        animateBoardCameraPath(
+                            { x: _escFromX, y: _escFromY },
+                            { x: candidates[0].x, y: candidates[0].y },
+                            { duration: 220, zoom: _escZoom, _fogAllowed: true }
+                        );
+                    }
+                }
+
+                if (spell.spawnDecoy) {
+                    if (!state._deployedObjects) state._deployedObjects = [];
+
+                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+                    while (_ownedDecoys.length >= 3) {
+                        const oldest = _ownedDecoys.shift();
+                        state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
+                    }
+                    state._deployedObjects.push({
+                        x: decoyX, y: decoyY,
+                        z: (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(decoyX, decoyY, unit.z ?? 0) : undefined,
+                        ownerUnitId: unit.id,
+                        ownerPlayer: unit.player,
+                        hp: 1, maxHp: 1,
+                        blastRadius: 0, blastDmg: 0,
+                        blocksMovement: true,
+                        drawsRangedAttack: true,
+                        drawsMeleeAttack: true,
+                        detonateOnAttack: false,
+                        spellName: 'Decoy',
+                        isDecoy: true,
+                        spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0 }
+                    });
+                    addLog(`${unitDisplayName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`);
+                    showFloatingTextForUnit(unit, 'SHED!', 'heal', { durationMs: 800 });
+                }
+                scheduleBoardRender();
+                completionDelay = actionMs(500);
+            }
+
+            else if (spell.kind === 'selfHeal') {
+                // Phase 4 migration: selfHeal uses direct self-target pattern
+                playSfx('healRegen');
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y });
+                } else { _vfxHeal(unit.x, unit.y); }
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct) : (spell.healAmt != null ? spell.healAmt : (spell.heal || 64));
+                applyHealingToUnit(unit, healAmt, unit);
+                if (spell.cleanse) {
+                    const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                    for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
+                }
+                addLog(`${unitDisplayName(unit)} uses ${spell.name}! Heals ${healAmt} HP.`);
+                showFloatingTextForUnit(unit, `+${healAmt}`, 'heal');
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'aoePull') {
+                // Phase 4 migration: aoePull uses shared AoE helpers
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const _apArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _apArea);
+                completionDelay = timing.completionDelay;
+
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'damage', timing.cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), timing.projectileDelay);
+
+                const _apUseVfx3dAoe = (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aoe'));
+                if (_apUseVfx3dAoe) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        window.ThreeVFXEffects.fire('aoe', spell.id, { tx: x, ty: y, cx: unit.x, cy: unit.y });
+                    }, timing.impactDelay);
+                } else {
+                    window.setTimeout(() => playAoeRing(x, y, spell.aoeRadius || 1, spell.spellType, actionMs(550)), timing.impactDelay);
+                }
+                window.setTimeout(() => {
+                    const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const hitCount = _applyAoeDamage(unit, spell, area,
+                        Math.max(32, (spell.dmg || 0) + spellPower), spellPower, {
+                            rngRange: 20, minDmg: 32,
+                            pullCenter: spell.pullToCenter ? { x, y } : null,
+                            groundAirborne: true,
+                            deformCenter: { x, y }
+                        });
+                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
+
+                    if (spell.leaveTerrain) {
+                        for (const tile of area) {
+                            const current = getTerrainAt(tile.x, tile.y);
+                            if (current !== 'wall' && current !== spell.leaveTerrain) {
+                                setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
+                            }
+                        }
+                    }
+                    if (spell.terrainDeform) {
+                        applyTerrainDeform(x, y, spell.aoeRadius || 1, spell.terrainDeform);
+                        _invalidateBoardGrid();
+                    }
+                    scheduleBoardRender();
+                }, timing.impactDelay);
+            }
+
+            else if (spell.kind === 'splitBeam') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                const cam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 900,
+                    targetHold: 900,
+                    attackName: spell.name
+                });
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                unit.mp -= effectiveSpellCost;
+                const primaryDmg = Math.max(32, (spell.dmg || 0) + spellPower);
+
+                window.setTimeout(() => {
+                    applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'magic',
+                        spellType: spell.spellType || null
+                    });
+
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'impact')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                        }
+                    }
+                }, impactDelay);
+
+                const splitCount = spell.splitCount || 2;
+                const splitDmg = spell.splitDmg || Math.floor(primaryDmg * 0.6);
+                const splitRadius = spell.splitRadius || 2;
+                const splitProjectileMs = actionMs(360);
+                const splitStartDelay = impactDelay + actionMs(350);
+                const splitGap = actionMs(280);
+                window.setTimeout(() => {
+                    const nearby = aliveUnitsFor(enemyOf(unit.player)).filter(e =>
+                        e.id !== target.id && !e.dead &&
+                        Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitRadius
+                    ).sort((a, b) => a.hp - b.hp).slice(0, splitCount);
+                    nearby.forEach((hit, idx) => {
+                        const hitDelay = idx * splitGap;
+                        window.setTimeout(() => {
+                            if (hit.dead) return;
+                            playProjectile(target.x, target.y, hit.x, hit.y, 'damage', splitProjectileMs, spell.spellType, null, spell);
+                            playSfx(spellLaunchSfx(spell));
+                            window.setTimeout(() => {
+                                if (hit.dead) return;
+                                applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
+                                    sourceUnit: unit,
+                                    damageType: spell.damageType || 'magic',
+                                    spellType: spell.spellType || null
+                                });
+                            }, splitProjectileMs + actionMs(60));
+                        }, hitDelay);
+                    });
+                    addLog(`${spell.name} hits primary target and splits to ${nearby.length} nearby enem${nearby.length === 1 ? 'y' : 'ies'}.`);
+                }, splitStartDelay);
+                completionDelay = Math.max(splitStartDelay + (splitCount - 1) * splitGap + splitProjectileMs + actionMs(400),
+                    (cam?.totalMs ?? (impactDelay + actionMs(600))) + actionMs(120));
+            }
+
+            else if (spell.kind === 'delayed') {
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const delay = spell.delayTurns || 1;
+                if (!state._delayedSpells) state._delayedSpells = [];
+                state._delayedSpells.push({
+                    x, y, z,
+                    dmg: spell.dmg || 128,
+                    aoeRadius: spell.aoeRadius || 1,
+                    sourceUnitId: unit.id,
+                    sourcePlayer: unit.player,
+                    spellId: spell.id,
+                    spellType: spell.spellType,
+                    damageType: spell.damageType || 'magic',
+                    spellName: spell.name,
+                    roundsLeft: delay,
+                    statusEffects: spell.statusEffects || [],
+                    leaveTerrain: spell.leaveTerrain || null,
+                    terrainDeform: spell.terrainDeform || null
+                });
+                addLog(`${unitDisplayName(unit)} marks ${coordLabel(x, y)} with ${spell.name}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
+                showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
+                scheduleBoardRender();
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'deployObject') {
+                if (unitAt(x, y)) {
+                    addLog('Cannot deploy on an occupied tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                if (!state._deployedObjects) state._deployedObjects = [];
+
+                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id);
+                const _maxActive = spell.maxActivePerCaster || 3;
+                while (_ownedObjs.length >= _maxActive) {
+                    const oldest = _ownedObjs.shift();
+                    state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
+                }
+                const _deployedEntry = {
+                    x, y, z,
+                    ownerUnitId: unit.id,
+                    ownerId: unit.id,
+                    ownerPlayer: unit.player,
+                    hp: spell.objectHp || 1,
+                    maxHp: spell.objectHp || 1,
+                    blastRadius: spell.blastRadius || 0,
+                    blastDmg: spell.blastDmg || 0,
+                    blocksMovement: spell.blocksMovement !== false,
+                    drawsRangedAttack: !!spell.drawsRangedAttack,
+                    detonateOnAttack: !!spell.detonateOnAttack,
+                    detonateOnStep: !!spell.detonateOnStep,
+                    auraHeal: spell.auraHeal || 0,
+                    auraRadius: spell.auraRadius || 0,
+                    spellId: spell.id,
+                    statusEffects: spell.statusEffects || [],
+                    spellName: spell.name
+                };
+
+                if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
+                    _deployedEntry.isDecoy = true;
+                    _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0 };
+                }
+                state._deployedObjects.push(_deployedEntry);
+                addLog(`${unitDisplayName(unit)} deploys ${spell.name} at ${coordLabel(x, y)}.`);
+                scheduleBoardRender();
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'deployPair') {
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                if (!state._gatePairs) state._gatePairs = [];
+
+                const maxPairs = spell.maxActivePerCaster || 1;
+                const existing = state._gatePairs.filter(g => g.ownerId === unit.id);
+                while (existing.length >= maxPairs) {
+                    const old = existing.shift();
+                    state._gatePairs = state._gatePairs.filter(g => g !== old);
+                }
+                state._gatePairs.push({
+                    x1: unit.x, y1: unit.y,
+                    x2: x, y2: y,
+                    ownerId: unit.id,
+                    ownerPlayer: unit.player,
+                    usesLeft: 4,
+                    spellName: spell.name
+                });
+                addLog(`${unitDisplayName(unit)} creates ${spell.name} gates between ${coordLabel(unit.x, unit.y)} and ${coordLabel(x, y)}.`);
+                scheduleBoardRender();
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'aoeShield') {
+                // Phase 4 migration: aoeShield uses simplified aura pattern
+                playSfx('manaRegen');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
+                const shieldPerAlly = Math.floor((spell.shieldHp || 200) / Math.max(1, allies.length));
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1 });
+                }
+                for (const ally of allies) {
+                    ally.shield = (ally.shield || 0) + shieldPerAlly;
+                    showFloatingTextForUnit(ally, `+${shieldPerAlly} 🛡`, 'heal');
+                    if (!VFX || !VFX.hasMapping(spell.id, 'aura')) _vfxBuff(ally.x, ally.y);
+                }
+                addLog(`${unitDisplayName(unit)} projects ${spell.name}! ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} shielded for ${shieldPerAlly} each.`);
+                scheduleBoardRender();
+                completionDelay = actionMs(200);
+            }
+
+            else if (spell.kind === 'zoneDebuff') {
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                if (!state._activeZones) state._activeZones = [];
+                state._activeZones.push({
+                    x, y,
+                    radius: spell.aoeRadius || 1,
+                    type: 'debuff',
+                    ownerPlayer: unit.player,
+                    duration: spell.zoneDuration || 2,
+                    statusEffects: spell.statusEffects || [],
+                    smokeConcealment: !!spell.smokeConcealment,
+                    spellName: spell.name
+                });
+                addLog(`${unitDisplayName(unit)} creates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, {
+                            tx: x, ty: y,
+                            aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1
+                        });
+                    }
+                } else {
+                    _vfxZone(x, y, spell.aoeRadius || 1, 'debuff');
+                }
+                scheduleBoardRender();
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'zoneHeal') {
+                playSfx('healRegen');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                if (!state._activeZones) state._activeZones = [];
+                state._activeZones.push({
+                    x, y,
+                    radius: spell.aoeRadius || 1,
+                    type: 'heal',
+                    ownerPlayer: unit.player,
+                    duration: spell.zoneDuration || 2,
+                    healPerTurn: spell.healPerTurn || 48,
+                    spellName: spell.name
+                });
+                addLog(`${unitDisplayName(unit)} consecrates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                    }
+                } else {
+                    _vfxZone(x, y, spell.aoeRadius || 1, 'heal');
+                }
+                scheduleBoardRender();
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'terrainCreate') {
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+                const terrainType = spell.terrainType || 'water';
+                const count = spell.tileCount || 3;
+
+                const _castOrientation = state._spellOrientation || 'horizontal';
+
+                const cam = playOffensiveActionCamera(unit, { x, y }, {
+                    sourceHold: 900,
+                    targetHold: 900,
+                    attackName: spell.name,
+                    _noCinematic: true
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(400), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+
+                const _useVfx3dWall = typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'wall');
+                if (!_useVfx3dWall) {
+
+                    window.setTimeout(() => playAoeRing(x, y, 1, spell.spellType, actionMs(550)), impactDelay);
+                }
+
+                window.setTimeout(() => {
+
+                    const convertedTiles = [];
+                    const affectedTiles = [];
+                    if (spell.orientable) {
+                        const candidates = getOrientedLineTiles(x, y, count, _castOrientation);
+                        for (const tile of candidates) {
+                            if (!isInside(tile.x, tile.y)) continue;
+                            const current = getTerrainAt(tile.x, tile.y);
+                            if (current === 'wall') continue;
+                            affectedTiles.push({ x: tile.x, y: tile.y });
+                            if (current === terrainType) continue;
+                            setTerrainAt(tile.x, tile.y, terrainType);
+                            convertedTiles.push({ x: tile.x, y: tile.y });
+                        }
+                    } else {
+
+                        const visited = new Set();
+                        const queue = [{ x, y }];
+                        let converted = 0;
+                        while (queue.length > 0 && converted < count) {
+                            const tile = queue.shift();
+                            const pk = posKey(tile.x, tile.y);
+                            if (visited.has(pk)) continue;
+                            visited.add(pk);
+                            if (!isInside(tile.x, tile.y)) continue;
+                            const current = getTerrainAt(tile.x, tile.y);
+                            if (current === 'wall') continue;
+                            affectedTiles.push({ x: tile.x, y: tile.y });
+                            if (current !== terrainType) {
+                                setTerrainAt(tile.x, tile.y, terrainType);
+                                convertedTiles.push({ x: tile.x, y: tile.y });
+                            }
+                            converted++;
+                            queue.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y },
+                                       { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+                        }
+                    }
+
+                    _invalidateBoardGrid();
+                    scheduleBoardRender();
+
+                    if (_useVfx3dWall && affectedTiles.length > 0) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('wall', spell.id, {
+                                tiles: affectedTiles,
+                                staggerMs: 80,
+                            });
+                        }
+                    }
+
+                    if (spell.dmg) {
+                        const baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
+                        for (const ct of affectedTiles) {
+                            const hit = unitAt(ct.x, ct.y);
+                            if (hit && hit.player !== unit.player && !hit.dead) {
+                                const dmg = baseDmg + Math.floor(Math.random() * 20) - 10;
+                                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                    sourceUnit: unit,
+                                    damageType: spell.damageType || 'magic',
+                                    spellType: spell.spellType || null,
+                                    statusEffects: spell.statusEffects
+                                });
+                            }
+
+                            damageTurretAt(ct.x, ct.y, spell.dmg || 80, unit);
+
+                            if (state._deployedObjects) {
+                                const _tcDObj = state._deployedObjects.find(o => o.x === ct.x && o.y === ct.y && o.hp > 0 && !o._detonated);
+                                if (_tcDObj) {
+                                    if ((_tcDObj.detonateOnAttack || _tcDObj.detonateOnFire) && _tcDObj.blastRadius > 0) {
+                                        detonateDeployedObject(_tcDObj, unit);
+                                    } else {
+                                        addLog(`${spell.name} destroys ${_tcDObj.spellName || 'deployed object'} at ${coordLabel(ct.x, ct.y)}!`);
+                                        showFloatingTextAtTile(ct.x, ct.y, 'DESTROYED', 'damage');
+                                        const _tcIdx = state._deployedObjects.indexOf(_tcDObj);
+                                        if (_tcIdx >= 0) state._deployedObjects.splice(_tcIdx, 1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addLog(`${unitDisplayName(unit)} uses ${spell.name}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
+
+                    if (spell.terrainDeform && affectedTiles.length > 0) {
+                        for (const at of affectedTiles) {
+                            applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
+                        }
+                        _invalidateBoardGrid();
+                        scheduleBoardRender();
+                    }
+                }, impactDelay);
+
+                state._spellOrientation = null;
+            }
+
+            else if (spell.kind === 'utility') {
+                if (spell.id === 'grapple' || spell.id === 'raceGrapple') {
+
+                    const target = unitAt(x, y);
+                    if (target && isEnemyUnit(target, unit)) {
+
+                        panelFocusTarget = target;
+                        focusUnitPanel(target.id);
+                        playSfx('uiConfirm');
+                        const cam = playOffensiveActionCamera(unit, target, { sourceHold: 900, targetHold: 900, attackName: 'Grapple' });
+
+                        const _grTether = playTetherEffect(unit.x, unit.y, target.x, target.y, 'rope', 0, { persistent: true, shootMs: actionMs(320) });
+                        const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                        completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                        unit.mp -= effectiveSpellCost;
+                        window.setTimeout(() => {
+
+                            const dx = Math.sign(unit.x - target.x);
+                            const dy = Math.sign(unit.y - target.y);
+                            let pulled = 0;
+                            const _grFromX = target.x, _grFromY = target.y;
+                            const _grSteps = [];
+                            for (let i = 0; i < 2; i++) {
+                                const nx = target.x + dx;
+                                const ny = target.y + dy;
+                                if (!isInside(nx, ny)) break;
+                                if (unitAt(nx, ny)) break;
+                                if (!isTerrainPassable(nx, ny)) break;
+
+                                if (nx === unit.x && ny === unit.y) break;
+                                target.x = nx;
+                                target.y = ny;
+                                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
+                                _grSteps.push({ x: nx, y: ny });
+                                pulled++;
+                            }
+
+                            if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                                const _grGroundZ = getHeightAt(target.x, target.y);
+                                target.z = _grGroundZ;
+                                showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                                addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                            }
+
+                            const grappleDmg = Math.max(16, Math.floor(unit.atk * 0.3) + spellPower);
+                            applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                            if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
+                            addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
+                            showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
+
+                            if (_grSteps.length > 0) {
+                                animateDisplacementPath(target, _grFromX, _grFromY, _grSteps, 120);
+                                const _grAnimMs = _grSteps.length * 120;
+                                if (_grTether) {
+                                    _grTether.retract(target.x, target.y, _grAnimMs);
+                                }
+
+                                if (!state.cameraDisabled) {
+                                    stopBoardCameraAnimation();
+                                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                                    const _grZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                                    animateBoardCameraPath(
+                                        { x: _grFromX, y: _grFromY },
+                                        { x: target.x, y: target.y },
+                                        { duration: _grAnimMs, zoom: _grZoom, _fogAllowed: true }
+                                    );
+                                }
+                            } else if (_grTether) {
+
+                                window.setTimeout(() => {
+                                    _grTether.retract(unit.x, unit.y, actionMs(250));
+                                }, actionMs(120));
+                            }
+                            scheduleBoardRender();
+                        }, impactDelay);
+                    } else if (!target) {
+
+                        const dx = Math.sign(x - unit.x);
+                        const dy = Math.sign(y - unit.y);
+                        let moved = 0;
+                        let cx = unit.x, cy = unit.y;
+                        for (let i = 0; i < 2; i++) {
+                            const nx = cx + dx;
+                            const ny = cy + dy;
+                            if (!isInside(nx, ny)) break;
+                            if (unitAt(nx, ny)) break;
+                            if (!isTerrainPassable(nx, ny)) break;
+                            cx = nx;
+                            cy = ny;
+                            moved++;
+                        }
+                        if (moved === 0) {
+                            addLog('No valid position to grapple toward.');
+                            playErrorSfx();
+                            return 0;
+                        }
+                        playSfx('uiConfirm');
+                        unit.mp -= effectiveSpellCost;
+                        const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
+
+                        const _grShootMs = actionMs(200);
+                        const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs });
+
+                        const _grSlideMs = 200;
+                        window.setTimeout(() => {
+                            unit.x = cx;
+                            unit.y = cy;
+                            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
+                            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + moved;
+                            animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
+
+                            if (!state.cameraDisabled) {
+                                stopBoardCameraAnimation();
+                                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                                const _grSelfZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                                animateBoardCameraPath(
+                                    { x: _grSelfFromX, y: _grSelfFromY },
+                                    { x: cx, y: cy },
+                                    { duration: _grSlideMs, zoom: _grSelfZoom, _fogAllowed: true }
+                                );
+                            }
+
+                            if (_grSelfTether) {
+                                window.setTimeout(() => {
+                                    _grSelfTether.retract(cx, cy, actionMs(180));
+                                }, _grSlideMs + 30);
+                            }
+                            scheduleBoardRender();
+                        }, _grShootMs + actionMs(60));
+                        addLog(`${unitDisplayName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}.`);
+                        completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
+                    } else {
+                        addLog('Choose an enemy to pull or an empty tile to grapple toward.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                } else if (spell.id === 'plunder' || spell.id === 'racePlunder') {
+
+                    const target = unitAt(x, y);
+                    if (!target || isAllyUnit(target, unit)) {
+                        addLog('Choose an adjacent enemy to plunder.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    panelFocusTarget = target;
+                    focusUnitPanel(target.id);
+                    playSfx('uiConfirm');
+                    _spellFocusCamera(unit, x, y);
+                    unit.mp -= effectiveSpellCost;
+
+                    let stolen = false;
+                    if ((target.hourglasses || 0) > 0) {
+                        target.hourglasses--;
+                        unit.hourglasses = (unit.hourglasses || 0) + 1;
+                        addLog(`${unitDisplayName(unit)} plunders an hourglass from ${unitDisplayName(target)}! ⏳`);
+                        showFloatingTextForUnit(unit, '+1 ⏳', 'pickup', { durationMs: 1200 });
+                        showFloatingTextForUnit(target, '-1 ⏳', 'damage', { durationMs: 1000 });
+                        stolen = true;
+                    }
+                    if (!stolen && target.items) {
+                        const stealable = Object.keys(target.items).filter(k => target.items[k] > 0);
+                        if (stealable.length > 0) {
+                            const pick = stealable[randInt(stealable.length)];
+                            target.items[pick]--;
+                            if (!unit.items) unit.items = {};
+                            unit.items[pick] = (unit.items[pick] || 0) + 1;
+                            addLog(`${unitDisplayName(unit)} plunders a ${pick} from ${unitDisplayName(target)}!`);
+                            showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                            stolen = true;
+                        }
+                    }
+                    if (!stolen) {
+                        addLog(`${unitDisplayName(unit)} tries to plunder ${unitDisplayName(target)}, but they have nothing to steal.`);
+                    }
+                    completionDelay = actionMs(500);
+                } else if (spell.id === 'mimic') {
+
+                    const lastSpell = state._lastSpellCast;
+                    if (!lastSpell) {
+                        addLog('No spell has been cast yet this match to mimic.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    const mimicSpell = getSpellById(lastSpell.spellId);
+                    if (!mimicSpell) {
+                        addLog('Cannot mimic that spell.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    playSfx('manaRegen');
+                    _spellFocusCamera(unit, x, y);
+                    unit.mp -= effectiveSpellCost;
+                    addLog(`${unitDisplayName(unit)} mimics ${mimicSpell.name} at full power!`);
+
+                    const target = unitAt(x, y);
+                    if (mimicSpell.kind === 'damage' && target && isEnemyUnit(target, unit)) {
+                        const dmg = Math.max(24, Math.floor((mimicSpell.dmg || 80) + spellPower));
+                        applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} mimics ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
+                    } else if (mimicSpell.kind === 'heal' && target && isAllyUnit(target, unit)) {
+                        const healAmt = Math.max(24, Math.floor((mimicSpell.heal || 80) + spellPower));
+                        applyHealingToUnit(target, healAmt, unit);
+                        addLog(`Mimic heals ${unitDisplayName(target)} for ${healAmt}.`);
+                    } else if (mimicSpell.kind === 'buff' && target && isAllyUnit(target, unit)) {
+                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
+                    } else if (mimicSpell.kind === 'debuff' && target && isEnemyUnit(target, unit)) {
+                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
+                        if (mimicSpell.dmg) {
+                            const dmg = Math.max(16, Math.floor(mimicSpell.dmg + spellPower));
+                            applyDamageToUnit(target, dmg, `Mimic ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
+                        }
+                    } else {
+                        addLog(`Mimic fizzles — invalid target for ${mimicSpell.name}.`);
+                    }
+                    completionDelay = actionMs(600);
+                } else {
+
+                    addLog(`${spell.name} has no effect yet.`);
+                    unit.mp -= effectiveSpellCost;
+                    completionDelay = actionMs(300);
+                }
+            }
+
+            else if (spell.kind === 'remoteView') {
+                if (!isInside(x, y)) {
+                    addLog('Choose a tile to reveal.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('manaRegen');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const wardRadius = 2;
+                const wardTiles = new Set();
+                const _rvFloor = state.viewingFloor || 'earth';
+                for (let wy = y - wardRadius; wy <= y + wardRadius; wy++) {
+                    for (let wx = x - wardRadius; wx <= x + wardRadius; wx++) {
+                        if (wx >= 0 && wy >= 0 && wx < bw() && wy < bh()) {
+                            wardTiles.add(posKey(wx, wy));
+                        }
+                    }
+                }
+                if (!state._visionWards) state._visionWards = [];
+                state._visionWards.push({
+                    x, y, floor: _rvFloor, player: unit.player,
+                    tiles: wardTiles, remaining: 3
+                });
+                addLog(`${unitDisplayName(unit)} casts ${spell.name} — a 5×5 area at ${coordLabel(x, y)} (${_rvFloor}) is revealed for 3 turns.`);
+                showFloatingTextAtTile(x, y, '👁️ Revealed', 'buff');
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'teleport') {
+
+                const teleTarget = unitAt(x, y);
+                if (!state._teleportingUnit) {
+                    if (spell.teleportAnyUnit) {
+
+                        if (!teleTarget) {
+                            addLog('Choose a unit to teleport first.');
+                            playErrorSfx();
+                            return 0;
+                        }
+                        state._teleportingUnit = teleTarget;
+                        addLog(`Select a destination tile for ${unitDisplayName(teleTarget)}. Click the unit again to cancel.`);
+                        state.pendingTarget = null;
+                        markDirty('board', 'log', 'hud');
+                        renderIfDirty();
+                        return 0;
+                    } else {
+
+                        state._teleportingUnit = unit;
+
+                        if (x === unit.x && y === unit.y) {
+                            state.pendingTarget = null;
+                            markDirty('board', 'log', 'hud');
+                            renderIfDirty();
+                            return 0;
+                        }
+
+                    }
+                }
+
+                    if (x === state._teleportingUnit.x && y === state._teleportingUnit.y) {
+                        state._teleportingUnit = null;
+                        state.pendingTarget = null;
+                        addLog('Teleport cancelled.');
+                        markDirty('board', 'log', 'hud');
+                        renderIfDirty();
+                        return 0;
+                    }
+                    if (unitAt(x, y)) {
+                        addLog('Destination tile must be unoccupied.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                        addLog('Cannot teleport there.');
+                        playErrorSfx();
+                        return 0;
+                    }
+
+                    const destDist = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+                    const _tpEffRange = getEffectiveSpellRange(unit, spell);
+                    if (destDist > _tpEffRange) {
+                        addLog('Destination is out of teleport range.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    const tUnit = state._teleportingUnit;
+                    state._teleportingUnit = null;
+                    playSfx('teleport');
+
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                fromX: tUnit.x, fromY: tUnit.y,
+                                toX: x, toY: y,
+                            });
+                        }
+                    } else {
+                        _vfxTeleport(tUnit.x, tUnit.y, x, y);
+                    }
+                    _spellFocusCamera(unit, x, y);
+                    const mpCost = (unit.cls === 'Psychic') ? Math.max(1, effectiveSpellCost - 1) : effectiveSpellCost;
+                    unit.mp -= mpCost;
+                    const oldLabel = coordLabel(tUnit.x, tUnit.y);
+                    tUnit.x = x;
+                    tUnit.y = y;
+                    addLog(`${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+
+                    if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
+                        const aoeR = spell.aoeRadius || 1;
+                        const spellPwr = getSpellPower(unit, spell);
+                        for (let dy = -aoeR; dy <= aoeR; dy++) {
+                            for (let dx = -aoeR; dx <= aoeR; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const hit = unitAt(x + dx, y + dy);
+                                if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
+                                    const dmg = Math.max(1, spell.dmg + spellPwr);
+                                    applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null });
+                                    showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
+                                    addLog(`${unitDisplayName(hit)} takes ${dmg} damage from ${spell.name}!`);
+                                    if (spell.statusEffects && spell.statusEffects.length > 0) {
+                                        applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!state.cameraDisabled) {
+                        window.setTimeout(() => {
+                            _softResetCameraToUnit(tUnit);
+                            scheduleBoardRender();
+                        }, actionMs(80));
+                    }
+            }
+
+            else if (spell.kind === 'warpRune') {
+                if (unitAt(x, y)) {
+                    addLog('Choose an empty tile for the Warp Rune.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                    addLog('Cannot place a rune there.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.warpRunes) state.warpRunes = [];
+                const ownedRunes = state.warpRunes.filter(r => r.casterUnitId === unit.id);
+                if (ownedRunes.length >= (spell.maxActivePerCaster || 2)) state.warpRunes = state.warpRunes.filter(r => r !== ownedRunes[0]);
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                state.warpRunes.push({
+                    x,
+                    y,
+                    z,
+                    owner: unit.player,
+                    casterUnitId: unit.id
+                });
+                addLog(`${unitDisplayName(unit)} inscribes a Warp Rune at ${coordLabel(x, y)}.`);
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                    }
+                }
+            }
+
+            else if (spell.kind === 'seedHeal') {
+                const terrain = getTerrainAt(x, y);
+                if (terrain === 'mountain' || terrain === 'lava') {
+                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.plantedSeeds) state.plantedSeeds = [];
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'heal')) {
+                    addLog('There is already a healing seed on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('healRegen');
+                unit.mp -= effectiveSpellCost;
+
+                focusBoardCameraOnTiles([{
+                    x: unit.x,
+                    y: unit.y
+                }, {
+                    x,
+                    y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 1200
+                });
+                const flyMs = actionMs(420);
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'heal', flyMs, spell.spellType, null, spell), actionMs(200));
+                window.setTimeout(() => {
+                    showFloatingTextAtTile(x, y, '🌱', 'heal', {
+                        durationMs: 900
+                    });
+
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                        }
+                    }
+                    state.plantedSeeds.push({
+                        x,
+                        y,
+                        z,
+                        type: 'heal',
+                        owner: unit.player,
+                        casterUnitId: unit.id
+                    });
+                    addLog(`${unitDisplayName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
+
+                    const wHere = getWeatherAtTile(x, y);
+                    const raining = wHere.length > 0 && (state.activeWeather || []).some(aw => aw.tiles.some(t => t.x === x && t.y === y) && ['thunderstorm', 'hurricane'].includes(aw.type));
+                    if (raining) {
+                        const unitsHere = aliveUnitsFor(unit.player).filter(u => u.x === x && u.y === y);
+                        for (const ally of unitsHere) {
+                            const h = applyHealingToUnit(ally, 12, unit);
+                            if (h > 0) addLog(`🌱 The seed blooms in the rain! ${unitDisplayName(ally)} is healed for ${h} HP.`);
+                        }
+                    }
+                    scheduleBoardRender();
+                }, actionMs(200) + flyMs + actionMs(60));
+                completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'seedPoison') {
+                const terrain = getTerrainAt(x, y);
+                if (terrain === 'mountain' || terrain === 'lava') {
+                    addLog(`Poison Seed cannot be planted on ${terrain} tiles.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.plantedSeeds) state.plantedSeeds = [];
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'poison')) {
+                    addLog('There is already a poison seed on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                focusBoardCameraOnTiles([{
+                    x: unit.x,
+                    y: unit.y
+                }, {
+                    x,
+                    y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 1200
+                });
+                const flyMs = actionMs(420);
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'proj-debuff', flyMs, spell.spellType, null, spell), actionMs(200));
+                window.setTimeout(() => {
+                    showFloatingTextAtTile(x, y, '☠️', 'damage', {
+                        durationMs: 900
+                    });
+                    state.plantedSeeds.push({
+                        x,
+                        y,
+                        z,
+                        type: 'poison',
+                        owner: unit.player,
+                        casterUnitId: unit.id
+                    });
+                    addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
+                    scheduleBoardRender();
+                }, actionMs(200) + flyMs + actionMs(60));
+                completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'lifeDrain') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Choose an enemy target for Life Drain.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+                const cam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 900,
+                    targetHold: 900,
+                    attackName: spell.name
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                window.setTimeout(() => playProjectileToUnit(unit, target, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), projectileDelay);
+                unit.mp -= effectiveSpellCost;
+                window.setTimeout(() => {
+                    let dmg = Math.max(32, (spell.dmg || 144) + spellPower + Math.floor(Math.random() * 40) - 16);
+                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} drains life from `, {
+                        sourceUnit: unit,
+                        damageType: 'magic'
+                    });
+                    let drainMult = spell.drainPct || 0.50;
+                    if (unit.cls === 'Harvester') drainMult *= 1.20;
+                    const healAmt = Math.max(1, Math.round(dmg * drainMult));
+                    const healed = applyHealingToUnit(unit, healAmt, unit);
+                    if (healed > 0) addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                }, impactDelay);
+
+                const _useVfx3dDrain = (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'drainHop'));
+                if (_useVfx3dDrain) {
+                    const _drainFromX = target.x, _drainFromY = target.y;
+                    const _drainToX = unit.x, _drainToY = unit.y;
+                    const _hopCount = 6;
+                    const _hopStaggerMs = actionMs(80);
+                    const _trailStartDelay = impactDelay + actionMs(60);
+                    for (let _i = 0; _i < _hopCount; _i++) {
+                        const _t = (_i + 1) / (_hopCount + 1);
+                        const _hopX = _drainFromX + (_drainToX - _drainFromX) * _t;
+                        const _hopY = _drainFromY + (_drainToY - _drainFromY) * _t;
+                        const _hopDelay = _trailStartDelay + _i * _hopStaggerMs;
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            window.ThreeVFXEffects.fire('drainHop', spell.id, { tx: _hopX, ty: _hopY });
+                        }, _hopDelay);
+                    }
+
+                    const _trailTailMs = _trailStartDelay + (_hopCount - 1) * _hopStaggerMs + actionMs(360);
+                    completionDelay = Math.max(completionDelay, _trailTailMs + actionMs(120));
+                }
+            }
+
+            else if (spell.kind === 'leechSeed') {
+                const terrain = getTerrainAt(x, y);
+                if (terrain === 'mountain' || terrain === 'lava') {
+                    addLog(`Leech Seed cannot be planted on ${terrain} tiles.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.plantedSeeds) state.plantedSeeds = [];
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'leech')) {
+                    addLog('There is already a leech seed on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                focusBoardCameraOnTiles([{
+                    x: unit.x,
+                    y: unit.y
+                }, {
+                    x,
+                    y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 1200
+                });
+                const flyMs = actionMs(420);
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'proj-debuff', flyMs, spell.spellType, null, spell), actionMs(200));
+                window.setTimeout(() => {
+                    showFloatingTextAtTile(x, y, '🌿', 'status', {
+                        durationMs: 900
+                    });
+                    state.plantedSeeds.push({
+                        x,
+                        y,
+                        z,
+                        type: 'leech',
+                        owner: unit.player,
+                        casterUnitId: unit.id
+                    });
+                    addLog(`${unitDisplayName(unit)} plants Leech Seed at ${coordLabel(x, y)}. Enemies will be drained, allies nourished. Persists until destroyed.`);
+                    scheduleBoardRender();
+                }, actionMs(200) + flyMs + actionMs(60));
+                completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'deployTurret') {
+                if (unitAt(x, y)) {
+                    addLog('Choose an empty tile for the turret.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                    addLog('Cannot place a turret there.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.turrets) state.turrets = [];
+                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id);
+                if (ownedTurrets.length >= (spell.maxActivePerCaster || 2)) {
+
+                    const oldest = ownedTurrets[0];
+                    state.turrets = state.turrets.filter(t => t !== oldest);
+                    addLog(`Oldest turret at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
+                }
+                if (state.turrets.some(t => t.x === x && t.y === y)) {
+                    addLog('There is already a turret on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const turretHp = spell.turretHp || 20;
+                const turretDmg = spell.turretDmg || 8;
+                const turretRange = spell.turretRange || 2;
+
+                let _initFacing = Math.PI * 0.75;
+                const _deployEnemies = aliveUnitsOnFloor(enemyOf(unit.player), null);
+                if (_deployEnemies.length > 0) {
+                    let _closestE = _deployEnemies[0], _closestD = Infinity;
+                    for (const e of _deployEnemies) {
+                        const d = Math.abs(e.x - x) + Math.abs(e.y - y);
+                        if (d < _closestD) { _closestD = d; _closestE = e; }
+                    }
+                    _initFacing = Math.atan2(_closestE.y - y, _closestE.x - x);
+                }
+                state.turrets.push({
+                    x,
+                    y,
+                    z,
+                    owner: unit.player,
+                    casterUnitId: unit.id,
+                    hp: turretHp,
+                    maxHp: turretHp,
+                    dmg: turretDmg,
+                    range: turretRange,
+                    spellId: spell.id,
+                    hitsToKill: spell.hitsToKill || 0,
+                    auraDebuff: spell.auraDebuff || false,
+                    auraDefReduction: spell.auraDefReduction || 0,
+                    facingAngle: _initFacing,
+                    id: `turret_${Date.now()}_${randInt(9999)}`
+                });
+                showFloatingTextAtTile(x, y, '🔧', 'buff', {
+                    durationMs: 900
+                });
+
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                    }
+                }
+                addLog(`${unitDisplayName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
+                scheduleBoardRender();
+            }
+
+            else if (spell.kind === 'buildBridge') {
+                if (getTerrainAt(x, y) !== 'deep_water') {
+                    addLog('Build Bridge can only target deep water tiles.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                unit.mp -= effectiveSpellCost;
+                focusBoardCameraOnTiles([{
+                    x: unit.x,
+                    y: unit.y
+                }, {
+                    x,
+                    y
+                }], {
+                    zoom: getWideZoom(),
+                    holdMs: 1200
+                });
+                const flyMs = actionMs(420);
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'heal', flyMs, spell.spellType, null, spell), actionMs(200));
+                window.setTimeout(() => {
+
+                    setTerrainAt(x, y, 'bridge');
+                    showFloatingTextAtTile(x, y, '🌉', 'buff', {
+                        durationMs: 900
+                    });
+                    addLog(`${unitDisplayName(unit)} builds a bridge at ${coordLabel(x, y)}! The deep water is now passable.`);
+                    _invalidateBoardGrid();
+                    scheduleBoardRender();
+                }, actionMs(200) + flyMs + actionMs(60));
+                completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'warCry') {
+                // Phase 4 migration: warCry uses simplified aura pattern
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const radius = spell.auraRadius || 3;
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: radius });
+                } else { _vfxBuff(unit.x, unit.y); }
+                const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
+                let buffCount = 0;
+                for (const ally of allies) {
+                    applyStatusEffects(ally, [{ id: ally.id === unit.id ? 'inspiredWeak' : 'inspired', duration: 2 }], `${spell.name}: `, unit);
+                    buffCount++;
+                }
+                showFloatingTextForUnit(unit, '🎵', 'buff');
+                addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'encore') {
+                const target = unitAt(x, y);
+                if (!target || isEnemyUnit(target, unit) || target.dead) {
+                    addLog('Choose a living ally for Encore.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (target.id === unit.id) {
+                    addLog('The Harbinger cannot Encore themselves.');
+                    playErrorSfx();
+                    return 0;
+                }
+
+                if (!unitFinished(target) && (target.ap === undefined || target.ap > 0)) {
+                    addLog(`${unitDisplayName(target)} hasn't finished acting yet. Encore targets units that are done.`);
+                    playErrorSfx();
+                    return 0;
+                }
+
+                if (target._encoreThisRound) {
+                    addLog(`${unitDisplayName(target)} already received an Encore this round.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                target._encoreThisRound = true;
+
+                target.moved = false;
+                target.acted = false;
+                if (target.ap !== undefined) target.ap = 1;
+                showFloatingTextForUnit(target, '🎶 Encore!', 'buff');
+                addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(target)} an Encore! They can act again this turn.`);
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'dash') {
+
+                const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (dist < 1 || dist > getEffectiveSpellRange(unit, spell)) {
+                    addLog('Destination out of dash range.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!isInside(x, y) || !isTerrainPassable(x, y)) {
+                    addLog('Cannot dash to impassable terrain.');
+                    playErrorSfx();
+                    return 0;
+                }
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                _vfxDash(unit.x, unit.y, x, y);
+                unit.mp -= effectiveSpellCost;
+
+                const dashPath = getLinePoints(unit.x, unit.y, x, y);
+                const dashDmg = spell.dashDamage || spell.dmg || 0;
+                let dashHitCount = 0;
+                const casterStartX = unit.x, casterStartY = unit.y;
+
+                if (!state.cameraDisabled) {
+                    stopBoardCameraAnimation();
+                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                    const dashAnimMs = 200;
+                    animateBoardCameraPath(
+                        { x: casterStartX, y: casterStartY },
+                        { x: x, y: y },
+                        { duration: dashAnimMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                    );
+                }
+
+                for (const pt of dashPath) {
+                    const victim = unitAt(pt.x, pt.y);
+                    if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
+                        const damage = applyDamageToUnit(victim, dashDmg, `${spell.name}: `, {
+                            sourceUnit: unit,
+                            allowMarkBonus: true,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null
+                        });
+                        showFloatingTextForUnit(victim, `-${damage}`, 'damage', { durationMs: 900 });
+                        if (spell.statusEffects && spell.statusEffects.length > 0) {
+                            applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
+                        }
+                        dashHitCount++;
+                        addLog(`${unitDisplayName(victim)} is hit for ${damage} as ${unitDisplayName(unit)} dashes through!`);
+                    }
+                }
+
+                const destOccupant = unitAt(x, y);
+                if (destOccupant && !destOccupant.dead) {
+
+                    const pushAdj = [
+                        { x: x + 1, y: y }, { x: x - 1, y: y },
+                        { x: x, y: y + 1 }, { x: x, y: y - 1 },
+                        { x: x + 1, y: y + 1 }, { x: x - 1, y: y - 1 },
+                        { x: x + 1, y: y - 1 }, { x: x - 1, y: y + 1 }
+                    ];
+                    pushAdj.sort((a, b) => {
+                        const dA = Math.abs(a.x - casterStartX) + Math.abs(a.y - casterStartY);
+                        const dB = Math.abs(b.x - casterStartX) + Math.abs(b.y - casterStartY);
+                        return dB - dA;
+                    });
+                    const pushTo = pushAdj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (pushTo) {
+                        const _dashPushFromX = destOccupant.x, _dashPushFromY = destOccupant.y;
+                        destOccupant.x = pushTo.x;
+                        destOccupant.y = pushTo.y;
+                        if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
+                        addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
+                        showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
+                        animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180);
+                    } else {
+
+                        const fullPath = [{ x: casterStartX, y: casterStartY }, ...dashPath];
+
+                        const occupants = [];
+                        for (let i = 1; i < fullPath.length; i++) {
+                            const occ = unitAt(fullPath[i].x, fullPath[i].y);
+                            if (occ && !occ.dead && occ.id !== unit.id) {
+                                occupants.push({ unit: occ, pathIndex: i });
+                            }
+                        }
+
+                        for (const entry of occupants) {
+                            const prevTile = fullPath[entry.pathIndex - 1];
+                            const _shiftFromX = entry.unit.x, _shiftFromY = entry.unit.y;
+                            entry.unit.x = prevTile.x;
+                            entry.unit.y = prevTile.y;
+                            if (typeof nearestWalkableZ === 'function') entry.unit.z = nearestWalkableZ(prevTile.x, prevTile.y, entry.unit.z);
+                            addLog(`${unitDisplayName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
+                            showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
+                            animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
+                        }
+                    }
+                }
+
+                const oldLabel = coordLabel(casterStartX, casterStartY);
+                unit.x = x;
+                unit.y = y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(x, y, unit.z);
+                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
+
+                animateDisplacement(unit, casterStartX, casterStartY, x, y, 200);
+                if (dashHitCount > 0) {
+                    addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
+                } else {
+                    addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
+                }
+                completionDelay = actionMs(500);
+            }
+
+            else if (spell.kind === 'skyDrop') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target for Sky Drop.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
+                    addLog('Target out of range.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
+                    addLog('Only flying units can use this ability.');
+                    playErrorSfx();
+                    return 0;
+                }
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                const casterZ = getUnitStandingHeight(unit);
+                const carryH = spell.carryHeight || 4;
+                const landingZ = getHeightAt(target.x, target.y);
+                const elevDelta = Math.max(0, (casterZ + carryH) - landingZ);
+                const perLevel = spell.dmgPerLevel || 25;
+                let totalDmg = Math.max(16, (spell.dmg || 0) + spellPower + (elevDelta * perLevel));
+
+                _spellFocusCamera(unit, x, y);
+
+                window.setTimeout(() => {
+                    applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null
+                    });
+                    applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+
+                    if (spell.drainPct && !unit.dead) {
+                        const healed = Math.floor(totalDmg * spell.drainPct);
+                        unit.hp = Math.min(unit.maxHp, unit.hp + healed);
+                        showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
+                    }
+                    const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
+                    addLog(`${unitDisplayName(unit)} drops ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
+
+                    if (spell.terrainDeform) {
+                        applyTerrainDeform(target.x, target.y, 0, spell.terrainDeform);
+                        _invalidateBoardGrid();
+                    }
+                    scheduleBoardRender();
+                }, actionMs(400));
+                completionDelay = actionMs(800);
+            }
+
+            else if (spell.kind === 'skyThrow') {
+
+                if (unit._skyThrowGrab) {
+
+                    const grabbed = unit._skyThrowGrab;
+                    const throwTarget = unitAt(grabbed.id)
+                        ? state.units.find(u => u.id === grabbed.id && !u.dead)
+                        : null;
+                    if (!throwTarget) {
+                        addLog('Grabbed target is no longer valid.');
+                        unit._skyThrowGrab = null;
+                        playErrorSfx();
+                        return 0;
+                    }
+                    const throwRange = spell.throwRange || 3;
+                    const throwDist = Math.abs(x - throwTarget.x) + Math.abs(y - throwTarget.y);
+                    if (throwDist < 1 || throwDist > throwRange) {
+                        addLog('Throw destination out of range.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    if (!isInside(x, y)) {
+                        addLog('Invalid throw destination.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    pushUndoSnapshot(true);
+                    unit._skyThrowGrab = null;
+
+                    const casterZ = getUnitStandingHeight(unit);
+                    const carryH = spell.carryHeight || 4;
+                    const throwLandingZ = getHeightAt(x, y);
+                    const elevDelta = Math.max(0, (casterZ + carryH) - throwLandingZ);
+                    const perLevel = spell.dmgPerLevel || 25;
+                    let totalDmg = Math.max(16, (spell.dmg || 0) + spellPower + (elevDelta * perLevel));
+
+                    const fromX = throwTarget.x, fromY = throwTarget.y;
+                    const collisionTarget = unitAt(x, y);
+
+                    _spellFocusCamera(unit, x, y);
+
+                    window.setTimeout(() => {
+                        if (collisionTarget && !collisionTarget.dead && collisionTarget.id !== throwTarget.id) {
+
+                            const colBonus = spell.collisionBonus || 50;
+                            applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
+                                sourceUnit: unit, damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null
+                            });
+                            applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
+                                sourceUnit: unit, damageType: 'physical',
+                                spellType: spell.spellType || null
+                            });
+                            addLog(`${unitDisplayName(throwTarget)} is hurled into ${unitDisplayName(collisionTarget)}! Collision!`);
+                            showFloatingTextForUnit(throwTarget, `-${totalDmg + colBonus}`, 'damage', { durationMs: 900 });
+                            showFloatingTextForUnit(collisionTarget, `COLLISION! -${colBonus}`, 'streak', { durationMs: 900 });
+                            applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
+
+                            const pushDirs = [
+                                { x: x + 1, y: y }, { x: x - 1, y: y },
+                                { x: x, y: y + 1 }, { x: x, y: y - 1 }
+                            ];
+                            const pushTo = pushDirs.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                            if (pushTo && !collisionTarget.dead) {
+                                const _pFromX = collisionTarget.x, _pFromY = collisionTarget.y;
+                                collisionTarget.x = pushTo.x;
+                                collisionTarget.y = pushTo.y;
+                                if (typeof nearestWalkableZ === 'function') collisionTarget.z = nearestWalkableZ(pushTo.x, pushTo.y, collisionTarget.z);
+                                animateDisplacement(collisionTarget, _pFromX, _pFromY, pushTo.x, pushTo.y, 150);
+                            }
+
+                            throwTarget.x = x;
+                            throwTarget.y = y;
+                            if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
+                        } else {
+
+                            applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                sourceUnit: unit, damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null
+                            });
+                            applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
+                            throwTarget.x = x;
+                            throwTarget.y = y;
+                            if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
+                            showFloatingTextForUnit(throwTarget, `-${totalDmg}`, 'damage', { durationMs: 900 });
+                        }
+                        const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
+                        addLog(`${unitDisplayName(unit)} hurls ${unitDisplayName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
+                        animateDisplacement(throwTarget, fromX, fromY, throwTarget.x, throwTarget.y, 200);
+                        scheduleBoardRender();
+                    }, actionMs(400));
+                    completionDelay = actionMs(800);
+                } else {
+
+                    const target = unitAt(x, y);
+                    if (!target || isAllyUnit(target, unit)) {
+                        addLog('Invalid grab target.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                    if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
+                        addLog('Target out of grab range.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
+                        addLog('Only flying units can use this ability.');
+                        playErrorSfx();
+                        return 0;
+                    }
+
+                    unit.mp -= effectiveSpellCost;
+
+                    unit._skyThrowGrab = { id: target.id, spellId: spell.id };
+                    playSfx(spellLaunchSfx(spell));
+                    addLog(`${unitDisplayName(unit)} grabs ${unitDisplayName(target)}! Choose where to throw them.`);
+                    showFloatingTextForUnit(target, 'GRABBED!', 'streak', { durationMs: 1000 });
+
+                    if (typeof state !== 'undefined') {
+                        state._skyThrowHighlight = {
+                            cx: target.x, cy: target.y,
+                            range: spell.throwRange || 3,
+                            casterId: unit.id
+                        };
+                    }
+                    scheduleBoardRender();
+                    return 0;
+                }
+            }
+
+            else if (spell.kind === 'skySlam') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target for Sky Slam.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
+                    addLog('Target out of range.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
+                    addLog('Only flying units can use this ability.');
+                    playErrorSfx();
+                    return 0;
+                }
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                const casterZ = getUnitStandingHeight(unit);
+                const carryH = spell.carryHeight || 5;
+                const landingZ = getHeightAt(target.x, target.y);
+                const elevDelta = Math.max(0, (casterZ + carryH) - landingZ);
+                const perLevel = spell.dmgPerLevel || 25;
+                let totalDmg = Math.max(16, (spell.dmg || 0) + spellPower + (elevDelta * perLevel));
+
+                const slamX = target.x, slamY = target.y;
+                const casterFromX = unit.x, casterFromY = unit.y;
+
+                _spellFocusCamera(unit, x, y);
+
+                window.setTimeout(() => {
+
+                    applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null
+                    });
+                    applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
+
+                    if (spell.aoeRadius && spell.aoeDmgPct) {
+                        const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
+                        const _aoeR = spell.aoeRadius;
+                        for (let dy = -_aoeR; dy <= _aoeR; dy++) {
+                            for (let dx = -_aoeR; dx <= _aoeR; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const ax = slamX + dx, ay = slamY + dy;
+                                if (!isInside(ax, ay)) continue;
+                                const aoeVictim = unitAt(ax, ay);
+                                if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
+                                    applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
+                                        sourceUnit: unit, damageType: spell.damageType || 'physical',
+                                        spellType: spell.spellType || null
+                                    });
+                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
+                                }
+                            }
+                        }
+                    }
+
+                    const landAdj = [
+                        { x: slamX + 1, y: slamY }, { x: slamX - 1, y: slamY },
+                        { x: slamX, y: slamY + 1 }, { x: slamX, y: slamY - 1 },
+                        { x: slamX + 1, y: slamY + 1 }, { x: slamX - 1, y: slamY - 1 },
+                        { x: slamX + 1, y: slamY - 1 }, { x: slamX - 1, y: slamY + 1 }
+                    ];
+                    const landTile = landAdj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (landTile) {
+                        unit.x = landTile.x;
+                        unit.y = landTile.y;
+                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
+                    } else {
+
+                        unit.x = casterFromX;
+                        unit.y = casterFromY;
+                    }
+                    animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
+                    addLog(`${unitDisplayName(unit)} slams ${unitDisplayName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
+
+                    if (spell.terrainDeform) {
+                        applyTerrainDeform(slamX, slamY, spell.aoeRadius || 0, spell.terrainDeform);
+                        _invalidateBoardGrid();
+                    }
+                    scheduleBoardRender();
+                }, actionMs(400));
+                completionDelay = actionMs(800);
+            }
+
+            else if (spell.kind === 'leapStrike') {
+                const target = unitAt(x, y);
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog('Invalid target for Leap Strike.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (dist > (getEffectiveSpellRange(unit, spell) || 2)) {
+                    addLog('Target out of range.');
+                    playErrorSfx();
+                    return 0;
+                }
+
+                const casterZ = getUnitStandingHeight(unit);
+                const targetZ = getUnitStandingHeight(target);
+                if (casterZ <= targetZ) {
+                    addLog('Must be above the target to use this ability.');
+                    playErrorSfx();
+                    return 0;
+                }
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                unit.mp -= effectiveSpellCost;
+
+                const elevDelta = casterZ - targetZ;
+                const perLevel = spell.dmgPerLevel || 20;
+                let totalDmg = Math.max(16, (spell.dmg || 0) + spellPower + (elevDelta * perLevel));
+
+                const casterFromX = unit.x, casterFromY = unit.y;
+
+                if (!state.cameraDisabled) {
+                    stopBoardCameraAnimation();
+                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                    animateBoardCameraPath(
+                        { x: casterFromX, y: casterFromY },
+                        { x: x, y: y },
+                        { duration: 250, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                    );
+                }
+
+                _vfxDash(unit.x, unit.y, x, y);
+
+                window.setTimeout(() => {
+                    applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                        sourceUnit: unit,
+                        damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null
+                    });
+                    applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
+
+                    if (spell.aoeRadius && spell.aoeDmgPct) {
+                        const aoeDmg = Math.floor(totalDmg * spell.aoeDmgPct);
+                        const _aoeR = spell.aoeRadius;
+                        for (let dy = -_aoeR; dy <= _aoeR; dy++) {
+                            for (let dx = -_aoeR; dx <= _aoeR; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const ax = target.x + dx, ay = target.y + dy;
+                                if (!isInside(ax, ay)) continue;
+                                const aoeVictim = unitAt(ax, ay);
+                                if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
+                                    applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
+                                        sourceUnit: unit, damageType: spell.damageType || 'physical',
+                                        spellType: spell.spellType || null
+                                    });
+                                    showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
+                                }
+                            }
+                        }
+                    }
+
+                    const landAdj = [
+                        { x: target.x + 1, y: target.y }, { x: target.x - 1, y: target.y },
+                        { x: target.x, y: target.y + 1 }, { x: target.x, y: target.y - 1 }
+                    ];
+                    const landTile = landAdj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (landTile) {
+                        unit.x = landTile.x;
+                        unit.y = landTile.y;
+                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
+                    }
+                    animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
+                    addLog(`${unitDisplayName(unit)} leaps onto ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
+
+                    if (spell.terrainDeform) {
+                        applyTerrainDeform(target.x, target.y, spell.aoeRadius || 0, spell.terrainDeform);
+                        _invalidateBoardGrid();
+                    }
+                    scheduleBoardRender();
+                }, actionMs(300));
+                completionDelay = actionMs(700);
+            }
+
+            if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);
+
+            if (completionDelay < actionMs(600)) completionDelay = actionMs(600);
+            window.setTimeout(finishAction, completionDelay);
+            return completionDelay;
+        }
+
+        function checkWinConditionOnly() {
+
+            const mpMode = getActiveMultiplayerMode();
+            const wcs = mpMode.winConditions || [];
+
+            if (wcs.includes('tower_destroyed') && state.towers && state.towers[1] && state.towers[2]) {
+                if (state.towers[1].hp <= 0 || state.towers[2].hp <= 0) return true;
+            }
+
+            if (wcs.includes('wipeout') || wcs.includes('most_kills')) {
+                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length;
+                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length;
+                if (p1Alive === 0 || p2Alive === 0) return true;
+            }
+
+            if (state.matchClock && !state.suddenDeathActive) {
+                const roundLimit = state.matchClock.roundLimit || mpMode.roundLimit || 0;
+                if (roundLimit > 0 && state.round > roundLimit) return true;
+            }
+            return false;
+        }
+
+        function checkWin() {
+            if (state.winner) {
+                if (!state._winLogged) {
+                    state._winLogged = true;
+                    addLog('All remaining hourglasses and hidden items are now revealed.');
+                    setTimeout(() => finalizeMatch(), 0);
+                }
+                return;
+            }
+
+            const mpMode = getActiveMultiplayerMode();
+            const wcs = mpMode.winConditions || [];
+
+            if (wcs.includes('wipeout') || wcs.includes('most_kills')) {
+                if (_isFFA()) {
+
+                    const alive = state.units.filter(u => !u.dead && !u._dying);
+                    if (alive.length === 1) {
+                        state.winner = alive[0].player;
+                        state._winCondition = 'wipeout';
+                        state._ffaWinnerUnitId = alive[0].id;
+                    } else if (alive.length === 0) {
+
+                        state.winner = 1;
+                        state._winCondition = 'wipeout';
+                    }
+                } else {
+                    const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length;
+                    const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length;
+                    if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
+                    else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
+                }
+            }
+
+            if (!state.winner && wcs.includes('tower_destroyed') && state.towers && state.towers[1] && state.towers[2]) {
+                if (state.towers[1].hp <= 0) { state.winner = 2; state._winCondition = 'tower_destroyed'; }
+                if (state.towers[2].hp <= 0) { state.winner = 1; state._winCondition = 'tower_destroyed'; }
+            }
+
+            if (!state.winner && wcs.includes('hourglasses_collected')) {
+                const totalHG = state.hourglasses.length;
+                if (totalHG > 0) {
+                    const p1HG = state.hourglasses.filter(h => h.carriedBy !== null && state.units.find(u => u.id === h.carriedBy)?.player === 1).length;
+                    const p2HG = state.hourglasses.filter(h => h.carriedBy !== null && state.units.find(u => u.id === h.carriedBy)?.player === 2).length;
+                    if (p1HG >= totalHG) { state.winner = 1; state._winCondition = 'hourglasses_collected'; }
+                    else if (p2HG >= totalHG) { state.winner = 2; state._winCondition = 'hourglasses_collected'; }
+                }
+            }
+
+            if (!state.winner && wcs.includes('most_captures') && state.matchScores) {
+                const target = 3;
+                if (state.matchScores[1] >= target) { state.winner = 1; state._winCondition = 'flag_captures'; }
+                else if (state.matchScores[2] >= target) { state.winner = 2; state._winCondition = 'flag_captures'; }
+            }
+
+            if (!state.winner && state.matchClock && !state.suddenDeathActive) {
+                const roundLimit = state.matchClock.roundLimit || mpMode.roundLimit || 0;
+                if (roundLimit > 0 && state.round > roundLimit) {
+                    _resolveTimerExpiry(mpMode);
+                }
+            }
+
+            if (state.winner && !state._winLogged) {
+                state._winLogged = true;
+                const winMsgs = {
+                    wipeout: `Player ${state.winner} wins by eliminating all enemies!`,
+                    tower_destroyed: `Player ${state.winner} wins by slaying the enemy Dragon!`,
+                    hourglasses_collected: `Player ${state.winner} wins by collecting all hourglasses!`,
+                    most_kills: `Player ${state.winner} wins with the most kills!`,
+                    most_points: `Player ${state.winner} wins with the most points!`,
+                    most_captures: `Player ${state.winner} wins with the most flag captures!`,
+                    flag_captures: `Player ${state.winner} wins by reaching the capture target!`,
+                    sudden_death: `Player ${state.winner} wins in Sudden Death!`,
+                    arena_composite: `Player ${state.winner} wins on Arena score!`,
+                };
+                addLog(winMsgs[state._winCondition] || `Player ${state.winner} wins the match!`);
+                addLog('All remaining hourglasses and hidden items are now revealed.');
+                setTimeout(() => finalizeMatch(), 0);
+            }
+        }
+
+        function _resolveTimerExpiry(mpMode) {
+
+            if (mpMode.id === 'arena') {
+                _resolveArenaTimerExpiry();
+                return;
+            }
+
+            if (mpMode.isFFA) {
+                let bestUnit = null;
+                let bestKills = -1;
+                for (const u of state.units) {
+                    const kills = u._matchKills || 0;
+                    if (kills > bestKills) {
+                        bestKills = kills;
+                        bestUnit = u;
+                    }
+                }
+                if (bestUnit) {
+                    state.winner = bestUnit.player;
+                    state._winCondition = 'most_kills';
+                    state._ffaWinnerUnitId = bestUnit.id;
+                    addLog(`${unitDisplayName(bestUnit)} wins with ${bestKills} kills!`);
+                } else {
+                    state.winner = 1;
+                    state._winCondition = 'most_kills';
+                }
+                return;
+            }
+
+            const scores1 = _getModeScore(1, mpMode);
+            const scores2 = _getModeScore(2, mpMode);
+
+            if (scores1 > scores2) {
+                state.winner = 1;
+                state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
+            } else if (scores2 > scores1) {
+                state.winner = 2;
+                state._winCondition = mpMode.scoringType === 'kills' ? 'most_kills' : mpMode.scoringType === 'ctf' ? 'most_captures' : 'most_points';
+            } else if (mpMode.suddenDeath) {
+
+                state.suddenDeathActive = true;
+                state.matchClock.paused = true;
+                addLog('⚡ TIME\'S UP — SCORES ARE TIED! SUDDEN DEATH! Next score wins!');
+                showCombatBanner('⚡ SUDDEN DEATH!', 'Next score wins the match!', 'neutral');
+                shakeBoard('hard');
+                playSfx('levelUp');
+            } else {
+
+                state.winner = 0;
+                state._winCondition = 'draw';
+                state._winLogged = true;
+                addLog('⏱ Time\'s up! The match ends in a draw.');
+            }
+        }
+
+        function _resolveArenaTimerExpiry() {
+            const ARENA_PTS = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+
+            function _arenaComposite(p) {
+                const enemy = p === 1 ? 2 : 1;
+                let pts = 0;
+                let breakdown = [];
+
+                const kills = state.matchKills?.[p] || 0;
+                const killPts = kills * ARENA_PTS.kill;
+                pts += killPts;
+                breakdown.push(`${kills} kills (${killPts})`);
+
+                const eTower = state.towers?.[enemy];
+                let tDmg = 0;
+                if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
+                const tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                pts += tDmgPts;
+                breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
+
+                let hgCount = 0;
+                if (state.hourglasses) {
+                    hgCount = state.hourglasses.filter(h => {
+                        if (h.carriedBy === null) return false;
+                        const carrier = state.units.find(u => u.id === h.carriedBy);
+                        return carrier && !carrier.dead && carrier.player === p;
+                    }).length;
+                }
+                const hgPts = hgCount * ARENA_PTS.hourglass;
+                pts += hgPts;
+                breakdown.push(`${hgCount} hourglasses (${hgPts})`);
+
+                const nexRounds = state._arenaNexusControl?.[p] || 0;
+                const nexPts = nexRounds * ARENA_PTS.nexusRound;
+                pts += nexPts;
+                breakdown.push(`${nexRounds} nexus rounds (${nexPts})`);
+
+                return { pts, breakdown };
+            }
+
+            const s1 = _arenaComposite(1);
+            const s2 = _arenaComposite(2);
+
+            addLog(`⏱ TIME'S UP! Arena scoring:`);
+            addLog(`  P1: ${s1.pts} pts — ${s1.breakdown.join(', ')}`);
+            addLog(`  P2: ${s2.pts} pts — ${s2.breakdown.join(', ')}`);
+
+            if (s1.pts > s2.pts) {
+                state.winner = 1;
+                state._winCondition = 'arena_composite';
+            } else if (s2.pts > s1.pts) {
+                state.winner = 2;
+                state._winCondition = 'arena_composite';
+            } else {
+
+                state.suddenDeathActive = true;
+                state.matchClock.paused = true;
+                addLog('⚡ SCORES ARE TIED! SUDDEN DEATH! Next kill, tower hit, or hourglass pickup wins!');
+                showCombatBanner('⚡ SUDDEN DEATH!', 'Next score wins!', 'neutral');
+                shakeBoard('hard');
+                playSfx('levelUp');
+            }
+        }
+
+        function _getModeScore(player, mpMode) {
+            if (!mpMode) mpMode = getActiveMultiplayerMode();
+            if (mpMode.scoringType === 'kills') return state.matchKills[player] || 0;
+            if (mpMode.scoringType === 'domination' || mpMode.scoringType === 'hotspot') return state.matchScores[player] || 0;
+            if (mpMode.scoringType === 'ctf') return state.matchScores[player] || 0;
+            return 0;
+        }
+
+        let _matchClockInterval = null;
+        function _startMatchClockInterval() {
+            _stopMatchClockInterval();
+            _matchClockInterval = setInterval(() => {
+                if (state.phase !== 'battle' || state.winner) {
+                    _stopMatchClockInterval();
+                    return;
+                }
+
+                if (typeof renderTimer === 'function') renderTimer();
+
+                if (typeof renderHudScoreboard === 'function') renderHudScoreboard();
+
+                if (typeof renderTurnClock === 'function') renderTurnClock();
+
+                if (state.shotClock && state.shotClock.active && !state.winner) {
+                    const elapsed = (Date.now() - state.shotClock.startedAt) / 1000;
+                    if (elapsed >= state.shotClock.limitSec) {
+                        _shotClockExpired();
+                    }
+                }
+            }, 1000);
+        }
+        function _stopMatchClockInterval() {
+            if (_matchClockInterval) {
+                clearInterval(_matchClockInterval);
+                _matchClockInterval = null;
+            }
+        }
+
+        function _shotClockExpired() {
+            if (!state._blitzActiveUnitId || state.winner) return;
+            const unit = state.units.find(u => u.id === state._blitzActiveUnitId);
+            if (!unit || unit.dead) return;
+
+            const ctrl = state.controllers[unit.player];
+            if (ctrl !== CTRL.HUMAN) return;
+            state.shotClock.active = false;
+            addLog(`⏱ Shot clock! ${unitDisplayName(unit)}'s turn ends automatically.`);
+            showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
+            playSfx('uiBack');
+
+            unit.ap = 0;
+            state.actionMode = null;
+            state._actionExecuting = false;
+            state.actionMenuView = 'root';
+            state.pendingTarget = null;
+            endUnitIfDone(unit);
+        }
+
+        function _startShotClock() {
+            if (!state.shotClock) return;
+            state.shotClock.startedAt = Date.now();
+            state.shotClock.active = true;
+        }
+
+        function _stopShotClock() {
+            if (!state.shotClock) return;
+            state.shotClock.active = false;
+        }
+        window._startShotClock = _startShotClock;
+        window._stopShotClock = _stopShotClock;
+
+        function tickMatchClock() {
+            if (!state.matchClock || state.matchClock.paused || state.winner) return;
+
+            const mpMode = getActiveMultiplayerMode();
+            const roundLimit = state.matchClock.roundLimit || mpMode.roundLimit || 0;
+            if (roundLimit > 0 && state.round > roundLimit && !state.suddenDeathActive) {
+                _resolveTimerExpiry(mpMode);
+                if (state.winner) {
+                    checkWin();
+                    return;
+                }
+            }
+
+            if (mpMode.scoringType === 'domination' && state.nexusPoints) {
+                const ptsPerNex = mpMode.pointsPerNexusPerRound || 10;
+                for (const key of Object.keys(state.nexusPoints)) {
+                    const nex = state.nexusPoints[key];
+                    if (nex && nex.owner && nex.owner > 0) {
+                        const prevScore = state.matchScores[nex.owner] || 0;
+                        state.matchScores[nex.owner] = prevScore + ptsPerNex;
+
+                        const newScore = state.matchScores[nex.owner];
+                        if (Math.floor(newScore / 100) > Math.floor(prevScore / 100)) {
+                            const milestone = Math.floor(newScore / 100) * 100;
+                            addLog(`🚩 Player ${nex.owner} reaches ${milestone} Domination points!`);
+                            showCombatBanner(`🚩 ${milestone} PTS`, `Player ${nex.owner}`, nex.owner === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                            playSfx('newRound');
+                        }
+                    }
+                }
+            }
+
+            if (mpMode.id === 'arena' && state.nexusPoints) {
+                if (!state._arenaNexusControl) state._arenaNexusControl = { 1: 0, 2: 0 };
+                for (const key of Object.keys(state.nexusPoints)) {
+                    const nex = state.nexusPoints[key];
+                    if (nex && nex.owner && nex.owner > 0) {
+                        state._arenaNexusControl[nex.owner] = (state._arenaNexusControl[nex.owner] || 0) + 1;
+                    }
+                }
+            }
+
+            if (mpMode.scoringType === 'hotspot' && state.roamingNexus) {
+                const rn = state.roamingNexus;
+                if (rn.owner && rn.owner > 0) {
+                    state.matchScores[rn.owner] = (state.matchScores[rn.owner] || 0) + 5;
+                }
+
+                rn._idleRounds = (rn._idleRounds || 0) + 1;
+                if (rn._idleRounds >= 8 && rn.owner === 0) {
+                    state.roamingNexus = null;
+                    addLog('🔥 The Hotspot Nexus relocated — no one claimed it in time!');
+                    _spawnRoamingNexus();
+                }
+            }
+
+            if (mpMode.hasFlags && state.flags) {
+                for (const p of [1, 2]) {
+                    const fl = state.flags[p];
+                    if (fl && !fl.carriedBy && !fl.atBase) {
+                        fl._droppedRounds = (fl._droppedRounds || 0) + 1;
+                        if (fl._droppedRounds >= 5) {
+                            _returnFlagToBase(p);
+                            addLog(`🏳️ Player ${p}'s flag auto-returned to base after being uncollected.`);
+                        }
+                    } else if (fl) {
+                        fl._droppedRounds = 0;
+                    }
+                }
+            }
+
+            markDirty('hud');
+        }
+
+        function _spawnRoamingNexus() {
+
+            const eStart = MAP_SECTIONS.earth ? MAP_SECTIONS.earth.startRow : 0;
+            const eEnd = MAP_SECTIONS.earth ? MAP_SECTIONS.earth.endRow : bh() - 1;
+            const candidates = [];
+            for (let y = eStart; y <= eEnd; y++) {
+                for (let x = 2; x < bw() - 2; x++) {
+                    if (isTerrainPassable(x, y) && !unitAt(x, y)) {
+                        candidates.push({ x, y });
+                    }
+                }
+            }
+            if (candidates.length === 0) return;
+            candidates.sort(() => Math.random() - 0.5);
+            const spot = candidates[0];
+            const nzSize = 2;
+            state.roamingNexus = {
+                x: spot.x, y: spot.y,
+                zoneX: spot.x, zoneY: spot.y,
+                zoneSize: nzSize,
+                owner: 0,
+                progress: 0,
+            };
+            addLog(`🔥 A new Hotspot Nexus appears at ${coordLabel(spot.x, spot.y)}!`);
+            showCombatBanner('🔥 HOTSPOT!', `New Nexus at ${coordLabel(spot.x, spot.y)}`, 'neutral');
+        }
+
+        function _captureRoamingNexus(player) {
+            const mpMode = getActiveMultiplayerMode();
+            const pts = mpMode.pointsPerCapture || 50;
+            state.matchScores[player] = (state.matchScores[player] || 0) + pts;
+            addLog(`🔥 Player ${player} captures the Hotspot Nexus! +${pts} points!`);
+            showCombatBanner('🔥 NEXUS CAPTURED!', `Player ${player} +${pts} pts`, player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+            shakeBoard('hard');
+            playSfx('nexusCaptured');
+
+            if (state.suddenDeathActive && mpMode.tiebreaker === 'sudden_death_nexus') {
+                state.winner = player;
+                state._winCondition = 'sudden_death';
+                return;
+            }
+
+            state.roamingNexus = null;
+            setTimeout(() => {
+                if (state.winner) return;
+                _spawnRoamingNexus();
+                renderBattleUpdate();
+            }, 1500);
+        }
+
+        function checkFlagPickup(unit) {
+            if (!state.flags || !unit || unit.dead) return;
+            const mpMode = getActiveMultiplayerMode();
+            if (!mpMode.hasFlags) return;
+
+            const enemyPlayer = unit.player === 1 ? 2 : 1;
+            const enemyFlag = state.flags[enemyPlayer];
+            const ownFlag = state.flags[unit.player];
+
+            if (enemyFlag && !enemyFlag.carriedBy && enemyFlag.x === unit.x && enemyFlag.y === unit.y) {
+                enemyFlag.carriedBy = unit.id;
+                enemyFlag.atBase = false;
+                addLog(`🏳️ ${unitDisplayName(unit)} grabs Player ${enemyPlayer}'s flag!`);
+                showFloatingTextForUnit(unit, '🏳️ FLAG!', 'streak', { durationMs: 1400 });
+                showCombatBanner('🏳️ FLAG TAKEN!', `Player ${unit.player} has the flag!`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                playSfx('playerHourglass');
+                shakeBoard('normal');
+            }
+
+            if (ownFlag && !ownFlag.carriedBy && !ownFlag.atBase && ownFlag.x === unit.x && ownFlag.y === unit.y) {
+                _returnFlagToBase(unit.player);
+                addLog(`🏳️ ${unitDisplayName(unit)} returns their team's flag to base!`);
+                showFloatingTextForUnit(unit, '🏳️ RETURNED', 'buff', { durationMs: 1200 });
+            }
+
+            if (enemyFlag && enemyFlag.carriedBy === unit.id) {
+                /* Score capture by entering your own spawn zone */
+                if (isInSpawnZone(unit.x, unit.y, unit.player)) {
+                    _scoreFlagCapture(unit, enemyPlayer);
+                }
+            }
+        }
+
+        function _scoreFlagCapture(unit, enemyPlayer) {
+            state.matchScores[unit.player] = (state.matchScores[unit.player] || 0) + 1;
+            addLog(`🏆 Player ${unit.player} CAPTURES Player ${enemyPlayer}'s flag! Score: ${state.matchScores[1]}–${state.matchScores[2]}`);
+            showCombatBanner('🏆 FLAG CAPTURED!', `Score: ${state.matchScores[1]} – ${state.matchScores[2]}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+            shakeBoard('hard');
+            playSfx('playerHourglass');
+            grantXP(unit, 25, 'flagCapture');
+
+            _returnFlagToBase(enemyPlayer);
+
+            if (state.suddenDeathActive) {
+                const mpMode = getActiveMultiplayerMode();
+                if (mpMode.tiebreaker === 'sudden_death_flag') {
+                    state.winner = unit.player;
+                    state._winCondition = 'sudden_death';
+                }
+            }
+        }
+
+        function _returnFlagToBase(player) {
+            const flag = state.flags?.[player];
+            if (!flag) return;
+            flag.carriedBy = null;
+            flag.atBase = true;
+
+            const zone = state.spawnZones?.[player];
+            if (zone && zone.length > 0) {
+                const mid = zone[Math.floor(zone.length / 2)];
+                flag.x = mid.x;
+                flag.y = mid.y;
+            } else {
+                flag.x = player === 1 ? 1 : bw() - 2;
+                flag.y = Math.floor(bh() / 2);
+            }
+        }
+
+        function dropFlagOnDeath(unit) {
+            if (!state.flags || !unit) return;
+            for (const p of [1, 2]) {
+                const flag = state.flags[p];
+                if (flag && flag.carriedBy === unit.id) {
+                    flag.carriedBy = null;
+                    flag.x = unit.x;
+                    flag.y = unit.y;
+                    flag.atBase = false;
+                    addLog(`🏳️ Player ${p}'s flag dropped at ${coordLabel(unit.x, unit.y)}!`);
+                    showCombatBanner('🏳️ FLAG DROPPED!', `At ${coordLabel(unit.x, unit.y)}`, 'neutral');
+                }
+            }
+        }
+
+        function getMoveTiles(unit) {
+            const maxCost = getEffectiveMove(unit);
+            const tiles = [];
+            const tileSet = new Set();
+            const _unitFlies = canFly(unit);
+            const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            const unitZ = unit.z ?? 0;
+
+            const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
+            const bestCost = new Map([
+                [startKey, 0]
+            ]);
+            const _jumpReached = new Set();
+            const open = [{
+                x: unit.x,
+                y: unit.y,
+                z: unitZ,
+                cost: 0,
+                _viaJump: false
+            }];
+            while (open.length) {
+
+                let minI = 0;
+                for (let i = 1; i < open.length; i++) {
+                    if (open[i].cost < open[minI].cost) minI = i;
+                }
+                const cur = open[minI];
+                open[minI] = open[open.length - 1];
+                open.pop();
+                const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
+                if (cur.cost > (bestCost.get(curKey) ?? Infinity)) continue;
+
+                for (const [dx, dy] of [
+                        [1, 0],
+                        [-1, 0],
+                        [0, 1],
+                        [0, -1],
+                        [1, 1],
+                        [1, -1],
+                        [-1, 1],
+                        [-1, -1]
+                    ]) {
+                    const nx = cur.x + dx;
+                    const ny = cur.y + dy;
+                    if (!isInside(nx, ny)) continue;
+
+                    if (objectBlocksEdge(cur.x, cur.y, nx, ny)) { continue; }
+
+                    const _isAirborne = _unitFlies && isUnitAirborne(unit);
+                    let neighborSurfaces;
+                    if (_isAirborne) {
+
+                        const _curGround = getHeightAt(cur.x, cur.y);
+                        const _clearance = cur.z - _curGround;
+                        const _nbrGround = getHeightAt(nx, ny);
+                        const _flyMinZ = getMinFlyingZ(nx, ny);
+                        const _flyMaxZ = getMaxFlyingZ(nx, ny);
+                        const _flyZ = Math.max(_flyMinZ, Math.min(_flyMaxZ, _nbrGround + _clearance));
+                        neighborSurfaces = [_flyZ];
+                    } else {
+                        neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
+                    }
+                    if (!neighborSurfaces.length) { continue; }
+
+                    for (const nz of neighborSurfaces) {
+
+                        if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) {
+
+                            continue;
+                        }
+
+                        if (dx !== 0 && dy !== 0) {
+                            const canPassX = isInside(cur.x + dx, cur.y) && unitCanTraverse(unit, cur.x + dx, cur.y, _has3D ? cur.z : undefined);
+                            const canPassY = isInside(cur.x, cur.y + dy) && unitCanTraverse(unit, cur.x, cur.y + dy, _has3D ? cur.z : undefined);
+                            if (!canPassX && !canPassY) { continue; }
+                        }
+
+                        const curZ = cur.z;
+                        const _hDiff = Math.abs(curZ - nz);
+
+                        if (!_isAirborne && _hDiff > MAX_CLIMB_HEIGHT) {
+
+                            const _curTerrain = getTerrainAt(cur.x, cur.y);
+                            const _nextTerrain = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
+                            const _isStairs = _curTerrain === 'barrier_passage' || _nextTerrain === 'barrier_passage';
+                            const _curObj = (typeof getObjectAt === 'function') ? getObjectAt(cur.x, cur.y) : null;
+                            const _nextObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+                            const _hasStairObj = _curObj === 'stairs' || _curObj === 'stairs_2' || _nextObj === 'stairs' || _nextObj === 'stairs_2';
+
+                            const _curRule = _curObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_curObj] : null) : null;
+                            const _nextRule = _nextObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_nextObj] : null) : null;
+                            const _hasBldgAccess = (_curRule && _curRule.roofWalkable) || (_nextRule && _nextRule.roofWalkable);
+                            if (!_isStairs && !_hasStairObj && !_hasBldgAccess) {
+
+                                const _signedHDiff = nz - curZ;
+                                if (_signedHDiff > JUMP_HEIGHT) {
+                                    continue;
+                                }
+                            }
+                        }
+
+                        const _thisStepIsJump = !_isAirborne && _hDiff > MAX_CLIMB_HEIGHT;
+                        const _nodeViaJump = cur._viaJump || _thisStepIsJump;
+
+                        let _occupant;
+                        if (_isAirborne) {
+                            _occupant = unitAt(nx, ny, nz);
+                        } else {
+                            _occupant = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
+                        }
+                        if (_occupant && _occupant.player !== unit.player) { continue; }
+
+                        if (!_isAirborne) {
+                            let _decoyBlocks = false;
+                            if (state._deployedObjects) {
+                                for (const obj of state._deployedObjects) {
+                                    if (obj.x === nx && obj.y === ny && obj.hp > 0 && (obj.isDecoy || obj.blocksMovement)) { _decoyBlocks = true; break; }
+                                }
+                            }
+                            if (_decoyBlocks) { continue; }
+
+                            let _siegeBlocks = false;
+                            if (state.turrets) {
+                                for (const turret of state.turrets) {
+                                    if (turret.x === nx && turret.y === ny && turret.hp > 0 && turret.spellId === 'siegeTurret') { _siegeBlocks = true; break; }
+                                }
+                            }
+                            if (_siegeBlocks) { continue; }
+                        }
+
+                        let _elevCost = 0;
+                        if (!_isAirborne && _hDiff > 0) {
+                            const _nxtTerrain = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
+                            const _nxtObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+                            const _onRamp = _nxtTerrain === 'barrier_passage' || _nxtObj === 'stairs' || _nxtObj === 'stairs_2';
+                            _elevCost = _onRamp ? _hDiff * 0.25 : _hDiff * 0.5;
+                        }
+
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + _elevCost + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        if (nextCost > maxCost) { continue; }
+
+                        const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
+                        if (nextCost >= (bestCost.get(nKey) ?? Infinity)) continue;
+                        bestCost.set(nKey, nextCost);
+                        if (_nodeViaJump) _jumpReached.add(nKey);
+
+                        const _landTerrain = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
+                        const _landObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
+
+                        let _isBuilding = false;
+                        if (!_isAirborne) {
+                            if (isTowerTile(nx, ny)) {
+                                _isBuilding = true;
+                            } else if (_landObj) {
+                                const _landRule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_landObj] : null;
+                                if (_landRule && _landRule.roofWalkable) {
+
+                                    const _landOSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[_landObj] : null;
+                                    const _landBaseH = state.boardHeights?.[ny]?.[nx] ?? 0;
+                                    const _landRoofZ = _landOSpr && _landOSpr._gameHeight > 0
+                                        ? _landBaseH + _landOSpr._gameHeight : -1;
+                                    _isBuilding = (nz !== _landRoofZ);
+                                } else if (_landTerrain === 'sanctuary_church' || _landTerrain === 'sanctuary_shop') {
+                                    _isBuilding = true;
+                                }
+                            } else if (_landTerrain === 'sanctuary_church' || _landTerrain === 'sanctuary_shop') {
+                                _isBuilding = true;
+                            }
+                        }
+                        const _blocked = _isAirborne ? false : !!_occupant;
+                        if (!_blocked && !_isBuilding && !tileSet.has(nKey)) {
+                            tileSet.add(nKey);
+
+                            const _isGroundedFlyer = _unitFlies && !_isAirborne;
+                            tiles.push({
+                                x: nx,
+                                y: ny,
+                                z: nz,
+                                cost: nextCost,
+                                _jump: _nodeViaJump && !_isGroundedFlyer,
+                                _takeoff: _nodeViaJump && _isGroundedFlyer
+                            });
+                        }
+                        open.push({
+                            x: nx,
+                            y: ny,
+                            z: nz,
+                            cost: nextCost,
+                            _viaJump: _nodeViaJump
+                        });
+                    }
+                }
+            }
+
+            if (_unitFlies && !isUnitAirborne(unit) && canChangeAltitude(unit, 'ascend').ok) {
+
+                const takeoffApCost = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' ? FLYING_ALTITUDE_CONFIG.apCost : 1) + AP_COST_ACTION;
+                if ((unit.ap || 0) >= takeoffApCost) {
+
+                    const groundZ = getHeightAt(unit.x, unit.y);
+                    const flyZ = getMinFlyingZ(unit.x, unit.y);
+
+                    const savedZ = unit.z;
+                    unit.z = flyZ;
+                    const flyMaxCost = getEffectiveMove(unit);
+                    const flyBestCost = new Map();
+                    const flyStartKey = _has3D ? posKey3(unit.x, unit.y, flyZ) : posKey(unit.x, unit.y);
+                    flyBestCost.set(flyStartKey, 0);
+                    const flyOpen = [{ x: unit.x, y: unit.y, z: flyZ, cost: 0 }];
+                    while (flyOpen.length) {
+                        let minI = 0;
+                        for (let i = 1; i < flyOpen.length; i++) {
+                            if (flyOpen[i].cost < flyOpen[minI].cost) minI = i;
+                        }
+                        const cur = flyOpen[minI];
+                        flyOpen[minI] = flyOpen[flyOpen.length - 1];
+                        flyOpen.pop();
+                        const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
+                        if (cur.cost > (flyBestCost.get(curKey) ?? Infinity)) continue;
+                        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+                            const nx = cur.x + dx, ny = cur.y + dy;
+                            if (!isInside(nx, ny)) continue;
+
+                            const _toFlyMinZ = getMinFlyingZ(nx, ny);
+                            const _toFlyMaxZ = getMaxFlyingZ(nx, ny);
+                            const _toCurGround = getHeightAt(cur.x, cur.y);
+                            const _toClearance = cur.z - _toCurGround;
+                            const _toNbrGround = getHeightAt(nx, ny);
+                            const nz = Math.max(_toFlyMinZ, Math.min(_toFlyMaxZ, _toNbrGround + _toClearance));
+
+                            if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) continue;
+
+                            const _toOccupant = unitAt(nx, ny, nz);
+                            if (_toOccupant && _toOccupant.player !== unit.player) continue;
+                            const nextCost = cur.cost + 1 + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                            if (nextCost > flyMaxCost) continue;
+                            const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
+                            if (nextCost >= (flyBestCost.get(nKey) ?? Infinity)) continue;
+                            flyBestCost.set(nKey, nextCost);
+
+                            const groundPk = posKey(nx, ny);
+                            if (!tileSet.has(groundPk) && !(nx === unit.x && ny === unit.y)) {
+
+                                const _toBlocked = !!_toOccupant;
+                                if (!_toBlocked) {
+                                    tileSet.add(groundPk);
+                                    tiles.push({ x: nx, y: ny, z: nz, cost: nextCost, _takeoff: true });
+                                }
+                            }
+                            flyOpen.push({ x: nx, y: ny, z: nz, cost: nextCost });
+                        }
+                    }
+                    unit.z = savedZ;
+                }
+            }
+
+            return tiles;
+        }
+
+        function getAttackTiles(unit) {
+            const tiles = [];
+            const tileSet = new Set();
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            for (let y = 0; y < bh(); y++) {
+                for (let x = 0; x < bw(); x++) {
+                    const d = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+                    if (d >= 1 && d <= getEffectiveRange(unit) && !isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+
+                        if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, x, y)) continue;
+                        tiles.push({
+                            x,
+                            y
+                        });
+                        tileSet.add(posKey(x, y));
+                    }
+                }
+            }
+
+            {
+                const pk0 = posKey(unit.x, unit.y);
+                if (!tileSet.has(pk0)) {
+                    let hasTarget0 = false;
+
+                    if (!hasTarget0) {
+                        const colUnits = unitsAtColumn(unit.x, unit.y);
+                        hasTarget0 = colUnits.some(u => u.id !== unit.id && u.player !== unit.player && (u.z ?? 0) !== (unit.z ?? 0));
+                    }
+
+                    if (!hasTarget0 && state.turrets) hasTarget0 = state.turrets.some(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player && t.hp > 0);
+
+                    if (!hasTarget0 && state._deployedObjects) hasTarget0 = state._deployedObjects.some(o => o.x === unit.x && o.y === unit.y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
+
+                    if (!hasTarget0 && state.plantedSeeds) hasTarget0 = state.plantedSeeds.some(s => s.x === unit.x && s.y === unit.y && s.owner !== unit.player);
+                    if (hasTarget0) {
+                        tiles.push({ x: unit.x, y: unit.y });
+                        tileSet.add(pk0);
+                    }
+                }
+            }
+
+            if (unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true) {
+                const skyTargets = getTelescopeSkyTargets(unit.player);
+                for (const [pk, skyUnit] of skyTargets) {
+                    if (tileSet.has(pk)) continue;
+                    const d = Math.abs(unit.x - skyUnit.x) + Math.abs(unit.y - skyUnit.y);
+                    if (d >= 1 && d <= getEffectiveRange(unit) && !isRangeBlockedByTerrain(unit.x, unit.y, skyUnit.x, skyUnit.y, unitZ)) {
+                        tiles.push({
+                            x: skyUnit.x,
+                            y: skyUnit.y,
+                            _skyTarget: true
+                        });
+                        tileSet.add(pk);
+                    }
+                }
+            }
+
+            if (getSectionForUnit(unit) === 'earth' && state.towers) {
+                const enemyTower = state.towers[unit.player === 1 ? 2 : 1];
+                if (enemyTower && enemyTower.hp > 0) {
+                    const tpk = posKey(enemyTower.x, enemyTower.y);
+                    if (!tileSet.has(tpk)) {
+                        const td = Math.abs(unit.x - enemyTower.x) + Math.abs(unit.y - enemyTower.y);
+                        if (td >= 1 && td <= getEffectiveRange(unit) && !isRangeBlockedByTerrain(unit.x, unit.y, enemyTower.x, enemyTower.y, unitZ)) {
+                            tiles.push({ x: enemyTower.x, y: enemyTower.y });
+                            tileSet.add(tpk);
+                        }
+                    }
+                }
+            }
+            return tiles;
+        }
+
+        function getInspectTiles(unit) {
+            const tiles = [];
+            const inspectReach = getEffectiveInspect(unit);
+            if (inspectReach <= 0) return tiles;
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            for (let y = 0; y < bh(); y++) {
+                for (let x = 0; x < bw(); x++) {
+                    const d = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
+                    if (d > inspectReach) continue;
+                    if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) continue;
+                    tiles.push({
+                        x,
+                        y
+                    });
+                }
+            }
+            return tiles;
+        }
+
+        function scanKey(x, y) {
+            return `${x},${y}`;
+        }

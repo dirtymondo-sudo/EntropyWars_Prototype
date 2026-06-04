@@ -1,0 +1,2424 @@
+        function applyOnlineRules() {
+            const myP = window._NET ? window._NET.myPlayer : 1;
+            const otherP = myP === 1 ? 2 : 1;
+
+            state.controllers[myP] = CTRL.LOCAL;
+            state.controllers[otherP] = CTRL.REMOTE;
+
+            transitionTo(GS.PARTY_BUILDER);
+            state.audioUnlocked = true;
+
+            state.fogOfWar = true;
+
+            state.devAutoSim = false;
+            if (state.devSimTimer) {
+                clearTimeout(state.devSimTimer);
+                state.devSimTimer = null;
+            }
+
+            state.showPlayer2Builder = true;
+        }
+
+        function _isOnline() {
+            return isOnlineMatch();
+        }
+
+        function _myPlayer() {
+            return getLocalPlayer();
+        }
+
+        function _isHost() {
+            return window._NET && window._NET.role === 'host';
+        }
+
+        function _isGuest() {
+            return window._NET && window._NET.role === 'guest';
+        }
+
+        function _emit(evt, data) {
+            if (window._NET && window._NET.socket) window._NET.socket.emit(evt, data);
+        }
+
+        function showVsSplash(callback) {
+            if (!ONLINE_RULES.active) {
+                if (callback) callback();
+                return;
+            }
+            const overlay = document.getElementById('vsSplashOverlay');
+            if (!overlay) {
+                if (callback) callback();
+                return;
+            }
+
+            function teamSprites(player) {
+                const units = state.units.filter(u => u.player === player);
+                return units.map(u => {
+                    const src = (typeof compositeSprite === 'function') ? compositeSprite(u.race, u.equipment) : null;
+                    if (!src) {
+                        const raceSrc = (typeof RACE_SPRITES !== 'undefined') ? RACE_SPRITES[u.race] : null;
+                        return raceSrc ? `<div style="width:40px;height:40px;background-image:url('${raceSrc}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : `<div style="width:40px;height:40px;background:var(--surface);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:18px">⚔</div>`;
+                    }
+                    return `<div style="width:40px;height:40px;background-image:url('${src}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>`;
+                }).join('');
+            }
+
+            const viewer = getViewerPlayer();
+            const myLabel = viewer === 1 ? 'Player 1' : 'Player 2';
+            const oppLabel = viewer === 1 ? 'Player 2' : 'Player 1';
+            const myP = viewer;
+            const oppP = viewer === 1 ? 2 : 1;
+
+            overlay.innerHTML = `<div class="vs-splash-card">
+        <div class="vs-team">
+          <div class="vs-team-label p${myP}">${myLabel} (You)</div>
+          <div class="vs-team-sprites">${teamSprites(myP)}</div>
+        </div>
+        <div class="vs-text">VS</div>
+        <div class="vs-team">
+          <div class="vs-team-label p${oppP}">${oppLabel}</div>
+          <div class="vs-team-sprites">${teamSprites(oppP)}</div>
+        </div>
+      </div>`;
+
+            overlay.classList.add('visible');
+            playSfx('uiButtonConfirm');
+
+            setTimeout(() => {
+                overlay.classList.remove('visible');
+                setTimeout(() => {
+                    overlay.innerHTML = '';
+                    if (callback) callback();
+                }, 500);
+            }, 2800);
+        }
+
+        const _origMaybeTriggerComputerTurn = maybeTriggerComputerTurn;
+        maybeTriggerComputerTurn = function() {
+            if (_isOnline() && _isGuest()) return;
+            return _origMaybeTriggerComputerTurn();
+        };
+
+        const _origPrepareBattle = prepareBattleStateFromCurrentBuilds;
+        prepareBattleStateFromCurrentBuilds = function() {
+            _origPrepareBattle();
+            if (_isOnline()) {
+
+                state.aiPlayer = -1;
+            }
+        };
+
+        function _fixPerspectiveLabels() {
+            if (!_isOnline()) return;
+            const me = _myPlayer();
+
+            const sideHead = document.querySelector('#sidebarPanel .compact-head h2');
+            if (sideHead) sideHead.textContent = me === 1 ? 'Your Party' : 'Your Party';
+
+            const ctrlHead = document.querySelector('#controlPanel .compact-head h2');
+            if (ctrlHead) ctrlHead.textContent = me === 1 ? 'Opponent' : 'Opponent';
+
+            if (me === 2) {
+                const sideHg = document.querySelector('#sidebarPanel .small-team-score');
+                const ctrlHg = document.querySelector('#controlPanel .small-team-score');
+                if (sideHg) {
+                    const countEl = sideHg.querySelector('.team-count');
+                    if (countEl) countEl.textContent = document.getElementById('sideP2Held')?.textContent || '0';
+                }
+                if (ctrlHg) {
+                    const countEl = ctrlHg.querySelector('.team-count');
+                    if (countEl) countEl.textContent = document.getElementById('sideP1Held')?.textContent || '0';
+                }
+            }
+        }
+
+        const _onlineOrigClickTile = clickTile;
+        clickTile = function(x, y) {
+            if (!_isOnline() || state._remoteAction) return _onlineOrigClickTile(x, y);
+            if (state.phase === 'battle' && !state.winner) {
+
+                if (state.activePlayer !== _myPlayer()) {
+                    const u = unitAt(x, y);
+                    if (u) focusUnitPanel(u.id);
+                    return;
+                }
+                if (_isGuest()) {
+
+                    const clickedUnit = unitAt(x, y);
+                    const actingUnit = getSelectedUnit();
+
+                    if (!actingUnit || !state.actionMode) {
+                        if (clickedUnit && clickedUnit.player === _myPlayer() && !clickedUnit.dead) {
+
+                            selectUnit(clickedUnit.id);
+                        } else if (clickedUnit) {
+                            focusUnitPanel(clickedUnit.id);
+                        }
+                    } else if (clickedUnit) {
+                        focusUnitPanel(clickedUnit.id);
+                    }
+
+                    const sentActionMode = state.actionMode;
+                    const sentPendingTarget = state.pendingTarget;
+                    _emit('game-action', {
+                        type: 'clickTile',
+                        x,
+                        y,
+                        _ctx: {
+                            selectedUnitId: state.selectedUnitId,
+                            actionMode: state.actionMode,
+                            selectedTool: state.selectedTool,
+                            pendingTarget: state.pendingTarget,
+                            comboPartner: state.comboPartner ? state.comboPartner.id : null
+                        }
+                    });
+
+                    if (sentActionMode && sentActionMode !== 'move') {
+
+                        if (sentPendingTarget && sentPendingTarget.x === x && sentPendingTarget.y === y) {
+
+                            state.actionMode = null;
+                            state.actionMenuView = 'root';
+                            state.selectedTool = null;
+                            state.pendingTarget = null;
+                            state.comboPartner = null;
+                            renderBattleSelectionUI({
+                                includeBoard: false
+                            });
+                            scheduleBoardRender();
+                        } else {
+
+                            state.pendingTarget = {
+                                x,
+                                y,
+                                mode: sentActionMode,
+                                tool: state.selectedTool,
+                                viaHover: false
+                            };
+                            renderBattleSelectionUI({
+                                includeBoard: false
+                            });
+                            scheduleBoardRender();
+                        }
+                    } else if (sentActionMode === 'move') {
+
+                        state.actionMode = null;
+                        state.actionMenuView = 'root';
+                        state.selectedTool = null;
+                        state.pendingTarget = null;
+                        renderBattleSelectionUI({
+                            includeBoard: false
+                        });
+                        scheduleBoardRender();
+                    }
+                    return;
+                }
+            }
+            _onlineOrigClickTile(x, y);
+            if (state.phase === 'battle' && window._broadcastState) window._broadcastState();
+        };
+
+        const _onlineOrigSelectUnit = selectUnit;
+        selectUnit = function(unitId) {
+            if (!_isOnline() || state._remoteAction) return _onlineOrigSelectUnit(unitId);
+            const u = state.units.find(function(u) {
+                return u.id === unitId;
+            });
+            if (!u || u.dead) return;
+
+            if (u.player !== _myPlayer()) {
+                focusUnitPanel(unitId);
+                return;
+            }
+
+            if (state.phase === 'battle' && state.activePlayer !== _myPlayer()) {
+                focusUnitPanel(unitId);
+                return;
+            }
+
+            state._remoteAction = true;
+            _onlineOrigSelectUnit(unitId);
+            state._remoteAction = false;
+
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'selectUnit',
+                    id: unitId
+                });
+            } else {
+                if (window._broadcastState) window._broadcastState();
+            }
+        };
+
+        const _origSetTool = setTool;
+        setTool = function(mode, toolName) {
+            if (!_isOnline() || state._remoteAction) return _origSetTool(mode, toolName);
+            if (state.activePlayer !== _myPlayer()) return;
+
+            _origSetTool(mode, toolName);
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'setTool',
+                    mode,
+                    toolName
+                });
+            } else {
+                if (window._broadcastState) window._broadcastState();
+            }
+        };
+
+        const _onlineOrigSetActionMode = setActionMode;
+        setActionMode = function(mode) {
+            if (!_isOnline() || state._remoteAction) return _onlineOrigSetActionMode(mode);
+            if (state.activePlayer !== _myPlayer()) return;
+
+            _onlineOrigSetActionMode(mode);
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'setActionMode',
+                    mode
+                });
+            } else {
+                if (window._broadcastState) window._broadcastState();
+            }
+        };
+
+        const _origTriggerEndTurn = triggerEndTurn;
+        triggerEndTurn = function() {
+            if (!_isOnline() || state._remoteAction) return _origTriggerEndTurn();
+            if (state.activePlayer !== _myPlayer()) return;
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'triggerEndTurn',
+                    _selectedUnitId: state.selectedUnitId
+                });
+                return;
+            }
+            _origTriggerEndTurn();
+            if (window._broadcastState) window._broadcastState();
+        };
+
+        const _origUseRosterItem = useRosterItemButton;
+        useRosterItemButton = function(unitId, itemKey) {
+            if (!_isOnline() || state._remoteAction) return _origUseRosterItem(unitId, itemKey);
+            if (state.activePlayer !== _myPlayer()) return;
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'useRosterItem',
+                    unitId,
+                    itemKey
+                });
+                return;
+            }
+            _origUseRosterItem(unitId, itemKey);
+            if (window._broadcastState) window._broadcastState();
+        };
+
+        const _origForfeit = forfeitMatch;
+        forfeitMatch = function() {
+            if (!_isOnline()) return _origForfeit();
+            if (_isGuest()) {
+                _emit('game-action', {
+                    type: 'forfeit',
+                    player: _myPlayer()
+                });
+                return;
+            }
+            _origForfeit();
+            if (window._broadcastState) window._broadcastState();
+        };
+
+        /* Recall action sync */
+        window._onlineEmitRecall = function(unitId) {
+            if (!_isOnline()) return;
+            if (_isGuest()) {
+                _emit('game-action', { type: 'recall', unitId: unitId });
+            } else {
+                if (window._broadcastState) window._broadcastState();
+            }
+        };
+
+        window.triggerOnlineForfeitWin = function(forfeitPlayer) {
+
+            var winner = forfeitPlayer === 1 ? 2 : 1;
+            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (disconnect timeout). Player ' + winner + ' wins!');
+
+            if (typeof _origForfeit === 'function' && _isHost()) {
+
+                state.matchResult = { winner: winner, reason: 'forfeit' };
+                if (typeof showVictoryScreen === 'function') {
+                    showVictoryScreen(winner);
+                }
+            }
+        };
+
+        const _origStartMatch = startMatch;
+        startMatch = function() {
+            if (!_isOnline()) return _origStartMatch();
+            const lock = window._NET._lockState || {
+                host: false,
+                guest: false,
+                guestPartyReceived: false
+            };
+            if (_isGuest()) {
+
+                if (!lock.guest) {
+                    if (window._sendPartyConfig) window._sendPartyConfig();
+                    lock.guest = true;
+                    _emit('relay', {
+                        type: 'guest-locked'
+                    });
+                    addLog('Your party has been locked in and sent. Waiting for host to start…');
+                } else {
+                    addLog('Already locked in. Waiting for host to start the match…');
+                }
+                render();
+                return;
+            }
+
+            if (!lock.host) {
+                addLog('You must Lock In your team first.');
+                return;
+            }
+            if (!lock.guestPartyReceived) {
+                addLog('Waiting for Player 2 to lock in their party…');
+                return;
+            }
+            _origStartMatch();
+
+            if (window._broadcastState) window._broadcastState();
+
+            _emit('match-started');
+        };
+
+        const _origApplyPartyBuild = applyPartyBuild;
+        applyPartyBuild = function(showLog) {
+            if (!_isOnline()) return _origApplyPartyBuild(showLog);
+            const lock = window._NET._lockState || {
+                host: false,
+                guest: false,
+                guestPartyReceived: false
+            };
+            const result = _origApplyPartyBuild(showLog);
+            if (result === false) return false;
+            if (_isGuest()) {
+                lock.guest = true;
+                if (window._sendPartyConfig) window._sendPartyConfig();
+                _emit('relay', {
+                    type: 'guest-locked'
+                });
+                addLog('Your party is locked in and sent to the host.');
+            } else {
+                lock.host = true;
+                addLog('Your party is locked in.' + (!lock.guestPartyReceived ? ' Waiting for Player 2 to lock in…' : ' Both players ready — click Start Match!'));
+            }
+            render();
+            return true;
+        };
+
+        const _origMaybeAdvanceTurn = maybeAdvanceTurn;
+        maybeAdvanceTurn = function() {
+            _origMaybeAdvanceTurn();
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && window._broadcastState) window._broadcastState();
+        };
+
+        const _origToggleAutoMode = toggleAutoMode;
+        toggleAutoMode = function() {
+            if (!_isOnline()) return _origToggleAutoMode();
+            if (state.phase !== 'battle' || state.winner) return;
+            const me = _myPlayer();
+            if (_isGuest()) {
+
+                state.autoPlayers[me] = !state.autoPlayers[me];
+                addLog(`Player ${me} auto mode ${state.autoPlayers[me] ? 'enabled' : 'disabled'}.`);
+                render();
+                _emit('game-action', {
+                    type: 'toggleAuto',
+                    player: me
+                });
+
+                return;
+            }
+
+            state.autoPlayers[me] = !state.autoPlayers[me];
+            addLog(`Player ${me} auto mode ${state.autoPlayers[me] ? 'enabled' : 'disabled'}.`);
+            render();
+            if (state.autoPlayers[me] && state.activePlayer === me) {
+                _origMaybeTriggerComputerTurn();
+            }
+            if (window._broadcastState) window._broadcastState();
+        };
+
+        var _pendingCameraEvents = [];
+        const _origPlayOffensiveActionCamera = playOffensiveActionCamera;
+        playOffensiveActionCamera = function(sourceUnit, target, opts) {
+            var result = _origPlayOffensiveActionCamera(sourceUnit, target, opts);
+
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && sourceUnit && target) {
+                var camEvt = {
+                    type: 'offensive',
+                    srcId: sourceUnit.id,
+                    tgtId: target.id,
+                    srcX: sourceUnit.x,
+                    srcY: sourceUnit.y,
+                    tgtX: target.x,
+                    tgtY: target.y
+                };
+
+                if (opts) {
+                    if (opts.attackName) camEvt.attackName = opts.attackName;
+                    if (opts.sourceHold) camEvt.sourceHold = opts.sourceHold;
+                    if (opts.targetHold) camEvt.targetHold = opts.targetHold;
+                }
+                if (state._remoteAction) {
+
+                    _pendingCameraEvents.push(camEvt);
+                } else {
+
+                    _emit('relay', {
+                        type: 'camera-events',
+                        events: [camEvt]
+                    });
+                }
+            }
+            return result;
+        };
+
+        const _origQueueAnnouncement = queueAnnouncement;
+        queueAnnouncement = function(title, subtitle, kind) {
+            _origQueueAnnouncement(title, subtitle, kind);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost()) {
+                _emit('relay', {
+                    type: 'announcement',
+                    title: title,
+                    subtitle: subtitle,
+                    kind: kind
+                });
+            }
+        };
+
+        const _origShowTurnBanner = showTurnBanner;
+        showTurnBanner = function(player, roundNum, isNewRound, blitzUnit) {
+            _origShowTurnBanner(player, roundNum, isNewRound, blitzUnit);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost()) {
+                _emit('relay', {
+                    type: 'turn-banner',
+                    player: player,
+                    roundNum: roundNum,
+                    isNewRound: isNewRound,
+                    blitzUnitId: blitzUnit ? blitzUnit.id : null
+                });
+            }
+        };
+
+        const _origShowRoundBanner = showRoundBanner;
+        showRoundBanner = function(roundNum, onDone) {
+            _origShowRoundBanner(roundNum, onDone);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost()) {
+                _emit('relay', {
+                    type: 'round-banner',
+                    roundNum: roundNum
+                });
+            }
+        };
+        window.showRoundBanner = showRoundBanner;
+
+        const _origShowFloatingTextAtTile = showFloatingTextAtTile;
+        showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
+            _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && state.phase === 'battle') {
+                _emit('relay', {
+                    type: 'floating-text',
+                    x: x, y: y,
+                    text: String(textValue ?? ''),
+                    kind: kind || 'damage'
+                });
+            }
+        };
+
+        _postRenderHook = function() {
+            _injectTurnBanner();
+            _fixPerspectiveLabels();
+        };
+
+        function _injectTurnBanner() {
+            if (!_isOnline()) return;
+            const label = document.getElementById('turnLabel');
+            if (!label || state.phase !== 'battle' || state.winner) return;
+            const isMyTurn = state.activePlayer === _myPlayer();
+            label.textContent = isMyTurn ? '⚔️ YOUR TURN' : '⏳ Opponent\'s Turn';
+            label.style.background = isMyTurn ? 'rgba(85,211,138,0.2)' : 'rgba(255,184,77,0.2)';
+            label.style.color = isMyTurn ? 'var(--green)' : 'var(--hourglass)';
+        }
+
+        const _origContinueMatch = continueToNextMatch;
+        continueToNextMatch = async function() {
+            if (!_isOnline()) return _origContinueMatch();
+            const me = _myPlayer();
+            if (!window._NET._rematchState) window._NET._rematchState = {
+                1: false,
+                2: false
+            };
+            window._NET._rematchState[me] = true;
+            _emit('relay', {
+                type: 'rematch-request',
+                from: me
+            });
+
+            if (nextMatchBtn) {
+                nextMatchBtn.textContent = '✓ Rematch Requested — Waiting…';
+                nextMatchBtn.disabled = true;
+            }
+            addLog(`Player ${me} wants a rematch.`);
+
+            if (window._NET._rematchState[1] && window._NET._rematchState[2]) {
+                _startOnlineRematch();
+            }
+        };
+
+        async function _startOnlineRematch() {
+            window._NET._rematchState = {
+                1: false,
+                2: false
+            };
+            window._NET._rankedResultEmitted = false;
+            addLog('Both players agreed — starting rematch!');
+            if (_isHost()) {
+
+                transitionTo(GS.PARTY_BUILDER);
+                state.winner = null;
+                state.teamLockedIn = false;
+                hideResultOverlay();
+
+                if (window._NET._lockState) {
+                    window._NET._lockState = {
+                        host: false,
+                        guest: false,
+                        guestPartyReceived: false
+                    };
+                }
+                state.showPlayer2Builder = true;
+                state.matchNumber = (state.matchNumber || 1) + 1;
+                render();
+                if (window._broadcastState) window._broadcastState();
+            } else {
+
+                state._guestResultShown = false;
+                state._guestBoardBuilt = false;
+                hideResultOverlay();
+            }
+        }
+
+        window._executeRemoteAction = function(data) {
+            if (!data || !data.type) return;
+            state._remoteAction = true;
+
+            var remoteP = _isHost() ? 2 : 1;
+            var savedCtrl = state.controllers[remoteP];
+            state.controllers[remoteP] = CTRL.LOCAL;
+
+            var _hostUI = {
+                selectedUnitId: state.selectedUnitId,
+                focusedUnitId: state.focusedUnitId,
+                actionMode: state.actionMode,
+                actionMenuView: state.actionMenuView,
+                selectedTool: state.selectedTool,
+                pendingTarget: state.pendingTarget,
+                comboPartner: state.comboPartner,
+                _prevBlitzActiveId: state._blitzActiveUnitId
+            };
+            try {
+                switch (data.type) {
+                    case 'clickTile':
+
+                        if (data._ctx) {
+
+                            var _guestSelId = data._ctx.selectedUnitId;
+                            if (state._blitzActiveUnitId && _guestSelId && _guestSelId !== state._blitzActiveUnitId) {
+                                _guestSelId = state._blitzActiveUnitId;
+                            }
+                            state.selectedUnitId = _guestSelId;
+                            state.actionMode = data._ctx.actionMode;
+                            state.selectedTool = data._ctx.selectedTool;
+                            state.pendingTarget = data._ctx.pendingTarget;
+                            if (data._ctx.comboPartner) {
+                                state.comboPartner = state.units.find(function(u) {
+                                    return u.id === data._ctx.comboPartner;
+                                }) || null;
+                            } else {
+                                state.comboPartner = null;
+                            }
+                        }
+                        clickTile(data.x, data.y);
+                        break;
+                    case 'selectUnit':
+                        selectUnit(data.id);
+                        break;
+                    case 'setTool':
+                        setTool(data.mode, data.toolName);
+                        break;
+                    case 'setActionMode':
+                        setActionMode(data.mode);
+                        break;
+                    case 'triggerEndTurn':
+                        if (data._selectedUnitId) state.selectedUnitId = data._selectedUnitId;
+                        triggerEndTurn();
+                        break;
+                    case 'useRosterItem':
+                        useRosterItemButton(data.unitId, data.itemKey);
+                        break;
+                    case 'forfeit':
+                        state.winner = data.player === 2 ? 1 : 2;
+                        addLog('Player ' + data.player + ' forfeits the match.');
+                        checkWin();
+                        break;
+                    case 'recall': {
+                        var recallUnit = state.units.find(function(u) { return u.id === data.unitId; });
+                        if (recallUnit && typeof doRecall === 'function') doRecall(recallUnit);
+                        break;
+                    }
+                    case 'toggleAuto':
+                        if (data.player >= 1 && data.player <= 2) {
+                            state.autoPlayers[data.player] = !state.autoPlayers[data.player];
+                            addLog('Player ' + data.player + ' auto mode ' + (state.autoPlayers[data.player] ? 'enabled' : 'disabled') + '.');
+                            render();
+                            if (state.autoPlayers[data.player] && state.activePlayer === data.player) {
+                                _origMaybeTriggerComputerTurn();
+                            }
+                        }
+                        break;
+                }
+            } catch (err) {
+                console.error('[NET] Remote action error:', err);
+            }
+            state.controllers[remoteP] = savedCtrl;
+            state._remoteAction = false;
+
+            if (state._blitzActiveUnitId === _hostUI._prevBlitzActiveId) {
+                state.selectedUnitId = _hostUI.selectedUnitId;
+                state.focusedUnitId = _hostUI.focusedUnitId;
+                state.actionMode = _hostUI.actionMode;
+                state.actionMenuView = _hostUI.actionMenuView;
+                state.selectedTool = _hostUI.selectedTool;
+                state.pendingTarget = _hostUI.pendingTarget;
+                state.comboPartner = _hostUI.comboPartner;
+            } else {
+
+                if (state.activePlayer !== remoteP) {
+
+                    state.actionMode = null;
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
+                }
+            }
+
+            if (_pendingCameraEvents.length > 0) {
+                _emit('relay', {
+                    type: 'camera-events',
+                    events: _pendingCameraEvents.slice()
+                });
+                _pendingCameraEvents.length = 0;
+            }
+
+            if (window._broadcastState) {
+                if (window._NET && window._NET.syncThrottle) {
+                    clearTimeout(window._NET.syncThrottle);
+                    window._NET.syncThrottle = null;
+                }
+                window._NET.lastSyncJson = '';
+                window._broadcastState();
+            }
+        };
+
+        window._enterOnlineMode = function() {
+
+            var startOverlay = document.getElementById('startOverlay');
+            if (startOverlay) {
+                startOverlay.classList.add('hidden');
+                startOverlay.style.display = 'none';
+                startOverlay.style.pointerEvents = 'none';
+            }
+
+            var lobbyOverlay = document.getElementById('lobbyOverlay');
+            if (lobbyOverlay) {
+                lobbyOverlay.classList.add('hidden');
+                lobbyOverlay.style.display = 'none';
+            }
+
+            applyOnlineRules();
+
+            var _net = window._NET;
+            if (_net && _net.ranked && _net.matchMapModeId) {
+
+                if (typeof applyGameMode === 'function') {
+                    applyGameMode(_net.matchMapModeId);
+                } else if (typeof window._rawApplyGameMode === 'function') {
+                    window._rawApplyGameMode(_net.matchMapModeId);
+                }
+
+                if (_net.matchTeamSize && typeof CONFIG !== 'undefined') {
+                    var ts = _net.matchTeamSize;
+                    CONFIG.teamSize = ts;
+
+                    if (typeof GAME_MODES !== 'undefined') {
+                        var gm = GAME_MODES[_net.matchMapModeId];
+                        if (gm) {
+                            SPAWNS[1] = (gm.spawns[1] || []).slice(0, ts);
+                            SPAWNS[2] = (gm.spawns[2] || []).slice(0, ts);
+
+                            var bw = gm.boardWidth || gm.boardSize || 8;
+                            var bh = gm.boardHeight || gm.boardSize || 8;
+                            while (SPAWNS[1].length < ts) {
+                                var idx1 = SPAWNS[1].length;
+                                SPAWNS[1].push({ x: idx1 % 2, y: Math.min(Math.floor(idx1 / 2), bh - 1) });
+                            }
+                            while (SPAWNS[2].length < ts) {
+                                var idx2 = SPAWNS[2].length;
+                                SPAWNS[2].push({ x: bw - 1 - (idx2 % 2), y: Math.min(bh - 1 - Math.floor(idx2 / 2), bh - 1) });
+                            }
+                            DEFAULT_BUILDS[1] = (gm.defaultBuilds[1] || []).slice(0, ts);
+                            DEFAULT_BUILDS[2] = (gm.defaultBuilds[2] || []).slice(0, ts);
+                            while (DEFAULT_BUILDS[1].length < ts) DEFAULT_BUILDS[1].push('Warrior');
+                            while (DEFAULT_BUILDS[2].length < ts) DEFAULT_BUILDS[2].push('Warrior');
+                        }
+                    }
+
+                    var st = window._gameState;
+                    if (st) {
+                        [1, 2].forEach(function(player) {
+                            var oldSize = (st.partyBuilds[player] || []).length;
+                            if (oldSize < ts) {
+                                for (var i = oldSize; i < ts; i++) {
+                                    st.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || 'Warrior';
+                                    st.partyNames[player][i] = typeof getDefaultUnitName === 'function'
+                                        ? getDefaultUnitName(st.partyBuilds[player][i]) : 'Unit';
+                                    st.loadouts[player][i] = typeof emptyLoadout === 'function' ? emptyLoadout() : {};
+                                    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+                                    st.partyMeta[player][i] = {};
+                                }
+                            } else if (oldSize > ts) {
+                                st.partyBuilds[player].length = ts;
+                                st.partyNames[player].length = ts;
+                                st.loadouts[player].length = ts;
+                                if (st.partyMeta[player]) st.partyMeta[player].length = ts;
+                            }
+                        });
+                    }
+                }
+
+                if (window._gameState) {
+                    window._gameState.isRankedMatch = true;
+                }
+
+                if (typeof window.activeMultiplayerMode !== 'undefined') {
+                    window.activeMultiplayerMode = _net.matchRankedMode || _net.matchMultiplayerMode || 'arena';
+                }
+                console.log('[NET] Applied ranked config: map=' + _net.matchMapModeId + ' team=' + _net.matchTeamSize);
+            }
+
+            if (_net && !_net.ranked && _net.friendlyConfig) {
+                var fc = _net.friendlyConfig;
+
+                if (fc.mode && typeof window.activeMultiplayerMode !== 'undefined') {
+                    window.activeMultiplayerMode = fc.mode;
+                }
+
+                if (fc.mapId) {
+                    if (typeof applyGameMode === 'function') {
+                        applyGameMode(fc.mapId);
+                    } else if (typeof window._rawApplyGameMode === 'function') {
+                        window._rawApplyGameMode(fc.mapId);
+                    }
+                }
+
+                if (fc.teamSize && typeof CONFIG !== 'undefined') {
+                    var fts = fc.teamSize;
+                    CONFIG.teamSize = fts;
+                    if (typeof GAME_MODES !== 'undefined') {
+                        var fgm = GAME_MODES[fc.mapId];
+                        if (fgm) {
+                            SPAWNS[1] = (fgm.spawns[1] || []).slice(0, fts);
+                            SPAWNS[2] = (fgm.spawns[2] || []).slice(0, fts);
+                            var fbw = fgm.boardWidth || fgm.boardSize || 8;
+                            var fbh = fgm.boardHeight || fgm.boardSize || 8;
+                            while (SPAWNS[1].length < fts) {
+                                var fi1 = SPAWNS[1].length;
+                                SPAWNS[1].push({ x: fi1 % 2, y: Math.min(Math.floor(fi1 / 2), fbh - 1) });
+                            }
+                            while (SPAWNS[2].length < fts) {
+                                var fi2 = SPAWNS[2].length;
+                                SPAWNS[2].push({ x: fbw - 1 - (fi2 % 2), y: Math.min(fbh - 1 - Math.floor(fi2 / 2), fbh - 1) });
+                            }
+                            DEFAULT_BUILDS[1] = (fgm.defaultBuilds[1] || []).slice(0, fts);
+                            DEFAULT_BUILDS[2] = (fgm.defaultBuilds[2] || []).slice(0, fts);
+                            while (DEFAULT_BUILDS[1].length < fts) DEFAULT_BUILDS[1].push('Warrior');
+                            while (DEFAULT_BUILDS[2].length < fts) DEFAULT_BUILDS[2].push('Warrior');
+                        }
+                    }
+
+                    var fst = window._gameState;
+                    if (fst) {
+                        [1, 2].forEach(function(player) {
+                            var fOldSize = (fst.partyBuilds[player] || []).length;
+                            if (fOldSize < fts) {
+                                for (var fi = fOldSize; fi < fts; fi++) {
+                                    fst.partyBuilds[player][fi] = DEFAULT_BUILDS[player][fi] || 'Warrior';
+                                    fst.partyNames[player][fi] = typeof getDefaultUnitName === 'function'
+                                        ? getDefaultUnitName(fst.partyBuilds[player][fi]) : 'Unit';
+                                    fst.loadouts[player][fi] = typeof emptyLoadout === 'function' ? emptyLoadout() : {};
+                                    if (!fst.partyMeta[player]) fst.partyMeta[player] = [];
+                                    fst.partyMeta[player][fi] = {};
+                                }
+                            } else if (fOldSize > fts) {
+                                fst.partyBuilds[player].length = fts;
+                                fst.partyNames[player].length = fts;
+                                fst.loadouts[player].length = fts;
+                                if (fst.partyMeta[player]) fst.partyMeta[player].length = fts;
+                            }
+                        });
+                    }
+                }
+
+                if (fc.rounds && window._gameState) {
+                    window._gameState._customRoundLimit = fc.rounds;
+                }
+                console.log('[NET] Applied friendly config: mode=' + fc.mode + ' map=' + fc.mapId + ' team=' + fc.teamSize + ' rounds=' + fc.rounds);
+            }
+
+            if (_myPlayer() === 2) {
+                document.body.classList.add('is-p2-viewer');
+            }
+
+            if (!window._NET._lockState) {
+                window._NET._lockState = {
+                    host: false,
+                    guest: false,
+                    guestPartyReceived: false
+                };
+            }
+
+            ['devAutoSimBtn', 'devAutoSimBtn2', 'devSimBattleBtn'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            document.querySelectorAll('[id^="devSim"]').forEach(function(el) {
+                el.style.display = 'none';
+            });
+
+            ['togglePlayer2Builder', 'togglePlayer2Builder2'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            ['fogToggleBuilder', 'fogToggleBuilder2', 'fogToggleBattle'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el && el.parentElement) el.parentElement.style.display = 'none';
+            });
+
+            if (window.render) {
+                window.render();
+            }
+            try {
+                if (window.syncMusicToState) window.syncMusicToState();
+            } catch (e) {
+            }
+
+        };
+
+        window._applyRemotePartyConfig = function(data) {
+            if (!data) return;
+            if (data.builds) state.partyBuilds[2] = data.builds;
+            if (data.loadouts) state.loadouts[2] = data.loadouts;
+            if (data.name && state.partyNames) state.partyNames[2] = data.name;
+            if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
+
+            const lock = window._NET._lockState;
+            if (lock) lock.guestPartyReceived = true;
+            addLog('Player 2 has locked in their party.' + (lock && lock.host ? ' Both players ready — click Start Match!' : ''));
+            render();
+        };
+
+        window._gameState = state;
+        window.CTRL = CTRL;
+        window.isOnlineMatch = isOnlineMatch;
+        window.getLocalPlayer = getLocalPlayer;
+        window._startOnlineRematch = _startOnlineRematch;
+        window.showVsSplash = showVsSplash;
+        window.showResultOverlay = showResultOverlay;
+        window.finalizeMatch = finalizeMatch;
+        window.GAME_MODES = GAME_MODES;
+        window.addLog = addLog;
+        window._rawApplyGameMode = applyGameMode;
+
+        window.focusBoardCameraOnTiles = focusBoardCameraOnTiles;
+        window.resetBoardCamera = resetBoardCamera;
+        window.playOffensiveActionCamera = playOffensiveActionCamera;
+        window.getUserZoomScale = getUserZoomScale;
+        window.unitFromId = unitFromId;
+        window.showAnnouncementBanner = showAnnouncementBanner;
+        window.showTurnBanner = showTurnBanner;
+        window.showFloatingTextAtTile = showFloatingTextAtTile;
+
+        window.animateJumpArc = animateJumpArc;
+        window.animateStrikeLeap = animateStrikeLeap;
+        window.playSfx = playSfx;
+        window.playUnitSwitchChime = playUnitSwitchChime;
+
+        const _origAnimateWalkPath = animateWalkPath;
+        animateWalkPath = function(unit, path, onComplete) {
+
+            var _netOnline = window._NET && window._NET.online;
+            if (_netOnline && _isHost() && unit && path && path.length > 0) {
+                _emit('relay', {
+                    type: 'walk-anim',
+                    unitId: unit.id,
+                    fromX: unit.x,
+                    fromY: unit.y,
+                    fromZ: unit.z ?? 0,
+                    path: path.map(function(p) { return { x: p.x, y: p.y, z: p.z ?? 0 }; })
+                });
+            }
+            var result = _origAnimateWalkPath(unit, path, onComplete);
+            return result;
+        };
+        window.animateWalkPath = animateWalkPath;
+
+        const _origAnimateJumpArc = animateJumpArc;
+        animateJumpArc = function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+
+            var _netOnline = window._NET && window._NET.online;
+            if (_netOnline && _isHost() && unit) {
+                _emit('relay', {
+                    type: 'jump-anim',
+                    unitId: unit.id,
+                    fromX: fromX, fromY: fromY,
+                    toX: toX, toY: toY,
+                    fromZ: fromZ ?? 0, toZ: toZ ?? 0,
+                    durationMs: durationMs || 480
+                });
+            }
+            return _origAnimateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+        };
+
+        const _origAnimateStrikeLeap = animateStrikeLeap;
+        animateStrikeLeap = function(unit, tx, ty, opts) {
+            var _netOnline = window._NET && window._NET.online;
+            if (_netOnline && _isHost() && unit) {
+                _emit('relay', {
+                    type: 'strike-leap',
+                    unitId: unit.id,
+                    tx: tx, ty: ty
+                });
+            }
+            return _origAnimateStrikeLeap(unit, tx, ty, opts);
+        };
+
+        const _origPlaySfx = playSfx;
+        playSfx = function(key, opts) {
+            _origPlaySfx(key, opts);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && state.phase === 'battle' && key) {
+                _emit('relay', { type: 'sfx', key: key });
+            }
+        };
+        window.playSfx = playSfx;
+
+        if (typeof VFX3D !== 'undefined' && VFX3D.fire) {
+            const _origVFX3Dfire = VFX3D.fire;
+            VFX3D.fire = function(phase, spellId, params) {
+                var result = _origVFX3Dfire.call(VFX3D, phase, spellId, params);
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost()) {
+
+                    var safeParams = {};
+                    if (params) {
+                        ['tx', 'ty', 'tz', 'fromX', 'fromY', 'dx', 'dy', 'range',
+                         'spellType', 'casterX', 'casterY'].forEach(function(k) {
+                            if (params[k] !== undefined) safeParams[k] = params[k];
+                        });
+                        if (params.hitTiles) {
+                            safeParams.hitTiles = params.hitTiles.map(function(t) {
+                                return { x: t.x, y: t.y };
+                            });
+                        }
+                    }
+                    _emit('relay', {
+                        type: 'vfx3d',
+                        phase: phase,
+                        spellId: spellId,
+                        params: safeParams
+                    });
+                }
+                return result;
+            };
+        }
+
+        resetGame();
+
+        transitionTo(GS.TITLE);
+        render();
+
+        (function() {
+            'use strict';
+
+            const NET = {
+                socket: null,
+                role: null,
+                roomCode: null,
+                connected: false,
+                online: false,
+                myPlayer: null,
+                syncThrottle: null,
+                lastSyncJson: '',
+                ranked: false,
+                matchMapModeId: null,
+                matchTeamSize: null,
+                opponentElo: null,
+                rejoinToken: null,
+                friendlyConfig: null,
+                _lockState: {
+                    host: false,
+                    guest: false,
+                    guestPartyReceived: false
+                }
+            };
+            window._NET = NET;
+
+            (function() {
+                var _counterSocket = null;
+                function _updateCounterUI(count) {
+                    var el = document.getElementById('mmOnlineCount');
+                    var numEl = document.getElementById('mmOnlineNum');
+                    if (el && numEl) {
+                        numEl.textContent = count;
+                        el.style.display = count > 0 ? '' : 'none';
+                    }
+                }
+                function _connectCounter() {
+                    if (_counterSocket) return;
+                    try {
+                        _counterSocket = io(window.location.origin, {
+                            transports: ['websocket', 'polling'],
+                            reconnection: true,
+                            reconnectionDelay: 5000
+                        });
+                        _counterSocket.on('player-count', function(data) {
+                            if (data && typeof data.count === 'number') {
+                                _updateCounterUI(data.count);
+                            }
+                        });
+                        _counterSocket.on('disconnect', function() {
+                            _updateCounterUI(0);
+                        });
+                    } catch(e) {
+                        console.warn('[NET] Counter socket failed:', e);
+                    }
+                }
+
+                setTimeout(_connectCounter, 1500);
+            })();
+
+            var _friendlyMode = 'arena';
+            var _friendlySize = 4;
+            var _friendlyMapId = 'medium';
+            var _friendlyRounds = 15;
+
+            var _queueTeamSize = 4;
+            var _queueTimerInterval = null;
+            var _queueStartTime = 0;
+            var _inQueue = false;
+
+            window.lobbyPlayOffline = function() {
+                NET.online = false;
+
+                if (window._lobbyBack) window._lobbyBack();
+            };
+
+            window.lobbyBackToPlayHub = function() {
+
+                if (_queueTimerInterval) {
+                    clearInterval(_queueTimerInterval);
+                    _queueTimerInterval = null;
+                }
+                _inQueue = false;
+                if (NET.socket) {
+                    NET.socket.emit('queue-leave');
+                    NET.socket.disconnect();
+                    NET.socket = null;
+                }
+                NET.role = null;
+                NET.roomCode = null;
+                NET.connected = false;
+                NET.ranked = false;
+                NET.matchMapModeId = null;
+                NET.matchTeamSize = null;
+                NET.matchRankedMode = null;
+                NET.rejoinToken = null;
+                NET.friendlyConfig = null;
+                NET._wasInMatch = false;
+                try {
+                    sessionStorage.removeItem('ew_rejoinToken');
+                    sessionStorage.removeItem('ew_rejoinRoom');
+                    sessionStorage.removeItem('ew_rejoinRole');
+                } catch(e) {}
+
+                if (window._showTitlePage) window._showTitlePage('playHubPage');
+                else if (window._lobbyBack) window._lobbyBack();
+            };
+
+            window.lobbyBackToMain = window.lobbyBackToPlayHub;
+
+            window.lobbyBackToFriendlyMain = function() {
+                if (NET.socket) {
+                    NET.socket.disconnect();
+                    NET.socket = null;
+                }
+                NET.role = null;
+                NET.roomCode = null;
+                NET.connected = false;
+                _showPage('lobbyFriendlyMain');
+            };
+
+            function _friendlyGetConfig() {
+                return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds };
+            }
+
+            function _friendlyEmitConfig() {
+                if (NET.socket && NET.role === 'host') {
+                    NET.socket.emit('friendly-config', _friendlyGetConfig());
+                }
+            }
+
+            function _friendlyGetCompatibleMaps(mode, size) {
+                var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
+                var compat = mpMode ? mpMode.compatibleMaps : [];
+                var results = [];
+                if (typeof GAME_MODES === 'undefined') return results;
+                for (var i = 0; i < compat.length; i++) {
+                    var gm = GAME_MODES[compat[i]];
+                    if (gm && gm.teamSize === size) {
+                        results.push({ id: compat[i], label: gm.label || compat[i], desc: gm.desc || '' });
+                    }
+                }
+
+                if (results.length === 0) {
+                    for (var j = 0; j < compat.length; j++) {
+                        var gm2 = GAME_MODES[compat[j]];
+                        if (gm2 && gm2.teamSize >= size) {
+                            results.push({ id: compat[j], label: gm2.label || compat[j], desc: gm2.desc || '' });
+                        }
+                    }
+                }
+                return results;
+            }
+
+            function _friendlyRefreshMaps() {
+                var sel = document.getElementById('friendlyMapSelect');
+                if (!sel) return;
+                var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
+                sel.innerHTML = '';
+                for (var i = 0; i < maps.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = maps[i].id;
+                    opt.textContent = maps[i].label;
+                    sel.appendChild(opt);
+                }
+
+                var found = false;
+                for (var k = 0; k < maps.length; k++) {
+                    if (maps[k].id === _friendlyMapId) { found = true; break; }
+                }
+                if (!found && maps.length > 0) _friendlyMapId = maps[0].id;
+                sel.value = _friendlyMapId;
+            }
+
+            function _friendlyConfigLabel() {
+                var modeLbl = _friendlyMode.charAt(0).toUpperCase() + _friendlyMode.slice(1);
+                var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[_friendlyMode] : null;
+                if (mpMode && mpMode.label) modeLbl = mpMode.label;
+                var mapLbl = _friendlyMapId;
+                var gm = (typeof GAME_MODES !== 'undefined') ? GAME_MODES[_friendlyMapId] : null;
+                if (gm && gm.label) mapLbl = gm.label;
+                return modeLbl + ' on ' + mapLbl + ', ' + _friendlySize + 'v' + _friendlySize + ', ' + _friendlyRounds + ' rounds';
+            }
+
+            window.friendlySetMode = function(mode) {
+                _friendlyMode = mode;
+                var btns = document.querySelectorAll('#friendlyModeChips .ranked-size-btn');
+                btns.forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
+
+                var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
+                if (mpMode && mpMode.roundLimit) {
+                    _friendlyRounds = mpMode.roundLimit;
+                    var rd = document.getElementById('friendlyRoundDisplay');
+                    if (rd) rd.textContent = _friendlyRounds;
+                }
+                _friendlyRefreshMaps();
+                _friendlyEmitConfig();
+            };
+
+            window.friendlySetSize = function(size) {
+                _friendlySize = size;
+                var btns = document.querySelectorAll('#friendlySizeChips .ranked-size-btn');
+                btns.forEach(function(b) { b.classList.toggle('active', parseInt(b.getAttribute('data-size')) === size); });
+                _friendlyRefreshMaps();
+                _friendlyEmitConfig();
+            };
+
+            window.friendlySetMap = function(mapId) {
+                _friendlyMapId = mapId;
+                _friendlyEmitConfig();
+            };
+
+            window.friendlyStepRounds = function(delta) {
+                _friendlyRounds = Math.max(5, Math.min(99, _friendlyRounds + delta));
+                var rd = document.getElementById('friendlyRoundDisplay');
+                if (rd) rd.textContent = _friendlyRounds;
+                _friendlyEmitConfig();
+            };
+
+            var _queueMode = 'arena';
+
+            window.lobbyShowQuickPlay = function() {
+                _showPage('lobbyQuickPlay');
+
+                var elo = 1200;
+                try {
+                    var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
+                    if (prof && typeof prof.elo === 'number') elo = prof.elo;
+                } catch(e) {}
+                var eloEl = document.getElementById('lobbyQueueElo');
+                if (eloEl) eloEl.textContent = 'ELO: ' + elo;
+
+                var startBtn = document.getElementById('lobbyQueueStartBtn');
+                var searchDiv = document.getElementById('lobbyQueueSearching');
+                var backBtn = document.getElementById('lobbyRankedBackBtn');
+                if (startBtn) startBtn.style.display = '';
+                if (searchDiv) searchDiv.style.display = 'none';
+                if (backBtn) backBtn.style.display = '';
+                _inQueue = false;
+            };
+
+            window.lobbySetQueueMode = function(mode) {
+                _queueMode = mode;
+                var btns = document.querySelectorAll('#lobbyQueueModes .ranked-size-btn');
+                btns.forEach(function(b) {
+                    b.classList.toggle('active', b.getAttribute('data-mode') === mode);
+                });
+            };
+
+            window.lobbyCreateRoom = function() {
+                _connectSocket(function() {
+                    var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'Player';
+                    NET.socket.emit('create-room', { username: _username }, function(resp) {
+                        if (resp.error) {
+                            _setStatus('lobbyHostStatus', resp.error, 'error');
+                            return;
+                        }
+                        NET.role = 'host';
+                        NET.myPlayer = 1;
+                        NET.roomCode = resp.code;
+                        if (resp.rejoinToken) NET.rejoinToken = resp.rejoinToken;
+                        document.getElementById('lobbyRoomCode').textContent = resp.code;
+                        _showPage('lobbyHosting');
+
+                        _friendlyRefreshMaps();
+                    });
+                });
+            };
+
+            window.lobbyShowJoin = function() {
+                _showPage('lobbyJoining');
+                setTimeout(function() {
+                    document.getElementById('lobbyJoinInput').focus();
+                }, 100);
+            };
+
+            window.lobbyJoinRoom = function() {
+                var code = (document.getElementById('lobbyJoinInput').value || '').toUpperCase().trim();
+                if (code.length !== 5) {
+                    _setStatus('lobbyJoinStatus', 'Code must be 5 letters.', 'error');
+                    return;
+                }
+                _setStatus('lobbyJoinStatus', 'Connecting…', 'waiting');
+                _connectSocket(function() {
+                    var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'Player';
+                    NET.socket.emit('join-room', { code: code, username: _username }, function(resp) {
+                        if (resp.error) {
+                            _setStatus('lobbyJoinStatus', resp.error, 'error');
+                            return;
+                        }
+                        NET.role = 'guest';
+                        NET.myPlayer = 2;
+                        NET.roomCode = code;
+                        if (resp.rejoinToken) NET.rejoinToken = resp.rejoinToken;
+                    });
+                });
+            };
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && document.activeElement === document.getElementById('lobbyJoinInput')) lobbyJoinRoom();
+            });
+
+            window.lobbyShowRankedQueue = window.lobbyShowQuickPlay;
+
+            window.lobbySetQueueSize = function(size) {
+                _queueTeamSize = size;
+                var btns = document.querySelectorAll('.ranked-size-btn');
+                btns.forEach(function(b) {
+                    b.classList.toggle('active', parseInt(b.getAttribute('data-size')) === size);
+                });
+            };
+
+            window.lobbyJoinQueue = function() {
+                if (_inQueue) return;
+                _inQueue = true;
+
+                var startBtn = document.getElementById('lobbyQueueStartBtn');
+                var searchDiv = document.getElementById('lobbyQueueSearching');
+                var backBtn = document.getElementById('lobbyRankedBackBtn');
+                if (startBtn) startBtn.style.display = 'none';
+                if (searchDiv) searchDiv.style.display = 'block';
+                if (backBtn) backBtn.style.display = 'none';
+
+                _queueStartTime = Date.now();
+                if (_queueTimerInterval) clearInterval(_queueTimerInterval);
+                _queueTimerInterval = setInterval(function() {
+                    var elapsed = Math.floor((Date.now() - _queueStartTime) / 1000);
+                    var min = Math.floor(elapsed / 60);
+                    var sec = elapsed % 60;
+                    var timerEl = document.getElementById('lobbyQueueTimer');
+                    if (timerEl) timerEl.textContent = min + ':' + (sec < 10 ? '0' : '') + sec;
+                }, 1000);
+
+                var elo = 1200;
+                try {
+                    var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
+                    if (prof && typeof prof.elo === 'number') elo = prof.elo;
+                } catch(e) {}
+
+                var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile())
+                    ? window.ProfileSystem.getActiveProfile().username : 'Player';
+
+                _connectSocket(function() {
+
+                    var PS = window.ProfileSystem;
+                    if (PS && PS.hasServerAccount && PS.hasServerAccount()) {
+                        PS.serverAuthenticateSocket().then(function(authResult) {
+                            if (authResult && authResult.ok && authResult.data) {
+
+                                console.log('[MM] Socket authenticated, server ELO:', authResult.data.elo);
+                            }
+                        }).catch(function() {  });
+                    }
+
+                    NET.socket.emit('queue-join', {
+                        teamSize: _queueTeamSize,
+                        username: _username,
+                        elo: elo,
+                        rankedMode: _queueMode
+                    });
+                    _setStatus('lobbyQueueStatus', 'Searching for opponent…', 'waiting');
+                });
+            };
+
+            window.lobbyLeaveQueue = function() {
+                _inQueue = false;
+                if (_queueTimerInterval) {
+                    clearInterval(_queueTimerInterval);
+                    _queueTimerInterval = null;
+                }
+                if (NET.socket) {
+                    NET.socket.emit('queue-leave');
+                }
+
+                lobbyShowQuickPlay();
+            };
+
+            function _showPage(id) {
+                ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
+                    var el = document.getElementById(p);
+                    if (el) el.style.display = p === id ? 'block' : 'none';
+                });
+            }
+
+            function _setStatus(elId, text, type) {
+                var el = document.getElementById(elId);
+                if (el) {
+                    el.textContent = text;
+                    el.className = 'lobby-status' + (type ? ' ' + type : '');
+                }
+            }
+
+            var _reconnectTimer = null;
+            var _reconnectOverlay = null;
+
+            function _showReconnectOverlay(oppLabel, seconds) {
+                _hideReconnectOverlay();
+                var overlay = document.createElement('div');
+                overlay.id = 'reconnectOverlay';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:DotGothic16,monospace;color:#fff;';
+                var remaining = seconds;
+                overlay.innerHTML = '<div style="font-size:1.4rem;margin-bottom:12px;">⚠️ ' + oppLabel + ' disconnected</div>' +
+                    '<div style="font-size:0.95rem;color:#aaa;margin-bottom:16px;">Waiting for reconnection…</div>' +
+                    '<div id="reconnectCountdown" style="font-size:2.2rem;color:#dc3c82;font-weight:bold;">' + remaining + 's</div>';
+                document.body.appendChild(overlay);
+                _reconnectOverlay = overlay;
+                _reconnectTimer = setInterval(function() {
+                    remaining--;
+                    var cd = document.getElementById('reconnectCountdown');
+                    if (cd) cd.textContent = remaining + 's';
+                    if (remaining <= 0) {
+                        clearInterval(_reconnectTimer);
+                        _reconnectTimer = null;
+                    }
+                }, 1000);
+            }
+
+            function _hideReconnectOverlay() {
+                if (_reconnectTimer) { clearInterval(_reconnectTimer); _reconnectTimer = null; }
+                if (_reconnectOverlay) { _reconnectOverlay.remove(); _reconnectOverlay = null; }
+                var existing = document.getElementById('reconnectOverlay');
+                if (existing) existing.remove();
+            }
+
+            function _connectSocket(onReady) {
+                if (NET.socket && NET.socket.connected) {
+                    onReady();
+                    return;
+                }
+                NET.socket = io(window.location.origin, {
+                    transports: ['websocket', 'polling']
+                });
+
+                NET.socket.on('connect', function() {
+
+                    if (NET._wasInMatch && NET.rejoinToken && NET.roomCode) {
+                        NET.socket.emit('rejoin-room', {
+                            roomCode: NET.roomCode,
+                            rejoinToken: NET.rejoinToken
+                        }, function(resp) {
+                            if (resp && resp.ok) {
+                                console.log('[NET] Rejoined room ' + NET.roomCode + ' as ' + resp.role);
+                                NET.role = resp.role;
+                                NET.myPlayer = resp.myPlayer;
+                                NET.connected = true;
+                                NET.online = true;
+                                _hideReconnectOverlay();
+                                NET._wasInMatch = false;
+                                ewToast('Reconnected!', 2000);
+                            } else {
+                                console.log('[NET] Rejoin failed:', resp && resp.error);
+                                ewToast('Failed to rejoin: ' + (resp && resp.error || 'unknown'), 4000);
+                                NET._wasInMatch = false;
+                                setTimeout(function() { window.location.reload(); }, 3000);
+                            }
+                        });
+                    } else {
+                        onReady();
+                    }
+                });
+
+                NET.socket.on('disconnect', function(reason) {
+                    if (NET.online && NET.connected) {
+                        console.log('[NET] Own socket disconnected:', reason);
+                        NET.connected = false;
+                        NET._wasInMatch = true;
+                        _showReconnectOverlay('You', 90);
+
+                    }
+                });
+
+                NET.socket.on('connect_error', function(err) {
+                    _setStatus('lobbyHostStatus', 'Connection failed. Is the server running?', 'error');
+                    _setStatus('lobbyJoinStatus', 'Connection failed. Is the server running?', 'error');
+                    _setStatus('lobbyQueueStatus', 'Connection failed. Is the server running?', 'error');
+                });
+
+                NET.socket.on('room-full', function(data) {
+
+                    if (data.host === NET.socket.id) {
+                        NET.role = 'host';
+                        NET.myPlayer = 1;
+                        NET.opponentName = data.guestUsername || 'Player 2';
+                    } else if (data.guest === NET.socket.id) {
+                        NET.role = 'guest';
+                        NET.myPlayer = 2;
+                        NET.opponentName = data.hostUsername || 'Player 1';
+                    }
+
+                    NET.connected = true;
+                    NET.online = true;
+
+                    if (data.rejoinToken) {
+                        NET.rejoinToken = data.rejoinToken;
+                        try {
+                            sessionStorage.setItem('ew_rejoinToken', data.rejoinToken);
+                            sessionStorage.setItem('ew_rejoinRoom', NET.roomCode);
+                            sessionStorage.setItem('ew_rejoinRole', NET.role);
+                        } catch(e) {}
+                    }
+
+                    if (data.ranked) {
+                        NET.ranked = true;
+                        NET.matchMapModeId = data.mapModeId || null;
+                        NET.matchTeamSize = data.teamSize || 4;
+                        NET.matchRankedMode = data.rankedMode || 'arena';
+                    }
+
+                    if (!data.ranked) {
+                        if (NET.role === 'host') {
+                            NET.friendlyConfig = _friendlyGetConfig();
+
+                            _friendlyEmitConfig();
+                        } else if (data.friendlyConfig) {
+                            NET.friendlyConfig = data.friendlyConfig;
+                        }
+                    }
+
+                    if (_queueTimerInterval) {
+                        clearInterval(_queueTimerInterval);
+                        _queueTimerInterval = null;
+                    }
+                    _inQueue = false;
+
+                    document.getElementById('lobbyYouAre').textContent =
+                        NET.myPlayer === 1 ?
+                        'You are Player 1 (Blue Team) — you control the left party.' :
+                        'You are Player 2 (Red Team) — you control the right party.';
+
+                    var summaryEl = document.getElementById('lobbyConfigSummary');
+                    if (summaryEl) {
+                        var cfg = NET.friendlyConfig;
+                        if (cfg && !data.ranked) {
+                            var modeLbl = cfg.mode || 'arena';
+                            var mpM = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[modeLbl] : null;
+                            if (mpM && mpM.label) modeLbl = mpM.label;
+                            var mapLbl = cfg.mapId || '?';
+                            var gmM = (typeof GAME_MODES !== 'undefined') ? GAME_MODES[cfg.mapId] : null;
+                            if (gmM && gmM.label) mapLbl = gmM.label;
+                            summaryEl.textContent = 'Host picked: ' + modeLbl + ' on ' + mapLbl + ', ' + (cfg.teamSize || 4) + 'v' + (cfg.teamSize || 4) + ', ' + (cfg.rounds || 15) + ' rounds';
+                            summaryEl.style.display = 'block';
+                        } else {
+                            summaryEl.style.display = 'none';
+                        }
+                    }
+
+                    _showPage('lobbyConnected');
+
+                    setTimeout(function() {
+                        if (window._enterOnlineMode) {
+                            window._enterOnlineMode();
+                        } else {
+                            console.error('[NET] _enterOnlineMode is not defined!');
+                        }
+                    }, 1500);
+                });
+
+                NET.socket.on('match-found', function(data) {
+                    console.log('[MM] Match found!', data);
+                    NET.roomCode = data.roomCode;
+                    NET.ranked = true;
+                    NET.matchMapModeId = data.mapModeId || null;
+                    NET.matchTeamSize = data.teamSize || 4;
+                    NET.matchRankedMode = data.rankedMode || 'arena';
+                    NET.opponentName = data.opponent || 'Opponent';
+                    NET.opponentElo = data.opponentElo || 1200;
+
+                    _setStatus('lobbyQueueStatus', 'Match found! vs ' + data.opponent + ' (ELO ' + data.opponentElo + ')', 'connected');
+                });
+
+                NET.socket.on('queue-status', function(data) {
+                    if (!_inQueue) return;
+                    var statusEl = document.getElementById('lobbyQueueStatus');
+                    if (statusEl && data.queueSize > 1) {
+                        statusEl.textContent = 'Searching… (' + data.queueSize + ' in queue)';
+                    }
+                });
+
+                NET.socket.on('queue-left', function() {
+                    _inQueue = false;
+                });
+
+                NET.socket.on('player-disconnected', function(data) {
+                    if (!NET.online) return;
+
+                    if (!data.reconnectable) {
+                        NET.connected = false;
+                        ewToast('Your opponent (' + (data.role === 'host' ? 'Player 1' : 'Player 2') + ') disconnected.', 4000);
+                        window.location.reload();
+                        return;
+                    }
+
+                    NET.connected = false;
+                    var oppLabel = data.role === 'host' ? 'Player 1' : 'Player 2';
+                    _showReconnectOverlay(oppLabel, 90);
+                });
+
+                NET.socket.on('player-rejoined', function(data) {
+                    NET.connected = true;
+                    _hideReconnectOverlay();
+                    ewToast((data.role === 'host' ? 'Player 1' : 'Player 2') + ' reconnected!', 3000);
+                });
+
+                NET.socket.on('match-forfeit', function(data) {
+                    _hideReconnectOverlay();
+                    var forfeitPlayer = data.forfeitPlayer;
+                    var myP = NET.myPlayer;
+                    if (forfeitPlayer === myP) {
+
+                        ewToast('You were disconnected too long — match forfeited.', 5000);
+                        window.location.reload();
+                    } else {
+
+                        ewToast('Your opponent failed to reconnect — you win by forfeit!', 5000);
+                        if (typeof window.triggerOnlineForfeitWin === 'function') {
+                            window.triggerOnlineForfeitWin(forfeitPlayer);
+                        } else {
+
+                            if (typeof addLog === 'function') addLog('Opponent forfeited (disconnect timeout). You win!');
+                            setTimeout(function() { window.location.reload(); }, 5000);
+                        }
+                    }
+                });
+
+                NET.socket.on('elo-update', function(data) {
+                    console.log('[NET] ELO update received:', data);
+                    if (typeof data.myNewElo === 'number') {
+
+                        window._serverEloDelta = data.myEloDelta;
+                        window._serverEloAfter = data.myNewElo;
+
+                        if (window.ProfileSystem) {
+                            var idx = window.ProfileSystem.getActiveProfileIndex();
+                            if (idx !== null) {
+                                var p = window.ProfileSystem.loadProfile(idx);
+                                if (p) {
+                                    p.elo = data.myNewElo;
+                                    if (data.myNewElo > (p.peakElo || 0)) p.peakElo = data.myNewElo;
+                                    p.eloHistory.push({ elo: data.myNewElo, match: (p.career.matchesPlayed || 0), delta: data.myEloDelta });
+                                    if (p.eloHistory.length > 100) p.eloHistory.shift();
+                                    window.ProfileSystem.saveProfile(idx, p);
+                                }
+                            }
+                        }
+
+                        var eloTag = document.getElementById('mmEloTag');
+                        if (eloTag) eloTag.textContent = 'ELO ' + data.myNewElo;
+                    }
+                });
+
+                NET.socket.on('friendly-config', function(data) {
+                    if (NET.role !== 'guest') return;
+                    NET.friendlyConfig = data;
+
+                    var hostStatus = document.getElementById('lobbyHostStatus');
+                    if (hostStatus) {
+
+                    }
+                });
+
+                NET.socket.on('game-action', function(data) {
+                    if (NET.role === 'host' && window._executeRemoteAction) {
+                        window._executeRemoteAction(data);
+                    }
+                });
+
+                NET.socket.on('state-sync', function(data) {
+                    if (NET.role === 'guest') _applyRemoteState(data);
+                });
+
+                NET.socket.on('party-config', function(data) {
+                    if (NET.role === 'host' && window._applyRemotePartyConfig) {
+                        window._applyRemotePartyConfig(data);
+                    }
+                });
+
+                NET.socket.on('relay', function(data) {
+                    var st = window._gameState;
+                    if (data.type === 'rematch-request') {
+                        if (!NET._rematchState) NET._rematchState = {
+                            1: false,
+                            2: false
+                        };
+                        NET._rematchState[data.from] = true;
+
+                        if (typeof window.addLog === 'function') {
+                            window.addLog('Your opponent wants a rematch!');
+                        }
+
+                        var me = NET.myPlayer;
+                        if (!NET._rematchState[me]) {
+                            var btn = document.getElementById('nextMatchBtn');
+                            if (btn) {
+                                btn.textContent = 'Accept Rematch';
+                                btn.disabled = false;
+                            }
+                        }
+
+                        if (NET._rematchState[1] && NET._rematchState[2]) {
+                            if (typeof window._startOnlineRematch === 'function') window._startOnlineRematch();
+                        }
+                    }
+
+                    if (data.type === 'rematch-accept') {
+                        if (typeof window.continueToNextMatch === 'function') window.continueToNextMatch();
+                    }
+
+                    if (data.type === 'guest-locked') {
+                        var lock = NET._lockState;
+                        if (lock) lock.guestPartyReceived = true;
+
+                        if (typeof window.render === 'function') window.render();
+                    }
+
+                    if (data.type === 'game-mode' && NET.role === 'guest') {
+                        if (data.modeId && typeof window._rawApplyGameMode === 'function') {
+                            window._rawApplyGameMode(data.modeId);
+                            if (typeof window.repairPartyBuilderState === 'function') window.repairPartyBuilderState();
+                        }
+
+                        var s1 = document.getElementById('gameModeSelectSetup');
+                        var s2 = document.getElementById('gameModeSelect');
+                        if (s1) s1.value = data.modeId;
+                        if (s2) s2.value = data.modeId;
+
+                        var lock2 = NET._lockState;
+                        if (lock2) {
+                            lock2.guest = false;
+                            lock2.guestPartyReceived = false;
+                        }
+                        if (st) {
+                            st.teamLockedIn = false;
+                            if (typeof window.addLog === 'function') window.addLog('Host changed the map size. Please re-lock your team.');
+                        }
+                        if (typeof window.render === 'function') window.render();
+                    }
+
+                    if (data.type === 'multiplayer-mode' && NET.role === 'guest') {
+                        if (data.modeId && typeof window.activeMultiplayerMode !== 'undefined') {
+                            window.activeMultiplayerMode = data.modeId;
+                        }
+                        if (typeof window.addLog === 'function') window.addLog('Host selected mode: ' + (data.modeId || '?'));
+                        if (typeof window.render === 'function') window.render();
+                    }
+
+                    if (data.type === 'camera-events' && NET.role === 'guest') {
+                        var events = data.events || [];
+                        for (var ci = 0; ci < events.length; ci++) {
+                            var camEvt = events[ci];
+                            if (camEvt.type === 'offensive') {
+
+                                var src = typeof window.unitFromId === 'function' ? window.unitFromId(camEvt.srcId) : null;
+                                var tgt = typeof window.unitFromId === 'function' ? window.unitFromId(camEvt.tgtId) : null;
+
+                                if (!src) src = {
+                                    x: camEvt.srcX,
+                                    y: camEvt.srcY,
+                                    player: 2,
+                                    id: camEvt.srcId
+                                };
+                                if (!tgt) tgt = {
+                                    x: camEvt.tgtX,
+                                    y: camEvt.tgtY,
+                                    player: 1,
+                                    id: camEvt.tgtId
+                                };
+
+                                var camOpts = {};
+                                if (camEvt.attackName) camOpts.attackName = camEvt.attackName;
+                                if (camEvt.sourceHold) camOpts.sourceHold = camEvt.sourceHold;
+                                if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
+                                if (typeof window.playOffensiveActionCamera === 'function') {
+                                    window.playOffensiveActionCamera(src, tgt, camOpts);
+                                }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'announcement' && NET.role === 'guest') {
+                        if (typeof window.showAnnouncementBanner === 'function') {
+                            window.showAnnouncementBanner(data.title, data.subtitle, data.kind, function() {});
+                        }
+                    }
+
+                    if (data.type === 'turn-banner' && NET.role === 'guest') {
+                        if (typeof window.showTurnBanner === 'function') {
+                            var blitzUnit = null;
+                            if (data.blitzUnitId && st && st.units) {
+                                blitzUnit = st.units.find(function(u) { return u.id === data.blitzUnitId; }) || null;
+                            }
+                            window.showTurnBanner(data.player, data.roundNum, data.isNewRound, blitzUnit);
+                        }
+                    }
+
+                    if (data.type === 'round-banner' && NET.role === 'guest') {
+                        if (typeof window.showRoundBanner === 'function') {
+                            window.showRoundBanner(data.roundNum, function() {});
+                        }
+                    }
+
+                    if (data.type === 'floating-text' && NET.role === 'guest') {
+                        if (typeof window.showFloatingTextAtTile === 'function') {
+                            window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind);
+                        }
+                    }
+
+                    if (data.type === 'walk-anim' && NET.role === 'guest') {
+                        var walkUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (walkUnit && data.path && data.path.length > 0) {
+                            var _showWalk = true;
+                            if (st.fogOfWar && walkUnit.player !== NET.myPlayer) {
+                                _showWalk = false;
+                                var _fogCheck = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
+                                if (_fogCheck) {
+                                    if (_fogCheck(data.fromX, data.fromY)) { _showWalk = true; }
+                                    else { for (var _wi = 0; _wi < data.path.length; _wi++) { if (_fogCheck(data.path[_wi].x, data.path[_wi].y)) { _showWalk = true; break; } } }
+                                } else { _showWalk = true; }
+                            }
+                            if (_showWalk) {
+                                var _threeOk = false;
+                                if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    var _savedX = walkUnit.x, _savedY = walkUnit.y, _savedZ = walkUnit.z;
+                                    walkUnit.x = data.fromX;
+                                    walkUnit.y = data.fromY;
+                                    walkUnit.z = data.fromZ ?? 0;
+                                    window.ThreeAnim.walkPath(walkUnit, data.path);
+                                    walkUnit.x = _savedX;
+                                    walkUnit.y = _savedY;
+                                    walkUnit.z = _savedZ;
+                                    _threeOk = true;
+                                }
+                                if (!_threeOk && typeof window.animateWalkPath === 'function') {
+                                    var _savedX2 = walkUnit.x, _savedY2 = walkUnit.y, _savedZ2 = walkUnit.z;
+                                    if (data.fromX !== undefined) walkUnit.x = data.fromX;
+                                    if (data.fromY !== undefined) walkUnit.y = data.fromY;
+                                    if (data.fromZ !== undefined) walkUnit.z = data.fromZ;
+                                    window.animateWalkPath(walkUnit, data.path);
+                                    walkUnit.x = _savedX2;
+                                    walkUnit.y = _savedY2;
+                                    walkUnit.z = _savedZ2;
+                                }
+
+                                var _walkDest = data.path[data.path.length - 1];
+                                if (_walkDest && typeof focusBoardCameraOnTiles === 'function') {
+                                    var _wz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
+                                    var _dz2 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                    focusBoardCameraOnTiles([{ x: _walkDest.x, y: _walkDest.y }], {
+                                        zoom: _wz > 1.05 ? _wz : _dz2,
+                                        holdMs: 99999, persist: true, transitionMs: 500, _fogAllowed: true
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'jump-anim' && NET.role === 'guest') {
+                        var jumpUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (jumpUnit) {
+                            var _showJump = true;
+                            if (st.fogOfWar && jumpUnit.player !== NET.myPlayer) {
+                                var _jfog = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
+                                _showJump = _jfog ? (_jfog(data.fromX, data.fromY) || _jfog(data.toX, data.toY)) : true;
+                            }
+                            if (_showJump) {
+
+                                var _jumpThreeOk = false;
+                                if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    window.ThreeAnim.jumpArc(jumpUnit, data.fromX, data.fromY, data.toX, data.toY,
+                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480);
+                                    _jumpThreeOk = true;
+                                }
+
+                                if (!_jumpThreeOk && typeof window.animateJumpArc === 'function') {
+                                    window.animateJumpArc(jumpUnit, data.fromX, data.fromY, data.toX, data.toY,
+                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480);
+                                }
+
+                                if (typeof focusBoardCameraOnTiles === 'function') {
+                                    var _jz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
+                                    var _djz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                    focusBoardCameraOnTiles([{ x: data.toX, y: data.toY }], {
+                                        zoom: _jz > 1.05 ? _jz : _djz,
+                                        holdMs: 99999, persist: true, transitionMs: 400, _fogAllowed: true
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'strike-leap' && NET.role === 'guest') {
+                        var leapUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (leapUnit) {
+                            var _showLeap = true;
+                            if (st.fogOfWar && leapUnit.player !== NET.myPlayer) {
+                                var _lfog = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
+                                _showLeap = _lfog ? (_lfog(leapUnit.x, leapUnit.y) || _lfog(data.tx, data.ty)) : true;
+                            }
+                            if (_showLeap) {
+
+                                if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    window.ThreeAnim.strikeLeap(leapUnit, data.tx, data.ty);
+                                } else if (typeof window.animateStrikeLeap === 'function') {
+                                    window.animateStrikeLeap(leapUnit, data.tx, data.ty);
+                                }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'sfx' && NET.role === 'guest') {
+                        if (data.key && typeof window.playSfx === 'function') {
+                            window.playSfx(data.key);
+                        }
+                    }
+
+                    if (data.type === 'vfx3d' && NET.role === 'guest') {
+                        if (typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
+                            try {
+                                VFX3D.fire(data.phase, data.spellId, data.params || {});
+                            } catch (e) {  }
+                        }
+                    }
+
+                    if (data.type === 'pickup-dialog' && NET.role === 'guest') {
+                        if (st) {
+                            st.uiDialog = {
+                                type: 'pickupDecision',
+                                unitId: data.unitId,
+                                event: data.event,
+                                kindLabel: data.kindLabel,
+                                badgeLabel: data.badgeLabel,
+                                onConfirm: function() {
+                                    st.uiDialog = null;
+                                    if (typeof window.render === 'function') window.render();
+                                    NET.socket.emit('relay', {
+                                        type: 'pickup-response',
+                                        decision: 'confirm'
+                                    });
+                                },
+                                onCancel: function() {
+                                    st.uiDialog = null;
+                                    if (typeof window.render === 'function') window.render();
+                                    NET.socket.emit('relay', {
+                                        type: 'pickup-response',
+                                        decision: 'cancel'
+                                    });
+                                }
+                            };
+                            if (typeof window.render === 'function') window.render();
+                        }
+                    }
+
+                    if (data.type === 'pickup-response' && NET.role === 'host') {
+                        if (st && st._pendingRemotePickup) {
+                            var pending = st._pendingRemotePickup;
+                            st._pendingRemotePickup = null;
+                            if (data.decision === 'confirm' && typeof pending.onPickUp === 'function') {
+                                pending.onPickUp();
+                            } else if (typeof pending.onLeave === 'function') {
+                                pending.onLeave();
+                            }
+                            if (typeof window._broadcastState === 'function') window._broadcastState();
+                        }
+                    }
+                });
+            }
+
+            function _serializeState() {
+                var st = window._gameState;
+                if (!st) return null;
+                var s = {};
+                var skip = {
+                    _aiSafetyTimer: 1,
+                    currentMusic: 1,
+                    _remoteAction: 1,
+
+                    selectedUnitId: 1,
+                    focusedUnitId: 1,
+                    hoverUnitId: 1,
+                    actionMode: 1,
+                    actionMenuView: 1,
+                    selectedTool: 1,
+                    pendingTarget: 1,
+                    comboPartner: 1,
+
+                    aiPlayer: 1,
+                    aiThinking: 1,
+
+                    controllers: 1,
+                    _preDevSimControllers: 1,
+
+                    devAutoSim: 1,
+                    devSimTimer: 1,
+                    devSimSpeed: 1,
+
+                    _fogAnchorUnitId: 1,
+                    _fogRevealTiles: 1,
+
+                    showPlayer2Builder: 1,
+
+                    uiDialog: 1,
+
+                    _pendingRemotePickup: 1,
+                    _guestResultShown: 1,
+                    _guestBoardBuilt: 1,
+
+                    _actionExecuting: 1,
+
+                    _walkAnimActive: 1,
+
+                    battleDialogueTimer: 1,
+                    battleDialogueQueue: 1,
+
+                    dioramaYawDeg: 1,
+                    dioramaTiltDeg: 1,
+                    cameraDisabled: 1,
+                    _fullMapOverview: 1,
+                    _fogCameraAllowed: 1
+                };
+                for (var key in st) {
+                    if (!st.hasOwnProperty(key) || skip[key]) continue;
+                    var val = st[key];
+                    if (val instanceof Set) {
+                        s[key] = {
+                            _t: 'S',
+                            v: Array.from(val)
+                        };
+                    } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                        var obj = {};
+                        for (var k2 in val) {
+                            if (!val.hasOwnProperty(k2)) continue;
+                            if (val[k2] instanceof Set) obj[k2] = {
+                                _t: 'S',
+                                v: Array.from(val[k2])
+                            };
+                            else if (typeof val[k2] === 'function') continue;
+                            else obj[k2] = val[k2];
+                        }
+                        s[key] = obj;
+                    } else if (typeof val === 'function') {
+                        continue;
+                    } else {
+                        s[key] = val;
+                    }
+                }
+                return s;
+            }
+
+            function _deserializeInto(target, s) {
+                for (var key in s) {
+                    if (!s.hasOwnProperty(key)) continue;
+                    var val = s[key];
+                    if (val && typeof val === 'object' && val._t === 'S') {
+                        target[key] = new Set(val.v);
+                    } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+                        if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                            for (var k2 in val) {
+                                if (!val.hasOwnProperty(k2)) continue;
+                                if (val[k2] && typeof val[k2] === 'object' && val[k2]._t === 'S') {
+                                    target[key][k2] = new Set(val[k2].v);
+                                } else {
+                                    target[key][k2] = val[k2];
+                                }
+                            }
+                        } else {
+                            target[key] = val;
+                        }
+                    } else {
+                        target[key] = val;
+                    }
+                }
+            }
+
+            window._broadcastState = function() {
+                if (!NET.online || NET.role !== 'host' || !NET.socket) return;
+
+                if (state.winner && state.isRankedMatch && !NET._rankedResultEmitted) {
+                    NET._rankedResultEmitted = true;
+                    var durationMs = state.startTime ? Date.now() - state.startTime : 0;
+                    NET.socket.emit('ranked-result', {
+                        winnerId: state.winner,
+                        loserId: state.winner === 1 ? 2 : 1,
+                        durationMs: durationMs,
+                        teamSize: CONFIG.teamSize || 4,
+                        mapModeId: NET.matchMapModeId || activeGameMode || null
+                    });
+                    console.log('[NET] Emitted ranked-result: winner=' + state.winner);
+                }
+
+                // Throttle to ~50ms, but with a TRAILING-edge flush: if more
+                // state changes arrive during the window, remember to send the
+                // latest state when the window closes (otherwise the final
+                // post-action state is silently dropped and the guest goes stale).
+                if (NET.syncThrottle) { NET._syncPending = true; return; }
+                NET.syncThrottle = setTimeout(function() {
+                    NET.syncThrottle = null;
+                    if (NET._syncPending) { NET._syncPending = false; window._broadcastState(); }
+                }, 50);
+                try {
+                    var s = _serializeState();
+                    if (!s) return;
+                    var json = JSON.stringify(s);
+                    if (json === NET.lastSyncJson) return;
+                    NET.lastSyncJson = json;
+                    NET.socket.emit('state-sync', s);
+                } catch (e) {
+                    console.error('[NET] Serialize error:', e);
+                }
+            };
+
+            var _guestUIKeys = [
+                'selectedUnitId', 'focusedUnitId', 'hoverUnitId',
+                'actionMode', 'actionMenuView', 'selectedTool',
+                'pendingTarget', 'comboPartner'
+            ];
+
+            function _applyRemoteState(data) {
+                var st = window._gameState;
+                if (!st) return;
+                try {
+
+                    var savedUI = {};
+                    _guestUIKeys.forEach(function(k) {
+                        savedUI[k] = st[k];
+                    });
+
+                    var savedGuestAuto = st.autoPlayers ? st.autoPlayers[2] : false;
+
+                    var prevPhase = st.phase;
+
+                    _deserializeInto(st, data);
+
+                    _guestUIKeys.forEach(function(k) {
+                        st[k] = savedUI[k];
+                    });
+
+                    if (st.autoPlayers) st.autoPlayers[2] = savedGuestAuto;
+
+                    st._actionExecuting = false;
+                    st._walkAnimActive = false;
+
+                    var _prevActivePlayer = st._guestPrevActivePlayer || 0;
+                    var _prevActiveUnitId = st._guestPrevActiveUnitId || null;
+                    if (st.phase === 'battle' && !st.winner && NET.myPlayer === 2) {
+                        var myTurn = st.activePlayer === 2;
+
+                        var _activeUnitChanged = st._blitzActiveUnitId !== _prevActiveUnitId;
+
+                        if (!st._blitzActiveUnitId && _prevActiveUnitId) {
+                            st.selectedUnitId = null;
+                            st.focusedUnitId = null;
+                            st.actionMode = null;
+                            st.actionMenuView = 'root';
+                            st.selectedTool = null;
+                            st.pendingTarget = null;
+                            st.comboPartner = null;
+                        }
+
+                        if (!myTurn) {
+
+                            st.actionMode = null;
+                            st.actionMenuView = 'root';
+                            st.selectedTool = null;
+                            st.pendingTarget = null;
+                            st.comboPartner = null;
+
+                            if (_activeUnitChanged && st._blitzActiveUnitId) {
+                                st.selectedUnitId = st._blitzActiveUnitId;
+                            }
+
+                            if (_activeUnitChanged && st._blitzActiveUnitId && typeof focusBoardCameraOnTiles === 'function') {
+                                var hostUnit = st.units.find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
+                                if (hostUnit && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(hostUnit)) {
+                                    var _bz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
+                                    var _dz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                    focusBoardCameraOnTiles([{ x: hostUnit.x, y: hostUnit.y }], {
+                                        zoom: _bz > 1.05 ? _bz : _dz,
+                                        holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
+                                    });
+                                }
+                            }
+                        } else {
+
+                            var targetUnit = null;
+                            if (st._blitzActiveUnitId) {
+                                targetUnit = st.units.find(function(u) {
+                                    return u.id === st._blitzActiveUnitId && !u.dead && u.player === 2 && (u.ap || 0) > 0;
+                                });
+                            }
+                            if (!targetUnit) {
+                                for (var i = 0; i < st.units.length; i++) {
+                                    var u = st.units[i];
+                                    if (!u.dead && u.player === 2 && (u.ap || 0) > 0) {
+                                        targetUnit = u;
+                                        break;
+                                    }
+                                }
+                            }
+                            var _needsAutoSelect = !st.selectedUnitId || _prevActivePlayer !== 2;
+
+                            if (targetUnit && st.selectedUnitId !== targetUnit.id) _needsAutoSelect = true;
+                            if (st.selectedUnitId && !_needsAutoSelect) {
+                                var selUnit = st.units.find(function(u) {
+                                    return u.id === st.selectedUnitId && !u.dead;
+                                });
+                                if (!selUnit || (selUnit.ap || 0) <= 0) _needsAutoSelect = true;
+                            }
+                            if (_needsAutoSelect) {
+                                if (targetUnit) {
+
+                                    st._remoteAction = true;
+                                    if (typeof selectUnit === 'function') selectUnit(targetUnit.id);
+                                    st._remoteAction = false;
+                                    if (typeof window.playUnitSwitchChime === 'function') window.playUnitSwitchChime();
+                                } else {
+                                    st.selectedUnitId = null;
+                                    st.focusedUnitId = null;
+                                }
+                            }
+                        }
+                    }
+                    st._guestPrevActivePlayer = st.activePlayer;
+                    st._guestPrevActiveUnitId = st._blitzActiveUnitId;
+
+                    var appEl = document.querySelector('.app');
+                    if (appEl) {
+                        appEl.classList.toggle('setup-mode', st.phase === 'setup');
+                        appEl.classList.toggle('battle-mode', st.phase === 'battle');
+                    }
+
+                    if (st.phase === 'battle' && (prevPhase !== 'battle' || !st._guestBoardBuilt)) {
+                        st._guestBoardBuilt = true;
+
+                        CONFIG.tileSize = 128;
+                        if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                    }
+
+                    if (st.phase === 'battle' && typeof window._rebuildBlitzTurnOrderFromIds === 'function') {
+                        window._rebuildBlitzTurnOrderFromIds();
+                    }
+
+                    if (typeof window.render === 'function') window.render();
+
+                    if (prevPhase === 'setup' && st.phase === 'battle') {
+
+                        var _splashFn = typeof showVSSplash === 'function' ? showVSSplash
+                                      : typeof window.showVSSplash === 'function' ? window.showVSSplash
+                                      : typeof window.showVsSplash === 'function' ? window.showVsSplash
+                                      : null;
+                        if (_splashFn) {
+                            _splashFn(function _afterGuestVSSplash() {
+
+                                CONFIG.tileSize = 128;
+                                if (typeof invalidateLayoutCache === 'function') invalidateLayoutCache();
+
+                                if (typeof _clearZoomMemo === 'function') _clearZoomMemo();
+                                if (typeof renderBoard === 'function') renderBoard();
+                                if (typeof resetBoardCamera === 'function') resetBoardCamera(true);
+
+                                var activeU = null;
+                                if (st._blitzActiveUnitId) {
+                                    activeU = (st.units || []).find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
+                                }
+                                if (!activeU) {
+                                    activeU = (st.units || []).find(function(u) { return !u.dead && u.player === NET.myPlayer; });
+                                }
+                                if (activeU && typeof focusBoardCameraOnTiles === 'function') {
+                                    var _bz3 = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
+                                    var _dz3 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                    focusBoardCameraOnTiles([{ x: activeU.x, y: activeU.y }], {
+                                        zoom: _bz3 > 1.05 ? _bz3 : _dz3,
+                                        holdMs: 99999, persist: true, transitionMs: 600
+                                    });
+                                }
+
+                                if (st.activePlayer === NET.myPlayer && st._blitzActiveUnitId) {
+                                    var myU = (st.units || []).find(function(u) {
+                                        return u.id === st._blitzActiveUnitId && !u.dead && u.player === NET.myPlayer;
+                                    });
+                                    if (myU) {
+                                        st._remoteAction = true;
+                                        if (typeof selectUnit === 'function') selectUnit(myU.id);
+                                        st._remoteAction = false;
+                                    }
+                                }
+                                if (typeof window.render === 'function') window.render();
+                            });
+                        }
+                    }
+
+                    if (st.winner && !st._guestResultShown) {
+                        st._guestResultShown = true;
+
+                        if (typeof window.finalizeMatch === 'function') {
+                            try {
+                                window.finalizeMatch();
+                            } catch (e) {
+                            }
+                        } else if (typeof window.showResultOverlay === 'function') {
+                            window.showResultOverlay();
+                        }
+                    }
+                } catch (e) {
+                    console.error('[NET] State apply error:', e);
+                }
+            }
+
+            window._sendPartyConfig = function() {
+                if (!NET.socket || NET.role !== 'guest') return;
+                var st = window._gameState;
+                NET.socket.emit('party-config', {
+                    builds: st.partyBuilds[2],
+                    loadouts: st.loadouts[2],
+                    name: st.partyNames ? st.partyNames[2] : 'Player 2',
+                    meta: st.partyMeta ? st.partyMeta[2] : null
+                });
+            };
+
+            setInterval(function() {
+                if (!NET.online) return;
+                var ind = document.getElementById('netStatusIndicator');
+                if (!ind) {
+                    ind = document.createElement('div');
+                    ind.id = 'netStatusIndicator';
+                    ind.style.cssText = 'position:absolute;top:8px;right:12px;z-index:1400;font-size:0.75rem;padding:4px 10px;border-radius:6px;pointer-events:none;';
+                    (document.getElementById("game-viewport") || document.body).appendChild(ind);
+                }
+                var ok = NET.socket && NET.socket.connected;
+                ind.textContent = ok ?
+                    '🟢 Online — Room ' + NET.roomCode + ' — You are P' + NET.myPlayer :
+                    '🔴 Disconnected';
+                ind.style.background = ok ? 'rgba(85,211,138,0.15)' : 'rgba(255,107,107,0.15)';
+                ind.style.color = ok ? 'var(--green)' : 'var(--red)';
+            }, 2000);
+
+            try {
+                var savedToken = sessionStorage.getItem('ew_rejoinToken');
+                var savedRoom = sessionStorage.getItem('ew_rejoinRoom');
+                var savedRole = sessionStorage.getItem('ew_rejoinRole');
+                if (savedToken && savedRoom) {
+                    console.log('[NET] Found saved rejoin credentials, attempting rejoin to room ' + savedRoom);
+
+                    sessionStorage.removeItem('ew_rejoinToken');
+                    sessionStorage.removeItem('ew_rejoinRoom');
+                    sessionStorage.removeItem('ew_rejoinRole');
+
+                    NET.rejoinToken = savedToken;
+                    NET.roomCode = savedRoom;
+                    NET.role = savedRole;
+                    NET._wasInMatch = true;
+                    NET.online = true;
+                    _showReconnectOverlay('Reconnecting', 90);
+                    _connectSocket(function() {
+
+                    });
+                }
+            } catch(e) {}
+
+        })();
