@@ -139,60 +139,37 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
 - **matchScores vs matchKills:** TDM/FFA kills live in `state.matchKills`; reading
   `state.matchScores` shows 0-0 and is misleading.
 
-## Terrain elevation buffs (battle.js — measured, June 2026)
-Constants near `battle.js:74-76`, applied in `applyDamageToUnit` (~5985) via
-`getUnitStandingHeight`:
-- **Downhill damage:** attacker higher than target → `damage × (1 + 0.10 × Δh)`
-  → **+10% per height level** (`DOWNHILL_DAMAGE_BONUS = 0.1`).
-- **High-ground defense:** target higher than attacker → incoming damage
-  `− 5 × Δh` (FLAT, `HIGH_GROUND_DEF_BONUS = 5`) — small vs ~hundreds of dmg.
-- **High-ground range:** ranged unit (range≥2) standing at h≥2 → **+1 range**
-  (`HIGH_GROUND_RANGE_BONUS`, in `getEffectiveRange`).
-So elevation's real value is the +10%/level downhill and the +1 range (kiting);
-the flat −5 def is minor. **The stock AI mostly ignores it** between fights:
-`pickBestMoveTile` weights height at only `moveHighGroundRanged_v1=0.3` /
-`moveHighGroundMelee_v1=0.5` vs a distance weight of ×10. It only banks height
-in `scoreMoveToAttack` (the move-then-attack tile gets the ×(1+0.1Δh)). Climbing
-when it's nearly free is a cheap, underused edge.
-
-## ⚠️ Damage is applied on PROJECTILE IMPACT, not synchronously (~1.4s)
-The single most important thing for any automated player: `doSpell`/`doAttack`
-return an **animation delay in ms**, and `applyDamageToUnit` (which does the
-`target.hp -= dmg`) runs on IMPACT, gated by
-`impactDelay = max(sourceHold(~900) + travelMs(~480) + 80, 620)` ≈ **~1.4s**
-(`battle.js:~16799`). Consequences:
-- Reading `target.hp` right after an action shows STALE (pre-hit) HP.
-- The OLD `playtest_smart.js` loops up to 8 actions inside ONE `page.evaluate`
-  with no wait → it re-reads full HP → re-fires the SAME "best" spell on the
-  same target → wasted AP + inflated logs + the "Dead Eye→X(990)" ×4 with HP
-  frozen that looks like a no-op bug. It is NOT a game bug — just measuring too
-  early. (Kills still land ~1.4s later.)
-- **Correct pattern (what the stock AI's `executeAction` does):**
-  `const delay = doSpell(...); setTimeout(finishComputerAction, delay);` — do
-  ONE action, wait the returned delay, then re-read/decide. `playtest_claude.js`
-  uses one-action-per-step (but its fixed 280ms verify is still too short, so its
-  "no-op" counter is a false positive — ignore it; trust the kill count).
-
-## Headless renderer stability
-Under `--use-gl=swiftshader`, the page reliably **crashes mid-match** (Playwright
-"Target page/browser closed") within ~6–9 rounds in long combats. Harnesses must
-wrap every `page.evaluate` and finalize from in-memory counters on crash
-(`playtest_claude.js` does this). Matches rarely run to a clean result headless.
-
-## My playstyle vs ai.js, and `ainew.js`
-Playtested P1 (TDM 8×8, 4v4) with `playtest_claude.js`. My two edges over the
-stock AI:
-1. **Hard team focus-fire** — ONE shared target the whole team piles on (stock AI
-   only soft-focuses via a team-damage-log priority nudge; each unit otherwise
-   hunts its own nearest/highest-priority enemy → spread chip damage on ~1000-HP
-   units). Hard focus → kills by round 2–3 (went 3–0, 4v2 by R6 before a crash).
-2. **Proactive high-ground seeking** — climb when nearly free (logged h0→2, h3→5,
-   h5→6) for the +10%/level + range edge.
-`ainew.js` is a surgical drop-in **on top of ai.js** (load it AFTER ai.js): it
-wraps `GAME.getAIWeight` to raise the height weights, and overrides `aiTakeTurn`
-to take a focus-weighted shot when one exists, else delegates everything
-(healing, tower, nexus, CTF, retreat) UNCHANGED to the stock AI. Validate with
-`node validate_ainew.js`.
+## Online / multiplayer (two-browser harness: `playtest_online.js`)
+`server.js` is the relay (room codes + ranked queue + D1 ELO); the client glue is
+`online.js` (on R2). Authority model: **HOST = Player 1 = authoritative engine;
+GUEST = Player 2 = thin client** — guest sends semantic `game-action` intents
+(`clickTile`/`selectUnit`/`setActionMode`/`triggerEndTurn`, each with a `_ctx`),
+host replays them via `_executeRemoteAction` then `_broadcastState()` (full
+serialized state, Set-aware, throttled 50ms). Guest applies host state via
+`_applyRemoteState` (preserves local UI keys).
+- Entry points (no menu nav needed; they self-connect): `lobbyCreateRoom()` →
+  `window._NET.roomCode`; `lobbyJoinRoom()` reads `#lobbyJoinInput`;
+  `lobbyJoinQueue()` (uses `_queueTeamSize`/`_queueMode`). `window._NET` =
+  {socket, role, myPlayer, roomCode, online, connected, _lockState}.
+- Start handshake: guest `applyPartyBuild(false)` (locks + sends party-config →
+  sets host `_lockState.guestPartyReceived`), host `applyPartyBuild(false)`, host
+  `startMatch()` (gate: `_lockState.host && guestPartyReceived`).
+- `node playtest_online.js [friendly|ranked]` drives two real browsers through
+  this, plays host=P1 locally + guest=P2 via the real emitters, and **diffs
+  host-vs-guest state each step (desync detector)**. Writes `shots/online-*`.
+- **CONFIRMED relay layer works:** connect, room-full, party-config relay,
+  disconnect detection (`connected=false` + 90s window), and rejoin (new socket
+  id) all functioned in testing.
+- **BUG FOUND (blocks online match start on procedural maps):** `startMatch` →
+  `prepareBattleStateFromCurrentBuilds` (battle.js:9612) → `initMap` (map.js:3139)
+  throws **`ReferenceError: sanctuaries is not defined`**. Line 3139 uses bare
+  `[sanctuaries[1], sanctuaries[2]]` but everywhere else it's `state.sanctuaries`
+  (map.js 2826/2913/2966/3064). **Fix: add `state.` prefix.** Solo vs-CPU misses
+  it (uses 8×8 presets); online friendly defaults to map `'medium'` (12×12
+  procedural) which hits this branch. NOTE: map.js is on R2 — fix must be applied
+  there (or uploaded + re-served) to take effect. Until then the in-match desync
+  test can't run (match never starts); the "desyncs" the harness logs pre-start
+  are just each client's independent party roll, not a confirmed sync bug.
 
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
