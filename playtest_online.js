@@ -17,6 +17,7 @@
 
 const { chromium } = require('playwright');
 const fs = require('fs');
+const { installAssetCache } = require('./asset_cache');
 
 const MODE = (process.argv[2] || 'friendly').toLowerCase(); // friendly | ranked
 const SHOTS = __dirname + '/shots';
@@ -39,7 +40,7 @@ const DIGEST_FN = () => {
   })).sort((a, b) => (a.id < b.id ? -1 : 1));
   return {
     phase: st.phase, round: st.round, activePlayer: st.activePlayer,
-    active: st._blitzActiveUnitId, winner: st.winner,
+    active: st._blitzActiveUnitId, sel: st.selectedUnitId, winner: st.winner,
     kills: st.matchKills, units
   };
 };
@@ -60,7 +61,13 @@ const NET_FN = () => {
 function diffDigests(h, g) {
   const out = [];
   if (!h || !g) return ['missing-state(host=' + !!h + ',guest=' + !!g + ')'];
-  for (const k of ['phase', 'round', 'activePlayer', 'active', 'winner']) {
+  // NOTE: `active` (_blitzActiveUnitId) is authored by the host ONLY for its own
+  // (P1) turns; during the remote player's (P2) turn the host deliberately leaves
+  // it unset and the guest's UI auto-selects a unit into selectedUnitId. So only
+  // compare `active` when it's the host's turn — otherwise it's a false desync.
+  const keys = (h.activePlayer === 1) ? ['phase', 'round', 'activePlayer', 'active', 'winner']
+                                      : ['phase', 'round', 'activePlayer', 'winner'];
+  for (const k of keys) {
     if (JSON.stringify(h[k]) !== JSON.stringify(g[k])) out.push(`${k}: host=${JSON.stringify(h[k])} guest=${JSON.stringify(g[k])}`);
   }
   if (JSON.stringify(h.kills) !== JSON.stringify(g.kills)) out.push(`kills: host=${JSON.stringify(h.kills)} guest=${JSON.stringify(g.kills)}`);
@@ -88,6 +95,9 @@ async function waitFor(page, fn, ms, every = 400) {
   const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage'] });
   const mk = async (tag) => {
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 720 }, ignoreHTTPSErrors: true });
+    // Serve the ~35 R2/CDN scripts from a local on-disk cache to defeat *.r2.dev
+    // dev-endpoint throttling (each cold-start otherwise re-downloads ~1.3MB).
+    await installAssetCache(ctx);
     const page = await ctx.newPage();
     page.on('pageerror', e => { const m = e.message.split('\n')[0]; log(`[${tag}] PAGEERR ${m}`); flag('pageerror', { who: tag, msg: m }); });
     page.on('console', m => { const t = m.text(); if (/error|undefined is not|cannot read|desync|NaN/i.test(t)) log(`[${tag}] console: ${t.slice(0, 160)}`); });
@@ -100,13 +110,16 @@ async function waitFor(page, fn, ms, every = 400) {
 
   log(`\n=== Entropy Wars ONLINE playtest — mode=${MODE} ===`);
   log('Loading both clients…');
-  await Promise.all([
-    host.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 60000 }),
-    guest.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 60000 }),
-  ]);
-  await sleep(10000);
-  // Sanity: did the engine load from R2?
-  const loaded = await Promise.all([host, guest].map(p => p.evaluate(() => !!(window._NET && window.startMatch && window._gameState))));
+  // 'commit' returns as soon as navigation commits; the ~35 R2 scripts then load
+  // in the background (slow / throttled after many cold-starts). Stagger the two
+  // loads and poll for the engine globals rather than waiting on 'load'.
+  await host.goto('http://localhost:3000/', { waitUntil: 'commit', timeout: 120000 });
+  await sleep(2000);
+  await guest.goto('http://localhost:3000/', { waitUntil: 'commit', timeout: 120000 });
+  const loaded = [
+    await waitFor(host, () => !!(window._NET && window.startMatch && window._gameState), 240000, 1500),
+    await waitFor(guest, () => !!(window._NET && window.startMatch && window._gameState), 240000, 1500),
+  ];
   log(`Engine loaded — host:${loaded[0]} guest:${loaded[1]}`);
   if (!loaded[0] || !loaded[1]) { flag('load-failure', { loaded }); }
 
@@ -211,8 +224,12 @@ async function waitFor(page, fn, ms, every = 400) {
     const G = window.GAME, st = window._gameState;
     if (!st || st.phase !== 'battle' || st.winner != null) return { s: 'done' };
     if (st.activePlayer !== 2) return { s: 'not-mine', ap: st.activePlayer };
-    const id = st._blitzActiveUnitId; const u = st.units.find(x => x.id === id);
-    if (!u || u.dead || u.player !== 2) return { s: 'no-unit' };
+    // The host doesn't author _blitzActiveUnitId for the remote player; the guest's
+    // UI auto-selects a P2 unit into selectedUnitId. Prefer that, then fall back.
+    let id = st.selectedUnitId || st._blitzActiveUnitId;
+    let u = st.units.find(x => x.id === id && !x.dead && x.player === 2 && (x.ap || 0) > 0);
+    if (!u) u = st.units.find(x => x.player === 2 && !x.dead && (x.ap || 0) > 0); // first available
+    if (!u) return { s: 'no-unit' };
     const D = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     const en = st.units.filter(x => x.player !== 2 && !x.dead && x.hp > 0);
     const acted = [];
@@ -232,13 +249,32 @@ async function waitFor(page, fn, ms, every = 400) {
   };
 
   log('\n— Playing (host=P1 local, guest=P2 via relay); checking sync each step —');
-  let lastRound = -1, stalls = 0, desyncs = 0, steps = 0;
+  let lastRound = -1, stalls = 0, desyncs = 0, steps = 0, handoffMiss = 0;
   const start = Date.now();
   while (Date.now() - start < 300000) {
     steps++;
     const hd = await host.evaluate(DIGEST_FN);
     if (hd && hd.winner != null) { log(`\nWinner = P${hd.winner}`); break; }
     if (hd && hd.round !== lastRound) { lastRound = hd.round; log(`\n── Round ${hd.round} ── activePlayer:${hd.activePlayer} kills:${JSON.stringify(hd.kills)}`); }
+
+    // The host broadcasts each turn-handoff exactly once; _broadcastState dedups
+    // on lastSyncJson, so if the guest ever MISSES that single packet there is no
+    // resend and the match deadlocks. Detect a persistent host/guest activePlayer
+    // disagreement, force the host to re-broadcast (clearing the dedup), and log
+    // whether that recovers the guest — confirming the "missed broadcast, no
+    // resend" bug rather than masking it.
+    const gAp = await guest.evaluate(() => window._gameState && window._gameState.activePlayer);
+    if (hd && gAp !== hd.activePlayer) {
+      if (++handoffMiss === 3) {
+        log(`  ⚠ activePlayer stuck (host=${hd.activePlayer} guest=${gAp}) — forcing host re-broadcast`);
+        await host.evaluate(() => { try { window._NET.lastSyncJson = ''; window._broadcastState(); } catch (e) {} });
+        await sleep(900);
+        const gAp2 = await guest.evaluate(() => window._gameState && window._gameState.activePlayer);
+        const recovered = gAp2 === hd.activePlayer;
+        log(`    guest now activePlayer=${gAp2} → ${recovered ? 'RECOVERED' : 'STILL STUCK'}`);
+        flag('handoff-missed-broadcast', { host: hd.activePlayer, guestBefore: gAp, guestAfter: gAp2, recoveredByRebroadcast: recovered });
+      }
+    } else handoffMiss = 0;
 
     let r;
     if (hd && hd.activePlayer === 1) r = await host.evaluate(HOST_TURN);

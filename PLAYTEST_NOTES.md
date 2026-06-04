@@ -171,6 +171,49 @@ serialized state, Set-aware, throttled 50ms). Guest applies host state via
   test can't run (match never starts); the "desyncs" the harness logs pre-start
   are just each client's independent party roll, not a confirmed sync bug.
 
+## Online — 2026-06 session update (match now STARTS; new findings)
+- **`sanctuaries` blocker is GONE.** Online friendly on `'medium'` (12×12 procedural)
+  now starts cleanly — `startMatch` → battle, no `sanctuaries is not defined`. Either
+  the R2 `map.js` was patched or the path changed. The in-match sync test runs now.
+- **Relay + state sync CONFIRMED working end-to-end** (via `probe_online.js`): party-
+  config relay, P1-turn state-sync (guest correctly mirrors `_blitzActiveUnitId`),
+  guest playing P2 through the real emitters, host `_executeRemoteAction`, and turn
+  handoff back to P1. In clean probe runs the guest played several unit-turns and
+  control returned to P1 — both P1-first and P2-first initiative.
+- **`_blitzActiveUnitId` is host-authored ONLY for the host's own (P1) turns.** During
+  the REMOTE player's (P2/guest) turn the host often leaves it null; the guest's
+  `_applyRemoteState` auto-selects the first available P2 unit into `selectedUnitId`
+  (online.js ~2255). So **a guest must be driven off `state.selectedUnitId`, not
+  `_blitzActiveUnitId`** (that field being undefined for the remote turn is NOT a
+  desync). Fixed in `playtest_online.js` GUEST_TURN + the desync digest (it now only
+  compares `active` on the host's turn). This was the cause of the old instant
+  "stall + 60 DESYNC" — a HARNESS bug, not a game bug.
+- **SUSPECTED real bug — battle-start handoff can be lost with no resend.** The host
+  broadcasts each turn-handoff once; `_broadcastState` dedups on `NET.lastSyncJson`,
+  so if the guest ever MISSES that single packet there is no retransmit and the match
+  deadlocks (`activePlayer host=2 guest=1`, seen intermittently when P2 wins
+  initiative). The harness now detects a persistent activePlayer disagreement, forces
+  a host re-broadcast (clears the dedup), and logs whether it RECOVERS — confirming
+  "missed broadcast + dedup-prevents-resend." Real-fix would live in online.js (e.g.
+  periodic full-state heartbeat, or guest-side "I'm behind, resend" request). Couldn't
+  repro deterministically in the clean probe (race), but it stalled the full harness.
+- **`rejoin-failed` flag** is the disconnect/rejoin probe, a separate area (socket
+  reconnect path) — not investigated this session.
+
+## R2 throttling + the on-disk asset cache (`asset_cache.js`)
+The game pulls ~35 scripts/styles (~1.3MB; `battle.js` alone ~975KB) from the **public
+`*.r2.dev` dev bucket** (rate-limited, NOT CDN-cached) + a few CDNs. Each Playwright
+cold-start re-downloads all of them; after ~15 launches the endpoint throttles and
+`page.goto` times out (minutes). **Fix shipped:** `asset_cache.js` exports
+`installAssetCache(context[, dir])` — a Playwright `context.route` interceptor that
+serves those hosts from a local on-disk cache (`.asset-cache/`, gitignored), fetching
+each file at most once ever (content-encoding/length headers dropped to avoid double-
+decode). Wired into `playtest_online.js` and `probe_online.js` via `mk()`. First run
+warms the cache (~124MB incl. sprites); subsequent cold-starts load without hitting R2,
+so no more goto timeouts. Page-load in the harnesses now uses `waitUntil:'commit'` +
+poll-for-globals (don't wait on `'load'`). **Real-player fix** (out of repo): serve
+assets from a real Cloudflare custom domain / CDN instead of the throttled `*.r2.dev`.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
