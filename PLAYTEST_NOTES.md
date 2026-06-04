@@ -65,6 +65,61 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
 - `setDevAutoSim(true)` / `toggleDevAutoSim()` = AI-vs-AI auto-play. Do NOT use for
   playtesting — the user wants Claude to actually play P1.
 
+## Board / map selection (IMPORTANT — board size is a CHOICE, not forced)
+The mode-select screen has **map cards** `.ms-map-card`, separate from the mode
+cards. Each card's text is like `Outpost 8×8 PRESET 4 SPAWNS`. Click one to set the
+board. Sizes: 4×4 (Apartment), **8×8** (Outpost/Suburb/Bunker), 10×10, 12×12 (the
+default if you don't pick), 16×16. For fast, decisive 4v4 pick an **8×8 4-SPAWNS**
+card. Flow: `_goToVsCpu()` → click `.ms-map-card` (8×8) → click `.ms-mode-card`
+(mode) → CONFIRM → seal → start. (CONFIG.boardSize overrides do NOT work — must click.)
+
+## Type chart / damage (job-independent)
+Effectiveness = **spell type vs target's `unit.types[]`**, NOT class/job. Spell types:
+human, divine, alien, unholy, anomaly, tech, earth (`spell.spellType`). The engine
+exposes **`window.getTypeDamageMultiplier(source, target, spellType)`** → call it
+directly to score moves. Multiplier = effectMult × stabMult: strong **×1.30**, neutral
+×1.0, weak **×0.75**; STAB **×1.25** if `source.types` includes the spellType. So
+super-effective is only +30% — **focus fire matters far more than type-chasing.**
+
+## Arena mode mechanics (multi-objective, scores via a COMPOSITE)
+Win by destroying the enemy tower, wipeout, or **composite score** at the round limit
+(15). Three scoring paths:
+- **Kills** (~15 pts each).
+- **Tower damage** — enemy tower = `state.towers[2]` `{x,y,hp}` (yours is `[1]`, 5000 HP).
+  Attack/cast its TILE to damage it. ~0.1 pt/HP → the **biggest** point source; lean here.
+- **Nexus** — `state.nexusPoints` (fixed, e.g. `earth`) and/or `state.roamingNexus`,
+  each with `{zoneX,zoneY,zoneSize,progress,owner}`. Stand a unit in the zone and call
+  **`window.channelNexus(unit)`** (costs `NEXUS_CHANNEL_COST_AP`); each call moves
+  `progress` ±1 toward you; reach the threshold (≈6) to capture → +gold/round + ~3 pts/round.
+  Helpers: `getNexusAtUnit(unit)`, `isInNexusZone(x,y)`.
+- **GOTCHA:** Arena `state.matchScores` stays 0-0 — the real result is the composite,
+  logged at end as `P1: NNN pts — K kills (..), tower dmg (..), nexus rounds (..)`.
+
+## Smart playtest agents (USE THESE — don't replay "hit closest enemy")
+- `playtest_smart.js` — TDM on 8×8 with real tactics: **focus-fires the lowest-HP
+  reachable enemy, SECURES KILLS, prioritizes enemy healers, type-aware via
+  getTypeDamageMultiplier, White Mage revives/heals.** Result: 5–0 wipeout in 3 rounds.
+- `playtest_arena.js` — Arena variant: same core + dedicates the closest unit to
+  channel the Nexus + pressures the enemy tower. Result: composite **324–69**.
+- `playtest_custom.js` — fills all 8 spell slots but plays the dumb base tactics
+  (kept for comparison; it 0–0 stalemated). Lesson: **the dumb "weakest-in-range"
+  loop spreads chip damage and never kills — always focus-fire + secure kills.**
+- All build full 8-slot loadouts via `getEligibleSpellsForClass(cls)` (native ≈5) +
+  a random secondary job + damage fillers, applied as a post-start `unit.spells`
+  override (pre-seal `state.loadouts` mutation can wedge `startMatch` — don't).
+
+## Environment gotchas (cost a lot of time once)
+- **R2 throttling:** each chromium cold-start re-downloads ~35 scripts; after ~15+
+  launches the page load slows to minutes. Minimize browser launches; do all probing
+  in as few runs as possible. "Stuck at Game loaded" is usually just slow loading.
+- **Heavy-DOM evaluates HANG:** `document.body.innerHTML`, `innerText`, and
+  `querySelectorAll('*')` force reflow on the 3D board and never return. Use
+  `textContent` on bounded selectors, or read JS globals, or one element's `outerHTML`.
+- **Screenshots** time out on the software-WebGL renderer; use `timeout` +
+  `animations:'disabled'` and treat failures as non-fatal.
+- Render bugs seen mid-combat: `hpBar is not defined`, `Cannot read properties of
+  null (reading 'accMs')` — animation/render path, worth chasing.
+
 ## Known findings (from playtests)
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the
   spell" bugs):** highlight (`getMoveTiles`/`getSpellRangeTiles`) and execution
@@ -73,9 +128,11 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   over a full match). The real cause is the highlight not being recomputed/cleared
   after state changes (ally moves into LOS, AP/moves spent, terrain deform, fog).
   Repro idea: select unit → capture highlight → change state → click stale tile.
-- **Lethality/pacing:** units have ~400–950 HP, lots of "not very effective" chip
-  damage + dodges; TDM defeated units respawn at full HP after 1 round. A full
-  12-round 4v4 TDM produced only ~3 KOs. Matches drag / Arena never resolved.
+- **Lethality is fine WITH focus fire (earlier "no kills" was bad play):** units have
+  ~750–1050 HP; a focused target dies in 2–3 hits (Meteor/Dead Eye hit 250–550). The
+  0-kill stalemate came from the dumb harness SPREADING damage. Concentrate fire +
+  secure kills and TDM ends in a 3-round wipeout. End-of-round regen (~5%) + 1-round
+  respawns only matter if you fail to focus.
 - **Mode resolution:** TDM has a 12-round limit (resolves cleanly + shows a result
   screen); Arena had a 15-round limit but dragged with respawns. "No-contest" voids
   after 20–30 idle rounds — a sign matches stall.
