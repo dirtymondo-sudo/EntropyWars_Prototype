@@ -351,22 +351,51 @@
             }
         };
 
+        /* ── Auto-start helper for ranked matchmaking ──────────────── */
+        function _tryAutoStartRanked() {
+            var NET = window._NET;
+            if (!NET || !NET.ranked) return;
+            var lock = NET._lockState;
+            if (!lock || !lock.host || !lock.guestPartyReceived) return;
+            /* Host is the authority — only host calls origStartMatch */
+            if (NET.role !== 'host') return;
+            /* Guard against double-fire */
+            if (NET._autoStartFired) return;
+            NET._autoStartFired = true;
+            NET._waitingForOpponent = false;
+
+            console.log('[NET] Both players locked in — auto-starting ranked match');
+            addLog('Both players ready — starting match!');
+
+            /* Small delay so the "both ready" message renders */
+            setTimeout(function() {
+                _origStartMatch();
+                if (window._broadcastState) window._broadcastState();
+                _emit('match-started');
+            }, 600);
+        }
+
         const _origStartMatch = startMatch;
         startMatch = function() {
             if (!_isOnline()) return _origStartMatch();
-            const lock = window._NET._lockState || {
-                host: false,
-                guest: false,
-                guestPartyReceived: false
-            };
-            if (_isGuest()) {
 
+            var NET = window._NET;
+            var lock = NET._lockState || { host: false, guest: false, guestPartyReceived: false };
+
+            /* ── RANKED / QUICK-PLAY ── single-click flow ─────────── */
+            if (NET.ranked) {
+                /* If we already locked in, this is a redundant click — ignore */
+                if (NET._waitingForOpponent || NET._autoStartFired) return;
+                /* Otherwise, fall through — applyPartyBuild handles the lock */
+                return;
+            }
+
+            /* ── FRIENDLY ROOM ── keep legacy host-controls-start flow ── */
+            if (_isGuest()) {
                 if (!lock.guest) {
                     if (window._sendPartyConfig) window._sendPartyConfig();
                     lock.guest = true;
-                    _emit('relay', {
-                        type: 'guest-locked'
-                    });
+                    _emit('relay', { type: 'guest-locked' });
                     addLog('Your party has been locked in and sent. Waiting for host to start…');
                 } else {
                     addLog('Already locked in. Waiting for host to start the match…');
@@ -384,28 +413,47 @@
                 return;
             }
             _origStartMatch();
-
             if (window._broadcastState) window._broadcastState();
-
             _emit('match-started');
         };
 
         const _origApplyPartyBuild = applyPartyBuild;
         applyPartyBuild = function(showLog) {
             if (!_isOnline()) return _origApplyPartyBuild(showLog);
-            const lock = window._NET._lockState || {
-                host: false,
-                guest: false,
-                guestPartyReceived: false
-            };
-            const result = _origApplyPartyBuild(showLog);
+
+            var NET = window._NET;
+            var lock = NET._lockState || { host: false, guest: false, guestPartyReceived: false };
+
+            /* Already locked — ignore re-clicks */
+            if (NET._waitingForOpponent || NET._autoStartFired) {
+                return true;
+            }
+
+            var result = _origApplyPartyBuild(showLog);
             if (result === false) return false;
+
+            /* ── RANKED / QUICK-PLAY ── single-click: lock + send + wait ── */
+            if (NET.ranked) {
+                if (_isGuest()) {
+                    lock.guest = true;
+                    if (window._sendPartyConfig) window._sendPartyConfig();
+                    _emit('relay', { type: 'guest-locked' });
+                } else {
+                    lock.host = true;
+                    _emit('relay', { type: 'host-locked' });
+                }
+                NET._waitingForOpponent = true;
+                addLog('Party locked in. Waiting for opponent…');
+                render();
+                _tryAutoStartRanked();
+                return true;
+            }
+
+            /* ── FRIENDLY ROOM ── legacy behavior ── */
             if (_isGuest()) {
                 lock.guest = true;
                 if (window._sendPartyConfig) window._sendPartyConfig();
-                _emit('relay', {
-                    type: 'guest-locked'
-                });
+                _emit('relay', { type: 'guest-locked' });
                 addLog('Your party is locked in and sent to the host.');
             } else {
                 lock.host = true;
@@ -599,9 +647,12 @@
                     window._NET._lockState = {
                         host: false,
                         guest: false,
-                        guestPartyReceived: false
+                        guestPartyReceived: false,
+                        hostLocked: false
                     };
                 }
+                window._NET._waitingForOpponent = false;
+                window._NET._autoStartFired = false;
                 state.showPlayer2Builder = true;
                 state.matchNumber = (state.matchNumber || 1) + 1;
                 render();
@@ -816,17 +867,15 @@
                     window._gameState.isRankedMatch = true;
                 }
 
-                if (typeof window.activeMultiplayerMode !== 'undefined') {
-                    window.activeMultiplayerMode = _net.matchRankedMode || _net.matchMultiplayerMode || 'arena';
-                }
-                console.log('[NET] Applied ranked config: map=' + _net.matchMapModeId + ' team=' + _net.matchTeamSize);
+                activeMultiplayerMode = _net.matchRankedMode || _net.matchMultiplayerMode || 'arena';
+                console.log('[NET] Applied ranked config: map=' + _net.matchMapModeId + ' team=' + _net.matchTeamSize + ' mode=' + activeMultiplayerMode);
             }
 
             if (_net && !_net.ranked && _net.friendlyConfig) {
                 var fc = _net.friendlyConfig;
 
-                if (fc.mode && typeof window.activeMultiplayerMode !== 'undefined') {
-                    window.activeMultiplayerMode = fc.mode;
+                if (fc.mode) {
+                    activeMultiplayerMode = fc.mode;
                 }
 
                 if (fc.mapId) {
@@ -940,7 +989,13 @@
 
             const lock = window._NET._lockState;
             if (lock) lock.guestPartyReceived = true;
-            addLog('Player 2 has locked in their party.' + (lock && lock.host ? ' Both players ready — click Start Match!' : ''));
+
+            if (window._NET.ranked) {
+                addLog('Opponent\'s party received.');
+                _tryAutoStartRanked();
+            } else {
+                addLog('Player 2 has locked in their party.' + (lock && lock.host ? ' Both players ready — click Start Match!' : ''));
+            }
             render();
         };
 
@@ -1085,8 +1140,11 @@
                 _lockState: {
                     host: false,
                     guest: false,
-                    guestPartyReceived: false
-                }
+                    guestPartyReceived: false,
+                    hostLocked: false
+                },
+                _waitingForOpponent: false,
+                _autoStartFired: false
             };
             window._NET = NET;
 
@@ -1162,6 +1220,9 @@
                 NET.rejoinToken = null;
                 NET.friendlyConfig = null;
                 NET._wasInMatch = false;
+                NET._waitingForOpponent = false;
+                NET._autoStartFired = false;
+                NET._lockState = { host: false, guest: false, guestPartyReceived: false, hostLocked: false };
                 try {
                     sessionStorage.removeItem('ew_rejoinToken');
                     sessionStorage.removeItem('ew_rejoinRoom');
@@ -1793,6 +1854,19 @@
                         var lock = NET._lockState;
                         if (lock) lock.guestPartyReceived = true;
 
+                        /* For ranked, try auto-start now that guest is locked */
+                        if (NET.ranked && typeof _tryAutoStartRanked === 'function') {
+                            _tryAutoStartRanked();
+                        }
+
+                        if (typeof window.render === 'function') window.render();
+                    }
+
+                    if (data.type === 'host-locked') {
+                        /* Guest learns the host has locked in */
+                        var lockHL = NET._lockState;
+                        if (lockHL) lockHL.hostLocked = true;
+                        if (typeof window.addLog === 'function') window.addLog('Opponent has locked in their party.');
                         if (typeof window.render === 'function') window.render();
                     }
 
@@ -1820,8 +1894,8 @@
                     }
 
                     if (data.type === 'multiplayer-mode' && NET.role === 'guest') {
-                        if (data.modeId && typeof window.activeMultiplayerMode !== 'undefined') {
-                            window.activeMultiplayerMode = data.modeId;
+                        if (data.modeId) {
+                            activeMultiplayerMode = data.modeId;
                         }
                         if (typeof window.addLog === 'function') window.addLog('Host selected mode: ' + (data.modeId || '?'));
                         if (typeof window.render === 'function') window.render();
@@ -2239,6 +2313,29 @@
                     var prevPhase = st.phase;
 
                     _deserializeInto(st, data);
+
+                    // ── Keep CONFIG board dimensions in lock-step with the synced board ──
+                    // bw()/bh()/isInside() derive bounds from CONFIG.boardWidth/Height, but
+                    // CONFIG is a LOCAL global that is never synced. If the guest's CONFIG
+                    // board size is smaller than the host's actual board (e.g. the host's map
+                    // generated/resized larger than the mode the guest applied), every tile
+                    // past that bound is treated as out-of-bounds on the guest: getMoveTiles
+                    // returns 0 (units appear "stuck") and the renderer skips those tiles
+                    // ("can't see the terrain"). This bites the FAR edge first — exactly where
+                    // P2 spawns — so P2's whole spawn region vanishes on the guest while P1's
+                    // near edge looks fine. Re-derive the guest's CONFIG dims from the actual
+                    // synced board so bounds always match what the host sent.
+                    if (typeof CONFIG !== 'undefined' && st.boardTerrain && st.boardTerrain.length) {
+                        var _bh = st.boardTerrain.length;
+                        var _bw = (st.boardTerrain[0] && st.boardTerrain[0].length) || CONFIG.boardWidth;
+                        if (_bw && (CONFIG.boardWidth !== _bw || CONFIG.boardHeight !== _bh)) {
+                            CONFIG.boardWidth = _bw;
+                            CONFIG.boardHeight = _bh;
+                            CONFIG.boardSize = Math.max(_bw, _bh);
+                            if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                            st._terrainVersion = (st._terrainVersion || 0) + 1; // force a terrain re-render
+                        }
+                    }
 
                     _guestUIKeys.forEach(function(k) {
                         st[k] = savedUI[k];
