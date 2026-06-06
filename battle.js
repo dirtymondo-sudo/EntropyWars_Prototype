@@ -9690,6 +9690,7 @@
             beginPlacement();
             transitionTo(GS.BATTLE);
             state.round = 1;
+            _roundAdvanceInProgress = false;
             state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
@@ -9775,6 +9776,7 @@
             state._blitzActiveUnitId = null;
             state._skippedUnit = null;
             _blitzTurnGen++;
+            _roundAdvanceInProgress = false;
 
             for (const u of state.units) {
                 if (!u.dead) {
@@ -10820,6 +10822,9 @@
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
                 if (state.winner) return;
+
+                if (_roundAdvanceInProgress) return;
+
                 hideTurnBanner();
 
                 if (boardCameraResetTimer) {
@@ -10849,6 +10854,8 @@
                 let nextUnit = getNextBlitzUnit();
 
                 if (!nextUnit) {
+
+                    _roundAdvanceInProgress = true;
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
                     if (state.winner) return;
@@ -10976,6 +10983,7 @@
                             processPendingEarthquake(() => {
                             if (_blitzTurnGen !== savedGen || state.winner) return;
 
+                            _roundAdvanceInProgress = false;
                             const firstUnit = getNextBlitzUnit();
                             _continueBlitzWithUnit(firstUnit);
                             });
@@ -11335,6 +11343,8 @@
 
         let _blitzTurnGen = 0;
         let _aiActionGen = 0;
+
+        let _roundAdvanceInProgress = false;
 
         function clearAiSafetyTimer() {
             if (_aiSafetyTimer) {
