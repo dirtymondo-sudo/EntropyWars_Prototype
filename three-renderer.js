@@ -6530,6 +6530,7 @@ const ThreeRenderer = (function () {
             _syncTornadoBillboards([]);
             _syncHurricaneVortices([]);
             _syncBlizzardVortices([]);
+            _syncSandstormVortices([]);
             return;
         }
 
@@ -6550,6 +6551,9 @@ const ThreeRenderer = (function () {
 
         var blizzardZones = aw.filter(function(w) { return w.type === 'blizzard' && w.tiles && w.tiles.length > 0; });
         _syncBlizzardVortices(blizzardZones);
+
+        var sandstormZones = aw.filter(function(w) { return w.type === 'sandstorm' && w.tiles && w.tiles.length > 0; });
+        _syncSandstormVortices(sandstormZones);
     }
 
     var _tornadoBillboards = [];
@@ -6808,6 +6812,69 @@ const ThreeRenderer = (function () {
         }
     }
 
+    var _sandstormVortices = [];
+
+    function _syncSandstormVortices(zones) {
+        var Effects = window.ThreeVFXEffects;
+        if (!Effects || !Effects.buildSandstormVortex3D) return;
+        var ts = CONFIG.tileSize || 128;
+
+        var needed = {};
+        for (var i = 0; i < zones.length; i++) {
+            var z = zones[i];
+            var zid = z.id || ('sz_' + i);
+            needed[zid] = z;
+        }
+
+        for (var j = _sandstormVortices.length - 1; j >= 0; j--) {
+            if (!needed[_sandstormVortices[j].zoneId]) {
+                Effects.disposeSandstormVortex(_sandstormVortices[j].vortex);
+                _sandstormVortices.splice(j, 1);
+            }
+        }
+
+        var existing = {};
+        for (var k = 0; k < _sandstormVortices.length; k++) {
+            existing[_sandstormVortices[k].zoneId] = _sandstormVortices[k];
+        }
+
+        for (var zid2 in needed) {
+            var zone = needed[zid2];
+            if (!zone.tiles || !zone.tiles.length) continue;
+
+            var sumX = 0, sumZ = 0, sumY = 0;
+            for (var ti = 0; ti < zone.tiles.length; ti++) {
+                var t = zone.tiles[ti];
+                sumX += t.x * ts + ts / 2;
+                sumZ += t.y * ts + ts / 2;
+                sumY += tileTopY(t.x, t.y);
+            }
+            var cx = sumX / zone.tiles.length;
+            var cz = sumZ / zone.tiles.length;
+            var cy = sumY / zone.tiles.length;
+
+            if (existing[zid2]) {
+                existing[zid2].vortex.group.position.set(cx, cy, cz);
+                continue;
+            }
+
+            var vortex = Effects.buildSandstormVortex3D(cx, cy, cz, ts);
+            if (vortex) {
+                _sandstormVortices.push({ zoneId: zid2, vortex: vortex });
+            }
+        }
+    }
+
+    function _updateSandstormVortices() {
+        if (_sandstormVortices.length === 0) return;
+        var Effects = window.ThreeVFXEffects;
+        if (!Effects || !Effects.tickSandstormVortex) return;
+        var now = performance.now();
+        for (var i = 0; i < _sandstormVortices.length; i++) {
+            Effects.tickSandstormVortex(_sandstormVortices[i].vortex, now);
+        }
+    }
+
     function renderFrame() {
         if (!active || !renderer || !scene) return;
 
@@ -6921,6 +6988,7 @@ const ThreeRenderer = (function () {
         _updateTornadoBillboards();
         _updateHurricaneVortices();
         _updateBlizzardVortices();
+        _updateSandstormVortices();
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;

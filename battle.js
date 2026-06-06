@@ -10866,6 +10866,9 @@
                     processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
                     if (state.winner) return;
 
+                    processHomingWeather(function _afterHomingWeatherPhase() {
+                    if (state.winner) return;
+
                     processEndOfRoundRegen(function _afterRegenPhase() {
                     if (state.winner) return;
 
@@ -10988,6 +10991,7 @@
                             _continueBlitzWithUnit(firstUnit);
                             });
                         });
+                    });
                     });
                     });
                     });
@@ -17041,9 +17045,11 @@
                     return true;
                 });
                 const direction = wDef.roaming ? rollWeatherDirection() : null;
+                // Homing storms are a single roaming vortex centered on the target tile.
+                const weatherTiles = wDef.homing ? [{ x, y }] : deduped;
                 const weather = {
                     type: wType,
-                    tiles: deduped,
+                    tiles: weatherTiles,
                     direction,
                     remaining: dur,
                     id: `w_${Date.now()}_${randInt(9999)}`

@@ -1273,12 +1273,15 @@
                 icon: '🌪',
                 tiles: [4, 6],
                 roaming: true,
+                homing: true,
+                homingSpeed: 3,
+                displaces: true,
+                displaceTiles: 2,
                 duration: [3, 5],
                 ignoresTerrain: true,
-                desc: 'Damages every unit in its path each turn.',
-                onTurnEffect(unit) {
+                desc: 'Chases the nearest unit (up to 3 tiles/round); shreds and hurls anyone it catches.',
+                homingDamage(unit) {
                     return {
-                        type: 'damage',
                         amount: randInt(40) + 32,
                         text: `${unitDisplayName(unit)} is shredded by the Tornado for`
                     };
@@ -1305,10 +1308,20 @@
                 icon: '🌀',
                 tiles: [5, 8],
                 roaming: true,
+                homing: true,
+                homingSpeed: 2,
+                displaces: true,
+                displaceTiles: 3,
                 duration: [3, 5],
-                desc: '-10 DEF to units inside.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round); batters and hurls anyone it catches. -10 DEF on the eye.',
                 statMod: {
                     def: -10
+                },
+                homingDamage(unit) {
+                    return {
+                        amount: randInt(20) + 24,
+                        text: `${unitDisplayName(unit)} is hurled by the Hurricane for`
+                    };
                 }
             },
             bloodRain: {
@@ -1372,14 +1385,15 @@
                 icon: '⛈',
                 tiles: [4, 7],
                 roaming: true,
+                homing: true,
+                homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Lightning strikes each turn. -5 DEF inside.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round); blasts anyone it catches with lightning. -5 DEF on the eye.',
                 statMod: {
                     def: -5
                 },
-                onTurnEffect(unit) {
+                homingDamage(unit) {
                     return {
-                        type: 'damage',
                         amount: randInt(32) + 32,
                         text: `${unitDisplayName(unit)} is struck by lightning for`
                     };
@@ -1420,16 +1434,17 @@
                 icon: '🌨',
                 tiles: [4, 6],
                 roaming: true,
+                homing: true,
+                homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Converts ground to ice. -8 DEF inside. Damages non-Anomaly units.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters non-Anomaly units it catches. -8 DEF on the eye.',
                 statMod: {
                     def: -8
                 },
                 convertTerrain: 'ice',
-                onTurnEffect(unit) {
+                homingDamage(unit) {
                     const isAnomaly = (unit.types || []).includes('anomaly');
                     if (!isAnomaly) return {
-                        type: 'damage',
                         amount: randInt(10) + 15,
                         text: `${unitDisplayName(unit)} is battered by the Blizzard for`
                     };
@@ -1441,15 +1456,16 @@
                 icon: '🏜',
                 tiles: [5, 7],
                 roaming: true,
+                homing: true,
+                homingSpeed: 2,
                 duration: [3, 5],
-                desc: '-5 AWR inside. Damages non-Human units.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round); scours non-Human units it catches. -5 AWR on the eye.',
                 statMod: {
                     awr: -5
                 },
-                onTurnEffect(unit) {
+                homingDamage(unit) {
                     const isHuman = (unit.types || []).includes('human');
                     if (!isHuman) return {
-                        type: 'damage',
                         amount: randInt(10) + 20,
                         text: `${unitDisplayName(unit)} is scoured by the Sandstorm for`
                     };
@@ -1787,6 +1803,8 @@
             const def = WEATHER_REGISTRY[type];
             const dur = def.duration[0] + randInt(def.duration[1] - def.duration[0] + 1);
             const tiles = rollWeatherTiles(def.tiles, def.preferredTerrain || null, def.ignoresTerrain);
+            // Homing storms are a single roaming vortex tile that hunts the nearest units.
+            if (def.homing && tiles.length > 1) tiles.splice(1);
             const direction = def.roaming ? rollWeatherDirection() : null;
             const weather = {
                 type,
@@ -1833,6 +1851,8 @@
 
         function driftWeather(weather) {
             const def = WEATHER_REGISTRY[weather.type];
+            // Homing storms move toward the nearest units in processHomingWeather, not by random drift.
+            if (def.homing) return;
             if (!def.roaming || !weather.direction) return;
             const size = bw(),
                 sizeH = bh();
@@ -1873,6 +1893,8 @@
             const units = player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead);
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
+                // Homing storms resolve all of their effects at end of round (processHomingWeather).
+                if (def.homing) continue;
                 if (!def.onTurnEffect) continue;
                 const tileSet = new Set(weather.tiles.map(t => posKey(t.x, t.y)));
                 for (const unit of units) {
@@ -1922,6 +1944,127 @@
                         }
                     }
                 }
+            }
+        }
+
+        // End-of-round: homing storms (tornado, hurricane, thunderstorm, blizzard, sandstorm)
+        // path toward and damage their two nearest units. Runs before end-of-round healing so
+        // healing always resolves last. Cast storms only hunt the caster's enemies; natural
+        // storms hunt both teams.
+        function processHomingWeather(onDone) {
+            const finish = () => { if (onDone) onDone(); };
+            if (!state.activeWeather || !state.activeWeather.length) return finish();
+
+            const size = bw(), sizeH = bh();
+            const clamp = (v, max) => Math.max(0, Math.min(max - 1, v));
+            let actedVisibly = false;
+
+            for (const weather of state.activeWeather) {
+                const def = WEATHER_REGISTRY[weather.type];
+                if (!def || !def.homing) continue;
+
+                const tiles = (weather.tiles && weather.tiles.length) ? weather.tiles : null;
+                if (!tiles) continue;
+
+                // Current eye position (homing storms are a single vortex tile).
+                let cx = clamp(Math.round(tiles.reduce((s, t) => s + t.x, 0) / tiles.length), size);
+                let cy = clamp(Math.round(tiles.reduce((s, t) => s + t.y, 0) / tiles.length), sizeH);
+
+                // Eligible targets: living, grounded units. Cast storms spare the caster's team.
+                const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
+                const candidates = state.units.filter(u => {
+                    if (!u || u.dead || u._dying) return false;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+                    if (caster && u.player === caster.player) return false;
+                    return true;
+                });
+                if (!candidates.length) {
+                    weather.tiles = [{ x: cx, y: cy }];
+                    continue;
+                }
+
+                // Chase the single nearest unit (Chebyshev matches 8-way storm movement).
+                const cheb = (u) => Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy));
+                candidates.sort((a, b) => cheb(a) - cheb(b));
+                const lead = candidates[0];
+
+                // Step toward the target, up to homingSpeed tiles, recording every tile the
+                // vortex sweeps through this round (start tile + each step).
+                const speed = def.homingSpeed || 1;
+                let nx = cx, ny = cy;
+                const sweptKeys = new Set([posKey(cx, cy)]);
+                const sweptTiles = [{ x: cx, y: cy }];
+                for (let step = 0; step < speed; step++) {
+                    if (nx === lead.x && ny === lead.y) break;
+                    nx = clamp(nx + Math.sign(lead.x - nx), size);
+                    ny = clamp(ny + Math.sign(lead.y - ny), sizeH);
+                    const k = posKey(nx, ny);
+                    if (!sweptKeys.has(k)) { sweptKeys.add(k); sweptTiles.push({ x: nx, y: ny }); }
+                }
+                weather.tiles = [{ x: nx, y: ny }];
+
+                // Converting storms (blizzard) freeze every tile they pass over.
+                if (def.convertTerrain) {
+                    for (const t of sweptTiles) {
+                        const terrain = getTerrainAt(t.x, t.y);
+                        if (terrain && terrain !== def.convertTerrain &&
+                            terrain !== 'mountain' && terrain !== 'chasm' &&
+                            terrain !== 'void' && terrain !== 'lava') {
+                            setTerrainAt(t.x, t.y, def.convertTerrain);
+                        }
+                    }
+                }
+
+                // Only units the vortex actually touches (lands on / sweeps over) get hit.
+                const struck = candidates.filter(u => sweptKeys.has(posKey(u.x, u.y)));
+                if (!struck.length) {
+                    addLog(`${def.icon} The ${def.label} closes in on ${unitDisplayName(lead)} at ${coordLabel(nx, ny)}.`);
+                    continue;
+                }
+
+                if (_bufferingRoundEvents) _reBeginGroup(`${def.icon} ${def.label} strikes`);
+
+                // Damage — and for tornado/hurricane, displace — everyone it caught.
+                for (const v of struck) {
+                    if (!v || v.dead) continue;
+                    const hit = def.homingDamage ? def.homingDamage(v) : null;
+                    if (hit && hit.amount > 0) {
+                        actedVisibly = true;
+                        applyDamageToUnit(v, hit.amount, `${hit.text}`, {
+                            ignoreArmor: false,
+                            sourceUnit: caster || undefined
+                        });
+                        if (weather.type === 'thunderstorm' && window.ThreeLightning &&
+                            !(state.devAutoSim && !state._devSimShowAnims)) {
+                            ThreeLightning.strikeFromSky(v.x, v.y, {
+                                durationMs: 300,
+                                segments: 14,
+                                jitter: 0.3,
+                                branchChance: 0.35,
+                                branchDepth: 1,
+                                coreWidth: 6,
+                                glowWidth: 18,
+                                skyHeight: 650,
+                            });
+                        }
+                    }
+                    if (def.displaces && !v.dead) {
+                        const pushes = def.displaceTiles || 2;
+                        for (let p = 0; p < pushes; p++) {
+                            const res = applyBlowback(v, nx, ny, `${def.icon} `);
+                            if (!res || !res.pushed) break;
+                            actedVisibly = true;
+                        }
+                    }
+                }
+            }
+
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+
+            if (actedVisibly && !_skipVisuals()) {
+                window.setTimeout(finish, 750);
+            } else {
+                finish();
             }
         }
 

@@ -4,6 +4,17 @@ Entropy Wars — a browser Tactical-JRPG PvP prototype. `server.js` (Express +
 socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
 `index.html` + ~35 scripts loaded from a Cloudflare R2 bucket and CDNs.
 
+## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
+The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
+local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
+1. Edit the ACTUAL existing files in the repo in place (never create new .js
+   files, never split logic into a new module — work with what's already there).
+2. Hand the user the COMPLETE edited file(s) in the chat (SendUserFile).
+3. The user uploads them to the R2 bucket (and manually syncs the repo so future
+   sessions start from the latest).
+DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
+diffs. The deliverable is always the full edited file, produced in chat.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

@@ -133,6 +133,17 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   0-kill stalemate came from the dumb harness SPREADING damage. Concentrate fire +
   secure kills and TDM ends in a 3-round wipeout. End-of-round regen (~5%) + 1-round
   respawns only matter if you fail to focus.
+- **Homing storms (tornado, hurricane, thunderstorm, blizzard, sandstorm):** these are
+  now single-tile vortices that, at END OF ROUND (just before end-of-round healing, via
+  `processHomingWeather` in `state.js`), CHASE the nearest unit, moving up to
+  `homingSpeed` tiles (tornado 3, others 2) toward it. Damage only lands on units the
+  vortex **physically touches** — i.e. units standing on a tile it lands on or sweeps
+  through that round. Stay farther than its move range and you're safe; let it catch you
+  and you're hit. Tornado & hurricane also displace (blow back) anyone they catch.
+  Blizzard freezes every tile it sweeps. They no longer drift randomly or damage whoever
+  stands inside at start of round. Naturally-spawned storms chase both teams; spell-cast
+  storms (`_casterUnitId` set) only chase the caster's enemies. Other weather (blood
+  rain, drought, solar flare, tesseract storm, earthquake) is unchanged.
 - **Mode resolution:** TDM has a 12-round limit (resolves cleanly + shows a result
   screen); Arena had a 15-round limit but dragged with respawns. "No-contest" voids
   after 20–30 idle rounds — a sign matches stall.

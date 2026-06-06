@@ -3112,7 +3112,7 @@ const SPELL_LIBRARY = [
         weatherType: 'thunderstorm',
         weatherDuration: [3, 5],
         weatherTiles: [3, 5],
-        desc: 'Summon a roaming thunderstorm at the target area. Deals lightning damage and reduces DEF.'
+        desc: 'Summon a homing thunderstorm at the target area. Each round it chases the nearest enemy, blasting anyone it catches with lightning.'
     },
     {
         id: 'wallOfFire',
@@ -4503,7 +4503,7 @@ const SHARED_SUMMON_BLIZZARD = {
     weatherType: 'blizzard',
     weatherDuration: [3, 4],
     weatherTiles: [4, 6],
-    desc: 'Summon a roaming blizzard. Converts ground to ice, reduces DEF, and damages non-Anomaly units inside.'
+    desc: 'Summon a homing blizzard. Each round it chases the nearest enemy, freezing a trail of ice and damaging any non-Anomaly it catches.'
 };
 
 const SHARED_SUMMON_SANDSTORM = {
@@ -4513,7 +4513,7 @@ const SHARED_SUMMON_SANDSTORM = {
     weatherType: 'sandstorm',
     weatherDuration: [3, 5],
     weatherTiles: [5, 7],
-    desc: 'Summon a roaming sandstorm. Reduces awareness inside and damages non-Human units each turn.'
+    desc: 'Summon a homing sandstorm. Each round it chases the nearest enemy, scouring any non-Human it catches.'
 };
 
 const SHARED_SUMMON_BLOOD_RAIN = {
@@ -4533,7 +4533,7 @@ const SHARED_CALL_LIGHTNING = {
     weatherType: 'thunderstorm',
     weatherDuration: [2, 3],
     weatherTiles: [3, 4],
-    desc: 'Call down a localized thunderstorm. Lightning strikes each turn, reduces DEF inside.'
+    desc: 'Call down a homing thunderstorm. Each round it chases the nearest enemy, blasting anyone it catches with lightning.'
 };
 
 const SHARED_NUKE = {

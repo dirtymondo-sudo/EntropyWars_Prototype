@@ -3177,6 +3177,122 @@ var SPELL_MAP = _EFX_DATA.S;
         });
     }
 
+    // Brown, dusty single-tile vortex for the sandstorm — same shape as the blizzard
+    // vortex but sand-colored, with grit motes instead of ice shards.
+    function _buildSandstormVortex3D(worldX, worldY, worldZ, ts) {
+        var scene = _getVFXScene();
+        if (!scene) return null;
+
+        var vortexH = ts * 2.5;
+        var botR    = ts * 0.1;
+        var topR    = ts * 0.8;
+
+        var group = new THREE.Group();
+        group.position.set(worldX, worldY, worldZ);
+
+        var funnelGeo = new THREE.CylinderGeometry(topR, botR, vortexH, 20, 6, true);
+        var matFunnel = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xb08a4f),
+            transparent: true, opacity: 0.18,
+            side: THREE.DoubleSide,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var funnel = new THREE.Mesh(funnelGeo, matFunnel);
+        funnel.position.y = vortexH / 2;
+        funnel.renderOrder = 145;
+        group.add(funnel);
+
+        var innerGeo = new THREE.CylinderGeometry(topR * 0.6, botR * 0.4, vortexH * 0.9, 16, 5, true);
+        var matInner = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xc8a866),
+            transparent: true, opacity: 0.12,
+            side: THREE.BackSide,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var inner = new THREE.Mesh(innerGeo, matInner);
+        inner.position.y = vortexH / 2;
+        inner.renderOrder = 146;
+        group.add(inner);
+
+        var wireGeo = new THREE.CylinderGeometry(topR * 1.02, botR * 1.05, vortexH * 0.98, 10, 3, true);
+        var matWire = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xa67c3c),
+            transparent: true, opacity: 0.16,
+            wireframe: true,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var wire = new THREE.Mesh(wireGeo, matWire);
+        wire.position.y = vortexH / 2;
+        wire.renderOrder = 147;
+        group.add(wire);
+
+        var mouthGeo = new THREE.TorusGeometry(topR, topR * 0.05, 6, 20);
+        var matMouth = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xc2a060),
+            transparent: true, opacity: 0.22,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var mouth = new THREE.Mesh(mouthGeo, matMouth);
+        mouth.rotation.x = Math.PI / 2;
+        mouth.position.y = vortexH;
+        mouth.renderOrder = 148;
+        group.add(mouth);
+
+        var dustGeo = new THREE.TorusGeometry(ts * 0.45, ts * 0.08, 6, 14);
+        var matDust = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x9c7b45),
+            transparent: true, opacity: 0.24,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var frost = new THREE.Mesh(dustGeo, matDust);
+        frost.rotation.x = Math.PI / 2;
+        frost.position.y = 4;
+        frost.renderOrder = 144;
+        group.add(frost);
+
+        var shards = [];
+        var shardCount = 7;
+        for (var i = 0; i < shardCount; i++) {
+            var shGeo = new THREE.OctahedronGeometry(ts * 0.04, 0);
+            var shMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(0x8a6a3a),
+                transparent: true, opacity: 0.65,
+                depthWrite: false,
+            });
+            var sh = new THREE.Mesh(shGeo, shMat);
+            sh.renderOrder = 149;
+            group.add(sh);
+            shards.push({ mesh: sh, angle: (i / shardCount) * Math.PI * 2, yOff: 0.3 + Math.random() * 0.5, orbitR: 0.4 + Math.random() * 0.3 });
+        }
+
+        scene.add(group);
+
+        return {
+            group: group,
+            funnel: funnel, matFunnel: matFunnel,
+            inner: inner, matInner: matInner,
+            wire: wire, matWire: matWire,
+            mouth: mouth, matMouth: matMouth,
+            frost: frost, matFrost: matDust,
+            shards: shards,
+            vortexH: vortexH, topR: topR, botR: botR, ts: ts,
+            birthTime: performance.now(),
+        };
+    }
+
+    function _tickSandstormVortex(vortex, now) {
+        _tickBlizzardVortex(vortex, now);
+    }
+
+    function _disposeSandstormVortex(vortex) {
+        _disposeBlizzardVortex(vortex);
+    }
+
     var _ICE_PROJECTILE_IDS = {
         raceIceSpear: true,
     };
@@ -4437,6 +4553,10 @@ var SPELL_MAP = _EFX_DATA.S;
         buildBlizzardVortex3D: _buildBlizzardVortex3D,
         tickBlizzardVortex: _tickBlizzardVortex,
         disposeBlizzardVortex: _disposeBlizzardVortex,
+
+        buildSandstormVortex3D: _buildSandstormVortex3D,
+        tickSandstormVortex: _tickSandstormVortex,
+        disposeSandstormVortex: _disposeSandstormVortex,
 
         __playFx: __playFx,
 
