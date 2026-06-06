@@ -21,6 +21,11 @@ const CACHEABLE_HOSTS = new Set([
 ]);
 
 function hostOf(url) { try { return new URL(url).host; } catch (e) { return ''; } }
+function baseOf(url) { try { return path.basename(new URL(url).pathname); } catch (e) { return ''; } }
+
+// Content-type by extension, for locally-served overrides.
+const CT = { '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json',
+             '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 
 function cachePaths(dir, url) {
   let base = 'asset';
@@ -40,11 +45,25 @@ async function installAssetCache(context, dir = path.join(__dirname, '.asset-cac
   const OFF = String(process.env.ASSET_CACHE || '').toLowerCase() === 'off';
   const TTL_MS = (parseFloat(process.env.ASSET_CACHE_TTL_MIN) || 0) * 60000;
   if (OFF) { return { stats: () => ({ hits: 0, misses: 0, disabled: true }) }; }
+  // LOCAL_ASSETS=online.js,battle.js → serve the repo-local copy of these files in
+  // place of the R2 versions, so you can TEST edits to the R2-hosted scripts locally
+  // before deploying them to the bucket. (The live game still loads from R2 until you
+  // re-upload — this only affects the Playwright harness.)
+  const localNames = new Set(String(process.env.LOCAL_ASSETS || '').split(',').map(s => s.trim()).filter(Boolean));
   fs.mkdirSync(dir, { recursive: true });
-  let hits = 0, misses = 0;
+  let hits = 0, misses = 0, locals = 0;
   await context.route('**/*', async (route) => {
     const url = route.request().url();
     if (!CACHEABLE_HOSTS.has(hostOf(url))) return route.continue();
+    const base = baseOf(url);
+    if (localNames.has(base)) {
+      const local = path.join(__dirname, base);
+      if (fs.existsSync(local)) {
+        locals++;
+        const ct = CT[path.extname(base)] || 'application/octet-stream';
+        return route.fulfill({ status: 200, contentType: ct, body: fs.readFileSync(local) });
+      }
+    }
     const { file, meta } = cachePaths(dir, url);
     try {
       if (fs.existsSync(file) && fs.existsSync(meta)) {
@@ -70,7 +89,7 @@ async function installAssetCache(context, dir = path.join(__dirname, '.asset-cac
       return route.continue();
     }
   });
-  return { stats: () => ({ hits, misses }) };
+  return { stats: () => ({ hits, misses, locals }) };
 }
 
 module.exports = { installAssetCache };

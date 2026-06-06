@@ -1,0 +1,4097 @@
+(function () {
+    'use strict';
+
+    const G = () => window.GAME;
+
+    const MAX_LOOPS = 8;
+    let _failedSpells = new Set();
+    let _failedCombos = new Set();
+    let _skipAttack = false;
+    let _skipTowerAttack = false;
+    let _failedNexus = false;
+    let _aiLastRecallFailed = false;
+    let _failedItems = new Set();
+
+    function _effRange(unit, spell) {
+        const g = G();
+        return (g && typeof g.getEffectiveSpellRange === 'function')
+            ? g.getEffectiveSpellRange(unit, spell)
+            : (spell.range || 0);
+    }
+
+    let _turnActionLog = [];
+
+    function logAction(action) {
+        _turnActionLog.push({
+            type: action.type,
+            spellId: action.spell?.id || null,
+            spellKind: action.spell?.kind || null,
+            targetId: action.target?.id || null,
+            x: action.x ?? action.towerX ?? null,
+            y: action.y ?? action.towerY ?? null,
+            item: action.item || null,
+        });
+    }
+
+    function countPriorUses(type, spellId) {
+        let n = 0;
+        for (const a of _turnActionLog) {
+            if (a.type === type && (spellId == null || a.spellId === spellId)) n++;
+        }
+        return n;
+    }
+
+    function countPriorTargeting(targetId) {
+        let n = 0;
+        for (const a of _turnActionLog) {
+            if (a.targetId === targetId) n++;
+        }
+        return n;
+    }
+
+    function hasUsedSpellKind(kind) {
+        return _turnActionLog.some(a => a.spellKind === kind);
+    }
+
+    function countProductiveActions() {
+        return _turnActionLog.filter(a =>
+            a.type !== 'move' && a.type !== 'guard' && a.type !== 'inspect'
+        ).length;
+    }
+
+    let _teamDamageLog = {};
+    let _teamDamageRound = -1;
+
+    function getTeamDamageLog() {
+        const g = G();
+        if (!g) return {};
+        const round = g.state.round || 0;
+        if (round !== _teamDamageRound) {
+            _teamDamageLog = {};
+            _teamDamageRound = round;
+        }
+        return _teamDamageLog;
+    }
+
+    function recordTeamDamage(enemyId, dmg) {
+        const log = getTeamDamageLog();
+        log[enemyId] = (log[enemyId] || 0) + dmg;
+    }
+
+    window.aiTakeTurn = function (unit) {
+        const g = G();
+        if (!g) { console.error('GAME API not available'); return; }
+
+        if (!unit._aiLoopCount) unit._aiLoopCount = 0;
+        unit._aiLoopCount++;
+        if (unit._aiLoopCount > MAX_LOOPS) {
+            console.warn(`AI safety: unit ${unit.id} exceeded ${MAX_LOOPS} loops. Force-ending turn.`);
+            g.addLog(`${g.unitDisplayName(unit)} considers their options and ends their turn.`);
+            unit.ap = 0;
+            unit._aiLoopCount = 0;
+            unit._aiStallCount = 0;
+            g.state.actionMode = null;
+            g.state.comboPartner = null;
+            g.state.selectedTool = null;
+            g.finishComputerAction();
+            return;
+        }
+
+        const currentAp = unit.ap || 0;
+        const currentPos = g.posKey(unit.x, unit.y);
+        const apChanged = unit._aiLoopCount <= 1 || currentAp !== unit._aiLastAp;
+        const posChanged = unit._aiLoopCount <= 1 || currentPos !== unit._aiLastPos;
+        if (!apChanged && !posChanged) {
+            unit._aiStallCount = (unit._aiStallCount || 0) + 1;
+            if (unit._aiStallCount >= 3) {
+
+                console.warn(`AI stall: unit ${unit.id} stuck at ${currentAp} AP. Force-ending.`);
+                g.addLog(`${g.unitDisplayName(unit)} finds no viable action and ends their turn.`);
+                unit.ap = 0;
+                unit._aiLoopCount = 0;
+                unit._aiStallCount = 0;
+                g.state.actionMode = null;
+                g.state.comboPartner = null;
+                g.state.selectedTool = null;
+                g.finishComputerAction();
+                return;
+            }
+
+            _skipAttack = true;
+            _skipTowerAttack = true;
+        } else {
+            unit._aiStallCount = 0;
+        }
+        unit._aiLastAp = currentAp;
+        unit._aiLastPos = currentPos;
+
+        if (unit._aiLoopCount === 1) {
+            _failedSpells = new Set();
+            _failedCombos = new Set();
+            _skipAttack = false;
+            _skipTowerAttack = false;
+            _failedNexus = false;
+            _aiLastRecallFailed = false;
+            _failedItems = new Set();
+            _turnActionLog = [];
+            unit._aiStallCount = 0;
+        }
+
+        g.focusUnitPanel(unit.id);
+        if (g.state.autoPlayers?.[unit.player]) g.scheduleBoardRender();
+        if (!g.state.cameraDisabled && !g.devAutoSim && g._shouldCameraFollowUnit(unit)) {
+            g.focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                zoom: 1.35, holdMs: 3000, persist: false, transitionMs: 500,
+                _fogAllowed: true
+            });
+        }
+
+        const vision = buildVision(unit);
+        const candidates = gatherCandidates(unit, vision);
+
+        for (const c of candidates) {
+
+            if (c.type === 'spell' && c.spell) {
+                const priorUses = countPriorUses('spell', c.spell.id);
+                if (priorUses >= 2) { c.score = -999; continue; }
+                if (priorUses >= 1) c.score *= 0.15;
+            }
+
+            if (c.target?.id) {
+                const priorTargets = countPriorTargeting(c.target.id);
+                if (priorTargets >= 2) c.score *= 0.3;
+                else if (priorTargets >= 1) c.score *= 0.6;
+            }
+
+            if (c.spell?.kind) {
+                const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
+                    'deployPair', 'warpRune', 'remoteView', 'scan', 'encore'];
+                if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
+                    c.score *= 0.1;
+                }
+            }
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        applySurvivalPenalties(unit, candidates, vision);
+
+        const bestDamageScore = Math.max(0, ...candidates
+            .filter(c => ['attack', 'attack_tower', 'combo'].includes(c.type) ||
+                (c.type === 'spell' && c.spell && ['damage', 'ricochet', 'multiHit',
+                    'aoe', 'barrage', 'lifeDrain', 'line', 'linePush', 'cross',
+                    'aoePull', 'splitBeam', 'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike'].includes(c.spell.kind)))
+            .map(c => c.score));
+        const bestMoveScore = Math.max(0, ...candidates
+            .filter(c => c.type === 'move')
+            .map(c => c.score));
+
+        const nullMoveBaseline = vision.visibleEnemies.length > 0
+            ? Math.max(bestMoveScore * 0.8, 15)
+            : 5;
+
+        for (const c of candidates) {
+
+            if (c.type === 'spell' && c.spell) {
+                const kind = c.spell.kind;
+                const isPositionUtility = ['swap', 'teleport', 'remoteView', 'warpRune'].includes(kind);
+                const isTerrainUtility = ['terrainCreate', 'summonWeather'].includes(kind);
+                const isBuffUtility = ['buff', 'warCry', 'shield', 'encore'].includes(kind);
+                const isDeployUtility = ['deployObject', 'deployPair', 'deployTurret'].includes(kind);
+
+                if (isPositionUtility) {
+
+                    const cap = Math.max(bestDamageScore * 0.8, 60);
+                    if (c.score > cap) c.score = cap;
+                }
+                if (isTerrainUtility) {
+
+                    const cap = Math.max(bestDamageScore * 0.6, 40);
+                    if (c.score > cap) c.score = cap;
+                }
+                if (isBuffUtility && vision.visibleEnemies.length === 0) {
+
+                    const cap = Math.max(bestMoveScore * 0.7, 25);
+                    if (c.score > cap) c.score = cap;
+                }
+                if (isDeployUtility && vision.visibleEnemies.length === 0) {
+
+                    const cap = Math.max(bestMoveScore * 0.5, 20);
+                    if (c.score > cap) c.score = cap;
+                }
+            }
+
+            if (c.score > 0 && c.score < nullMoveBaseline) {
+                const isEssential = ['attack', 'attack_tower', 'combo', 'move',
+                    'item_targeted', 'panacea', 'warpStone', 'nexus_channel',
+                    'church', 'shop_buy', 'shop_spell_buy', 'grab_hg'].includes(c.type);
+                const isDamageSpell = c.type === 'spell' && c.spell &&
+                    ['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'lifeDrain',
+                        'line', 'linePush', 'cross', 'aoePull', 'splitBeam',
+                        'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike', 'heal', 'healAll',
+                        'revive', 'selfHeal', 'cleanse', 'debuff', 'zoneDebuff'].includes(c.spell.kind);
+                if (!isEssential && !isDamageSpell) {
+                    c.score = 0;
+                }
+            }
+        }
+
+        const productiveCount = countProductiveActions();
+        for (const c of candidates) {
+            if (c.type === 'guard') {
+
+                if (productiveCount >= 2) c.score += 12;
+                else if (productiveCount >= 1) c.score += 5;
+                else if (unit._aiLoopCount <= 1) c.score *= 0.3;
+            }
+        }
+
+        const boardScore = vision.winState.boardScore || 0;
+        if (boardScore < -30) {
+            for (const c of candidates) {
+                if (c.type === 'guard' || c.type === 'kite_retreat') c.score += 8;
+                if (c.type === 'item' && c.itemKey === 'healPotion') c.score += 6;
+            }
+        } else if (boardScore > 40) {
+            for (const c of candidates) {
+                if (c.type === 'tower_attack') c.score += 10;
+            }
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        let best = candidates[0];
+
+        if (!best || best.score <= 0) {
+            if (g.canUnitMove(unit)) {
+                const moveTiles = g.getMoveTiles(unit);
+                if (moveTiles.length > 0) {
+                    const recent = new Set(unit._aiRecentTiles || []);
+                    const fresh = moveTiles.filter(t => !recent.has(g.posKey(t.x, t.y)));
+                    const pool = fresh.length > 0 ? fresh : moveTiles;
+                    const pick = pool[Math.floor(Math.random() * pool.length)];
+                    best = { type: 'move', x: pick.x, y: pick.y, z: pick.z, score: 1 };
+                }
+            }
+            if (!best || best.score <= 0) {
+                if ((unit.ap || 0) >= g.AP_COST_ACTION) {
+                    const inspTiles = g.getInspectTiles(unit);
+                    if (inspTiles.length > 0) {
+                        const unscanned = inspTiles.filter(t =>
+                            !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y))
+                        );
+                        const pool = unscanned.length > 0 ? unscanned : inspTiles;
+                        const pick = pool[Math.floor(Math.random() * pool.length)];
+                        best = { type: 'inspect', x: pick.x, y: pick.y, score: 1 };
+                    }
+                }
+            }
+            if (!best || best.score <= 0) {
+                if ((unit.ap || 0) >= 2) {
+                    best = { type: 'guard', score: 1 };
+                }
+            }
+            if (!best || best.score <= 0) {
+                unit.ap = 0;
+                unit._aiLoopCount = 0;
+                g.state.actionMode = null;
+                g.state.comboPartner = null;
+                g.state.selectedTool = null;
+                g.finishComputerAction();
+                return;
+            }
+        }
+
+        logAction(best);
+
+        if (best.type === 'attack' && best.target) {
+            const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+            recordTeamDamage(best.target.id, estDmg);
+        }
+        if (best.type === 'spell' && best.target && ['damage', 'ricochet', 'multiHit', 'lifeDrain', 'line', 'linePush', 'cross', 'pull', 'displacement', 'splitBeam', 'aoePull', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike'].includes(best.spell?.kind)) {
+            recordTeamDamage(best.target.id, best.spell.dmg || 112);
+        }
+
+        executeAction(unit, best, vision);
+    };
+
+    function buildVision(unit) {
+        const g = G();
+        const player = unit.player;
+
+        const prevTeamVision = g.state.teamVision;
+        g.state.teamVision = true;
+        const visTiles = g.computeVisibleTiles(player);
+        g.state.teamVision = prevTeamVision;
+
+        const visibleEnemies = g.getHostileUnits(player)
+            .filter(e => !g.unitHasStatus(e, 'invisible'))
+            .filter(e => visTiles.has(g.posKey(e.x, e.y)));
+
+        const allies = g._isFFA()
+            ? []
+            : g.aliveUnitsFor(player)
+                .filter(a => a.id !== unit.id);
+
+        const visibleHourglasses = (g.state.hourglasses || []).filter(h =>
+            h.carriedBy === null && h.visibleTo[player]
+        );
+
+        let closestEnemy = null;
+        let closestEnemyDist = Infinity;
+        for (const e of visibleEnemies) {
+            const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0)
+                : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+            if (d < closestEnemyDist) {
+                closestEnemyDist = d;
+                closestEnemy = e;
+            }
+        }
+
+        const effRange = g.getEffectiveRange(unit);
+        const attackTargets = visibleEnemies.filter(e => {
+            const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0)
+                : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+            return d >= 1 && d <= effRange && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+        });
+
+        const enemyTower = g.state.towers
+            ? g.state.towers[g.enemyOf(player)]
+            : null;
+
+        const ownTower = g.state.towers
+            ? g.state.towers[player]
+            : null;
+
+        const tactical = assessTactical(unit, visibleEnemies, allies);
+        const winState = assessWinCondition(unit, ownTower, enemyTower);
+
+        const threatMap = buildThreatMap(visibleEnemies, unit);
+
+        return {
+            visTiles, visibleEnemies, allies,
+            visibleHourglasses, closestEnemy, closestEnemyDist,
+            attackTargets, enemyTower, ownTower, effRange, tactical,
+            player, winState, threatMap
+        };
+    }
+
+    function assessWinCondition(unit, ownTower, enemyTower) {
+        const g = G();
+        const player = unit.player;
+        const isFFA = g._isFFA();
+        const enemy = isFFA ? null : g.enemyOf(player);
+
+        const myHG = isFFA
+            ? (unit.hourglasses || 0)
+            : g.state.units.filter(u => u.player === player && !u.dead)
+                .reduce((s, u) => s + (u.hourglasses || 0), 0);
+        const enemyHG = isFFA
+            ? g.state.units.filter(u => u.id !== unit.id && !u.dead)
+                .reduce((s, u) => s + (u.hourglasses || 0), 0)
+            : g.state.units.filter(u => u.player === enemy && !u.dead)
+                .reduce((s, u) => s + (u.hourglasses || 0), 0);
+        const hgTarget = g.state.hourglassTarget || 5;
+
+        const ownTowerPct = ownTower && ownTower.maxHp > 0 ? ownTower.hp / ownTower.maxHp : 1;
+        const enemyTowerPct = enemyTower && enemyTower.maxHp > 0 ? enemyTower.hp / enemyTower.maxHp : 1;
+
+        const myAlive = isFFA ? 1 : g.aliveUnitsFor(player).length;
+        const enemyAlive = isFFA
+            ? g.state.units.filter(u => !u.dead && u.id !== unit.id).length
+            : g.aliveUnitsFor(enemy).length;
+
+        const deadEnemies = isFFA
+            ? g.state.units.filter(u => u.id !== unit.id && u.dead)
+            : g.state.units.filter(u => u.player === enemy && u.dead);
+        const enemyDeadCount = deadEnemies.length;
+        const enemyMinRespawn = deadEnemies.reduce((min, u) => {
+            const r = typeof u._respawnIn === 'number' ? u._respawnIn : 99;
+            return Math.min(min, r);
+        }, 99);
+
+        const enemyImminentRespawns = deadEnemies.filter(u =>
+            typeof u._respawnIn === 'number' && u._respawnIn <= 1
+        ).length;
+
+        const round = g.state.round || 0;
+        const roundUrgency = round >= 40 ? 3 : round >= 25 ? 2 : round >= 15 ? 1 : 0;
+
+        let phase = 'even';
+        if (myHG >= hgTarget - 1) phase = 'hg_winning';
+        else if (enemyHG >= hgTarget - 1) phase = 'hg_losing';
+        else if (ownTowerPct < 0.3) phase = 'tower_defend';
+
+        else if (enemyTowerPct < 0.5) phase = 'tower_push';
+        else if (enemyDeadCount >= 2) phase = 'tower_push';
+        else if (enemyDeadCount >= 1 && myAlive >= enemyAlive + 1) phase = 'tower_push';
+        else if (myAlive >= enemyAlive + 2) phase = 'tower_push';
+        else if (myAlive > enemyAlive) phase = 'numbers_advantage';
+        else if (roundUrgency >= 2) phase = 'numbers_advantage';
+        else if (enemyAlive >= myAlive + 2) phase = 'numbers_disadvantage';
+
+        return {
+            myHG, enemyHG, hgTarget,
+            ownTowerPct, enemyTowerPct,
+            myAlive, enemyAlive,
+            enemyDeadCount, enemyMinRespawn, enemyImminentRespawns,
+            roundUrgency,
+            phase,
+            boardScore: evaluateBoardState(player)
+        };
+    }
+
+    function evaluateBoardState(player) {
+        const g = G();
+        const isFFA = g._isFFA();
+        const enemy = isFFA ? null : g.enemyOf(player);
+
+        let score = 0;
+
+        if (g.state.towers) {
+            const own = g.state.towers[player];
+            const enem = enemy ? g.state.towers[enemy] : null;
+            const ownPct = own && own.maxHp > 0 ? own.hp / own.maxHp : 1;
+            const enemPct = enem && enem.maxHp > 0 ? enem.hp / enem.maxHp : 1;
+
+            score += (ownPct - enemPct) * 100;
+
+            if (enemPct < 0.3) score += 40;
+            else if (enemPct < 0.5) score += 20;
+
+            if (ownPct < 0.3) score -= 35;
+        }
+
+        const myAlive = isFFA ? 1 : g.aliveUnitsFor(player).length;
+        const enemyAlive = isFFA
+            ? g.state.units.filter(u => !u.dead && u.player !== player).length
+            : g.aliveUnitsFor(enemy).length;
+        score += (myAlive - enemyAlive) * 18;
+
+        const myUnits = isFFA ? [g.state.units.find(u => u.player === player && !u.dead)].filter(Boolean)
+            : g.aliveUnitsFor(player);
+        const enemUnits = isFFA
+            ? g.state.units.filter(u => !u.dead && u.player !== player)
+            : (enemy ? g.aliveUnitsFor(enemy) : []);
+        const myTotalHpPct = myUnits.length > 0
+            ? myUnits.reduce((s, u) => s + u.hp / u.maxHp, 0) / myUnits.length : 0;
+        const enemTotalHpPct = enemUnits.length > 0
+            ? enemUnits.reduce((s, u) => s + u.hp / u.maxHp, 0) / enemUnits.length : 0;
+        score += (myTotalHpPct - enemTotalHpPct) * 30;
+
+        const myHG = myUnits.reduce((s, u) => s + (u.hourglasses || 0), 0);
+        const enemHG = enemUnits.reduce((s, u) => s + (u.hourglasses || 0), 0);
+        const hgTarget = g.state.hourglassTarget || 5;
+        score += (myHG - enemHG) * 12;
+
+        if (myHG >= hgTarget - 1) score += 50;
+        if (enemHG >= hgTarget - 1) score -= 50;
+
+        if (g.state.nexusPoints) {
+            const floors = Object.keys(g.state.nexusPoints);
+            let myNex = 0, enemNex = 0;
+            for (const f of floors) {
+                const n = g.state.nexusPoints[f];
+                if (!n) continue;
+                if (n.owner === player) myNex++;
+                else if (enemy && n.owner === enemy) enemNex++;
+            }
+            score += (myNex - enemNex) * 15;
+        }
+
+        const enemDead = isFFA ? 0
+            : g.state.units.filter(u => u.player === enemy && u.dead).length;
+        const myDead = g.state.units.filter(u => u.player === player && u.dead).length;
+        score += (enemDead - myDead) * 10;
+
+        return score;
+    }
+
+    function applySurvivalPenalties(unit, candidates, v) {
+        const g = G();
+        if (candidates.length === 0) return;
+
+        const turnOrder = g.blitzTurnOrderIds || [];
+        const myIdx = turnOrder.indexOf(unit.id);
+        const unactedEnemyIds = new Set();
+        if (myIdx >= 0) {
+            for (let i = myIdx + 1; i < turnOrder.length; i++) {
+                const u = g.state.units.find(u2 => u2.id === turnOrder[i]);
+                if (u && !u.dead && g.isEnemyUnit(unit, u)) unactedEnemyIds.add(u.id);
+            }
+        }
+
+        const allEnemies = v.visibleEnemies;
+
+        const hgValue = (unit.hourglasses || 0) * 40;
+        const isHealer = unit.cls === 'White Mage';
+        const unitValue = 1.0 + (hgValue > 0 ? 0.6 : 0) + (isHealer ? 0.3 : 0);
+
+        const topN = Math.min(candidates.length, 5);
+        for (let i = 0; i < topN; i++) {
+            const cand = candidates[i];
+
+            let endX = unit.x, endY = unit.y;
+            if (cand.type === 'move' && cand.x != null) { endX = cand.x; endY = cand.y; }
+
+            if (cand.type === 'kite_retreat' && cand.x != null) { endX = cand.x; endY = cand.y; }
+
+            let incomingDmg = 0;
+            let threatCount = 0;
+            for (const e of allEnemies) {
+                const eRange = g.getEffectiveRange(e);
+                const eMove = (g.getEffectiveMove?.(e) || e.move || 3);
+                const dist = Math.abs(e.x - endX) + Math.abs(e.y - endY);
+
+                const canReach = dist <= eMove + eRange;
+
+                const isUnacted = unactedEnemyIds.has(e.id);
+                if (canReach) {
+                    const eDmg = Math.max(5, Math.floor((e.atk || 5) * 0.65));
+
+                    incomingDmg += isUnacted ? eDmg : Math.floor(eDmg * 0.6);
+                    threatCount++;
+                }
+            }
+
+            const hpAfterAction = unit.hp;
+            if (incomingDmg >= hpAfterAction && threatCount >= 1) {
+
+                cand.score -= Math.floor(80 * unitValue);
+                cand._survivalPenalty = 'lethal';
+            } else if (incomingDmg >= hpAfterAction * 0.6 && threatCount >= 2) {
+
+                cand.score -= Math.floor(35 * unitValue);
+                cand._survivalPenalty = 'high_danger';
+            } else if (incomingDmg >= hpAfterAction * 0.4 && threatCount >= 3) {
+
+                cand.score -= Math.floor(15 * unitValue);
+                cand._survivalPenalty = 'moderate_danger';
+            }
+        }
+    }
+
+    function buildThreatMap(visibleEnemies, unit) {
+        const g = G();
+        const threats = new Map();
+        for (const e of visibleEnemies) {
+            const eRange = g.getEffectiveRange(e);
+            const eMove = e.move || 3;
+            const eDmg = Math.max(3, Math.floor((e.atk || 5) * 0.65));
+
+            const reach = eMove + eRange;
+            for (let dy = -reach; dy <= reach; dy++) {
+                for (let dx = -reach; dx <= reach; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > reach) continue;
+                    const key = g.posKey(e.x + dx, e.y + dy);
+                    const cur = threats.get(key) || { count: 0, totalDmg: 0 };
+                    cur.count++;
+                    cur.totalDmg += eDmg;
+                    threats.set(key, cur);
+                }
+            }
+        }
+        return threats;
+    }
+
+    function getThreatAt(threatMap, x, y) {
+        const g = G();
+        return threatMap.get(g.posKey(x, y)) || { count: 0, totalDmg: 0 };
+    }
+
+    function getTypeMultiplier(attacker, defender, spellType) {
+        const g = G();
+        const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : g.TYPE_CHART;
+        if (!chart) return 1.0;
+
+        const dTypes = defender.types || [];
+        let effectMult = 1.0;
+        let stabMult = 1.0;
+
+        if (spellType) {
+
+            const entry = chart[spellType];
+            if (entry) {
+                for (const dt of dTypes) {
+                    if (entry.strongVs && entry.strongVs.includes(dt)) effectMult = Math.max(effectMult, 1.5);
+                    if (entry.weakVs && entry.weakVs.includes(dt)) effectMult = Math.min(effectMult, 0.75);
+                }
+            }
+
+            const aTypes = attacker.types || [];
+            if (aTypes.includes(spellType)) {
+                stabMult = (typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25;
+            }
+        } else {
+
+            const aTypes = attacker.types || [];
+            for (const at of aTypes) {
+                const entry = chart[at];
+                if (!entry) continue;
+                for (const dt of dTypes) {
+                    if (entry.strongVs && entry.strongVs.includes(dt)) effectMult = Math.max(effectMult, 1.5);
+                    if (entry.weakVs && entry.weakVs.includes(dt)) effectMult = Math.min(effectMult, 0.75);
+                }
+            }
+        }
+        return effectMult * stabMult;
+    }
+
+    function getTargetPriority(target, unit, v) {
+        const g = G();
+        let priority = 0;
+
+        const cls = target.cls || '';
+        if (cls === 'White Mage') priority += 25;
+        else if (cls === 'Black Mage') priority += 20;
+        else if (cls === 'Harbinger') priority += 18;
+        else if (cls === 'Psychic') priority += 16;
+        else if (cls === 'Engineer') priority += 14;
+        else if (cls === 'Gunslinger') priority += 12;
+        else if (cls === 'Sniper') priority += 15;
+        else if (cls === 'Raider') priority += 12;
+        else if (cls === 'Harvester') priority += 10;
+        else if (cls === 'Agent') priority += 10;
+        else if (cls === 'Warrior') priority += 5;
+        else if (cls === 'Freelancer') priority += 8;
+
+        if ((target.hourglasses || 0) > 0) priority += g.getAIWeight('hourglassTargetBonus_v1') + (target.hourglasses * 10);
+
+        const dmgLog = getTeamDamageLog();
+        const priorDmg = dmgLog[target.id] || 0;
+        if (priorDmg > 0) {
+            priority += 20;
+            if (target.hp <= priorDmg + 20) priority += 30;
+        }
+
+        const hpPct = target.hp / target.maxHp;
+        if (hpPct < 0.25) priority += 20;
+        else if (hpPct < 0.5) priority += 10;
+
+        const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+        const _modeId = _mpMode ? _mpMode.id : 'arena';
+
+        if (_modeId === 'tdm' || _modeId === 'ffa') {
+            if (hpPct < 0.25) priority += 25;
+            else if (hpPct < 0.5) priority += 12;
+        }
+
+        if (_modeId === 'ctf' && g.state.flags) {
+            const ownFlag = g.state.flags[unit.player];
+            if (ownFlag && ownFlag.carriedBy === target.id) {
+                priority += 60;
+            }
+        }
+
+        const typeMult = getTypeMultiplier(unit, target);
+        if (typeMult > 1.0) priority += 15;
+        else if (typeMult < 1.0) priority -= 10;
+
+        if ((target._deathCount || 0) >= 2) priority += Math.min(target._deathCount, 5) * 3;
+
+        if (g.unitHasStatus(target, 'marked')) priority += 10;
+
+        if (g.unitHasStatus(target, 'stun')) priority -= 8;
+
+        const turnOrder = g.blitzTurnOrderIds || [];
+        const myIdx = turnOrder.indexOf(unit.id);
+        const targetIdx = turnOrder.indexOf(target.id);
+        if (myIdx >= 0 && targetIdx > myIdx) {
+
+            const turnsAway = targetIdx - myIdx;
+            if (turnsAway <= 2) priority += 12;
+            else if (turnsAway <= 4) priority += 6;
+
+            if ((target.cls === 'White Mage' || target.cls === 'Harbinger') && turnsAway <= 3) {
+                priority += 8;
+            }
+        }
+
+        return priority;
+    }
+
+    function assessTactical(unit, visibleEnemies, allies) {
+        const g = G();
+        const scanRadius = Math.max(5, g.getEffectiveRange(unit) + 2);
+
+        const nearEnemies = visibleEnemies.filter(e =>
+            Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= scanRadius
+        );
+        const nearAllies = allies.filter(a =>
+            Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= scanRadius
+        );
+
+        const allyHp = nearAllies.reduce((s, a) => s + a.hp, 0) + unit.hp;
+        const enemyHp = nearEnemies.reduce((s, e) => s + e.hp, 0);
+
+        const numbersAdv = (nearAllies.length + 1) - nearEnemies.length;
+        const hpRatio = enemyHp > 0 ? allyHp / enemyHp : 2.0;
+        const selfHpPct = unit.hp / unit.maxHp;
+
+        const raw = (numbersAdv * 0.15)
+            + (hpRatio > 1.4 ? 0.3 : hpRatio > 1.0 ? 0.1 : hpRatio > 0.7 ? -0.1 : -0.3)
+            + (selfHpPct > 0.7 ? 0.1 : selfHpPct > 0.4 ? -0.1 : -0.3)
+            + ((unit.hourglasses || 0) > 0 ? -0.2 : 0);
+
+        const advantage = Math.max(-1, Math.min(1, raw));
+        const shouldEngage = nearEnemies.length === 0 || advantage > g.getAIWeight('engageAdvantage_v1');
+
+        const hgCarrierFlee = (unit.hourglasses || 0) > 0 && advantage < g.getAIWeight('hgCarrierFleeAdv_v1');
+
+        const isRanged = g.getEffectiveRange(unit) >= 2;
+        const nearestMeleeThreat = nearEnemies.find(e => g.getEffectiveRange(e) <= 1);
+        const shouldKite = isRanged && nearestMeleeThreat &&
+            Math.abs(nearestMeleeThreat.x - unit.x) + Math.abs(nearestMeleeThreat.y - unit.y) <= 2;
+
+        return {
+            advantage, shouldEngage: shouldEngage && !hgCarrierFlee, nearEnemies: nearEnemies.length,
+            nearAllies: nearAllies.length, selfHpPct, shouldKite, isRanged, hgCarrierFlee
+        };
+    }
+
+    function gatherCandidates(unit, v) {
+        const candidates = [];
+        const g = G();
+
+        scoreItems(unit, v, candidates);
+        scoreAttacks(unit, v, candidates);
+        scoreTowerAttack(unit, v, candidates);
+        scoreSpells(unit, v, candidates);
+        scoreCombos(unit, v, candidates);
+        scoreDetonate(unit, v, candidates);
+        scoreMoves(unit, v, candidates);
+        scoreInspect(unit, v, candidates);
+        scoreFlairWard(unit, v, candidates);
+        scoreGuard(unit, v, candidates);
+        scoreNexusChannel(unit, v, candidates);
+        scoreRecall(unit, v, candidates);
+        scoreReshape(unit, v, candidates);
+
+        scoreKiteRetreat(unit, v, candidates);
+
+        return candidates;
+    }
+
+    function scoreItems(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+        if (ap < g.AP_COST_ACTION) return;
+
+        const healThresh = g.getAIWeight('healPotionHpPct_v1');
+        const healGate = Math.max(healThresh + 0.15, 0.65);
+        if (unit.items?.healPotion > 0) {
+            const allies = g.aliveUnitsFor(unit.player);
+            let bestTarget = null;
+            let bestScore = -1;
+            for (const ally of allies) {
+                if (ally.dead || ally.hp >= ally.maxHp) continue;
+                const hpPct = ally.hp / ally.maxHp;
+                if (hpPct > healGate) continue;
+                const urgency = 1.0 - hpPct;
+
+                let score = 140 + urgency * 380;
+
+                if (ally.id === unit.id && hpPct <= healThresh) score += 100;
+
+                if (hpPct < 0.25) score += 140;
+
+                if ((v.tactical?.nearEnemies || 0) > 0 && hpPct < 0.5) score += 60;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTarget = ally;
+                }
+            }
+            if (bestTarget) {
+                out.push({ type: 'item_targeted', item: 'healPotion', target: bestTarget, score: bestScore });
+            }
+        }
+
+        if (unit.items?.manaPotion > 0) {
+            const mpRestore = 40;
+            const allies = g.aliveUnitsFor(unit.player);
+            let bestTarget = null;
+            let bestScore = -1;
+            for (const ally of allies) {
+                if (ally.dead || (ally.maxMp || 0) <= 0) continue;
+                if (ally.mp >= ally.maxMp) continue;
+                const mpAfter = Math.min(ally.maxMp, ally.mp + mpRestore);
+
+                const allSpells = (ally.spells || []);
+                let bestSpellValue = 0;
+                let unlockedCount = 0;
+                for (const spell of allSpells) {
+                    if (!spell || !spell.cost || spell.cost <= 0) continue;
+                    if (spell.kind === 'scan') continue;
+                    const cantNow = ally.mp < spell.cost;
+                    const canAfter = mpAfter >= spell.cost;
+                    if (cantNow && canAfter) {
+
+                        const val = spell.dmg || (spell.kind === 'heal' ? 96 : 80);
+                        if (val > bestSpellValue) bestSpellValue = val;
+                        unlockedCount++;
+                    }
+                }
+                const mpPct = ally.mp / ally.maxMp;
+
+                let score = g.getAIWeight('mpPotionPriority_v1') + (1.0 - mpPct) * 160;
+
+                if (bestSpellValue > 0) {
+                    score += bestSpellValue * 1.2 + unlockedCount * 20;
+                }
+
+                const casterClasses = ['Black Mage', 'White Mage', 'Psychic', 'Harbinger', 'Harvester'];
+                if (casterClasses.includes(ally.cls)) score += 40;
+
+                if (ally.mp === 0 && casterClasses.includes(ally.cls)) score += 100;
+
+                if (ally.id === unit.id && (v.tactical?.nearEnemies || 0) > 0 && mpPct < 0.3) score += 40;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTarget = ally;
+                }
+            }
+            if (bestTarget) {
+                out.push({ type: 'item_targeted', item: 'manaPotion', target: bestTarget, score: bestScore });
+            }
+        }
+
+        if (unit.items?.scanner > 0 && g.getEffectiveAwr(unit) > 0) {
+            const unrevHG = (g.state.hourglasses || []).filter(h =>
+                h.carriedBy === null && !h.visibleTo[unit.player]
+            ).length;
+            if (unrevHG > 0) {
+                let scanScore = g.getAIWeight('scannerPriority_v1') + unrevHG * 8;
+                const round = g.state.round || 0;
+                if (round <= 10) scanScore += 10;
+                else if (round <= 20) scanScore += 5;
+                out.push({ type: 'item', item: 'scanner', score: scanScore });
+            }
+        }
+
+        if ((unit.items?.panacea || 0) > 0 && unit.status) {
+            const STATUS_DEFS = g.STATUS_DEFS || {};
+            let debuffCount = 0;
+            let hasCrippling = false;
+            for (const key of Object.keys(unit.status)) {
+                const def = STATUS_DEFS[key];
+                if (def && def.kind === 'debuff') {
+                    debuffCount++;
+                    if (['stun', 'sleep', 'stagger', 'blind', 'freeze', 'confuse', 'silence'].includes(key)) {
+                        hasCrippling = true;
+                    }
+                }
+            }
+            if (debuffCount > 0) {
+
+                let panaceaScore = 500 + debuffCount * 60;
+                if (hasCrippling) panaceaScore += 200;
+                out.push({ type: 'panacea', score: panaceaScore });
+            }
+        }
+
+        if ((unit.items?.warpStone || 0) > 0) {
+            const selfHpPct = unit.hp / unit.maxHp;
+            const nearEnemyCount = v.tactical?.nearEnemies || 0;
+
+            if (selfHpPct < 0.3 && nearEnemyCount > 0) {
+
+                let bestWarpTile = null;
+                let bestWarpScore = -1;
+                for (let dx = -3; dx <= 3; dx++) {
+                    for (let dy = -3; dy <= 3; dy++) {
+                        if (Math.abs(dx) + Math.abs(dy) < 1 || Math.abs(dx) + Math.abs(dy) > 3) continue;
+                        const wx = unit.x + dx;
+                        const wy = unit.y + dy;
+                        if (!g.isInside(wx, wy)) continue;
+                        const terrain = g.state.boardTerrain;
+                        const tileType = terrain?.[wy]?.[wx];
+                        const rule = g.TERRAIN_RULES?.[tileType];
+                        if (!rule || rule.passable === false) continue;
+                        if (g.unitAt(wx, wy)) continue;
+
+                        let minEnemyDist = 99;
+                        for (const e of (v.visibleEnemies || [])) {
+                            const d = Math.abs(wx - e.x) + Math.abs(wy - e.y);
+                            if (d < minEnemyDist) minEnemyDist = d;
+                        }
+
+                        let tileScore = minEnemyDist * 15;
+                        const allies = g.aliveUnitsFor(unit.player);
+                        for (const a of allies) {
+                            if (a.id === unit.id) continue;
+                            const ad = Math.abs(wx - a.x) + Math.abs(wy - a.y);
+                            if (ad <= 3) tileScore += 10;
+                        }
+                        if (tileScore > bestWarpScore) {
+                            bestWarpScore = tileScore;
+                            bestWarpTile = { x: wx, y: wy };
+                        }
+                    }
+                }
+                if (bestWarpTile) {
+                    const warpScore = 350 + (1.0 - selfHpPct) * 200;
+                    out.push({ type: 'warpStone', target: bestWarpTile, score: warpScore });
+                }
+            }
+
+            const enemyPlayer = unit.player === 1 ? 2 : 1;
+            const enemyTower = g.state.towers?.[enemyPlayer] || null;
+            if (enemyTower && enemyTower.hp > 0) {
+                const curDist = Math.abs(unit.x - enemyTower.x) + Math.abs(unit.y - enemyTower.y);
+                if (curDist <= 6 && curDist > 2 && selfHpPct > 0.5) {
+
+                    let bestTowerWarp = null;
+                    let bestTowerDist = curDist;
+                    for (let dx = -3; dx <= 3; dx++) {
+                        for (let dy = -3; dy <= 3; dy++) {
+                            if (Math.abs(dx) + Math.abs(dy) < 1 || Math.abs(dx) + Math.abs(dy) > 3) continue;
+                            const wx = unit.x + dx;
+                            const wy = unit.y + dy;
+                            if (!g.isInside(wx, wy)) continue;
+                            const terrain = g.state.boardTerrain;
+                            const tileType = terrain?.[wy]?.[wx];
+                            const rule = g.TERRAIN_RULES?.[tileType];
+                            if (!rule || rule.passable === false) continue;
+                            if (g.unitAt(wx, wy)) continue;
+                            const newDist = Math.abs(wx - enemyTower.x) + Math.abs(wy - enemyTower.y);
+                            if (newDist < bestTowerDist) {
+                                bestTowerDist = newDist;
+                                bestTowerWarp = { x: wx, y: wy };
+                            }
+                        }
+                    }
+                    if (bestTowerWarp && bestTowerDist < curDist - 1) {
+                        out.push({ type: 'warpStone', target: bestTowerWarp, score: 180 });
+                    }
+                }
+            }
+        }
+
+        const baneKeys = Object.keys(g.ITEM_RULES || {}).filter(k => g.ITEM_RULES[k].baneType);
+        if (v.visibleEnemies.length > 0) {
+            for (const baneKey of baneKeys) {
+                if ((unit.items?.[baneKey] || 0) <= 0) continue;
+                if (_failedItems.has(baneKey)) continue;
+                const baneRule = g.ITEM_RULES[baneKey];
+                const baneRange = g.getEffectiveRange(unit) + 1;
+                for (const enemy of v.visibleEnemies) {
+                    const dist = Math.max(Math.abs(unit.x - enemy.x), Math.abs(unit.y - enemy.y));
+                    if (dist > baneRange) continue;
+                    if (g.isRangeBlockedByTerrain(unit.x, unit.y, enemy.x, enemy.y)) continue;
+                    const isEffective = (enemy.types || []).includes(baneRule.baneType);
+                    const baseDmg = baneRule.baseDmg + (isEffective ? baneRule.baneDmg : 0);
+                    let score = isEffective ? (240 + baseDmg) : (64 + baseDmg * 0.5);
+
+                    score += getTargetPriority(enemy, unit, v) * 0.3;
+                    out.push({ type: 'item_targeted', item: baneKey, target: enemy, score });
+                }
+            }
+        }
+    }
+
+    function scoreAttacks(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.AP_COST_ACTION || _skipAttack) return;
+
+        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
+
+        for (const tgt of v.attackTargets) {
+            let score = estDmg;
+
+            const typeMult = getTypeMultiplier(unit, tgt);
+            score *= typeMult;
+
+            if (typeof g.getUnitStandingHeight === 'function') {
+                const srcH = g.getUnitStandingHeight(unit);
+                const tgtH = g.getUnitStandingHeight(tgt);
+                if (srcH > tgtH) {
+
+                    score *= 1 + 0.1 * (srcH - tgtH);
+                } else if (tgtH > srcH) {
+
+                    score -= 5 * (tgtH - srcH);
+                }
+            }
+
+            score += getTargetPriority(tgt, unit, v);
+
+            if (tgt.hp <= estDmg * typeMult + 32) score += g.getAIWeight('killBonusScore_v1') + 120;
+
+            if (g.unitHasStatus(tgt, 'marked')) score += g.getAIWeight('markedTargetBonus_v1');
+
+            if (unit.cls === 'White Mage') score *= 0.25;
+            if (unit.cls === 'Harbinger') score *= 0.5;
+            if (unit.atk <= 5 && unit.cls !== 'White Mage') score *= 0.6;
+
+            if (v.ownTower && v.ownTower.hp > 0) {
+                const dToTower = Math.abs(tgt.x - v.ownTower.x) + Math.abs(tgt.y - v.ownTower.y);
+                if (dToTower <= 4) score += 200;
+                if (dToTower <= 2) score += 160;
+            }
+
+            if (v.winState.phase === 'tower_push') {
+                const tDist = v.enemyTower ? Math.abs(tgt.x - v.enemyTower.x) + Math.abs(tgt.y - v.enemyTower.y) : Infinity;
+                if (tDist > 3) score *= 0.5;
+            }
+
+            if (v.winState.phase === 'numbers_advantage' && v.enemyTower) {
+                const tDist = Math.abs(tgt.x - v.enemyTower.x) + Math.abs(tgt.y - v.enemyTower.y);
+                if (tDist > 5) score *= 0.7;
+            }
+
+            if (v.winState.enemyDeadCount >= 2 && v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(tgt.x - v.enemyTower.x) + Math.abs(tgt.y - v.enemyTower.y);
+                if (tDist > 4) score *= 0.4;
+            }
+
+            const nearOwnTower = v.ownTower && v.ownTower.hp > 0 &&
+                Math.abs(tgt.x - v.ownTower.x) + Math.abs(tgt.y - v.ownTower.y) <= 4;
+            if (nearOwnTower) {
+                score *= 1.2;
+            } else {
+                score *= v.tactical.shouldEngage ? 1.0 + Math.max(0, v.tactical.advantage) * 0.5 : 0.6;
+            }
+
+            const unitLevel = unit.level || 1;
+            score *= 1.0 + (unitLevel - 1) * g.getAIWeight('levelAggressionMod_v1');
+
+            if (typeof g.xpForLevel === 'function' && unitLevel < 5) {
+                const nextXp = g.xpForLevel(unitLevel + 1);
+                const curXp = unit.xp || 0;
+                if (nextXp > 0 && curXp >= nextXp * 0.7) score += g.getAIWeight('nearLevelUpBonus_v1');
+            }
+
+            out.push({ type: 'attack', target: tgt, score });
+        }
+    }
+
+    function scoreTowerAttack(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.AP_COST_ACTION || _skipTowerAttack) return;
+        const tower = v.enemyTower;
+        if (!tower || tower.hp <= 0) return;
+
+        const tDist = Math.abs(unit.x - tower.x) + Math.abs(unit.y - tower.y);
+        const effRange = v.effRange;
+        if (tDist < 1 || tDist > effRange) return;
+        if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y)) return;
+
+        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
+
+        let score = estDmg + g.getAIWeight('towerBaseBonus_v1');
+
+        if (tower.hp <= estDmg * 3) score += g.getAIWeight('towerLowHpPush_v1');
+        else if (tower.hp <= tower.maxHp * 0.5) score += g.getAIWeight('towerMidHpPush_v1');
+
+        const groundEnemies = v.visibleEnemies.filter(e =>
+            Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
+        );
+        if (groundEnemies.length === 0) score += g.getAIWeight('towerClearBonus_v1');
+        else if (groundEnemies.length === 1) score += 160;
+
+        const ws = v.winState;
+        if (ws.enemyDeadCount >= 2) score += 360;
+        else if (ws.enemyDeadCount >= 1) score += 200;
+
+        if (ws.enemyMinRespawn >= 6) score += 360;
+        else if (ws.enemyMinRespawn >= 4) score += 240;
+        else if (ws.enemyMinRespawn >= 3) score += 160;
+        else if (ws.enemyMinRespawn >= 2) score += 80;
+
+        if (ws.enemyImminentRespawns > 0) score -= 40 * ws.enemyImminentRespawns;
+
+        if (ws.phase === 'tower_push') score += 400;
+        if (ws.phase === 'numbers_advantage') score += 240;
+
+        score += ws.roundUrgency * 120;
+
+        if (unit.cls === 'White Mage') score *= 0.4;
+        if (unit.cls === 'Harbinger') score *= 0.6;
+
+        score = Math.max(score, 240);
+        out.push({ type: 'attack_tower', towerX: tower.x, towerY: tower.y, score });
+    }
+
+    function scoreSpells(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+        const silenced = g.unitHasStatus(unit, 'silence');
+        if (silenced) return;
+
+        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+
+        const _allSpells = (unit.spells || []);
+        for (const spell of _allSpells) {
+            if (!spell) continue;
+            if (_failedSpells.has(spell.name)) continue;
+            const apCost = g.getSpellApCost(spell);
+            if (ap < apCost || !g.canAffordSpell(unit, spell) || unit.mp < spell.cost) continue;
+
+            const target = findSpellTarget(unit, spell, v);
+            const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
+                'escape', 'selfHeal'];
+            if (!target && !noTargetKinds.includes(spell.kind)) continue;
+
+            let score = scoreSpell(unit, spell, target, v);
+            if (score <= 0) continue;
+
+            if (apCost === 2 && ['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'line', 'linePush', 'cross', 'aoePull', 'splitBeam', 'dash'].includes(spell.kind)) {
+                const twoBasicVal = v.attackTargets.length > 0 ? estDmg * 1.85 : estDmg * 0.5;
+
+                if (score < twoBasicVal * 0.65) score *= 0.4;
+            }
+
+            if (['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'lifeDrain', 'line', 'linePush', 'cross', 'aoePull', 'splitBeam', 'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike'].includes(spell.kind)) {
+                score *= v.tactical.shouldEngage ? 1.0 + Math.max(0, v.tactical.advantage) * 0.5 : 0.6;
+
+                if (['Gunslinger', 'Sniper', 'Black Mage', 'Psychic'].includes(unit.cls)) {
+                    score *= 1.25;
+                }
+            }
+
+            out.push({ type: 'spell', spell, target, score, apCost });
+        }
+
+        scoreSpellsOnTower(unit, v, out);
+    }
+
+    function scoreSpell(unit, spell, target, v) {
+        const g = G();
+        const kind = spell.kind;
+
+        if (['damage', 'ricochet', 'multiHit'].includes(kind)) {
+            let s = spell.dmg || 112;
+            if (spell.hitDamages) s = spell.hitDamages.reduce((a, b) => a + b, 0);
+            for (const eff of (spell.statusEffects || [])) {
+
+                if (target) s += scoreStatusEffect(eff, target, v);
+                else s += eff.id === 'burn' ? 64 : 32;
+            }
+
+            if (target) {
+
+                s *= getTypeMultiplier(unit, target, spell.spellType || null);
+
+                s += getTargetPriority(target, unit, v) * 0.5;
+
+                if (target.hp <= s + 24) s += g.getAIWeight('killBonusScore_v1') + 120;
+            }
+
+            if (unit.cls === 'Black Mage') s *= 1.5;
+            else if (unit.cls === 'Warrior') s *= 1.5;
+            return s;
+        }
+        if (kind === 'aoe') {
+            const cx = spell.aoeOriginSelf ? unit.x : target.x;
+            const cy = spell.aoeOriginSelf ? unit.y : target.y;
+            const area = getSquareArea(cx, cy, spell.aoeRadius || 1);
+            const hits = Math.max(1, area.filter(t => v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)).length);
+
+            const allyHits = spell.aoeOriginSelf
+                ? area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y)).length
+                : area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y) || (unit.x === t.x && unit.y === t.y)).length;
+            let s = (spell.dmg || 112) * hits - allyHits * 20;
+            for (const eff of (spell.statusEffects || [])) s += (eff.id === 'burn' ? 56 : eff.id === 'silence' ? 80 : eff.id === 'jammed' ? 48 : 32) * hits;
+            if (unit.cls === 'Black Mage') s *= 1.5;
+
+            if (hits >= 3) s *= 1.3;
+
+            if (spell.aoeOriginSelf && hits >= 2) s *= 1.2;
+            return s;
+        }
+
+        if (kind === 'dash') {
+            if (!target) return 0;
+            const path = g.getLinePoints(unit.x, unit.y, target.x, target.y);
+            const dashDmg = spell.dashDamage || spell.dmg || 96;
+            let s = 0, hits = 0;
+            for (const pt of path) {
+                const victim = v.visibleEnemies.find(e => e.x === pt.x && e.y === pt.y);
+                if (victim) {
+                    hits++;
+                    let hitVal = dashDmg;
+                    hitVal *= getTypeMultiplier(unit, victim, spell.spellType || null);
+                    hitVal += getTargetPriority(victim, unit, v) * 0.3;
+                    if (victim.hp <= dashDmg + 24) hitVal += g.getAIWeight('killBonusScore_v1') + 120;
+                    for (const eff of (spell.statusEffects || [])) hitVal += scoreStatusEffect(eff, victim, v);
+                    s += hitVal;
+                }
+            }
+
+            if (hits >= 2) s *= 1.3;
+            if (hits >= 3) s *= 1.2;
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const curDist = Math.abs(unit.x - v.enemyTower.x) + Math.abs(unit.y - v.enemyTower.y);
+                const newDist = Math.abs(target.x - v.enemyTower.x) + Math.abs(target.y - v.enemyTower.y);
+                if (newDist < curDist) s += (curDist - newDist) * 15;
+            }
+            return s;
+        }
+
+        if (kind === 'deployTurret') {
+            if (!target) return 0;
+            const tRange = spell.turretRange || 2;
+            const tDmg = spell.turretDmg || 8;
+
+            if (spell.auraDebuff) {
+                const enemiesInRange = v.visibleEnemies.filter(e =>
+                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange
+                ).length;
+                let s = enemiesInRange * 80 + 40;
+
+                if (enemiesInRange >= 3) s *= 1.5;
+                if (unit.cls === 'Engineer') s *= 1.3;
+                return s;
+            }
+
+            let s = tDmg * 3;
+
+            const enemiesInRange = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange
+            ).length;
+            s += enemiesInRange * 96;
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
+                if (tDist <= tRange) s += 280;
+            }
+
+            if (spell.id === 'siegeTurret') s *= 1.5;
+
+            if (unit.cls === 'Engineer') s *= 1.3;
+            return s;
+        }
+
+        if (kind === 'utility') {
+            const sid = spell.id;
+
+            if ((sid === 'grapple' || sid === 'raceGrapple') && target) {
+                let s = 144;
+
+                const meleeAllies = v.allies.filter(a =>
+                    g.getEffectiveRange(a) <= 1 &&
+                    Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= 4
+                ).length;
+                s += meleeAllies * 64;
+
+                s += getTargetPriority(target, unit, v) * 0.3;
+
+                if (g.getEffectiveRange(target) >= 3) s += 10;
+                return s;
+            }
+
+            if ((sid === 'plunder' || sid === 'racePlunder') && target) {
+                let s = 15;
+
+                if ((target.hourglasses || 0) > 0) s += 40;
+
+                if ((target.gold || 0) > 0) s += 8;
+                return s;
+            }
+
+            if (sid === 'mimic' && target) {
+                const lastSpell = g.state?.lastSpellCast;
+                if (!lastSpell) return 0;
+
+                let s = 20;
+
+                const lastKind = SPELL_BY_ID?.[lastSpell.spellId]?.kind;
+                if (['damage', 'aoe', 'multiHit', 'barrage'].includes(lastKind)) s += 10;
+                if (['healAll', 'heal'].includes(lastKind)) s += 8;
+                return s;
+            }
+            return 0;
+        }
+        if (kind === 'barrage') {
+            const targets = v.visibleEnemies.filter(e => {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                return d >= 1 && d <= _effRange(unit, spell) && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+            });
+            let s = (spell.dmg || 10) * targets.length;
+            if (targets.length < 2) s *= 0.3;
+            if (unit.cls === 'Gunslinger') s *= 1.6;
+            return s;
+        }
+        if (kind === 'lifeDrain') {
+            let s = (spell.dmg || 18) * 1.3;
+            if (unit.hp < unit.maxHp * g.getAIWeight('healAllyThreshold_v1')) s += 15;
+            if (target) {
+                s *= getTypeMultiplier(unit, target, spell.spellType || null);
+                if (target.hp <= (spell.dmg || 18) + 3) s += 30;
+            }
+            return s;
+        }
+
+        if (kind === 'heal' && target) {
+            const hpDef = target.maxHp - target.hp;
+            const healAmt = Math.min(spell.healAmt != null ? spell.healAmt : (spell.heal || 24), hpDef);
+            const pct = target.hp / target.maxHp;
+            const urgency = pct < 0.25 ? 3.0 : pct < 0.35 ? 2.5 : pct < 0.55 ? 1.8 : pct < 0.75 ? 1.0 : 0.3;
+            let s = healAmt * urgency;
+            if (unit.cls === 'White Mage') { s *= 2.0; if (pct < 0.5) s += 30; }
+
+            if ((target.hourglasses || 0) > 0 && pct < 0.6) s += 25;
+            if (hpDef < 8) s = 0;
+            return s;
+        }
+        if (kind === 'healAll') {
+            const allies = g.aliveUnitsFor(unit.player);
+            const hurt = allies.filter(a => a.hp < a.maxHp * 0.75);
+            const hBase = spell.healAmt != null ? spell.healAmt : (spell.heal || 16);
+            const total = allies.reduce((s, a) => s + Math.min(hBase, a.maxHp - a.hp), 0);
+            let s = total * (hurt.length >= 2 ? 1.5 : 0.5);
+            if (unit.cls === 'White Mage') s *= 2.0;
+            return s;
+        }
+
+        if (kind === 'manaRestoreAll') {
+            const allies = g.aliveUnitsFor(unit.player);
+            const mpRestore = spell.mpRestore || 40;
+            const lowMana = allies.filter(a => a.mp < a.maxMp * 0.4);
+            const totalRestored = allies.reduce((s, a) => s + Math.min(mpRestore, a.maxMp - a.mp), 0);
+            let s = totalRestored * 0.6;
+
+            if (lowMana.length >= 2) s *= 1.8;
+            if (lowMana.length >= 3) s *= 1.3;
+
+            if (lowMana.length === 0) s *= 0.1;
+            if (unit.cls === 'Engineer') s *= 1.3;
+            return s;
+        }
+
+        if (kind === 'revive') return target ? 60 : 0;
+
+        if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
+            const nearEnemy = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 5);
+            if (!nearEnemy && kind !== 'seedHeal') return 0;
+            return kind === 'seedHeal' ? 12 : kind === 'leechSeed' ? 16 : 12;
+        }
+
+        if (kind === 'buff' && target) {
+            if (g.unitHasStatus(target, 'protect')) return 0;
+            const threatened = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 4);
+            if (!threatened) return 0;
+            let s = 28;
+            if (target.hp < target.maxHp * 0.5) s += 15;
+
+            if ((target.hourglasses || 0) > 0) s += 20;
+            if (unit.cls === 'White Mage') s *= 1.6;
+            return s;
+        }
+        if (kind === 'debuff' && target) {
+            if (g.unitHasStatus(target, 'marked')) return 0;
+            let s = 10;
+            const nearAllies = v.allies.filter(a => Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 3).length;
+            s += nearAllies * 5;
+
+            s += getTargetPriority(target, unit, v) * 0.3;
+            return s;
+        }
+        if (kind === 'shield' && target) {
+            const cur = target.shield || 0;
+            const max = Math.floor((target.maxHp || 100) * (spell.shieldCapPct || 0.25));
+            const gain = Math.max(0, Math.min(spell.shield || 12, max - cur));
+            if (cur >= 6) return gain * 0.15;
+            const near = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 4);
+            return near ? gain * 0.55 : 0;
+        }
+
+        if (kind === 'bomb' && target) {
+            const blastR = spell.blastRadius || 1;
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= blastR).length;
+            let s = (spell.dmg || 18) * 0.7 + nearE * 8;
+            const active = (g.state.bombs || []).filter(b => b.ownerUnitId === unit.id).length;
+            if (active >= (spell.maxActivePerCaster || 3)) return 0;
+            return s;
+        }
+
+        if (kind === 'scan') {
+            if (g.getEffectiveAwr(unit) <= 0) return 0;
+            const unrev = (g.state.hourglasses || []).filter(h => h.carriedBy === null && !h.visibleTo[unit.player]).length;
+            if (unrev === 0) return 0;
+
+            let s = 14 + unrev * 7;
+            if (v.winState.phase === 'hg_losing') s += 15;
+            const round = g.state.round || 0;
+            if (round <= 12) s += 8;
+            return s;
+        }
+
+        if (kind === 'summonWeather') {
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - (target?.x ?? unit.x)) + Math.abs(e.y - (target?.y ?? unit.y)) <= 2).length;
+            if (nearE === 0) return 0;
+            let s = 10 + nearE * 8;
+            if (unit.cls === 'Black Mage') s *= 1.5;
+            return s;
+        }
+
+        if (kind === 'warpRune' && target) {
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
+            return nearE > 0 ? 10 + nearE * 6 : 0;
+        }
+
+        if (kind === 'warCry') {
+            const radius = spell.auraRadius || 3;
+            const inRange = g.aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
+            const uninspired = inRange.filter(a => !g.unitHasStatus(a, 'inspired') && !g.unitHasStatus(a, 'inspiredWeak'));
+            return uninspired.length >= 2 ? 15 + uninspired.length * 6 : 0;
+        }
+
+        if (kind === 'encore' && target) {
+
+            let s = 25 + (target.atk || 0);
+
+            if (['Black Mage', 'Gunslinger', 'Warrior', 'Sniper'].includes(target.cls)) s += 15;
+            return s;
+        }
+
+        if (kind === 'teleport') {
+            return scoreTeleport(unit, spell, target, v);
+        }
+
+        if (kind === 'line' || kind === 'linePush') {
+            if (!target) return 0;
+            const dmg = spell.dmg || 112;
+
+            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            const dx = Math.sign(target.x - unit.x);
+            const dy = Math.sign(target.y - unit.y);
+            let hits = 0;
+            for (let i = 1; i <= _lineBoardLen; i++) {
+                const tx = unit.x + dx * i, ty = unit.y + dy * i;
+                if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
+                if (v.visibleEnemies.some(e => e.x === tx && e.y === ty)) hits++;
+            }
+            hits = Math.max(hits, 1);
+            let s = dmg * hits;
+
+            for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
+
+            if (kind === 'linePush') s += (spell.pushDistance || 1) * 16 * hits;
+
+            if (spell.leaveTerrain) s += 24;
+
+            s *= getTypeMultiplier(unit, target, spell.spellType || null);
+
+            if (target.hp <= dmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+
+            if (hits >= 2) s *= 1.25;
+            return s;
+        }
+
+        if (kind === 'cross') {
+            const cx = spell.aoeOriginSelf ? unit.x : (target ? target.x : unit.x);
+            const cy = spell.aoeOriginSelf ? unit.y : (target ? target.y : unit.y);
+            const r = spell.crossRadius || 1;
+
+            const crossTiles = [{ x: cx, y: cy }];
+            for (let i = 1; i <= r; i++) {
+                crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                { x: cx, y: cy + i }, { x: cx, y: cy - i });
+            }
+            const hits = Math.max(1, crossTiles.filter(t =>
+                v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
+            ).length);
+            const allyHits = crossTiles.filter(t =>
+                v.allies.some(a => a.x === t.x && a.y === t.y) ||
+                (!spell.aoeOriginSelf && unit.x === t.x && unit.y === t.y)
+            ).length;
+            let s = (spell.dmg || 112) * hits - allyHits * 20;
+            for (const eff of (spell.statusEffects || [])) s += 32 * hits;
+            if (spell.pushDistance) s += spell.pushDistance * 12 * hits;
+            if (target) s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            if (hits >= 2) s *= 1.2;
+            return s;
+        }
+
+        if (kind === 'pull') {
+            if (!target) return 0;
+            let s = (spell.dmg || 0) + 80;
+
+            const meleeAllies = v.allies.filter(a =>
+                g.getEffectiveRange(a) <= 1 &&
+                Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= 4
+            ).length;
+            s += meleeAllies * 56;
+
+            if (spell.pullThroughHazards) s += 40;
+
+            s += getTargetPriority(target, unit, v) * 0.3;
+
+            if (g.getEffectiveRange(target) >= 3) s += 32;
+            if (target) s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            return s;
+        }
+
+        if (kind === 'swap') {
+            if (!target) return 0;
+            let s = 0;
+            let hasReason = false;
+
+            const nearOurAllies = v.allies.filter(a =>
+                Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= 3
+            ).length;
+            if (nearOurAllies >= 2) { s += nearOurAllies * 40; hasReason = true; }
+
+            if (v.ownTower && v.ownTower.hp > 0) {
+                const tgtToTower = Math.abs(target.x - v.ownTower.x) + Math.abs(target.y - v.ownTower.y);
+                if (tgtToTower <= 3) { s += 80; hasReason = true; }
+            }
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const curDist = Math.abs(unit.x - v.enemyTower.x) + Math.abs(unit.y - v.enemyTower.y);
+                const newDist = Math.abs(target.x - v.enemyTower.x) + Math.abs(target.y - v.enemyTower.y);
+                if (newDist < curDist - 2) { s += 50; hasReason = true; }
+            }
+
+            const priority = getTargetPriority(target, unit, v);
+            if (priority >= 30) { s += priority * 0.4; hasReason = true; }
+
+            if (!hasReason) return 0;
+            return s;
+        }
+
+        if (kind === 'escape') {
+            let s = 40;
+
+            const hpPct = unit.hp / unit.maxHp;
+            if (hpPct < 0.25) s += 160;
+            else if (hpPct < 0.4) s += 100;
+            else if (hpPct < 0.6) s += 40;
+            else s -= 20;
+
+            const debuffs = (unit.statusEffects || []).filter(e =>
+                ['stun', 'silence', 'slow', 'poison', 'burn', 'stagger', 'marked', 'discord', 'jammed'].includes(e.id)
+            ).length;
+            s += debuffs * 40;
+
+            if (v.closestEnemyDist <= 2) s += 48;
+
+            if ((unit.hourglasses || 0) > 0) s += 64;
+            return Math.max(s, 0);
+        }
+
+        if (kind === 'selfHeal') {
+            const hpPct = unit.hp / unit.maxHp;
+            const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct)
+                : (spell.healAmt != null ? spell.healAmt : (spell.heal || Math.floor(unit.maxHp * 0.15)));
+            const hpDef = unit.maxHp - unit.hp;
+            const actualHeal = Math.min(healAmt, hpDef);
+            if (actualHeal < 8 && !(unit.statusEffects || []).length) return 0;
+            const urgency = hpPct < 0.25 ? 3.0 : hpPct < 0.4 ? 2.2 : hpPct < 0.6 ? 1.4 : 0.5;
+            let s = actualHeal * urgency;
+
+            const debuffs = (unit.statusEffects || []).filter(e =>
+                ['stun', 'silence', 'slow', 'poison', 'burn', 'stagger', 'marked', 'discord'].includes(e.id)
+            ).length;
+            s += Math.min(debuffs, spell.cleanse || 0) * 40;
+            return s;
+        }
+
+        if (kind === 'aoePull') {
+            if (!target) return 0;
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const hits = Math.max(1, area.filter(t =>
+                v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
+            ).length);
+            const allyHits = area.filter(t =>
+                v.allies.some(a => a.x === t.x && a.y === t.y) ||
+                (unit.x === t.x && unit.y === t.y)
+            ).length;
+            let s = (spell.dmg || 96) * hits - allyHits * 20;
+
+            s += hits * 32;
+            if (target) s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            if (hits >= 2) s *= 1.3;
+            return s;
+        }
+
+        if (kind === 'splitBeam') {
+            if (!target) return 0;
+            const primaryDmg = spell.dmg || 96;
+            const splitCount = spell.splitCount || 2;
+            const splitDmg = spell.splitDmg || 64;
+            const splitR = spell.splitRadius || 2;
+
+            const nearbyEnemies = v.visibleEnemies.filter(e =>
+                e.id !== target.id &&
+                Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitR
+            ).length;
+            const actualSplits = Math.min(nearbyEnemies, splitCount);
+            let s = primaryDmg + actualSplits * splitDmg;
+            s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            if (target.hp <= primaryDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+            if (actualSplits >= 1) s *= 1.15;
+            return s;
+        }
+
+        if (kind === 'delayed') {
+            if (!target) return 0;
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const hits = Math.max(1, area.filter(t =>
+                v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
+            ).length);
+
+            let s = (spell.dmg || 176) * hits * 0.55;
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
+                if (tDist <= 2) s += 80;
+            }
+            return s;
+        }
+
+        if (kind === 'deployObject') {
+            if (!target) return 0;
+
+            const nearObjective = (v.enemyTower && v.enemyTower.hp > 0 &&
+                Math.abs(unit.x - v.enemyTower.x) + Math.abs(unit.y - v.enemyTower.y) <= 5) ||
+                (v.ownTower && v.ownTower.hp > 0 &&
+                    Math.abs(unit.x - v.ownTower.x) + Math.abs(unit.y - v.ownTower.y) <= 4);
+            if (v.visibleEnemies.length === 0 && !nearObjective) return 0;
+
+            let s = 40;
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
+                if (tDist <= 4) s += 32;
+            }
+            if (spell.drawsRangedAttack) s += 32;
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            if (active >= (spell.maxActivePerCaster || 2)) return 0;
+            return s;
+        }
+
+        if (kind === 'deployPair') {
+            if (!target) return 0;
+
+            const round = g.state.round || 0;
+            if (v.visibleEnemies.length === 0 && round <= 3) return 0;
+
+            let s = 50;
+            const active = (g.state._gatePairs || []).filter(gp => gp.ownerUnitId === unit.id).length;
+            if (active >= (spell.maxActivePerCaster || 1)) return 0;
+            const avgAllyDist = v.allies.length > 0
+                ? v.allies.reduce((sum, a) => sum + Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y), 0) / v.allies.length
+                : 0;
+            if (avgAllyDist > 6) s += 40;
+            if (v.enemyTower && v.enemyTower.hp > 0) s += 32;
+            return s;
+        }
+
+        if (kind === 'aoeShield') {
+            if (!target) return 0;
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const alliesInArea = [unit, ...v.allies].filter(a =>
+                !a.dead && area.some(t => t.x === a.x && t.y === a.y)
+            ).length;
+            if (alliesInArea === 0) return 0;
+            let s = (spell.shield || 48) * alliesInArea * 0.6;
+
+            const threatened = v.visibleEnemies.length > 0;
+            if (threatened) s *= 1.4;
+            return s;
+        }
+
+        if (kind === 'zoneDebuff') {
+            if (!target) return 0;
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const enemiesInArea = area.filter(t =>
+                v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
+            ).length;
+            let s = 40 + enemiesInArea * 48;
+
+            s *= Math.min(spell.zoneDuration || 1, 3) * 0.6;
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
+                if (tDist <= 3) s += 40;
+            }
+            return s;
+        }
+
+        if (kind === 'zoneHeal') {
+            if (!target) return 0;
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const alliesInArea = [unit, ...v.allies].filter(a =>
+                !a.dead && area.some(t => t.x === a.x && t.y === a.y)
+            ).length;
+            const hurtAllies = [unit, ...v.allies].filter(a =>
+                !a.dead && a.hp < a.maxHp * 0.8 && area.some(t => t.x === a.x && t.y === a.y)
+            ).length;
+            let s = 40 + hurtAllies * 48 + alliesInArea * 16;
+            s *= Math.min(spell.zoneDuration || 1, 3) * 0.5;
+
+            if (v.ownTower && v.ownTower.hp > 0) {
+                const tDist = Math.abs(v.ownTower.x - target.x) + Math.abs(v.ownTower.y - target.y);
+                if (tDist <= 3) s += 32;
+            }
+            return s;
+        }
+
+        if (kind === 'terrainCreate') {
+            if (!target) return 0;
+
+            if (v.visibleEnemies.length === 0) return 0;
+
+            let s = 0;
+
+            if (spell.dmg) {
+                const enemiesNear = v.visibleEnemies.filter(e =>
+                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 1
+                );
+                s += enemiesNear.length * (spell.dmg * 0.8);
+                for (const e of enemiesNear) {
+                    if (e.hp <= (spell.dmg || 0) + 20) s += g.getAIWeight('killBonusScore_v1') + 40;
+                    s += getTargetPriority(e, unit, v) * 0.2;
+                }
+            }
+
+            if (v.ownTower && v.ownTower.hp > 0) {
+                const tDist = Math.abs(v.ownTower.x - target.x) + Math.abs(v.ownTower.y - target.y);
+                const approachingEnemies = v.visibleEnemies.filter(e =>
+                    Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 6
+                ).length;
+                if (tDist <= 4 && approachingEnemies > 0) {
+                    s += 20 + approachingEnemies * 10;
+                }
+            }
+
+            return s;
+        }
+
+        if (kind === 'cleanse') {
+            if (!target) return 0;
+            const debuffs = (target.statusEffects || []).filter(e =>
+                ['stun', 'silence', 'slow', 'poison', 'burn', 'stagger', 'marked', 'discord', 'jammed', 'glare'].includes(e.id)
+            ).length;
+            if (debuffs === 0) return 0;
+            let s = debuffs * 56;
+
+            if ((target.statusEffects || []).some(e => e.id === 'stun')) s += 48;
+            if ((target.statusEffects || []).some(e => e.id === 'silence')) s += 32;
+
+            if ((target.hourglasses || 0) > 0) s += 40;
+            if (unit.cls === 'White Mage') s *= 1.5;
+            return s;
+        }
+
+        if (kind === 'displacement') {
+            if (!target) return 0;
+            let s = (spell.dmg || 96) + 40;
+
+            const nearbyEnemies = v.visibleEnemies.filter(e =>
+                e.id !== target.id &&
+                Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2
+            ).length;
+            s += nearbyEnemies * 32;
+
+            s += 24;
+            s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            s += getTargetPriority(target, unit, v) * 0.3;
+            if (target.hp <= (spell.dmg || 96) + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+            return s;
+        }
+
+        if (kind === 'skyDrop' || kind === 'skyThrow' || kind === 'skySlam') {
+            if (!target) return 0;
+
+            if (spell.requiresFlight && typeof g.canFly === 'function' && !g.canFly(unit)) return 0;
+
+            const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+            if (dist > (_effRange(unit, spell) || 1)) return 0;
+
+            const casterZ = typeof g.getUnitStandingHeight === 'function' ? g.getUnitStandingHeight(unit) : 0;
+            const carryH = spell.carryHeight || 4;
+            const landingZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(target.x, target.y) : 0;
+            const elevDelta = Math.max(0, (casterZ + carryH) - landingZ);
+            const perLevel = spell.dmgPerLevel || 25;
+            const estDmg = (spell.dmg || 60) + (elevDelta * perLevel);
+
+            let s = estDmg;
+            for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
+            s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            s += getTargetPriority(target, unit, v) * 0.4;
+            if (target.hp <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
+
+            if (kind === 'skyThrow') {
+                const nearbyEnemies = v.visibleEnemies.filter(e =>
+                    e.id !== target.id &&
+                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.throwRange || 3)
+                ).length;
+                s += nearbyEnemies * (spell.collisionBonus || 50) * 0.5;
+            }
+
+            if (kind === 'skySlam') {
+                s *= 1.1;
+
+                if (spell.aoeRadius) {
+                    const aoeHits = v.visibleEnemies.filter(e =>
+                        e.id !== target.id &&
+                        Math.abs(e.x - target.x) <= spell.aoeRadius &&
+                        Math.abs(e.y - target.y) <= spell.aoeRadius
+                    ).length;
+                    s += aoeHits * estDmg * (spell.aoeDmgPct || 0.5) * 0.6;
+                }
+            }
+
+            if (spell.drainPct) s += estDmg * spell.drainPct * 0.5;
+
+            if (elevDelta >= 4) s *= 1.2;
+            if (elevDelta >= 8) s *= 1.3;
+
+            return s;
+        }
+
+        if (kind === 'leapStrike') {
+            if (!target) return 0;
+            const dist = Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y);
+            if (dist > (_effRange(unit, spell) || 2)) return 0;
+
+            const casterZ = typeof g.getUnitStandingHeight === 'function' ? g.getUnitStandingHeight(unit) : 0;
+            const targetZ = typeof g.getUnitStandingHeight === 'function' ? g.getUnitStandingHeight(target) : 0;
+            if (casterZ <= targetZ) return 0;
+
+            const elevDelta = casterZ - targetZ;
+            const perLevel = spell.dmgPerLevel || 20;
+            const estDmg = (spell.dmg || 80) + (elevDelta * perLevel);
+
+            let s = estDmg;
+            for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
+            s *= getTypeMultiplier(unit, target, spell.spellType || null);
+            s += getTargetPriority(target, unit, v) * 0.4;
+            if (target.hp <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
+
+            if (spell.aoeRadius) {
+                const aoeHits = v.visibleEnemies.filter(e =>
+                    e.id !== target.id &&
+                    Math.abs(e.x - target.x) <= spell.aoeRadius &&
+                    Math.abs(e.y - target.y) <= spell.aoeRadius
+                ).length;
+                s += aoeHits * estDmg * (spell.aoeDmgPct || 0.4) * 0.6;
+            }
+
+            if (elevDelta >= 3) s *= 1.2;
+            if (elevDelta >= 6) s *= 1.3;
+
+            return s;
+        }
+
+        return 5;
+    }
+
+    function scoreStatusEffect(eff, target, v) {
+        const g = G();
+        const id = eff.id;
+        const dur = eff.duration || 1;
+
+        if (id === 'stun') {
+            const hasActed = (target.ap || 0) === 0;
+            return hasActed ? 6 : 20 + dur * 8;
+        }
+
+        if (id === 'stagger') {
+            const hasActed = (target.ap || 0) === 0;
+            return hasActed ? 3 : 12 + dur * 4;
+        }
+
+        if (id === 'silence') {
+            const isCaster = ['Black Mage', 'White Mage', 'Psychic', 'Harbinger', 'Harvester'].includes(target.cls);
+            return isCaster ? 18 + dur * 4 : 6;
+        }
+
+        if (id === 'slow') return 8 + dur * 3;
+
+        if (id === 'burn') return 8 + dur * 3;
+
+        if (id === 'poison') return 6 + dur * 2;
+
+        if (id === 'marked') return 10;
+
+        if (id === 'glare') return 8;
+
+        if (id === 'jammed') return 6;
+
+        return 4;
+    }
+
+    function scoreTeleport(unit, spell, target, v) {
+        const g = G();
+        if (unit.cls !== 'Psychic') return 0;
+        if (!v.visibleEnemies.length && !v.allies.length) return 0;
+
+        let bestScore = 0;
+
+        if (v.ownTower && v.ownTower.hp > 0) {
+            for (const e of v.visibleEnemies) {
+                const d = Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y);
+                if (d <= 3) bestScore = Math.max(bestScore, 22 + (3 - d) * 5);
+            }
+        }
+
+        if (unit.hp < unit.maxHp * 0.3 && v.closestEnemyDist <= 2) {
+            bestScore = Math.max(bestScore, 20);
+        }
+
+        for (const hg of v.visibleHourglasses) {
+            for (const a of v.allies) {
+                const d = Math.abs(a.x - hg.x) + Math.abs(a.y - hg.y);
+                if (d > 1 && d <= _effRange(unit, spell)) bestScore = Math.max(bestScore, 28);
+            }
+        }
+
+        if (v.enemyTower && v.enemyTower.hp > 0) {
+            for (const a of v.allies) {
+                const curDist = Math.abs(a.x - v.enemyTower.x) + Math.abs(a.y - v.enemyTower.y);
+                if (curDist > 3 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell)) {
+                    let s = 20;
+                    if (v.winState.phase === 'tower_push') s += 15;
+                    if (v.winState.enemyDeadCount >= 1) s += 10;
+                    bestScore = Math.max(bestScore, s);
+                }
+            }
+        }
+
+        for (const e of v.visibleEnemies) {
+            const eDist = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+            if (eDist > _effRange(unit, spell)) continue;
+            const nearbyAlliesOfTarget = v.visibleEnemies.filter(e2 =>
+                e2.id !== e.id && Math.abs(e2.x - e.x) + Math.abs(e2.y - e.y) <= 2
+            ).length;
+            if (nearbyAlliesOfTarget >= 2) {
+                bestScore = Math.max(bestScore, 18 + nearbyAlliesOfTarget * 3);
+            }
+        }
+
+        return bestScore;
+    }
+
+    function scoreSpellsOnTower(unit, v, out) {
+        const g = G();
+        const tower = v.enemyTower;
+        if (!tower || tower.hp <= 0) return;
+
+        const tDist = Math.abs(unit.x - tower.x) + Math.abs(unit.y - tower.y);
+        const silenced = g.unitHasStatus(unit, 'silence');
+        if (silenced) return;
+
+        const _allSpells = (unit.spells || []);
+        for (const spell of _allSpells) {
+            if (!spell) continue;
+            if (!['damage', 'multiHit', 'ricochet', 'line', 'linePush'].includes(spell.kind)) continue;
+            if (tDist < 1 || tDist > _effRange(unit, spell)) continue;
+            if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y)) continue;
+            const apCost = g.getSpellApCost(spell);
+            if ((unit.ap || 0) < apCost || !g.canAffordSpell(unit, spell) || unit.mp < spell.cost) continue;
+
+            let score = (spell.dmg || 0) + 200;
+            if (spell.hitDamages) score = spell.hitDamages.reduce((a, b) => a + b, 0) + 200;
+
+            if (tower.hp <= (spell.dmg || 0) * 2) score += 480;
+            else if (tower.hp <= tower.maxHp * 0.5) score += 200;
+
+            const nearEnemies = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
+            );
+            if (nearEnemies.length === 0) score += 360;
+
+            const ws = v.winState;
+            if (ws.enemyDeadCount >= 1) score += 200 + ws.enemyDeadCount * 80;
+            if (ws.phase === 'tower_push') score += 320;
+            if (ws.phase === 'numbers_advantage') score += 160;
+            score += ws.roundUrgency * 80;
+
+            if (unit.cls === 'White Mage') score *= 0.4;
+
+            score = Math.max(score, 200);
+            out.push({ type: 'spell_tower', spell, towerX: tower.x, towerY: tower.y, score, apCost });
+        }
+    }
+
+    function scoreCombos(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.COMBO_AP_COST_INITIATOR) return;
+
+        const partners = g.getComboPartners(unit);
+        for (const partner of partners) {
+            if (_failedCombos.has(partner.id)) continue;
+            const combo = g.getComboForUnits(unit, partner);
+            if (!combo) continue;
+
+            const synergy = g.getComboTypeSynergy(unit, partner);
+            const isOff = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+
+            let comboTarget = null;
+            if (isOff) {
+                const cr = combo.range || 3;
+                const targets = v.visibleEnemies.filter(e => {
+                    const d = g.combatDist ? g.combatDist(unit.x, unit.y, unit.z ?? 0, e.x, e.y, e.z ?? 0) : (Math.abs(unit.x - e.x) + Math.abs(unit.y - e.y));
+                    return d >= 1 && d <= cr && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                });
+
+                targets.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+                comboTarget = targets[0] || null;
+                if (!comboTarget) continue;
+            }
+
+            let score = 0;
+            if (combo.hitDamages) score = Math.round(combo.hitDamages.reduce((a, b) => a + b, 0) * synergy.mult);
+            else score = Math.round(((combo.dmg || 0) + (combo.heal || 0) * 0.7) * synergy.mult);
+            if (combo.statusEffects?.length) score += g.getAIWeight('statusEffectBonus_v1');
+            if (synergy.mult > 1) score += g.getAIWeight('comboSynergyBonus_v1');
+            if (comboTarget && comboTarget.hp <= (combo.dmg || 0) + 5) score += g.getAIWeight('comboKillBonus_v1');
+
+            if (comboTarget) score *= getTypeMultiplier(unit, comboTarget);
+
+            out.push({ type: 'combo', partner, combo, target: comboTarget, score });
+        }
+    }
+
+    function scoreDetonate(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.AP_COST_ACTION) return;
+        const bombs = (g.state.bombs || []).filter(b => b.ownerUnitId === unit.id);
+        if (bombs.length === 0) return;
+
+        const hitCount = bombs.reduce((total, b) =>
+            total + v.visibleEnemies.filter(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y) <= (b.radius || 1)).length
+        , 0);
+        if (hitCount > 0) {
+            out.push({ type: 'detonate', score: 144 * hitCount });
+        }
+    }
+
+    function scoreMoves(unit, v, out) {
+        const g = G();
+        if (!g.canUnitMove(unit)) return;
+
+        const moveTiles = g.getMoveTiles(unit);
+        if (moveTiles.length === 0) return;
+
+        if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && !_skipAttack) {
+            const moveAttackCandidates = scoreMoveToAttack(unit, moveTiles, v);
+            if (moveAttackCandidates.length > 0) {
+                moveAttackCandidates.sort((a, b) => b.score - a.score);
+                const best = moveAttackCandidates[0];
+                if (best.score > 0) {
+                    out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: best.score });
+
+                }
+            }
+        }
+
+        const goal = pickMoveGoal(unit, v);
+        if (!goal) return;
+
+        const bestTile = pickBestMoveTile(unit, moveTiles, goal, v);
+        if (!bestTile) return;
+
+        out.push({ type: 'move', x: bestTile.x, y: bestTile.y, z: bestTile.z, score: goal.score });
+    }
+
+    function scoreMoveToAttack(unit, moveTiles, v) {
+        const g = G();
+        const results = [];
+        const effRange = g.getEffectiveRange(unit);
+        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+
+        for (const tile of moveTiles) {
+            let tileScore = 0;
+
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(tile.x, tile.y, tile.z ?? 0, e.x, e.y, e.z ?? 0)
+                    : (Math.abs(tile.x - e.x) + Math.abs(tile.y - e.y));
+                if (d < 1 || d > effRange) continue;
+                if (g.isRangeBlockedByTerrain(tile.x, tile.y, e.x, e.y)) continue;
+
+                let attackVal = estDmg * getTypeMultiplier(unit, e);
+                attackVal += getTargetPriority(e, unit, v) * 0.5;
+                if (e.hp <= estDmg + 32) attackVal += 240;
+
+                if (typeof g.getUnitStandingHeight === 'function' && typeof g.getHeightAt === 'function') {
+                    const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
+                    const eH = g.getUnitStandingHeight(e);
+                    if (tileH > eH) {
+
+                        attackVal *= 1 + 0.1 * (tileH - eH);
+                    } else if (eH > tileH) {
+
+                        attackVal -= 5 * (eH - tileH);
+                    }
+                }
+
+                tileScore = Math.max(tileScore, attackVal);
+            }
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const tDist = Math.abs(tile.x - v.enemyTower.x) + Math.abs(tile.y - v.enemyTower.y);
+                if (tDist >= 1 && tDist <= effRange &&
+                    !g.isRangeBlockedByTerrain(tile.x, tile.y, v.enemyTower.x, v.enemyTower.y)) {
+                    let towerVal = estDmg + 280;
+                    if (v.winState.phase === 'tower_push') towerVal += 360;
+                    else if (v.winState.phase === 'numbers_advantage') towerVal += 200;
+                    if (v.winState.enemyDeadCount >= 1) towerVal += 240;
+
+                    const nearTowerEnemies = v.visibleEnemies.filter(e =>
+                        Math.abs(e.x - v.enemyTower.x) + Math.abs(e.y - v.enemyTower.y) <= 5
+                    );
+                    if (nearTowerEnemies.length === 0) towerVal += 280;
+                    towerVal += v.winState.roundUrgency * 10;
+                    tileScore = Math.max(tileScore, towerVal);
+                }
+            }
+
+            if (tileScore <= 0) continue;
+
+            const threat = getThreatAt(v.threatMap, tile.x, tile.y);
+            tileScore -= threat.count * 24;
+
+            if (unit.hp < unit.maxHp * 0.4) tileScore -= threat.count * 40;
+
+            if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) tileScore += g.getAIWeight('antiOscillationPen_v1');
+
+            if (tileScore > 0) {
+                results.push({ x: tile.x, y: tile.y, z: tile.z, score: tileScore });
+            }
+        }
+
+        return results;
+    }
+
+    function scoreKiteRetreat(unit, v, out) {
+        const g = G();
+        if (!v.tactical.shouldKite) return;
+        if (!g.canUnitMove(unit)) return;
+
+        if (unit._aiLoopCount <= 1) return;
+
+        const moveTiles = g.getMoveTiles(unit);
+        if (moveTiles.length === 0) return;
+
+        let bestTile = null, bestScore = -Infinity;
+        for (const tile of moveTiles) {
+            let score = 0;
+
+            for (const e of v.visibleEnemies) {
+                if (g.getEffectiveRange(e) > 1) continue;
+                const newDist = Math.abs(tile.x - e.x) + Math.abs(tile.y - e.y);
+                const curDist = Math.abs(unit.x - e.x) + Math.abs(unit.y - e.y);
+                score += (newDist - curDist) * g.getAIWeight('safeEnemyDistWeight_v1');
+            }
+
+            const threat = getThreatAt(v.threatMap, tile.x, tile.y);
+            score -= threat.count * 4;
+
+            for (const a of v.allies) {
+                if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 4) score += g.getAIWeight('safeAllyProximity_v1');
+            }
+            if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += g.getAIWeight('antiOscillationPen_v1');
+
+            if (score > bestScore) { bestScore = score; bestTile = tile; }
+        }
+
+        if (bestTile && bestScore > 3) {
+            out.push({ type: 'move', x: bestTile.x, y: bestTile.y, z: bestTile.z, score: 22 });
+        }
+    }
+
+    function pickMoveGoal(unit, v) {
+        const g = G();
+        const ws = v.winState;
+
+        const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+        const modeId = mpMode ? mpMode.id : 'arena';
+
+        if (modeId === 'ctf' && g.state.flags) {
+            const enemyPlayer = unit.player === 1 ? 2 : 1;
+            const enemyFlag = g.state.flags[enemyPlayer];
+            const ownFlag = g.state.flags[unit.player];
+
+            if (enemyFlag && enemyFlag.carriedBy === unit.id) {
+                const sanct = g.state.sanctuaries?.[unit.player];
+                if (sanct) {
+
+                    const fx = unit.player === 1 ? Math.min(sanct.churchX + 1, g.bw() - 1) : Math.max(sanct.churchX - 1, 0);
+                    return { x: fx, y: sanct.churchY, score: 80, reason: 'ctf_carry_home' };
+                }
+            }
+
+            if (ownFlag && ownFlag.carriedBy) {
+                const carrier = g.state.units.find(u => u.id === ownFlag.carriedBy && !u.dead);
+                if (carrier) {
+                    const d = Math.abs(unit.x - carrier.x) + Math.abs(unit.y - carrier.y);
+                    if (d <= 12) {
+                        return { x: carrier.x, y: carrier.y, score: 65, reason: 'ctf_intercept_carrier' };
+                    }
+                }
+            }
+
+            if (ownFlag && !ownFlag.atBase && !ownFlag.carriedBy) {
+                const d = Math.abs(unit.x - ownFlag.x) + Math.abs(unit.y - ownFlag.y);
+                if (d <= 10) {
+                    return { x: ownFlag.x, y: ownFlag.y, score: 55, reason: 'ctf_return_flag' };
+                }
+            }
+
+            if (enemyFlag && !enemyFlag.carriedBy) {
+                return { x: enemyFlag.x, y: enemyFlag.y, score: 45, reason: 'ctf_grab_flag' };
+            }
+        }
+
+        if (modeId === 'hotspot' && g.state.roamingNexus) {
+            const rn = g.state.roamingNexus;
+            const cx = rn.zoneX + Math.floor(rn.zoneSize / 2);
+            const cy = rn.zoneY + Math.floor(rn.zoneSize / 2);
+            const d = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
+            let s = 40;
+            if (rn.owner !== unit.player) s += 15;
+            if (d <= 4) s += 10;
+
+            const alliesNearNexus = g._isFFA() ? 0 : g.state.units.filter(u =>
+                u.player === unit.player && !u.dead && u.id !== unit.id &&
+                Math.abs(u.x - cx) + Math.abs(u.y - cy) <= 4
+            ).length;
+            if (alliesNearNexus >= 2) s -= 20;
+            if (s > 0) return { x: cx, y: cy, score: s, reason: 'hotspot_nexus' };
+        }
+
+        if (modeId === 'domination' && g.state.nexusPoints && v.visibleEnemies.length === 0) {
+            let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
+            for (const key of ['earth', 'below', 'above']) {
+                const nex = g.state.nexusPoints[key];
+                if (!nex || nex.owner === unit.player || !nex.zoneSize) continue;
+                const ncx = nex.zoneX + Math.floor(nex.zoneSize / 2);
+                const ncy = nex.zoneY + Math.floor(nex.zoneSize / 2);
+                const d = Math.abs(unit.x - ncx) + Math.abs(unit.y - ncy);
+                if (d < bestNexDist) { bestNexDist = d; bestNex = nex; bestNexCenter = { x: ncx, y: ncy }; }
+            }
+            if (bestNex) {
+                let s = 45;
+                const ownedCount = ['earth', 'below', 'above'].filter(f =>
+                    g.state.nexusPoints[f]?.owner === unit.player
+                ).length;
+                if (ownedCount === 0) s += 15;
+                return { x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'domination_nexus' };
+            }
+        }
+
+        if (modeId === 'tdm' || modeId === 'ffa') {
+
+            if (v.closestEnemy) {
+                let bestTarget = v.closestEnemy;
+                let bestPriority = getTargetPriority(v.closestEnemy, unit, v);
+                for (const e of v.visibleEnemies) {
+                    const p = getTargetPriority(e, unit, v);
+                    if (p > bestPriority + 5) { bestPriority = p; bestTarget = e; }
+                }
+                return { x: bestTarget.x, y: bestTarget.y, score: 30, reason: 'tdm_hunt' };
+            }
+
+            const cx = Math.floor(g.bw() / 2);
+            const cy = Math.floor(g.bh() / 2);
+            return { x: cx, y: cy, score: 15, reason: 'tdm_advance' };
+        }
+
+        const round = g.state.round || 0;
+        if (round <= 3 && v.visibleEnemies.length === 0 && v.visibleHourglasses.length === 0) {
+            const exploreBonus = g.getAIWeight('earlyExploreBonus_v1');
+            if (exploreBonus > 0 && g.canUnitMove(unit)) {
+                const moveTiles = g.getMoveTiles(unit);
+                if (moveTiles.length > 0) {
+
+                    const cx = Math.floor(g.bw() / 2);
+                    const cy = Math.floor(g.bh() / 2);
+                    let bestTile = null, bestVal = -Infinity;
+                    for (const t of moveTiles) {
+                        let val = 0;
+
+                        const curCenterDist = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
+                        const newCenterDist = Math.abs(t.x - cx) + Math.abs(t.y - cy);
+                        val += (curCenterDist - newCenterDist) * 2;
+
+                        for (const a of v.allies) {
+                            val += Math.min(3, Math.abs(t.x - a.x) + Math.abs(t.y - a.y));
+                        }
+
+                        if ((unit._aiRecentTiles || []).includes(g.posKey(t.x, t.y))) val -= 6;
+                        if (val > bestVal) { bestVal = val; bestTile = t; }
+                    }
+                    if (bestTile) {
+                        return { x: bestTile.x, y: bestTile.y, score: exploreBonus + Math.min(bestVal, 10), reason: 'early_explore' };
+                    }
+                }
+            }
+        }
+
+        if (v.visibleHourglasses.length > 0) {
+            const moveTiles = g.getMoveTiles(unit);
+            const reachable = v.visibleHourglasses.filter(h =>
+                moveTiles.some(t => t.x === h.x && t.y === h.y)
+            );
+            if (reachable.length > 0) {
+                reachable.sort((a, b) =>
+                    (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) -
+                    (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y))
+                );
+                let s = 50;
+                if (ws.phase === 'hg_losing') s += 20;
+
+                const currentHG = unit.hourglasses || 0;
+                s += currentHG * 5;
+                return { x: reachable[0].x, y: reachable[0].y, score: s, reason: 'grab_hg' };
+            }
+        }
+
+        if (v.ownTower && v.ownTower.hp > 0 && v.visibleEnemies.length > 0) {
+            const threats = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 5
+            );
+            if (threats.length > 0) {
+                const myDist = Math.abs(unit.x - v.ownTower.x) + Math.abs(unit.y - v.ownTower.y);
+                const closestThreat = Math.min(...threats.map(e => Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y)));
+                if (myDist > closestThreat + 1 && myDist > 3) {
+                    let s = g.getAIWeight('towerDefendBonus_v1');
+                    if (ws.phase === 'tower_defend') s += 20;
+                    return { x: v.ownTower.x, y: v.ownTower.y, score: s, reason: 'defend_tower' };
+                }
+            }
+        }
+
+        if (g.state.nexusPoints && v.visibleEnemies.length === 0) {
+            let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
+            for (const key of ['earth', 'below', 'above']) {
+                const nex = g.state.nexusPoints[key];
+                if (!nex || nex.owner === unit.player || !nex.zoneSize) continue;
+                const cx = nex.zoneX + Math.floor(nex.zoneSize / 2);
+                const cy = nex.zoneY + Math.floor(nex.zoneSize / 2);
+                const d = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
+                if (d < bestNexDist) { bestNexDist = d; bestNex = nex; bestNexCenter = { x: cx, y: cy }; }
+            }
+            if (bestNex && bestNexDist <= 10) {
+                let s = Math.floor(g.getAIWeight('nexusCapBonus_v1') * 0.7);
+                const ownedCount = ['earth', 'below', 'above'].filter(f =>
+                    g.state.nexusPoints[f]?.owner === unit.player
+                ).length;
+                s += ownedCount * 5;
+                if (ownedCount === 0) s += 8;
+                if (v.enemyTower && v.enemyTower.hp < v.enemyTower.maxHp * 0.3) s -= 15;
+                if (s > 0) return { x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'approach_nexus' };
+            }
+        }
+
+        if (v.enemyTower && v.enemyTower.hp > 0) {
+            const towerDist = Math.abs(unit.x - v.enemyTower.x) + Math.abs(unit.y - v.enemyTower.y);
+
+            const towerDefenders = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - v.enemyTower.x) + Math.abs(e.y - v.enemyTower.y) <= 4
+            );
+
+            const shouldPush = (
+                ws.phase === 'tower_push' ||
+                ws.phase === 'numbers_advantage' ||
+                ws.enemyDeadCount >= 1 ||
+                towerDefenders.length === 0 ||
+                ws.roundUrgency >= 2 ||
+                v.enemyTower.hp < v.enemyTower.maxHp * 0.7
+            );
+
+            if (shouldPush) {
+                let s = 28;
+
+                if (ws.enemyDeadCount >= 2) s += 35;
+                else if (ws.enemyDeadCount >= 1) s += 20;
+
+                if (ws.enemyMinRespawn >= 6) s += 35;
+                else if (ws.enemyMinRespawn >= 4) s += 20;
+
+                if (towerDefenders.length === 0) s += 25;
+
+                if (v.enemyTower.hp < v.enemyTower.maxHp * 0.5) s += 20;
+                if (v.enemyTower.hp < v.enemyTower.maxHp * 0.3) s += 25;
+
+                if (ws.phase === 'tower_push') s += 30;
+                if (ws.phase === 'numbers_advantage') s += 15;
+
+                s += ws.roundUrgency * 12;
+
+                if (towerDist <= 5) s += 10;
+
+                if (unit.cls === 'White Mage') s *= 0.6;
+
+                return { x: v.enemyTower.x, y: v.enemyTower.y, score: s, reason: 'siege_tower' };
+            }
+
+            if (towerDist <= 8 && v.closestEnemyDist > 3) {
+                return { x: v.enemyTower.x, y: v.enemyTower.y, score: 22, reason: 'siege_tower_opportunistic' };
+            }
+        }
+
+        if (ws.phase === 'even' && ws.roundUrgency === 0 && v.visibleEnemies.length === 0) {
+            const mapCenterX = Math.floor((g.state.mapCols || 15) / 2);
+            const mapCenterY = Math.floor((g.state.mapRows || 8) / 2);
+            const distToMid = Math.abs(unit.x - mapCenterX) + Math.abs(unit.y - mapCenterY);
+            if (distToMid > 3) {
+                return { x: mapCenterX, y: mapCenterY, score: 18, reason: 'advance_to_mid' };
+            }
+        }
+
+        if (!v.tactical.shouldEngage && v.closestEnemyDist <= 5 && v.closestEnemyDist < Infinity) {
+            const enemiesNearOwnTower = v.ownTower && v.ownTower.hp > 0 &&
+                v.visibleEnemies.some(e =>
+                    Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 5
+                );
+            if (!enemiesNearOwnTower) {
+                return { retreat: true, score: 20, reason: 'retreat' };
+            }
+
+        }
+
+        if (v.closestEnemy && v.tactical.shouldEngage) {
+            let bestTarget = v.closestEnemy;
+            let bestPriority = getTargetPriority(v.closestEnemy, unit, v);
+            for (const e of v.visibleEnemies) {
+                const p = getTargetPriority(e, unit, v);
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (p > bestPriority + 10 && d < 12) {
+                    bestPriority = p;
+                    bestTarget = e;
+                }
+            }
+            let s = 18;
+
+            if (v.enemyTower && v.enemyTower.hp > 0) {
+                const eDist = Math.abs(bestTarget.x - v.enemyTower.x) + Math.abs(bestTarget.y - v.enemyTower.y);
+                if (eDist <= 4) s += 12;
+            }
+            return { x: bestTarget.x, y: bestTarget.y, score: s, reason: 'approach_enemy' };
+        }
+
+        if (v.visibleHourglasses.length > 0) {
+            const nearest = v.visibleHourglasses.sort((a, b) =>
+                (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) -
+                (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y))
+            )[0];
+            const hgDist = Math.abs(nearest.x - unit.x) + Math.abs(nearest.y - unit.y);
+            let s = 25 + g.getAIWeight('hgSeekPriority_v1');
+            if (hgDist <= 4) s += 10;
+            if (ws.phase === 'hg_losing') s += 15;
+            return { x: nearest.x, y: nearest.y, score: s, reason: 'approach_hg' };
+        }
+
+        if (v.enemyTower && v.enemyTower.hp > 0) {
+            return { x: v.enemyTower.x, y: v.enemyTower.y, score: 14, reason: 'default_siege' };
+        }
+
+        const cx = Math.floor(g.bw() / 2);
+        const cy = Math.floor(g.bh() / 2);
+        return { x: cx, y: cy, score: 8, reason: 'explore' };
+    }
+
+    let _pathCache = {};
+    let _pathCacheGen = -1;
+
+    function findWaypoint(unit, goalX, goalY) {
+        const g = G();
+        const gen = g.state.round || 0;
+        if (gen !== _pathCacheGen) { _pathCache = {}; _pathCacheGen = gen; }
+
+        const cacheKey = `${unit.id}:${unit.x},${unit.y}->${goalX},${goalY}`;
+        if (_pathCache[cacheKey] !== undefined) return _pathCache[cacheKey];
+
+        if (!hasObstacleInCorridor(unit, goalX, goalY)) {
+            _pathCache[cacheKey] = null;
+            return null;
+        }
+
+        const W = g.bw(), H = g.bh();
+
+        const goalIsPassable = g.isInside(goalX, goalY) && g.unitCanTraverse(unit, goalX, goalY);
+
+        let goalSet;
+        if (goalIsPassable) {
+            goalSet = new Set([goalX + goalY * W]);
+        } else {
+            goalSet = new Set();
+            const range = g.getEffectiveRange(unit);
+            for (let dy = -range; dy <= range; dy++) {
+                for (let dx = -range; dx <= range; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) < 1 || Math.abs(dx) + Math.abs(dy) > range) continue;
+                    const ax = goalX + dx, ay = goalY + dy;
+                    if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
+                    if (g.unitCanTraverse(unit, ax, ay)) {
+                        goalSet.add(ax + ay * W);
+                    }
+                }
+            }
+            if (goalSet.size === 0) {
+
+                _pathCache[cacheKey] = false;
+                return false;
+            }
+        }
+
+        const gScore = new Float32Array(W * H).fill(Infinity);
+        const from = new Int32Array(W * H).fill(-1);
+        const startIdx = unit.x + unit.y * W;
+        gScore[startIdx] = 0;
+
+        const _hasHeight = typeof g.getHeightAt === 'function';
+        const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
+        const _maxClimb = g.MAX_CLIMB_HEIGHT ?? 1;
+        const _jumpH = g.JUMP_HEIGHT ?? 2;
+
+        const open = [{ x: unit.x, y: unit.y, f: Math.abs(unit.x - goalX) + Math.abs(unit.y - goalY) }];
+        const DIRS = [[1,0],[0,1],[-1,0],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+        while (open.length) {
+
+            let minI = 0;
+            for (let i = 1; i < open.length; i++) {
+                if (open[i].f < open[minI].f) minI = i;
+            }
+            const cur = open[minI];
+            open[minI] = open[open.length - 1];
+            open.pop();
+
+            const ci = cur.x + cur.y * W;
+
+            if (goalSet.has(ci)) {
+
+                let idx = ci;
+                let prev = from[idx];
+                while (prev !== -1 && prev !== startIdx) {
+                    idx = prev;
+                    prev = from[idx];
+                }
+                if (prev === startIdx) {
+                    const wp = { x: idx % W, y: Math.floor(idx / W) };
+                    _pathCache[cacheKey] = wp;
+                    return wp;
+                }
+                _pathCache[cacheKey] = null;
+                return null;
+            }
+
+            for (const [dx, dy] of DIRS) {
+                const nx = cur.x + dx, ny = cur.y + dy;
+                if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+
+                if (!g.unitCanTraverse(unit, nx, ny)) continue;
+
+                if (g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
+
+                if (dx !== 0 && dy !== 0) {
+                    const canX = g.isInside(cur.x + dx, cur.y) && g.unitCanTraverse(unit, cur.x + dx, cur.y);
+                    const canY = g.isInside(cur.x, cur.y + dy) && g.unitCanTraverse(unit, cur.x, cur.y + dy);
+                    if (!canX && !canY) continue;
+                }
+
+                if (_hasHeight && !_canFly) {
+                    const curH = g.getHeightAt(cur.x, cur.y);
+                    const nxH = g.getHeightAt(nx, ny);
+                    const hDiff = Math.abs(curH - nxH);
+                    if (hDiff > _jumpH) {
+
+                        const _aiCurObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cur.x, cur.y) : null;
+                        const _aiNxtObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(nx, ny) : null;
+                        const _aiCurRw = _aiCurObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiCurObj]?.roofWalkable;
+                        const _aiNxtRw = _aiNxtObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiNxtObj]?.roofWalkable;
+                        if (!_aiCurRw && !_aiNxtRw) continue;
+                    }
+                }
+                const ni = nx + ny * W;
+
+                let moveCost = (dx !== 0 && dy !== 0) ? 1.41 : 1;
+                if (_hasHeight && !_canFly) {
+                    const curH = g.getHeightAt(cur.x, cur.y);
+                    const nxH = g.getHeightAt(nx, ny);
+                    const hDiff = Math.abs(curH - nxH);
+                    if (hDiff > _maxClimb) {
+
+                        moveCost += 2;
+                    } else if (hDiff > 0) {
+                        moveCost += hDiff * 0.5;
+                    }
+                }
+                const tentG = gScore[ci] + moveCost;
+                if (tentG >= gScore[ni]) continue;
+                gScore[ni] = tentG;
+                from[ni] = ci;
+                const h = Math.abs(nx - goalX) + Math.abs(ny - goalY);
+                open.push({ x: nx, y: ny, f: tentG + h });
+            }
+        }
+
+        _pathCache[cacheKey] = false;
+        return false;
+    }
+
+    function hasObstacleInCorridor(unit, goalX, goalY) {
+        const g = G();
+        const minX = Math.min(unit.x, goalX);
+        const maxX = Math.max(unit.x, goalX);
+        const minY = Math.min(unit.y, goalY);
+        const maxY = Math.max(unit.y, goalY);
+        const _hasHeight = typeof g.getHeightAt === 'function';
+        const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
+        const _jumpH = g.JUMP_HEIGHT ?? 2;
+
+        for (let y = Math.max(0, minY - 1); y <= Math.min(g.bh() - 1, maxY + 1); y++) {
+            for (let x = Math.max(0, minX - 1); x <= Math.min(g.bw() - 1, maxX + 1); x++) {
+
+                if (x === goalX && y === goalY) continue;
+                if (!g.unitCanTraverse(unit, x, y)) return true;
+
+                if (_hasHeight && !_canFly) {
+                    const h = g.getHeightAt(x, y);
+                    for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
+                        const ax = x + dx, ay = y + dy;
+                        if (ax < minX - 1 || ax > maxX + 1 || ay < minY - 1 || ay > maxY + 1) continue;
+                        if (!g.isInside(ax, ay)) continue;
+                        const ah = g.getHeightAt(ax, ay);
+                        if (Math.abs(h - ah) > _jumpH) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function pickBestMoveTile(unit, moveTiles, goal, v) {
+        const g = G();
+
+        if (goal.retreat) {
+            const enemies = v.visibleEnemies;
+            if (enemies.length === 0) return null;
+
+            let best = null, bestScore = -Infinity;
+            for (const tile of moveTiles) {
+                let score = 0;
+                for (const e of enemies) {
+                    const d = Math.abs(tile.x - e.x) + Math.abs(tile.y - e.y);
+                    const curD = Math.abs(unit.x - e.x) + Math.abs(unit.y - e.y);
+                    score += (d - curD) * 64;
+                    if (d <= g.getEffectiveRange(e)) score -= 120;
+                }
+                for (const a of v.allies) {
+                    if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 4) score += 48;
+                }
+
+                if (typeof g.getHeightAt === 'function') {
+                    const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
+                    score += Math.min(tileH, 4) * g.getAIWeight('moveRetreatHeight_v1');
+                }
+
+                const threat = getThreatAt(v.threatMap, tile.x, tile.y);
+                score -= threat.count * 24;
+                if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += g.getAIWeight('antiOscillationPen_v1');
+                if (score > bestScore) { bestScore = score; best = tile; }
+            }
+            return best;
+        }
+
+        const goalX = goal.x, goalY = goal.y;
+        if (goalX === undefined) return null;
+
+        let wpX = goalX, wpY = goalY;
+        const wp = findWaypoint(unit, goalX, goalY);
+        if (wp === false) {
+
+            wpX = Math.floor(g.bw() / 2);
+            wpY = Math.floor(g.bh() / 2);
+        } else if (wp) {
+            wpX = wp.x;
+            wpY = wp.y;
+        }
+
+        const curD = Math.abs(unit.x - wpX) + Math.abs(unit.y - wpY);
+        let best = null, bestScore = -Infinity;
+        const isRanged = (unit.range || 1) >= 2;
+        for (const tile of moveTiles) {
+            const d = Math.abs(tile.x - wpX) + Math.abs(tile.y - wpY);
+            let score = (curD - d) * 10;
+
+            const threat = getThreatAt(v.threatMap, tile.x, tile.y);
+            score -= threat.count * 2;
+
+            for (const a of v.allies) {
+                if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 3) score += 2;
+            }
+
+            if (typeof g.getHeightAt === 'function') {
+                const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
+                if (isRanged) {
+                    score += Math.min(tileH, 4) * g.getAIWeight('moveHighGroundRanged_v1');
+                } else {
+                    score += Math.min(tileH, 4) * g.getAIWeight('moveHighGroundMelee_v1');
+                }
+            }
+
+            if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += g.getAIWeight('antiOscillationPen_v1');
+
+            if (score > bestScore) { bestScore = score; best = tile; }
+        }
+        return best;
+    }
+
+    function scoreInspect(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.AP_COST_ACTION) return;
+
+        const unrevHG = (g.state.hourglasses || []).filter(h =>
+            h.carriedBy === null && !h.visibleTo[unit.player]
+        ).length;
+
+        const allTiles = g.getInspectTiles(unit);
+        if (allTiles.length === 0) return;
+
+        const unscanned = allTiles.filter(t =>
+            !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y))
+        );
+
+        const cx = Math.floor(g.bw() / 2), cy = Math.floor(g.bh() / 2);
+
+        const pool = unscanned.length > 0 ? unscanned : allTiles;
+        pool.sort((a, b) =>
+            (Math.abs(a.x - cx) + Math.abs(a.y - cy)) - (Math.abs(b.x - cx) + Math.abs(b.y - cy))
+        );
+
+        let s = 3;
+        if (unscanned.length > 0) s += 3;
+        s += unrevHG * 4;
+        if (v.winState.phase === 'hg_losing') s += 8;
+
+        const ws = v.winState;
+        if (ws.phase === 'tower_push' || ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2) {
+            s *= 0.3;
+        }
+
+        out.push({ type: 'inspect', x: pool[0].x, y: pool[0].y, score: s });
+    }
+
+    function scoreFlairWard(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < g.AP_COST_ACTION) return;
+
+        if (g.unitHasFlair(unit) && !unit._usedFlair) {
+            const unrev = (g.state.hourglasses || []).filter(h => h.carriedBy === null && !h.visibleTo[unit.player]).length;
+            if (unrev > 0) {
+                const visTileSet = v.visTiles;
+                const cx = Math.floor(g.bw() / 2), cy = Math.floor(g.bh() / 2);
+                let bestTile = null, bestScore = -1;
+                for (let y = 0; y < g.bh(); y++) {
+                    for (let x = 0; x < g.bw(); x++) {
+                        const d = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+                        if (d > 8 || d === 0) continue;
+                        if (visTileSet.has(g.posKey(x, y))) continue;
+                        const sc = 20 - Math.abs(x - cx) - Math.abs(y - cy);
+                        if (sc > bestScore) { bestScore = sc; bestTile = { x, y }; }
+                    }
+                }
+                if (bestTile) out.push({ type: 'flair', x: bestTile.x, y: bestTile.y, score: 8 });
+            }
+        }
+
+        if (g.unitHasWard(unit) && !unit._usedWard) {
+            if (!(g.state.wards || []).some(w => w.x === unit.x && w.y === unit.y)) {
+                out.push({ type: 'ward', x: unit.x, y: unit.y, score: 5 });
+            }
+        }
+    }
+
+    function scoreReshape(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+
+        if (g.canFly(unit)) {
+            scoreAltitude(unit, v, out);
+            return;
+        }
+
+        const cfg = g.TERRAIN_RESHAPE_CONFIG;
+        if (!cfg || ap < cfg.apCost) return;
+
+        const canRaise = g.canReshapeTile(unit, 'raise');
+        const canLower = g.canReshapeTile(unit, 'lower');
+        if (!canRaise.ok && !canLower.ok) return;
+
+        const myHeight = g.getUnitStandingHeight(unit);
+        const effRange = g.getEffectiveRange(unit);
+        const isRanged = effRange >= 2;
+
+        const wRangedRaise = g.getAIWeight('reshapeRangedRaise_v1');
+        const wPerEnemy = g.getAIWeight('reshapePerEnemy_v1');
+        const wDefensive = g.getAIWeight('reshapeDefensive_v1');
+
+        if (canRaise.ok) {
+            let raiseScore = 0;
+
+            if (isRanged && v.visibleEnemies.length > 0) {
+
+                let advantageGain = 0;
+                for (const e of v.visibleEnemies) {
+                    const eHeight = g.getUnitStandingHeight(e);
+                    const curAdv = myHeight - eHeight;
+                    if (curAdv < 3) advantageGain++;
+                }
+                if (advantageGain > 0) {
+                    raiseScore += wRangedRaise + advantageGain * wPerEnemy;
+                }
+
+                if ((unit.actionsThisTurn || 0) > 0) raiseScore *= 0.6;
+            }
+
+            if (!isRanged && v.closestEnemyDist <= 2) {
+                raiseScore = 1;
+            }
+
+            if (v.closestEnemyDist <= 3 && v.attackTargets.length === 0) {
+                raiseScore = Math.max(raiseScore, wDefensive);
+            }
+
+            const ws = v.winState;
+            if (ws.phase === 'tower_push' || ws.roundUrgency >= 2) {
+                raiseScore *= 0.2;
+            }
+
+            if (raiseScore > 0) {
+                out.push({ type: 'reshape', mode: 'raise', score: raiseScore });
+            }
+        }
+
+        if (canLower.ok) {
+            let lowerScore = 0;
+
+            if (!isRanged && v.visibleEnemies.length > 0) {
+
+                lowerScore = 0;
+            }
+
+            let elevatedRangedThreats = 0;
+            for (const e of v.visibleEnemies) {
+                const eHeight = g.getUnitStandingHeight(e);
+                const eRange = g.getEffectiveRange(e);
+                if (eRange >= 2 && eHeight > myHeight) elevatedRangedThreats++;
+            }
+            if (elevatedRangedThreats > 0) {
+                lowerScore = Math.max(lowerScore, 3 + elevatedRangedThreats * 2);
+            }
+
+            if (lowerScore > 0) {
+                out.push({ type: 'reshape', mode: 'lower', score: lowerScore });
+            }
+        }
+    }
+
+    function scoreAltitude(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+        const cfg = g.FLYING_ALTITUDE_CONFIG;
+        if (!cfg || ap < cfg.apCost) return;
+
+        const canAscend = g.canChangeAltitude(unit, 'ascend');
+        const canDescend = g.canChangeAltitude(unit, 'descend');
+        if (!canAscend.ok && !canDescend.ok) return;
+
+        const myZ = unit.z ?? 0;
+        const groundZ = g.getHeightAt(unit.x, unit.y);
+        const altAboveGround = myZ - groundZ;
+        const effRange = g.getEffectiveRange(unit);
+        const isRanged = effRange >= 2;
+        const isAirborne = typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit);
+
+        if (canAscend.ok) {
+            let ascendScore = 0;
+
+            if (isRanged && v.visibleEnemies.length > 0) {
+                let advantageGain = 0;
+                for (const e of v.visibleEnemies) {
+                    const eZ = g.getUnitStandingHeight(e);
+                    if (myZ - eZ < 3) advantageGain++;
+                }
+                if (advantageGain > 0) {
+                    ascendScore += g.getAIWeight('flyRangedHeightBonus_v1') + advantageGain * 3;
+                }
+            }
+
+            if (v.closestEnemyDist <= 2 && altAboveGround < 3) {
+                ascendScore = Math.max(ascendScore, g.getAIWeight('flyEscapeMeleeBonus_v1'));
+            }
+
+            if (!isAirborne && isRanged && v.visibleEnemies.length > 0 && v.closestEnemyDist <= 4) {
+                ascendScore = Math.max(ascendScore, g.getAIWeight('flyEscapeMeleeBonus_v1') * 0.7);
+            }
+
+            const ws = v.winState;
+            if (ws.phase === 'tower_push' || ws.roundUrgency >= 2) {
+                ascendScore *= 0.2;
+            }
+
+            if (ascendScore > 0) {
+                out.push({ type: 'altitude', mode: 'ascend', score: ascendScore });
+            }
+        }
+
+        if (canDescend.ok) {
+            let descendScore = 0;
+
+            if (!isRanged && v.closestEnemyDist <= 3 && isAirborne) {
+
+                descendScore = v.closestEnemyDist <= 1 ? 18 : (v.closestEnemyDist <= 2 ? 14 : 10);
+            }
+
+            if (isAirborne && (unit.hp < unit.maxHp * 0.4) && (unit.items?.healPotion > 0)) {
+                descendScore = Math.max(descendScore, 12);
+            }
+
+            if (v.visibleEnemies.length === 0 && altAboveGround > 3) {
+                descendScore = Math.max(descendScore, 3);
+            }
+
+            if (isAirborne && (unit.gold || 0) >= 20) {
+                const sides = g.state.sides;
+                if (sides) {
+                    const s = sides[unit.player];
+                    if (s && unit.x === s.shopX && unit.y === s.shopY) {
+                        descendScore = Math.max(descendScore, 10);
+                    }
+                }
+            }
+
+            if (descendScore > 0) {
+                out.push({ type: 'altitude', mode: 'land', score: descendScore });
+            }
+        }
+    }
+
+    function scoreGuard(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+        if (ap < 1) return;
+
+        let score = 0;
+
+        if (v.closestEnemyDist <= 3 && v.closestEnemyDist < Infinity && v.attackTargets.length === 0) {
+            score = 12;
+        }
+
+        if (unit.cls === 'Warrior') score += 10;
+        if ((unit.def || 0) >= 10) score += 5;
+
+        if (ap === 1 && v.closestEnemyDist <= 3 && v.closestEnemyDist < Infinity) {
+            score += 15;
+        }
+
+        if ((unit.hourglasses || 0) > 0 && v.closestEnemyDist <= 4) {
+            score += 12;
+        }
+
+        if (v.ownTower && v.ownTower.hp > 0) {
+            const dToTower = Math.abs(unit.x - v.ownTower.x) + Math.abs(unit.y - v.ownTower.y);
+            if (dToTower <= 2 && v.closestEnemyDist <= 4) score += 10;
+        }
+
+        if (v.closestEnemyDist > 5) score = Math.min(score, 3);
+
+        const ws = v.winState;
+        if (ws.phase === 'tower_push' || ws.phase === 'numbers_advantage' || ws.enemyDeadCount >= 1) {
+            score *= 0.3;
+        }
+        if (ws.roundUrgency >= 2) score *= 0.5;
+
+        if (score > 0) out.push({ type: 'guard', score });
+    }
+
+    function scoreNexusChannel(unit, v, out) {
+        const g = G();
+        if (_failedNexus) return;
+        if ((unit.ap || 0) < (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) return;
+        if (!g.state.nexusPoints) return;
+
+        const _isAirborne = typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit);
+        if (_isAirborne) {
+
+            const _checkNexusLand = (nex) => {
+                if (!nex || !nex.zoneSize || nex.owner === unit.player) return 0;
+                const inZone = unit.x >= nex.zoneX && unit.x < nex.zoneX + nex.zoneSize &&
+                               unit.y >= nex.zoneY && unit.y < nex.zoneY + nex.zoneSize;
+                if (!inZone) return 0;
+
+                const channelCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
+                const landCost = g.FLYING_ALTITUDE_CONFIG?.apCost || 1;
+                if ((unit.ap || 0) < landCost + channelCost) return 0;
+                return g.getAIWeight('landToChannelBonus_v1');
+            };
+            let landScore = 0;
+            for (const nexKey of Object.keys(g.state.nexusPoints)) {
+                const nex = g.state.nexusPoints[nexKey];
+                landScore = Math.max(landScore, _checkNexusLand(nex));
+            }
+
+            if (g.state.roamingNexus) {
+                landScore = Math.max(landScore, _checkNexusLand(g.state.roamingNexus));
+            }
+            if (landScore > 0 && typeof g.canChangeAltitude === 'function') {
+                const canLand = g.canChangeAltitude(unit, 'land');
+                if (canLand?.ok) {
+                    out.push({ type: 'altitude', mode: 'land', score: landScore });
+                }
+            }
+            return;
+        }
+
+        let nexKey = null;
+        let nex = null;
+        for (const k of Object.keys(g.state.nexusPoints)) {
+            const n = g.state.nexusPoints[k];
+            if (!n || !n.zoneSize) continue;
+
+            const distX = Math.abs(unit.x - (n.zoneX + Math.floor(n.zoneSize / 2)));
+            const distY = Math.abs(unit.y - (n.zoneY + Math.floor(n.zoneSize / 2)));
+            if (distX + distY <= n.zoneSize + 3) {
+                nexKey = k;
+                nex = n;
+                break;
+            }
+        }
+
+        if (!nexKey) {
+            let bestDist = Infinity;
+            for (const k of Object.keys(g.state.nexusPoints)) {
+                const n = g.state.nexusPoints[k];
+                if (!n || !n.zoneSize) continue;
+                const cx = n.zoneX + Math.floor(n.zoneSize / 2);
+                const cy = n.zoneY + Math.floor(n.zoneSize / 2);
+                const d = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
+                if (d < bestDist) { bestDist = d; nexKey = k; nex = n; }
+            }
+        }
+        if (!nexKey || !nex) return;
+
+        const ws = v.winState;
+        const towerPushActive = (ws.phase === 'tower_push' || ws.phase === 'numbers_advantage' ||
+            ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2);
+        const nexusPenalty = towerPushActive && nexKey === 'earth' ? 0.5 : 1.0;
+
+        const ownedCount = Object.values(g.state.nexusPoints).filter(n => n?.owner === unit.player).length;
+
+        const inZone = unit.x >= nex.zoneX && unit.x < nex.zoneX + nex.zoneSize &&
+                       unit.y >= nex.zoneY && unit.y < nex.zoneY + nex.zoneSize;
+        const zoneCenterX = nex.zoneX + Math.floor(nex.zoneSize / 2);
+        const zoneCenterY = nex.zoneY + Math.floor(nex.zoneSize / 2);
+        const distToCenter = Math.abs(unit.x - zoneCenterX) + Math.abs(unit.y - zoneCenterY);
+
+        if (inZone && nex.owner !== unit.player) {
+            let score = g.getAIWeight('nexusCapBonus_v1');
+            const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (mpMode && mpMode.id === 'domination') score += 25;
+            const myProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
+            const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;
+            if (myProg >= threshold - 2) score += 15;
+            if (myProg >= threshold - 1) score += 12;
+            if (v.closestEnemyDist <= 2) score -= 10;
+            if (ownedCount === 0) score += 10;
+
+            score += ownedCount * 6;
+            score *= nexusPenalty;
+            if (score > 0) out.push({ type: 'nexus_channel', score });
+        }
+
+        if (!inZone && distToCenter <= (g.getEffectiveMove?.(unit) || unit.move || 4) + 2 && nex.owner !== unit.player
+            && v.visibleEnemies.length === 0) {
+            let score = 14;
+            if (ownedCount === 0) score += 6;
+            score += ownedCount * 3;
+            if ((unit.hourglasses || 0) > 0) score -= 8;
+            score *= nexusPenalty;
+            const tgtX = Math.max(nex.zoneX, Math.min(nex.zoneX + nex.zoneSize - 1, unit.x));
+            const tgtY = Math.max(nex.zoneY, Math.min(nex.zoneY + nex.zoneSize - 1, unit.y));
+            if (score > 0) out.push({ type: 'move', x: tgtX, y: tgtY, score });
+        }
+
+        if (g.state.roamingNexus) {
+            const rn = g.state.roamingNexus;
+            const inRoamingZone = unit.x >= rn.zoneX && unit.x < rn.zoneX + rn.zoneSize &&
+                                  unit.y >= rn.zoneY && unit.y < rn.zoneY + rn.zoneSize;
+            if (inRoamingZone && rn.owner !== unit.player) {
+                let score = 50;
+                const myProg = unit.player === 1 ? Math.max(0, rn.progress) : Math.max(0, -rn.progress);
+                const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;
+                if (myProg >= threshold - 2) score += 20;
+                if (v.closestEnemyDist <= 2) score -= 10;
+                if (score > 0) out.push({ type: 'nexus_channel', score });
+            }
+        }
+    }
+
+    function scoreRecall(unit, v, out) {
+        const g = G();
+        if ((unit.ap || 0) < (typeof RECALL_AP_COST !== 'undefined' ? RECALL_AP_COST : 2)) return;
+        if ((unit._recallCooldown || 0) > 0) return;
+
+        const hpPct = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
+        const mpPct = unit.maxMp > 0 ? unit.mp / unit.maxMp : 1;
+
+        /* Consider recall when low HP or MP */
+        if (hpPct >= 0.4 && mpPct >= 0.3) return;
+
+        /* Don't recall if already in own spawn zone */
+        if (typeof isInSpawnZone === 'function' && isInSpawnZone(unit.x, unit.y, unit.player)) return;
+
+        let score = g.getAIWeight('recallBonus_v1') + (1 - hpPct) * 25;
+        if (mpPct < 0.2) score += 10;
+
+        /* Penalty if enemies are near (don't recall in the middle of a fight unless desperate) */
+        if (v.closestEnemyDist <= 2) {
+            if (hpPct > 0.2) score -= 15;
+        }
+
+        const ws = v.winState;
+        if (ws.phase === 'tower_push' || ws.enemyDeadCount >= 1) score *= 0.4;
+
+        if (score > 0) out.push({ type: 'recall', score });
+    }
+
+    function findSpellTarget(unit, spell, v) {
+        const g = G();
+        const kind = spell.kind;
+
+        if (['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain'].includes(kind)) {
+            const _aiEffSpellRange = _effRange(unit, spell);
+            const inRange = v.visibleEnemies
+                .map(e => ({
+                    enemy: e,
+                    dist: Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y),
+                    priority: getTargetPriority(e, unit, v)
+                }))
+                .filter(e => e.dist >= 1 && e.dist <= _aiEffSpellRange && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.enemy.x, e.enemy.y)));
+            if (!inRange.length) return null;
+
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain'].includes(kind)) {
+                const dmg = spell.dmg || 112;
+                const typedDmg = inRange.map(e => ({
+                    ...e,
+                    effDmg: dmg * getTypeMultiplier(unit, e.enemy)
+                }));
+
+                const killable = typedDmg.filter(e => e.enemy.hp <= e.effDmg + 3);
+                if (killable.length > 0) {
+                    killable.sort((a, b) => b.priority - a.priority);
+                    return killable[0].enemy;
+                }
+            }
+
+            inRange.sort((a, b) => b.priority - a.priority);
+            return inRange[0].enemy;
+        }
+
+        if (kind === 'aoe') {
+
+            if (spell.aoeOriginSelf) {
+                const area = getSquareArea(unit.x, unit.y, spell.aoeRadius || 1);
+                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                return hits > 0 ? { x: unit.x, y: unit.y } : null;
+            }
+            let best = null, bestScore = 0;
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (d < 1 || d > _effRange(unit, spell)) continue;
+                if (g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
+                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                const allyHits = area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y) || (unit.x === t.x && unit.y === t.y)).length;
+                const score = hits * 10 - allyHits * 15;
+                if (score > bestScore) { bestScore = score; best = e; }
+            }
+            return best;
+        }
+
+        if (kind === 'deployTurret') {
+            const active = (g.state.turrets || []).filter(t => t.ownerUnitId === unit.id).length;
+            const maxActive = spell.maxActivePerCaster || 2;
+            if (active >= maxActive) return null;
+
+            let bestTile = null, bestScore = -1;
+            for (let dy = -(_effRange(unit, spell) || 2); dy <= (_effRange(unit, spell) || 2); dy++) {
+                for (let dx = -(_effRange(unit, spell) || 2); dx <= (_effRange(unit, spell) || 2); dx++) {
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > (_effRange(unit, spell) || 2)) continue;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+
+                    const terrain = g.getTerrainAt(tx, ty);
+                    const rule = g.getTerrainRule(terrain);
+                    if (rule.impassable || terrain === 'mountain' || terrain === 'lava') continue;
+                    const occupied = g.state.units.some(u => !u.dead && u.x === tx && u.y === ty);
+                    if (occupied) continue;
+
+                    const turretOnTile = (g.state.turrets || []).some(t => t.x === tx && t.y === ty);
+                    if (turretOnTile) continue;
+
+                    let score = 10;
+                    const tRange = spell.turretRange || 2;
+                    for (const e of v.visibleEnemies) {
+                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        if (eDist <= tRange) score += 15;
+                        else if (eDist <= tRange + 2) score += 5;
+                    }
+
+                    if (v.enemyTower && v.enemyTower.hp > 0) {
+                        const tDist = Math.abs(v.enemyTower.x - tx) + Math.abs(v.enemyTower.y - ty);
+                        if (tDist <= tRange) score += 20;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'utility') {
+            const sid = spell.id;
+
+            if (sid === 'grapple' || sid === 'raceGrapple') {
+                const inRange = v.visibleEnemies
+                    .filter(e => {
+                        const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                        return d >= 2 && d <= (_effRange(unit, spell) || 3);
+                    })
+                    .sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+                return inRange[0] || null;
+            }
+
+            if (sid === 'plunder' || sid === 'racePlunder') {
+                const adjacent = v.visibleEnemies.filter(e => {
+                    const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                    return d >= 1 && d <= (_effRange(unit, spell) || 1);
+                });
+
+                adjacent.sort((a, b) => {
+                    const aHG = (a.hourglasses || 0) > 0 ? 100 : 0;
+                    const bHG = (b.hourglasses || 0) > 0 ? 100 : 0;
+                    return (bHG + (b.gold || 0)) - (aHG + (a.gold || 0));
+                });
+                return adjacent[0] || null;
+            }
+
+            if (sid === 'mimic') {
+                const lastSpell = g.state.lastSpellCast;
+                if (!lastSpell || !lastSpell.spellId) return null;
+                return { x: unit.x, y: unit.y };
+            }
+            return null;
+        }
+
+        if (kind === 'heal') {
+            const targets = [unit, ...v.allies]
+                .filter(a => !a.dead && a.hp < a.maxHp * 0.9)
+                .filter(a => {
+                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                    return d >= 0 && d <= _effRange(unit, spell);
+                });
+
+            targets.sort((a, b) => {
+                const aHG = (a.hourglasses || 0) > 0 ? 1 : 0;
+                const bHG = (b.hourglasses || 0) > 0 ? 1 : 0;
+                if (aHG !== bHG) return bHG - aHG;
+                return (a.hp / a.maxHp) - (b.hp / b.maxHp);
+            });
+            return targets[0] || null;
+        }
+
+        if (kind === 'revive') {
+            if (g._isFFA()) return null;
+            const dead = g.state.units.filter(u => u.player === unit.player && u.dead)
+                .filter(d => {
+                    const dist = Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y);
+                    return dist >= 0 && dist <= _effRange(unit, spell);
+                });
+            return dead[0] || null;
+        }
+
+        if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
+            const terrain = g.getTerrainAt(unit.x, unit.y);
+            if (terrain === 'mountain' || terrain === 'lava') return null;
+            return { x: unit.x, y: unit.y };
+        }
+
+        if (kind === 'buff' || kind === 'shield') {
+            const targets = [unit, ...v.allies]
+                .filter(a => !a.dead)
+                .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell));
+            if (kind === 'buff') {
+                const unbuffed = targets.filter(a => !g.unitHasStatus(a, 'protect'));
+
+                return unbuffed.sort((a, b) => {
+                    const aHG = (a.hourglasses || 0) > 0 ? 1 : 0;
+                    const bHG = (b.hourglasses || 0) > 0 ? 1 : 0;
+                    if (aHG !== bHG) return bHG - aHG;
+                    return (a.hp / a.maxHp) - (b.hp / b.maxHp);
+                })[0] || null;
+            }
+            return targets.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0] || null;
+        }
+
+        if (kind === 'bomb' || kind === 'warpRune') {
+            const _bwEffRange = _effRange(unit, spell);
+            const inRange = v.visibleEnemies.filter(e => {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                return d >= 1 && d <= _bwEffRange && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
+            });
+
+            return inRange.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
+        }
+
+        if (kind === 'summonWeather') return v.visibleEnemies[0] || null;
+
+        if (kind === 'warCry') return { x: unit.x, y: unit.y };
+        if (kind === 'encore') {
+            const allies = g.aliveUnitsFor(unit.player)
+                .filter(a => a.id !== unit.id && g.unitFinished(a) && !a._encoreThisRound)
+                .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell));
+
+            allies.sort((a, b) => {
+                const aVal = ['Black Mage', 'Warrior', 'Gunslinger', 'Sniper'].includes(a.cls) ? 10 : 0;
+                const bVal = ['Black Mage', 'Warrior', 'Gunslinger', 'Sniper'].includes(b.cls) ? 10 : 0;
+                return (bVal + (b.atk || 0)) - (aVal + (a.atk || 0));
+            });
+            return allies[0] || null;
+        }
+
+        if (kind === 'teleport') {
+
+            if (v.ownTower && v.ownTower.hp > 0) {
+                const nearTower = v.visibleEnemies
+                    .filter(e => Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 3)
+                    .filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _effRange(unit, spell));
+                if (nearTower.length > 0) return nearTower[0];
+            }
+            return null;
+        }
+
+        if (kind === 'healAll' || kind === 'manaRestoreAll' || kind === 'barrage') return { x: unit.x, y: unit.y };
+        if (kind === 'scan') return { x: unit.x, y: unit.y };
+
+        if (kind === 'line' || kind === 'linePush') {
+
+            const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+                          { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
+            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            let bestDir = null, bestHits = 0, bestTarget = null;
+            for (const dir of dirs) {
+                let hits = 0, firstEnemy = null;
+                for (let i = 1; i <= _lineBoardLen; i++) {
+                    const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
+                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                    const enemy = v.visibleEnemies.find(e => e.x === tx && e.y === ty);
+                    if (enemy) { hits++; if (!firstEnemy) firstEnemy = enemy; }
+                }
+                if (hits > bestHits || (hits === bestHits && firstEnemy && bestTarget &&
+                    getTargetPriority(firstEnemy, unit, v) > getTargetPriority(bestTarget, unit, v))) {
+                    bestHits = hits; bestDir = dir; bestTarget = firstEnemy;
+                }
+            }
+            return bestTarget || null;
+        }
+
+        if (kind === 'cross') {
+            if (spell.aoeOriginSelf) {
+                const r = spell.crossRadius || 1;
+                const crossTiles = [{ x: unit.x, y: unit.y }];
+                for (let i = 1; i <= r; i++) {
+                    crossTiles.push({ x: unit.x + i, y: unit.y }, { x: unit.x - i, y: unit.y },
+                                    { x: unit.x, y: unit.y + i }, { x: unit.x, y: unit.y - i });
+                }
+                const hits = crossTiles.filter(t => v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)).length;
+                return hits > 0 ? { x: unit.x, y: unit.y } : null;
+            }
+
+            let best = null, bestScore = 0;
+            const _crossEffRange = _effRange(unit, spell);
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (d < 1 || d > _crossEffRange) continue;
+                if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
+                const r = spell.crossRadius || 1;
+                const crossTiles = [{ x: e.x, y: e.y }];
+                for (let i = 1; i <= r; i++) {
+                    crossTiles.push({ x: e.x + i, y: e.y }, { x: e.x - i, y: e.y },
+                                    { x: e.x, y: e.y + i }, { x: e.x, y: e.y - i });
+                }
+                const hits = crossTiles.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                const allyHits = crossTiles.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y)).length;
+                const score = hits * 10 - allyHits * 15;
+                if (score > bestScore) { bestScore = score; best = e; }
+            }
+            return best;
+        }
+
+        if (kind === 'pull') {
+            const inRange = v.visibleEnemies
+                .filter(e => {
+                    const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                    return d >= 2 && d <= (_effRange(unit, spell) || 4);
+                })
+                .sort((a, b) => {
+
+                    const aR = g.getEffectiveRange(a) >= 3 ? 20 : 0;
+                    const bR = g.getEffectiveRange(b) >= 3 ? 20 : 0;
+                    return (bR + getTargetPriority(b, unit, v)) - (aR + getTargetPriority(a, unit, v));
+                });
+            return inRange[0] || null;
+        }
+
+        if (kind === 'swap') {
+            const inRange = v.visibleEnemies
+                .filter(e => {
+                    const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                    return d >= 1 && d <= (_effRange(unit, spell) || 4);
+                })
+                .filter(e => !spell.requiresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y))
+                .sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+            return inRange[0] || null;
+        }
+
+        if (kind === 'escape') {
+            return { x: unit.x, y: unit.y };
+        }
+
+        if (kind === 'selfHeal') {
+            return { x: unit.x, y: unit.y };
+        }
+
+        if (kind === 'aoePull') {
+            let best = null, bestScore = 0;
+            const _apEffRange = _effRange(unit, spell);
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (d < 1 || d > _apEffRange) continue;
+                if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
+                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                const allyHits = area.filter(t =>
+                    v.allies.some(a => a.x === t.x && a.y === t.y) || (unit.x === t.x && unit.y === t.y)
+                ).length;
+                const score = hits * 10 - allyHits * 15;
+                if (score > bestScore) { bestScore = score; best = e; }
+            }
+            return best;
+        }
+
+        if (kind === 'splitBeam') {
+            const _sbEffRange = _effRange(unit, spell);
+            const inRange = v.visibleEnemies
+                .filter(e => {
+                    const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                    return d >= 1 && d <= _sbEffRange && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
+                })
+                .sort((a, b) => {
+
+                    const aNear = v.visibleEnemies.filter(e2 =>
+                        e2.id !== a.id && Math.abs(e2.x - a.x) + Math.abs(e2.y - a.y) <= (spell.splitRadius || 2)
+                    ).length;
+                    const bNear = v.visibleEnemies.filter(e2 =>
+                        e2.id !== b.id && Math.abs(e2.x - b.x) + Math.abs(e2.y - b.y) <= (spell.splitRadius || 2)
+                    ).length;
+                    return (bNear * 10 + getTargetPriority(b, unit, v)) - (aNear * 10 + getTargetPriority(a, unit, v));
+                });
+            return inRange[0] || null;
+        }
+
+        if (kind === 'delayed') {
+            let best = null, bestScore = 0;
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (d < 1 || d > _effRange(unit, spell)) continue;
+                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                if (hits > bestScore) { bestScore = hits; best = e; }
+            }
+            return best;
+        }
+
+        if (kind === 'deployObject') {
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            if (active >= (spell.maxActivePerCaster || 2)) return null;
+            let bestTile = null, bestScore = -1;
+            for (let dy = -(_effRange(unit, spell) || 1); dy <= (_effRange(unit, spell) || 1); dy++) {
+                for (let dx = -(_effRange(unit, spell) || 1); dx <= (_effRange(unit, spell) || 1); dx++) {
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > (_effRange(unit, spell) || 1)) continue;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    const terrain = g.getTerrainAt(tx, ty);
+                    const rule = g.getTerrainRule(terrain);
+                    if (rule.impassable) continue;
+                    const occupied = g.state.units.some(u => !u.dead && u.x === tx && u.y === ty);
+                    if (occupied) continue;
+                    let score = 5;
+
+                    for (const e of v.visibleEnemies) {
+                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        if (eDist <= 3) score += 8;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'deployPair') {
+            const active = (g.state._gatePairs || []).filter(gp => gp.ownerUnitId === unit.id).length;
+            if (active >= (spell.maxActivePerCaster || 1)) return null;
+
+            let bestTile = null, bestScore = -1;
+            for (let dy = -(_effRange(unit, spell) || 4); dy <= (_effRange(unit, spell) || 4); dy++) {
+                for (let dx = -(_effRange(unit, spell) || 4); dx <= (_effRange(unit, spell) || 4); dx++) {
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > (_effRange(unit, spell) || 4)) continue;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    const occupied = g.state.units.some(u => !u.dead && u.x === tx && u.y === ty);
+                    if (occupied) continue;
+                    let score = 5;
+
+                    if (v.enemyTower && v.enemyTower.hp > 0) {
+                        const tDist = Math.abs(v.enemyTower.x - tx) + Math.abs(v.enemyTower.y - ty);
+                        if (tDist <= 4) score += 15;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'aoeShield') {
+            let best = null, bestAllies = 0;
+            const candidates = [unit, ...v.allies].filter(a =>
+                !a.dead && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= (_effRange(unit, spell) || 3)
+            );
+            for (const c of candidates) {
+                const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
+                const count = [unit, ...v.allies].filter(a =>
+                    !a.dead && area.some(t => t.x === a.x && t.y === a.y)
+                ).length;
+                if (count > bestAllies) { bestAllies = count; best = c; }
+            }
+            return best;
+        }
+
+        if (kind === 'zoneDebuff') {
+            let best = null, bestScore = 0;
+            for (const e of v.visibleEnemies) {
+                const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                if (d < 1 || d > (_effRange(unit, spell) || 4)) continue;
+                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                const allyHits = area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y)).length;
+                const score = hits * 10 - allyHits * 8;
+                if (score > bestScore) { bestScore = score; best = e; }
+            }
+            return best;
+        }
+
+        if (kind === 'zoneHeal') {
+            let best = null, bestScore = 0;
+            const hurtAllies = [unit, ...v.allies].filter(a => !a.dead && a.hp < a.maxHp * 0.8);
+            for (const a of [unit, ...v.allies]) {
+                if (a.dead) continue;
+                const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                if (d > (_effRange(unit, spell) || 3)) continue;
+                const area = getSquareArea(a.x, a.y, spell.aoeRadius || 1);
+                const hurtInArea = hurtAllies.filter(h => area.some(t => t.x === h.x && t.y === h.y)).length;
+                const allInArea = [unit, ...v.allies].filter(h => !h.dead && area.some(t => t.x === h.x && t.y === h.y)).length;
+                const score = hurtInArea * 12 + allInArea * 4;
+                if (score > bestScore) { bestScore = score; best = a; }
+            }
+            return best;
+        }
+
+        if (kind === 'terrainCreate') {
+            let bestTile = null, bestScore = -1;
+            for (let dy = -(_effRange(unit, spell) || 3); dy <= (_effRange(unit, spell) || 3); dy++) {
+                for (let dx = -(_effRange(unit, spell) || 3); dx <= (_effRange(unit, spell) || 3); dx++) {
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > (_effRange(unit, spell) || 3)) continue;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    let score = 5;
+
+                    if (v.ownTower && v.ownTower.hp > 0) {
+                        const tDist = Math.abs(v.ownTower.x - tx) + Math.abs(v.ownTower.y - ty);
+                        if (tDist <= 4) score += 10;
+                    }
+
+                    for (const e of v.visibleEnemies) {
+                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        if (eDist <= 2) score += 5;
+
+                        if (spell.dmg && eDist <= 1) score += 20;
+                        if (spell.dmg && eDist === 0) score += 30;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'cleanse') {
+            const targets = [unit, ...v.allies]
+                .filter(a => !a.dead && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= (_effRange(unit, spell) || 3))
+                .map(a => ({
+                    ally: a,
+                    debuffs: (a.statusEffects || []).filter(e =>
+                        ['stun', 'silence', 'slow', 'poison', 'burn', 'stagger', 'marked', 'discord', 'jammed', 'glare'].includes(e.id)
+                    ).length
+                }))
+                .filter(t => t.debuffs > 0)
+                .sort((a, b) => {
+
+                    const aUrgent = (a.ally.statusEffects || []).some(e => e.id === 'stun' || e.id === 'silence') ? 10 : 0;
+                    const bUrgent = (b.ally.statusEffects || []).some(e => e.id === 'stun' || e.id === 'silence') ? 10 : 0;
+                    const aHG = (a.ally.hourglasses || 0) > 0 ? 5 : 0;
+                    const bHG = (b.ally.hourglasses || 0) > 0 ? 5 : 0;
+                    return (bUrgent + bHG + b.debuffs) - (aUrgent + aHG + a.debuffs);
+                });
+            return targets.length > 0 ? targets[0].ally : null;
+        }
+
+        if (kind === 'dash') {
+            let bestTile = null, bestScore = -1;
+            const range = _effRange(unit, spell) || 3;
+            for (let dy = -range; dy <= range; dy++) {
+                for (let dx = -range; dx <= range; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > range) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+
+                    const terrain = g.getTerrainAt(tx, ty);
+                    const rule = g.getTerrainRule(terrain);
+                    if (!rule.passable) continue;
+
+                    const path = g.getLinePoints(unit.x, unit.y, tx, ty);
+                    let hits = 0, hitPriority = 0;
+                    for (const pt of path) {
+                        const victim = v.visibleEnemies.find(e => e.x === pt.x && e.y === pt.y);
+                        if (victim) {
+                            hits++;
+                            hitPriority += getTargetPriority(victim, unit, v);
+                        }
+                    }
+                    if (hits === 0) continue;
+
+                    const score = hits * 100 + hitPriority + d * 2;
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'displacement') {
+            const inRange = v.visibleEnemies
+                .filter(e => {
+                    const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
+                    return d >= 1 && d <= (_effRange(unit, spell) || 3) && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                })
+                .sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+            return inRange[0] || null;
+        }
+
+        return null;
+    }
+
+    function executeAction(unit, action, v) {
+        const g = G();
+
+        switch (action.type) {
+            case 'item':
+                g.state.actionMode = 'item';
+                g.state.selectedTool = action.item;
+                g.doItem(unit, unit.x, unit.y);
+                g.finishComputerAction();
+                break;
+
+            case 'item_targeted': {
+                const prevCount = unit.items?.[action.item] || 0;
+                g.state.actionMode = 'item';
+                g.state.selectedTool = action.item;
+                g.doItem(unit, action.target.x, action.target.y);
+                const newCount = unit.items?.[action.item] || 0;
+                if (newCount >= prevCount) {
+                    _failedItems.add(action.item);
+                    g.state.actionMode = null;
+                    g.state.selectedTool = null;
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                } else {
+                    g.finishComputerAction();
+                }
+                break;
+            }
+
+            case 'panacea': {
+                if ((unit.items?.panacea || 0) <= 0 || !unit.status) {
+
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+                const STATUS_DEFS = g.STATUS_DEFS || {};
+                let hasDebuff = false;
+                for (const key of Object.keys(unit.status)) {
+                    if (STATUS_DEFS[key]?.kind === 'debuff') { hasDebuff = true; break; }
+                }
+                if (!hasDebuff) {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+
+                g.pushUndoSnapshot(true);
+                unit.items.panacea -= 1;
+                let cleared = 0;
+                for (const key of Object.keys(unit.status)) {
+                    if (STATUS_DEFS[key]?.kind === 'debuff') {
+                        delete unit.status[key];
+                        cleared++;
+                    }
+                }
+                g.addLog(`💊 ${g.unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
+                g.showFloatingTextForUnit(unit, '💊 CURED', 'heal', { durationMs: 1200 });
+
+                g.state.aiThinking = false;
+                g.maybeTriggerComputerTurn();
+                break;
+            }
+
+            case 'warpStone': {
+                if ((unit.items?.warpStone || 0) <= 0 || !action.target) {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+                const wx = action.target.x;
+                const wy = action.target.y;
+                const dist = Math.abs(unit.x - wx) + Math.abs(unit.y - wy);
+                if (dist < 1 || dist > 3) {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+
+                const terrain = g.state.boardTerrain;
+                const tileType = terrain?.[wy]?.[wx];
+                const rule = g.TERRAIN_RULES?.[tileType];
+                if (!rule || rule.passable === false || g.unitAt(wx, wy)) {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+                g.pushUndoSnapshot(true);
+                unit.items.warpStone -= 1;
+                unit.x = wx;
+                unit.y = wy;
+                g.addLog(`🌀 ${g.unitDisplayName(unit)} warps to (${wx},${wy})!`);
+                g.showFloatingTextForUnit(unit, '🌀 WARP', 'buff', { durationMs: 1000 });
+
+                g.state.aiThinking = false;
+                g.maybeTriggerComputerTurn();
+                break;
+            }
+
+            case 'attack':
+                g.state.actionMode = 'attack';
+                g.queueComputerAction(() => {
+                    const delay = g.doAttack(unit, action.target.x, action.target.y) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), delay);
+                    } else {
+                        _skipAttack = true;
+                        g.state.actionMode = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                    }
+                }, action.target);
+                break;
+
+            case 'attack_tower':
+                g.state.actionMode = 'attack';
+                g.queueComputerAction(() => {
+                    const delay = g.doAttack(unit, action.towerX, action.towerY) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), delay);
+                    } else {
+                        _skipTowerAttack = true;
+                        g.state.actionMode = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                    }
+                });
+                break;
+
+            case 'spell':
+                g.state.actionMode = 'spell';
+                g.state.selectedTool = action.spell.name;
+                g.queueComputerAction(() => {
+
+                    if (action.spell.kind === 'skyThrow') {
+                        const grabDelay = g.doSpell(unit, action.target.x, action.target.y) || 0;
+
+                        if (unit._skyThrowGrab) {
+                            const throwRange = action.spell.throwRange || 3;
+                            const grabbed = g.state.units.find(u => u.id === unit._skyThrowGrab.id && !u.dead);
+                            if (grabbed) {
+
+                                let bestTX = grabbed.x + 1, bestTY = grabbed.y, bestScore = -Infinity;
+                                for (let dy = -throwRange; dy <= throwRange; dy++) {
+                                    for (let dx = -throwRange; dx <= throwRange; dx++) {
+                                        if (dx === 0 && dy === 0) continue;
+                                        const tx = grabbed.x + dx, ty = grabbed.y + dy;
+                                        if (Math.abs(dx) + Math.abs(dy) > throwRange) continue;
+                                        if (!g.isInside(tx, ty)) continue;
+                                        let tScore = 0;
+                                        const occupant = g.unitAt(tx, ty);
+                                        if (occupant && !occupant.dead && g.isEnemyUnit(occupant, unit)) {
+                                            tScore += (action.spell.collisionBonus || 50) + 80;
+                                        } else if (occupant && !occupant.dead) {
+                                            tScore -= 200;
+                                            continue;
+                                        }
+
+                                        const lz = typeof g.getHeightAt === 'function' ? g.getHeightAt(tx, ty) : 0;
+                                        tScore += (10 - lz) * 10;
+
+                                        tScore += (Math.abs(dx) + Math.abs(dy)) * 5;
+                                        if (tScore > bestScore) { bestScore = tScore; bestTX = tx; bestTY = ty; }
+                                    }
+                                }
+                                const throwDelay = g.doSpell(unit, bestTX, bestTY) || 0;
+                                if (throwDelay > 0) {
+                                    window.setTimeout(() => g.finishComputerAction(), throwDelay);
+                                } else {
+                                    unit._skyThrowGrab = null;
+                                    g.state._skyThrowHighlight = null;
+                                    _failedSpells.add(action.spell.name);
+                                    g.state.actionMode = null;
+                                    g.state.selectedTool = null;
+                                    g.state.aiThinking = false;
+                                    g.maybeTriggerComputerTurn();
+                                }
+                                return;
+                            }
+                        }
+
+                        _failedSpells.add(action.spell.name);
+                        g.state.actionMode = null;
+                        g.state.selectedTool = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                        return;
+                    }
+                    const delay = g.doSpell(unit, action.target.x, action.target.y) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), delay);
+                    } else {
+                        _failedSpells.add(action.spell.name);
+                        g.state.actionMode = null;
+                        g.state.selectedTool = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                    }
+                }, action.target);
+                break;
+
+            case 'spell_tower':
+                g.state.actionMode = 'spell';
+                g.state.selectedTool = action.spell.name;
+                g.queueComputerAction(() => {
+                    const delay = g.doSpell(unit, action.towerX, action.towerY) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), delay);
+                    } else {
+                        _failedSpells.add(action.spell.name);
+                        g.state.actionMode = null;
+                        g.state.selectedTool = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                    }
+                });
+                break;
+
+            case 'combo': {
+                g.state.actionMode = 'combo';
+                g.state.comboPartner = action.partner;
+                const ct = action.target;
+                const cp = action.partner;
+                const tx = ct ? ct.x : unit.x;
+                const ty = ct ? ct.y : unit.y;
+
+                g.queueComputerAction(() => {
+                    const valid = cp && !cp.dead && (cp.ap || 0) >= g.COMBO_AP_COST_PARTNER &&
+                        Math.abs(cp.x - unit.x) + Math.abs(cp.y - unit.y) === 1;
+                    if (!valid) {
+                        _failedCombos.add(cp.id);
+                        g.state.actionMode = null;
+                        g.state.comboPartner = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                        return;
+                    }
+                    const delay = g.doComboAttack(unit, cp, tx, ty) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), Math.max(delay, g.actionMs(400)));
+                    } else {
+                        _failedCombos.add(cp.id);
+                        g.state.actionMode = null;
+                        g.state.comboPartner = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                    }
+                }, ct);
+                break;
+            }
+
+            case 'detonate':
+                g.queueComputerAction(() => {
+                    const delay = g.doDetonate(unit) || 0;
+                    window.setTimeout(() => g.finishComputerAction(), Math.max(delay, g.actionMs(300)));
+                });
+                break;
+
+            case 'move':
+                g.state.actionMode = 'move';
+                if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
+                unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
+                if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+
+                {
+                    const prevX = unit.x, prevY = unit.y;
+                    const moveResult = g.doMove(unit, action.x, action.y, action.z);
+
+                    if (unit.x === prevX && unit.y === prevY) {
+                        unit._aiStallCount = (unit._aiStallCount || 0) + 1;
+                    }
+
+                    const animDelay = (typeof moveResult === 'number' && moveResult > 1) ? moveResult : 0;
+                    if (animDelay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), animDelay);
+                    } else {
+                        g.finishComputerAction();
+                    }
+                }
+                break;
+
+            case 'inspect':
+                g.state.actionMode = 'inspect';
+                {
+                    const delay = g.doInspect(unit, action.x, action.y) || 0;
+                    if (delay > 0) {
+                        window.setTimeout(() => g.finishComputerAction(), delay);
+                    } else {
+                        g.finishComputerAction();
+                    }
+                }
+                break;
+
+            case 'flair':
+                g.state.actionMode = 'flair';
+                g.doFlair(unit, action.x, action.y);
+                g.finishComputerAction();
+                break;
+
+            case 'ward':
+                g.state.actionMode = 'ward';
+                g.doWard(unit, action.x, action.y);
+                g.finishComputerAction();
+                break;
+
+            case 'guard': {
+                const apBefore = unit.ap || 0;
+                g.doGuard(unit);
+                const apAfter = unit.ap || 0;
+                if (apAfter >= apBefore) {
+
+                    unit.ap = 0;
+                    unit._aiLoopCount = 0;
+                }
+
+                g.finishComputerAction();
+                break;
+            }
+
+            case 'reshape': {
+                const apBefore = unit.ap || 0;
+                const delay = g.doReshape(unit, action.mode) || 0;
+                const apAfter = unit.ap || 0;
+                if (apAfter >= apBefore) {
+
+                    unit.ap = 0;
+                    unit._aiLoopCount = 0;
+                    g.finishComputerAction();
+                } else if (delay > 0) {
+                    window.setTimeout(() => g.finishComputerAction(), delay);
+                } else {
+                    g.finishComputerAction();
+                }
+                break;
+            }
+
+            case 'altitude': {
+                const apBefore = unit.ap || 0;
+                const delay = g.doAltitudeChange(unit, action.mode) || 0;
+                const apAfter = unit.ap || 0;
+                if (apAfter >= apBefore) {
+
+                    unit.ap = 0;
+                    unit._aiLoopCount = 0;
+                    g.finishComputerAction();
+                } else if (delay > 0) {
+                    window.setTimeout(() => g.finishComputerAction(), delay);
+                } else {
+                    g.finishComputerAction();
+                }
+                break;
+            }
+
+            case 'nexus_channel': {
+                const apBefore = unit.ap || 0;
+                if (typeof g.channelNexus === 'function') {
+                    g.channelNexus(unit);
+                } else {
+                    unit.ap = 0;
+                }
+                const apAfter = unit.ap || 0;
+
+                if (apAfter >= apBefore) _failedNexus = true;
+                g.finishComputerAction();
+                break;
+            }
+
+            case 'recall': {
+                if (typeof g.doRecall === 'function') {
+                    g.doRecall(unit);
+                } else {
+                    unit.ap = 0;
+                }
+                g.finishComputerAction();
+                break;
+            }
+
+            default:
+                console.warn('AI: unknown action type', action.type);
+                unit.ap = 0;
+                g.finishComputerAction();
+        }
+    }
+
+    function getSquareArea(cx, cy, radius) {
+        const tiles = [];
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                tiles.push({ x: cx + dx, y: cy + dy });
+            }
+        }
+        return tiles;
+    }
+
+    console.log('[AI] Entropy Wars strategic AI v3 loaded (action memory + context gates + centipawn normalization).');
+})();

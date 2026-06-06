@@ -1,6 +1,3 @@
-// ── Entropy Wars: Multiplayer Server ──
-// Express + Socket.IO — serves static files, room-code matchmaking, ranked queue, and player accounts.
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -15,10 +12,8 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-// ── JSON body parsing for API endpoints ──
 app.use(express.json());
 
-// ── Serve static files from repo root ──
 app.use(express.static(path.join(__dirname), {
     extensions: ['html'],
     index: 'index.html'
@@ -26,17 +21,15 @@ app.use(express.static(path.join(__dirname), {
 
 function uuid() { return crypto.randomUUID(); }
 
-// ── Room storage ──
-const rooms = new Map(); // code → { host, guest, hostUsername, guestUsername, created, ranked, mapModeId, teamSize }
+const rooms = new Map();
 
 function generateCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O to avoid confusion
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code = '';
     for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
     return rooms.has(code) ? generateCode() : code;
 }
 
-// ── Stale room cleanup (every 10 min, remove rooms older than 2 hours with no guest) ──
 setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
@@ -47,7 +40,6 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000);
 
-// ── Helper: find room by socket ID ──
 function findRoomBySocket(socketId) {
     for (const [code, room] of rooms) {
         if (room.host === socketId || room.guest === socketId) return { code, room };
@@ -55,15 +47,8 @@ function findRoomBySocket(socketId) {
     return null;
 }
 
-// ══════════════════════════════════════════════════════
-// ── MATCHMAKING QUEUE ──
-// ══════════════════════════════════════════════════════
-
-// queues[teamSize] = [ { socketId, username, elo, joinedAt } ]
 const queues = {};
 
-// Available maps grouped by approximate team size compatibility
-// Maps that support >= teamSize players on each side
 const MAP_POOL = [
     { modeId: 'prebuilt_apartment', w: 4, h: 4, team: 2 },
     { modeId: 'prebuilt_skirmish', w: 8, h: 8, team: 4 },
@@ -104,10 +89,10 @@ const MAP_POOL = [
 ];
 
 function pickRandomMap(teamSize) {
-    // Filter maps that support at least this team size
+
     const eligible = MAP_POOL.filter(m => m.team >= teamSize);
     if (eligible.length === 0) {
-        // Fallback: pick maps closest to the team size
+
         const sorted = [...MAP_POOL].sort((a, b) => Math.abs(a.team - teamSize) - Math.abs(b.team - teamSize));
         return sorted[0];
     }
@@ -131,14 +116,12 @@ function removeFromAllQueues(socketId) {
     return false;
 }
 
-// Matchmaking scan — runs every 3 seconds
 setInterval(() => {
     const now = Date.now();
     for (const queueKey in queues) {
         const q = queues[queueKey];
         if (q.length < 2) continue;
 
-        // Sort by ELO for adjacency matching
         q.sort((a, b) => a.elo - b.elo);
 
         const matched = new Set();
@@ -149,11 +132,10 @@ setInterval(() => {
             const a = q[i];
             const waitTimeA = now - a.joinedAt;
 
-            // Expand ELO range over time
             let eloRange = 200;
             if (waitTimeA > 30000) eloRange = 400;
             if (waitTimeA > 60000) eloRange = 800;
-            if (waitTimeA > 90000) eloRange = Infinity; // match with anyone
+            if (waitTimeA > 90000) eloRange = Infinity;
 
             for (let j = i + 1; j < q.length; j++) {
                 if (matched.has(j)) continue;
@@ -162,14 +144,13 @@ setInterval(() => {
                 const waitTimeB = now - b.joinedAt;
                 const maxWait = Math.max(waitTimeA, waitTimeB);
 
-                // Also expand based on opponent's wait time
                 let range = eloRange;
                 if (maxWait > 30000) range = Math.max(range, 400);
                 if (maxWait > 60000) range = Math.max(range, 800);
                 if (maxWait > 90000) range = Infinity;
 
                 if (Math.abs(a.elo - b.elo) <= range) {
-                    // MATCH FOUND
+
                     matched.add(i);
                     matched.add(j);
 
@@ -178,14 +159,12 @@ setInterval(() => {
                     const code = generateCode();
                     const map = pickRandomMap(actualTeamSize);
 
-                    // Higher ELO = host (or random if equal)
                     let host = a, guest = b;
                     if (b.elo > a.elo || (b.elo === a.elo && Math.random() > 0.5)) {
                         host = b;
                         guest = a;
                     }
 
-                    // Create room
                     const rejoinToken = uuid();
                     rooms.set(code, {
                         host: host.socketId,
@@ -202,7 +181,6 @@ setInterval(() => {
                         _matchStarted: false
                     });
 
-                    // Join both sockets to the room
                     const hostSocket = io.sockets.sockets.get(host.socketId);
                     const guestSocket = io.sockets.sockets.get(guest.socketId);
 
@@ -211,7 +189,6 @@ setInterval(() => {
 
                     console.log(`[MM] Matched ${host.username} (${host.elo}) vs ${guest.username} (${guest.elo}) → Room ${code} on ${map.modeId} [${rankedMode}] (${actualTeamSize}v${actualTeamSize})`);
 
-                    // Notify both players
                     if (hostSocket) {
                         hostSocket.emit('match-found', {
                             roomCode: code,
@@ -235,7 +212,6 @@ setInterval(() => {
                         });
                     }
 
-                    // Also emit room-full to trigger the existing online flow
                     io.to(code).emit('room-full', {
                         host: host.socketId,
                         guest: guest.socketId,
@@ -248,12 +224,11 @@ setInterval(() => {
                         rejoinToken: rejoinToken
                     });
 
-                    break; // Move to next unmatched player
+                    break;
                 }
             }
         }
 
-        // Remove matched players from queue (iterate backwards)
         const indices = [...matched].sort((a, b) => b - a);
         for (const idx of indices) {
             q.splice(idx, 1);
@@ -261,7 +236,6 @@ setInterval(() => {
     }
 }, 3000);
 
-// ── Queue stats endpoint (for debugging / monitoring) ──
 app.get('/api/queue-stats', (req, res) => {
     const stats = {};
     for (const key in queues) {
@@ -270,17 +244,10 @@ app.get('/api/queue-stats', (req, res) => {
     res.json({ queues: stats, rooms: rooms.size });
 });
 
-// ══════════════════════════════════════════════════════
-// ── PLAYER ACCOUNTS (D1) ──
-// ══════════════════════════════════════════════════════
-
-// In-memory authenticated sockets: socketId → { playerId, username, elo }
 const authenticatedSockets = new Map();
 
-// Username validation (matches client-side USERNAME_RE)
 const USERNAME_RE = /^[A-Za-z0-9_]{2,16}$/;
 
-// ── POST /api/register — create a new player account ──
 app.post('/api/register', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured. Set CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN.' });
@@ -292,7 +259,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     try {
-        // Check if username already exists
+
         const existing = await d1.getOne('SELECT id FROM players WHERE username = ?1', [username]);
         if (existing) {
             return res.status(409).json({ error: 'Username already taken.' });
@@ -314,7 +281,6 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// ── POST /api/login — validate token, return player data ──
 app.post('/api/login', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -335,7 +301,6 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid token.' });
         }
 
-        // Update last_seen
         await d1.execute('UPDATE players SET last_seen = datetime(\'now\') WHERE id = ?1', [player.id]);
 
         console.log(`[AUTH] Login: ${player.username} (${player.id})`);
@@ -354,7 +319,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ── GET /api/player/:id — public player info ──
 app.get('/api/player/:id', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -383,7 +347,6 @@ app.get('/api/player/:id', async (req, res) => {
     }
 });
 
-// ── GET /api/check-username/:username — check if username is available ──
 app.get('/api/check-username/:username', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -402,12 +365,6 @@ app.get('/api/check-username/:username', async (req, res) => {
     }
 });
 
-
-// ══════════════════════════════════════════════════════
-// ── LEADERBOARD & MATCH HISTORY API ──
-// ══════════════════════════════════════════════════════
-
-// ── GET /api/leaderboard ──
 app.get('/api/leaderboard', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -437,7 +394,6 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
-// ── GET /api/matches — match history for a player ──
 app.get('/api/matches', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -486,7 +442,6 @@ app.get('/api/matches', async (req, res) => {
     }
 });
 
-// ── GET /api/player/:id/rank — player's rank position ──
 app.get('/api/player/:id/rank', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -499,7 +454,7 @@ app.get('/api/player/:id/rank', async (req, res) => {
         if (!player) {
             return res.status(404).json({ error: 'Player not found.' });
         }
-        // Count players with higher ELO
+
         const result = await d1.getOne(
             'SELECT COUNT(*) as rank FROM players WHERE elo > ?1',
             [player.elo]
@@ -510,11 +465,6 @@ app.get('/api/player/:id/rank', async (req, res) => {
     }
 });
 
-// ══════════════════════════════════════════════════════
-// ── COMMUNITY MAPS API ──
-// ══════════════════════════════════════════════════════
-
-// ── POST /api/maps — submit a community map ──
 app.post('/api/maps', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -544,7 +494,6 @@ app.post('/api/maps', async (req, res) => {
             return res.status(400).json({ error: 'Description too long (max 200 chars).' });
         }
 
-        // Parse to validate and extract dimensions
         let parsed;
         try {
             parsed = typeof mapJson === 'string' ? JSON.parse(mapJson) : mapJson;
@@ -555,13 +504,11 @@ app.post('/api/maps', async (req, res) => {
             return res.status(400).json({ error: 'Map JSON must have w, h, and grid.' });
         }
 
-        // Limit: 500KB for map JSON
         const jsonStr = typeof mapJson === 'string' ? mapJson : JSON.stringify(mapJson);
         if (jsonStr.length > 500000) {
             return res.status(400).json({ error: 'Map data too large (max 500KB).' });
         }
 
-        // Limit: 20 maps per player
         const countResult = await d1.getOne(
             'SELECT COUNT(*) as cnt FROM community_maps WHERE author_id = ?1',
             [player.id]
@@ -590,7 +537,6 @@ app.post('/api/maps', async (req, res) => {
     }
 });
 
-// ── GET /api/maps — browse community maps ──
 app.get('/api/maps', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -634,7 +580,6 @@ app.get('/api/maps', async (req, res) => {
     }
 });
 
-// ── GET /api/maps/:id — get a single map with full JSON ──
 app.get('/api/maps/:id', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -649,7 +594,7 @@ app.get('/api/maps/:id', async (req, res) => {
         if (!m) {
             return res.status(404).json({ error: 'Map not found.' });
         }
-        // Increment play count
+
         await d1.execute('UPDATE community_maps SET plays = plays + 1 WHERE id = ?1', [m.id]);
 
         res.json({
@@ -674,7 +619,6 @@ app.get('/api/maps/:id', async (req, res) => {
     }
 });
 
-// ── POST /api/maps/:id/rate — rate a community map (1-5) ──
 app.post('/api/maps/:id/rate', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -700,12 +644,11 @@ app.post('/api/maps/:id/rate', async (req, res) => {
         if (!map) {
             return res.status(404).json({ error: 'Map not found.' });
         }
-        // Can't rate your own map
+
         if (map.author_id === player.id) {
             return res.status(400).json({ error: 'Cannot rate your own map.' });
         }
 
-        // Upsert rating
         const existing = await d1.getOne(
             'SELECT rating FROM map_ratings WHERE map_id = ?1 AND player_id = ?2',
             [mapId, player.id]
@@ -717,7 +660,7 @@ app.post('/api/maps/:id/rate', async (req, res) => {
                 'UPDATE map_ratings SET rating = ?1 WHERE map_id = ?2 AND player_id = ?3',
                 [rating, mapId, player.id]
             );
-            // Adjust community_maps rating_sum
+
             await d1.execute(
                 'UPDATE community_maps SET rating_sum = rating_sum + ?1 - ?2 WHERE id = ?3',
                 [rating, oldRating, mapId]
@@ -740,7 +683,6 @@ app.post('/api/maps/:id/rate', async (req, res) => {
     }
 });
 
-// ── DELETE /api/maps/:id — delete your own map ──
 app.delete('/api/maps/:id', async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
@@ -777,21 +719,16 @@ app.delete('/api/maps/:id', async (req, res) => {
     }
 });
 
-
-// ── Broadcast online player count ──
 function broadcastPlayerCount() {
     const count = io.engine.clientsCount;
     io.emit('player-count', { count });
 }
 
-// ── Socket.IO ──
 io.on('connection', (socket) => {
     console.log(`[IO] Connected: ${socket.id}`);
 
-    // Send current player count to newly connected client + broadcast to all
     broadcastPlayerCount();
 
-    // ── Authenticate socket (attach player identity for ranked) ──
     socket.on('authenticate', async (data, callback) => {
         if (!d1.isConfigured()) {
             if (callback) callback({ error: 'Database not configured.' });
@@ -831,7 +768,7 @@ io.on('connection', (socket) => {
             if (callback) callback({ error: 'Authentication failed.' });
         }
     });
-    // ── Create room ──
+
     socket.on('create-room', (data, callback) => {
         const code = generateCode();
         const username = (data && data.username) || 'Player 1';
@@ -843,7 +780,7 @@ io.on('connection', (socket) => {
             guestUsername: null,
             created: Date.now(),
             rejoinToken: rejoinToken,
-            _disconnected: null,      // { role, socketId, timer }
+            _disconnected: null,
             _matchStarted: false
         });
         socket.join(code);
@@ -851,7 +788,6 @@ io.on('connection', (socket) => {
         if (callback) callback({ code, rejoinToken });
     });
 
-    // ── Join room ──
     socket.on('join-room', (data, callback) => {
         const code = (data && data.code) ? data.code.toUpperCase().trim() : '';
         const username = (data && data.username) || 'Player 2';
@@ -874,45 +810,39 @@ io.on('connection', (socket) => {
 
         if (callback) callback({ ok: true, rejoinToken: room.rejoinToken });
 
-        // Notify both players — include rejoinToken so both can rejoin on disconnect
         io.to(code).emit('room-full', {
             host: room.host,
             guest: room.guest,
             hostUsername: room.hostUsername,
             guestUsername: room.guestUsername,
             rejoinToken: room.rejoinToken,
-            // Include host's friendly config if present
+
             friendlyConfig: room.friendlyConfig || null
         });
     });
 
-    // ── Host sets friendly match config (before match starts) ──
     socket.on('friendly-config', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         const { room } = found;
-        // Only host can set config
+
         if (room.host !== socket.id) return;
         room.friendlyConfig = data;
-        // Relay to guest
+
         socket.to(found.code).emit('friendly-config', data);
     });
 
-    // ── Join matchmaking queue ──
     socket.on('queue-join', (data) => {
         const teamSize = (data && data.teamSize) || 4;
         const rankedMode = (data && data.rankedMode) || 'arena';
 
-        // Prefer server-side identity from authenticated socket
         const auth = authenticatedSockets.get(socket.id);
         const username = auth ? auth.username : ((data && data.username) || 'Player');
         const elo = auth ? auth.elo : ((data && typeof data.elo === 'number') ? data.elo : 1200);
         const playerId = auth ? auth.playerId : null;
 
-        // Remove from any existing queue first
         removeFromAllQueues(socket.id);
 
-        // Queue key combines team size AND ranked mode so arena/tdm players don't mix
         const queueKey = teamSize + ':' + rankedMode;
         const q = getQueue(queueKey);
         q.push({
@@ -927,7 +857,6 @@ io.on('connection', (socket) => {
 
         console.log(`[MM] ${username} (ELO ${elo}${auth ? ' [verified]' : ''}) joined ${teamSize}v${teamSize} ${rankedMode} queue (${q.length} in queue)`);
 
-        // Send queue position feedback
         socket.emit('queue-status', {
             position: q.length,
             teamSize: teamSize,
@@ -935,7 +864,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ── Leave matchmaking queue ──
     socket.on('queue-leave', () => {
         const removed = removeFromAllQueues(socket.id);
         if (removed) {
@@ -944,46 +872,40 @@ io.on('connection', (socket) => {
         socket.emit('queue-left', { ok: true });
     });
 
-    // ── Game action (guest → host) ──
     socket.on('game-action', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
-        // Forward to the other player in the room
+
         socket.to(found.code).emit('game-action', data);
     });
 
-    // ── State sync (host → guest) ──
     socket.on('state-sync', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         socket.to(found.code).emit('state-sync', data);
     });
 
-    // ── Party config (guest → host) ──
     socket.on('party-config', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         socket.to(found.code).emit('party-config', data);
     });
 
-    // ── Generic relay (bidirectional) ──
     socket.on('relay', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         socket.to(found.code).emit('relay', data);
     });
 
-    // ── Ranked match result — server-side ELO calculation ──
     socket.on('ranked-result', async (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         const { room, code } = found;
 
-        // Only host can report results
         if (room.host !== socket.id) return;
-        // Must be a ranked room
+
         if (!room.ranked) return;
-        // Only process once per room
+
         if (room._resultProcessed) return;
         room._resultProcessed = true;
 
@@ -993,7 +915,6 @@ io.on('connection', (socket) => {
         const teamSize = room.teamSize || 4;
         const mapModeId = room.mapModeId || null;
 
-        // Anti-cheat: reject suspiciously fast matches
         if (durationMs < 30000) {
             console.warn(`[ELO] Rejected fast match (${durationMs}ms) in room ${code}`);
             return;
@@ -1004,7 +925,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Validate both players exist in the auth map
         const hostAuth = authenticatedSockets.get(room.host);
         const guestAuth = authenticatedSockets.get(room.guest);
         if (!hostAuth || !guestAuth) {
@@ -1012,11 +932,9 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Determine winner/loser from player IDs
         const hostPlayerId = hostAuth.playerId;
         const guestPlayerId = guestAuth.playerId;
 
-        // The winnerId/loserId from client is player number (1 or 2), map to actual player IDs
         const actualWinnerId = winnerId === 1 ? hostPlayerId : guestPlayerId;
         const actualLoserId = loserId === 1 ? hostPlayerId : guestPlayerId;
 
@@ -1028,7 +946,6 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // ELO calculation
             const winnerK = winner.total_games < 10 ? 40 : winner.total_games < 30 ? 32 : 24;
             const loserK = loser.total_games < 10 ? 40 : loser.total_games < 30 ? 32 : 24;
 
@@ -1039,9 +956,8 @@ io.on('connection', (socket) => {
             const loserDelta = Math.round(loserK * (0 - expectedLoser));
 
             const newWinnerElo = winner.elo + winnerDelta;
-            const newLoserElo = Math.max(100, loser.elo + loserDelta); // floor at 100
+            const newLoserElo = Math.max(100, loser.elo + loserDelta);
 
-            // Update players
             await d1.execute(
                 `UPDATE players SET elo = ?1, peak_elo = MAX(peak_elo, ?1), wins = wins + 1,
                  total_games = total_games + 1, last_seen = datetime('now') WHERE id = ?2`,
@@ -1053,7 +969,6 @@ io.on('connection', (socket) => {
                 [newLoserElo, actualLoserId]
             );
 
-            // Record match
             const matchId = uuid();
             await d1.execute(
                 `INSERT INTO matches (id, winner_id, loser_id, winner_elo_before, winner_elo_after,
@@ -1065,7 +980,6 @@ io.on('connection', (socket) => {
 
             console.log(`[ELO] ${hostAuth.username} vs ${guestAuth.username}: winner=${actualWinnerId === hostPlayerId ? hostAuth.username : guestAuth.username} (${winner.elo}→${newWinnerElo}), loser=(${loser.elo}→${newLoserElo})`);
 
-            // Update in-memory auth ELO
             if (actualWinnerId === hostPlayerId) {
                 hostAuth.elo = newWinnerElo;
                 guestAuth.elo = newLoserElo;
@@ -1074,7 +988,6 @@ io.on('connection', (socket) => {
                 hostAuth.elo = newWinnerElo;
             }
 
-            // Notify both players of ELO update
             const hostSocket = io.sockets.sockets.get(room.host);
             const guestSocket = io.sockets.sockets.get(room.guest);
 
@@ -1099,7 +1012,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ── Mark match as started (enables reconnection window on disconnect) ──
     socket.on('match-started', () => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
@@ -1107,7 +1019,6 @@ io.on('connection', (socket) => {
         console.log(`[IO] Room ${found.code} match started`);
     });
 
-    // ── Rejoin room after disconnect ──
     socket.on('rejoin-room', (data, callback) => {
         const code = (data && data.roomCode) ? data.roomCode.toUpperCase().trim() : '';
         const token = data && data.rejoinToken;
@@ -1124,10 +1035,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Clear the forfeit timer
         if (dc.timer) clearTimeout(dc.timer);
 
-        // Swap socket ID
         const role = dc.role;
         if (role === 'host') {
             room.host = socket.id;
@@ -1141,21 +1050,16 @@ io.on('connection', (socket) => {
 
         if (callback) callback({ ok: true, role: role, myPlayer: role === 'host' ? 1 : 2 });
 
-        // Notify both players
         io.to(code).emit('player-rejoined', { role: role, socketId: socket.id });
     });
 
-    // ── Disconnect ──
     socket.on('disconnect', () => {
         console.log(`[IO] Disconnected: ${socket.id}`);
 
-        // Broadcast updated player count
         broadcastPlayerCount();
 
-        // Remove from matchmaking queues
         removeFromAllQueues(socket.id);
 
-        // Remove from authenticated sockets
         authenticatedSockets.delete(socket.id);
 
         const found = findRoomBySocket(socket.id);
@@ -1164,25 +1068,21 @@ io.on('connection', (socket) => {
         const { code, room } = found;
         const role = room.host === socket.id ? 'host' : 'guest';
 
-        // If match hasn't started yet, clean up immediately (lobby disconnect)
         if (!room._matchStarted) {
             socket.to(code).emit('player-disconnected', { role, reconnectable: false });
             rooms.delete(code);
             return;
         }
 
-        // Match is in progress — start 90-second rejoin window
         console.log(`[IO] ${role} disconnected from room ${code} — 90s rejoin window`);
 
-        // Notify the other player about disconnection with reconnectable flag
         socket.to(code).emit('player-disconnected', { role, reconnectable: true });
 
-        // Store disconnect info and start forfeit timer
         room._disconnected = {
             role: role,
             socketId: socket.id,
             timer: setTimeout(() => {
-                // Forfeit: disconnector loses
+
                 console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
                 const forfeitPlayer = role === 'host' ? 1 : 2;
                 io.to(code).emit('match-forfeit', { forfeitPlayer: forfeitPlayer, role: role });
@@ -1192,7 +1092,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// ── Start ──
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[Entropy Wars] Server running on port ${PORT}`);

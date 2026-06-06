@@ -132,6 +132,58 @@ async function waitFor(page, fn, ms, every = 400) {
   log('\n=== HOST ===');  log(JSON.stringify(await host.evaluate(PROBE_HOST), null, 2));
   log('\n=== GUEST ==='); log(JSON.stringify(await guest.evaluate(PROBE_GUEST), null, 2));
 
+  // ── HEARTBEAT FIX TEST (run with LOCAL_ASSETS=online.js HEARTBEAT_TEST=1) ──
+  // Deterministically simulate a MISSED turn-handoff: while it's P2's turn, corrupt
+  // the guest's activePlayer back to 1 (as if it never applied the host's handoff
+  // sync). The host-side heartbeat should re-send the authoritative state within
+  // ~1.2s and the guest should recover to activePlayer=2 on its own.
+  if (process.env.HEARTBEAT_TEST === '1') {
+    const roles = {
+      host: await host.evaluate(() => ({ role: window._NET && window._NET.role, my: window._NET && window._NET.myPlayer, hb: !!(window._NET && window._NET._handoffHeartbeat) })),
+      guest: await guest.evaluate(() => ({ role: window._NET && window._NET.role, my: window._NET && window._NET.myPlayer })),
+    };
+    log('\n[HEARTBEAT TEST] roles: ' + JSON.stringify(roles));
+    // The authoritative engine is whichever page is role==='host'. Bind to it.
+    const HOST = roles.host.role === 'host' ? host : guest;
+    const GUEST = roles.host.role === 'host' ? guest : host;
+    if (roles.host.role !== 'host') log('[HEARTBEAT TEST] NOTE: page assignment was swapped by the lobby — rebinding to actual host/guest.');
+
+    // Make sure it's the remote player's (P2) turn so the heartbeat is active.
+    const PLAY_P1_ON = (pg) => pg.evaluate(() => {
+      const G = window.GAME, st = G.state;
+      if (st.activePlayer !== 1) return st.activePlayer;
+      const u = st.units.find(x => x.id === st._blitzActiveUnitId);
+      if (u) { try { const a = (G.getAttackTiles(u) || [])[0]; if (a) G.doAttack(u, a.x, a.y, a.z); } catch (e) {} u.ap = 0; try { window.triggerEndTurn(); } catch (e) { try { window.endUnitIfDone(u); } catch (e2) {} } try { window._broadcastState(); } catch (e) {} }
+      return st.activePlayer;
+    });
+    for (let i = 0; i < 12; i++) { const ap = await HOST.evaluate(() => window.GAME.state.activePlayer); if (ap === 2) break; await PLAY_P1_ON(HOST); await sleep(700); }
+    const hostAp = await HOST.evaluate(() => window.GAME.state.activePlayer);
+    if (hostAp !== 2) { log(`[HEARTBEAT TEST] could not reach a P2 turn (host ap=${hostAp}) — skipping`); }
+    else {
+      // (A0) ISOLATION: does the guest receive host syncs AT ALL right now? Mark a
+      // distinctive synced field on the host (round), corrupt guest activePlayer,
+      // force a re-broadcast, and see which fields propagate.
+      await GUEST.evaluate(() => { window._gameState.activePlayer = 1; window.__obsRound = window._gameState.round; });
+      await HOST.evaluate(() => { window._gameState.__probeMark = 4242; window._NET.lastSyncJson = ''; try { window._broadcastState(); } catch (e) {} });
+      await sleep(1000);
+      const iso = await GUEST.evaluate(() => ({ ap: window._gameState.activePlayer, mark: window._gameState.__probeMark, round: window._gameState.round }));
+      log(`[HEARTBEAT TEST] (A0) after forced rebroadcast guest sees: ${JSON.stringify(iso)} (expect mark=4242 if guest is receiving syncs)`);
+
+      // (A) Does ONE forced host re-broadcast recover a stale guest? (core assumption)
+      await GUEST.evaluate(() => { window._gameState.activePlayer = 1; });
+      await HOST.evaluate(() => { try { window._NET.lastSyncJson = ''; window._broadcastState(); } catch (e) {} });
+      await sleep(1000);
+      const gA = await GUEST.evaluate(() => window._gameState.activePlayer);
+      log(`[HEARTBEAT TEST] (A) manual re-broadcast recovery: guest ap ${gA === 2 ? '→ 2 RECOVERED' : '= ' + gA + ' NOT recovered'}`);
+
+      // (B) Does the automatic heartbeat (no manual trigger) recover a stale guest?
+      await GUEST.evaluate(() => { window._gameState.activePlayer = 1; });
+      let recovered = false;
+      for (let i = 0; i < 4; i++) { await sleep(800); if (await GUEST.evaluate(() => window._gameState.activePlayer) === 2) { recovered = true; log(`[HEARTBEAT TEST] (B) auto-heartbeat recovered guest after ~${(i + 1) * 0.8}s → FIX WORKS`); break; } }
+      if (!recovered) log('[HEARTBEAT TEST] (B) auto-heartbeat did NOT recover guest after ~3.2s');
+    }
+  }
+
   // CAN A HUMAN GUEST ACTUALLY PLAY? Drive the guest using the UI-selected
   // unit (state.selectedUnitId), not _blitzActiveUnitId, through the real emitters.
   log('\n— driving guest via selectedUnitId (simulating a human clicking) —');
