@@ -8278,6 +8278,20 @@
             state._gauntletPendingReplace = null;
         }
 
+        // Pick a free tile in the player's spawn zone (where reinforcements arrive),
+        // falling back to a free tile near the zone, then the supplied slot.
+        function _gauntletSpawnTileFor(player, u, slot) {
+            const zone = (state.spawnZones && state.spawnZones[player])
+                || (typeof SPAWNS !== 'undefined' && SPAWNS[player])
+                || [];
+            for (const t of zone) {
+                if (!_gauntletTileBlocked(t.x, t.y, u)) return { x: t.x, y: t.y };
+            }
+            if (zone.length) return _gauntletFreeTileNear(zone[0].x, zone[0].y, u);
+            if (slot) return _gauntletFreeTileNear(slot.x, slot.y, u);
+            return { x: u.x, y: u.y };
+        }
+
         function _gauntletDeployReserve(player, unitId, slot, resume) {
             const bench = _gauntletReserves(player);
             const u = (unitId ? bench.find(x => x.id === unitId) : null) || bench[0];
@@ -8286,9 +8300,9 @@
 
             state.bench[player] = (state.bench[player] || []).filter(x => x.id !== u.id);
             u._benched = false;
-            const pos = _gauntletFreeTileNear(slot.x, slot.y, u);
+            const pos = _gauntletSpawnTileFor(player, u, slot);
             u.x = pos.x; u.y = pos.y;
-            u.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(pos.x, pos.y) : (slot.z || 0);
+            u.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(pos.x, pos.y) : 0;
             u.ap = 0;
             _gauntletResetTurnFlags(u);
             state.units.push(u);
