@@ -7042,6 +7042,30 @@
             return out;
         }
 
+        /* Gauntlet only: split the freshly-built roster so just `gauntletDeploy`
+           units per side start on the board; the rest go to state.bench. Runs at
+           real match start (not in menu/diorama previews, which want all units). */
+        function _gauntletPartitionBench() {
+            state.bench = { 1: [], 2: [] };
+            if (!_isGauntlet()) return;
+            const deploy = _gauntletDeploy();
+            const keep = [];
+            for (const u of state.units) {
+                const idx = parseInt(String(u.id).split('-')[1], 10);
+                if (Number.isFinite(idx) && idx >= deploy) {
+                    u._benched = true;
+                    u._benchSlot = idx;
+                    u.ap = 0;
+                    if (!state.bench[u.player]) state.bench[u.player] = [];
+                    state.bench[u.player].push(u);
+                } else {
+                    u._benched = false;
+                    keep.push(u);
+                }
+            }
+            state.units = keep;
+        }
+
         function randomizeEquipmentForClass(cls) {
 
             const accPool = Object.keys(EQUIP_DEFS).filter(id => EQUIP_DEFS[id]?.slot === 'accessory1');
@@ -8070,6 +8094,245 @@
             if (spell && !unitMeetsSpellTierReq(unit, spell)) return false;
             return true;
         }
+
+        /* ===================================================================
+           GAUNTLET MODE (Pokémon-style squad battles)
+           Roster of 8 per side; only `gauntletDeploy` (4) are on the board at
+           once. Reserves live in state.bench[player] OUTSIDE state.units, so
+           every "alive unit" filter in the engine ignores them automatically.
+           - Switch (voluntary): costs 2 AP, the incoming reserve acts with the
+             outgoing unit's leftover AP. Stat-change buffs/debuffs reset on the
+             unit that leaves; lingering status conditions (burn/poison/…) stay.
+           - No respawns: a fallen unit is replaced by a reserve (player picks;
+             AI auto-picks). When both board + bench are empty, the team loses.
+           =================================================================== */
+        function _isGauntlet() {
+            return (typeof getActiveMultiplayerMode === 'function')
+                && getActiveMultiplayerMode()?.id === 'gauntlet';
+        }
+        function _gauntletDeploy() {
+            return (CONFIG && CONFIG.gauntletDeploy) || 4;
+        }
+        function _gauntletSwitchCost() {
+            const m = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            return (m && m.switchApCost) || 2;
+        }
+        function _gauntletReserves(player) {
+            if (!state.bench || !state.bench[player]) return [];
+            return state.bench[player].filter(u => u && !u.dead);
+        }
+        function _gauntletReservesAlive(player) {
+            return _gauntletReserves(player).length;
+        }
+        function _gauntletPlayerHasUnits(player) {
+            const onBoard = state.units.filter(u => u.player === player && !u.dead && !u._dying).length;
+            return onBoard + _gauntletReservesAlive(player);
+        }
+
+        /* Pokémon rule: stat changes wipe on switch-out, status conditions persist.
+           In this engine buff/debuff *categories* are the stat modifiers; the
+           'status' category (burn, poison, stun, …) is the lingering conditions. */
+        function _gauntletResetStatChanges(unit) {
+            if (!unit || !unit.status) return;
+            for (const key of getActiveStatusKeys(unit)) {
+                const cat = STATUS_DEFS[key]?.category;
+                if (cat === 'buff' || cat === 'debuff') clearStatus(unit, key);
+            }
+            unit.shield = 0;
+            if (typeof resetKillStreak === 'function') resetKillStreak(unit);
+            unit._guardCounterBonus = 0;
+        }
+
+        function _gauntletResetTurnFlags(u) {
+            u.movesThisTurn = 0;
+            u._reshapeThisTurn = 0;
+            u._altitudeChangesThisTurn = 0;
+            u._turnKills = 0;
+            u._aiFailedSpells = null;
+            u._aiFailedCombos = null;
+            u._aiSkipAttack = false;
+            u._aiLoopCount = 0;
+            u._encoreThisRound = false;
+            u._skippedTurn = false;
+        }
+
+        function _gauntletSwapInTurnOrder(outId, inId) {
+            if (!Array.isArray(state._blitzTurnOrderIds)) return;
+            const i = state._blitzTurnOrderIds.indexOf(outId);
+            if (i >= 0) state._blitzTurnOrderIds[i] = inId;
+            else state._blitzTurnOrderIds.push(inId);
+            if (typeof window._rebuildBlitzTurnOrderFromIds === 'function') {
+                window._rebuildBlitzTurnOrderFromIds();
+            }
+        }
+
+        function _gauntletTileBlocked(x, y, ignoreUnit) {
+            if (x < 0 || y < 0 || y >= bh() || x >= bw()) return true;
+            const t = state.boardTerrain?.[y]?.[x];
+            if (!t) return true;
+            const rule = getTerrainRule(t);
+            if (!rule || rule.passable === false) return true;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return true;
+            if (state.units.some(o => o !== ignoreUnit && !o.dead && o.x === x && o.y === y)) return true;
+            return false;
+        }
+        function _gauntletFreeTileNear(x, y, ignoreUnit) {
+            if (!_gauntletTileBlocked(x, y, ignoreUnit)) return { x, y };
+            for (let radius = 1; radius <= Math.max(bw(), bh()); radius++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (!_gauntletTileBlocked(nx, ny, ignoreUnit)) return { x: nx, y: ny };
+                    }
+                }
+            }
+            return { x, y };
+        }
+
+        /* Voluntary switch: bench the active unit, deploy a chosen reserve, which
+           then acts with the leftover AP. */
+        function doSwitch(unit, incomingId) {
+            if (!_isGauntlet()) return false;
+            if (!unit || unit.dead || unit._dying) return false;
+            const COST = _gauntletSwitchCost();
+            if ((unit.ap || 0) < COST) {
+                addLog(`${unitDisplayName(unit)} needs ${COST} AP to switch out.`);
+                return false;
+            }
+            const bench = _gauntletReserves(unit.player);
+            if (bench.length === 0) { addLog('No reserves available to switch in.'); return false; }
+            const incoming = incomingId ? bench.find(u => u.id === incomingId) : bench[0];
+            if (!incoming) { addLog('That reserve is unavailable.'); return false; }
+
+            const remaining = Math.max(0, (unit.ap || 0) - COST);
+
+            _gauntletResetStatChanges(unit);
+
+            const x = unit.x, y = unit.y;
+
+            state.bench[unit.player] = (state.bench[unit.player] || []).filter(u => u.id !== incoming.id);
+            state.units = state.units.filter(u => u.id !== unit.id);
+            unit._benched = true;
+            unit.ap = 0;
+            state.bench[unit.player].push(unit);
+
+            incoming._benched = false;
+            incoming.x = x;
+            incoming.y = y;
+            incoming.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y) : (unit.z || 0);
+            incoming.ap = remaining;
+            _gauntletResetTurnFlags(incoming);
+            state.units.push(incoming);
+
+            _gauntletSwapInTurnOrder(unit.id, incoming.id);
+
+            state._blitzActiveUnitId = incoming.id;
+            state.activePlayer = incoming.player;
+            state.selectedUnitId = incoming.id;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+
+            addLog(`🔄 ${unitDisplayName(unit)} switches out — ${unitDisplayName(incoming)} enters the fray!`);
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            scheduleBoardRender();
+            if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+            // Spent the whole turn switching? End cleanly so the engine advances.
+            if ((incoming.ap || 0) <= 0 && typeof endUnitIfDone === 'function') endUnitIfDone(incoming);
+            return true;
+        }
+
+        /* Called when a deployed unit dies in Gauntlet. If the team still has a
+           reserve, bring one in. Human players pick (a modal pauses the engine);
+           AI auto-picks the healthiest reserve immediately. */
+        function _gauntletQueueReplacement(fallen) {
+            if (!_isGauntlet() || !fallen) return;
+            const player = fallen.player;
+            if (_gauntletReservesAlive(player) === 0) return;
+            const slot = { player, x: fallen.x, y: fallen.y, z: fallen.z };
+            const isHuman = state.controllers?.[player] === CTRL.LOCAL && !state.autoPlayers?.[player];
+            if (isHuman) {
+                if (!state._gauntletReplaceQueue) state._gauntletReplaceQueue = [];
+                state._gauntletReplaceQueue.push(slot);
+                if (!state._gauntletPendingReplace) _gauntletNextHumanReplace();
+            } else {
+                const pick = _gauntletReserves(player).slice().sort((a, b) => (b.hp || 0) - (a.hp || 0))[0];
+                if (pick) _gauntletDeployReserve(player, pick.id, slot, false);
+            }
+        }
+
+        // Pull the next queued slot whose team still has a reserve into the active
+        // (modal) replacement; clears the pending state when the queue is empty.
+        function _gauntletNextHumanReplace() {
+            const q = state._gauntletReplaceQueue || [];
+            while (q.length) {
+                const slot = q[0];
+                if (_gauntletReservesAlive(slot.player) === 0) { q.shift(); continue; }
+                state._gauntletPendingReplace = slot;
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: false });
+                return;
+            }
+            state._gauntletPendingReplace = null;
+        }
+
+        function _gauntletDeployReserve(player, unitId, slot, resume) {
+            const bench = _gauntletReserves(player);
+            const u = (unitId ? bench.find(x => x.id === unitId) : null) || bench[0];
+            if (!u) return false;
+            slot = slot || state._gauntletPendingReplace || { x: u.x, y: u.y };
+
+            state.bench[player] = (state.bench[player] || []).filter(x => x.id !== u.id);
+            u._benched = false;
+            const pos = _gauntletFreeTileNear(slot.x, slot.y, u);
+            u.x = pos.x; u.y = pos.y;
+            u.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(pos.x, pos.y) : (slot.z || 0);
+            u.ap = 0;
+            _gauntletResetTurnFlags(u);
+            state.units.push(u);
+
+            addLog(`🛡 ${unitDisplayName(u)} is sent into battle!`);
+
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+
+            if (resume === true) {
+                // Human-driven pick: advance the queue, then resume only once nothing
+                // else is waiting on the player.
+                if (state._gauntletReplaceQueue && state._gauntletReplaceQueue.length) state._gauntletReplaceQueue.shift();
+                state._gauntletPendingReplace = null;
+                _gauntletNextHumanReplace();
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+                if (!state._gauntletPendingReplace) _gauntletResumeAfterReplace();
+            } else {
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+            }
+            return true;
+        }
+
+        function _gauntletAwaitingHumanReplace() {
+            return !!(state._gauntletPendingReplace);
+        }
+
+        function _gauntletResumeAfterReplace() {
+            state.aiThinking = false;
+            const active = state._blitzActiveUnitId
+                ? state.units.find(u => u.id === state._blitzActiveUnitId && !u.dead && !u._dying)
+                : null;
+            if (active) {
+                if (typeof maybeTriggerComputerTurn === 'function') maybeTriggerComputerTurn();
+            } else if (typeof maybeAdvanceTurn === 'function') {
+                maybeAdvanceTurn();
+            }
+        }
+
+        window.doSwitch = doSwitch;
+        window._isGauntlet = _isGauntlet;
+        window._gauntletReserves = _gauntletReserves;
+        window._gauntletDeployReserve = _gauntletDeployReserve;
 
         function canCastAnySpell(unit) {
             const mpPenalty = getStatusMpCostDelta(unit);
@@ -9537,6 +9800,7 @@
             }
             _zoomMemo.clear();
             state.units = makeUnitsFromBuilds();
+            _gauntletPartitionBench();
             state.selectedUnitId = null;
             state.focusedUnitId = null;
             state.hoverUnitId = null;
@@ -9707,6 +9971,21 @@
                 u._turnKills = 0;
 
                 u._guardCounterBonus = 0;
+            }
+
+            if (!state.bench) state.bench = { 1: [], 2: [] };
+            state._gauntletPendingReplace = null;
+            state._gauntletReplaceQueue = [];
+            for (const player of [1, 2]) {
+                for (const u of (state.bench[player] || [])) {
+                    u._benched = true;
+                    u.ap = 0;
+                    u.movesThisTurn = 0;
+                    u._turnKills = 0;
+                    u.dead = false;
+                    u._dying = false;
+                    u._respawnIn = null;
+                }
             }
 
             if (state.isCampaign && state._campaignModifiers && state._campaignModifiers.length > 0) {
@@ -10402,7 +10681,9 @@
             state.roamingNexus = null;
 
             state.matchClock = {
-                roundLimit: state._customRoundLimit || mpMode.roundLimit || 0,
+                // Modes designed with no round limit (roundLimit 0, e.g. Gauntlet) ignore
+                // any carried-over custom round limit — they run until a team is wiped out.
+                roundLimit: (mpMode.roundLimit === 0) ? 0 : (state._customRoundLimit || mpMode.roundLimit || 0),
                 paused: false,
                 startedAt: Date.now(),
             };
@@ -10822,6 +11103,8 @@
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
                 if (state.winner) return;
+
+                if (_gauntletAwaitingHumanReplace()) return;
 
                 if (_roundAdvanceInProgress) return;
 
@@ -11359,6 +11642,7 @@
 
         function maybeTriggerComputerTurn() {
             if (state.phase !== 'battle' || state.winner || state.aiThinking) return;
+            if (_gauntletAwaitingHumanReplace()) return;
 
             const _shouldAIRun = () => {
                 if (state._blitzActiveUnitId) {
@@ -19543,8 +19827,8 @@
             }
 
             if (wcs.includes('wipeout') || wcs.includes('most_kills')) {
-                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length;
-                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length;
+                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
+                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
                 if (p1Alive === 0 || p2Alive === 0) return true;
             }
 
@@ -19582,8 +19866,8 @@
                         state._winCondition = 'wipeout';
                     }
                 } else {
-                    const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length;
-                    const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length;
+                    const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
+                    const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
                     if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
                     else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
                 }

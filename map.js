@@ -995,6 +995,7 @@
             { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
             { id: 'hotspot', icon: '🔥', label: 'Hotspot', desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15 rounds.', tag: null, locked: false },
             { id: 'ctf', icon: '🏳️', label: 'Capture the Flag', desc: 'Steal the enemy flag from their base and return it to your sanctuary to score. First to 3 or most in 15 rounds.', tag: null, locked: false },
+            { id: 'gauntlet', icon: '⚔️', label: 'Gauntlet', desc: 'Pokémon-style. Roster of 8, deploy 4 at a time. No respawns, no round limit. Switch a reserve in for 2 AP. Wipe out the enemy team to win.', tag: 'NEW', locked: false },
         ];
 
         const MS_MAP_LIST = [
@@ -1414,6 +1415,56 @@
                 state.partyMeta[2] = state.partyBuilds[2].map(() => ({}));
 
                 state._ffaPlayerCount = totalPlayers;
+            }
+
+            /* Gauntlet (Pokémon-style): roster of 8 per side, only 4 deploy on the
+               board, the other 4 wait on the bench. CONFIG.teamSize drives the party
+               builder + roster sizing; CONFIG.gauntletDeploy gates how many actually
+               spawn onto the board (handled in makeUnitsFromBuilds). */
+            if (gm.id === 'gauntlet') {
+                const mode = GAME_MODES[mp.modeId];
+                const ROSTER = (mpMode && mpMode.rosterSize) || 8;
+                const DEPLOY = (mpMode && mpMode.deploySize) || 4;
+                CONFIG.teamSize = ROSTER;
+                CONFIG.gauntletDeploy = DEPLOY;
+
+                const bw = mode.boardWidth || mode.boardSize || 8;
+                const bh = mode.boardHeight || mode.boardSize || 8;
+                SPAWNS[1] = (mode.spawns[1] || []).slice(0, DEPLOY);
+                SPAWNS[2] = (mode.spawns[2] || []).slice(0, DEPLOY);
+                while (SPAWNS[1].length < DEPLOY) {
+                    const idx = SPAWNS[1].length;
+                    SPAWNS[1].push({ x: idx % 2, y: Math.min(Math.floor(idx / 2), bh - 1) });
+                }
+                while (SPAWNS[2].length < DEPLOY) {
+                    const idx = SPAWNS[2].length;
+                    SPAWNS[2].push({ x: bw - 1 - idx % 2, y: Math.min(bh - 1 - Math.floor(idx / 2), bh - 1) });
+                }
+
+                DEFAULT_BUILDS[1] = (mode.defaultBuilds[1] || []).slice(0, ROSTER);
+                DEFAULT_BUILDS[2] = (mode.defaultBuilds[2] || []).slice(0, ROSTER);
+                while (DEFAULT_BUILDS[1].length < ROSTER) DEFAULT_BUILDS[1].push('Warrior');
+                while (DEFAULT_BUILDS[2].length < ROSTER) DEFAULT_BUILDS[2].push('Warrior');
+
+                [1, 2].forEach(player => {
+                    const oldSize = state.partyBuilds?.[player]?.length || 0;
+                    if (oldSize < ROSTER) {
+                        for (let i = oldSize; i < ROSTER; i++) {
+                            state.partyBuilds[player][i] = DEFAULT_BUILDS[player][i] || 'Warrior';
+                            state.partyNames[player][i] = getDefaultUnitName(state.partyBuilds[player][i]);
+                            state.loadouts[player][i] = emptyLoadout();
+                            if (!state.partyMeta[player]) state.partyMeta[player] = [];
+                            state.partyMeta[player][i] = {};
+                        }
+                    } else if (oldSize > ROSTER) {
+                        state.partyBuilds[player].length = ROSTER;
+                        state.partyNames[player].length = ROSTER;
+                        state.loadouts[player].length = ROSTER;
+                        if (state.partyMeta[player]) state.partyMeta[player].length = ROSTER;
+                    }
+                });
+            } else {
+                CONFIG.gauntletDeploy = 0;
             }
 
             if (isOnlineMatch() && typeof _isHost === 'function' && _isHost()) {
@@ -4549,7 +4600,11 @@
          */
         function autoGenerateSpawnZones() {
             const w = bw(), h = bh();
-            const teamSize = CONFIG.teamSize || 4;
+            // Gauntlet keeps an 8-unit roster but only deploys 4 — size the spawn
+            // zone to the deploy count, not the full roster.
+            const teamSize = (typeof _isGauntlet === 'function' && _isGauntlet())
+                ? (CONFIG.gauntletDeploy || 4)
+                : (CONFIG.teamSize || 4);
             const sp1 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[1])) ? SPAWNS[1] : [];
             const sp2 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[2])) ? SPAWNS[2] : [];
 
@@ -4867,7 +4922,11 @@
 
                 unit._damageContributors = {};
                 unit._debuffContributors = {};
-                unit._respawnIn = Math.min(Math.pow(2, unit._deathCount - 1), 8);
+                if (typeof _isGauntlet === 'function' && _isGauntlet()) {
+                    unit._respawnIn = null;
+                } else {
+                    unit._respawnIn = Math.min(Math.pow(2, unit._deathCount - 1), 8);
+                }
             }
 
             scheduleBoardRender();
@@ -4881,9 +4940,14 @@
                 unit._dying = false;
                 unit.dead = true;
 
+                const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
                 if (unit._isBoss) {
                     addLog(`👹 ${unitDisplayName(unit)} has been slain!`);
                     shakeBoard('hard');
+                } else if (_gauntlet) {
+                    const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
+                    addLog(`💀 ${unitDisplayName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+                    shakeBoard('normal');
                 } else {
                     addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
                     shakeBoard('normal');
@@ -4895,6 +4959,10 @@
                     player: unit.player
                 });
                 scheduleBoardRender();
+
+                if (_gauntlet && typeof _gauntletQueueReplacement === 'function') {
+                    _gauntletQueueReplacement(unit);
+                }
 
                 checkWin();
 

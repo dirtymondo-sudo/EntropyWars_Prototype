@@ -297,6 +297,20 @@ function _getModeInfo(st) {
       p1Wins, p2Wins,
     };
   }
+  if (id === 'gauntlet') {
+    const r1 = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(1) : 0;
+    const r2 = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(2) : 0;
+    const b1 = (st.bench && st.bench[1]) ? st.bench[1].length : 0;
+    const b2 = (st.bench && st.bench[2]) ? st.bench[2].length : 0;
+    return {
+      id, label: mpMode.label,
+      p1Score: p1Kills, p2Score: p2Kills,
+      scoreLabel: 'KILLS',
+      p1Sub: (p1Alive + r1) + '/' + (p1Total + b1), p2Sub: (p2Alive + r2) + '/' + (p2Total + b2),
+      subLabel: 'ALIVE',
+      p1Wins, p2Wins,
+    };
+  }
   if (id === 'domination' || id === 'hotspot') {
     return {
       id, label: mpMode.label,
@@ -934,6 +948,111 @@ function PartyRoster({ st }) {
         );
       }),
     ),
+
+    (() => {
+      const isGaunt = typeof _isGauntlet === 'function' && _isGauntlet();
+      const reserves = isGaunt && typeof _gauntletReserves === 'function' ? _gauntletReserves(viewer) : [];
+      if (!isGaunt) return null;
+      return h('div', { style: {
+        display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end',
+        background: EW.panel, border: '1px solid ' + EW.panelEdge, padding: '5px 8px',
+      }},
+        h('span', { style: {
+          fontFamily: '"DotGothic16", monospace', fontSize: 7, color: EW.inkMute,
+          letterSpacing: '0.14em', marginRight: 2,
+        }}, 'RESERVES'),
+        reserves.length === 0 && h('span', { style: {
+          fontFamily: '"DotGothic16", monospace', fontSize: 8, color: EW.inkDim,
+        }}, '—'),
+        reserves.map(r => {
+          const fc = getFactionColor(r);
+          const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
+          return h('div', {
+            key: r.id,
+            title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP',
+            style: {
+              position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: 2, padding: '2px', opacity: 0.85,
+              border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)',
+            },
+          },
+            h(UnitSprite, { unit: r, size: 20 }),
+            h('div', { style: { width: 22, height: 3, background: 'rgba(255,255,255,0.12)' }},
+              h('div', { style: {
+                width: hpPct + '%', height: '100%',
+                background: hpPct <= 30 ? EW.bad : EW.good,
+              }}),
+            ),
+          );
+        }),
+      );
+    })(),
+  );
+}
+
+/* Gauntlet: when one of YOUR deployed units falls (no respawns), pick which
+   reserve to send into the empty slot. The engine is paused until you choose. */
+function GauntletReplaceModal({ st }) {
+  if (!st || st.phase !== 'battle') return null;
+  const pending = st._gauntletPendingReplace;
+  if (!pending) return null;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  if (pending.player !== viewer) return null;
+  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(pending.player) : [];
+  if (reserves.length === 0) return null;
+  const fc = EW.time;
+
+  return h('div', { style: {
+    position: 'absolute', inset: 0, zIndex: 80, pointerEvents: 'auto',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(0,0,0,0.55)',
+  }},
+    h(ClipPanel, { factionColor: fc, style: { width: 340, maxWidth: '92%' }},
+      h('div', { style: {
+        padding: '10px 14px', borderBottom: '1px solid ' + EW.panelEdge,
+        background: 'linear-gradient(180deg, ' + fc + '18, transparent)',
+      }},
+        h('div', { style: {
+          fontFamily: '"Cinzel", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em',
+        }}, '⚔️ Unit Down — Send In a Reserve'),
+        h('div', { style: {
+          fontFamily: '"DotGothic16", monospace', fontSize: 8, color: EW.inkMute,
+          letterSpacing: '0.1em', marginTop: 3,
+        }}, 'No respawns. Choose who enters the fray.'),
+      ),
+      h('div', { style: { padding: '6px 0', maxHeight: 320, overflowY: 'auto' }},
+        reserves.map(r => {
+          const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
+          const statusKeys = (typeof getActiveStatusKeys === 'function')
+            ? getActiveStatusKeys(r).filter(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.category === 'status')
+            : [];
+          return h('div', {
+            key: r.id,
+            className: 'rhud-row',
+            style: { padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' },
+            onClick: () => {
+              if (typeof _gauntletDeployReserve === 'function') _gauntletDeployReserve(pending.player, r.id, pending, true);
+            },
+          },
+            h(UnitSprite, { unit: r, size: 30 }),
+            h('div', { style: { flex: 1, minWidth: 0 }},
+              h('div', { style: {
+                fontFamily: '"Cinzel", serif', fontSize: 14, color: EW.ink,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}, typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls)),
+              h('div', { style: {
+                fontFamily: '"DotGothic16", monospace', fontSize: 8,
+                color: EW.inkMute, letterSpacing: '0.06em', marginTop: 2,
+              }}, (r.cls || '').toUpperCase() + (statusKeys.length ? ' · ' + statusKeys.map(k => STATUS_DEFS[k]?.short || k).join(' ') : '')),
+            ),
+            h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 11,
+              color: hpPct <= 30 ? EW.bad : EW.good, fontWeight: 600,
+            }}, hpPct + '%'),
+          );
+        }),
+      ),
+    ),
   );
 }
 
@@ -1548,6 +1667,18 @@ function SubMenu({ st }) {
       moreItems.push({ label: '🛡 Guard', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
     }
 
+    if (typeof _isGauntlet === 'function' && _isGauntlet()) {
+      const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
+      const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+      const canSwitch = reserves.length > 0 && (unit.ap || 0) >= switchCost;
+      moreItems.push({
+        label: '🔄 Switch',
+        sub: reserves.length === 0 ? 'No reserves' : `${switchCost} AP`,
+        dim: !canSwitch,
+        onClick: () => { if (canSwitch && typeof chooseActionMenu === 'function') chooseActionMenu('switch'); },
+      });
+    }
+
     const apc = typeof getActionPanelCache === 'function' ? getActionPanelCache(unit) : {};
     if (apc.hasInspect) {
       moreItems.push({ label: '🔍 Inspect', onClick: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); }, active: am === 'inspect' });
@@ -1640,6 +1771,51 @@ function SubMenu({ st }) {
           }}, item.sub),
         ),
       ),
+      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
+    );
+  }
+
+  if (menuView === 'switch') {
+    const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
+    const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+    return h(SubMenuPanel, { title: 'Switch In Reserve', fc: fc, count: reserves.length + '' },
+      reserves.map((r, i) => {
+        const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
+        const statusKeys = (typeof getActiveStatusKeys === 'function')
+          ? getActiveStatusKeys(r).filter(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.category === 'status')
+          : [];
+        return h('div', {
+          key: r.id,
+          className: 'rhud-row',
+          style: { padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
+          onClick: () => {
+            if (typeof doSwitch === 'function') doSwitch(unit, r.id);
+          },
+        },
+          h(UnitSprite, { unit: r, size: 22 }),
+          h('div', { style: { flex: 1, minWidth: 0 }},
+            h('div', { style: {
+              fontFamily: '"Cinzel", serif', fontSize: 13, color: EW.ink,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}, typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls)),
+            h('div', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 7,
+              color: EW.inkMute, letterSpacing: '0.06em',
+            }}, (r.cls || '').toUpperCase() + (statusKeys.length ? ' · ' + statusKeys.map(k => STATUS_DEFS[k]?.short || k).join(' ') : '')),
+          ),
+          h('span', { style: {
+            fontFamily: '"DotGothic16", monospace', fontSize: 9,
+            color: hpPct <= 30 ? EW.bad : EW.good, fontWeight: 600,
+          }}, hpPct + '%'),
+        );
+      }),
+      reserves.length === 0 && h('div', { style: {
+        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9, color: EW.inkMute,
+      }}, 'No reserves left.'),
+      h('div', { style: {
+        padding: '4px 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 7,
+        color: EW.inkDim, letterSpacing: '0.06em', borderTop: '1px solid ' + EW.panelEdge,
+      }}, `Costs ${switchCost} AP · reserve enters with leftover AP · stat buffs reset`),
       h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
     );
   }
@@ -3263,6 +3439,7 @@ function ReactHUD() {
     h('div', { style: { pointerEvents: 'auto' }},
       h(PartyRoster, { st }),
     ),
+    h(GauntletReplaceModal, { st }),
     h(FrameCorners),
   );
 }

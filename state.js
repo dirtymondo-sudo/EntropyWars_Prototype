@@ -675,6 +675,27 @@
                 suddenDeath: true,
                 compatibleMaps: ['large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit'],
             },
+            gauntlet: {
+                id: 'gauntlet',
+                label: 'Gauntlet',
+                icon: '⚔️',
+                desc: 'Pokémon-style squad battle. Bring a roster of 8, deploy 4 at a time. No respawns, no round limit. Switch a reserve in for 2 AP. Last team standing wins.',
+                roundLimit: 0,
+                timeLimitSec: 0,
+                hasTowers: false,
+                hasNexus: false,
+                hasHourglasses: false,
+                hasFlags: false,
+                respawns: false,
+                rosterSize: 8,
+                deploySize: 4,
+                switchApCost: 2,
+                winConditions: ['wipeout'],
+                tiebreaker: null,
+                scoringType: 'kills',
+                suddenDeath: false,
+                compatibleMaps: ['medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit'],
+            },
         };
 
         let activeMultiplayerMode = 'arena';

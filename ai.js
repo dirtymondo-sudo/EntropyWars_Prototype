@@ -137,6 +137,24 @@
             unit._aiStallCount = 0;
         }
 
+        // Gauntlet: a badly-hurt unit retreats to the bench, sending in a fresh
+        // reserve (which then acts with the leftover AP). Only on the first action.
+        if (unit._aiLoopCount === 1 && typeof window._isGauntlet === 'function' && window._isGauntlet()) {
+            const mpm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
+            const switchCost = (mpm && mpm.switchApCost) || 2;
+            const reserves = typeof window._gauntletReserves === 'function' ? window._gauntletReserves(unit.player) : [];
+            const hpPct = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
+            if ((unit.ap || 0) >= switchCost && hpPct < 0.30 && reserves.length) {
+                const healthy = reserves.slice().sort((a, b) => (b.hp / b.maxHp) - (a.hp / a.maxHp))[0];
+                if (healthy && (healthy.hp / healthy.maxHp) >= 0.70
+                    && typeof window.doSwitch === 'function' && window.doSwitch(unit, healthy.id)) {
+                    unit._aiLoopCount = 0;
+                    g.finishComputerAction();
+                    return;
+                }
+            }
+        }
+
         g.focusUnitPanel(unit.id);
         if (g.state.autoPlayers?.[unit.player]) g.scheduleBoardRender();
         if (!g.state.cameraDisabled && !g.devAutoSim && g._shouldCameraFollowUnit(unit)) {
