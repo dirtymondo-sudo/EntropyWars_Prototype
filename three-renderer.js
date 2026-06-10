@@ -1,7 +1,7 @@
 const ThreeRenderer = (function () {
     'use strict';
 
-    const ELEV_STEP_RATIO = 0.5;
+    const ELEV_STEP_RATIO = 1.0; /* 1 game height = 1 full tile (cube voxels). Keep in sync with three-camera.js, ui.js, hud.js, three-vfx.js, map.js editor preview. */
     const FACE_BRIGHTNESS = [0.48, 0.48, 1.00, 0.30, 0.55, 0.43];
 
     const DEFAULT_BUILDING_HEIGHT_TILES = 1.8;
@@ -1320,8 +1320,15 @@ const ThreeRenderer = (function () {
         }
         var wallH = fullWallH || roofZ;
 
+        /* Game height is pinned to the legacy half-tile basis so the 1:1 visual
+           step doesn't change LOS / roof-standing heights. The prism is then
+           scaled so its roof sits exactly at _gameHeight on the voxel grid. */
         var stepPx = ts * ELEV_STEP_RATIO;
-        oSpr._gameHeight = Math.max(1, Math.floor(roofZ / stepPx));
+        var gameH = Math.max(1, Math.floor(roofZ / (ts * 0.5)));
+        var roofScale = (gameH * stepPx) / roofZ;
+        roofZ = gameH * stepPx;
+        wallH = wallH * roofScale;
+        oSpr._gameHeight = gameH;
         oSpr._roofZPx = roofZ;
 
         var g = new THREE.Group();
