@@ -1704,6 +1704,16 @@
                     }
                 }
             }
+
+            if (state.turrets) {
+                for (const turret of state.turrets) {
+                    if (turret.x === x && turret.y === y && turret.hp > 0) {
+                        const tz = (turret.z !== undefined && turret.z !== null) ? turret.z
+                            : ((typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0);
+                        if (z <= tz + 1) return false;
+                    }
+                }
+            }
             return true;
         }
 
@@ -2104,7 +2114,7 @@
 
             if (state.turrets) {
                 for (const turret of state.turrets) {
-                    if (turret.x === x && turret.y === y && turret.hp > 0 && turret.spellId === 'siegeTurret') return false;
+                    if (turret.x === x && turret.y === y && turret.hp > 0) return false;
                 }
             }
             return true;
@@ -3578,6 +3588,18 @@
                 return false;
             }
 
+            if (state.turrets && state.turrets.length) {
+                for (const t of state.turrets) {
+                    if (t.x === x && t.y === y && t.hp > 0) {
+                        const tz = (t.z !== undefined && t.z !== null) ? t.z
+                            : ((typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0);
+                        // Flyers may pass above the turret; everyone else is blocked.
+                        if (_has3D && z !== undefined && z !== null && z > tz + 1) continue;
+                        return false;
+                    }
+                }
+            }
+
             const _ovrObj = (typeof getObjectAt === 'function') ? getObjectAt(x, y) : null;
             if (_ovrObj) {
                 const _ovrRule = getObjectRule(_ovrObj);
@@ -3598,6 +3620,15 @@
                 if (block) {
                     const rule = getTerrainRule(block.terrain);
                     if (rule.passable === false) return false;
+                }
+                // Impassable objects (trees, boulders, ...) block the column up
+                // to their top; flyers above the object may still pass.
+                if (_ovrObj) {
+                    const _objRule3d = getObjectRule(_ovrObj);
+                    if (_objRule3d && _objRule3d.passable === false) {
+                        const _gz = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0;
+                        if (z <= _gz + (_objRule3d.gameHeight || 1)) return false;
+                    }
                 }
                 return true;
             }

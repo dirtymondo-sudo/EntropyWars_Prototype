@@ -149,6 +149,21 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   after 20–30 idle rounds — a sign matches stall.
 - **matchScores vs matchKills:** TDM/FFA kills live in `state.matchKills`; reading
   `state.matchScores` shows 0-0 and is misleading.
+- **Traversal is centralized in `unitCanTraverse` (map.js) — and its 3D branch
+  used to skip objects (fixed 2026-06-10):** all movement paths (battle.js BFS,
+  ai.js pathing, ui.js highlights, the final move check at `doMove`) funnel through
+  `unitCanTraverse(unit, x, y, z)`. Current maps always run in 3D mode
+  (`state.boardColumns` populated), and the 3D branch only checked block terrain —
+  it returned true without consulting `OBJECT_RULES.passable`, so trees
+  (`passable:false`) were walkable. Deployed turrets live in `state.turrets` (NOT
+  `boardObjects`/`_deployedObjects`) and were never checked by traversal at all.
+  Both now block in `unitCanTraverse`; flyers can still pass above (z above object
+  top / turret z+1). `canOccupy` previously blocked only `siegeTurret` and
+  `canOccupy3D` ignored turrets — both now block any live turret, so teleports/
+  knockbacks can't land on one. If a "walk through obstacle" bug reappears, check
+  whether the code path passes `z` (3D branch) and whether the blocker is in
+  `state.turrets`, `state._deployedObjects`, or `boardObjects` — each is checked
+  separately.
 
 ## Online / multiplayer (two-browser harness: `playtest_online.js`)
 `server.js` is the relay (room codes + ranked queue + D1 ELO); the client glue is
