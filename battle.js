@@ -5185,6 +5185,8 @@
             _busy: false,
             _busyTimer: null,
             _savedState: null,
+            _preCineView: null,
+            _cineShotId: null,
             _seqId: 0,
             _isP2: null,
 
@@ -5428,6 +5430,10 @@
                 if (opts.x    !== undefined) this.x    = opts.x;
                 if (opts.y    !== undefined) this.y    = opts.y;
                 if (opts.zoom !== undefined) this.zoom = opts.zoom;
+                if (opts.tilt !== undefined || opts.yaw !== undefined) {
+                    this._preCineView = null;
+                    this._cineShotId = null;
+                }
                 if (opts.tilt !== undefined) this.tilt = opts.tilt;
                 if (opts.yaw  !== undefined) this.yaw  = opts.yaw;
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
@@ -5448,8 +5454,6 @@
 
             moveTo(opts) {
                 if (state.cameraDisabled) return;
-
-                if (state.thirdPersonCamera && !opts._force) return;
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
@@ -5460,18 +5464,20 @@
                 this._fromT = this.tilt; this._fromYaw = this.yaw; this._fromCZ = this.camZ;
                 this._fromElev = this._elevOverride;
 
-                this._tx   = opts.x    ?? this.x;
-                this._ty   = opts.y    ?? this.y;
+                // Unspecified axes keep the previous tween TARGET (not the
+                // current interpolated value): a pan that interrupts e.g. a
+                // tilt restore should let the tilt finish, not freeze it
+                // halfway between views.
+                this._tx   = opts.x    ?? this._tx;
+                this._ty   = opts.y    ?? this._ty;
 
                 if (opts._allowZoomChange) {
-                    const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? this.zoom));
+                    const rawZoom = Math.max(0.15, Math.min(10.0, opts.zoom ?? this._tz));
                     this._tz = opts._bypassCap ? rawZoom : clampAutoZoom(rawZoom);
-                } else {
-                    this._tz = this.zoom;
                 }
-                this._tt   = opts.tilt ?? this.tilt;
-                this._tyaw = opts.yaw  ?? this.yaw;
-                this._tcz  = opts.camZ ?? this.camZ;
+                this._tt   = opts.tilt ?? this._tt;
+                this._tyaw = opts.yaw  ?? this._tyaw;
+                this._tcz  = opts.camZ ?? this._tcz;
                 this._tElev = opts.elevZ ?? -1;
 
                 let yd = this._tyaw - this._fromYaw;
@@ -5496,17 +5502,32 @@
             },
 
             save() {
-                this._savedState = { x: this.x, y: this.y, zoom: this.zoom,
-                    camZ: this.camZ, elevZ: this._elevOverride };
+
+                // Save the tween TARGETS, not the live (possibly mid-flight)
+                // values: if an action interrupts a camera move, restoring to
+                // the interpolated halfway point looks broken.
+                this._savedState = { x: this._tx, y: this._ty, zoom: this._tz,
+                    tilt: this._tt, yaw: this._tyaw,
+                    camZ: this._tcz, elevZ: this._tElev };
             },
             restore(opts = {}) {
                 const s = this._savedState;
                 this._savedState = null;
                 if (!s) return;
+
+                // If the save was taken while a cinematic shot was still on
+                // screen, _preCineView holds the player's real overhead
+                // orientation — prefer it.
+                const pre = this._preCineView;
+                this._preCineView = null;
+                this._cineShotId = null;
                 const dur = opts.duration ?? actionMs(700);
                 this._busy = true;
                 const seq = ++this._seqId;
-                this.moveTo({ ...s, duration: dur, easing: 'easeInOut' });
+                this.moveTo({ ...s,
+                    ...(pre ? { tilt: pre.tilt, yaw: pre.yaw, zoom: pre.zoom } : {}),
+                    duration: dur, easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true });
                 if (this._busyTimer) clearTimeout(this._busyTimer);
                 this._busyTimer = setTimeout(() => {
                     if (this._seqId === seq) this._busy = false;
@@ -5534,30 +5555,60 @@
                 const target = this._getBestResetTarget();
                 const userZoom = getUserZoomScale();
                 const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+
+                // Coming back from a cinematic action shot: also restore the
+                // player's overhead tilt/yaw/zoom.
+                const pre = this._preCineView;
+                this._preCineView = null;
+                this._cineShotId = null;
                 if (immediate) {
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
-                    this.snap({ x: target.x, y: target.y, zoom });
+                    this.snap({ x: target.x, y: target.y, zoom,
+                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined });
                 } else {
                     this.moveTo({ x: target.x, y: target.y, zoom, duration: actionMs(600),
-                        _fogAllowed: true, easing: 'easeInOut' });
+                        _fogAllowed: true, easing: 'easeInOut',
+                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined,
+                        _allowZoomChange: pre ? true : undefined,
+                        _bypassCap: pre ? true : undefined });
                 }
             },
 
             softResetToUnit(targetUnit) {
                 if (!boardStageEl || state.cameraDisabled) { this.reset(); this._savedState = null; return; }
+
+                // Auto-controlled side (AI / auto / remote): keep the action
+                // framing — the next action (or the next unit's activation pan)
+                // drives the camera from here. Restoring the pre-action view
+                // between consecutive actions caused the pan-back-and-forth
+                // bounce when a unit attacks several times in a row.
+                if (_cameraActingSideIsAuto()) {
+                    this._savedState = null;
+                    this._cineShotId = null;
+                    return;
+                }
                 ++boardCameraSequenceId;
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                 const focusUnit = targetUnit && !targetUnit.dead ? targetUnit : getSelectedUnit();
                 const saved = this._savedState;
                 this._savedState = null;
+                this._cineShotId = null;
 
                 if (saved && focusUnit) {
 
+                    // The save can be taken while a cinematic shot is still on
+                    // screen (e.g. acting during an enemy streak) — in that
+                    // case _preCineView holds the real overhead orientation.
+                    const pre = this._preCineView;
+                    this._preCineView = null;
                     const dur = actionMs(800);
                     this._busy = true;
                     const seq = ++this._seqId;
-                    this.moveTo({ ...saved, duration: dur, easing: 'easeInOut' });
+                    this.moveTo({ ...saved,
+                        ...(pre ? { tilt: pre.tilt, yaw: pre.yaw, zoom: pre.zoom } : {}),
+                        duration: dur, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true });
                     if (this._busyTimer) clearTimeout(this._busyTimer);
                     this._busyTimer = setTimeout(() => {
                         if (this._seqId === seq) this._busy = false;
@@ -5565,12 +5616,17 @@
                     }, dur);
                 } else if (focusUnit) {
 
+                    const pre = this._preCineView;
+                    this._preCineView = null;
                     const userZoom = getUserZoomScale();
                     const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
-                    this.moveTo({ x: focusUnit.x, y: focusUnit.y, zoom, duration: dur, easing: 'easeInOut' });
+                    this.moveTo({ x: focusUnit.x, y: focusUnit.y, zoom, duration: dur, easing: 'easeInOut',
+                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined,
+                        _allowZoomChange: pre ? true : undefined,
+                        _bypassCap: pre ? true : undefined });
                     if (this._busyTimer) clearTimeout(this._busyTimer);
                     this._busyTimer = setTimeout(() => {
                         if (this._seqId === seq) this._busy = false;
@@ -5833,6 +5889,86 @@
             return (typeof getHeightAt === 'function') ? getHeightAt(unit.x, unit.y) : 0;
         }
 
+        function _cameraActingSideIsAuto() {
+            if (state.devAutoSim) return true;
+            const p = state.activePlayer;
+            if (state.autoPlayers?.[p]) return true;
+            const c = state.controllers?.[p];
+            return c === CTRL.AI || c === CTRL.REMOTE;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // Cinematic action camera (state.cinematicActionCam toggle):
+        // swoops down to an over-the-shoulder shot behind the caster, facing
+        // the target, holds through the attack with a slow dolly toward the
+        // target. The player's overhead view is remembered in
+        // camera._preCineView and restored by softResetToUnit / reset /
+        // selectUnit; for auto-controlled sides the camera simply keeps
+        // following the next action from the cinematic framing.
+        // ═══════════════════════════════════════════════════════════════════
+        const CINE_CAM_TILT = 72;
+
+        function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
+            if (!camera._preCineView) {
+                camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
+            }
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = sourceUnit.id;
+
+            const sx = sourceUnit.x, sy = sourceUnit.y;
+            const dx = target.x - sx;
+            const dy = target.y - sy;
+            const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
+
+            // Yaw that places the camera behind the caster looking toward the
+            // target (matches ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)).
+            let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI);
+            if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
+
+            // Focal point sits ahead of the caster toward the target so the
+            // caster reads large in the foreground, target in the background.
+            const f = Math.min(0.5, 0.18 + 1.0 / (dist + 1));
+            const fx = sx + dx * f;
+            const fy = sy + dy * f;
+
+            let elevZ = -1;
+            if (typeof window._getElevationPx === 'function') {
+                const ts = CONFIG.tileSize || 128;
+                const srcZ = _unitElevZ(sourceUnit);
+                elevZ = (srcZ > 0 ? window._getElevationPx(srcZ) : 0) + ts * 0.55;
+            }
+
+            const zoom = Math.max(getDefaultZoom() * 1.1,
+                Math.min(3.0, computeZoomForVisibleTiles(dist + 4)));
+
+            camera.moveTo({
+                x: fx, y: fy, zoom, tilt: CINE_CAM_TILT, yaw, elevZ,
+                duration: actionMs(640), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true,
+                _fogAllowed: fogAllowed || undefined
+            });
+
+            // Slow dolly toward the target while the attack lands.
+            const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
+            const f2 = Math.min(0.7, f + 0.2);
+            window.setTimeout(() => {
+
+                // Only dolly if this shot still owns the camera — a restore,
+                // reset, or unit-selection pan may have taken over meanwhile.
+                if (camera._cineShotId !== sequenceId) return;
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                camera.moveTo({
+                    x: sx + dx * f2, y: sy + dy * f2,
+                    zoom: Math.min(3.2, zoom * 1.06), tilt: CINE_CAM_TILT, yaw, elevZ,
+                    duration: Math.max(actionMs(400), timings.travelMs + timings.targetHold),
+                    easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: fogAllowed || undefined
+                });
+            }, dollyDelay);
+        }
+
         function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
             if (!sourceUnit || !target || state.phase !== 'battle') return null;
 
@@ -5892,26 +6028,35 @@
             camera._busy = true;
             const camSeq = ++camera._seqId;
 
-            const focusX = (sourceUnit.x + target.x) / 2;
-            const focusY = (sourceUnit.y + target.y) / 2;
+            const _cineEligible = state.cinematicActionCam && !_skipVisuals()
+                && !(typeof isCinematicPresent === 'function' && isCinematicPresent())
+                && (Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y)) >= 1;
 
-            let actionElevZ = -1;
-            if (typeof window._getElevationPx === 'function') {
-                const srcZ = _unitElevZ(sourceUnit);
-                const tgtZ = _unitElevZ(target);
-                const maxZ = Math.max(srcZ, tgtZ);
-                if (maxZ > 0) {
-                    const ts = CONFIG.tileSize || 128;
-                    actionElevZ = window._getElevationPx(maxZ) + ts * 0.55;
+            if (_cineEligible) {
+                _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId);
+            } else {
+
+                const focusX = (sourceUnit.x + target.x) / 2;
+                const focusY = (sourceUnit.y + target.y) / 2;
+
+                let actionElevZ = -1;
+                if (typeof window._getElevationPx === 'function') {
+                    const srcZ = _unitElevZ(sourceUnit);
+                    const tgtZ = _unitElevZ(target);
+                    const maxZ = Math.max(srcZ, tgtZ);
+                    if (maxZ > 0) {
+                        const ts = CONFIG.tileSize || 128;
+                        actionElevZ = window._getElevationPx(maxZ) + ts * 0.55;
+                    }
                 }
-            }
 
-            camera.moveTo({
-                x: focusX, y: focusY,
-                duration: actionMs(500), easing: 'easeInOut',
-                elevZ: actionElevZ,
-                _fogAllowed: _fogPassthrough || undefined
-            });
+                camera.moveTo({
+                    x: focusX, y: focusY,
+                    duration: actionMs(500), easing: 'easeInOut',
+                    elevZ: actionElevZ,
+                    _fogAllowed: _fogPassthrough || undefined
+                });
+            }
 
             boardCameraResetTimer = setTimeout(() => {
                 if (sequenceId !== boardCameraSequenceId) return;
@@ -12678,6 +12823,7 @@
 
             get camFocalX() { return _lastCamFocalX; },
             get camFocalY() { return _lastCamFocalY; },
+            get _camera() { return camera; },
             getUserZoomScale,
 
             playCutscene,
@@ -12857,16 +13003,40 @@
                 if (state._userPanning) {
 
                     state._deferredTurnPanUnitId = unitId;
+                } else if (camera._cineShotId != null && camera._cineShotUnitId === unitId) {
+
+                    // A cinematic action shot for this unit is still playing
+                    // (deferred activation pan landing mid-action) — don't
+                    // yank the camera; the action's own restore handles it.
                 } else {
                     state._deferredTurnPanUnitId = null;
+                    camera._cineShotId = null;
                     const baseZoom = getUserZoomScale();
                     const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
-                    focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                        zoom,
-                        holdMs: 99999,
-                        persist: true,
-                        transitionMs: 380
-                    });
+
+                    // In auto mode keep the cinematic framing rolling between
+                    // units; only a real (manual) activation restores overhead.
+                    const _pre = _cameraActingSideIsAuto() ? null : camera._preCineView;
+                    if (_pre) {
+
+                        // Still in a cinematic action framing — swing back up
+                        // to the player's overhead view as part of the pan.
+                        camera._preCineView = null;
+                        camera._savedState = null;
+                        camera.moveTo({
+                            x: unit.x, y: unit.y, zoom,
+                            tilt: _pre.tilt, yaw: _pre.yaw,
+                            duration: 600, easing: 'easeInOut',
+                            _allowZoomChange: true, _bypassCap: true
+                        });
+                    } else {
+                        focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                            zoom,
+                            holdMs: 99999,
+                            persist: true,
+                            transitionMs: 380
+                        });
+                    }
                 }
             }
             scheduleBoardRender();
@@ -15843,6 +16013,25 @@
                 endUnitIfDone(unit);
                 renderBattleUpdate();
             }, impactDelay);
+
+            /* Consume the saved camera state once the action camera finishes:
+               restores the player's view if this unit keeps acting (auto sides
+               keep the action framing). Without this the save from
+               playOffensiveActionCamera lingered forever and a much later
+               softResetToUnit (warp/swap/teleport) restored a stale view. */
+            window.setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner) return;
+                if (state.cameraDisabled || unit.dead) return;
+                if ((state._blitzActiveUnitId && state._blitzActiveUnitId !== unit.id) || unitFinished(unit)) {
+
+                    // Turn moved on — the next unit's activation pan owns the
+                    // camera; just drop the stale save.
+                    camera._savedState = null;
+                    camera._cineShotId = null;
+                    return;
+                }
+                _softResetCameraToUnit(unit);
+            }, totalDelay);
             return totalDelay;
         }
 
