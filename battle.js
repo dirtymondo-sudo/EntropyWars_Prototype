@@ -5585,6 +5585,14 @@
                 if (_cameraActingSideIsAuto()) {
                     this._savedState = null;
                     this._cineShotId = null;
+
+                    // The action is over and we're deliberately holding the
+                    // framing — release busy NOW. Leaving it to the action
+                    // timer alone can strand _busy=true (its clear is skipped
+                    // when the camera sequence moved on), stalling the
+                    // _waitForAnimationsThen turn loop after spells.
+                    this._busy = false;
+                    if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -5935,12 +5943,21 @@
             const fx = sx + dx * f;
             const fy = sy + dy * f;
 
-            let elevZ = -1;
+            // Elevation of both ends of the shot (flying units use their
+            // airborne z): the focal height follows the line of fire, and the
+            // camera pitches with the slope — tilting up at an airborne
+            // target, down when a flyer strikes a grounded one.
+            const ts = CONFIG.tileSize || 128;
+            let srcPx = 0, tgtPx = 0;
             if (typeof window._getElevationPx === 'function') {
-                const ts = CONFIG.tileSize || 128;
                 const srcZ = _unitElevZ(sourceUnit);
-                elevZ = (srcZ > 0 ? window._getElevationPx(srcZ) : 0) + ts * 0.55;
+                const tgtZ = _unitElevZ(target);
+                srcPx = srcZ > 0 ? window._getElevationPx(srcZ) : 0;
+                tgtPx = tgtZ > 0 ? window._getElevationPx(tgtZ) : 0;
             }
+            const elevZ = srcPx + (tgtPx - srcPx) * f + ts * 0.55;
+            const slopeDeg = Math.atan2(tgtPx - srcPx, dist * ts) * (180 / Math.PI);
+            const tilt = Math.max(55, Math.min(88, CINE_CAM_TILT + slopeDeg * 0.8));
 
             // Frame the shot relative to the battle overview zoom (which by
             // definition fits the whole board): much tighter for melee, easing
@@ -5949,7 +5966,7 @@
                 getDefaultZoom() * Math.max(1.8, 4.4 - 0.3 * Math.min(dist, 8)));
 
             camera.moveTo({
-                x: fx, y: fy, zoom, tilt: CINE_CAM_TILT, yaw, elevZ,
+                x: fx, y: fy, zoom, tilt, yaw, elevZ,
                 duration: actionMs(640), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true,
                 _fogAllowed: fogAllowed || undefined
@@ -5958,6 +5975,7 @@
             // Dolly down-range as the attack fires, arriving with the hit.
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
             const f2 = Math.min(0.8, f + 0.18);
+            const elevZ2 = srcPx + (tgtPx - srcPx) * f2 + ts * 0.55;
             window.setTimeout(() => {
 
                 // Only dolly if this shot still owns the camera — a restore,
@@ -5967,7 +5985,7 @@
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
                     x: sx + dx * f2, y: sy + dy * f2,
-                    zoom: Math.min(3.2, zoom * 1.08), tilt: CINE_CAM_TILT, yaw, elevZ,
+                    zoom: Math.min(3.2, zoom * 1.08), tilt, yaw, elevZ: elevZ2,
                     duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
@@ -6015,9 +6033,16 @@
                         duration: actionMs(420), _fogAllowed: true, elevZ: _fogElevZ });
                     camera._busy = true;
                     const seq = ++camera._seqId;
+
+                    // Busy release on its own timer (boardCameraResetTimer is
+                    // a shared slot other camera ops cancel).
+                    if (camera._busyTimer) clearTimeout(camera._busyTimer);
+                    camera._busyTimer = setTimeout(() => {
+                        if (camera._seqId === seq) camera._busy = false;
+                        camera._busyTimer = null;
+                    }, holdMs);
                     boardCameraResetTimer = setTimeout(() => {
                         if (sequenceId !== boardCameraSequenceId) return;
-                        if (camera._seqId === seq) camera._busy = false;
                         const overlay = document.getElementById('turnBannerOverlay');
                         if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
                         clearTimeout(state._fogRevealTimer);
@@ -6072,9 +6097,17 @@
                 });
             }
 
+            // The busy release gets its OWN timer: boardCameraResetTimer is a
+            // shared slot that pans/resets freely cancel, which stranded
+            // _busy=true and stalled the _waitForAnimationsThen turn loop.
+            if (camera._busyTimer) clearTimeout(camera._busyTimer);
+            camera._busyTimer = setTimeout(() => {
+                if (camera._seqId === camSeq) camera._busy = false;
+                camera._busyTimer = null;
+            }, timings.totalMs);
+
             boardCameraResetTimer = setTimeout(() => {
                 if (sequenceId !== boardCameraSequenceId) return;
-                if (camera._seqId === camSeq) camera._busy = false;
                 const overlay = document.getElementById('turnBannerOverlay');
                 if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
             }, timings.totalMs);

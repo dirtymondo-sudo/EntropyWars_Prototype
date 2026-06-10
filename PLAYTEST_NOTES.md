@@ -200,7 +200,18 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   softResetToUnit/reset/selectUnit for MANUAL local units, while auto/AI
   units keep streaming from the cinematic framing. Bane-vial item throws
   (`doItem` baneType branch) route through `playOffensiveActionCamera` like
-  attacks (throw anim/projectile delayed by `cam.sourceHold`).
+  attacks (throw anim/projectile delayed by `cam.sourceHold`). The shot is
+  elevation-aware: focal height lerps from caster to target elevation along
+  the line of fire and tilt pitches with the slope (clamped 55–88: ~57–61
+  firing down from height/flight, 72 flat, 83–88 looking up at airborne or
+  high-ground targets).
+- **camera._busy lifecycle (STALL TRAP):** `_waitForAnimationsThen` polls
+  `camera.isBusy()` (8s max per wait). `boardCameraResetTimer` is a SHARED
+  slot that any pan/reset/focus cancels — never park a busy-release there or
+  `_busy` strands true and every AI action stalls ~8s ("game stalls after a
+  spell"). Busy releases must live on `camera._busyTimer` (every setter of
+  `_busy=true` installs its own release; ownership transfers re-install).
+  Verified with an injected `camera.reset()` race mid-spell.
 - **`state.thirdPersonCamera` is DEAD** (never assigned; leftover guards remain
   in state.js input handlers only — battle.js's guard was removed). The 2D
   overlay "Cin" toggle (`state.cinematicMode`, `playCinematicAttack`) is a
