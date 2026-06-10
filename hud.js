@@ -3460,6 +3460,7 @@ function mountReactHUD() {
   _reactHudRoot.render(h(ReactHUD));
 
   _injectHudHideStyles();
+  _initHudJuice(container);
 }
 
 function unmountReactHUD() {
@@ -3467,9 +3468,144 @@ function unmountReactHUD() {
     _reactHudRoot.unmount();
     _reactHudRoot = null;
   }
+  _teardownHudJuice();
   const el = document.getElementById('reactHudRoot');
   if (el) el.remove();
   _removeHudHideStyles();
+}
+
+// ── Click juice: press pop + ripple burst + SFX for every pressable HUD element ──
+let _hudJuiceLayer = null;
+let _hudJuiceContainer = null;
+let _hudJuicePressHandler = null;
+
+const _HUD_PRESSABLE_SELECTOR = '.rhud-row, .rhud-end-turn, .rhud-back, .rhud-target';
+
+function _hudJuiceFindPressable(target, container) {
+  if (!(target instanceof Element)) return null;
+  const explicit = target.closest(_HUD_PRESSABLE_SELECTOR);
+  if (explicit && container.contains(explicit)) return explicit;
+
+  // Generic fallback: topmost contiguous cursor:pointer element — covers the
+  // pause ☰, party roster cards, combat log toggle, etc. (cursor inherits, so
+  // walk up until it stops being 'pointer' to land on the button root).
+  let el = target, found = null;
+  while (el && el !== container) {
+    if (getComputedStyle(el).cursor === 'pointer') found = el;
+    else if (found) break;
+    el = el.parentElement;
+  }
+  if (!found) return null;
+  const r = found.getBoundingClientRect();
+  if (r.width > 460 || r.height > 260) return null;
+  return found;
+}
+
+function _hudJuiceBurst(el, clientX, clientY, color, deny) {
+  const layer = _hudJuiceLayer;
+  if (!layer) return;
+  const lr = layer.getBoundingClientRect();
+  if (lr.width <= 0) return;
+  // Convert client px → layer-local px in case an ancestor is scaled
+  const s = layer.offsetWidth > 0 ? layer.offsetWidth / lr.width : 1;
+  const r = el.getBoundingClientRect();
+  const left = (r.left - lr.left) * s, top = (r.top - lr.top) * s;
+  const w = r.width * s, ht = r.height * s;
+
+  const flash = document.createElement('div');
+  flash.className = 'hud-juice-flash';
+  flash.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden;'
+    + 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + ht + 'px;'
+    + 'background:linear-gradient(90deg,' + color + '2e,' + color + '14);'
+    + 'box-shadow:0 0 14px ' + color + '44, inset 0 0 10px ' + color + '22;';
+
+  if (!deny && typeof clientX === 'number') {
+    const d = Math.max(w, ht) * 2.3;
+    const rx = (clientX - r.left) * s - d / 2;
+    const ry = (clientY - r.top) * s - d / 2;
+    const ripple = document.createElement('div');
+    ripple.className = 'hud-juice-ripple';
+    ripple.style.cssText = 'position:absolute;border-radius:50%;pointer-events:none;'
+      + 'left:' + rx + 'px;top:' + ry + 'px;width:' + d + 'px;height:' + d + 'px;'
+      + 'background:radial-gradient(circle,' + color + '7a 0%,' + color + '26 45%,transparent 70%);';
+    flash.appendChild(ripple);
+  }
+
+  const ring = document.createElement('div');
+  ring.className = 'hud-juice-ring';
+  ring.style.cssText = 'position:absolute;pointer-events:none;box-sizing:border-box;'
+    + 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + ht + 'px;'
+    + 'border:1px solid ' + color + 'cc;';
+
+  layer.appendChild(flash);
+  layer.appendChild(ring);
+  setTimeout(() => { flash.remove(); ring.remove(); }, 450);
+}
+
+function _hudJuicePress(el, clientX, clientY) {
+  // rhud-disabled but still cursor:pointer = inspectable (e.g. greyed Abilities) — treat as a normal press
+  const denied = el.classList.contains('rhud-disabled')
+    && getComputedStyle(el).cursor !== 'pointer';
+
+  if (denied) {
+    try {
+      el.animate([
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-4px)' },
+        { transform: 'translateX(4px)' },
+        { transform: 'translateX(-3px)' },
+        { transform: 'translateX(2px)' },
+        { transform: 'translateX(0)' },
+      ], { duration: 230, easing: 'ease-out' });
+    } catch (err) {}
+    _hudJuiceBurst(el, clientX, clientY, '#ff7a8a', true);
+    if (typeof playSfx === 'function') playSfx('uiError');
+    return;
+  }
+
+  try {
+    el.animate([
+      { transform: 'scale(1)' },
+      { transform: 'scale(0.96)', offset: 0.3 },
+      { transform: 'scale(1.02)', offset: 0.65 },
+      { transform: 'scale(1)' },
+    ], { duration: 200, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+  } catch (err) {}
+
+  const isEndTurn = el.classList.contains('rhud-end-turn');
+  const color = isEndTurn ? '#ff7a8a' : '#f2c468';
+  _hudJuiceBurst(el, clientX, clientY, color, false);
+
+  let sfx = 'uiButtonConfirm';
+  if (isEndTurn) sfx = 'uiConfirm';
+  else if (el.classList.contains('rhud-back')) sfx = 'uiCursorMove';
+  if (typeof playSfx === 'function') playSfx(sfx);
+}
+
+function _initHudJuice(container) {
+  const mapRow = document.getElementById('mapRow');
+  if (!mapRow || _hudJuicePressHandler) return;
+
+  _hudJuiceLayer = document.createElement('div');
+  _hudJuiceLayer.id = 'hudJuiceLayer';
+  _hudJuiceLayer.style.cssText = 'position:absolute;inset:0;z-index:60;pointer-events:none;overflow:hidden;';
+  mapRow.appendChild(_hudJuiceLayer);
+
+  _hudJuicePressHandler = (e) => {
+    const el = _hudJuiceFindPressable(e.target, container);
+    if (el) _hudJuicePress(el, e.clientX, e.clientY);
+  };
+  container.addEventListener('pointerdown', _hudJuicePressHandler, true);
+  _hudJuiceContainer = container;
+}
+
+function _teardownHudJuice() {
+  if (_hudJuiceContainer && _hudJuicePressHandler) {
+    _hudJuiceContainer.removeEventListener('pointerdown', _hudJuicePressHandler, true);
+  }
+  _hudJuicePressHandler = null;
+  _hudJuiceContainer = null;
+  if (_hudJuiceLayer) { _hudJuiceLayer.remove(); _hudJuiceLayer = null; }
 }
 
 function _injectHudHideStyles() {
@@ -3492,7 +3628,7 @@ function _injectHudHideStyles() {
 
     /* ── React HUD hover states ── */
     .rhud-row {
-      transition: background 0.1s ease, border-color 0.1s ease;
+      transition: background 0.1s ease, border-color 0.1s ease, filter 0.08s ease;
     }
     .rhud-row:hover:not(.rhud-disabled) {
       background: linear-gradient(90deg, rgba(242,196,104,0.10), transparent) !important;
@@ -3504,14 +3640,14 @@ function _injectHudHideStyles() {
       color: #e6e9f2 !important;
     }
     .rhud-end-turn {
-      transition: background 0.1s ease, border-color 0.1s ease;
+      transition: background 0.1s ease, border-color 0.1s ease, filter 0.08s ease;
     }
     .rhud-end-turn:hover {
       background: linear-gradient(180deg, rgba(255,122,138,0.28), rgba(255,122,138,0.08)) !important;
       border-color: rgba(255,122,138,0.6) !important;
     }
     .rhud-target {
-      transition: background 0.1s ease;
+      transition: background 0.1s ease, filter 0.08s ease;
     }
     .rhud-target:hover {
       background: linear-gradient(90deg, rgba(242,196,104,0.12), transparent) !important;
@@ -3520,11 +3656,36 @@ function _injectHudHideStyles() {
       color: #e6e9f2 !important;
     }
     .rhud-back {
-      transition: color 0.1s ease;
+      transition: color 0.1s ease, filter 0.08s ease;
     }
     .rhud-back:hover {
       color: #e6e9f2 !important;
     }
+
+    /* ── Click juice: instant press states + burst layer animations ── */
+    .rhud-row:active:not(.rhud-disabled),
+    .rhud-target:active,
+    .rhud-back:active {
+      filter: brightness(1.45) saturate(1.15);
+    }
+    .rhud-end-turn:active {
+      filter: brightness(1.5);
+    }
+    @keyframes hudJuiceFlash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes hudJuiceRipple {
+      0% { transform: scale(0.12); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+    @keyframes hudJuiceRing {
+      0% { transform: scale(1); opacity: 0.9; }
+      100% { transform: scale(1.12); opacity: 0; }
+    }
+    .hud-juice-flash { animation: hudJuiceFlash 0.3s ease-out forwards; }
+    .hud-juice-ripple { animation: hudJuiceRipple 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .hud-juice-ring { animation: hudJuiceRing 0.32s ease-out forwards; }
 
     /* Hide Sky Shader debug GUI */
     .lil-gui.root { display: none !important; }
