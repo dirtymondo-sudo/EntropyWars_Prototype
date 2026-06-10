@@ -165,6 +165,54 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   `state.turrets`, `state._deployedObjects`, or `boardObjects` — each is checked
   separately.
 
+## Camera system (battle.js `camera` object, ~line 5160) — 2026-06 overhaul
+The logical camera is `camera` in battle.js (x/y tile focus, zoom, tilt, yaw,
+camZ, elevZ); it drives BOTH the CSS diorama transform and `ThreeCamera.sync`.
+Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
+`state.dioramaTiltDeg` / `state.dioramaYawDeg`; focus via `window._lastCamFocalX/Y`.
+- **`moveTo` semantics:** `zoom` is IGNORED unless `_allowZoomChange:true`
+  (+`_bypassCap` to skip the auto-zoom floor). Since 2026-06, axes not specified
+  keep the previous tween TARGET (not the live interpolated value) — interrupting
+  a tilt restore with a pan no longer freezes the tilt halfway.
+- **Action camera flow:** every offensive action funnels through
+  `playOffensiveActionCamera(src, tgt, opts)` → returns timings
+  ({sourceHold, travelMs, targetHold, totalMs}) that VFX scheduling relies on.
+  It `camera.save()`s (now saves tween TARGETS + tilt/yaw), then either the
+  default midpoint framing or the cinematic shot. Restores go through
+  `camera.softResetToUnit` — which now SKIPS the restore when the acting side
+  is auto-controlled (AI/auto/remote), killing the old per-action
+  pan-back-to-unit bounce; ai.js also only re-centers a unit on its FIRST
+  action of an activation (`unit._aiLoopCount === 1`).
+- **Cinematic action cam** (`state.cinematicActionCam`, persisted in
+  localStorage `ew_cinematicActionCam`; toggles: pause menu Video → "Action
+  Cam", dev bar "3P"): `_playCineActionShot` swoops to tilt 72 behind the
+  caster, yaw = atan2(-dx,-dy) **+16° off-axis** so the caster reads
+  bottom-corner foreground (Pokémon OTS, not dead-centered); focal sits
+  0.32–0.62 of the way toward the target. Zoom is RELATIVE to
+  `getDefaultZoom()` (≈ whole-board view): `default × (4.4 − 0.3·dist)`,
+  clamped — do NOT use `computeZoomForVisibleTiles` for this, its flat-view
+  model badly underestimates what a tilt-72 perspective shows. The shot
+  dollies down-range at fire time (easeOut, arrives with the hit) +
+  `shakeBoard('normal')` impact kick. Ownership token
+  `camera._cineShotId`/`_cineShotUnitId` guards the dolly and the deferred
+  `selectUnit` activation pan from fighting each other. `camera._preCineView`
+  remembers the player's overhead tilt/yaw/zoom; it is restored by
+  softResetToUnit/reset/selectUnit for MANUAL local units, while auto/AI
+  units keep streaming from the cinematic framing. Bane-vial item throws
+  (`doItem` baneType branch) route through `playOffensiveActionCamera` like
+  attacks (throw anim/projectile delayed by `cam.sourceHold`).
+- **`state.thirdPersonCamera` is DEAD** (never assigned; leftover guards remain
+  in state.js input handlers only — battle.js's guard was removed). The 2D
+  overlay "Cin" toggle (`state.cinematicMode`, `playCinematicAttack`) is a
+  separate, still-live feature.
+- **Harness:** `node playtest_camera.js` (needs server on :3000) plays a TDM,
+  records tilt/yaw around attacks in 3 phases (cinematic P1, cinematic CPU,
+  default) and screenshots to `shots/cam-*`. It serves the LOCAL
+  battle.js/ai.js/ui.js via `LOCAL_ASSETS` so repo edits are testable before
+  the R2 upload. NOTE: setting `controllers={1:'ai',2:'ai'}` mid-match STALLS
+  (no attacks, `_blitzActiveUnitId` null) — use a local side or dev-sim to
+  drive soaks.
+
 ## Online / multiplayer (two-browser harness: `playtest_online.js`)
 `server.js` is the relay (room codes + ranked queue + D1 ELO); the client glue is
 `online.js` (on R2). Authority model: **HOST = Player 1 = authoritative engine;

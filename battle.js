@@ -5907,6 +5907,7 @@
         // following the next action from the cinematic framing.
         // ═══════════════════════════════════════════════════════════════════
         const CINE_CAM_TILT = 72;
+        const CINE_CAM_YAW_OFFSET = 16;
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
             if (!camera._preCineView) {
@@ -5921,13 +5922,16 @@
             const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
 
             // Yaw that places the camera behind the caster looking toward the
-            // target (matches ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)).
-            let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI);
+            // target (matches ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)),
+            // swung a few degrees off-axis so the caster reads bottom-corner
+            // foreground and the target sits across the frame — over-the-
+            // shoulder, not dead-centered.
+            let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            // Focal point sits ahead of the caster toward the target so the
-            // caster reads large in the foreground, target in the background.
-            const f = Math.min(0.5, 0.18 + 1.0 / (dist + 1));
+            // Focal point well ahead of the caster along the line of fire, so
+            // the caster hangs low in the frame and the shot looks down-range.
+            const f = Math.min(0.62, 0.32 + 0.8 / (dist + 1));
             const fx = sx + dx * f;
             const fy = sy + dy * f;
 
@@ -5938,8 +5942,11 @@
                 elevZ = (srcZ > 0 ? window._getElevationPx(srcZ) : 0) + ts * 0.55;
             }
 
-            const zoom = Math.max(getDefaultZoom() * 1.1,
-                Math.min(3.0, computeZoomForVisibleTiles(dist + 4)));
+            // Frame the shot relative to the battle overview zoom (which by
+            // definition fits the whole board): much tighter for melee, easing
+            // off with range so the target stays in frame down-range.
+            const zoom = Math.min(4.0,
+                getDefaultZoom() * Math.max(1.8, 4.4 - 0.3 * Math.min(dist, 8)));
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt: CINE_CAM_TILT, yaw, elevZ,
@@ -5948,9 +5955,9 @@
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // Slow dolly toward the target while the attack lands.
+            // Dolly down-range as the attack fires, arriving with the hit.
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
-            const f2 = Math.min(0.7, f + 0.2);
+            const f2 = Math.min(0.8, f + 0.18);
             window.setTimeout(() => {
 
                 // Only dolly if this shot still owns the camera — a restore,
@@ -5960,13 +5967,20 @@
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
                     x: sx + dx * f2, y: sy + dy * f2,
-                    zoom: Math.min(3.2, zoom * 1.06), tilt: CINE_CAM_TILT, yaw, elevZ,
-                    duration: Math.max(actionMs(400), timings.travelMs + timings.targetHold),
-                    easing: 'easeInOut',
+                    zoom: Math.min(3.2, zoom * 1.08), tilt: CINE_CAM_TILT, yaw, elevZ,
+                    duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
+                    easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
                     _fogAllowed: fogAllowed || undefined
                 });
             }, dollyDelay);
+
+            // Impact kick.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle') return;
+                shakeBoard('normal');
+            }, timings.sourceHold + timings.travelMs + actionMs(60));
         }
 
         function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
@@ -16957,21 +16971,27 @@
                     return;
                 }
                 focusUnitPanel(target.id);
-                _spellFocusCamera(unit, x, y);
+                const _baneCam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 900, targetHold: 900,
+                    attackName: baneRule.name, _noCinematic: true
+                });
                 pushUndoSnapshot(true);
                 unit.items[baneKey] -= 1;
                 const isBaneEffective = (target.types || []).includes(baneRule.baneType);
                 let damage = baneRule.baseDmg + (isBaneEffective ? baneRule.baneDmg : 0);
                 damage = Math.max(1, damage - Math.floor((target.def || 0) * 0.3));
-                const _throwTravelMs = actionMs(520);
+                const _throwDelay = Math.max(0, _baneCam?.sourceHold ?? actionMs(900));
+                const _throwTravelMs = _baneCam?.travelMs ?? actionMs(520);
 
-                triggerAttackAnim(unit, target.x, target.y);
+                window.setTimeout(() => {
+                    triggerAttackAnim(unit, target.x, target.y);
+                }, _throwDelay);
                 window.setTimeout(() => {
                     playSfx('itemThrow');
                     playProjectileToUnit(unit, target, 'proj-bane-' + baneRule.baneType, _throwTravelMs);
-                }, actionMs(120));
+                }, _throwDelay + actionMs(120));
 
-                const _baneImpactMs = actionMs(120) + _throwTravelMs + actionMs(80);
+                const _baneImpactMs = _throwDelay + actionMs(120) + _throwTravelMs + actionMs(80);
                 window.setTimeout(() => {
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} throws ${baneRule.name} at `, {
                         sourceUnit: unit,
@@ -16988,7 +17008,8 @@
                     }
                 }, _baneImpactMs);
 
-                const _baneSettleMs = _baneImpactMs + actionMs(500);
+                const _baneSettleMs = Math.max(_baneImpactMs + actionMs(500),
+                    (_baneCam?.totalMs ?? 0) + actionMs(120));
                 window.setTimeout(() => {
                     spendAP(unit, AP_COST_ACTION);
                     if (!unit._itemLog) unit._itemLog = {};
