@@ -212,6 +212,12 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   spell"). Busy releases must live on `camera._busyTimer` (every setter of
   `_busy=true` installs its own release; ownership transfers re-install).
   Verified with an injected `camera.reset()` race mid-spell.
+- **User-held camera + turn change:** while the user holds a camera drag,
+  `state._userPanning` must be true so `selectUnit` defers its activation pan
+  into `state._deferredTurnPanUnitId`; each drag-release handler consumes it
+  (pans to the new active unit). The right-button pan and touch paths always
+  did this; the middle-button tilt/yaw drag didn't (fixed 2026-06 in state.js
+  — it left the camera wherever the drag ended when a turn started mid-drag).
 - **`state.thirdPersonCamera` is DEAD** (never assigned; leftover guards remain
   in state.js input handlers only — battle.js's guard was removed). The 2D
   overlay "Cin" toggle (`state.cinematicMode`, `playCinematicAttack`) is a

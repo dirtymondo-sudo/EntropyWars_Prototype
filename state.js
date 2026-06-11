@@ -4418,6 +4418,11 @@
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
                 e.preventDefault();
                 _tiltActive = true;
+
+                // Mark the camera as user-held so a unit activating mid-drag
+                // defers its pan (selectUnit → _deferredTurnPanUnitId) instead
+                // of fighting the drag — consumed on mouseup below.
+                state._userPanning = true;
                 _tiltStartX = e.clientX;
                 _tiltStartY = e.clientY;
                 _tiltStartDeg = state.dioramaTiltDeg ?? 50;
@@ -4443,6 +4448,25 @@
                 if (e.button !== 1) return;
                 if (!_tiltActive) return;
                 _tiltActive = false;
+                state._userPanning = false;
+
+                // A unit's turn started while the camera was held — pan to it
+                // now so the player isn't left staring at the wrong place.
+                if (state._deferredTurnPanUnitId) {
+                    const defId = state._deferredTurnPanUnitId;
+                    state._deferredTurnPanUnitId = null;
+                    const u = state.units?.find(u => u.id === defId && !u.dead);
+                    if (u && typeof focusBoardCameraOnTiles === 'function') {
+                        const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
+                        const zoom = baseZoom > 1.05 ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                        focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
+                            zoom,
+                            holdMs: 99999,
+                            persist: true,
+                            transitionMs: 500
+                        });
+                    }
+                }
             });
 
             let _touchPanId = null;
