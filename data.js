@@ -24,7 +24,7 @@ const TERRAIN_RESHAPE_CONFIG = {
 const FLYING_ALTITUDE_CONFIG = {
     apCost: 1,
     maxPerTurn: 3,
-    minClearance: 3,
+    minClearance: 2,
     maxAltitudeAboveGround: 8,
 };
 
