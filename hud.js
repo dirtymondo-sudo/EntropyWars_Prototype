@@ -2334,12 +2334,13 @@ function EnemyActionMenu({ st }) {
           typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)) {
 
         const ts = CONFIG.tileSize || 128;
-        const ELEV = 0.5;
         const curGnd = typeof getHeightAt === 'function' ? getHeightAt(actingUnit.x, actingUnit.y) : 0;
         const clearance = (actingUnit.z || 0) - curGnd;
         const destGnd = typeof getHeightAt === 'function' ? getHeightAt(mt.x, mt.y) : 0;
         const destZ = destGnd + clearance;
-        destY = Math.max(ts * 0.04, destZ * ts * ELEV);
+        const destElev = (typeof window._getElevationPx === 'function')
+          ? window._getElevationPx(destZ) : destZ * ts;
+        destY = Math.max(ts * 0.04, destElev);
       } else {
         destY = ThreeRenderer.tileTopY(mt.x, mt.y);
       }

@@ -2,7 +2,10 @@ const ThreeCamera = (function () {
     'use strict';
 
     const DEG2RAD = Math.PI / 180;
-    const ELEV_STEP_RATIO = 0.5;
+    /* MUST match ELEV_STEP_RATIO in three-renderer.js (1 height level = 1 full
+       tile) and window._getElevationPx in ui.js — the focal height fed to
+       lookAt() lives in the renderer's world space. */
+    const ELEV_STEP_RATIO = 1.0;
 
     let baseDist = 800;
     const FOV = 45;
@@ -35,6 +38,7 @@ const ThreeCamera = (function () {
 
     function setTileSize(ts) { tileSize = ts; }
     function setBaseDist(d) { baseDist = d; }
+    function getBaseDist() { return baseDist; }
 
     function markUserInput() {
         _smoothOverride = 10;
@@ -210,6 +214,7 @@ const ThreeCamera = (function () {
         screenDeltaToWorldXZ,
         setTileSize,
         setBaseDist,
+        getBaseDist,
         getCamera,
         markUserInput,
         snapImmediate,

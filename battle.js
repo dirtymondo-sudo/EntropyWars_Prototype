@@ -5937,12 +5937,6 @@
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            // Focal point well ahead of the caster along the line of fire, so
-            // the caster hangs low in the frame and the shot looks down-range.
-            const f = Math.min(0.62, 0.32 + 0.8 / (dist + 1));
-            const fx = sx + dx * f;
-            const fy = sy + dy * f;
-
             // Elevation of both ends of the shot (flying units use their
             // airborne z): the focal height follows the line of fire, and the
             // camera pitches with the slope — tilting up at an airborne
@@ -5955,15 +5949,48 @@
                 srcPx = srcZ > 0 ? window._getElevationPx(srcZ) : 0;
                 tgtPx = tgtZ > 0 ? window._getElevationPx(tgtZ) : 0;
             }
-            const elevZ = srcPx + (tgtPx - srcPx) * f + ts * 0.55;
             const slopeDeg = Math.atan2(tgtPx - srcPx, dist * ts) * (180 / Math.PI);
             const tilt = Math.max(55, Math.min(88, CINE_CAM_TILT + slopeDeg * 0.8));
 
             // Frame the shot relative to the battle overview zoom (which by
             // definition fits the whole board): much tighter for melee, easing
             // off with range so the target stays in frame down-range.
-            const zoom = Math.min(4.0,
+            let zoom = Math.min(4.0,
                 getDefaultZoom() * Math.max(1.8, 4.4 - 0.3 * Math.min(dist, 8)));
+
+            // ── Keep the CASTER in frame — the over-the-shoulder feel dies if
+            // it leaves the screen. The focal sits f of the way down the shot
+            // line, whose world-px length is L (ground run + elevation rise,
+            // e.g. a grounded caster firing up at a z=8 flyer). The caster's
+            // projected NDC offset from screen center ≈
+            // f·L·zoom / (baseDist·tan(FOV/2))  (ThreeCamera: camera distance
+            // = baseDist/zoom, FOV 45). Prefer sliding the focal BACK toward
+            // the caster over zooming out, so melee keeps its tight framing.
+            // Budget 0.65 ≈ 75% of the way to the screen edge, allowing for
+            // the caster sitting nearer the camera than the focal plane
+            // (perspective magnifies it). Calibrated via playtest_heights.js.
+            const _NDC_BUDGET = 0.65;
+            const _tanHalfFov = Math.tan(22.5 * Math.PI / 180);
+            const _bd = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
+                ? ThreeCamera.getBaseDist()
+                : Math.hypot(window.innerWidth || 1280, window.innerHeight || 800) * 1.2;
+            const _shotL = Math.max(1, Math.hypot(dist * ts, tgtPx - srcPx));
+
+            // Focal point well ahead of the caster along the line of fire, so
+            // the caster hangs low in the frame and the shot looks down-range.
+            let f = Math.min(0.62, 0.32 + 0.8 / (dist + 1));
+            {
+                const _fMax = _NDC_BUDGET * _bd * _tanHalfFov / (_shotL * zoom);
+                if (_fMax < f) f = Math.max(0.15, _fMax);
+                if (_fMax < 0.15) {
+                    // Even hugging the caster can't fit at this zoom — pull back.
+                    zoom = Math.max(getDefaultZoom() * 0.85,
+                        _NDC_BUDGET * _bd * _tanHalfFov / (_shotL * 0.15));
+                }
+            }
+            const fx = sx + dx * f;
+            const fy = sy + dy * f;
+            const elevZ = srcPx + (tgtPx - srcPx) * f + ts * 0.55;
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt, yaw, elevZ,
@@ -5972,9 +5999,15 @@
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // Dolly down-range as the attack fires, arriving with the hit.
+            // Dolly down-range as the attack fires, arriving with the hit —
+            // under the same in-frame budget (slightly looser: the drift is
+            // brief and motion reads better than a static cut). The old
+            // unconditional push to 0.8 of the way down-range left the caster
+            // offscreen on long-range/airborne casts.
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
-            const f2 = Math.min(0.8, f + 0.18);
+            let zoom2 = Math.min(3.2, zoom * 1.08);
+            const _fMax2 = 0.78 * _bd * _tanHalfFov / (_shotL * zoom2);
+            const f2 = Math.max(f, Math.min(0.8, Math.min(f + 0.18, _fMax2)));
             const elevZ2 = srcPx + (tgtPx - srcPx) * f2 + ts * 0.55;
             window.setTimeout(() => {
 
@@ -5985,7 +6018,7 @@
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
                     x: sx + dx * f2, y: sy + dy * f2,
-                    zoom: Math.min(3.2, zoom * 1.08), tilt, yaw, elevZ: elevZ2,
+                    zoom: zoom2, tilt, yaw, elevZ: elevZ2,
                     duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,

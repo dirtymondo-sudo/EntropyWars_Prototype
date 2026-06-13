@@ -388,7 +388,7 @@ const ThreeLightning = (function () {
         var fromZ = _unitSurfaceZ(fromTx, fromTy);
         var toZ = _unitSurfaceZ(toTx, toTy);
 
-        var torsoBoost = ts * 0.35;
+        var torsoBoost = ts * 0.45; /* same torso anchor as ThreeVFXEffects.unitZBoost */
 
         return boltVfx(
             { x: fromC.x, y: fromC.y, z: fromZ + torsoBoost },

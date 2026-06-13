@@ -60,10 +60,13 @@ const ThreeVFXEffects = (function () {
     }
 
     function unitZBoost() {
-        if (typeof state === 'undefined') return 0;
-        var tiltDeg = state.dioramaTiltDeg != null ? state.dioramaTiltDeg : 50;
+        /* Torso anchor: unit billboards are ~1 tile tall standing on the
+           surface, so projectiles/beams/bolts aim mid-body. This is a fixed
+           world-space offset — the old diorama-tilt-dependent boost made the
+           aim height change with the camera angle (near the feet when viewed
+           top-down, mid-air at cinematic tilts). */
         var ts = _cfg().tileSize || 128;
-        return ts * 0.4 * Math.max(0, (tiltDeg - 10) / 70);
+        return ts * 0.45;
     }
 
     function _suppressed() {

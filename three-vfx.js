@@ -1090,7 +1090,8 @@ const ThreeVFX = (function () {
     function _rainTileTopY(tx, ty) {
         var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 58;
         var h = (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0;
-        return Math.max(2, h * ts * 0.5);
+        var hPx = (typeof window._getElevationPx === 'function') ? window._getElevationPx(h) : h * ts;
+        return Math.max(2, hPx);
     }
 
     function _rainInitPools() {

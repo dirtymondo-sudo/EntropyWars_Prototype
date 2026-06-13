@@ -230,6 +230,55 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   (no attacks, `_blitzActiveUnitId` null) — use a local side or dev-sim to
   drive soaks.
 
+## Elevation / heights — ONE WORLD SPACE (2026-06-13 unification)
+The 3D world (three-renderer.js) draws **1 height level = 1 full tile**
+(`ELEV_STEP_RATIO = 1.0`, cube voxels). Historically the rest of the code still
+used the legacy half-tile ratio, so spell VFX landed HALF-height (inside cliffs,
+a full tile under flyers) and the camera focused below airborne units. Now:
+- **`window._getElevationPx(h)` (ui.js) is THE converter** (h × tileSize × 1.0)
+  and matches the renderer + three-camera.js. All VFX (three-vfx-effects.js,
+  three-lightning.js, three-vfx.js rain), camera elevZ math (battle.js), and
+  DOM overlays go through it. NEVER hand-roll `h * ts * 0.5` again (stragglers
+  fixed in hud.js move-arrow preview + three-vfx.js `_rainTileTopY`).
+- **Game LOGIC heights stay half-tile-based**: building `_gameHeight` is
+  `floor(roofPx/(ts*0.5))` (LOS/roof-standing unchanged). Both prism builders
+  (ui.js `_buildBuildingPrism` + three-renderer's) now write IDENTICAL
+  quantized `_gameHeight`/`_roofZPx` (they used to disagree — whichever ran
+  last won, randomly shifting roof-standing VFX/units).
+- Because `_roofZPx = _gameHeight × ts × 1.0`, level-based math
+  (`_getElevationPx(getHeightAt(x,y))`) ≡ px-based (`tileElevationZ`,
+  `ThreeRenderer.tileTopY/unitSurfaceY`). `playtest_heights.js` asserts this.
+- **Aim height**: `ThreeVFXEffects.unitZBoost()` is now a FIXED torso anchor
+  (ts × 0.45; same in three-lightning chainBolt). It used to scale with the
+  camera tilt (diorama hack) so projectiles aimed at feet from overhead.
+- Flying = `canFly(unit) && isUnitAirborne(unit)` (map.js; SKY_RACES, psychic,
+  jetpack accessory; airborne = unit.z > getHeightAt). Renderer/VFX/camera all
+  use `unit.z` levels for airborne, terrain+roof otherwise. Parties roll
+  jetpacks/sky races often — airborne units appear in normal matches.
+
+## Action camera framing (2026-06-13 fixes)
+- **`ThreeCamera.setBaseDist` is now refreshed on canvas resize**
+  (three-renderer renderFrame). It used to be set ONCE at init — if the board
+  container was small/collapsed then, every zoom level was far too close
+  forever (the "zooms in so far the caster goes offscreen" bug's root).
+- `_playCineActionShot` keeps the CASTER in frame analytically: caster NDC
+  offset ≈ f·L·zoom/(baseDist·tan(FOV/2)) where L = world-px shot length incl.
+  elevation rise. Budget 0.65: first slide the focal back toward the caster
+  (min f 0.15), only then zoom out (floor defaultZoom×0.85). Dolly f+0.18 is
+  clamped under a 0.78 budget. Calibrated against the real projected caster
+  via playtest_heights.js (model error ~×1.15 from caster being nearer the
+  camera than the focal plane).
+- **`node playtest_heights.js`** (server on :3000; uses asset cache +
+  LOCAL_ASSETS to serve repo-local edits): asserts renderer-Y ==
+  `_getElevationPx` for all units incl. forced-airborne, cine focal elevation
+  between the two unit anchors, caster in frame during the held shot (real
+  projection through ThreeCamera), and VFX z-args converting to renderer
+  space. Quirks: in-page `sleep(100)` samples stretch under swiftshader (use
+  the REAL `performance.now` timestamps; nominal labels lie); the target must
+  survive the hit or the kill-cam restore ends the shot early; only samples
+  with `camera._cineShotId != null` count as "held shot".
+- `playtest.js` now honors `USE_ASSET_CACHE=1` (+`LOCAL_ASSETS=...`) too.
+
 ## Online / multiplayer (two-browser harness: `playtest_online.js`)
 `server.js` is the relay (room codes + ranked queue + D1 ELO); the client glue is
 `online.js` (on R2). Authority model: **HOST = Player 1 = authoritative engine;

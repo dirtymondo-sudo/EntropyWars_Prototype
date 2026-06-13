@@ -102,6 +102,9 @@ const TURN_FN = () => {
 (async () => {
   const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: true }); // ignoreHTTPSErrors: assets load from R2/CDN behind TLS inspection
+  // USE_ASSET_CACHE=1 → serve R2/CDN assets from .asset-cache; combine with
+  // LOCAL_ASSETS=a.js,b.js to test local repo edits before the R2 upload.
+  if (process.env.USE_ASSET_CACHE) { try { await require('./asset_cache').installAssetCache(ctx); } catch (e) { console.log('asset cache unavailable:', e.message); } }
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERR', e.message.split('\n')[0]));
   await page.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 60000 });

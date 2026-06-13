@@ -1410,7 +1410,13 @@
 
     let _lastBoardFP = null;
 
-    const ELEVATION_STEP_RATIO = 0.5;
+    /* 1 game height level = 1 full tile of visual height. MUST match
+       ELEV_STEP_RATIO in three-renderer.js (cube voxels) and three-camera.js —
+       window._getElevationPx is the single converter from logic height levels
+       to visual/world px used by the camera, VFX (three-vfx-effects.js,
+       three-lightning.js) and DOM overlays. Game LOGIC heights (LOS, roof
+       _gameHeight) stay on the legacy half-tile basis — see _buildBuildingPrism. */
+    const ELEVATION_STEP_RATIO = 1.0;
 
     function _getElevationPx(heightLevel) {
         return Math.round(heightLevel * CONFIG.tileSize * ELEVATION_STEP_RATIO);
@@ -2065,10 +2071,19 @@
         } else {
           roofZ = fullWallH - 10;
         }
-        const wallH = fullWallH;
+        let wallH = fullWallH;
 
+        /* Game height is pinned to the legacy half-tile basis so the 1:1 visual
+           step doesn't change LOS / roof-standing heights, and the prism is
+           scaled so its roof sits exactly on the voxel grid — identical to
+           three-renderer.js's prism builder, so whichever builder runs last
+           writes the SAME _gameHeight/_roofZPx (they used to disagree). */
         const stepPx = tileSize * ELEVATION_STEP_RATIO;
-        oSpr._gameHeight = Math.max(1, Math.floor(roofZ / stepPx));
+        const gameH = Math.max(1, Math.floor(roofZ / (tileSize * 0.5)));
+        const roofScale = (gameH * stepPx) / roofZ;
+        roofZ = gameH * stepPx;
+        wallH = wallH * roofScale;
+        oSpr._gameHeight = gameH;
         oSpr._roofZPx = roofZ;
 
         const container = document.createElement('div');
