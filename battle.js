@@ -5682,6 +5682,10 @@
 
                 this.moveTo({
                     x: avgX, y: avgY,
+                    // zoom is normally inherited on a pan (deliberate — follows
+                    // keep the user's zoom); opt-in callers (turn activation)
+                    // pass _applyZoom to actually re-frame.
+                    ...(opts._applyZoom ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
                     duration: opts.transitionMs ?? 600,
                     easing: 'easeInOut',
                     elevZ: focusElevZ,
@@ -5814,6 +5818,15 @@
             return clampAutoZoom(computeZoomForVisibleTiles(targetTiles));
         }
         function getDefaultZoom()    { return _getBattleZoom(); }
+        // Framing for the local player's OWN unit when its turn begins: closer
+        // than the whole-board overview (getDefaultZoom, ≈1.0×) so the active
+        // unit reads clearly, while a ring of surrounding tiles stays visible.
+        // Cinematic action shots sit at 1.8×+, the overview at 1.0×, so ~1.5×
+        // is a "medium" framing between the two. Tune via the multiplier.
+        const TURN_FRAMING_ZOOM_MULT = 1.5;
+        function getTurnFramingZoom() {
+            return Math.max(0.15, Math.min(10.0, getDefaultZoom() * TURN_FRAMING_ZOOM_MULT));
+        }
         function getCloseZoom()      { return _getBattleZoom(); }
         function getMediumZoom()     { return _getBattleZoom(); }
         function getWideZoom()       { return _getBattleZoom(); }
@@ -13059,7 +13072,17 @@
                     state._deferredTurnPanUnitId = null;
                     camera._cineShotId = null;
                     const baseZoom = getUserZoomScale();
-                    const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+
+                    // The local player's OWN unit gets a closer "medium" framing
+                    // when its turn activates, instead of the whole-board
+                    // overview that pulled the camera way out every turn. A
+                    // user-pinned zoom (>1.05) still wins; enemy/AI activations
+                    // keep the overview.
+                    const _localActiveTurn = unitId === state._blitzActiveUnitId
+                        && state.controllers?.[unit.player] === CTRL.LOCAL
+                        && unit.player === getViewerPlayer();
+                    const zoom = baseZoom > 1.05 ? baseZoom
+                        : (_localActiveTurn ? getTurnFramingZoom() : getDefaultZoom());
 
                     // In auto mode keep the cinematic framing rolling between
                     // units; only a real (manual) activation restores overhead.
@@ -13079,6 +13102,8 @@
                     } else {
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
+                            _applyZoom: _localActiveTurn,
+                            _bypassCap: _localActiveTurn,
                             holdMs: 99999,
                             persist: true,
                             transitionMs: 380
