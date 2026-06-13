@@ -6149,6 +6149,7 @@
 
         function _buildPauseVideo() {
             const cinematicChecked = state.cinematicMode ? 'checked' : '';
+            const actionCamChecked = state.cinematicActionCam ? 'checked' : '';
             const animChecked = document.getElementById('animToggleBattle')?.checked !== false ? 'checked' : '';
             const cameraChecked = document.getElementById('cameraToggleBattle')?.checked !== false ? 'checked' : '';
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -6169,6 +6170,7 @@
                         <label class="pm-toggle"><input type="checkbox" ${animChecked} onchange="var cb=document.getElementById('animToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Animation</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cinematicChecked} onchange="document.getElementById('cinematicToggle').checked=this.checked;state.cinematicMode=this.checked;"><span class="pm-toggle-label">Cinematic</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cameraChecked} onchange="var cb=document.getElementById('cameraToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Camera Follow</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${actionCamChecked} onchange="window._setCinematicActionCam(this.checked);"><span class="pm-toggle-label">Action Cam</span><span class="pm-toggle-hint">cinematic attack shots</span></label>
                     </div>
                 </div>
 
@@ -7469,6 +7471,21 @@
             state.cameraDisabled = !e.target.checked;
             syncCameraCheckboxes();
         }
+
+        // Cinematic action camera ("Action Cam" pause toggle / dev-bar "3P"):
+        // swoops behind the caster for offensive actions (see
+        // playOffensiveActionCamera in battle.js). Persisted in localStorage.
+        window._setCinematicActionCam = function(on) {
+            on = !!on;
+            state.cinematicActionCam = on;
+            try { localStorage.setItem('ew_cinematicActionCam', on ? '1' : '0'); } catch(e) {}
+            // keep any other surfaces (pause toggle, dev-bar "3P") in sync
+            const devCb = document.getElementById('actionCamToggleBattle');
+            if (devCb && devCb.checked !== on) devCb.checked = on;
+        };
+        const _actionCamDevCb = document.getElementById('actionCamToggleBattle');
+        if (_actionCamDevCb) _actionCamDevCb.onchange = function(e) { window._setCinematicActionCam(e.target.checked); };
+
         const camCb1 = document.getElementById('cameraToggleBuilder');
         const camCb2 = document.getElementById('cameraToggleBattle');
         if (camCb1) camCb1.onchange = onCameraToggle;
@@ -8072,6 +8089,15 @@
                             }
                         }
                     }
+                }
+            } catch(e) {}
+
+            try {
+                var _acRaw = localStorage.getItem('ew_cinematicActionCam');
+                if (_acRaw !== null) {
+                    state.cinematicActionCam = (_acRaw === '1' || _acRaw === 'true');
+                    var _acDevCb = document.getElementById('actionCamToggleBattle');
+                    if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
                 }
             } catch(e) {}
         }, {
