@@ -7001,11 +7001,6 @@ const ThreeRenderer = (function () {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;
             if (w > 0 && h > 0 && (canvas.width !== w * renderer.getPixelRatio() || canvas.height !== h * renderer.getPixelRatio())) {
                 renderer.setSize(w, h); ThreeCamera.resize(w, h);
-                /* baseDist scales zoom→camera-distance; init may run while the
-                   board container is small/collapsed, which left every zoom
-                   level WAY too close (the "zooms in so much the caster goes
-                   offscreen" bug). Keep it in step with the real canvas. */
-                ThreeCamera.setBaseDist(Math.sqrt(w * w + h * h) * 1.2);
                 if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
                 if (css2dRenderer) css2dRenderer.setSize(w, h);
             }
