@@ -256,18 +256,24 @@ a full tile under flyers) and the camera focused below airborne units. Now:
   use `unit.z` levels for airborne, terrain+roof otherwise. Parties roll
   jetpacks/sky races often — airborne units appear in normal matches.
 
-## Action camera framing (2026-06-13 fixes)
-- **`ThreeCamera.setBaseDist` is now refreshed on canvas resize**
-  (three-renderer renderFrame). It used to be set ONCE at init — if the board
-  container was small/collapsed then, every zoom level was far too close
-  forever (the "zooms in so far the caster goes offscreen" bug's root).
-- `_playCineActionShot` keeps the CASTER in frame analytically: caster NDC
-  offset ≈ f·L·zoom/(baseDist·tan(FOV/2)) where L = world-px shot length incl.
-  elevation rise. Budget 0.65: first slide the focal back toward the caster
-  (min f 0.15), only then zoom out (floor defaultZoom×0.85). Dolly f+0.18 is
-  clamped under a 0.78 budget. Calibrated against the real projected caster
-  via playtest_heights.js (model error ~×1.15 from caster being nearer the
-  camera than the focal plane).
+## Action camera framing — REVERTED 2026-06-13 (DO NOT REDO)
+The two "framing fixes" below were REVERTED: in practice they ruined the good
+closeup over-the-shoulder action cam and made matches start zoomed way out.
+The camera now matches the 2026-06-10 (good) behavior. Keep it that way:
+- **`ThreeCamera.setBaseDist` stays init-ONLY** (three-renderer.js line ~6045,
+  `sqrt(w*w+h*h)*1.2`). The "refresh baseDist on every canvas resize" tweak in
+  renderFrame was REMOVED — re-applying baseDist with the full-screen canvas
+  dims yanked the steady-state view far out, so every match opened zoomed out.
+- **`_playCineActionShot` uses the simple framing**: `f = min(0.62, 0.32 +
+  0.8/(dist+1))`, `zoom = min(4.0, getDefaultZoom()*max(1.8, 4.4-0.3*dist))`,
+  dolly `f2 = min(0.8, f+0.18)` at `zoom*1.08`. The analytic NDC-budget
+  pull-back/zoom-out (caster-in-frame model, budget 0.65/0.78, getBaseDist)
+  was REMOVED — it pulled the focal off the caster and pushed zoom out, killing
+  the tight closeup third-person shot. (`ThreeCamera.getBaseDist` still exists
+  but is no longer used by the cine shot.)
+The height/projectile-aim work from the same batch (ELEV_STEP_RATIO=1.0 in
+ui.js/three-camera.js/renderer, unitZBoost torso anchor, rain/hud elev px) was
+KEPT — only the camera framing was reverted.
 - **`node playtest_heights.js`** (server on :3000; uses asset cache +
   LOCAL_ASSETS to serve repo-local edits): asserts renderer-Y ==
   `_getElevationPx` for all units incl. forced-airborne, cine focal elevation
