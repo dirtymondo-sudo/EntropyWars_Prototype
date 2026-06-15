@@ -597,6 +597,17 @@ function PartyBuilder() {
     return entries;
   }, [_]);
 
+  const availableTypes = React.useMemo(() => {
+    const s = new Set();
+    rosterEntries.forEach(e => (e.types || []).forEach(t => { if (t) s.add(t); }));
+    return Array.from(s).sort();
+  }, [rosterEntries]);
+  const availableJobs = React.useMemo(() => {
+    const s = new Set();
+    rosterEntries.forEach(e => { if (e.cls) s.add(e.cls); });
+    return Array.from(s).sort((a, b) => getJobDisplay(a).localeCompare(getJobDisplay(b)));
+  }, [rosterEntries]);
+
   const filteredRoster = React.useMemo(() => {
     let list = rosterEntries;
     if (factionFilter) list = list.filter(e => e.faction === factionFilter);
@@ -900,6 +911,12 @@ function PartyBuilder() {
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
               ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#0c0b16'}},`${k} \u2193`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#0c0b16'}},`${k} \u2191`)]).flat(),
               h('option',{value:'label-asc',style:{background:'#0c0b16'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#0c0b16'}},'Name Z-A')),
+            h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
+              h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Types'),
+              ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#0c0b16',color:'#ccc'}}, t.toUpperCase()))),
+            h('select', { value:jobFilter||'', onChange:e=>setJobFilter(e.target.value||null), title:'Filter by Job', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${jobFilter?EW.time:EW.panelEdge}`, color:jobFilter?EW.time:EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
+              h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Jobs'),
+              ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}}, getJobDisplay(j)))),
             h('span', { style:{ width:1, height:14, background:EW.panelEdge } }),
             ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, color:factionFilter===fk?FACTION_C[fk]:EW.inkMute, padding:'2px 7px', fontFamily:'DotGothic16, monospace', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }},
               h('span',{style:{width:5,height:5,background:FACTION_C[fk],borderRadius:'50%',display:'inline-block'}}), fk.toUpperCase())),
