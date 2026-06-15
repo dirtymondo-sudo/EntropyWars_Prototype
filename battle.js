@@ -1697,7 +1697,14 @@
 
                     // Ground airborne units
                     if (!target.dead && opts.groundAirborne && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
-                        target.z = getHeightAt(target.x, target.y);
+                        // Don't slam the target down onto a tile already occupied
+                        // at ground level — resolve the collision (push the
+                        // occupant aside or relocate the falling unit) first.
+                        const _gz = getHeightAt(target.x, target.y);
+                        const _landedZ = (typeof resolveDescentCollision === 'function')
+                            ? resolveDescentCollision(target, _gz, { byLabel: `as ${unitDisplayName(target)} crashes down` })
+                            : _gz;
+                        target.z = (_landedZ === null) ? _gz : _landedZ;
                         showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                         addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
                     }
@@ -16320,6 +16327,59 @@
             }, 500);
         }
 
+        // Enforce the invariant that two units never share a tile + elevation
+        // when a unit is forced down to (unit.x, unit.y, targetZ) — flyers
+        // landing, or airborne units yanked to the ground. If another unit
+        // already stands on that exact tile + level, shove it aside (domino
+        // push); if it is boxed in, relocate the descending unit to the nearest
+        // free adjacent tile instead. Mutates positions and returns the z the
+        // descending unit should adopt, or null if it truly cannot be placed.
+        function resolveDescentCollision(unit, targetZ, opts) {
+            opts = opts || {};
+            const occupant = state.units.find(u =>
+                u !== unit && !u.dead && !u._dying &&
+                u.x === unit.x && u.y === unit.y && (u.z ?? 0) === targetZ);
+            if (!occupant) return targetZ;
+
+            const adj = [
+                { x: unit.x + 1, y: unit.y }, { x: unit.x - 1, y: unit.y },
+                { x: unit.x, y: unit.y + 1 }, { x: unit.x, y: unit.y - 1 },
+                { x: unit.x + 1, y: unit.y + 1 }, { x: unit.x - 1, y: unit.y - 1 },
+                { x: unit.x + 1, y: unit.y - 1 }, { x: unit.x - 1, y: unit.y + 1 }
+            ];
+            const zFor = (tx, ty, ref) => (typeof nearestWalkableZ === 'function')
+                ? nearestWalkableZ(tx, ty, ref) : getHeightAt(tx, ty);
+
+            // Preferred: push the occupant to a free neighbouring tile.
+            for (const t of adj) {
+                if (!isInside(t.x, t.y)) continue;
+                const tz = zFor(t.x, t.y, occupant.z ?? targetZ);
+                if (!canOccupy(t.x, t.y, tz)) continue;
+                const fx = occupant.x, fy = occupant.y;
+                occupant.x = t.x;
+                occupant.y = t.y;
+                occupant.z = tz;
+                addLog(`${unitDisplayName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
+                showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
+                if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180);
+                return targetZ;
+            }
+
+            // Occupant is boxed in — relocate the descending unit instead.
+            for (const t of adj) {
+                if (!isInside(t.x, t.y)) continue;
+                const tz = zFor(t.x, t.y, targetZ);
+                if (!canOccupy(t.x, t.y, tz)) continue;
+                const fx = unit.x, fy = unit.y;
+                unit.x = t.x;
+                unit.y = t.y;
+                if (typeof animateDisplacement === 'function') animateDisplacement(unit, fx, fy, t.x, t.y, 160);
+                return getHeightAt(t.x, t.y);
+            }
+
+            return null;
+        }
+
         function doAltitudeChange(unit, mode) {
 
             const checkMode = (mode === 'land') ? 'descend' : mode;
@@ -16343,6 +16403,21 @@
                 if (oldZ <= groundZ) newZ = minZ;
 
                 newZ = Math.min(newZ, maxZ);
+
+                // Collision guard: two units may never share a tile + elevation.
+                // If another airborne unit already occupies this altitude over
+                // the same column, climb to the next free level instead of
+                // stacking on top of them.
+                while (newZ <= maxZ && state.units.some(u =>
+                    u !== unit && !u.dead && !u._dying &&
+                    u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
+                    newZ++;
+                }
+                if (newZ > maxZ) {
+                    addLog('No room to climb — the airspace above is occupied.');
+                    if (typeof playErrorSfx === 'function') playErrorSfx();
+                    return 0;
+                }
                 unit.z = newZ;
 
                 if (unit.race === 'vampire' && oldZ <= groundZ) {
@@ -16356,13 +16431,25 @@
 
                 const newZ = groundZ;
 
+                // Collision guard: a flyer descending onto a tile that already
+                // has a unit standing on it (same column, same ground level)
+                // must not collapse into the same x,y,z. Shove the occupant
+                // aside (domino push); if it is boxed in, the lander slides to
+                // the nearest free adjacent ground tile rather than stacking.
+                const _finalZ = resolveDescentCollision(unit, newZ, { byLabel: `as ${unitDisplayName(unit)} lands` });
+                if (_finalZ === null) {
+                    addLog('No room to land — the ground below is blocked.');
+                    if (typeof playErrorSfx === 'function') playErrorSfx();
+                    return 0;
+                }
+
                 if (unit.race === 'vampire' && oldZ > groundZ) {
                     _triggerBatTransform(unit, 'out');
                 }
-                unit.z = newZ;
+                unit.z = _finalZ;
                 playSfx('moveStep');
                 showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
-                addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${newZ})`);
+                addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${_finalZ})`);
             }
 
             unit._altitudeChangesThisTurn = (unit._altitudeChangesThisTurn || 0) + 1;
