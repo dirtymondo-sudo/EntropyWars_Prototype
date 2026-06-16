@@ -377,6 +377,10 @@
                         <span class="mm-icon">📋</span>
                         <div><div class="mm-label">Codex</div><div class="mm-desc-text">Classified subject dossiers</div></div>
                     </button>
+                    <button class="mm-btn mm-btn-shop" onclick="window._goToShop()">
+                        <span class="mm-icon">🛒</span>
+                        <div><div class="mm-label">Shop <span id="mmShopBadge" class="mm-shop-badge" style="display:none;background:#ffd86a;color:#221a08;border-radius:50%;width:16px;height:16px;font-size:11px;font-weight:700;align-items:center;justify-content:center;vertical-align:middle">!</span></div><div class="mm-desc-text">Declassify &amp; unlock new vessels</div></div>
+                    </button>
                     <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()">
                         <span class="mm-icon">🗺️</span>
                         <div><div class="mm-label">Map Editor</div><div class="mm-desc-text">Create & test custom maps</div></div>
@@ -396,6 +400,7 @@
                 </div>
                 <div class="mm-elo-display">
                     <span class="mm-elo-tag" id="mmEloTag"></span>
+                    <span id="mmWallet" class="ew-wallet" style="margin-left:14px;display:inline-block"></span>
                 </div>
                 <div class="mm-online-count" id="mmOnlineCount" style="display:none;">
                     <span class="mm-online-dot"></span>
@@ -413,6 +418,18 @@
                     <div style="width:60px"></div>
                 </div>
                 <div class="codex-body" id="codexBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE: SHOP (Requisitions / Declassification) -->
+        <div id="shopPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._shopBack()">← Back</button>
+                    <div class="ms-title-text">INTELLIGENCE DIVISION — REQUISITIONS</div>
+                    <div id="shopWallet" class="ew-wallet" style="min-width:80px;text-align:right"></div>
+                </div>
+                <div class="codex-body" id="shopBody"></div>
             </div>
         </div>
 
@@ -810,6 +827,7 @@
             <div id="vicTeamDmgBar" class="vic-team-dmg-bar"></div>
             <div id="vicTeamDmgLabels" class="vic-team-dmg-labels"></div>
         </div>
+        <div id="vicGoldBreakdown" class="vic-gold-breakdown" style="display:none"></div>
         <div class="vic-awards" id="vicAwards"></div>
         <div class="vic-stats-table-wrap" id="vicStatsTableWrap"></div>
         <div class="vic-bottom" id="vicBottom">

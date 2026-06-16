@@ -644,7 +644,27 @@ function PartyBuilder() {
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
   function doDefaults() { st.builderConfirmedSlots={}; if (typeof window.defaultAllTeams==='function') window.defaultAllTeams();  const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; [1,2].forEach(p=>{ if (!st.partyMeta[p]) st.partyMeta[p]=[]; for (let i=0;i<(st.partyBuilds[p]||[]).length;i++){ if (!st.partyMeta[p][i]) st.partyMeta[p][i]={}; const lo=st.loadouts?.[p]?.[i]; if (lo&&Array.isArray(lo.spells)&&lo.spells.filter(Boolean).length>0){ st.partyMeta[p][i].customSpells=lo.spells.filter(Boolean).slice(0,slotCap); }}}); refresh(); }
   function doBack() { if (typeof window.backToModeSelect==='function') window.backToModeSelect(); }
-  function doStart() { if (typeof window.applyPartyBuild==='function') window.applyPartyBuild(); if (st.teamLockedIn && typeof window.startMatch==='function') window.startMatch(); }
+  function doStart() {
+    // Block entering a match with a locked vessel on the local player's team.
+    if (typeof window.isUnitUnlocked === 'function') {
+      const size = (st.partyBuilds?.[1] || []).length || teamSize;
+      const lockedNames = [];
+      for (let i = 0; i < size; i++) {
+        const rk = st.partyMeta?.[1]?.[i]?.race || 'homosapien';
+        if (!window.isUnitUnlocked(rk)) {
+          const lbl = (window.RACE_PROFILES?.[rk]?.label) || rk;
+          if (lockedNames.indexOf(lbl) === -1) lockedNames.push(lbl);
+        }
+      }
+      if (lockedNames.length) {
+        try { sfx('uiError'); } catch (e) {}
+        alert('Your team includes locked vessels: ' + lockedNames.join(', ') + '.\nUnlock them in the Shop or swap them out before starting.');
+        return;
+      }
+    }
+    if (typeof window.applyPartyBuild==='function') window.applyPartyBuild();
+    if (st.teamLockedIn && typeof window.startMatch==='function') window.startMatch();
+  }
   function handleNameChange(val) { if (!st.partyNames) st.partyNames={}; if (!st.partyNames[player]) st.partyNames[player]=[]; st.partyNames[player][slot]=val; }
   function handleZodiacChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].zodiac=val; refresh(); }
   function handleAccChange(accSlot, val) { if (!st.loadouts[player]) st.loadouts[player]=[]; if (!st.loadouts[player][slot]) st.loadouts[player][slot]=typeof window.emptyLoadout==='function'?window.emptyLoadout():{}; if (!st.loadouts[player][slot].equipment) st.loadouts[player][slot].equipment=typeof window.emptyEquipment==='function'?window.emptyEquipment():{}; st.loadouts[player][slot].equipment[accSlot]=val||null; st.teamLockedIn=false; refresh(); }
@@ -927,11 +947,17 @@ function PartyBuilder() {
               const entryFc = getFactionColor(entry.faction);
               const hpVal = (computeStats(entry.race,entry.cls).hp ?? 0);
               const starred = isFav(entry.race, entry.gender);
-              return h('div', { key:ei, onClick:()=>pickRace(entry.race,entry.gender,entry.job), className:'pb-vessel-card', style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'4px 2px 3px', gap:1 }},
+              // Account-unlock gate: only the local human's roster (player 1) is restricted.
+              const locked = (player === 1) && (typeof window.isUnitUnlocked === 'function') && !window.isUnitUnlocked(entry.race);
+              const onCardClick = locked
+                ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
+                : ()=>pickRace(entry.race,entry.gender,entry.job);
+              return h('div', { key:ei, onClick:onCardClick, title: locked?'Locked \u2014 unlock this vessel in the Shop':undefined, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'4px 2px 3px', gap:1, opacity: locked?0.55:1 }},
                 h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}12 100%)` }},
-                  h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%'} }),
+                  h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
+                  locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '\ud83d\udd12'),
                   h('div', { style:{ position:'absolute', top:2, right:2, width:6, height:6, background:entryFc, borderRadius:'50%', boxShadow:`0 0 4px ${entryFc}` } }),
-                  h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:1, left:1, width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:12, color:starred?'#dcaa1e':'rgba(255,255,255,0.18)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'\u2605':'\u2606')),
+                  !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:1, left:1, width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:12, color:starred?'#dcaa1e':'rgba(255,255,255,0.18)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'\u2605':'\u2606')),
                 h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2, padding:'1px 2px 0' }}, entry.label),
                 h('div', { style:{ display:'flex', gap:2, justifyContent:'center', flexWrap:'wrap' } },
                   ...(entry.types||[]).slice(0,2).map((t,ti)=>h('span',{key:ti,style:{ display:'inline-flex', alignItems:'center', gap:1, color:getTypeColor(t), fontSize:8, letterSpacing:'0.04em', textTransform:'uppercase', padding:'0 3px', border:`1px solid ${getTypeColor(t)}33`, background:`${getTypeColor(t)}0a`, lineHeight:'14px' }}, h('span',{style:{width:3,height:3,background:getTypeColor(t),borderRadius:'50%'}}),t))),

@@ -48,6 +48,9 @@
                     const nameHtml = _pn ? `<span style="font-weight:700;color:#e6e9f2">${_pn}</span> · ` : '';
                     if (eloTag) eloTag.innerHTML = `${nameHtml}${ri.icon} ${ri.name || ri.label} — ${cs.elo} Elo`;
                 } catch {}
+                try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+                try { if (typeof window._ensureDevPanel === 'function') window._ensureDevPanel(); } catch {}
+                try { if (typeof window._maybeShowOnboarding === 'function') window._maybeShowOnboarding(); } catch {}
             }
 
             if (pageId === 'modePage') {

@@ -21,6 +21,58 @@ app.use(express.static(path.join(__dirname), {
 
 function uuid() { return crypto.randomUUID(); }
 
+// ── ACCOUNT ECONOMY (PvP) — server-authoritative wallet + unlock system ──
+// data.js is browser-only (assigns to `window`), so the server keeps its own
+// copy of the economy constants + race list. Keep these in sync with data.js.
+const ACCT_UNIT_PRICE     = 5000;
+const ACCT_STARTING_GOLD  = 0;
+const ACCT_FREE_TOKENS    = 1;
+const ACCT_MATCH_GOLD_CAP = 5000;
+const ACCT_PVP_MODES = new Set(['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf']);
+const ACCT_STARTER_UNITS = [
+    'men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
+    'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy',
+];
+const AVAILABLE_RACES = new Set(['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher']);
+
+let _economyMigrated = false;
+async function ensureEconomyColumns() {
+    if (_economyMigrated || !d1.isConfigured()) return;
+    const stmts = [
+        "ALTER TABLE players ADD COLUMN gold INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE players ADD COLUMN unlocked_units TEXT NOT NULL DEFAULT '[]'",
+        "ALTER TABLE players ADD COLUMN free_tokens INTEGER NOT NULL DEFAULT 0",
+    ];
+    for (const sql of stmts) {
+        try { await d1.execute(sql); console.log('[ECON] migrated:', sql); }
+        catch (e) { /* duplicate column on re-boot — expected, ignore */ }
+    }
+    _economyMigrated = true;
+}
+
+function parseUnlocked(raw) {
+    try { const a = JSON.parse(raw || '[]'); return Array.isArray(a) ? a : []; }
+    catch { return []; }
+}
+
+// Returns normalized economy for a player row, backfilling starters + token for
+// existing accounts that predate the economy (empty unlocked_units).
+async function getOrBackfillEconomy(player) {
+    let unlocked = parseUnlocked(player.unlocked_units);
+    let freeTokens = player.free_tokens || 0;
+    const gold = player.gold || 0;
+    if (unlocked.length === 0) {
+        unlocked = ACCT_STARTER_UNITS.slice();
+        freeTokens = ACCT_FREE_TOKENS;
+        await d1.execute(
+            "UPDATE players SET unlocked_units = ?1, free_tokens = ?2 WHERE id = ?3 AND (unlocked_units IS NULL OR unlocked_units = '' OR unlocked_units = '[]')",
+            [JSON.stringify(unlocked), freeTokens, player.id]
+        );
+        console.log(`[ECON] backfilled starters for ${player.id}`);
+    }
+    return { gold, unlockedUnits: unlocked, freeTokens };
+}
+
 const rooms = new Map();
 
 function generateCode() {
@@ -259,6 +311,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     try {
+        await ensureEconomyColumns();
 
         const existing = await d1.getOne('SELECT id FROM players WHERE username = ?1', [username]);
         if (existing) {
@@ -267,14 +320,18 @@ app.post('/api/register', async (req, res) => {
 
         const id = uuid();
         const token = uuid();
+        const starters = JSON.stringify(ACCT_STARTER_UNITS);
 
         await d1.execute(
-            'INSERT INTO players (id, username, token, elo, peak_elo, wins, losses, total_games) VALUES (?1, ?2, ?3, 1200, 1200, 0, 0, 0)',
-            [id, username, token]
+            'INSERT INTO players (id, username, token, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens) VALUES (?1, ?2, ?3, 1200, 1200, 0, 0, 0, ?4, ?5, ?6)',
+            [id, username, token, ACCT_STARTING_GOLD, starters, ACCT_FREE_TOKENS]
         );
 
         console.log(`[AUTH] Registered: ${username} (${id})`);
-        res.json({ id, token, username, elo: 1200, peakElo: 1200, wins: 0, losses: 0 });
+        res.json({
+            id, token, username, elo: 1200, peakElo: 1200, wins: 0, losses: 0,
+            gold: ACCT_STARTING_GOLD, unlockedUnits: ACCT_STARTER_UNITS.slice(), freeTokens: ACCT_FREE_TOKENS,
+        });
     } catch (err) {
         console.error('[AUTH] Register error:', err.message);
         res.status(500).json({ error: 'Registration failed.' });
@@ -292,8 +349,9 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
+        await ensureEconomyColumns();
         const player = await d1.getOne(
-            'SELECT id, username, elo, peak_elo, wins, losses, total_games FROM players WHERE token = ?1',
+            'SELECT id, username, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens FROM players WHERE token = ?1',
             [token]
         );
 
@@ -302,6 +360,8 @@ app.post('/api/login', async (req, res) => {
         }
 
         await d1.execute('UPDATE players SET last_seen = datetime(\'now\') WHERE id = ?1', [player.id]);
+
+        const econ = await getOrBackfillEconomy(player);
 
         console.log(`[AUTH] Login: ${player.username} (${player.id})`);
         res.json({
@@ -312,10 +372,133 @@ app.post('/api/login', async (req, res) => {
             wins: player.wins,
             losses: player.losses,
             totalGames: player.total_games,
+            gold: econ.gold,
+            unlockedUnits: econ.unlockedUnits,
+            freeTokens: econ.freeTokens,
         });
     } catch (err) {
         console.error('[AUTH] Login error:', err.message);
         res.status(500).json({ error: 'Login failed.' });
+    }
+});
+
+// ── ECONOMY ENDPOINTS ──────────────────────────────────────────────────
+app.get('/api/economy/:id', async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    try {
+        await ensureEconomyColumns();
+        const token = req.headers['x-auth-token'] || req.query.token;
+        // Resolve by token when supplied (authoritative); otherwise fall back to id.
+        const player = token
+            ? await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token])
+            : await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [req.params.id]);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found.' });
+        }
+        const econ = await getOrBackfillEconomy(player);
+        res.json(econ);
+    } catch (err) {
+        console.error('[ECON] Get error:', err.message);
+        res.status(500).json({ error: 'Failed to load economy.' });
+    }
+});
+
+app.post('/api/economy/bank', async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    try {
+        await ensureEconomyColumns();
+        const { token, matchGold, mode } = req.body || {};
+        if (!token) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+        if (!ACCT_PVP_MODES.has(mode)) {
+            return res.status(400).json({ error: 'Unrecognized PvP mode.' });
+        }
+        const player = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token]);
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+        let amt = Math.round(Number(matchGold));
+        if (!isFinite(amt) || amt < 0) amt = 0;
+        amt = Math.min(amt, ACCT_MATCH_GOLD_CAP); // server-enforced anti-cheat cap
+
+        await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [amt, player.id]);
+        const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
+        res.json({
+            gold: updated.gold,
+            banked: amt,
+            unlockedUnits: parseUnlocked(updated.unlocked_units),
+            freeTokens: updated.free_tokens,
+        });
+    } catch (err) {
+        console.error('[ECON] Bank error:', err.message);
+        res.status(500).json({ error: 'Failed to bank gold.' });
+    }
+});
+
+app.post('/api/economy/purchase', async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    try {
+        await ensureEconomyColumns();
+        const { token, raceKey, useToken } = req.body || {};
+        if (!token) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+        if (!raceKey || !AVAILABLE_RACES.has(raceKey)) {
+            return res.status(400).json({ error: 'Unknown unit.' });
+        }
+        const player = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token]);
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+        // Backfill starters first so a pre-economy account can purchase.
+        await getOrBackfillEconomy(player);
+        const fresh = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
+        const unlocked = parseUnlocked(fresh.unlocked_units);
+        if (unlocked.includes(raceKey)) {
+            return res.status(409).json({ error: 'Already owned.' });
+        }
+        const newUnlocked = JSON.stringify(unlocked.concat([raceKey]));
+
+        let result;
+        if (useToken && (fresh.free_tokens || 0) > 0) {
+            // Atomic: guard on token availability AND the exact prior unlock list
+            // so a double-click cannot redeem twice or double-add.
+            result = await d1.execute(
+                'UPDATE players SET free_tokens = free_tokens - 1, unlocked_units = ?1 WHERE id = ?2 AND free_tokens > 0 AND unlocked_units = ?3',
+                [newUnlocked, player.id, fresh.unlocked_units]
+            );
+        } else {
+            if ((fresh.gold || 0) < ACCT_UNIT_PRICE) {
+                return res.status(402).json({ error: 'Insufficient gold.' });
+            }
+            // Atomic: WHERE gold >= price prevents double-spend on concurrent clicks.
+            result = await d1.execute(
+                'UPDATE players SET gold = gold - ?1, unlocked_units = ?2 WHERE id = ?3 AND gold >= ?1 AND unlocked_units = ?4',
+                [ACCT_UNIT_PRICE, newUnlocked, player.id, fresh.unlocked_units]
+            );
+        }
+        const changes = result && result.meta ? (result.meta.changes || 0) : 0;
+        if (!changes) {
+            return res.status(409).json({ error: 'Purchase failed — please retry.' });
+        }
+
+        const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
+        console.log(`[ECON] ${player.id} unlocked "${raceKey}" via ${useToken ? 'token' : 'gold'} → gold=${updated.gold}, tokens=${updated.free_tokens}`);
+        res.json({
+            gold: updated.gold,
+            unlockedUnits: parseUnlocked(updated.unlocked_units),
+            freeTokens: updated.free_tokens,
+        });
+    } catch (err) {
+        console.error('[ECON] Purchase error:', err.message);
+        res.status(500).json({ error: 'Failed to complete purchase.' });
     }
 });
 
@@ -1095,4 +1278,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[Entropy Wars] Server running on port ${PORT}`);
+    ensureEconomyColumns().catch(err => console.error('[ECON] Migration failed:', err.message));
 });

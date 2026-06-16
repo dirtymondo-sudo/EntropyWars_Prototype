@@ -59,6 +59,19 @@ function backfillProfile(p) {
   if (!p.unitBuilds) p.unitBuilds = [];
   if (!p.teamPresets) p.teamPresets = [];
   if (!p.favRaces) p.favRaces = [];
+  // Account economy mirror (read-only cache; server is the source of truth).
+  // Offline/local-only play gets starters and no purchasing.
+  if (!p.account || !Array.isArray(p.account.unlockedUnits)) {
+    const starters = (typeof window !== 'undefined' && Array.isArray(window.ACCT_STARTER_UNITS))
+      ? window.ACCT_STARTER_UNITS.slice()
+      : ['men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
+         'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy'];
+    p.account = {
+      gold: (typeof window !== 'undefined' && typeof window.ACCT_STARTING_GOLD === 'number') ? window.ACCT_STARTING_GOLD : 0,
+      unlockedUnits: starters,
+      freeTokens: 0,
+    };
+  }
   return p;
 }
 
@@ -374,6 +387,7 @@ async function serverRegister(username) {
     setServerCredentials(data.id, data.token);
 
     _syncServerEloToLocal(data.elo, data.peakElo);
+    _absorbEconomyFromResponse(data);
     console.log('[AUTH] Registered on server:', data.username, data.id);
     return { ok: true, data };
   } catch (err) {
@@ -402,6 +416,7 @@ async function serverLogin() {
     }
 
     _syncServerEloToLocal(data.elo, data.peakElo);
+    _absorbEconomyFromResponse(data);
     console.log('[AUTH] Logged in:', data.username, '(ELO', data.elo + ')');
     return { ok: true, data };
   } catch (err) {
@@ -444,6 +459,96 @@ function _syncServerEloToLocal(elo, peakElo) {
   saveProfile(idx, p);
 }
 
+// ── ACCOUNT ECONOMY (client mirror) ────────────────────────────────────
+// The mirror is READ-ONLY UI cache. Every spend/grant decision is a server
+// response — never trust this for purchases.
+function getAccountEconomy() {
+  const p = getActiveProfile();
+  if (p && p.account) return p.account;
+  const starters = (typeof window !== 'undefined' && Array.isArray(window.ACCT_STARTER_UNITS))
+    ? window.ACCT_STARTER_UNITS.slice() : [];
+  return { gold: 0, unlockedUnits: starters, freeTokens: 0 };
+}
+
+function _syncEconomyToLocal(econ) {
+  if (!econ) return;
+  const idx = getActiveProfileIndex();
+  if (idx === null) return;
+  const p = loadProfile(idx);
+  if (!p) return;
+  if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+  if (typeof econ.gold === 'number') p.account.gold = econ.gold;
+  if (Array.isArray(econ.unlockedUnits)) p.account.unlockedUnits = econ.unlockedUnits.slice();
+  if (typeof econ.freeTokens === 'number') p.account.freeTokens = econ.freeTokens;
+  saveProfile(idx, p);
+  try {
+    if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets();
+  } catch {}
+}
+// Pull the data fields a login/register response carries (or a bare economy obj).
+function _absorbEconomyFromResponse(data) {
+  if (!data) return;
+  if (data.gold !== undefined || data.unlockedUnits !== undefined || data.freeTokens !== undefined) {
+    _syncEconomyToLocal({ gold: data.gold, unlockedUnits: data.unlockedUnits, freeTokens: data.freeTokens });
+  }
+}
+
+async function serverFetchEconomy() {
+  const token = getServerToken();
+  const id = getServerId();
+  if (!token || !id) return { ok: false, error: 'No account.' };
+  try {
+    const resp = await fetch('/api/economy/' + encodeURIComponent(id), {
+      headers: { 'x-auth-token': token },
+    });
+    const data = await resp.json();
+    if (!resp.ok) return { ok: false, error: data.error || 'Failed.' };
+    _syncEconomyToLocal(data);
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[ECON] Fetch error:', err);
+    return { ok: false, error: 'Network error.' };
+  }
+}
+
+async function serverBankGold(matchGold, mode) {
+  const token = getServerToken();
+  if (!token) return { ok: false, error: 'No account.' };
+  try {
+    const resp = await fetch('/api/economy/bank', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, matchGold, mode }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) return { ok: false, error: data.error || 'Bank failed.' };
+    _syncEconomyToLocal(data);
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[ECON] Bank error:', err);
+    return { ok: false, error: 'Network error.' };
+  }
+}
+
+async function serverPurchaseUnit(raceKey, useToken) {
+  const token = getServerToken();
+  if (!token) return { ok: false, error: 'You need an online account to unlock units.' };
+  try {
+    const resp = await fetch('/api/economy/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, raceKey, useToken: !!useToken }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) return { ok: false, error: data.error || 'Purchase failed.' };
+    _syncEconomyToLocal(data);
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[ECON] Purchase error:', err);
+    return { ok: false, error: 'Network error.' };
+  }
+}
+
 async function serverAutoLogin() {
   if (!hasServerAccount()) return;
   const result = await serverLogin();
@@ -477,6 +582,10 @@ window.ProfileSystem = {
   getServerToken,
   getServerId,
   clearServerCredentials,
+  getAccountEconomy,
+  serverFetchEconomy,
+  serverBankGold,
+  serverPurchaseUnit,
 };
 
 function buildProfileMatchSummary() {

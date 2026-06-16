@@ -8840,6 +8840,97 @@
             }
         }
 
+        // ── ACCOUNT ECONOMY: PvP match-end banking ─────────────────────────
+        // A NEW path, independent of the Challenge banking block (which writes
+        // save.gold). Banks account gold for recognized PvP modes on win AND loss.
+        function _renderVicGoldBreakdown(calc, hasAccount) {
+            const el = document.getElementById('vicGoldBreakdown');
+            if (!el) return;
+            const parts = [];
+            parts.push(`<span style="white-space:nowrap">Match Complete <b style="color:#ffe9a8">+${calc.base}</b></span>`);
+            if (calc.collected > 0) parts.push(`<span style="white-space:nowrap">Gold Collected <b style="color:#ffe9a8">+${calc.collected}</b></span>`);
+            if (calc.winMult > 1) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Win ×${calc.winMult}</span>`);
+            if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Flawless ×1.25</span>`);
+            if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Wipeout ×1.25</span>`);
+            const sep = '<span style="color:#7a6f4a;margin:0 2px">·</span>';
+            const balanceLine = hasAccount
+                ? `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Banking…</div>`
+                : `<div id="vgbBalance" style="font-size:11px;color:#8a8060;margin-top:3px;font-style:italic">Sign in online to bank this gold</div>`;
+            el.innerHTML = `
+                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;background:rgba(20,16,8,0.55);border:1px solid rgba(184,160,96,0.35);border-radius:8px;padding:8px 16px;margin:6px auto">
+                    <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.18em;color:#b8a060">💰 ACCOUNT GOLD</div>
+                    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
+                    <div style="font-size:20px;font-weight:700;color:#ffd86a;text-shadow:0 0 12px rgba(255,200,80,0.5)">→ +<span id="vgbTotalNum">0</span></div>
+                    ${balanceLine}
+                </div>`;
+            el.style.display = 'block';
+            el.style.textAlign = 'center';
+
+            const numEl = document.getElementById('vgbTotalNum');
+            if (numEl) {
+                const target = calc.matchGold;
+                const startT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+                const dur = 900;
+                (function tick() {
+                    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+                    const t = Math.min(1, (now - startT) / dur);
+                    numEl.textContent = Math.round(target * (t * (2 - t))).toLocaleString();
+                    if (t < 1) requestAnimationFrame(tick);
+                    else numEl.textContent = target.toLocaleString();
+                })();
+            }
+            if (typeof playSfx === 'function') { try { playSfx('levelUp'); } catch (e) {} }
+        }
+
+        function _accountBankMatchGold() {
+            try {
+                const vicGold = document.getElementById('vicGoldBreakdown');
+                if (vicGold) vicGold.style.display = 'none';
+
+                if (state.winner === 0 || state.winner === null) return; // no contest
+                if (state.isCampaign) return;                            // Challenge keeps its own wallet
+                if (state.devAutoSim) return;                            // dev-sim grants nothing
+
+                const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+                const modeId = mpMode && mpMode.id;
+                const pvpModes = (typeof ACCT_PVP_MODES !== 'undefined' && Array.isArray(ACCT_PVP_MODES))
+                    ? ACCT_PVP_MODES : ['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf'];
+                if (!modeId || pvpModes.indexOf(modeId) === -1) return;
+
+                const PS = window.ProfileSystem;
+                const hasAccount = !!(PS && typeof PS.hasServerAccount === 'function' && PS.hasServerAccount());
+
+                const viewer = getViewerPlayer();
+                const viewerUnits = (state.units || []).filter(u => u.player === viewer);
+                const enemyUnits = (state.units || []).filter(u => u.player !== viewer && u.player !== 0);
+                const collected = viewerUnits.reduce((s, u) => s + (u.gold || 0), 0);
+                const playerWon = ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1);
+                const noFriendlyDeaths = viewerUnits.length > 0 && viewerUnits.every(u => !u.dead);
+                const allEnemiesDead = enemyUnits.length > 0 && enemyUnits.every(u => u.dead);
+
+                const calc = (typeof computeAccountMatchGold === 'function')
+                    ? computeAccountMatchGold({ collected, playerWon, noFriendlyDeaths, allEnemiesDead })
+                    : null;
+                if (!calc) return;
+
+                _renderVicGoldBreakdown(calc, hasAccount);
+
+                if (hasAccount && typeof PS.serverBankGold === 'function') {
+                    PS.serverBankGold(calc.matchGold, modeId).then(function(r) {
+                        const balEl = document.getElementById('vgbBalance');
+                        if (r && r.ok && r.data && balEl) {
+                            balEl.textContent = 'Wallet: 💰 ' + (r.data.gold || 0).toLocaleString();
+                            balEl.style.color = '#ffd86a';
+                            balEl.style.fontStyle = 'normal';
+                        } else if (balEl) {
+                            balEl.textContent = 'Gold saved locally (sync pending)';
+                            balEl.style.color = '#8a8060';
+                        }
+                    }).catch(function() {});
+                }
+            } catch (e) { console.error('[ECON] bank failed:', e); }
+        }
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
@@ -9170,6 +9261,9 @@
             nextMatchBtn.disabled = false;
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
+
+            _accountBankMatchGold();
+
             resultOverlay.classList.remove('hidden');
         }
 

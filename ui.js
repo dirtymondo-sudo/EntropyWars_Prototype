@@ -6556,15 +6556,22 @@
                 const classLbl = _CODEX_CLASS_LABELS[cls] || 'UNCLASSIFIED';
                 const selected = race === _codexSelectedRace ? ' selected' : '';
                 const sprUrl = _codexGetSpriteUrl(race);
-                html += `<div class="cdx-list-item${selected}" data-race="${race}" onclick="window._codexSelect('${race.replace(/'/g, "\\'")}')">
-                    <div class="cdx-list-sprite" style="background-image:url('${sprUrl}')"></div>
+                const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+                const lockedCls = unlocked ? '' : ' cdx-list-locked';
+                const spriteStyle = unlocked
+                    ? `background-image:url('${sprUrl}')`
+                    : `background-image:url('${sprUrl}');filter:brightness(0) opacity(0.45)`;
+                const nameHtml = unlocked ? p.label : '<span style="letter-spacing:0.12em;color:#7a7060">CLASSIFIED</span>';
+                const lockBadge = unlocked ? '' : '<span class="cdx-list-lock" style="margin-left:auto;font-size:13px;opacity:0.7">🔒</span>';
+                html += `<div class="cdx-list-item${selected}${lockedCls}" data-race="${race}" onclick="window._codexSelect('${race.replace(/'/g, "\\'")}')" style="${unlocked ? '' : 'opacity:0.78'}">
+                    <div class="cdx-list-sprite" style="${spriteStyle}"></div>
                     <div class="cdx-list-info">
-                        <div class="cdx-list-name">${p.label}</div>
+                        <div class="cdx-list-name" style="display:flex;align-items:center">${nameHtml}${lockBadge}</div>
                         <div class="cdx-list-tags">
                             <span class="cdx-list-faction ${faction}">${faction.toUpperCase()}</span>
-                            <span class="cdx-list-type">${types}</span>
+                            <span class="cdx-list-type">${unlocked ? types : '████'}</span>
                         </div>
-                        <div class="cdx-list-class">${classLbl}</div>
+                        <div class="cdx-list-class">${unlocked ? classLbl : '████████'}</div>
                     </div>
                 </div>`;
             }
@@ -6596,14 +6603,76 @@
             }
             filterHtml += '</div></div>';
 
+            const _total = AVAILABLE_RACES.length;
+            const _owned = AVAILABLE_RACES.filter(r => (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true).length;
+            const _pct = Math.round((_owned / Math.max(1, _total)) * 100);
+            const meterHtml = `<div class="cdx-collection-meter" style="display:flex;align-items:center;gap:10px;padding:6px 10px;margin-bottom:6px;border:1px solid rgba(184,160,96,0.3);background:rgba(20,16,8,0.4);border-radius:6px">
+                <span style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.14em;color:#b8a060">VESSELS DECLASSIFIED</span>
+                <div style="flex:1;height:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(184,160,96,0.25);border-radius:4px;overflow:hidden"><div style="width:${_pct}%;height:100%;background:linear-gradient(90deg,#8a7030,#ffd86a)"></div></div>
+                <span style="font-size:12px;color:#ffd86a;font-weight:600">${_owned} / ${_total}</span>
+            </div>`;
+
             body.innerHTML = `
+                ${meterHtml}
                 ${filterHtml}
                 <div class="cdx-layout">
                     <div class="cdx-list" id="codexList">${_codexRenderList()}</div>
-                    <div class="cdx-detail" id="codexDetail">${_codexRenderDossier(_codexSelectedRace)}</div>
+                    <div class="cdx-detail" id="codexDetail">${_codexDossierFor(_codexSelectedRace)}</div>
                 </div>
             `;
         };
+
+        // Full dossier when owned; fully-redacted dossier when locked.
+        function _codexDossierFor(race) {
+            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            return unlocked ? _codexRenderDossier(race) : _codexRenderRedactedDossier(race);
+        }
+
+        function _codexRenderRedactedDossier(race) {
+            const profile = RACE_PROFILES[race];
+            if (!profile) return '';
+            const docNum = 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
+            const blk = (n) => '█'.repeat(n);
+            const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
+            const econ = window.ProfileSystem && window.ProfileSystem.getAccountEconomy ? window.ProfileSystem.getAccountEconomy() : { freeTokens: 0 };
+            const tokenBtn = (econ.freeTokens > 0)
+                ? `<button class="cdx-filter-btn" style="margin-left:8px" onclick="window._goToShop('${race.replace(/'/g, "\\'")}')">🎟 Use Free Unlock</button>` : '';
+            return `
+            <div class="cdx-dossier cdx-dossier-locked">
+                <div class="cdx-dossier-header">
+                    <div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>
+                    <div class="cdx-doc-id">DOC# ${docNum} · ██/██/199█</div>
+                    <div class="cdx-classification">TOP SECRET // ████████ // NOFORN</div>
+                </div>
+                <div class="cdx-dossier-title-row">
+                    <div class="cdx-dossier-title">
+                        <div class="cdx-subject-header">1. &nbsp;SUBJECT IDENTIFICATION:</div>
+                        <div class="cdx-subject-name">${blk(9)}</div>
+                        <div class="cdx-subject-meta">
+                            <span class="cdx-meta-tag">Designation: <b>${blk(6)}</b></span>
+                            <span class="cdx-meta-tag">Class: <b>${blk(5)}</b></span>
+                            <span class="cdx-meta-tag">Default Role: <b>${blk(7)}</b></span>
+                        </div>
+                    </div>
+                    <div class="cdx-sprite-frame">
+                        <div class="cdx-sprite" style="display:flex;align-items:center;justify-content:center;background-image:none;font-size:54px;color:rgba(184,160,96,0.4)">❓</div>
+                        <div class="cdx-sprite-label">PHOTO ████████</div>
+                    </div>
+                </div>
+                <div class="cdx-section">
+                    <div class="cdx-section-header">2. &nbsp;EXECUTIVE SUMMARY:</div>
+                    <div class="cdx-lore">${blk(38)} ${blk(22)} ${blk(31)} ████ ${blk(18)} ████████ ${blk(26)} ${blk(14)}.</div>
+                </div>
+                <div class="cdx-section">
+                    <div class="cdx-section-header">3. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
+                    <div style="padding:12px;text-align:center;color:#6a6450;letter-spacing:0.14em;font-size:12px">████████ INTELLIGENCE WITHHELD ████████</div>
+                </div>
+                <div class="cdx-locked-cta" style="text-align:center;padding:14px;border-top:1px dashed rgba(184,160,96,0.3);margin-top:8px">
+                    <div style="font-size:13px;color:#b8a060;margin-bottom:8px;letter-spacing:0.1em">🔒 FILE SEALED — DECLASSIFY TO REVEAL</div>
+                    <button class="primary" onclick="window._goToShop('${race.replace(/'/g, "\\'")}')">Unlock in Shop · 💰 ${price}</button>${tokenBtn}
+                </div>
+            </div>`;
+        }
 
         window._codexSelect = function(race) {
             if (typeof playSfx === 'function') playSfx('uiCursorFocus');
@@ -6612,7 +6681,7 @@
             const listEl = document.getElementById('codexList');
             if (listEl) listEl.innerHTML = _codexRenderList();
             const detailEl = document.getElementById('codexDetail');
-            if (detailEl) detailEl.innerHTML = _codexRenderDossier(race);
+            if (detailEl) detailEl.innerHTML = _codexDossierFor(race);
         };
 
         window._codexSetFilter = function(type, value) {
@@ -6629,6 +6698,381 @@
             }
             window._renderCodex();
         };
+
+        // ══════════════════════════════════════════════════════════════════
+        // ACCOUNT SHOP — declassify (unlock) vessels with account gold / tokens
+        // ══════════════════════════════════════════════════════════════════
+        let _shopSelectedRace = null;
+        let _shopFilterFaction = 'all';
+        let _shopFilterOwn = 'all'; // all | owned | locked
+        let _shopSearch = '';
+        let _shopConfirming = null; // race awaiting purchase confirmation
+
+        // Reusable wallet readout — single implementation across all screens.
+        window._formatGold = function(n) { return (Number(n) || 0).toLocaleString(); };
+
+        window._renderWallet = function(el) {
+            if (!el) return;
+            const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
+                ? window.ProfileSystem.getAccountEconomy() : { gold: 0, freeTokens: 0 };
+            const prev = parseInt(el.dataset.gold || '', 10);
+            const gold = econ.gold || 0;
+            const tokenStr = (econ.freeTokens > 0)
+                ? ` <span class="ew-wallet-token" title="Free unlock tokens" style="color:#9ad0ff">🎟 ${econ.freeTokens}</span>` : '';
+            el.innerHTML = `<span class="ew-wallet-gold" style="color:#ffd86a;font-weight:600">💰 ${gold.toLocaleString()}</span>${tokenStr}`;
+            el.dataset.gold = String(gold);
+            if (!isNaN(prev) && prev !== gold) {
+                el.style.transition = 'none';
+                el.style.transform = 'scale(1.18)';
+                el.style.filter = 'brightness(1.4)';
+                requestAnimationFrame(() => {
+                    el.style.transition = 'transform 0.4s ease, filter 0.4s ease';
+                    el.style.transform = 'scale(1)';
+                    el.style.filter = 'brightness(1)';
+                });
+            }
+        };
+
+        window._refreshWallets = function() {
+            document.querySelectorAll('.ew-wallet').forEach(window._renderWallet);
+            const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
+                ? window.ProfileSystem.getAccountEconomy() : { gold: 0 };
+            const price = window.ACCT_UNIT_PRICE || 5000;
+            const badge = document.getElementById('mmShopBadge');
+            if (badge) badge.style.display = ((econ.gold || 0) >= price) ? 'inline-flex' : 'none';
+        };
+
+        function _shopDailyFeatured() {
+            // Deterministic daily rotation by date seed over the locked roster.
+            const locked = AVAILABLE_RACES.filter(r => !((typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true));
+            if (locked.length === 0) return [];
+            const d = new Date();
+            let seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+            function rng() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+            const pool = locked.slice();
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+            }
+            return pool.slice(0, Math.min(4, pool.length));
+        }
+
+        function _shopRenderCard(race, opts) {
+            opts = opts || {};
+            const p = RACE_PROFILES[race];
+            if (!p) return '';
+            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const faction = p.faction || 'space';
+            const sprUrl = _codexGetSpriteUrl(race);
+            const selected = race === _shopSelectedRace ? ' selected' : '';
+            const sprStyle = unlocked ? `background-image:url('${sprUrl}')`
+                : `background-image:url('${sprUrl}');filter:brightness(0.15) opacity(0.55)`;
+            const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
+            const tag = unlocked
+                ? `<span style="color:#9fe0a0;font-size:11px;font-weight:600">✓ OWNED</span>`
+                : `<span style="color:#ffd86a;font-size:11px;font-weight:600">💰 ${price}</span>`;
+            const featuredRibbon = opts.featured
+                ? `<div style="position:absolute;top:0;left:0;background:#b8455a;color:#fff;font-size:8px;letter-spacing:0.1em;padding:1px 5px">FEATURED</div>` : '';
+            return `<div class="cdx-list-item${selected}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')" style="position:relative;cursor:pointer;flex-direction:column;align-items:center;padding:6px 4px;gap:3px;${unlocked ? '' : ''}">
+                ${featuredRibbon}
+                <div class="cdx-list-sprite" style="${sprStyle};width:56px;height:56px"></div>
+                <div class="cdx-list-name" style="font-size:11px;text-align:center;${unlocked ? '' : 'color:#9a9080'}">${p.label}</div>
+                <div>${tag}</div>
+            </div>`;
+        }
+
+        function _shopRenderDetail(race) {
+            if (!race) return '<div class="cdx-empty" style="padding:30px;text-align:center;color:#888">Select a vessel to inspect its dossier.</div>';
+            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const dossier = _codexRenderDossier(race); // full preview-before-buy
+            let buyBar = '';
+            if (unlocked) {
+                buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
+                    <span style="color:#9fe0a0;font-weight:600;letter-spacing:0.08em">✓ DECLASSIFIED — IN YOUR ROSTER</span>
+                </div>`;
+            } else {
+                const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
+                    ? window.ProfileSystem.getAccountEconomy() : { gold: 0, freeTokens: 0 };
+                const price = window.ACCT_UNIT_PRICE || 5000;
+                const canAfford = (econ.gold || 0) >= price;
+                const hasToken = (econ.freeTokens || 0) > 0;
+                const rk = race.replace(/'/g, "\\'");
+                if (_shopConfirming === race) {
+                    buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
+                        <div style="color:#b8a060;margin-bottom:8px">Declassify <b>${RACE_PROFILES[race].label}</b>?</div>
+                        <button class="primary" onclick="window._shopBuy('${rk}', false)">Confirm · 💰 ${price.toLocaleString()}</button>
+                        ${hasToken ? `<button class="primary" style="background:#3a6ea5" onclick="window._shopBuy('${rk}', true)">🎟 Use Free Unlock</button>` : ''}
+                        <button onclick="window._shopCancelConfirm()">Cancel</button>
+                    </div>`;
+                } else {
+                    const priceBtn = canAfford
+                        ? `<button class="primary" onclick="window._shopAskConfirm('${rk}')">Unlock · 💰 ${price.toLocaleString()}</button>`
+                        : `<button disabled title="Not enough gold" style="opacity:0.5">💰 ${price.toLocaleString()} (need ${(price - (econ.gold || 0)).toLocaleString()} more)</button>`;
+                    const tokenBtn = hasToken
+                        ? `<button class="primary" style="background:#3a6ea5" onclick="window._shopAskConfirm('${rk}')">🎟 Use Free Unlock (${econ.freeTokens})</button>` : '';
+                    buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
+                        ${priceBtn} ${tokenBtn}
+                    </div>`;
+                }
+            }
+            return `<div id="shopDetailInner" class="${unlocked ? '' : 'shop-detail-locked'}">${dossier}${buyBar}</div>`;
+        }
+
+        window._renderShop = function() {
+            const body = document.getElementById('shopBody');
+            if (!body) return;
+            if (!_shopSelectedRace) {
+                const firstLocked = AVAILABLE_RACES.find(r => !isUnitUnlocked(r));
+                _shopSelectedRace = firstLocked || AVAILABLE_RACES[0];
+            }
+
+            // Featured shelf
+            const featured = _shopDailyFeatured();
+            let featuredHtml = '';
+            if (featured.length) {
+                featuredHtml = `<div class="shop-featured" style="margin-bottom:8px;padding:8px;border:1px solid rgba(184,69,90,0.4);background:rgba(40,12,18,0.35);border-radius:6px">
+                    <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.16em;color:#e08a9a;margin-bottom:6px">★ TODAY'S DECLASSIFICATION TARGETS</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">${featured.map(r => _shopRenderCard(r, { featured: true })).join('')}</div>
+                </div>`;
+            }
+
+            // Filters
+            const factionOpts = ['all', 'space', 'time', 'chaos'];
+            const ownOpts = [['all', 'ALL'], ['owned', 'OWNED'], ['locked', 'LOCKED']];
+            let filterHtml = '<div class="cdx-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px">';
+            filterHtml += `<input type="text" placeholder="Search vessels…" value="${_shopSearch.replace(/"/g, '&quot;')}" oninput="window._shopSetSearch(this.value)" style="background:rgba(0,0,0,0.4);border:1px solid rgba(184,160,96,0.3);color:#d8cfa8;padding:4px 8px;font-family:DotGothic16,monospace;font-size:12px">`;
+            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION:</span>';
+            for (const f of factionOpts) {
+                const sel = f === _shopFilterFaction ? ' active' : '';
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
+            }
+            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">STATUS:</span>';
+            for (const [v, lbl] of ownOpts) {
+                const sel = v === _shopFilterOwn ? ' active' : '';
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('own','${v}')">${lbl}</button>`;
+            }
+            filterHtml += '</div></div>';
+
+            // Grid
+            let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
+            if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
+            if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitUnlocked(r));
+            if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitUnlocked(r));
+            if (_shopSearch.trim()) {
+                const q = _shopSearch.trim().toLowerCase();
+                races = races.filter(r => (RACE_PROFILES[r].label || r).toLowerCase().includes(q) || r.toLowerCase().includes(q));
+            }
+            races.sort((a, b) => (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
+            const gridHtml = races.length
+                ? races.map(r => _shopRenderCard(r)).join('')
+                : '<div class="cdx-empty" style="padding:20px;color:#888">No vessels match.</div>';
+
+            body.innerHTML = `
+                ${featuredHtml}
+                ${filterHtml}
+                <div class="cdx-layout" style="display:flex;gap:10px">
+                    <div class="cdx-list" id="shopGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;align-content:start;flex:1;overflow:auto">${gridHtml}</div>
+                    <div class="cdx-detail" id="shopDetail" style="flex:1.2;overflow:auto">${_shopRenderDetail(_shopSelectedRace)}</div>
+                </div>
+            `;
+            const w = document.getElementById('shopWallet');
+            if (w) window._renderWallet(w);
+        };
+
+        window._shopSelect = function(race) {
+            if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+            _shopSelectedRace = race;
+            _shopConfirming = null;
+            window._renderShop();
+        };
+
+        window._shopSetFilter = function(type, value) {
+            if (typeof playSfx === 'function') playSfx('uiCursorMove');
+            if (type === 'faction') _shopFilterFaction = value;
+            if (type === 'own') _shopFilterOwn = value;
+            window._renderShop();
+        };
+
+        window._shopSetSearch = function(val) {
+            _shopSearch = val || '';
+            // Re-render just the grid to avoid losing input focus.
+            const grid = document.getElementById('shopGrid');
+            if (!grid) { window._renderShop(); return; }
+            let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
+            if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
+            if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitUnlocked(r));
+            if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitUnlocked(r));
+            if (_shopSearch.trim()) {
+                const q = _shopSearch.trim().toLowerCase();
+                races = races.filter(r => (RACE_PROFILES[r].label || r).toLowerCase().includes(q) || r.toLowerCase().includes(q));
+            }
+            races.sort((a, b) => (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
+            grid.innerHTML = races.length ? races.map(r => _shopRenderCard(r)).join('') : '<div class="cdx-empty" style="padding:20px;color:#888">No vessels match.</div>';
+        };
+
+        window._shopAskConfirm = function(race) {
+            if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            _shopConfirming = race;
+            const d = document.getElementById('shopDetail');
+            if (d) d.innerHTML = _shopRenderDetail(race);
+        };
+
+        window._shopCancelConfirm = function() {
+            if (typeof playSfx === 'function') playSfx('uiCursorMove');
+            _shopConfirming = null;
+            const d = document.getElementById('shopDetail');
+            if (d) d.innerHTML = _shopRenderDetail(_shopSelectedRace);
+        };
+
+        window._shopBuy = function(race, useToken) {
+            const PS = window.ProfileSystem;
+            if (!PS || typeof PS.serverPurchaseUnit !== 'function') {
+                alert('You need an online account to unlock units.');
+                return;
+            }
+            const detail = document.getElementById('shopDetail');
+            const inner = document.getElementById('shopDetailInner');
+            if (inner) inner.style.opacity = '0.5';
+            PS.serverPurchaseUnit(race, !!useToken).then(function(r) {
+                if (r && r.ok) {
+                    _shopConfirming = null;
+                    if (typeof playSfx === 'function') { try { playSfx('levelUp'); } catch (e) {} }
+                    window._refreshWallets();
+                    window._renderShop();
+                    // Declassify reveal flash on the now-owned dossier.
+                    const di = document.getElementById('shopDetailInner');
+                    if (di) {
+                        di.style.transition = 'none';
+                        di.style.filter = 'brightness(2.2)';
+                        requestAnimationFrame(() => {
+                            di.style.transition = 'filter 0.7s ease';
+                            di.style.filter = 'brightness(1)';
+                        });
+                    }
+                } else {
+                    if (typeof playSfx === 'function') { try { playSfx('uiError'); } catch (e) {} }
+                    alert((r && r.error) || 'Purchase failed.');
+                    if (detail) detail.innerHTML = _shopRenderDetail(race);
+                }
+            });
+        };
+
+        window._goToShop = function(focusRace) {
+            if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            if (focusRace && AVAILABLE_RACES.indexOf(focusRace) !== -1) _shopSelectedRace = focusRace;
+            _shopConfirming = null;
+            if (typeof _showTitlePage === 'function') _showTitlePage('shopPage');
+            // Refresh the server-authoritative economy when entering the shop.
+            if (window.ProfileSystem && typeof window.ProfileSystem.serverFetchEconomy === 'function') {
+                window.ProfileSystem.serverFetchEconomy().then(() => window._renderShop()).catch(() => {});
+            }
+            window._renderShop();
+        };
+
+        window._shopBack = function() {
+            if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            if (typeof GS !== 'undefined' && typeof state !== 'undefined') state.gameState = GS.MAIN_MENU;
+            if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
+            window._refreshWallets();
+        };
+
+        // ── ONBOARDING: one-time free first-pick ceremony ──────────────────
+        window._maybeShowOnboarding = function() {
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || !PS.hasServerAccount || !PS.hasServerAccount()) return;
+                const id = PS.getServerId ? PS.getServerId() : null;
+                if (!id) return;
+                const flag = 'ew-onboard-' + id;
+                if (localStorage.getItem(flag) === '1') return;
+                const econ = PS.getAccountEconomy ? PS.getAccountEconomy() : { freeTokens: 0 };
+                if (!econ || (econ.freeTokens || 0) <= 0) return;
+                if (document.getElementById('ewOnboardOverlay')) return;
+
+                const ov = document.createElement('div');
+                ov.id = 'ewOnboardOverlay';
+                ov.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(4,3,8,0.82);backdrop-filter:blur(2px)';
+                ov.innerHTML = `
+                    <div style="max-width:440px;text-align:center;border:1px solid rgba(184,160,96,0.5);background:linear-gradient(180deg,#15110a,#0c0a06);border-radius:10px;padding:26px 28px;box-shadow:0 12px 60px rgba(0,0,0,0.7)">
+                        <div style="font-family:Cinzel,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">CLEARANCE GRANTED</div>
+                        <div style="font-family:Cinzel,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">Choose Your First Vessel</div>
+                        <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.</div>
+                        <button class="primary" id="ewOnboardGo" style="margin-right:8px">Browse the Roster</button>
+                        <button id="ewOnboardLater">Maybe Later</button>
+                    </div>`;
+                document.body.appendChild(ov);
+                if (typeof playSfx === 'function') { try { playSfx('uiButtonConfirm'); } catch (e) {} }
+                const close = () => { localStorage.setItem(flag, '1'); ov.remove(); };
+                document.getElementById('ewOnboardGo').onclick = () => { close(); window._goToShop(); };
+                document.getElementById('ewOnboardLater').onclick = () => { if (typeof playSfx === 'function') { try { playSfx('uiCursorMove'); } catch (e) {} } close(); };
+            } catch (e) { console.error('[ONBOARD]', e); }
+        };
+
+        // ── DEV TOGGLE: view-layer unlock-all + local gold grant ───────────
+        // Visible only with ?dev=1 in the URL or localStorage 'ew-dev' === '1'.
+        // _DEV_UNLOCK_ALL never writes to the profile or D1 — it cannot corrupt
+        // a real account and cannot ship enabled.
+        function _devEnabled() {
+            try {
+                if (localStorage.getItem('ew-dev') === '1') return true;
+                return new URLSearchParams(location.search).has('dev');
+            } catch (e) { return false; }
+        }
+
+        function _ensureDevPanel() {
+            if (!_devEnabled()) return;
+            let panel = document.getElementById('ewDevPanel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'ewDevPanel';
+                panel.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:99990;display:flex;flex-direction:column;gap:4px;background:rgba(20,4,24,0.9);border:1px solid #8a3aa5;border-radius:6px;padding:7px 9px;font:11px DotGothic16,monospace;color:#e0c8ff';
+                panel.innerHTML = `
+                    <div style="font-weight:700;letter-spacing:0.12em;color:#d59aff">⚙ DEV TOOLS</div>
+                    <button id="ewDevUnlockAll" style="font:11px monospace;cursor:pointer">Unlock All: OFF</button>
+                    <button id="ewDevGrantGold" style="font:11px monospace;cursor:pointer">+99,999 Gold (local)</button>
+                    <div id="ewDevNote" style="font-size:9px;color:#a88ac0;max-width:150px"></div>`;
+                document.body.appendChild(panel);
+                document.getElementById('ewDevUnlockAll').onclick = function() {
+                    window._DEV_UNLOCK_ALL = !window._DEV_UNLOCK_ALL;
+                    this.textContent = 'Unlock All: ' + (window._DEV_UNLOCK_ALL ? 'ON' : 'OFF');
+                    this.style.color = window._DEV_UNLOCK_ALL ? '#7dff9a' : '';
+                    const note = document.getElementById('ewDevNote');
+                    if (note) note.textContent = window._DEV_UNLOCK_ALL ? 'VIEW-ONLY: nothing written to your account.' : '';
+                    window._refreshWallets();
+                    // Re-render whatever unlock-aware screen is open.
+                    if (typeof window._renderShop === 'function' && document.getElementById('shopPage') && document.getElementById('shopPage').classList.contains('active')) window._renderShop();
+                    if (typeof window._renderCodex === 'function' && document.getElementById('codexPage') && document.getElementById('codexPage').classList.contains('active')) window._renderCodex();
+                };
+                document.getElementById('ewDevGrantGold').onclick = function() {
+                    try {
+                        const PS = window.ProfileSystem;
+                        const idx = PS && PS.getActiveProfileIndex ? PS.getActiveProfileIndex() : null;
+                        if (idx === null || !PS.loadProfile) { return; }
+                        const p = PS.loadProfile(idx);
+                        if (!p) return;
+                        if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+                        p.account.gold = (p.account.gold || 0) + 99999;
+                        PS.saveProfile(idx, p);
+                        window._refreshWallets();
+                        if (typeof window._renderShop === 'function' && document.getElementById('shopPage') && document.getElementById('shopPage').classList.contains('active')) window._renderShop();
+                        const note = document.getElementById('ewDevNote');
+                        if (note) note.textContent = 'Local mirror only — server balance unchanged.';
+                    } catch (e) { console.error(e); }
+                };
+            }
+            const btn = document.getElementById('ewDevUnlockAll');
+            if (btn) btn.textContent = 'Unlock All: ' + (window._DEV_UNLOCK_ALL ? 'ON' : 'OFF');
+        }
+        window._ensureDevPanel = _ensureDevPanel;
+
+        (function _initEconomyUI() {
+            function setup() {
+                try { _ensureDevPanel(); } catch (e) {}
+                try { window._refreshWallets && window._refreshWallets(); } catch (e) {}
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+            else setup();
+        })();
 
         var _cameraFocalX = null;
         var _cameraFocalY = null;

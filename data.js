@@ -7528,6 +7528,78 @@ const NEXUS_CHANNEL_COST_AP = 1;
 const NEXUS_CAPTURE_THRESHOLD = 6;
 const NEXUS_ZONE_SIZE = 2;
 
+// ── ACCOUNT ECONOMY (PvP) ──────────────────────────────────────────────
+// Single source of truth for the persistent, account-level unlock economy.
+// Challenge mode keeps its OWN separate wallet (state.campaignSave / save.gold)
+// and must never read from or write to anything below.
+const ACCT_UNIT_PRICE        = 5000;  // flat cost of EVERY unit. Same for all, intentionally.
+const ACCT_BASE_COMPLETE     = 50;    // flat gold for finishing a PvP match (win OR loss)
+const ACCT_WIN_MULT          = 1.5;   // multiplier applied to (base + collected) on a win
+const ACCT_FLAWLESS_MULT     = 1.25;  // win-only: no friendly unit died. STACKS.
+const ACCT_WIPEOUT_MULT      = 1.25;  // win-only: all enemy units dead. STACKS.
+const ACCT_STARTING_GOLD     = 0;     // wallet balance for a brand-new account
+const ACCT_FREE_TOKENS       = 1;     // free-unlock tokens granted at account creation
+const ACCT_MATCH_GOLD_CAP    = 5000;  // server-side sanity cap on banked gold per match (anti-cheat)
+
+// New accounts own these 12 race keys (each playable in its default job).
+const ACCT_STARTER_UNITS = [
+  'men in black',   // Agent
+  'wizard',         // Black Mage
+  'werewolf',       // Raider
+  'mad scientist',  // Engineer
+  'homosapien',     // Freelancer
+  'catgirl',        // Gunslinger
+  'fortune teller', // Harbinger
+  'bigfoot',        // Harvester
+  'grey',           // Psychic
+  'marksman',       // Sniper
+  'knight',         // Warrior
+  'fairy',          // White Mage
+];
+
+// PvP modes that bank account gold. Gauntlet/Challenge route through their own
+// campaign economy and are intentionally excluded here.
+const ACCT_PVP_MODES = ['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf'];
+
+// One ownership check everything routes through. View-layer only — purchasing is
+// always server-authoritative; this just decides what shows as owned/selectable.
+function isUnitUnlocked(raceKey) {
+  if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
+  const acct = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
+    ? (window.ProfileSystem.getActiveProfile() || {}).account
+    : null;
+  if (!acct || !Array.isArray(acct.unlockedUnits)) return ACCT_STARTER_UNITS.includes(raceKey); // offline fallback
+  return acct.unlockedUnits.includes(raceKey);
+}
+
+// Exact reward formula (§0 of the spec). Mirrors what the server clamps on /bank.
+function computeAccountMatchGold(opts) {
+  opts = opts || {};
+  const collected = Math.max(0, Math.round(opts.collected || 0));
+  const playerWon = !!opts.playerWon;
+  const noFriendlyDeaths = !!opts.noFriendlyDeaths;
+  const allEnemiesDead = !!opts.allEnemiesDead;
+
+  const winMult = playerWon ? ACCT_WIN_MULT : 1.0;
+  let condMult = 1.0;
+  if (playerWon && noFriendlyDeaths) condMult *= ACCT_FLAWLESS_MULT;
+  if (playerWon && allEnemiesDead)   condMult *= ACCT_WIPEOUT_MULT;
+
+  const total = Math.round((ACCT_BASE_COMPLETE + collected) * winMult * condMult);
+  const matchGold = Math.min(total, ACCT_MATCH_GOLD_CAP);
+
+  return {
+    collected,
+    base: ACCT_BASE_COMPLETE,
+    winMult,
+    flawless: playerWon && noFriendlyDeaths,
+    wipeout: playerWon && allEnemiesDead,
+    condMult,
+    matchGold,
+    capped: total > ACCT_MATCH_GOLD_CAP,
+  };
+}
+
 const MAP_LAYOUT_PRESETS = {
 
     normal: {
@@ -11283,4 +11355,7 @@ Object.assign(window, {
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
   computeSecJobBonuses, computeEquipBonuses,
+  ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,
+  ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
+  ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
 });
