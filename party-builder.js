@@ -458,7 +458,10 @@ function PartyBuilder() {
     return p?.favRaces || [];
   };
   const [favRaces, setFavRaces] = React.useState(getFavRaces);
+  // A vessel the local human hasn't unlocked yet can never be favorited.
+  const isLockedEntry = (raceKey) => (player === 1) && (typeof window.isUnitUnlocked === 'function') && !window.isUnitUnlocked(raceKey);
   const toggleFav = (raceKey, gender) => {
+    if (isLockedEntry(raceKey)) { sfx('uiError'); return; }
     const p = window.ProfileSystem?.getActiveProfile?.();
     const idx = window.ProfileSystem?.getActiveProfileIndex?.();
     if (!p || idx == null) return;
@@ -471,6 +474,23 @@ function PartyBuilder() {
     sfx('uiCursorMove');
   };
   const isFav = (raceKey, gender) => favRaces.includes(raceKey + ':' + gender);
+
+  // Resolve a unit's display name ONCE and persist it, so the party list and the
+  // detail panel never show two different random names for the same vessel.
+  const resolveUnitName = (p, i, cls) => {
+    if (!st.partyNames) st.partyNames = {};
+    if (!st.partyNames[p]) st.partyNames[p] = [];
+    const cur = st.partyNames[p][i];
+    const isDefault = (typeof window.isGeneratedDefaultName === 'function')
+      ? window.isGeneratedDefaultName(cur, cls, p, i)
+      : !String(cur || '').trim();
+    if (isDefault) {
+      const gen = (typeof window.getDefaultUnitName === 'function') ? window.getDefaultUnitName(cls) : (String(cur || '').trim() || cls);
+      st.partyNames[p][i] = gen;
+      return gen;
+    }
+    return (typeof window.sanitizeUnitName === 'function') ? window.sanitizeUnitName(cur, cur) : cur;
+  };
 
   const getTeamPresets = () => {
     const p = window.ProfileSystem?.getActiveProfile?.();
@@ -616,7 +636,9 @@ function PartyBuilder() {
     if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.cls.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
     const getStatVal = (entry, key) => { const s = computeStats(entry.race, entry.cls), mapped = STAT_MAP[key]; return s[mapped] ?? s[key] ?? s[key.toLowerCase()] ?? 0; };
     list = [...list].sort((a, b) => {
-
+      // Owned (unlocked) vessels always come first, then favorites, then the chosen stat.
+      const ao = isLockedEntry(a.race) ? 0 : 1, bo = isLockedEntry(b.race) ? 0 : 1;
+      if (ao !== bo) return bo - ao;
       const af = isFav(a.race, a.gender) ? 1 : 0, bf = isFav(b.race, b.gender) ? 1 : 0;
       if (af !== bf) return bf - af;
       if (STAT_KEYS.includes(sortKey)) { return sortDir === 'desc' ? getStatVal(b, sortKey) - getStatVal(a, sortKey) : getStatVal(a, sortKey) - getStatVal(b, sortKey); } const av = a[sortKey]||a.label, bv = b[sortKey]||b.label; return sortDir === 'desc' ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv)); });
@@ -726,7 +748,7 @@ function PartyBuilder() {
   const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack')continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ);if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
-  const unitName = typeof window.normalizeDisplayedUnitName==='function' ? window.normalizeDisplayedUnitName(st.partyNames?.[player]?.[slot],clsName,player,slot) : (st.partyNames?.[player]?.[slot]||prof?.label||'Unit');
+  const unitName = resolveUnitName(player, slot, clsName);
   const allAccIds = typeof window.EQUIP_DEFS!=='undefined' ? Object.keys(window.EQUIP_DEFS).filter(id=>{const d=window.EQUIP_DEFS[id];return d&&(d.slot==='accessory1'||d.slot==='accessory2');}) : [];
   const allItemKeys = typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [];
   const itemSlotMax = window.CONFIG?.unitItemSlots || 3;
@@ -763,7 +785,7 @@ function PartyBuilder() {
           const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',faction:'time',types:['human'],gender:'male'};
           const pf = window.RACE_PROFILES?.[id.race], isActive = i===slot, fCol = getFactionColor(id.faction);
           const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
-          const nm = typeof window.normalizeDisplayedUnitName==='function' ? window.normalizeDisplayedUnitName(st.partyNames?.[player]?.[i],cn,player,i) : (pf?.label||'?');
+          const nm = resolveUnitName(player, i, cn);
           return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-slot-card', style:{ position:'relative', cursor:'pointer', flex:1, minHeight:0, background:isActive?`linear-gradient(180deg,${fCol}18,rgba(0,0,0,0.3))`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?fCol+'99':EW.panelEdge}`, padding:'4px', display:'flex', flexDirection:'column', alignItems:'center', gap:2, clipPath:'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }},
             isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
             confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '\u2713'),
@@ -773,7 +795,7 @@ function PartyBuilder() {
               h(Sprite, { race:id.race, gender:id.gender||'male', cls:cn, size:'90%', glow:isActive?id.faction:null, style:{width:'90%',height:'90%'} }),
             ),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
-            h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' \u00B7 ',cn.toUpperCase()),
+            h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' \u00B7 ',getJobDisplay(cn).toUpperCase()),
             h('div', { style:{ display:'flex', gap:2, marginTop:1 } },
               h('span', { style:{ width:5, height:5, background:fCol, borderRadius:'50%' } }),
               ...(id.types||[]).map((t,ti)=>h('span',{key:ti,style:{width:5,height:5,background:getTypeColor(t),borderRadius:'50%'}}))),
@@ -786,7 +808,7 @@ function PartyBuilder() {
         h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr 0.8fr 1fr 1fr', gap:0, padding:'8px 10px 6px 10px', minHeight:0, maxHeight:'48%', overflow:'hidden' }},
 
           h('div', { style:{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, minHeight:0, overflow:'hidden', paddingRight:8, borderRight:`1px solid ${EW.panelEdge}` } },
-            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.14em', flexShrink:0, alignSelf:'flex-start' } }, '\u00B7 SLOT ',numerals[slot],' \u00B7 ',clsName.toUpperCase()),
+            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.14em', flexShrink:0, alignSelf:'flex-start' } }, '\u00B7 SLOT ',numerals[slot],' \u00B7 ',getJobDisplay(clsName).toUpperCase()),
             h('div', { style:{ flexShrink:0, position:'relative', display:'flex', justifyContent:'center', alignItems:'flex-end' } },
               h('div', { style:{ position:'absolute', inset:'20% -12px -5% -12px', background:`radial-gradient(ellipse,${fc}30,transparent 65%)`, filter:'blur(12px)', pointerEvents:'none' } }),
               h(Sprite, { race:unitRace, gender:identity.gender||'male', cls:clsName, size:'clamp(70px,9vw,120px)', glow:unitFaction, style:{position:'relative',zIndex:1} }),
@@ -795,7 +817,7 @@ function PartyBuilder() {
             h('div', { style:{ display:'flex', alignItems:'center', gap:2, flexWrap:'wrap', justifyContent:'center' } },
               ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t})), h(FactionChip,{faction:unitFaction})),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(14px,1.6vw,22px)', fontWeight:500, lineHeight:0.95, textShadow:`0 0 20px ${fc}25`, textAlign:'center' } }, _grl(unitRace, identity.gender) || unitRace),
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(8px,0.8vw,11px)', fontWeight:300, color:EW.inkMute } }, 'the ',clsName.toLowerCase()),
+            h('div', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(8px,0.8vw,11px)', fontWeight:300, color:EW.inkMute } }, 'the ',getJobDisplay(clsName).toLowerCase()),
 
             h('div', { style:{ display:'flex', gap:3, alignItems:'center', padding:'3px 6px', background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, fontSize:10, flexWrap:'wrap', width:'100%' } },
               h('span',{style:{color:EW.inkDim}},'NAME'),
@@ -806,7 +828,7 @@ function PartyBuilder() {
             ),
             !isArena && clsName!=='Freelancer' && h('div', { style:{ display:'flex', gap:3, alignItems:'center', padding:'3px 6px', background:'rgba(0,0,0,0.2)', border:`1px solid ${EW.panelEdge}`, fontSize:10, width:'100%' } },
               h('span',{style:{color:EW.inkDim}},'SUB'), h('select', { value:secJob, onChange:e=>handleSecJobChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'2px 4px', flex:1, minWidth:0 } },
-                h('option',{value:'',style:{background:'#0c0b16'}},'\u2014 Auto \u2014'), ...(typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer').map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}},j)))),
+                h('option',{value:'',style:{background:'#0c0b16'}},'\u2014 Auto \u2014'), ...(typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer').map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}},getJobDisplay(j))))),
           ),
 
           h('div', { style:{ display:'flex', flexDirection:'column', gap:0, minHeight:0, overflow:'auto', padding:'0 8px', borderRight:`1px solid ${EW.panelEdge}` }},
@@ -948,7 +970,7 @@ function PartyBuilder() {
               const hpVal = (computeStats(entry.race,entry.cls).hp ?? 0);
               const starred = isFav(entry.race, entry.gender);
               // Account-unlock gate: only the local human's roster (player 1) is restricted.
-              const locked = (player === 1) && (typeof window.isUnitUnlocked === 'function') && !window.isUnitUnlocked(entry.race);
+              const locked = isLockedEntry(entry.race);
               const onCardClick = locked
                 ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
                 : ()=>pickRace(entry.race,entry.gender,entry.job);
