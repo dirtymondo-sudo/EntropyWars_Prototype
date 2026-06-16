@@ -2291,8 +2291,13 @@
             };
         }
 
-        function randomizeIdentity() {
-            const race = AVAILABLE_RACES[randInt(AVAILABLE_RACES.length)];
+        function randomizeIdentity(ownedOnly) {
+            let pool = AVAILABLE_RACES;
+            if (ownedOnly && typeof isUnitUnlocked === 'function') {
+                const owned = AVAILABLE_RACES.filter(r => isUnitUnlocked(r));
+                if (owned.length) pool = owned;
+            }
+            const race = pool[randInt(pool.length)];
             const raceProfile = getRaceProfile(race);
             const zodiac = AVAILABLE_ZODIACS[randInt(AVAILABLE_ZODIACS.length)];
             const sleep = AVAILABLE_SLEEP_PREFERENCES[randInt(AVAILABLE_SLEEP_PREFERENCES.length)];
@@ -2313,8 +2318,8 @@
             };
         }
 
-        function randomizePartyIdentities(count) {
-            const metas = Array.from({ length: count }, () => randomizeIdentity());
+        function randomizePartyIdentities(count, ownedOnly) {
+            const metas = Array.from({ length: count }, () => randomizeIdentity(ownedOnly));
 
             const bothIdxs = [];
             for (let i = 0; i < metas.length; i++) {

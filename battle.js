@@ -7332,6 +7332,16 @@
             return normalizeLoadoutForClass(loadout, cls);
         }
 
+        // True when this player's roster must be limited to account-owned units
+        // (the local human in a normal PvP/VS-CPU match). The CPU/opponent is free.
+        function _acctRestrictRoster(player) {
+            if (state.isCampaign || state.devAutoSim) return false;
+            if (typeof isUnitUnlocked !== 'function') return false;
+            const localHuman = (typeof isOnlineMatch === 'function' && isOnlineMatch() && typeof getLocalPlayer === 'function')
+                ? getLocalPlayer() : 1;
+            return player === localHuman;
+        }
+
         function randomizeParty(player) {
             if (isOnlineMatch() && player !== getLocalPlayer()) {
                 addLog("You can only randomize your own team.");
@@ -7340,7 +7350,7 @@
             syncPartyBuildsFromInputs();
             const classNames = Object.keys(CLASS_TEMPLATES);
 
-            state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize);
+            state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize, _acctRestrictRoster(player));
             state.partyBuilds[player] = state.partyMeta[player].map(meta => {
                 const race = meta.race || 'homosapien';
                 const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
@@ -7408,7 +7418,7 @@
             syncPartyBuildsFromInputs();
             const classNames = Object.keys(CLASS_TEMPLATES);
             ensurePartyMeta();
-            state.partyMeta[player][idx] = randomizeIdentity();
+            state.partyMeta[player][idx] = randomizeIdentity(_acctRestrictRoster(player));
             const slotRace = state.partyMeta[player][idx]?.race || '';
             const lockedJob = (slotRace !== 'homosapien' && RACE_DEFAULT_JOBS[slotRace]) ? RACE_DEFAULT_JOBS[slotRace] : null;
             const cls = lockedJob || classNames[randInt(classNames.length)];
@@ -7427,7 +7437,7 @@
             if (!state.devAutoSim) syncPartyBuildsFromInputs();
             _buildersToUpdate().forEach(player => {
                 const classNames = Object.keys(CLASS_TEMPLATES);
-                state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize);
+                state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize, _acctRestrictRoster(player));
                 state.partyBuilds[player] = state.partyMeta[player].map(meta => {
                     const race = meta.race || 'homosapien';
                     const lockedJob = (race !== 'homosapien' && RACE_DEFAULT_JOBS[race]) ? RACE_DEFAULT_JOBS[race] : null;
@@ -8853,9 +8863,7 @@
             if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Flawless ×1.25</span>`);
             if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Wipeout ×1.25</span>`);
             const sep = '<span style="color:#7a6f4a;margin:0 2px">·</span>';
-            const balanceLine = hasAccount
-                ? `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Banking…</div>`
-                : `<div id="vgbBalance" style="font-size:11px;color:#8a8060;margin-top:3px;font-style:italic">Sign in online to bank this gold</div>`;
+            const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
             el.innerHTML = `
                 <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;background:rgba(20,16,8,0.55);border:1px solid rgba(184,160,96,0.35);border-radius:8px;padding:8px 16px;margin:6px auto">
                     <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.18em;color:#b8a060">💰 ACCOUNT GOLD</div>
@@ -8915,18 +8923,33 @@
 
                 _renderVicGoldBreakdown(calc, hasAccount);
 
+                function _setBalance(text, color) {
+                    const balEl = document.getElementById('vgbBalance');
+                    if (!balEl) return;
+                    balEl.textContent = text;
+                    balEl.style.color = color || '#ffd86a';
+                    balEl.style.fontStyle = 'normal';
+                    if (typeof window._refreshWallets === 'function') window._refreshWallets();
+                }
+
                 if (hasAccount && typeof PS.serverBankGold === 'function') {
+                    // Online account → server is authoritative.
                     PS.serverBankGold(calc.matchGold, modeId).then(function(r) {
-                        const balEl = document.getElementById('vgbBalance');
-                        if (r && r.ok && r.data && balEl) {
-                            balEl.textContent = 'Wallet: 💰 ' + (r.data.gold || 0).toLocaleString();
-                            balEl.style.color = '#ffd86a';
-                            balEl.style.fontStyle = 'normal';
-                        } else if (balEl) {
-                            balEl.textContent = 'Gold saved locally (sync pending)';
-                            balEl.style.color = '#8a8060';
+                        if (r && r.ok && r.data) {
+                            _setBalance('Wallet: 💰 ' + (r.data.gold || 0).toLocaleString(), '#ffd86a');
+                        } else {
+                            // Server unreachable → fall back to the local mirror so play still rewards.
+                            const bal = (typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
+                            _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : 'Saved locally', '#cdbf90');
                         }
-                    }).catch(function() {});
+                    }).catch(function() {
+                        const bal = (typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
+                        _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : 'Saved locally', '#cdbf90');
+                    });
+                } else {
+                    // No online account → credit the local wallet so solo play still earns.
+                    const bal = (PS && typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
+                    _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString()) : ('+' + calc.matchGold.toLocaleString()), '#ffd86a');
                 }
             } catch (e) { console.error('[ECON] bank failed:', e); }
         }

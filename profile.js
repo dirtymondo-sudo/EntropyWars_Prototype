@@ -493,6 +493,21 @@ function _absorbEconomyFromResponse(data) {
   }
 }
 
+// Credit gold straight to the local mirror (offline / no online account).
+// Server stays authoritative when one exists; this keeps solo play rewarding.
+function creditLocalGold(amount) {
+  amount = Math.max(0, Math.round(Number(amount) || 0));
+  const idx = getActiveProfileIndex();
+  if (idx === null) return 0;
+  const p = loadProfile(idx);
+  if (!p) return 0;
+  if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+  p.account.gold = (p.account.gold || 0) + amount;
+  saveProfile(idx, p);
+  try { if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+  return p.account.gold;
+}
+
 async function serverFetchEconomy() {
   const token = getServerToken();
   const id = getServerId();
@@ -586,6 +601,7 @@ window.ProfileSystem = {
   serverFetchEconomy,
   serverBankGold,
   serverPurchaseUnit,
+  creditLocalGold,
 };
 
 function buildProfileMatchSummary() {
