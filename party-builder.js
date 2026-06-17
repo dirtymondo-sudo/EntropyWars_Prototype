@@ -131,6 +131,12 @@ if (!document.getElementById('pb-hover-css')) {
       filter: brightness(0.85);
     }
 
+    /* Rich spell tooltip */
+    @keyframes pbTipIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: none; }
+    }
+
     /* Accessory / Item rows */
     .pb-equip-row {
       transition: background 0.12s, border-color 0.12s, box-shadow 0.1s !important;
@@ -431,6 +437,98 @@ function SigilMark() {
 }
 function classifySpellLocal(sp) { if (!sp) return 'utility'; if (typeof window.classifySpell==='function') return window.classifySpell(sp); const k=sp.kind||sp.type||''; if (/heal/i.test(k)) return 'heal'; if (/buff|shield/i.test(k)) return 'buff'; if (/debuff/i.test(k)) return 'debuff'; if (/damage|dmg/i.test(k)) return 'damage'; return 'utility'; }
 function spellCategoryColor(cat) { return {damage:'rgba(152,80,80,0.7)',heal:'rgba(90,148,86,0.7)',buff:'rgba(80,126,160,0.7)',debuff:'rgba(200,170,70,0.7)',utility:'rgba(140,100,180,0.65)'}[cat]||'rgba(140,100,180,0.65)'; }
+function spellCategoryLabel(cat) { return {damage:'DAMAGE',heal:'HEAL',buff:'BUFF',debuff:'DEBUFF',utility:'UTILITY'}[cat]||'UTILITY'; }
+
+// Human-readable area-of-effect footprint from whatever shape fields a spell uses.
+function pbAoeLabel(sp) {
+  if (!sp) return null;
+  if (sp.crossRadius) return 'Cross r' + sp.crossRadius;
+  if (sp.lineWidth || sp.kind === 'line') return 'Line' + (sp.lineLength ? ' ' + sp.lineLength : '');
+  if (sp.blastRadius) return (sp.blastRadius * 2 + 1) + '×' + (sp.blastRadius * 2 + 1);
+  if (sp.aoeRadius != null && sp.aoeRadius > 0) return (sp.aoeRadius * 2 + 1) + '×' + (sp.aoeRadius * 2 + 1);
+  if (sp.bounceRadius) return 'Bounce r' + sp.bounceRadius;
+  return null;
+}
+
+// Derive readable effect/mechanic tags from a spell's status effects + special fields.
+function pbSpellEffects(sp) {
+  const out = [];
+  if (!sp) return out;
+  const SD = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (window.STATUS_DEFS || {});
+  (sp.statusEffects || []).forEach(e => {
+    const def = SD[e.id] || {};
+    const label = def.label || e.id;
+    const extra = [];
+    if (e.duration) extra.push(e.duration + 't');
+    if (e.bonusDamage) extra.push('+' + e.bonusDamage + ' dmg');
+    if (e.chance && e.chance < 1) extra.push(Math.round(e.chance * 100) + '%');
+    const isBuff = def.kind === 'buff';
+    out.push({ txt: (def.glyph ? def.glyph + ' ' : '') + label + (extra.length ? ' (' + extra.join(', ') + ')' : ''), color: isBuff ? EW.good : EW.warn });
+  });
+  const m = [];
+  if (sp.damageType) m.push(sp.damageType === 'magic' ? 'Magic damage' : 'Physical damage');
+  if (sp.ignoreArmor || sp.ignoresArmor || sp.bounceShieldIgnore) m.push('Ignores armor');
+  if (sp.actedTargetBonus) m.push('+' + sp.actedTargetBonus + ' vs units that acted');
+  if (sp.sneakBonus) m.push('+' + sp.sneakBonus + ' from stealth');
+  if (sp.collisionBonus) m.push('+' + sp.collisionBonus + ' on collision');
+  if (sp.lowHpBonus) m.push('+' + sp.lowHpBonus + ' heal on low-HP allies');
+  if (sp.shieldCapPct) m.push('Shield capped at ' + Math.round(sp.shieldCapPct * 100) + '% max HP');
+  if (sp.drainPct) m.push('Heals ' + Math.round(sp.drainPct * 100) + '% of damage dealt');
+  if (sp.mpRestore) m.push('Restores ' + sp.mpRestore + ' MP');
+  if (sp.guaranteedCrit) m.push('Guaranteed critical');
+  if (sp.guaranteedStatus) m.push('Status always applies');
+  if (sp.cleanse) m.push('Cleanses a debuff');
+  if (sp.revivePct) m.push('Revives at ' + Math.round(sp.revivePct * 100) + '% HP');
+  if (sp.chargeToTarget || sp.dashDamage || sp.kind === 'dash') m.push('Dashes to the target');
+  if (sp.teleportDistance || sp.kind === 'teleport') m.push('Teleports' + (sp.teleportDistance ? ' up to ' + sp.teleportDistance + ' tiles' : ''));
+  if (sp.teleportAnyUnit) m.push('Can teleport any unit');
+  if (sp.weatherType || sp.kind === 'summonWeather') m.push('Summons weather' + (sp.weatherType ? ': ' + sp.weatherType : ''));
+  if (sp.terrainType || sp.kind === 'terrainCreate') m.push('Reshapes terrain' + (sp.terrainType ? ': ' + sp.terrainType : ''));
+  if (sp.turretHp || sp.kind === 'deployTurret') m.push('Deploys a turret');
+  if (sp.friendlyFire) m.push('Friendly fire');
+  if (sp.bounceDamage) m.push('Ricochets for ' + sp.bounceDamage + ' dmg');
+  if (sp.hitDamages && sp.hitDamages.length) m.push('Multi-hit (' + sp.hitDamages.length + ' strikes)');
+  if (sp.ignoresLineOfSight) m.push('Ignores line of sight');
+  if (sp.selfStun) m.push('Self-stuns after use');
+  m.forEach(x => out.push({ txt: x, color: EW.inkMute }));
+  return out;
+}
+
+// The rich floating spell card. Returns a fixed-positioned React element clamped to the viewport.
+function buildSpellTooltip(sp, x, y) {
+  if (!sp) return null;
+  const cat = classifySpellLocal(sp), catC = spellCategoryColor(cat);
+  const typeC = getTypeColor(sp.spellType || 'human');
+  const power = (typeof window.getSpellPowerLabel === 'function') ? (window.getSpellPowerLabel(sp) || '') : '';
+  const aoe = pbAoeLabel(sp);
+  const effects = pbSpellEffects(sp);
+  const W = 300;
+  const left = Math.max(8, Math.min(x + 18, window.innerWidth - W - 12));
+  const top = Math.max(8, Math.min(y + 18, window.innerHeight - 280));
+  const stat = (label, val, col) => (val == null || val === '') ? null : h('div', { key: label, style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '3px 8px', background: 'rgba(0,0,0,0.3)', border: `1px solid ${EW.panelEdge}`, minWidth: 34 } },
+    h('span', { style: { fontSize: 8, color: EW.inkDim, letterSpacing: '0.1em' } }, label),
+    h('span', { style: { fontSize: 11, fontWeight: 700, color: col || EW.ink } }, val));
+  const powerVal = power.replace(/\s*(dmg|heal|shield)\s*$/, '');
+  const powerLabel = cat === 'heal' ? 'HEAL' : (sp.shield || sp.shieldHp || /shield/.test(power)) ? 'SHIELD' : 'PWR';
+  const powerCol = cat === 'heal' ? EW.good : (powerLabel === 'SHIELD') ? EW.space : EW.bad;
+  return h('div', { style: { position: 'fixed', left, top, width: W, zIndex: 9999, pointerEvents: 'none', background: 'linear-gradient(180deg,#0d0c18,#08070f)', border: `1px solid ${catC}`, boxShadow: `0 8px 32px rgba(0,0,0,0.85), 0 0 16px ${catC}33`, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7, animation: 'pbTipIn 0.12s ease-out', fontFamily: 'DotGothic16, monospace' } },
+    h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottom: `1px solid ${EW.panelEdge}`, paddingBottom: 6 } },
+      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 } },
+        h('span', { style: { fontFamily: 'Cinzel, serif', fontSize: 15, letterSpacing: '0.06em', color: EW.ink, fontWeight: 600, lineHeight: 1.1 } }, sp.name),
+        h('span', { style: { fontSize: 9, color: EW.inkMute, letterSpacing: '0.04em' } }, [sp.school, sp.tier && ('Tier ' + sp.tier)].filter(Boolean).join('  ·  '))),
+      h('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 } },
+        h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
+        sp.spellType && h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 8, color: typeC, letterSpacing: '0.08em', textTransform: 'uppercase' } }, h('span', { style: { width: 4, height: 4, background: typeC, borderRadius: '50%' } }), sp.spellType))),
+    h('div', { style: { display: 'flex', gap: 4, flexWrap: 'wrap' } },
+      stat('MP', sp.cost != null ? sp.cost : null, 'rgba(120,190,255,0.95)'),
+      stat('AP', sp.apCost || 1),
+      stat('RNG', sp.range != null ? (sp.range === 0 ? 'Self' : sp.range) : null),
+      aoe && stat('AOE', aoe, EW.warn),
+      power && stat(powerLabel, powerVal, powerCol)),
+    effects.length > 0 && h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 4 } },
+      ...effects.map((e, i) => h('span', { key: i, style: { fontSize: 9, color: e.color, background: 'rgba(255,255,255,0.03)', border: `1px solid ${e.color}33`, padding: '1px 6px', letterSpacing: '0.02em' } }, e.txt))),
+    sp.desc && h('div', { style: { fontSize: 11, lineHeight: 1.45, color: '#c3c8d6', borderTop: `1px solid ${EW.panelEdge}`, paddingTop: 6, fontStyle: 'italic' } }, sp.desc));
+}
 
 function PartyBuilder() {
   const st = getSt();
@@ -451,6 +549,9 @@ function PartyBuilder() {
   const [teamSaveName, setTeamSaveName] = React.useState('');
   const [_, forceUpdate] = React.useState(0);
   const refresh = () => forceUpdate(n => n + 1);
+  const [spellTip, setSpellTip] = React.useState(null); // { sp, x, y }
+  const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };
+  const hideSpellTip = () => setSpellTip(null);
   React.useEffect(() => { st.builderSelectedSlot = slot; }, [slot]);
 
   const getFavRaces = () => {
@@ -1005,7 +1106,7 @@ function PartyBuilder() {
           h('div', { style:{ display:'flex', flexDirection:'column', gap:1, flexShrink:0 } },
             Array.from({length:slotCap}).map((_,si)=>{
               const sp=learnedSpells[si]||null;
-              if(sp){const cat=classifySpellLocal(sp),catC=spellCategoryColor(cat);return h('div',{key:sp.id||si,title:sp.desc||'',onClick:!isArena?()=>toggleSpell(sp.id):undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:`rgba(${cat==='damage'?'152,80,80':cat==='heal'?'90,148,86':cat==='buff'?'80,126,160':cat==='debuff'?'200,170,70':'140,100,180'},0.1)`,borderLeft:`3px solid ${catC}`,cursor:!isArena?'pointer':'help',fontSize:11}},
+              if(sp){const cat=classifySpellLocal(sp),catC=spellCategoryColor(cat);return h('div',{key:sp.id||si,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:!isArena?()=>toggleSpell(sp.id):undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:`rgba(${cat==='damage'?'152,80,80':cat==='heal'?'90,148,86':cat==='buff'?'80,126,160':cat==='debuff'?'200,170,70':'140,100,180'},0.1)`,borderLeft:`3px solid ${catC}`,cursor:!isArena?'pointer':'help',fontSize:11}},
                 h('span',{style:{width:12,fontSize:9,color:EW.inkDim,flexShrink:0}},si+1),
                 h('span',{style:{flex:1,color:EW.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
                 sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
@@ -1022,14 +1123,14 @@ function PartyBuilder() {
               const tc=getTypeColor(a.spellType||'human');
               const raId = a.id || `ra_${unitRace}_${ai}`;
               const isEquipped = customSpells ? customSpells.includes(raId) : false;
-              return h('div',{key:`ra-${ai}`,title:a.desc||'',onClick:a.id && !isArena ? ()=>toggleSpell(a.id) : undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:isEquipped?'rgba(140,120,200,0.16)':'rgba(140,120,200,0.06)',borderLeft:`3px solid ${isEquipped?'rgba(140,120,200,0.8)':'rgba(140,120,200,0.3)'}`,cursor:a.id && !isArena?'pointer':'help',fontSize:11}},
+              return h('div',{key:`ra-${ai}`,onMouseEnter:e=>showSpellTip(a,e),onMouseLeave:hideSpellTip,onClick:a.id && !isArena ? ()=>toggleSpell(a.id) : undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:isEquipped?'rgba(140,120,200,0.16)':'rgba(140,120,200,0.06)',borderLeft:`3px solid ${isEquipped?'rgba(140,120,200,0.8)':'rgba(140,120,200,0.3)'}`,cursor:a.id && !isArena?'pointer':'help',fontSize:11}},
                 a.id && !isArena && h('div',{style:{width:11,height:11,border:'1px solid rgba(140,120,200,0.6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},isEquipped&&h('div',{style:{width:6,height:6,background:'rgba(140,120,200,0.9)'}})),
                 h('span',{style:{width:12,fontSize:8,color:'rgba(140,120,200,0.6)',flexShrink:0,fontWeight:700}},'RA'),
                 h('span',{style:{flex:1,color:'rgba(180,160,220,0.9)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},a.name),
                 a.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},a.cost+'mp'):null,
                 typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(a)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.65)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(a)):null);
             }),
-            spellPool.map(sp=>{const selected=customSpells?customSpells.includes(sp.id):false,tc=getTypeColor(sp.spellType||'human');return h('div',{key:sp.id,onClick:()=>toggleSpell(sp.id),className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:selected?`${tc}14`:'rgba(255,255,255,0.02)',borderLeft:`3px solid ${selected?tc:'transparent'}`,cursor:'pointer',fontSize:11}},
+            spellPool.map(sp=>{const selected=customSpells?customSpells.includes(sp.id):false,tc=getTypeColor(sp.spellType||'human');return h('div',{key:sp.id,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:()=>toggleSpell(sp.id),className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:selected?`${tc}14`:'rgba(255,255,255,0.02)',borderLeft:`3px solid ${selected?tc:'transparent'}`,cursor:'pointer',fontSize:11}},
               h('div',{style:{width:11,height:11,border:`1px solid ${tc}88`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},selected&&h('div',{style:{width:6,height:6,background:tc}})),
               h('span',{style:{flex:1,color:selected?EW.ink:EW.inkMute,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
               sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
@@ -1038,7 +1139,7 @@ function PartyBuilder() {
 
           isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:3,display:'flex',flexDirection:'column',gap:1}},
             h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1}},'RACE ABILITIES'),
-            raceAbilities.map((a,ai)=>{const tc=getTypeColor(a.spellType||'human');return h('div',{key:ai,title:a.desc||'',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:'rgba(140,120,200,0.06)',borderLeft:'3px solid rgba(140,120,200,0.3)',cursor:'help',fontSize:11}},
+            raceAbilities.map((a,ai)=>{const tc=getTypeColor(a.spellType||'human');return h('div',{key:ai,onMouseEnter:e=>showSpellTip(a,e),onMouseLeave:hideSpellTip,style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:'rgba(140,120,200,0.06)',borderLeft:'3px solid rgba(140,120,200,0.3)',cursor:'help',fontSize:11}},
               h('span',{style:{flex:1,color:'rgba(180,160,220,0.9)'}},a.name),a.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},a.cost+'mp'):null,typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(a)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.65)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(a)):null);})),
         ),
       ),
@@ -1100,6 +1201,8 @@ function PartyBuilder() {
                 h('button', { onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);}, style:{ background:'transparent', border:'1px solid rgba(255,100,100,0.2)', color:'rgba(255,100,100,0.5)', fontSize:9, padding:'3px 8px', fontFamily:'DotGothic16, monospace', cursor:'pointer' }}, 'DEL'),
               ))),
       )),
+
+    spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y),
   );
 }
 
