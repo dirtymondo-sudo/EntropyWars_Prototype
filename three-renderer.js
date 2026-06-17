@@ -883,12 +883,16 @@ const ThreeRenderer = (function () {
         var maxNbr = Math.max(hN, hS, hW, hE);
         var minNbr = Math.min(hN, hS, hW, hE);
 
-        if (maxNbr <= ht || ht <= minNbr) return null;
+        /* A barrier_passage tile is a ramp as long as a neighbour is higher than
+           it. (Stairs now bridge a 1-level difference, so the tile sits flush
+           with the low side instead of at an intermediate height.) */
+        if (maxNbr <= ht) return null;
+        var lowH = Math.min(ht, minNbr);
 
         if (explicitDir) {
 
             var opposite = { N: 'S', S: 'N', E: 'W', W: 'E' };
-            return { highDir: opposite[explicitDir] || 'N', lowH: minNbr, highH: maxNbr };
+            return { highDir: opposite[explicitDir] || 'N', lowH: lowH, highH: maxNbr };
         }
 
         var highDir = 'N';
@@ -901,7 +905,7 @@ const ThreeRenderer = (function () {
         else if (hW >= maxNbr) highDir = 'W';
         else highDir = 'E';
 
-        return { highDir: highDir, lowH: minNbr, highH: maxNbr };
+        return { highDir: highDir, lowH: lowH, highH: maxNbr };
     }
 
     function _buildStairMesh(x, y, ts, elevStep, tKey, sKey, stairInfo) {
