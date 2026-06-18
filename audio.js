@@ -266,7 +266,7 @@
             turret: 0.7,
             jetFlyover: 0.8,
             nukeAlarm: 0.82,
-            explosion: 0.88
+            explosion: 0.62
         };
         const SFX_COOLDOWNS = {
             uiCursorMove: 70,
