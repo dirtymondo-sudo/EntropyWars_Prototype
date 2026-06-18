@@ -2450,7 +2450,17 @@
               const _savedX2 = _selectedForHl.x, _savedY2 = _selectedForHl.y, _savedZ2 = _selectedForHl.z;
               const _originPk = posKey(_savedX2, _savedY2);
 
-              // From each R1 non-jump tile, compute R2 move+jump destinations
+              // Track HOW each 2-AP tile is reached so Ring 3 only extends combos the
+              // click handler in clickTile() can actually execute. The executor supports
+              // exactly two 3-AP combos: move+move+jump and jump+move+move. Anything else
+              // (move+move+move is impossible with UNIT_MAX_MOVES=2; move+jump+* and
+              // jump+move+jump have no executor branch) must NOT be highlighted, or the
+              // tile lights up but clicking it does nothing.
+              const _r2WalkTiles = [];   // reached via move+move (no jump) → can still jump in R3
+              const _r2WalkSeen = new Set();
+              const _postJumpR1Tiles = []; // post-jump R1 walk tiles → can move again in R3
+
+              // From each R1 non-jump tile, compute R2 move (move+move) and R2 jump (move+jump)
               for (const t of _cachedMoveTiles) {
 
                 if (t._jump || t._takeoff) continue;
@@ -2460,7 +2470,13 @@
 
                   if (t2._jump) continue;
                   const pk = posKey(t2.x, t2.y);
-                  if (!_r1Set.has(pk) && pk !== _originPk) _ring2Set.add(pk);
+                  if (!_r1Set.has(pk) && pk !== _originPk) {
+                    _ring2Set.add(pk);
+                    if (!_r2WalkSeen.has(pk)) {
+                      _r2WalkSeen.add(pk);
+                      _r2WalkTiles.push({ x: t2.x, y: t2.y, z: t2.z ?? t.z ?? _savedZ2 });
+                    }
+                  }
                 }
 
                 if (_canJumpFromHere) {
@@ -2483,16 +2499,17 @@
                     if (pm._jump) continue;
                     const pmk = posKey(pm.x, pm.y);
                     if (!_r1Set.has(pmk) && pmk !== _originPk) _ring2Set.add(pmk);
+                    _postJumpR1Tiles.push({ x: pm.x, y: pm.y, z: pm.z ?? jt.z ?? _savedZ2 });
                   }
                 }
               }
 
               _selectedForHl.x = _savedX2; _selectedForHl.y = _savedY2; _selectedForHl.z = _savedZ2;
 
-              // ── Ring 3: 3-AP destinations (move+move+jump, move+jump+move, etc.) ──
-              // Only compute if unit has 3 AP available
+              // ── Ring 3: 3-AP destinations the click handler can ACTUALLY execute ──
+              //   • move+move+jump : jump from a move+move (walked) R2 tile
+              //   • jump+move+move : a second move from a jump+move R2 tile
               const _apAvail = _selectedForHl.ap || 0;
-              const _movesLeft = (typeof UNIT_MAX_MOVES !== 'undefined' ? UNIT_MAX_MOVES : 2) - (_selectedForHl.movesThisTurn || 0);
               if (_apAvail >= 3 && _ring2Set.size > 0) {
                 _ring3Set = new Set();
                 const _r12Set = new Set();
@@ -2500,30 +2517,22 @@
                 for (const pk of _ring2Set) _r12Set.add(pk);
                 _r12Set.add(_originPk);
 
-                // For each R2 tile, simulate being there and check jump tiles
-                // We need approximate positions for R2 tiles — use the _ring2Set keys
-                for (const r2pk of _ring2Set) {
-                  const _r2comma = r2pk.indexOf(',');
-                  const _r2x = parseInt(r2pk.substring(0, _r2comma), 10);
-                  const _r2y = parseInt(r2pk.substring(_r2comma + 1), 10);
-                  const _r2z = typeof nearestWalkableZ === 'function' ? nearestWalkableZ(_r2x, _r2y, _savedZ2) : 0;
-
-                  _selectedForHl.x = _r2x; _selectedForHl.y = _r2y; _selectedForHl.z = _r2z;
-
-                  // From R2 position, get jump tiles (3 AP: 2AP move + 1AP jump)
-                  if (_canJumpFromHere) {
+                // move+move+jump — only from tiles reached by two walks (no jump used yet)
+                if (_canJumpFromHere) {
+                  for (const r2t of _r2WalkTiles) {
+                    _selectedForHl.x = r2t.x; _selectedForHl.y = r2t.y; _selectedForHl.z = r2t.z;
                     const _r3Jumps = getJumpTiles(_selectedForHl);
                     for (const jt of _r3Jumps) {
                       const jpk = posKey(jt.x, jt.y);
                       if (!_r12Set.has(jpk) && jpk !== _originPk) _ring3Set.add(jpk);
                     }
                   }
+                }
 
-                  // From R2 position, get move tiles (3 AP: 2AP to get here + 1AP move)
-                  // Only if we have enough move budget left (movesLeft >= 3 means 3 separate moves)
-                  // In practice UNIT_MAX_MOVES is 2 so 3 moves is impossible, but
-                  // a move+jump+move is fine (2 moves + 1 jump = 3 AP)
-                  if (_movesLeft >= 1) {
+                // jump+move+move — a second walk from a jump+move tile (needs 2 walk moves free)
+                if ((_selectedForHl.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES) {
+                  for (const pm of _postJumpR1Tiles) {
+                    _selectedForHl.x = pm.x; _selectedForHl.y = pm.y; _selectedForHl.z = pm.z;
                     const _r3Moves = getMoveTiles(_selectedForHl);
                     for (const t3 of _r3Moves) {
                       if (t3._jump) continue;
