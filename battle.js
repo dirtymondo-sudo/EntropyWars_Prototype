@@ -19828,10 +19828,12 @@
                 let dashHitCount = 0;
                 const casterStartX = unit.x, casterStartY = unit.y;
 
+                // Scale dash travel time with distance so long dashes glide
+                // instead of snapping; keep the camera in lockstep with the unit.
+                const dashAnimMs = Math.max(200, dist * 110);
                 if (!state.cameraDisabled) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    const dashAnimMs = 200;
                     animateBoardCameraPath(
                         { x: casterStartX, y: casterStartY },
                         { x: x, y: y },
@@ -19842,18 +19844,21 @@
                 for (const pt of dashPath) {
                     const victim = unitAt(pt.x, pt.y);
                     if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
-                        const damage = applyDamageToUnit(victim, dashDmg, `${spell.name}: `, {
+                        // applyDamageToUnit returns whether the victim was killed
+                        // (a boolean) and already pops its own post-mitigation
+                        // "-N" damage number, so don't render the return value as
+                        // floating text (that's what showed a stray "false").
+                        applyDamageToUnit(victim, dashDmg, `${spell.name}: `, {
                             sourceUnit: unit,
                             allowMarkBonus: true,
                             damageType: spell.damageType || 'physical',
                             spellType: spell.spellType || null
                         });
-                        showFloatingTextForUnit(victim, `-${damage}`, 'damage', { durationMs: 900 });
                         if (spell.statusEffects && spell.statusEffects.length > 0) {
                             applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
                         }
                         dashHitCount++;
-                        addLog(`${unitDisplayName(victim)} is hit for ${damage} as ${unitDisplayName(unit)} dashes through!`);
+                        addLog(`${unitDisplayName(victim)} is hit for ${dashDmg} as ${unitDisplayName(unit)} dashes through!`);
                     }
                 }
 
@@ -19911,7 +19916,7 @@
                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(x, y, unit.z);
                 unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
 
-                animateDisplacement(unit, casterStartX, casterStartY, x, y, 200);
+                animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
                 if (dashHitCount > 0) {
                     addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                 } else {

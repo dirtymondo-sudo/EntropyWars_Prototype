@@ -4741,11 +4741,17 @@ const ThreeRenderer = (function () {
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs) {
         var fromZ = unit.z || 0;
         var toZ = (typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0;
+        // Scale the slide with travel distance so multi-tile dashes / knockbacks
+        // read as a real glide instead of snapping. The caller's duration acts as
+        // a per-move floor (short 1-tile shoves stay punchy).
+        var _dpDist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
+        var _dpScaled = Math.max(_dpDist, 1) * 110;
+        var _dpDur = Math.max(durationMs || 0, _dpScaled, 200);
         _displaceTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ,
             toX: toX, toY: toY, toZ: toZ,
             startTime: performance.now(),
-            durationMs: durationMs || 220
+            durationMs: _dpDur
         });
 
         var entry = _getUnitEntry(unit.id);
