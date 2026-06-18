@@ -2995,7 +2995,11 @@ function TileActionMenu({ st }) {
   const turret = (st.turrets || []).find(t => t && t.x === tx && t.y === ty && t.hp > 0);
   if (turret) tileObjects.push('🗼 Turret ' + turret.hp + '/' + turret.maxHp);
   const deploy = (st._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0);
-  if (deploy) tileObjects.push('📦 ' + (deploy.spellName || 'Object'));
+  // An enemy decoy must read like an ordinary unit — naming it here would give it
+  // away the moment the player inspects the tile. The player's own decoys still show.
+  if (deploy && !(deploy.isDecoy && deploy.ownerPlayer !== viewer)) {
+    tileObjects.push('📦 ' + (deploy.spellName || 'Object'));
+  }
   const corpses = (st.units || []).filter(u => u.dead && u.x === tx && u.y === ty);
   corpses.forEach(c => tileObjects.push('💀 ' + (c.name || c.cls)));
   const visHG = (st.hourglasses || []).filter(hg => hg.carriedBy === null && hg.x === tx && hg.y === ty && hg.visibleTo[viewer]);

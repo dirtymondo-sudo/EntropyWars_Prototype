@@ -18608,7 +18608,15 @@
 
             else if (spell.kind === 'escape') {
                 playSfx('teleport');
-                _spellFocusCamera(unit, x, y);
+                /* When an ENEMY leaves a decoy, the whole point is that the opponent
+                   can't tell the real unit apart from the decoy. So for an enemy
+                   decoy-escape we suppress every "tell": the camera pan that follows
+                   the real unit, the slide/teleport VFX tracing old→new, and the log/
+                   floating text announcing the decoy. The viewer's OWN decoys still
+                   get full feedback. */
+                const _escViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                const _stealthDecoy = !!spell.spawnDecoy && unit.player !== _escViewer;
+                if (!_stealthDecoy) _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
 
                 if (spell.cleanse) {
@@ -18643,27 +18651,33 @@
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(candidates[0].x, candidates[0].y, unit.z);
-                    animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, 220);
+                    if (_stealthDecoy) {
+                        /* Snap with no visible slide so the move can't be traced from
+                           the decoy back to the real unit. */
+                        scheduleBoardRender();
+                    } else {
+                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, 220);
 
-                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                        && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
-                        if (state.phase === 'battle' && !_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('teleport', spell.id, {
-                                fromX: _escFromX, fromY: _escFromY,
-                                toX: candidates[0].x, toY: candidates[0].y,
-                            });
+                        if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                            && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
+                            if (state.phase === 'battle' && !_skipVisuals()) {
+                                window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                    fromX: _escFromX, fromY: _escFromY,
+                                    toX: candidates[0].x, toY: candidates[0].y,
+                                });
+                            }
                         }
-                    }
 
-                    if (!state.cameraDisabled) {
-                        stopBoardCameraAnimation();
-                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                        const _escZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
-                        animateBoardCameraPath(
-                            { x: _escFromX, y: _escFromY },
-                            { x: candidates[0].x, y: candidates[0].y },
-                            { duration: 220, zoom: _escZoom, _fogAllowed: true }
-                        );
+                        if (!state.cameraDisabled) {
+                            stopBoardCameraAnimation();
+                            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                            const _escZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                            animateBoardCameraPath(
+                                { x: _escFromX, y: _escFromY },
+                                { x: candidates[0].x, y: candidates[0].y },
+                                { duration: 220, zoom: _escZoom, _fogAllowed: true }
+                            );
+                        }
                     }
                 }
 
@@ -18688,10 +18702,12 @@
                         detonateOnAttack: false,
                         spellName: 'Decoy',
                         isDecoy: true,
-                        spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0 }
+                        spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
                     });
-                    addLog(`${unitDisplayName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`);
-                    showFloatingTextForUnit(unit, 'SHED!', 'heal', { durationMs: 800 });
+                    if (!_stealthDecoy) {
+                        addLog(`${unitDisplayName(unit)} sheds skin and leaves a decoy at ${coordLabel(decoyX, decoyY)}!`, unit.player);
+                        showFloatingTextForUnit(unit, 'SHED!', 'heal', { durationMs: 800 });
+                    }
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(500);
@@ -18895,10 +18911,16 @@
 
                 if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
                     _deployedEntry.isDecoy = true;
-                    _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0 };
+                    _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX };
                 }
                 state._deployedObjects.push(_deployedEntry);
-                addLog(`${unitDisplayName(unit)} deploys ${spell.name} at ${coordLabel(x, y)}.`);
+                /* Don't announce an ENEMY clone — naming it in the log defeats the
+                   decoy. The viewer's own deploys (and all non-decoy deploys) still
+                   log normally. */
+                const _depViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                if (!_deployedEntry.isDecoy || unit.player === _depViewer) {
+                    addLog(`${unitDisplayName(unit)} deploys ${spell.name} at ${coordLabel(x, y)}.`, _deployedEntry.isDecoy ? unit.player : undefined);
+                }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
             }

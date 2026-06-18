@@ -318,6 +318,13 @@ const ThreeRenderer = (function () {
     }
 
     var _plateObjs = new Map();
+    /* Fake nameplates attached to decoy/clone objects so they read identically to
+       real units (HP/MP/name bars). Tracked separately for per-frame scale + fog
+       visibility, and cleared whenever deployables rebuild. */
+    var _decoyPlates = [];
+    /* Opacity applied to the VIEWER'S OWN sprite while it carries the Invisible
+       status — the player needs a clear "you are cloaked" cue. */
+    var INVIS_OWN_OPACITY = 0.45;
     var _batWorldVec = new THREE.Vector3();
     var css2dRenderer = null;
 
@@ -2075,6 +2082,13 @@ const ThreeRenderer = (function () {
     function rebuildDeployables() {
         if (!objectGroup) return;
 
+        /* Detach decoy nameplates first so their DOM elements are dropped cleanly. */
+        for (var _dpi = 0; _dpi < _decoyPlates.length; _dpi++) {
+            var _dpe = _decoyPlates[_dpi];
+            if (_dpe.css2d && _dpe.css2d.parent) _dpe.css2d.parent.remove(_dpe.css2d);
+        }
+        _decoyPlates.length = 0;
+
         for (var entry of deployableMeshes) {
             objectGroup.remove(entry[1]);
             _disposeR(entry[1]);
@@ -2135,24 +2149,52 @@ const ThreeRenderer = (function () {
                 var dx = dObj.x, dy = dObj.y;
                 var topY = tileTopY(dx, dy);
 
-                /* Decoys with spriteUnit get the caster's sprite */
+                /* Decoys/clones wear the caster's sprite. Render them to look EXACTLY
+                   like a live unit — full opacity, native sprite dimensions, matching
+                   facing, plus a fake nameplate — so the opponent can't pick the real
+                   unit out from its decoy. */
                 if (dObj.isDecoy && dObj.spriteUnit) {
                     var sprUrl = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl(dObj.spriteUnit) : null;
                     if (sprUrl) {
                         var tex = getTexture(sprUrl);
                         var mat = new THREE.MeshBasicMaterial({
-                            map: tex, transparent: true, alphaTest: 0.01,
-                            side: THREE.DoubleSide, depthWrite: true,
-                            opacity: 0.55
+                            map: tex, transparent: true, alphaTest: 0.1,
+                            side: THREE.DoubleSide, depthWrite: true
                         });
-                        var h = ts * 0.9, w = ts * 0.9;
-                        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-                        mesh.position.set(dx * ts + ts / 2, topY + h / 2, dy * ts + ts / 2);
+
+                        /* Mirror the real-unit sizing logic in _buildUnitEntry. */
+                        var _dns = ts / 128;
+                        var dnw = 128, dnh = 128;
+                        var dScan = window._spriteGroundOffsets ? window._spriteGroundOffsets.get(sprUrl) : null;
+                        if (dScan && !dScan.scanning && dScan.nativeW > 0 && dScan.nativeH > 0) {
+                            dnw = dScan.nativeW; dnh = dScan.nativeH;
+                        } else if (tex && tex.image) {
+                            var _dimg = tex.image;
+                            var _diw = _dimg.naturalWidth || _dimg.width || 0;
+                            var _dih = _dimg.naturalHeight || _dimg.height || 0;
+                            if (_diw > 0 && _dih > 0) { dnw = _diw; dnh = _dih; }
+                        }
+                        var dSprW = dnw * _dns, dSprH = dnh * _dns;
+                        var dBottom = (dScan && !dScan.scanning && dScan.bottomGapPct > 0) ? dSprH * (dScan.bottomGapPct / 100) : 0;
+                        var dTop = (dScan && !dScan.scanning && dScan.topGapPct > 0) ? dSprH * (dScan.topGapPct / 100) : 0;
+
+                        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(dSprW, dSprH), mat);
+                        mesh.position.set(dx * ts + ts / 2, topY + dSprH / 2 - dBottom, dy * ts + ts / 2);
+                        if (dObj.spriteUnit._spriteFlipX) mesh.scale.x = -1;
                         mesh._ew_billboard = true;
                         mesh._ew_deployable = true;
                         mesh._ew_depX = dx; mesh._ew_depY = dy;
                         objectGroup.add(mesh);
                         deployableMeshes.set(dKey, mesh);
+
+                        /* Fake nameplate (full HP/MP) — a decoy with no plate while every
+                           real unit has one would itself give the decoy away. */
+                        var _clonePlate = _buildClonePlate(dObj.spriteUnit, dObj.ownerPlayer);
+                        if (_clonePlate) {
+                            _clonePlate.css2d.position.set(0, dSprH / 2 - dTop + 14, 0);
+                            mesh.add(_clonePlate.css2d);
+                            _decoyPlates.push({ css2d: _clonePlate.css2d, el: _clonePlate.el, mesh: mesh });
+                        }
                         continue;
                     }
                 }
@@ -3384,13 +3426,18 @@ const ThreeRenderer = (function () {
             var _SB_COLORS = {
                 burn:'#c0392b',poison:'#27ae60',silence:'#7f8c8d',stun:'#f39c12',
                 stagger:'#e67e22',marked:'#e74c6f',jammed:'#8e44ad',drowning:'#2980b9',
-                lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7'
+                lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
+                invisible:'#1a7a4a'
             };
             var badges = [];
             var activeKeys = getActiveStatusKeys(unit);
             for (var si = 0; si < activeKeys.length; si++) {
                 var sk = activeKeys[si];
-                if (!_STATUS_EFFECT_IDS.has(sk)) continue;
+                /* 'invisible' isn't in the shared status-tick whitelist (changing that
+                   set would alter game logic), so surface it as a badge explicitly.
+                   Concealed enemies aren't drawn, so this only ever shows on units
+                   the viewer can legitimately see (i.e. their own cloaked units). */
+                if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
                 var sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
                 if (!sDef) continue;
                 badges.push('<span class="tp-sbadge" style="background:' + (_SB_COLORS[sk] || '#555') + '">' + (sDef.short || sk) + '</span>');
@@ -3451,6 +3498,70 @@ const ThreeRenderer = (function () {
         _plateObjs.set(unit.id, { css2d: css2d, el: wrap });
     }
 
+    /* Build a nameplate for a decoy/clone that visually matches a real unit plate.
+       Uses the cloned spriteUnit's stats and shows full HP/MP so the decoy reads as
+       a healthy, ordinary unit. Returns {css2d, el} (not registered in _plateObjs). */
+    function _buildClonePlate(su, ownerPlayer) {
+        if (!su) return null;
+        _ensurePlateStyles();
+
+        var outer = document.createElement('div');
+        outer.className = 'tp-plate-outer';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'tp-wrap ' + (ownerPlayer === 1 ? 'tp-p1' : 'tp-p2');
+
+        var lvl = 1;
+        try { if (typeof getUnitLevel === 'function') lvl = getUnitLevel(su); } catch (e) {}
+
+        var mode = state.nametagMode || 'name';
+        var label = '';
+        if (mode === 'job') label = (typeof getJobDisplayName === 'function') ? getJobDisplayName(su.cls) : (su.cls || '');
+        else if (mode === 'race') label = su.race ? su.race.charAt(0).toUpperCase() + su.race.slice(1) : '';
+        else if (mode !== 'none') label = su.name || su.cls || '';
+
+        var maxHp = su.maxHp || 1, maxMp = su.maxMp || 0;
+        var allyCls = _isAllyPlayer(ownerPlayer) ? 'tp-hp-ally' : 'tp-hp-enemy';
+        var ticksHtml = _buildHpTicks(maxHp);
+
+        var typeHtml = '';
+        if (su.types && su.types.length) {
+            var TYPE_ABBR = { human:'Human', divine:'Divine', unholy:'Unholy', tech:'Tech', anomaly:'Anomaly', alien:'Alien' };
+            var tParts = [];
+            for (var ti = 0; ti < su.types.length; ti++) {
+                var tKey = su.types[ti];
+                var tAbbr = TYPE_ABBR[tKey] || tKey.substring(0, 3).toUpperCase();
+                tParts.push('<span class="tp-type tp-type-' + tKey + '">' + tAbbr + '</span>');
+            }
+            typeHtml = '<div class="tp-types">' + tParts.join('') + '</div>';
+        }
+
+        wrap.innerHTML =
+            '<div class="tp-name">' +
+                '<span class="tp-lvl">' + lvl + '</span>' +
+                _escHtml(label) +
+            '</div>' +
+            typeHtml +
+            '<div class="tp-bars">' +
+                '<div class="tp-bar ' + allyCls + '">' +
+                    '<div class="tp-hp-fill" style="width:100%"></div>' +
+                    ticksHtml +
+                    '<span class="tp-bar-num">' + maxHp + '/' + maxHp + '</span>' +
+                '</div>' +
+                '<div class="tp-bar tp-bar-mp">' +
+                    '<div class="tp-mp-fill" style="width:100%"></div>' +
+                    '<span class="tp-bar-num">' + maxMp + '/' + maxMp + '</span>' +
+                '</div>' +
+            '</div>';
+
+        var effEl = document.createElement('div');
+        effEl.className = 'tp-eff-badge';
+        wrap.appendChild(effEl);
+        outer.appendChild(wrap);
+
+        return { css2d: new THREE.CSS2DObject(outer), el: wrap };
+    }
+
     /* ── Per-frame plate scaling: match plate width to projected sprite width ── */
     var _scalePlateVec = new THREE.Vector3();
     var PLATE_BASE_W = 150;
@@ -3484,6 +3595,20 @@ const ThreeRenderer = (function () {
 
             po.el.style.transform = 'translateX(-50%) scale(' + s.toFixed(3) + ')';
         });
+
+        /* Scale decoy nameplates the same way so they don't betray the decoy by
+           staying a fixed size while real plates grow/shrink with the camera. */
+        for (var _dsi = 0; _dsi < _decoyPlates.length; _dsi++) {
+            var _dse = _decoyPlates[_dsi];
+            if (!_dse.css2d.visible || !_dse.mesh) continue;
+            var _drefW = CONFIG.tileSize || 128;
+            _dse.mesh.getWorldPosition(_scalePlateVec);
+            var _ddist = _scalePlateVec.distanceTo(cam.position);
+            if (_ddist < 1) _ddist = 1;
+            var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
+            var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
+            _dse.el.style.transform = 'translateX(-50%) scale(' + _ds.toFixed(3) + ')';
+        }
     }
 
     function _updatePlateVisibility() {
@@ -3513,6 +3638,12 @@ const ThreeRenderer = (function () {
             }
 
             po.css2d.visible = vis;
+        }
+
+        /* Decoy plates follow their sprite's fog visibility. */
+        for (var _dvi = 0; _dvi < _decoyPlates.length; _dvi++) {
+            var _dve = _decoyPlates[_dvi];
+            _dve.css2d.visible = _dve.mesh ? !!_dve.mesh.visible : true;
         }
     }
 
@@ -4447,13 +4578,40 @@ const ThreeRenderer = (function () {
     /* Recompute enemy unit + plate visibility from (fog base) AND (not concealed).
        Cheap — only a handful of units — so it runs every frame, which keeps cloak
        and reveal instantaneous even when fog of war is off or _objDirty is unset. */
+    function _ownUnitInvisible(unit) {
+        try {
+            if (typeof unitHasStatus === 'function') return !!unitHasStatus(unit, 'invisible');
+            if (window.GAME && typeof window.GAME.unitHasStatus === 'function') return !!window.GAME.unitHasStatus(unit, 'invisible');
+        } catch (e) {}
+        return false;
+    }
+    /* Dim/restore a unit entry's sprite billboards (leaves the team ring/plate at
+       full strength so the cloaked unit is still easy to find and select). */
+    function _setEntrySpriteOpacity(entry, op) {
+        if (!entry || !entry.group) return;
+        entry.group.traverse(function(o) {
+            if (o.isMesh && o._ew_billboard && o.material) {
+                if (o.material._ew_baseOpacity === undefined) {
+                    o.material._ew_baseOpacity = (o.material.opacity !== undefined) ? o.material.opacity : 1;
+                }
+                o.material.transparent = true;
+                o.material.opacity = (op < 1) ? op : o.material._ew_baseOpacity;
+            }
+        });
+    }
     function _updateEnemyConcealment() {
         if (typeof state === 'undefined' || state.phase !== 'battle') return;
         var vp = _viewerPlayerNum();
         var fog = !!state.fogOfWar;
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
-            if (!unit || unit.dead || unit.player === vp) return;
+            if (!unit || unit.dead) return;
+            if (unit.player === vp) {
+                /* The viewer's own cloaked units stay on screen but turn ghostly so
+                   the player can tell the Invisible buff is actually active. */
+                _setEntrySpriteOpacity(entry, _ownUnitInvisible(unit) ? INVIS_OWN_OPACITY : 1);
+                return;
+            }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
         });
