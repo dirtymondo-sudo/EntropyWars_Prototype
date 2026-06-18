@@ -416,29 +416,31 @@ const ThreeVFXEffects = (function () {
                 var R = ((zone.radius || 1) + 0.5) * (ts + gap);
                 var isHeal = zone.type === 'heal';
 
-                /* ── Smoke Screen: a real billowing smoke bank that fills the
-                   whole zone in 3D and lingers for the zone's full duration.
-                   Several large, ground-hugging puffs per tick (dark, opaque,
-                   normal-blended 'smoke' sprite) instead of a thin wisp. ── */
+                /* ── Smoke Screen: one big, soft, slow smoke cloud filling the
+                   whole zone (think a CoD smoke grenade) — NOT a fountain of
+                   little puffs. We keep only a small population (~20) of huge,
+                   soft, near-static, long-lived puffs; the radial-gradient 'smoke'
+                   sprite makes them overlap into a single solid bank that covers
+                   the entire zone and lingers for the zone's full duration. ── */
                 if (zone.smokeConcealment) {
-                    for (var sp = 0; sp < 3; sp++) {
+                    if (Math.random() < 0.2) {
                         var sAng = rn(0, 6.2832);
-                        var sRad = Math.sqrt(Math.random()) * R;   // uniform disc fill
+                        var sRad = Math.sqrt(Math.random()) * R;   // fill the whole disc, edges included
                         _spawn({
                             _zone: true,
                             x: center.x + Math.cos(sAng) * sRad,
                             y: center.y + Math.sin(sAng) * sRad,
-                            z: baseZ + rn(2, ts * 0.45),
-                            vx: Math.cos(sAng) * rn(-3, 3),
-                            vy: Math.sin(sAng) * rn(-3, 3),
-                            vz: rn(3, 14),
+                            z: baseZ + rn(0, ts * 0.6),
+                            vx: rn(-1, 1),
+                            vy: rn(-1, 1),
+                            vz: rn(0, 3),
                             mode: 'billboard', sprite: 'smoke',
-                            ml: 1000 + rn(0, 700),
-                            size0: ts * 0.06 + rn(0, ts * 0.05),
-                            size1: ts * 0.16,
-                            opacity0: 0.5 + rn(0, 0.22), opacity1: 0,
-                            drag: 1.1,
-                            gravity: -3,
+                            ml: 2800 + rn(0, 1600),
+                            size0: ts * 1.1 + rn(0, ts * 0.6),
+                            size1: ts * 1.9 + rn(0, ts * 0.6),
+                            opacity0: 0.4 + rn(0, 0.2), opacity1: 0,
+                            drag: 2.0,
+                            gravity: -0.5,
                         });
                     }
                     continue;
