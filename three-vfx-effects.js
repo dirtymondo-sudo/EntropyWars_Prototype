@@ -1101,6 +1101,7 @@ var SPELL_MAP = _EFX_DATA.S;
             var flyDelay = fo.delayMs != null ? fo.delayMs : Math.max(0, telegraphMs * 0.15);
             window.setTimeout(function() {
                 if (_suppressed()) return;
+                if (typeof playSfx === 'function') playSfx('jetFlyover');
                 _spawn({
                     x: startX, y: startY, z: flyZ,
                     vx: fVx, vy: 0, vz: 0,
@@ -1172,6 +1173,13 @@ var SPELL_MAP = _EFX_DATA.S;
 
             window.setTimeout(function() {
                 if (_suppressed()) return;
+
+                // Big detonation sfx for nuke / meteor / artillery style strikes.
+                if (typeof playSfx === 'function'
+                    && (spellId === 'nuke' || spellId === 'sharedNuke' || spellId === 'raceArtilleryStrike'
+                        || spellId === 'meteor' || spellId === 'raceCosmicSlam' || spellId === 'raceInfernalDecree')) {
+                    playSfx('explosion');
+                }
 
                 if (spellId === 'nuke' && _spell3DGeometry.nuke) {
                     _spell3DGeometry.nuke(tx, ty, aoeRadius);

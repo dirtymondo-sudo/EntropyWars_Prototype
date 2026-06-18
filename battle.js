@@ -1531,11 +1531,12 @@
                         if (target.dead) return;
                         if (_useStrikeLeap) {
                             animateStrikeLeap(unit, target.x, target.y);
-                            playSfx(spellLaunchSfx(spell));
+                            // Double Shot's launch sfx already covers both shots.
+                            if (spell.id !== 'doubleShot') playSfx(spellLaunchSfx(spell));
                         } else {
                             playProjectileToUnit(unit, target, 'damage', actionMs(280),
                                 spell.spellType, spell.projectileOverride || null, spell);
-                            playSfx(spellLaunchSfx(spell));
+                            if (spell.id !== 'doubleShot') playSfx(spellLaunchSfx(spell));
                         }
                     }, hitTime - actionMs(300));
                 }
@@ -3538,7 +3539,7 @@
             }
             addLog(`💥 ${obj.spellName || 'Deployed object'} at ${coordLabel(bx, by)} detonates!`);
             showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
-            playSfx('fireball');
+            playSfx('explosion');
             playAoeRing(bx, by, radius, 'tech', actionMs(450));
 
             const blastArea = getSquareArea(bx, by, radius);
@@ -6409,6 +6410,7 @@
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
                 addLog(`${sourceText}${unitDisplayName(target)} blocks the hit.`);
+                playSfx('block');
             }
 
             if (opts.statusEffects || opts.status) applyStatusEffects(target, opts.statusEffects || opts.status, '', sourceUnit);
@@ -6491,6 +6493,7 @@
                     if (_bufferingRoundEvents) _reBeginGroup(`🔧 Turret → ${unitDisplayName(target)}`);
                     const dmg = Math.max(24, turret.dmg + randInt(24) - 8);
                     addLog(`🔧 Turret at ${coordLabel(turret.x, turret.y)} fires at ${unitDisplayName(target)} for ${dmg} damage!`);
+                    playSfx('turret');
 
                     if (!_skipVisuals() && typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
@@ -17403,6 +17406,14 @@
         }
 
         function spellLaunchSfx(spell) {
+            const id = spell?.id;
+            // Nuke / artillery launches: warning klaxon as the strike is called in.
+            if (id === 'nuke' || id === 'sharedNuke' || id === 'raceArtilleryStrike') return 'nukeAlarm';
+            // Gunslinger signature abilities.
+            if (id === 'doubleShot') return 'doubleShot';
+            if (id === 'shootout') return 'shootout';
+            // Any bullet-projectile ability gets a gunshot report.
+            if (spell?.projectileOverride === 'proj-bullet') return 'gun';
             return ((spell?.damageType === 'physical') || (spell?.kind === 'dash') || (spell?.kind === 'grapple')) ? 'physicalAbility' : 'fireball';
         }
 
@@ -18816,7 +18827,7 @@
             }
 
             else if (spell.kind === 'delayed') {
-                playSfx('uiConfirm');
+                playSfx(spell.id === 'sharedNuke' ? 'nukeAlarm' : 'uiConfirm');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const delay = spell.delayTurns || 1;

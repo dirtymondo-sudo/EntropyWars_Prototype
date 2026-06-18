@@ -157,6 +157,14 @@
             drowningDamage:  `${_R2_BASE}/SFX/drowning_damage.ogg`,
             dodge:           `${_R2_BASE}/SFX/dodge.ogg`,
             physicalAbilityDamage: `${_R2_BASE}/SFX/physical_ability_damage.ogg`,
+            block:           `${_R2_BASE}/SFX/block.ogg`,
+            gun:             `${_R2_BASE}/SFX/gun.ogg`,
+            doubleShot:      `${_R2_BASE}/SFX/double_shot.ogg`,
+            shootout:        `${_R2_BASE}/SFX/shootout.ogg`,
+            turret:          `${_R2_BASE}/SFX/turret.ogg`,
+            jetFlyover:      `${_R2_BASE}/SFX/jet_flyover.ogg`,
+            nukeAlarm:       `${_R2_BASE}/SFX/nuke_alarm.ogg`,
+            explosion:       `${_R2_BASE}/SFX/explosion.ogg`,
         };
         const _LOCAL_SFX = {
             uiConfirm: "./assets/sfx/ui_confirm.ogg",
@@ -187,7 +195,15 @@
             burningDamage: "./assets/sfx/burning_damage.ogg",
             drowningDamage: "./assets/sfx/drowning_damage.ogg",
             dodge: "./assets/sfx/dodge.ogg",
-            physicalAbilityDamage: "./assets/sfx/physical_ability_damage.ogg"
+            physicalAbilityDamage: "./assets/sfx/physical_ability_damage.ogg",
+            block: "./assets/sfx/block.ogg",
+            gun: "./assets/sfx/gun.ogg",
+            doubleShot: "./assets/sfx/double_shot.ogg",
+            shootout: "./assets/sfx/shootout.ogg",
+            turret: "./assets/sfx/turret.ogg",
+            jetFlyover: "./assets/sfx/jet_flyover.ogg",
+            nukeAlarm: "./assets/sfx/nuke_alarm.ogg",
+            explosion: "./assets/sfx/explosion.ogg"
         };
 
         const _GUNSLINGER_DUEL_R2 = `${_R2_BASE}/SFX/gunslingerduel.mp3`;
@@ -242,7 +258,15 @@
             burningDamage: 0.72,
             drowningDamage: 0.72,
             dodge: 0.74,
-            physicalAbilityDamage: 0.76
+            physicalAbilityDamage: 0.76,
+            block: 0.72,
+            gun: 0.74,
+            doubleShot: 0.78,
+            shootout: 0.78,
+            turret: 0.7,
+            jetFlyover: 0.8,
+            nukeAlarm: 0.82,
+            explosion: 0.88
         };
         const SFX_COOLDOWNS = {
             uiCursorMove: 70,
@@ -272,7 +296,15 @@
             burningDamage: 200,
             drowningDamage: 200,
             dodge: 200,
-            physicalAbilityDamage: 120
+            physicalAbilityDamage: 120,
+            block: 120,
+            gun: 70,
+            doubleShot: 500,
+            shootout: 110,
+            turret: 90,
+            jetFlyover: 600,
+            nukeAlarm: 800,
+            explosion: 200
         };
         const sfxLastPlayedAt = {};
         const sfxReusableKeys = new Set(['healRegen', 'manaRegen']);
