@@ -2896,8 +2896,11 @@
         }
 
         function _isUnitVisibleToViewer(unit, viewer) {
-            if (!state.fogOfWar) return true;
+            if (!unit) return false;
             if (unit.player === viewer) return true;
+            /* Invisibility / smoke concealment hides enemy units even with fog OFF. */
+            if (isUnitConcealedFrom(unit, viewer)) return false;
+            if (!state.fogOfWar) return true;
 
             /* ── Smoke concealment: enemy units inside their own smoke zones are hidden unless viewer is adjacent ── */
             if (state._activeZones?.length) {
@@ -2931,6 +2934,71 @@
                 }
             }
             return false;
+        }
+
+        /* ── Concealment: is `unit` hidden from enemy player `viewer`? ──
+           Works whether or not fog of war is on. A unit is concealed when it
+           has the Invisible status OR is standing inside an enemy-owned Smoke
+           Screen zone — UNLESS one of the viewer's own units is adjacent
+           (Manhattan ≤ 1), which always reveals a concealed enemy. Used by the
+           renderer (hide the mesh), the camera logic, and the AI (don't target
+           what it can't see). */
+        function isUnitConcealedFrom(unit, viewer) {
+            if (!unit || unit.dead) return false;
+            if (unit.player === viewer) return false;
+
+            const invisible = unitHasStatus(unit, 'invisible');
+
+            let smokeHidden = false;
+            if (state._activeZones && state._activeZones.length) {
+                for (const zone of state._activeZones) {
+                    if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
+                    const r = zone.radius || 1;
+                    if (Math.abs(unit.x - zone.x) <= r && Math.abs(unit.y - zone.y) <= r) { smokeHidden = true; break; }
+                }
+            }
+
+            if (!invisible && !smokeHidden) return false;
+
+            /* Adjacency reveal — any living viewer unit within 1 tile spots them. */
+            for (const f of state.units) {
+                if (f.dead || f.player !== viewer) continue;
+                if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) return false;
+            }
+            return true;
+        }
+
+        /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
+           unit (someone "walked into" them), break the cloak for good and fire a
+           big on-screen banner once. Smoke concealment is NOT consumed here — it
+           lifts only while an enemy is adjacent or when the smoke expires — so we
+           only clear the Invisible *status*. Call this after any movement. */
+        function checkStealthReveals() {
+            if (!state.units || !state.units.length) return;
+            const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (const u of state.units) {
+                if (u.dead || !unitHasStatus(u, 'invisible')) continue;
+                let revealer = null;
+                for (const f of state.units) {
+                    if (f.dead || f.player === u.player) continue;
+                    if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= 1) { revealer = f; break; }
+                }
+                if (!revealer) continue;
+
+                clearStatus(u, 'invisible');
+                addLog(`👁️ ${unitDisplayName(u)} is revealed — too close to ${unitDisplayName(revealer)}!`, u.player);
+                try { playSfx('uiConfirm'); } catch (e) {}
+
+                if (typeof showCombatBanner === 'function' && !state.devAutoSim) {
+                    if (u.player === viewer) {
+                        showCombatBanner('⚠️ Spotted!', `${unitDisplayName(u)} was discovered — cover blown!`, 'pickup-enemy');
+                    } else {
+                        showCombatBanner('👁️ Hidden Enemy Revealed!', `${unitDisplayName(u)} steps out of hiding!`, 'pickup-friendly');
+                    }
+                }
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(u, '👁️ Revealed!', 'debuff');
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
         }
 
         function _shouldCameraFollowUnit(unit) {
@@ -12942,6 +13010,7 @@
             getJumpTiles, canJump,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
+            isUnitConcealedFrom, checkStealthReveals,
             unitHasTelescope, getTelescopeSkyTargets,
 
             getTerrainAt, getTerrainRule, getEntranceAt, getHeightAt, getBaseHeightAt, getUnitStandingHeight,
@@ -14587,6 +14656,8 @@
                 destinationLabel: coordLabel(stopX, stopY)
             });
 
+            checkStealthReveals();
+
             if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
 
             if (state.wards && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
@@ -15723,6 +15794,7 @@
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
             playSfx('moveStep');
+            checkStealthReveals();
             const hDiff = z - fromZ;
 
             if (hDiff < 0 && typeof applyFallDamage === 'function') {

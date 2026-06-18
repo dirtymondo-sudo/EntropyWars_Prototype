@@ -52,6 +52,22 @@
         'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike']);
     const HEALERS = new Set(['White Mage', 'Psychic', 'Harvester']);
 
+    // A unit the AI must NOT target: invisible/cloaked, or hidden by an enemy
+    // smoke screen (unless one of our units is adjacent, which reveals them).
+    // The stock ai.js already filters these in buildVision; this focus-fire path
+    // bypasses buildVision, so it has to check concealment itself.
+    function isConcealed(g, tg, viewerPlayer) {
+        try {
+            if (g.unitHasStatus && g.unitHasStatus(tg, 'invisible')) {
+                // honor adjacency reveal so we can still finish a spotted target
+                if (typeof g.isUnitConcealedFrom === 'function') return g.isUnitConcealedFrom(tg, viewerPlayer);
+                return true;
+            }
+            if (typeof g.isUnitConcealedFrom === 'function') return g.isUnitConcealedFrom(tg, viewerPlayer);
+        } catch (e) {}
+        return false;
+    }
+
     // ---- 1) Elevation: boost high-ground weights once, by wrapping getAIWeight.
     const HEIGHT_WEIGHTS = {
         moveHighGroundRanged_v1: 3.5,  // was 0.3 — ranged really wants the +1 range + downhill
@@ -81,7 +97,8 @@
     function pickTeamFocus(g, unit) {
         const st = g.state;
         const enemies = st.units.filter(u => u.player !== unit.player && !u.dead && u.hp > 0 &&
-            (typeof g.isEnemyUnit !== 'function' || g.isEnemyUnit(u, unit)));
+            (typeof g.isEnemyUnit !== 'function' || g.isEnemyUnit(u, unit)) &&
+            !isConcealed(g, u, unit.player));
         if (!enemies.length) { st._claudeFocusId = null; return null; }
 
         // Keep the existing focus if it is still a live enemy (commitment beats
@@ -128,7 +145,8 @@
         };
 
         let best = null;
-        const isEnemyTgt = tg => tg && tg.player !== unit.player && !tg.dead && tg.hp > 0;
+        const isEnemyTgt = tg => tg && tg.player !== unit.player && !tg.dead && tg.hp > 0 &&
+            !isConcealed(g, tg, unit.player);
 
         // spells
         if (!g.unitHasStatus(unit, 'silence')) {

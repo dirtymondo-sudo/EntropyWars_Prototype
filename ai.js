@@ -342,6 +342,7 @@
 
         const visibleEnemies = g.getHostileUnits(player)
             .filter(e => !g.unitHasStatus(e, 'invisible'))
+            .filter(e => !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, player)))
             .filter(e => visTiles.has(g.posKey(e.x, e.y)));
 
         const allies = g._isFFA()

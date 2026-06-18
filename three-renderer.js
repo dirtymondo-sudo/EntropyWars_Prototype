@@ -4430,6 +4430,42 @@ const ThreeRenderer = (function () {
         _fogVisibleKey = _computeFogVisibleKey();
     }
 
+    /* Hide enemy units that are concealed from the viewer (Invisible status or
+       inside an enemy smoke screen). Runs whether fog is on or off, so cloaked
+       enemies never render on the player's screen. */
+    function _viewerPlayerNum() {
+        return (typeof getViewerPlayer === 'function') ? getViewerPlayer()
+             : (window._NET && window._NET.online && window._NET.myPlayer) ? window._NET.myPlayer : 1;
+    }
+    function _isConcealedFromViewer(unit, vp) {
+        if (!unit || unit.dead || unit.player === vp) return false;
+        if (window.GAME && typeof window.GAME.isUnitConcealedFrom === 'function') {
+            try { return window.GAME.isUnitConcealedFrom(unit, vp); } catch (e) { return false; }
+        }
+        return false;
+    }
+    /* Recompute enemy unit + plate visibility from (fog base) AND (not concealed).
+       Cheap — only a handful of units — so it runs every frame, which keeps cloak
+       and reveal instantaneous even when fog of war is off or _objDirty is unset. */
+    function _updateEnemyConcealment() {
+        if (typeof state === 'undefined' || state.phase !== 'battle') return;
+        var vp = _viewerPlayerNum();
+        var fog = !!state.fogOfWar;
+        unitEntries.forEach(function(entry, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit || unit.dead || unit.player === vp) return;
+            var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+            entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
+        });
+        _plateObjs.forEach(function(po, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit || unit.dead || unit.player === vp) return;
+            var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+            po.css2d.visible = base && !_isConcealedFromViewer(unit, vp);
+        });
+    }
+    function _applyConcealment(vp) { _updateEnemyConcealment(); }
+
     function _applyFogVisibility(visible) {
         if (!state.fogOfWar) {
 
@@ -4445,6 +4481,7 @@ const ThreeRenderer = (function () {
                     _terrainDecoGroup.children[di].visible = true;
                 }
             }
+            _applyConcealment(_viewerPlayerNum());
             return;
         }
 
@@ -4508,6 +4545,8 @@ const ThreeRenderer = (function () {
                 po.css2d.visible = visible.has(upk);
             }
         });
+
+        _applyConcealment(vp);
     }
 
     function _updateFogPulse() {
@@ -6942,6 +6981,8 @@ const ThreeRenderer = (function () {
         if (_objDirty && state.fogOfWar && _fogVisibleSet) {
             _applyFogVisibility(_fogVisibleSet);
         }
+
+        _updateEnemyConcealment();
 
         if (typeof renderIfDirty === 'function') renderIfDirty();
         var hlKey = _computeHlKey();

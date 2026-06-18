@@ -416,6 +416,34 @@ const ThreeVFXEffects = (function () {
                 var R = ((zone.radius || 1) + 0.5) * (ts + gap);
                 var isHeal = zone.type === 'heal';
 
+                /* ── Smoke Screen: a real billowing smoke bank that fills the
+                   whole zone in 3D and lingers for the zone's full duration.
+                   Several large, ground-hugging puffs per tick (dark, opaque,
+                   normal-blended 'smoke' sprite) instead of a thin wisp. ── */
+                if (zone.smokeConcealment) {
+                    for (var sp = 0; sp < 3; sp++) {
+                        var sAng = rn(0, 6.2832);
+                        var sRad = Math.sqrt(Math.random()) * R;   // uniform disc fill
+                        _spawn({
+                            _zone: true,
+                            x: center.x + Math.cos(sAng) * sRad,
+                            y: center.y + Math.sin(sAng) * sRad,
+                            z: baseZ + rn(2, ts * 0.45),
+                            vx: Math.cos(sAng) * rn(-3, 3),
+                            vy: Math.sin(sAng) * rn(-3, 3),
+                            vz: rn(3, 14),
+                            mode: 'billboard', sprite: 'smoke',
+                            ml: 1000 + rn(0, 700),
+                            size0: ts * 0.06 + rn(0, ts * 0.05),
+                            size1: ts * 0.16,
+                            opacity0: 0.5 + rn(0, 0.22), opacity1: 0,
+                            drag: 1.1,
+                            gravity: -3,
+                        });
+                    }
+                    continue;
+                }
+
                 var rx = rn(-R, R), ry = rn(-R, R);
                 if (rx * rx + ry * ry > R * R) continue;
 
