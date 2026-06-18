@@ -439,7 +439,7 @@ const ThreeRenderer = (function () {
 
         'proj-spider':      { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spider_1.png',    glow: 0x3cdcc8 },
         'proj-spiderweb':   { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spiderweb_1.png', glow: 0xb4b4dc },
-        'proj-knife':       { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/knife.png',        glow: 0xc0c0cc },
+        'proj-knife':       { url: _R2_PROJ + 'proj_knife.png',         glow: 0xc0c0cc },
 
         'proj-football':    { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/football.png',    glow: 0x8b5e3c },
     };

@@ -3993,6 +3993,12 @@
                SKIP bolt entirely if unit has a projectileClass override (e.g. quarterback
                wants the actual football sprite rendered via DOM, not particle bolts). */
             const _raceProj = _getProjectileOverride(_projCaster, spellMeta);
+            // Sprite-based projectile overrides (bullet, knife) layer the real PNG
+            // sprite ON TOP of the particle bolt — the bolt provides the muzzle
+            // flash / energy trail, the sprite provides the actual bullet / knife.
+            // For these we fire the bolt but DON'T return: we fall through so the
+            // sprite (bullet.png / proj_knife.png) also flies to the target.
+            const _spriteOverride = (overrideClass === 'proj-bullet' || overrideClass === 'proj-knife');
             const _hasSpellBolt = !_raceProj && typeof window !== 'undefined' && window.ThreeVFXEffects
                 && window.ThreeVFXEffects.hasMapping && window.ThreeVFXEffects.hasMapping(spellMeta?.id, 'bolt');
             const _unitBoltPreset = (!_raceProj && _projCaster) ? _getBoltOverride(_projCaster, spellMeta) : null;
@@ -4013,7 +4019,8 @@
                         fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs
                     });
                 }
-                return;
+                // Sprite overrides keep going so the PNG renders alongside the bolt.
+                if (!_spriteOverride) return;
             }
 
             const _threeActive = window.ThreeAnim && window.ThreeAnim.isActive();
@@ -4052,22 +4059,27 @@
                 window.setTimeout(() => el.remove(), flyMs + 40);
             }
 
-            const _spIdRoute = spellMeta?.id || overrideClass || null;
-            const _useVfx3dImpact = typeof window !== 'undefined' && window.ThreeVFXEffects
-                && window.ThreeVFXEffects.hasMapping(spellMeta?.id, 'impact');
-            if (_useVfx3dImpact) {
-                window.setTimeout(() => {
-                    if (state.phase !== 'battle' || _skipVisuals()) return;
-                    window.ThreeVFXEffects.fire('impact', spellMeta.id, { tx: toX, ty: toY });
-                }, flyMs);
-            } else if (kind !== 'attack' && !(kind && kind.indexOf('proj-bane') === 0)) {
+            // When a bolt already fired (sprite-override fall-through), the bolt
+            // owns the trail + impact burst, so skip the legacy impact/trail here
+            // to avoid doubling up — the PNG sprite simply rides along with it.
+            if (!_useBolt) {
+                const _spIdRoute = spellMeta?.id || overrideClass || null;
+                const _useVfx3dImpact = typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spellMeta?.id, 'impact');
+                if (_useVfx3dImpact) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        window.ThreeVFXEffects.fire('impact', spellMeta.id, { tx: toX, ty: toY });
+                    }, flyMs);
+                } else if (kind !== 'attack' && !(kind && kind.indexOf('proj-bane') === 0)) {
 
-                const _vfxFromU = unitAt(Math.round(fromX), Math.round(fromY));
-                const _vfxToU = unitAt(Math.round(toX), Math.round(toY));
+                    const _vfxFromU = unitAt(Math.round(fromX), Math.round(fromY));
+                    const _vfxToU = unitAt(Math.round(toX), Math.round(toY));
 
-                const _spId = _spIdRoute;
-                const _spName = spellMeta?.name || kind || null;
-                _vfxProjectile(fromX, fromY, toX, toY, spellType, _spId, _spName, _vfxFromU?.z, _vfxToU?.z, flyMs);
+                    const _spId = _spIdRoute;
+                    const _spName = spellMeta?.name || kind || null;
+                    _vfxProjectile(fromX, fromY, toX, toY, spellType, _spId, _spName, _vfxFromU?.z, _vfxToU?.z, flyMs);
+                }
             }
         }
 
