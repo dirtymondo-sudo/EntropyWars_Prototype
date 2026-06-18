@@ -17412,8 +17412,11 @@
             // Gunslinger signature abilities.
             if (id === 'doubleShot') return 'doubleShot';
             if (id === 'shootout') return 'shootout';
-            // Any bullet-projectile ability gets a gunshot report.
-            if (spell?.projectileOverride === 'proj-bullet') return 'gun';
+            // Gun / sniper abilities → gunshot report (id list + bullet-projectile fallback).
+            if (id === 'shoot' || id === 'headshot' || id === 'precisionShot' || id === 'deadEye'
+                || id === 'kneecapShot' || id === 'ricochet1'
+                || id === 'raceFanTheHammer' || id === 'raceHighNoon'
+                || spell?.projectileOverride === 'proj-bullet') return 'gun';
             return ((spell?.damageType === 'physical') || (spell?.kind === 'dash') || (spell?.kind === 'grapple')) ? 'physicalAbility' : 'fireball';
         }
 
