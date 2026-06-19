@@ -1412,6 +1412,45 @@ function spellTagline(sp) {
   return parts.join(' · ');
 }
 
+// ── Move-card helpers: turn raw spell data into glanceable badges ──
+
+// Concise targeting mode shown under the description (Single Target / AOE / Line …).
+function spellTargetMode(sp) {
+  const k = sp.kind || '';
+  if (['selfHeal', 'escape'].includes(k)) return 'Self Target';
+  if (['warCry', 'encore'].includes(k)) return 'Self Target';
+  if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
+  if (['aoe', 'aoePull', 'aoeShield'].includes(k)) return 'Area · AOE';
+  if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
+  if (k === 'cross') return 'Cross';
+  if (k === 'barrage') return 'Barrage';
+  if (['zoneHeal', 'zoneDebuff', 'terrainCreate', 'deployObject', 'deployPair',
+       'deployTurret', 'warpRune', 'summonWeather', 'leechSeed', 'seedHeal', 'seedPoison'].includes(k)) return 'Tile Target';
+  if (['dash', 'leapStrike'].includes(k)) return 'Dash Line';
+  if (['teleport', 'swap', 'pull', 'displacement'].includes(k)) return k === 'swap' ? 'Swap' : 'Reposition';
+  if (['scan', 'remoteView'].includes(k)) return 'Vision';
+  if (k === 'multiHit') { const n = sp.hitDamages ? sp.hitDamages.length : 0; return n > 1 ? n + '-Hit Target' : 'Single Target'; }
+  if (sp.aoeRadius) return 'Single + Splash';
+  return 'Single Target';
+}
+
+// Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
+function spellDeliveryBadge(sp, cat) {
+  if (sp.damageType === 'physical') return { label: 'PHYSICAL', color: '#e0944a' };
+  if (cat === 'heal' || cat === 'buff' || cat === 'utility') return { label: 'UTILITY', color: '#d8b24a' };
+  return { label: 'MAGIC', color: '#b56ce0' };
+}
+
+// Primary power stat for the header (red PWR / green HP / cyan SHLD …).
+function spellPowerStat(sp) {
+  if (sp.dmg) return { value: sp.dmg, unit: 'PWR', color: '#ee6655' };
+  if (sp.hitDamages && sp.hitDamages.length) return { value: sp.hitDamages.reduce((s, v) => s + v, 0), unit: 'PWR', color: '#ee6655' };
+  if (sp.dotDamage) return { value: sp.dotDamage, unit: 'DOT', color: '#ee6655' };
+  if (sp.heal) return { value: sp.heal, unit: 'HP', color: '#55cc66' };
+  if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
+  return null;
+}
+
 function SubMenu({ st }) {
   if (!st || st.phase !== 'battle') return null;
 
@@ -1535,19 +1574,40 @@ function SubMenu({ st }) {
 
         const isPhysical = sp.damageType === 'physical';
 
-        const bgAlpha = active ? 0.32 : 0.22;
-        const rowBg = 'linear-gradient(90deg, ' + cc.bg + bgAlpha + ') 0%, ' + cc.bg + (bgAlpha * 0.4) + ') 100%)';
+        const powerStat = spellPowerStat(sp);
+        const targetMode = spellTargetMode(sp);
+        const delivery = spellDeliveryBadge(sp, cat);
+        const desc = sp.desc || spellTagline(sp);
+        const accent = active ? cc.color : tc;
+
+        // Small color-coded stat chip: big number + tiny unit label (PWR / MP / AP).
+        const statChip = (v, u, col) => h('span', {
+          style: { display: 'inline-flex', alignItems: 'baseline', gap: 2, flexShrink: 0, fontFamily: '"DotGothic16", monospace' },
+        },
+          h('span', { style: { fontSize: 13, fontWeight: 700, color: col, letterSpacing: '0.01em' }}, v),
+          h('span', { style: { fontSize: 8, fontWeight: 700, color: col, opacity: 0.78, letterSpacing: '0.05em' }}, u),
+        );
 
         return h('div', {
           key: sp.name || i,
-          className: 'rhud-row' + (canCast ? '' : ' rhud-disabled'),
+          className: 'rhud-move-slot' + (active ? ' is-focused' : '') + (canCast ? '' : ' is-disabled'),
+          style: { position: 'relative', margin: '5px 8px' },
+        },
+
+          // Soft radial bloom that lives BEHIND the card (outside its clip), so the
+          // glow reads as a cloud of light rather than a hard rim.
+          h('div', { className: 'rhud-move-glow', 'aria-hidden': 'true' }),
+
+          h('div', {
+          className: 'rhud-move-card' + (canCast ? '' : ' rhud-disabled') + (active ? ' rhud-move-card-active' : ''),
           style: {
-            padding: '8px 12px 9px', display: 'flex', flexDirection: 'column', gap: 4,
+            position: 'relative', zIndex: 1, overflow: 'hidden',
             cursor: canCast ? 'pointer' : 'default',
-            background: rowBg,
-            borderLeft: '3px solid ' + (active ? cc.color : cc.bg + '0.7)'),
-            opacity: canCast ? 1 : 0.45,
-            marginBottom: 1,
+            opacity: canCast ? 1 : 0.5,
+            background: 'linear-gradient(135deg, rgba(13,15,24,0.96) 0%, rgba(9,11,18,0.93) 100%)',
+            border: '1px solid ' + (active ? 'rgba(255,224,150,0.9)' : 'rgba(120,140,180,0.16)'),
+            borderLeft: '3px solid ' + (active ? '#ffcf7a' : (canCast ? accent : EW.inkDim)),
+            clipPath: 'polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px)',
           },
           onClick: canCast ? () => { hideSpellTooltip(); if (typeof setTool === 'function') setTool('spell', sp.name); } : undefined,
           onMouseEnter: (e) => { showSpellTooltip(sp, e.nativeEvent || e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); },
@@ -1555,48 +1615,60 @@ function SubMenu({ st }) {
           onMouseLeave: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); },
         },
 
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 }},
-
-            h('span', { style: { color: cc.color, fontSize: 13, width: 16, textAlign: 'center', flexShrink: 0, fontWeight: 700 }}, cc.icon),
-
+          // ── Header bar: NAME + red PWR / blue MP / gold AP ──
+          h('div', { style: {
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 11px 6px 12px',
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 100%)',
+            borderBottom: '1px solid rgba(120,140,180,0.12)',
+          }},
             h('span', { style: {
-              flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15, fontWeight: 600,
-              color: EW.ink, letterSpacing: '0.02em',
+              flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15, fontWeight: 700,
+              color: canCast ? EW.ink : EW.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}, sp.name),
+            powerStat && statChip(powerStat.value, powerStat.unit, powerStat.color),
+            statChip(cost, 'MP', EW.space),
+            statChip(apCost, 'AP', EW.time),
+          ),
 
+          // ── Body: element badge (ALIEN…) + description ──
+          h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
             h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.12em', fontWeight: 700,
-              color: tc, padding: '1px 4px', background: tc + '44', border: '1px solid ' + tc + '88',
-              lineHeight: '1.2',
+              fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+              color: tc, background: tc + '26', border: '1px solid ' + tc + '7a',
+              padding: '2px 7px', lineHeight: '1.3', flexShrink: 0,
+              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 3px 100%, 0 calc(100% - 3px))',
             }}, (sp.spellType || '').toUpperCase()),
+            desc && h('span', { style: {
+              flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
+              color: canCast ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
+            }}, desc),
+          ),
 
-            val && h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 11, fontWeight: 700,
-              color: cc.color, letterSpacing: '0.04em',
-            }}, val),
-
+          // ── Footer: targeting mode · range  +  delivery pill / reason ──
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, padding: '2px 11px 8px' }},
+            h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: EW.inkMute,
+            }}, targetMode),
+            rangeStr && h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 8, letterSpacing: '0.06em', color: EW.inkDim,
+            }}, '· ' + rangeStr),
+            h('span', { style: { flex: 1 }}),
             spellReason
               ? h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 600,
-                  color: EW.bad, letterSpacing: '0.04em', textAlign: 'right', flexShrink: 0,
+                  fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                  color: EW.bad, flexShrink: 0,
                 }}, spellReason)
               : h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 10,
-                  color: EW.inkMute, letterSpacing: '0.06em', textAlign: 'right', flexShrink: 0,
-                }}, cost + 'mp · ' + apCost + 'ap'),
+                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
+                  color: '#fff', background: delivery.color, border: '1px solid ' + delivery.color,
+                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
+                  boxShadow: '0 0 7px ' + delivery.color + '70',
+                }}, delivery.label),
           ),
-
-          h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8, paddingLeft: 22 }},
-            h('span', { style: {
-              flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.35',
-              color: EW.inkMute, letterSpacing: '0.02em',
-            }}, spellTagline(sp)),
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8,
-              color: EW.inkMute, letterSpacing: '0.08em', flexShrink: 0, whiteSpace: 'nowrap',
-            }}, rangeStr + (isPhysical ? ' · PHY' : '')),
-          ),
+          )
         );
       }),
       h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
@@ -3484,7 +3556,7 @@ let _hudJuiceLayer = null;
 let _hudJuiceContainer = null;
 let _hudJuicePressHandler = null;
 
-const _HUD_PRESSABLE_SELECTOR = '.rhud-row, .rhud-end-turn, .rhud-back, .rhud-target';
+const _HUD_PRESSABLE_SELECTOR = '.rhud-row, .rhud-move-card, .rhud-end-turn, .rhud-back, .rhud-target';
 
 function _hudJuiceFindPressable(target, container) {
   if (!(target instanceof Element)) return null;
@@ -3643,6 +3715,69 @@ function _injectHudHideStyles() {
     }
     .rhud-row:hover:not(.rhud-disabled) .rhud-row-label {
       color: #e6e9f2 !important;
+    }
+    /* ── Move cards (ability buttons) ── */
+    /* Hover == focus == selection — one single, unmistakable AAA focus state, built from
+       three layers: (1) a soft radial BLOOM behind the card (real glow cloud, lives outside
+       the card's clip), (2) a crisp warm RIM light on the card edge, (3) a subtle scale pop. */
+    .rhud-move-slot { transform-origin: center; }
+    /* Lift the focused card above its neighbours so the bloom spills over them
+       instead of being occluded by their opaque backgrounds. */
+    .rhud-move-slot:not(.is-disabled):hover,
+    .rhud-move-slot.is-focused { z-index: 5; }
+
+    .rhud-move-glow {
+      position: absolute; inset: -12px -14px; z-index: 0; pointer-events: none;
+      border-radius: 18px; opacity: 0; transform: scale(0.86);
+      background:
+        radial-gradient(58% 76% at 50% 46%,
+          rgba(255,248,224,0.62) 0%,
+          rgba(255,214,128,0.46) 34%,
+          rgba(255,186,78,0.26) 58%,
+          rgba(255,176,64,0) 78%);
+      filter: blur(11px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      will-change: opacity, transform;
+    }
+    .rhud-move-slot:not(.is-disabled):hover .rhud-move-glow,
+    .rhud-move-slot.is-focused .rhud-move-glow {
+      opacity: 1;
+      animation: rhudGlowPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes rhudGlowPulse {
+      0%, 100% { opacity: 0.85; transform: scale(1.0); }
+      50%      { opacity: 1;    transform: scale(1.12); }
+    }
+
+    .rhud-move-card {
+      transition: transform 0.16s cubic-bezier(0.22,1,0.36,1), border-color 0.16s ease, filter 0.18s ease;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+      transform-origin: center;
+    }
+    .rhud-move-slot:not(.is-disabled):hover .rhud-move-card,
+    .rhud-move-card-active {
+      border-color: rgba(255,236,176,0.98) !important;
+      transform: scale(1.025);
+      animation: rhudRimPulse 1.5s ease-in-out infinite;
+    }
+    .rhud-move-slot:not(.is-disabled):active .rhud-move-card {
+      transform: scale(0.992);
+    }
+    @keyframes rhudRimPulse {
+      0%, 100% {
+        filter:
+          brightness(1.08)
+          drop-shadow(0 0 1px rgba(255,255,255,0.95))
+          drop-shadow(0 0 6px rgba(255,242,206,0.9))
+          drop-shadow(0 0 13px rgba(255,206,108,0.7));
+      }
+      50% {
+        filter:
+          brightness(1.14)
+          drop-shadow(0 0 2px rgba(255,255,255,1))
+          drop-shadow(0 0 10px rgba(255,248,222,1))
+          drop-shadow(0 0 20px rgba(255,214,120,0.85));
+      }
     }
     .rhud-end-turn {
       transition: background 0.1s ease, border-color 0.1s ease, filter 0.08s ease;
