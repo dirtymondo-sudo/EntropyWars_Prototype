@@ -8086,6 +8086,34 @@
         const COMBO_AP_COST_INITIATOR = 2;
         const COMBO_AP_COST_PARTNER = 1;
 
+        /* ─── Press Turn (AP-based) ──────────────────────────────────────────
+           SMT-style "press" mapped onto the per-unit AP pool: an offensive
+           action that hits a type weakness or crits REFUNDS AP (the unit keeps
+           acting this turn — a flurry); a whiff DRAINS extra AP (turn cut
+           short). Refunds are capped per turn so flurries stay bounded. Only
+           unit.ap mutates → online-safe (host authoritative) and undo-safe
+           (ap is in every pushUndoSnapshot). See PRESS_OUTCOME / applyPressTurn
+           below; turn termination stays owned by unitFinished/endUnitIfDone. */
+        const PRESS_REFUND_AP       = 1;   // AP returned per press (weak/crit)
+        const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge
+        const PRESS_MAX_BONUS_AP    = 2;   // cap on refunds per unit per turn
+
+        const PRESS_OUTCOME = {
+            MISS:      'miss',     // dodged/evaded → extra AP drain
+            RESIST:    'resist',   // not very effective → normal cost
+            NORMAL:    'normal',   // neutral → normal cost
+            WEAK:      'weak',     // hit a weakness → refund
+            CRIT:      'crit',     // landed a crit → refund
+            WEAK_CRIT: 'weakCrit', // weakness AND crit → double refund
+        };
+
+        // Offensive spell kinds that are eligible to press (damaging only).
+        const _PRESS_SPELL_KINDS = new Set([
+            'damage', 'multiHit', 'ricochet', 'lifeDrain',
+            'line', 'linePush', 'splitBeam',
+            'aoe', 'barrage', 'cross', 'aoePull',
+        ]);
+
         const XP_MAX_LEVEL = 10;
         const XP_THRESHOLDS = [0, 32, 76, 136, 210, 300, 405, 530, 675, 845];
 
@@ -8406,6 +8434,103 @@
             return true;
         }
 
+        /* ─── Press Turn helpers ─────────────────────────────────────────────
+           Pure resolution + AP mutation, kept deterministic so they can run at
+           the synchronous spend site (online/undo correct). Feedback visuals
+           are fired separately by _showPressFeedback so they can land with the
+           cinematic impact. */
+
+        // Press outcome for a single hit. Detected off the type-effectiveness
+        // TIER (hasStrong/hasWeak), never the raw multiplier number — sidesteps
+        // the cross-file 1.30-vs-1.5 mismatch.
+        function _pressOutcomeForHit(hit) {
+            if (!hit) return PRESS_OUTCOME.NORMAL;
+            if (hit.evaded) return PRESS_OUTCOME.MISS;
+            const eff = hit.effSummary || {};
+            const weakness = !!eff.hasStrong && !eff.hasWeak; // attacker strong vs target = target's weakness
+            const resisted = !!eff.hasWeak && !eff.hasStrong; // mixed dual-type cancels → NORMAL
+            if (hit.isCrit && weakness) return PRESS_OUTCOME.WEAK_CRIT;
+            if (hit.isCrit) return PRESS_OUTCOME.CRIT;
+            if (weakness) return PRESS_OUTCOME.WEAK;
+            if (resisted) return PRESS_OUTCOME.RESIST;
+            return PRESS_OUTCOME.NORMAL;
+        }
+
+        // Resolve one PRESS_OUTCOME for an offensive action. Accepts a single
+        // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak} } or an array
+        // (multi-target/AoE) reduced to worst-case: any miss dominates (penalty
+        // wins), otherwise the strongest press wins, else NORMAL.
+        function resolvePressOutcome(ctx) {
+            const hits = Array.isArray(ctx) ? ctx : [ctx];
+            const pressRank = { weakCrit: 3, weak: 2, crit: 1 };
+            let anyMiss = false;
+            let bestPress = null;
+            for (const h of hits) {
+                const o = _pressOutcomeForHit(h);
+                if (o === PRESS_OUTCOME.MISS) { anyMiss = true; continue; }
+                if (pressRank[o] != null) {
+                    if (!bestPress || pressRank[o] > pressRank[bestPress]) bestPress = o;
+                }
+            }
+            if (anyMiss) return PRESS_OUTCOME.MISS;
+            if (bestPress) return bestPress;
+            return PRESS_OUTCOME.NORMAL;
+        }
+
+        // Mutate unit.ap per the outcome AFTER the normal cost has been spent.
+        // Refunds respect PRESS_MAX_BONUS_AP (via unit._pressGainedThisTurn) and
+        // never push ap above getUnitMaxAP. Does NOT advance the turn — the
+        // existing unitFinished/endUnitIfDone flow owns that. Returns
+        // { outcome, apDelta, pressed, penalty } for feedback.
+        function applyPressTurn(unit, outcome, opts = {}) {
+            const result = { outcome, apDelta: 0, pressed: false, penalty: false };
+            if (!unit) return result;
+
+            if (outcome === PRESS_OUTCOME.MISS) {
+                const before = unit.ap || 0;
+                spendAP(unit, PRESS_MISS_PENALTY_AP);
+                result.apDelta = (unit.ap || 0) - before; // <= 0
+                result.penalty = result.apDelta < 0;
+                return result;
+            }
+
+            let want = 0;
+            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP * 2;
+            else if (outcome === PRESS_OUTCOME.WEAK || outcome === PRESS_OUTCOME.CRIT) want = PRESS_REFUND_AP;
+            if (want <= 0) return result; // NORMAL / RESIST → unchanged
+
+            const gained = unit._pressGainedThisTurn || 0;
+            const capRoom = Math.max(0, PRESS_MAX_BONUS_AP - gained);
+            const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
+            const refund = Math.min(want, capRoom, apRoom);
+            if (refund > 0) {
+                unit.ap = (unit.ap || 0) + refund;
+                unit._pressGainedThisTurn = gained + refund;
+                unit._pressFlashAt = Date.now();
+                result.apDelta = refund;
+                result.pressed = true;
+            }
+            return result;
+        }
+
+        // Visual/audio feedback for a press result. Routed through the existing
+        // floating-text / battle-dialogue / sfx helpers so it is renderer-
+        // agnostic and auto-suppressed during dev sim (_skipVisuals). Call this
+        // at impact time.
+        function _showPressFeedback(unit, res) {
+            if (!unit || !res) return;
+            if (_skipVisuals()) return;
+            if (res.pressed) {
+                showFloatingTextForUnit(unit, 'PRESS!', 'crit', { durationMs: 1000, jitterY: -26 });
+                showBattleDialogue([`<span class="dlg-effective">⚡ Press! Free action!</span>`], 1100);
+                if (typeof playSfx === 'function') playSfx('buff');
+            } else if (res.penalty) {
+                showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });
+                showBattleDialogue([`<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`], 1100);
+                if (typeof playErrorSfx === 'function') playErrorSfx();
+            }
+        }
+
         /* ===================================================================
            GAUNTLET MODE (Pokémon-style squad battles)
            Roster of 8 per side; only `gauntletDeploy` (4) are on the board at
@@ -8456,6 +8581,7 @@
 
         function _gauntletResetTurnFlags(u) {
             u.movesThisTurn = 0;
+            u._pressGainedThisTurn = 0;
             u._reshapeThisTurn = 0;
             u._altitudeChangesThisTurn = 0;
             u._turnKills = 0;
@@ -10354,6 +10480,7 @@
                 u._reshapeThisTurn = 0;
                 u._altitudeChangesThisTurn = 0;
                 u._turnKills = 0;
+                u._pressGainedThisTurn = 0;
 
                 u._guardCounterBonus = 0;
             }
@@ -10448,6 +10575,7 @@
                     u.movesThisTurn = 0;
                     u._reshapeThisTurn = 0;
                     u._altitudeChangesThisTurn = 0;
+                    u._pressGainedThisTurn = 0;
                     u._skippedTurn = false;
                 }
             }
@@ -11599,6 +11727,7 @@
                             u._reshapeThisTurn = 0;
                             u._altitudeChangesThisTurn = 0;
                             u._turnKills = 0;
+                            u._pressGainedThisTurn = 0;
                             u._aiFailedSpells = null;
                             u._aiFailedCombos = null;
                             u._aiSkipAttack = false;
@@ -12100,6 +12229,9 @@
             comboSynergyBonus_v1:     { value: 14.856, min: 4,   max: 25,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
             statusEffectBonus_v1:     { value: 17.469, min: 2,   max: 20,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
+
+            pressRefundValue_v1:      { value: 55,    min: 10,   max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
+            whiffRiskPenalty_v1:      { value: 30,    min: 0,    max: 120,  label: 'Press: Whiff Risk Penalty', desc: "Penalty scaled by the target's evade chance — a missed attack drains extra AP and cuts the turn short" },
 
             engageAdvantage_v1:       { value: -0.41, min: -0.5, max: 0.3,  label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
             hgCarrierFleeAdv_v1:      { value: -0.038, min: -0.3, max: 0.4,  label: 'HG Carrier Flee Threshold', desc: 'Advantage below which HG carriers retreat' },
@@ -12980,6 +13112,7 @@
 
             canUnitAct, canUnitMove,
             canAffordSpell, getSpellApCost,
+            getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
             getJumpTiles, canJump,
             isRangeBlockedByTerrain, getLinePoints,
@@ -16099,6 +16232,14 @@
 
             const isCrit = !evaded && rollCrit(unit);
 
+            // Press Turn: resolve outcome synchronously from the rolled result
+            // and type tier; the AP math runs at the spend site below.
+            const _pressOutcome = resolvePressOutcome({
+                evaded,
+                isCrit,
+                effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
+            });
+
             let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
@@ -16210,6 +16351,8 @@
 
                 unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
                 spendAP(unit, AP_COST_ACTION);
+                const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION });
+                _showPressFeedback(unit, _pressRes);
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;
@@ -16919,6 +17062,25 @@
             spendAP(initiator, COMBO_AP_COST_INITIATOR);
             spendAP(partner, COMBO_AP_COST_PARTNER);
 
+            // Press Turn: an offensive combo that hits a weakness refunds AP to
+            // the initiator (extends its turn). Type tier from the combo's own
+            // spellType when set, else the pair's combined types.
+            if (isOffensive && target && target.player !== initiator.player) {
+                const _comboAtkTypes = combo.spellType
+                    ? [combo.spellType]
+                    : [...(initiator.types || []), ...(partner.types || [])];
+                const _comboPressRes = applyPressTurn(
+                    initiator,
+                    resolvePressOutcome({
+                        evaded: false,
+                        isCrit: false,
+                        effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || [])
+                    }),
+                    { cost: COMBO_AP_COST_INITIATOR }
+                );
+                _showPressFeedback(initiator, _comboPressRes);
+            }
+
             initiator._lastComboRound = state.round;
             partner._lastComboRound = state.round;
 
@@ -17541,6 +17703,25 @@
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
+
+            // Press Turn: for damaging spells, resolve press off the spell type
+            // tier vs the primary enemy target (computed now, applied at the
+            // spend site in finishAction). AoE/line that don't land on a unit at
+            // the click tile resolve NORMAL.
+            let _spellPressOutcome = PRESS_OUTCOME.NORMAL;
+            if (_PRESS_SPELL_KINDS.has(spell.kind)) {
+                const _pt = (_spellClickTarget && !_spellClickTarget.dead && _spellClickTarget.player !== unit.player)
+                    ? _spellClickTarget : null;
+                if (_pt) {
+                    const _spellAtkTypes = spell.spellType ? [spell.spellType] : (unit.types || []);
+                    _spellPressOutcome = resolvePressOutcome({
+                        evaded: false,
+                        isCrit: false,
+                        effSummary: getTypeEffectSummary(_spellAtkTypes, _pt.types || [])
+                    });
+                }
+            }
+
             const finishAction = () => {
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
 
@@ -17553,6 +17734,8 @@
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
                 spendAP(unit, spellApCost);
+                const _spellPressRes = applyPressTurn(unit, _spellPressOutcome, { cost: spellApCost });
+                _showPressFeedback(unit, _spellPressRes);
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;

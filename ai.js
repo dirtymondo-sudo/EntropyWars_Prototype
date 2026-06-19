@@ -654,6 +654,58 @@
         return effectMult * stabMult;
     }
 
+    // ── Press Turn scoring (Phase 3) ────────────────────────────────────────
+    // The engine refunds AP on an offensive action that hits a type weakness or
+    // crits (a "press" → free action) and drains extra AP on a whiff. The AI
+    // already benefits passively (finishComputerAction re-acts while AP > 0);
+    // these terms make it actively prefer press-yielding shots and shy away
+    // from high-evade targets. Press is detected off the type TIER (strong &&
+    // !weak) — never the raw multiplier number — matching the engine.
+    const _PRESS_SPELL_KINDS_AI = new Set([
+        'damage', 'multiHit', 'ricochet', 'lifeDrain',
+        'line', 'linePush', 'splitBeam',
+        'aoe', 'barrage', 'cross', 'aoePull',
+    ]);
+
+    function _pressWeakness(attacker, defender, spellType) {
+        const g = G();
+        const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : g.TYPE_CHART;
+        if (!chart || !defender) return false;
+        const dTypes = defender.types || [];
+        const aTypes = spellType ? [spellType] : (attacker.types || []);
+        let hasStrong = false, hasWeak = false;
+        for (const at of aTypes) {
+            const entry = chart[at];
+            if (!entry) continue;
+            for (const dt of dTypes) {
+                if (entry.strongVs && entry.strongVs.includes(dt)) hasStrong = true;
+                if (entry.weakVs && entry.weakVs.includes(dt)) hasWeak = true;
+            }
+        }
+        return hasStrong && !hasWeak;
+    }
+
+    // Returns { add, sub } score deltas for press value / whiff risk.
+    //   opts.spellType : type used for the tier (null = attacker's own types)
+    //   opts.canMiss   : action can be evaded (basic attacks) → whiff penalty
+    //   opts.canCrit   : action can crit (basic attacks) → crit press chance
+    function _pressScoreAdj(attacker, defender, opts = {}) {
+        const g = G();
+        if (!defender) return { add: 0, sub: 0 };
+        const refundVal = g.getAIWeight('pressRefundValue_v1');
+        const whiffPen = g.getAIWeight('whiffRiskPenalty_v1');
+        const evadeP = (opts.canMiss && typeof g.getEvasionChance === 'function')
+            ? (g.getEvasionChance(defender) || 0) : 0;
+        const landP = 1 - evadeP;
+        const critP = (opts.canCrit && typeof g.getCritChance === 'function')
+            ? (g.getCritChance(attacker) || 0) : 0;
+        const weak = _pressWeakness(attacker, defender, opts.spellType || null);
+        // Probability this action presses: a weakness hit (if it lands) almost
+        // always presses; otherwise a crit does.
+        const pressP = Math.min(1, landP * (weak ? 1 : critP));
+        return { add: pressP * refundVal, sub: evadeP * whiffPen };
+    }
+
     function getTargetPriority(target, unit, v) {
         const g = G();
         let priority = 0;
@@ -1078,6 +1130,9 @@
                 if (nextXp > 0 && curXp >= nextXp * 0.7) score += g.getAIWeight('nearLevelUpBonus_v1');
             }
 
+            const _pa = _pressScoreAdj(unit, tgt, { canMiss: true, canCrit: true });
+            score += _pa.add - _pa.sub;
+
             out.push({ type: 'attack', target: tgt, score });
         }
     }
@@ -1164,6 +1219,13 @@
                 if (['Gunslinger', 'Sniper', 'Black Mage', 'Psychic'].includes(unit.cls)) {
                     score *= 1.25;
                 }
+            }
+
+            // Press value: a damaging spell that hits a type weakness refunds AP
+            // (free action). Spells don't roll evade/crit in the press path, so
+            // no whiff penalty here.
+            if (target && _PRESS_SPELL_KINDS_AI.has(spell.kind)) {
+                score += _pressScoreAdj(unit, target, { spellType: spell.spellType || null }).add;
             }
 
             out.push({ type: 'spell', spell, target, score, apCost });
@@ -2059,6 +2121,12 @@
             if (comboTarget && comboTarget.hp <= (combo.dmg || 0) + 5) score += g.getAIWeight('comboKillBonus_v1');
 
             if (comboTarget) score *= getTypeMultiplier(unit, comboTarget);
+
+            // Press value: an offensive combo into a weakness refunds AP to the
+            // initiator (extends its turn).
+            if (comboTarget && ['damage', 'multiHit', 'aoe'].includes(combo.kind)) {
+                score += _pressScoreAdj(unit, comboTarget, { spellType: combo.spellType || null }).add;
+            }
 
             out.push({ type: 'combo', partner, combo, target: comboTarget, score });
         }

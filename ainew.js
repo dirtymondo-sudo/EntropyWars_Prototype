@@ -128,6 +128,23 @@
         return sp.dmg || (sp.hitDamages ? sp.hitDamages.reduce((a, b) => a + b, 0) : 0) ||
             (sp.kind === 'barrage' || sp.kind === 'aoe' ? 120 : 90);
     }
+    // Press Turn: does this action hit a type weakness (strong && !weak tier)?
+    // Detected off the chart tier, matching the engine's press detection.
+    function pressWeak(unit, tg, spellType) {
+        const chart = (typeof TYPE_CHART !== 'undefined') ? TYPE_CHART : null;
+        if (!chart || !tg) return false;
+        const dTypes = tg.types || [];
+        const aTypes = spellType ? [spellType] : (unit.types || []);
+        let hasStrong = false, hasWeak = false;
+        for (const at of aTypes) {
+            const e = chart[at]; if (!e) continue;
+            for (const dt of dTypes) {
+                if (e.strongVs && e.strongVs.includes(dt)) hasStrong = true;
+                if (e.weakVs && e.weakVs.includes(dt)) hasWeak = true;
+            }
+        }
+        return hasStrong && !hasWeak;
+    }
 
     // Find the best damage action available from where `unit` stands right now,
     // weighted hard toward the shared focus + secure kills + downhill elevation.
@@ -135,12 +152,22 @@
         const st = g.state;
         const myH = standH(g, unit);
         const elevMult = tg => { const th = standH(g, tg); return myH > th ? (1 + 0.1 * (myH - th)) : 1; };
-        const scoreDmg = (tg, est) => {
+        const scoreDmg = (tg, est, opts) => {
+            opts = opts || {};
             let s = est;
             if (est >= tg.hp) s += 50000;                        // secure the kill
             s += (tg.maxHp - tg.hp) * 1.5;                       // pile onto the wounded
             if (focus && tg.id === focus.id) s += 8000;          // HARD focus fire
             if (HEALERS.has(tg.cls)) s += 4000;                  // kill support first
+            // Press Turn tie-breaker (kept small so it never overrides focus /
+            // kill commitment — only nudges between otherwise-similar shots):
+            // prefer weakness hits (free action) and avoid high-evade whiffs.
+            if (pressWeak(unit, tg, opts.spellType || null)) {
+                try { s += g.getAIWeight('pressRefundValue_v1'); } catch (e) {}
+            }
+            if (opts.canMiss && typeof g.getEvasionChance === 'function') {
+                try { s -= (g.getEvasionChance(tg) || 0) * g.getAIWeight('whiffRiskPenalty_v1'); } catch (e) {}
+            }
             return s;
         };
 
@@ -159,7 +186,7 @@
                     const tg = g.unitAt(t.x, t.y, t.z);
                     if (!isEnemyTgt(tg)) continue;
                     const est = baseDmg(sp) * typeMult(unit, tg, sp.spellType) * (sp.guaranteedCrit ? 1.5 : 1) * elevMult(tg);
-                    const sc = scoreDmg(tg, est);
+                    const sc = scoreDmg(tg, est, { spellType: sp.spellType || null, canMiss: false });
                     if (!best || sc > best.score) best = { kind: 'spell', spell: sp, target: tg, x: t.x, y: t.y, z: t.z, est, score: sc };
                 }
             }
@@ -171,7 +198,7 @@
                 const tg = g.unitAt(t.x, t.y, t.z);
                 if (!isEnemyTgt(tg)) continue;
                 const est = (unit.atk || 60) * 1.6 * typeMult(unit, tg, null) * elevMult(tg);
-                const sc = scoreDmg(tg, est) - 1; // tie-break toward spells
+                const sc = scoreDmg(tg, est, { spellType: null, canMiss: true }) - 1; // tie-break toward spells
                 if (!best || sc > best.score) best = { kind: 'attack', target: tg, x: t.x, y: t.y, z: t.z, est, score: sc };
             }
         }

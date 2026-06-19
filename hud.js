@@ -115,11 +115,11 @@ function ClipPanel({ children, style, factionColor, corner = 14, ...props }) {
   );
 }
 
-function HudBar({ label, val, max, color, pip, small }) {
+function HudBar({ label, val, max, color, pip, small, pressFlash }) {
   const pct = max > 0 ? (val / max) * 100 : 0;
   const fontSize = small ? 7 : 8;
   const barH = small ? 3 : 5;
-  return h('div', { style: { display: 'flex', alignItems: 'center', gap: small ? 4 : 6 }},
+  return h('div', { className: pressFlash ? 'hud-ap-press' : undefined, style: { display: 'flex', alignItems: 'center', gap: small ? 4 : 6 }},
     h('span', { style: {
       fontFamily: '"DotGothic16", monospace', fontSize: fontSize,
       color: EW.inkDim, letterSpacing: '0.16em', width: small ? 10 : 14,
@@ -248,7 +248,8 @@ function ActiveUnitPanel({ unit }) {
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }},
         h(HudBar, { label: 'HP', val: unit.hp || 0, max: unit.maxHp || 1, color: unit.hp <= (unit.maxHp * 0.3) ? EW.bad : EW.good }),
         h(HudBar, { label: 'MP', val: unit.mp || 0, max: unit.maxMp || 1, color: EW.space }),
-        h(HudBar, { label: 'AP', val: unit.ap || 0, max: maxAP, color: EW.time, pip: true }),
+        h(HudBar, { label: 'AP', val: unit.ap || 0, max: maxAP, color: EW.time, pip: true,
+          pressFlash: !!(unit._pressFlashAt && (Date.now() - unit._pressFlashAt) < 900) }),
       ),
     ),
   );

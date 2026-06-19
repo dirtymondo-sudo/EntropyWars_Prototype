@@ -3848,3 +3848,15 @@
     transition-duration: 0.04s;
 }
 
+
+/* ── Press Turn: AP "saved pip" pulse ──
+   Added to the active unit's AP HudBar for ~0.85s when a press refunds AP, so
+   the reward ("AP didn't go down") reads even on the discrete pips. */
+@keyframes apPressPulse {
+    0%   { filter: brightness(2.0) drop-shadow(0 0 6px #f5d36b); }
+    35%  { filter: brightness(1.7) drop-shadow(0 0 8px #f5d36b); }
+    100% { filter: brightness(1.0) drop-shadow(0 0 0 transparent); }
+}
+.hud-ap-press {
+    animation: apPressPulse 0.85s ease-out;
+}
