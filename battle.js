@@ -8954,10 +8954,10 @@
             const sep = '<span style="color:#7a6f4a;margin:0 2px">·</span>';
             const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
             el.innerHTML = `
-                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;background:rgba(20,16,8,0.55);border:1px solid rgba(184,160,96,0.35);border-radius:8px;padding:8px 16px;margin:6px auto">
-                    <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.18em;color:#b8a060">💰 ACCOUNT GOLD</div>
-                    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
-                    <div style="font-size:20px;font-weight:700;color:#ffd86a;text-shadow:0 0 12px rgba(255,200,80,0.5)">→ +<span id="vgbTotalNum">0</span></div>
+                <div style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;background:linear-gradient(168deg,rgba(34,26,10,0.82),rgba(20,16,8,0.82));border:1px solid rgba(184,160,96,0.45);border-radius:10px;padding:12px 26px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,0.45)">
+                    <div style="font-family:Cinzel,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 GOLD EARNED</div>
+                    <div style="font-size:38px;font-weight:800;color:#ffd86a;line-height:1;text-shadow:0 0 18px rgba(255,200,80,0.55)">+<span id="vgbTotalNum">0</span></div>
+                    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
                     ${balanceLine}
                 </div>`;
             el.style.display = 'block';
@@ -9088,79 +9088,27 @@
             const winnerUnits = (state.units || []).filter(u => u.player === winnerPlayer);
             const loserUnits = (state.units || []).filter(u => u.player === loserPlayer);
 
-            const POSITIONS = [{
-                    scale: 1.6,
-                    bottom: '8%',
-                    zIdx: 10,
-                    mx: '0px'
-                },
-                {
-                    scale: 1.3,
-                    bottom: '12%',
-                    zIdx: 8,
-                    mx: '-120px'
-                },
-                {
-                    scale: 1.3,
-                    bottom: '12%',
-                    zIdx: 8,
-                    mx: '120px'
-                },
-                {
-                    scale: 1.0,
-                    bottom: '16%',
-                    zIdx: 6,
-                    mx: '-220px'
-                },
-                {
-                    scale: 1.0,
-                    bottom: '16%',
-                    zIdx: 6,
-                    mx: '220px'
-                },
-                {
-                    scale: 0.85,
-                    bottom: '18%',
-                    zIdx: 4,
-                    mx: '-310px'
-                },
+            // Two formations facing off across the battlefield. The victors
+            // hold the left field (large, lit); the defeated are pushed to the
+            // right (smaller, greyed). `left` is a per-side anchor so the teams
+            // sit on opposite halves instead of bunching in the centre.
+            const WIN_BASE = '33%';
+            const LOSE_BASE = '69%';
+            const WIN_POS = [
+                { scale: 1.5,  bottom: '7%',  zIdx: 10, mx: '150px'  },
+                { scale: 1.25, bottom: '13%', zIdx: 8,  mx: '10px'   },
+                { scale: 1.15, bottom: '15%', zIdx: 6,  mx: '300px'  },
+                { scale: 1.0,  bottom: '19%', zIdx: 5,  mx: '-80px'  },
+                { scale: 0.9,  bottom: '21%', zIdx: 4,  mx: '200px'  },
+                { scale: 0.8,  bottom: '18%', zIdx: 3,  mx: '70px'   },
             ];
-            const LOSER_POS = [{
-                    scale: 0.55,
-                    bottom: '28%',
-                    zIdx: 2,
-                    mx: '-70px'
-                },
-                {
-                    scale: 0.55,
-                    bottom: '28%',
-                    zIdx: 2,
-                    mx: '70px'
-                },
-                {
-                    scale: 0.45,
-                    bottom: '30%',
-                    zIdx: 1,
-                    mx: '-150px'
-                },
-                {
-                    scale: 0.45,
-                    bottom: '30%',
-                    zIdx: 1,
-                    mx: '150px'
-                },
-                {
-                    scale: 0.4,
-                    bottom: '31%',
-                    zIdx: 1,
-                    mx: '0px'
-                },
-                {
-                    scale: 0.4,
-                    bottom: '31%',
-                    zIdx: 1,
-                    mx: '220px'
-                },
+            const LOSE_POS = [
+                { scale: 1.1,  bottom: '10%', zIdx: 9, mx: '-170px' },
+                { scale: 0.95, bottom: '15%', zIdx: 7, mx: '-30px'  },
+                { scale: 0.9,  bottom: '16%', zIdx: 5, mx: '-310px' },
+                { scale: 0.82, bottom: '20%', zIdx: 4, mx: '80px'   },
+                { scale: 0.78, bottom: '19%', zIdx: 3, mx: '-210px' },
+                { scale: 0.74, bottom: '22%', zIdx: 2, mx: '140px'  },
             ];
 
             let partyHtml = '';
@@ -9170,29 +9118,34 @@
                 return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
             });
 
-            for (let i = 0; i < sortedWinners.length && i < POSITIONS.length; i++) {
+            for (let i = 0; i < sortedWinners.length && i < WIN_POS.length; i++) {
                 const u = sortedWinners[i];
-                const p = POSITIONS[i];
+                const p = WIN_POS[i];
                 const sprite = getBattleMapSpriteUrl(u);
                 const px = Math.round(128 * p.scale);
                 const nameClass = u.player === 1 ? 'p1' : 'p2';
-                partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx}">
-          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated"></div>
+                const deadFilter = u.dead ? 'filter:grayscale(0.85) brightness(0.55) drop-shadow(0 4px 12px rgba(0,0,0,0.5));' : '';
+                partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:${WIN_BASE};margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx}">
+          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;${deadFilter}"></div>
           <div class="vic-unit-shadow" style="width:${px * 0.7}px"></div>
           <div class="vic-unit-name ${nameClass}">${escapeHtml(unitDisplayName(u))}</div>
         </div>`;
             }
 
-            const sortedLosers = [...loserUnits].sort((a, b) => (a.dead ? 1 : -1) - (b.dead ? 1 : -1));
-            for (let i = 0; i < sortedLosers.length && i < LOSER_POS.length; i++) {
+            const sortedLosers = [...loserUnits].sort((a, b) => {
+                if (a.dead !== b.dead) return a.dead ? 1 : -1;
+                return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+            });
+            for (let i = 0; i < sortedLosers.length && i < LOSE_POS.length; i++) {
                 const u = sortedLosers[i];
-                const p = LOSER_POS[i];
+                const p = LOSE_POS[i];
                 const sprite = getBattleMapSpriteUrl(u);
                 const px = Math.round(128 * p.scale);
                 const nameClass = u.player === 1 ? 'p1' : 'p2';
-                partyHtml += `<div class="vic-unit dead" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx};opacity:0.5">
-          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;filter:grayscale(0.6) brightness(0.6) drop-shadow(0 2px 8px rgba(0,0,0,0.5))"></div>
-          <div class="vic-unit-shadow" style="width:${px * 0.5}px"></div>
+                partyHtml += `<div class="vic-unit dead" style="position:absolute;bottom:${p.bottom};left:${LOSE_BASE};margin-left:calc(${p.mx} - ${px/2}px);z-index:${p.zIdx};opacity:0.92">
+          <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;filter:grayscale(0.75) brightness(0.6) drop-shadow(0 3px 10px rgba(0,0,0,0.5))"></div>
+          <div class="vic-unit-shadow" style="width:${px * 0.55}px"></div>
+          <div class="vic-unit-name ${nameClass}" style="opacity:0.5">${escapeHtml(unitDisplayName(u))}</div>
         </div>`;
             }
 
@@ -9388,7 +9341,7 @@
             if (topDmg && (topDmg._trackDmgDealt || 0) > 0) {
                 awards.push({
                     icon: '⚔️',
-                    label: 'The Chosen One',
+                    label: 'Most Damage',
                     name: unitDisplayName(topDmg),
                     stat: `${topDmg._trackDmgDealt} dmg`,
                     player: topDmg.player,
@@ -9400,7 +9353,7 @@
             if (topKills && (topKills._matchKills || 0) > 0) {
                 awards.push({
                     icon: '💀',
-                    label: 'The Reaper',
+                    label: 'Most Kills',
                     name: unitDisplayName(topKills),
                     stat: `${topKills._matchKills} kill${topKills._matchKills !== 1 ? 's' : ''}`,
                     player: topKills.player,
@@ -9411,7 +9364,7 @@
             if (topHeal && (topHeal._trackHealDone || 0) > 0) {
                 awards.push({
                     icon: '💚',
-                    label: 'The Witness',
+                    label: 'Most Healing',
                     name: unitDisplayName(topHeal),
                     stat: `${topHeal._trackHealDone} HP`,
                     player: topHeal.player,
@@ -9422,7 +9375,7 @@
             if (topStreak && (topStreak._maxKillStreak || 0) >= 2) {
                 awards.push({
                     icon: '🔥',
-                    label: 'The Unchained',
+                    label: 'Best Kill Streak',
                     name: unitDisplayName(topStreak),
                     stat: `${topStreak._maxKillStreak} kills`,
                     player: topStreak.player,
@@ -9433,7 +9386,7 @@
             if (topCrits && (topCrits._matchCrits || 0) > 0) {
                 awards.push({
                     icon: '⚡',
-                    label: 'The Harbinger',
+                    label: 'Most Crits',
                     name: unitDisplayName(topCrits),
                     stat: `${topCrits._matchCrits} crit${topCrits._matchCrits !== 1 ? 's' : ''}`,
                     player: topCrits.player,
@@ -9444,7 +9397,7 @@
             if (topDodge && (topDodge._matchDodges || 0) > 0) {
                 awards.push({
                     icon: '💨',
-                    label: 'The Phantom',
+                    label: 'Most Dodges',
                     name: unitDisplayName(topDodge),
                     stat: `${topDodge._matchDodges} dodge${topDodge._matchDodges !== 1 ? 's' : ''}`,
                     player: topDodge.player,
@@ -9455,7 +9408,7 @@
             if (topTank && (topTank._trackDmgReceived || 0) > 15) {
                 awards.push({
                     icon: '🛡',
-                    label: 'The Martyr',
+                    label: 'Most Damage Taken',
                     name: unitDisplayName(topTank),
                     stat: `${topTank._trackDmgReceived} tanked`,
                     player: topTank.player,

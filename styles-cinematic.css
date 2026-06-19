@@ -125,16 +125,16 @@
             background: linear-gradient(180deg, var(--vic-horizon, #483860) 0%, transparent 100%);
         }
 
-        /* ── Party sprites on landscape ── */
+        /* ── Party sprites on landscape ──
+           Children are absolutely positioned (see battle.js), so .vic-party
+           needs an explicit height for their `bottom` %% to resolve and give
+           the back ranks their depth lift. */
         .vic-party {
             position: absolute;
-            bottom: 12%;
+            bottom: 11%;
             left: 0;
             right: 0;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            gap: 0;
+            height: 42%;
             pointer-events: none;
         }
 
@@ -294,17 +294,33 @@
             }
         }
 
-        /* ── MVP Awards Panel ── */
+        /* ── Gold earned (centered in the open middle of the screen) ── */
+        .vic-gold-breakdown {
+            position: absolute;
+            top: 43%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 12;
+            text-align: center;
+            width: max-content;
+            max-width: min(480px, 44vw);
+            pointer-events: none;
+        }
+
+        /* ── Awards Panel (top-right column) ── */
         .vic-awards {
             position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 14px;
+            top: 14px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-width: 280px;
+            gap: 6px;
+            width: 232px;
+            max-height: calc(100% - 92px);
+            overflow-y: auto;
             z-index: 10;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(184,160,96,0.3) transparent;
         }
 
 
@@ -543,15 +559,15 @@
             border: 1px solid rgba(200,180,150,0.1);
         }
 
-        /* ── Per-Unit Stats Table ── */
+        /* ── Per-Unit Stats Table (top-left column) ── */
         .vic-stats-table-wrap {
             position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
+            left: 14px;
+            top: 14px;
             z-index: 10;
-            max-width: 420px;
-            max-height: 70vh;
+            width: 392px;
+            max-width: 42vw;
+            max-height: calc(100% - 92px);
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(184,160,96,0.3) transparent;
