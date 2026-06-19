@@ -3763,17 +3763,38 @@ function _injectHudHideStyles() {
     .float-action-menu { display: none !important; }
 
     /* ── React HUD hover states ── */
+    /* Action-menu rows now share the warm-gold "bloom" focus the spell/ability
+       cards use: a brighter gold wash, a warm rim light + soft bloom, a warm
+       left-edge accent and a gentle scale pop that pulses while hovered. */
     .rhud-row {
-      transition: background 0.1s ease, border-color 0.1s ease, filter 0.08s ease;
+      transition: background 0.16s ease, box-shadow 0.18s ease,
+                  transform 0.16s cubic-bezier(0.22,1,0.36,1), filter 0.08s ease;
+      border-radius: 3px;
     }
     .rhud-row:hover:not(.rhud-disabled) {
-      background: linear-gradient(90deg, rgba(242,196,104,0.10), transparent) !important;
+      background: linear-gradient(90deg, rgba(255,214,128,0.16), rgba(255,176,64,0.03)) !important;
+      transform: scale(1.02);
+      animation: rhudRowGlow 1.5s ease-in-out infinite;
     }
     .rhud-row:hover:not(.rhud-disabled) .rhud-row-icon {
-      color: #f2c468 !important;
+      color: #ffcf7a !important;
     }
     .rhud-row:hover:not(.rhud-disabled) .rhud-row-label {
-      color: #e6e9f2 !important;
+      color: #fff6e6 !important;
+    }
+    @keyframes rhudRowGlow {
+      0%, 100% {
+        box-shadow: inset 0 0 0 1px rgba(255,236,176,0.55),
+                    inset 3px 0 0 0 rgba(255,207,122,0.95),
+                    0 0 6px rgba(255,242,206,0.45),
+                    0 0 13px rgba(255,206,108,0.30);
+      }
+      50% {
+        box-shadow: inset 0 0 0 1px rgba(255,244,206,0.70),
+                    inset 3px 0 0 0 rgba(255,224,150,1),
+                    0 0 9px rgba(255,248,222,0.60),
+                    0 0 19px rgba(255,214,120,0.42);
+      }
     }
     /* ── Move cards (ability buttons) ── */
     /* Hover == focus == selection — one single, unmistakable AAA focus state, built from
@@ -3838,27 +3859,45 @@ function _injectHudHideStyles() {
           drop-shadow(0 0 20px rgba(255,214,120,0.85));
       }
     }
+    /* End turn keeps its red danger identity but matches the bloom feel:
+       a pulsing red glow + the same gentle scale pop. */
     .rhud-end-turn {
-      transition: background 0.1s ease, border-color 0.1s ease, filter 0.08s ease;
+      transition: background 0.1s ease, border-color 0.1s ease,
+                  transform 0.16s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s ease, filter 0.08s ease;
     }
     .rhud-end-turn:hover {
       background: linear-gradient(180deg, rgba(255,122,138,0.28), rgba(255,122,138,0.08)) !important;
-      border-color: rgba(255,122,138,0.6) !important;
+      border-color: rgba(255,150,150,0.85) !important;
+      transform: scale(1.02);
+      animation: rhudEndTurnGlow 1.5s ease-in-out infinite;
     }
+    @keyframes rhudEndTurnGlow {
+      0%, 100% { box-shadow: 0 0 6px rgba(255,150,150,0.40), 0 0 13px rgba(255,90,110,0.28); }
+      50%      { box-shadow: 0 0 9px rgba(255,170,170,0.55), 0 0 20px rgba(255,100,120,0.42); }
+    }
+    /* Target-selection rows + back rows share the same warm bloom. */
     .rhud-target {
-      transition: background 0.1s ease, filter 0.08s ease;
+      transition: background 0.16s ease, box-shadow 0.18s ease,
+                  transform 0.16s cubic-bezier(0.22,1,0.36,1), filter 0.08s ease;
+      border-radius: 3px;
     }
     .rhud-target:hover {
-      background: linear-gradient(90deg, rgba(242,196,104,0.12), transparent) !important;
+      background: linear-gradient(90deg, rgba(255,214,128,0.18), rgba(255,176,64,0.03)) !important;
+      transform: scale(1.02);
+      animation: rhudRowGlow 1.5s ease-in-out infinite;
     }
     .rhud-target:hover .rhud-target-name {
-      color: #e6e9f2 !important;
+      color: #fff6e6 !important;
     }
     .rhud-back {
-      transition: color 0.1s ease, filter 0.08s ease;
+      transition: color 0.1s ease, box-shadow 0.18s ease, filter 0.08s ease;
+      border-radius: 3px;
     }
     .rhud-back:hover {
-      color: #e6e9f2 !important;
+      color: #fff6e6 !important;
+      box-shadow: inset 0 0 0 1px rgba(255,236,176,0.40),
+                  inset 3px 0 0 0 rgba(255,207,122,0.85),
+                  0 0 8px rgba(255,214,120,0.25);
     }
 
     /* ── Click juice: instant press states + burst layer animations ── */

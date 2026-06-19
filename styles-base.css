@@ -3167,3 +3167,62 @@ body.diorama-3d .tile-underpass.jump::before {
     transition-duration: 0.04s;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   UNIFIED HOVER GLOW — gives the menu / match-select / party-builder
+   buttons the same warm-gold "bloom" focus the in-battle spell/ability
+   cards use: a soft pulsing glow + a warm rim + a gentle scale pop.
+   These rules are intentionally last so the bloom layers cleanly on top
+   of each button's own hover background; per-button accent colors (mode
+   labels, etc.) are left untouched. Semantic confirm/start buttons get
+   a matching green-tinted bloom instead.
+   ══════════════════════════════════════════════════════════════════ */
+@keyframes ewMenuGlow {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(255,242,206,0.42),
+                    0 0 14px rgba(255,206,108,0.28);
+    }
+    50% {
+        box-shadow: 0 0 9px rgba(255,248,222,0.60),
+                    0 0 22px rgba(255,214,120,0.42);
+    }
+}
+@keyframes ewMenuGlowGreen {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(180,255,200,0.40),
+                    0 0 14px rgba(90,200,120,0.30);
+    }
+    50% {
+        box-shadow: 0 0 9px rgba(200,255,220,0.58),
+                    0 0 22px rgba(110,220,140,0.46);
+    }
+}
+
+.mm-btn:hover,
+.bt-secondary:hover,
+.roster-item-btn:hover:not(:disabled),
+.lobby-actions button.primary-lobby:hover,
+.lobby-actions button.secondary-lobby:hover,
+.lobby-actions button.offline-btn:hover,
+.ms-gm-item:hover:not(.locked),
+.ms-team-btn:hover:not(.disabled),
+.ms-back-btn:hover,
+.pb-race-card:hover,
+.pb-picker-card:hover,
+.pb-picker-reset:hover,
+.pb-action-btn:hover,
+.pb-back-btn:hover,
+.pb-party-slot:hover {
+    border-color: rgba(255,224,150,0.70) !important;
+    transform: translateY(-1px) scale(1.02);
+    animation: ewMenuGlow 1.5s ease-in-out infinite;
+}
+
+/* Semantic confirm / start CTAs keep their green identity but gain the
+   same pulsing bloom feel. */
+.pb-confirm-btn:hover,
+.pb-start-btn:hover {
+    border-color: rgba(120,220,150,0.7) !important;
+    transform: translateY(-1px) scale(1.02);
+    animation: ewMenuGlowGreen 1.5s ease-in-out infinite;
+}
+
