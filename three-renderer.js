@@ -6639,6 +6639,15 @@ const ThreeRenderer = (function () {
     var _lastWeatherOverlayKey = '';
     var _lastZoneOverlayKey = '';
 
+    // Serialize a weather zone's tile coordinates so cache keys change when a
+    // homing storm slides (its tile count stays 1, only the position moves).
+    function _weatherTilesKey(w) {
+        if (!w.tiles) return '0';
+        var s = w.tiles.length + '#';
+        for (var i = 0; i < w.tiles.length; i++) s += w.tiles[i].x + ',' + w.tiles[i].y + ';';
+        return s;
+    }
+
     function _syncWeatherOverlays() {
         if (!highlightGroup || !active) return;
         if (typeof state === 'undefined' || state.phase !== 'battle') return;
@@ -6664,7 +6673,7 @@ const ThreeRenderer = (function () {
         var wKey = '';
         for (var i = 0; i < aw.length; i++) {
             var w = aw[i];
-            wKey += w.id + ':' + (w.tiles ? w.tiles.length : 0) + ':' + w.type + '|';
+            wKey += w.id + ':' + _weatherTilesKey(w) + ':' + w.type + '|';
         }
         if (wKey !== _lastWeatherOverlayKey) {
             _lastWeatherOverlayKey = wKey;
@@ -6735,7 +6744,7 @@ const ThreeRenderer = (function () {
         var aw = state.activeWeather || [];
 
         var key = '';
-        for (var i = 0; i < aw.length; i++) key += aw[i].id + aw[i].type + (aw[i].tiles ? aw[i].tiles.length : 0) + '|';
+        for (var i = 0; i < aw.length; i++) key += aw[i].id + aw[i].type + _weatherTilesKey(aw[i]) + '|';
         if (key === _lastWeatherVfxKey) return;
         _lastWeatherVfxKey = key;
 
@@ -6836,9 +6845,8 @@ const ThreeRenderer = (function () {
             var cy = sumY / zone.tiles.length;
 
             if (existing[zid2]) {
-
                 var eb = existing[zid2];
-                eb.mesh.position.set(cx, cy + sz.h / 2, cz);
+                _vortexSlideTo(eb, eb.mesh, cx, cy + sz.h / 2, cz);
                 continue;
             }
 
@@ -6871,6 +6879,8 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _tornadoBillboards.length; i++) {
             var tb = _tornadoBillboards[i];
 
+            _vortexSlideTick(tb, tb.mesh);
+
             if (now - tb.lastFrameTime >= _TORNADO_FRAME_MS) {
                 var elapsed = now - tb.lastFrameTime;
                 var steps = Math.floor(elapsed / _TORNADO_FRAME_MS);
@@ -6897,6 +6907,41 @@ const ThreeRenderer = (function () {
                 tb.mesh.geometry = new THREE.PlaneGeometry(sz.w, sz.h);
             }
         }
+    }
+
+    // Roaming storms (tornado/hurricane/blizzard/sandstorm) should glide to their
+    // next tile rather than teleport. Each vortex entry stores a time-based slide
+    // tween; _sync* sets the target, _update* eases the Object3D toward it. The
+    // gameplay layer (processHomingWeather) waits out this slide before it applies
+    // damage/displacement, so the storm visibly arrives before anyone is hit.
+    var _VORTEX_SLIDE_MS = 420;
+    function _vortexEaseInOut(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+    // Aim a vortex entry's positioned Object3D (`obj`) at (cx,cy,cz). Snaps when
+    // there's no prior position (initial placement) or when already targeting it.
+    function _vortexSlideTo(entry, obj, cx, cy, cz) {
+        if (entry._slideTo && entry._slideTo.x === cx && entry._slideTo.y === cy && entry._slideTo.z === cz) return;
+        entry._slideFrom = { x: obj.position.x, y: obj.position.y, z: obj.position.z };
+        entry._slideTo = { x: cx, y: cy, z: cz };
+        entry._slideT0 = performance.now();
+    }
+    function _vortexSlideTick(entry, obj) {
+        if (!entry._slideTo) return;
+        var t = (performance.now() - entry._slideT0) / _VORTEX_SLIDE_MS;
+        if (t >= 1) {
+            obj.position.set(entry._slideTo.x, entry._slideTo.y, entry._slideTo.z);
+            entry._slideFrom = null;
+            entry._slideTo = null;
+            return;
+        }
+        var e = _vortexEaseInOut(t < 0 ? 0 : t);
+        var f = entry._slideFrom;
+        obj.position.set(
+            f.x + (entry._slideTo.x - f.x) * e,
+            f.y + (entry._slideTo.y - f.y) * e,
+            f.z + (entry._slideTo.z - f.z) * e
+        );
     }
 
     var _hurricaneVortices = [];
@@ -6941,8 +6986,7 @@ const ThreeRenderer = (function () {
             var cy = sumY / zone.tiles.length;
 
             if (existing[zid2]) {
-
-                existing[zid2].vortex.group.position.set(cx, cy, cz);
+                _vortexSlideTo(existing[zid2], existing[zid2].vortex.group, cx, cy, cz);
                 continue;
             }
 
@@ -6959,6 +7003,7 @@ const ThreeRenderer = (function () {
         if (!Effects || !Effects.tickHurricaneVortex) return;
         var now = performance.now();
         for (var i = 0; i < _hurricaneVortices.length; i++) {
+            _vortexSlideTick(_hurricaneVortices[i], _hurricaneVortices[i].vortex.group);
             Effects.tickHurricaneVortex(_hurricaneVortices[i].vortex, now);
         }
     }
@@ -7005,7 +7050,7 @@ const ThreeRenderer = (function () {
             var cy = sumY / zone.tiles.length;
 
             if (existing[zid2]) {
-                existing[zid2].vortex.group.position.set(cx, cy, cz);
+                _vortexSlideTo(existing[zid2], existing[zid2].vortex.group, cx, cy, cz);
                 continue;
             }
 
@@ -7022,6 +7067,7 @@ const ThreeRenderer = (function () {
         if (!Effects || !Effects.tickBlizzardVortex) return;
         var now = performance.now();
         for (var i = 0; i < _blizzardVortices.length; i++) {
+            _vortexSlideTick(_blizzardVortices[i], _blizzardVortices[i].vortex.group);
             Effects.tickBlizzardVortex(_blizzardVortices[i].vortex, now);
         }
     }
@@ -7068,7 +7114,7 @@ const ThreeRenderer = (function () {
             var cy = sumY / zone.tiles.length;
 
             if (existing[zid2]) {
-                existing[zid2].vortex.group.position.set(cx, cy, cz);
+                _vortexSlideTo(existing[zid2], existing[zid2].vortex.group, cx, cy, cz);
                 continue;
             }
 
@@ -7085,6 +7131,7 @@ const ThreeRenderer = (function () {
         if (!Effects || !Effects.tickSandstormVortex) return;
         var now = performance.now();
         for (var i = 0; i < _sandstormVortices.length; i++) {
+            _vortexSlideTick(_sandstormVortices[i], _sandstormVortices[i].vortex.group);
             Effects.tickSandstormVortex(_sandstormVortices[i].vortex, now);
         }
     }

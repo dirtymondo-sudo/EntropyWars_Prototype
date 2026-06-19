@@ -1978,8 +1978,15 @@
 
             const size = bw(), sizeH = bh();
             const clamp = (v, max) => Math.max(0, Math.min(max - 1, v));
-            let actedVisibly = false;
 
+            // The renderer slides each vortex toward its new tile over ~420ms. We move
+            // every storm first (Phase 1), let it glide on-screen, then apply damage and
+            // displacement (Phase 2) so the storm visibly arrives before anyone is hit.
+            const SLIDE_MS = 480;
+            const pendingStrikes = [];
+            let anyMoved = false;
+
+            // Phase 1 — advance every homing vortex to its new position. No damage yet.
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 if (!def || !def.homing) continue;
@@ -2022,6 +2029,7 @@
                     const k = posKey(nx, ny);
                     if (!sweptKeys.has(k)) { sweptKeys.add(k); sweptTiles.push({ x: nx, y: ny }); }
                 }
+                if (nx !== cx || ny !== cy) anyMoved = true;
                 weather.tiles = [{ x: nx, y: ny }];
 
                 // Converting storms (blizzard) freeze every tile they pass over.
@@ -2043,49 +2051,69 @@
                     continue;
                 }
 
-                if (_bufferingRoundEvents) _reBeginGroup(`${def.icon} ${def.label} strikes`);
+                pendingStrikes.push({ weather, def, caster, nx, ny, struck });
+            }
 
-                // Damage — and for tornado/hurricane, displace — everyone it caught.
-                for (const v of struck) {
-                    if (!v || v.dead) continue;
-                    const hit = def.homingDamage ? def.homingDamage(v) : null;
-                    if (hit && hit.amount > 0) {
-                        actedVisibly = true;
-                        applyDamageToUnit(v, hit.amount, `${hit.text}`, {
-                            ignoreArmor: false,
-                            sourceUnit: caster || undefined
-                        });
-                        if (weather.type === 'thunderstorm' && window.ThreeLightning &&
-                            !(state.devAutoSim && !state._devSimShowAnims)) {
-                            ThreeLightning.strikeFromSky(v.x, v.y, {
-                                durationMs: 300,
-                                segments: 14,
-                                jitter: 0.3,
-                                branchChance: 0.35,
-                                branchDepth: 1,
-                                coreWidth: 6,
-                                glowWidth: 18,
-                                skyHeight: 650,
-                            });
-                        }
-                    }
-                    if (def.displaces && !v.dead) {
-                        const pushes = def.displaceTiles || 2;
-                        for (let p = 0; p < pushes; p++) {
-                            const res = applyBlowback(v, nx, ny, `${def.icon} `);
-                            if (!res || !res.pushed) break;
+            // Show the storms gliding to their new tiles before resolving their hits.
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+
+            // Phase 2 — now that the vortices have arrived, hurt and displace whoever
+            // they swept over.
+            const applyStrikes = () => {
+                let actedVisibly = false;
+                for (const ps of pendingStrikes) {
+                    const { weather, def, caster, nx, ny, struck } = ps;
+                    if (_bufferingRoundEvents) _reBeginGroup(`${def.icon} ${def.label} strikes`);
+
+                    // Damage — and for tornado/hurricane, displace — everyone it caught.
+                    for (const v of struck) {
+                        if (!v || v.dead) continue;
+                        const hit = def.homingDamage ? def.homingDamage(v) : null;
+                        if (hit && hit.amount > 0) {
                             actedVisibly = true;
+                            applyDamageToUnit(v, hit.amount, `${hit.text}`, {
+                                ignoreArmor: false,
+                                sourceUnit: caster || undefined
+                            });
+                            if (weather.type === 'thunderstorm' && window.ThreeLightning &&
+                                !(state.devAutoSim && !state._devSimShowAnims)) {
+                                ThreeLightning.strikeFromSky(v.x, v.y, {
+                                    durationMs: 300,
+                                    segments: 14,
+                                    jitter: 0.3,
+                                    branchChance: 0.35,
+                                    branchDepth: 1,
+                                    coreWidth: 6,
+                                    glowWidth: 18,
+                                    skyHeight: 650,
+                                });
+                            }
+                        }
+                        if (def.displaces && !v.dead) {
+                            const pushes = def.displaceTiles || 2;
+                            for (let p = 0; p < pushes; p++) {
+                                const res = applyBlowback(v, nx, ny, `${def.icon} `);
+                                if (!res || !res.pushed) break;
+                                actedVisibly = true;
+                            }
                         }
                     }
                 }
-            }
 
-            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
 
-            if (actedVisibly && !_skipVisuals()) {
-                window.setTimeout(finish, 750);
+                if (actedVisibly && !_skipVisuals()) {
+                    window.setTimeout(finish, 750);
+                } else {
+                    finish();
+                }
+            };
+
+            // Wait out the slide only when something actually moved and we're animating.
+            if (pendingStrikes.length && anyMoved && !_skipVisuals()) {
+                window.setTimeout(applyStrikes, SLIDE_MS);
             } else {
-                finish();
+                applyStrikes();
             }
         }
 
