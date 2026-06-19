@@ -2487,7 +2487,7 @@ function EnemyActionMenu({ st }) {
 
   return h('div', {
     style: {
-      position: 'absolute', bottom: 16, left: 252, width: 300, zIndex: 14,
+      position: 'absolute', bottom: 16, left: 252, width: 344, zIndex: 14,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
     },
@@ -2672,14 +2672,64 @@ function EnemyActionMenu({ st }) {
           }
         };
 
+        const sp = a.spell || null;
+        const cat = sp && typeof classifySpell === 'function' ? classifySpell(sp) : null;
+
+        // Element / kind badge (top-left) — spell type for spells, action kind otherwise.
+        let badgeText, badgeColor;
+        if (spType) { badgeText = spType.toUpperCase(); badgeColor = spTypeColor; }
+        else if (a.id === 'attack') { badgeText = 'ATTACK'; badgeColor = fc; }
+        else if (a.id === 'combo') { badgeText = 'COMBO'; badgeColor = EW.time; }
+        else if (a.id && a.id.indexOf('item:') === 0) { badgeText = 'BANE'; badgeColor = '#e0944a'; }
+        else { badgeText = 'ACTION'; badgeColor = EW.inkMute; }
+
+        let cardDesc;
+        if (sp) cardDesc = sp.desc || spellTagline(sp);
+        else if (a.id === 'attack') cardDesc = 'Basic weapon strike on the target.';
+        else if (a.id === 'combo') cardDesc = 'Linked assault — team up with a nearby ally.';
+        else if (a.id && a.id.indexOf('item:') === 0) cardDesc = 'Hurl a bane weapon' + (a.typeNote ? ' — ' + a.typeNote : '.');
+        else cardDesc = '';
+
+        const tMode = sp ? spellTargetMode(sp) : 'Single Target';
+        const dlv = sp ? spellDeliveryBadge(sp, cat)
+                  : (a.id === 'combo' ? { label: 'COMBO', color: EW.time }
+                  : { label: 'PHYSICAL', color: '#e0944a' });
+
+        // Power chip — prefer the live damage estimate vs THIS target.
+        let powerChip = null;
+        if (a.preview && a.preview.min != null && a.preview.max != null) powerChip = { value: a.preview.min + '–' + a.preview.max, unit: 'PWR', color: '#ee6655' };
+        else if (a.preview && a.preview.amount) powerChip = { value: '~' + a.preview.amount, unit: 'PWR', color: '#ee6655' };
+        else if (sp) powerChip = spellPowerStat(sp);
+
+        const statChip = (v, u, col) => h('span', {
+          style: { display: 'inline-flex', alignItems: 'baseline', gap: 2, flexShrink: 0, fontFamily: '"DotGothic16", monospace' },
+        },
+          h('span', { style: { fontSize: 13, fontWeight: 700, color: col, letterSpacing: '0.01em' }}, v),
+          h('span', { style: { fontSize: 8, fontWeight: 700, color: col, opacity: 0.78, letterSpacing: '0.05em' }}, u),
+        );
+
+        const cardAccent = isAvail
+          ? (a.id === 'combo' ? EW.time : (spTypeColor !== EW.inkMute ? spTypeColor : fc))
+          : EW.inkDim;
+
         return h('div', {
           key: a.id,
-          className: 'rhud-row' + (isAvail ? '' : ' rhud-disabled'),
+          className: 'rhud-move-slot' + (isAvail ? '' : ' is-disabled'),
+          style: { position: 'relative', margin: '5px 8px' },
+        },
+
+          h('div', { className: 'rhud-move-glow', 'aria-hidden': 'true' }),
+
+          h('div', {
+          className: 'rhud-move-card' + (isAvail ? '' : ' rhud-disabled'),
           style: {
-            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
+            position: 'relative', zIndex: 1, overflow: 'hidden',
             cursor: isAvail ? 'pointer' : 'default',
-            opacity: isAvail ? 1 : 0.38,
-            borderLeft: '2px solid transparent',
+            opacity: isAvail ? 1 : 0.45,
+            background: 'linear-gradient(135deg, rgba(13,15,24,0.96) 0%, rgba(9,11,18,0.93) 100%)',
+            border: '1px solid rgba(120,140,180,0.16)',
+            borderLeft: '3px solid ' + cardAccent,
+            clipPath: 'polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px)',
           },
           onClick: isAvail ? handleClick : undefined,
           onMouseEnter: (e) => { if (a.spell) showSpellTooltip(a.spell, e.nativeEvent || e); if (isAvail && typeof _showMoveArrowPreview === 'function') _showMoveArrowPreview(a.moveTile, a); },
@@ -2687,58 +2737,67 @@ function EnemyActionMenu({ st }) {
           onMouseLeave: () => { hideSpellTooltip(); if (isAvail && typeof _clearMoveArrowPreview === 'function') _clearMoveArrowPreview(); },
         },
 
-          h('span', { style: {
-            width: 14, textAlign: 'center', fontSize: 12, fontWeight: 600,
-            color: isAvail ? (a.id === 'combo' ? EW.time : fc) : EW.inkDim,
-          }}, a.icon),
-
-          h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }},
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-              typeAdv && h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 700,
-                color: typeAdv === '▲' ? EW.good : EW.bad,
-              }}, typeAdv),
-              h('span', { style: {
-                fontFamily: '"Cinzel", serif', fontSize: 14,
-                color: isAvail ? EW.ink : EW.inkDim, letterSpacing: '0.02em',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}, a.label),
-              spType && h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 7,
-                letterSpacing: '0.12em', color: spTypeColor, padding: '0 3px',
-                background: spTypeColor + '1f', border: '1px solid ' + spTypeColor + '55',
-                flexShrink: 0,
-              }}, spType.toUpperCase()),
-            ),
-
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-              isMove && h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 7,
-                color: EW.warn, letterSpacing: '0.06em',
-              }}, '→ move first'),
-              !isAvail && a.reason && h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 600,
-                color: EW.bad, letterSpacing: '0.06em',
-              }}, a.reason),
-            ),
-
-            a.spell && h('div', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8,
-              color: EW.inkDim, letterSpacing: '0.02em', lineHeight: '1.3',
-              overflow: 'hidden', textOverflow: 'ellipsis',
-              display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-            }}, spellTagline(a.spell)),
+          // ── Header: icon + NAME + type-advantage + power / MP / AP ──
+          h('div', { style: {
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '6px 11px',
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 100%)',
+            borderBottom: '1px solid rgba(120,140,180,0.12)',
+          }},
+            h('span', { style: { fontSize: 12, fontWeight: 700, flexShrink: 0,
+              color: isAvail ? (a.id === 'combo' ? EW.time : fc) : EW.inkDim }}, a.icon),
+            h('span', { style: {
+              flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15, fontWeight: 700,
+              color: isAvail ? EW.ink : EW.inkMute, letterSpacing: '0.03em', textTransform: 'uppercase',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}, a.label),
+            typeAdv && h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 12, fontWeight: 700,
+              color: typeAdv === '▲' ? EW.good : EW.bad, flexShrink: 0,
+            }}, typeAdv),
+            powerChip && statChip(powerChip.value, powerChip.unit, powerChip.color),
+            a.mpCost ? statChip(a.mpCost, 'MP', EW.space) : null,
+            statChip(a.apCost, 'AP', EW.time),
           ),
 
-          dmgText && h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700,
-            color: '#ee6655', letterSpacing: '0.04em', flexShrink: 0,
-          }}, dmgText),
+          // ── Body: kind badge + description ──
+          h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
+            h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+              color: badgeColor, background: badgeColor + '26', border: '1px solid ' + badgeColor + '7a',
+              padding: '2px 7px', lineHeight: '1.3', flexShrink: 0,
+              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 3px 100%, 0 calc(100% - 3px))',
+            }}, badgeText),
+            cardDesc && h('span', { style: {
+              flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
+              color: isAvail ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
+            }}, cardDesc),
+          ),
 
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 8,
-            color: EW.inkMute, letterSpacing: '0.06em', flexShrink: 0, minWidth: 44, textAlign: 'right',
-          }}, costLabel),
+          // ── Footer: target mode · move-first + delivery / reason ──
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, padding: '2px 11px 8px' }},
+            h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: EW.inkMute,
+            }}, tMode),
+            isMove && h('span', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+              color: EW.warn, flexShrink: 0,
+            }}, '· ↳ MOVE ' + a.moveTile.moveCost + 'mv'),
+            h('span', { style: { flex: 1 }}),
+            (!isAvail && a.reason)
+              ? h('span', { style: {
+                  fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                  color: EW.bad, flexShrink: 0,
+                }}, a.reason)
+              : h('span', { style: {
+                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
+                  color: '#fff', background: dlv.color, border: '1px solid ' + dlv.color,
+                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
+                  boxShadow: '0 0 7px ' + dlv.color + '70',
+                }}, dlv.label),
+          ),
+          )
         );
       }),
       actions.length === 0 && h('div', { style: {
