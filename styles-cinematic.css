@@ -1,0 +1,2495 @@
+/* ═══ Entropy Wars — Cinematics: VS splash, attack cutscene, KO, victory, banners ═══ */
+        /* ════════════════════════════════════════════════════
+       JRPG VICTORY / DEFEAT SCREEN (v202)
+       Full-screen 3D perspective landscape with party
+       ════════════════════════════════════════════════════ */
+        .result-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 1000;
+            overflow: hidden;
+            background: #080610;
+        }
+
+        .result-overlay.hidden {
+            display: none;
+        }
+
+        /* ── Sky ── */
+        .vic-sky {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, var(--vic-sky-top, #0a0818) 0%, var(--vic-sky-mid, #1a1830) 40%, var(--vic-sky-bot, #2a2040) 70%, var(--vic-horizon, #483860) 100%);
+        }
+
+        .vic-sky.victory {
+            --vic-sky-top: #081020;
+            --vic-sky-mid: #182848;
+            --vic-sky-bot: #2a3858;
+            --vic-horizon: #c88830;
+        }
+
+        .vic-sky.defeat {
+            --vic-sky-top: #0a0408;
+            --vic-sky-mid: #1a0810;
+            --vic-sky-bot: #2a1018;
+            --vic-horizon: #401818;
+        }
+
+        /* Animated light rays */
+        .vic-rays {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 120% 60% at 50% 80%, rgba(200, 160, 60, 0.12) 0%, transparent 70%);
+            opacity: 0;
+            animation: vicRaysFade 2s ease-out 0.5s forwards;
+        }
+
+        .defeat .vic-rays {
+            background: radial-gradient(ellipse 120% 60% at 50% 80%, rgba(160, 30, 30, 0.08) 0%, transparent 70%);
+        }
+
+        @keyframes vicRaysFade {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Stars / particles */
+        .vic-particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .vic-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 220, 120, 0.6);
+            border-radius: 50%;
+            animation: vicParticleFloat 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes vicParticleFloat {
+            from {
+                transform: translateY(0) scale(1);
+                opacity: 0.3;
+            }
+
+            to {
+                transform: translateY(-30px) scale(1.5);
+                opacity: 0.8;
+            }
+        }
+
+        /* ── Ground plane (CSS 3D perspective) ── */
+        .vic-ground-wrap {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 55%;
+            perspective: 400px;
+            overflow: hidden;
+        }
+
+        .vic-ground {
+            position: absolute;
+            bottom: 0;
+            left: -50%;
+            right: -50%;
+            height: 200%;
+            transform-origin: bottom center;
+            transform: rotateX(65deg);
+            background: var(--vic-ground-bg);
+            background-size: 32px 32px;
+        }
+
+        .vic-ground.victory {
+            --vic-ground-bg: repeating-conic-gradient(rgba(40, 60, 30, 0.8) 0% 25%, rgba(30, 50, 22, 0.8) 0% 50%);
+        }
+
+        .vic-ground.defeat {
+            --vic-ground-bg: repeating-conic-gradient(rgba(40, 20, 20, 0.8) 0% 25%, rgba(30, 15, 15, 0.8) 0% 50%);
+        }
+
+        /* Horizon fog */
+        .vic-ground::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(180deg, var(--vic-horizon, #483860) 0%, transparent 100%);
+        }
+
+        /* ── Party sprites on landscape ── */
+        .vic-party {
+            position: absolute;
+            bottom: 12%;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 0;
+            pointer-events: none;
+        }
+
+        .vic-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            animation: vicUnitLand 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .vic-unit:nth-child(1) {
+            animation-delay: 0.3s;
+        }
+
+        .vic-unit:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+
+        .vic-unit:nth-child(3) {
+            animation-delay: 0.7s;
+        }
+
+        .vic-unit:nth-child(4) {
+            animation-delay: 0.9s;
+        }
+
+        .vic-unit:nth-child(5) {
+            animation-delay: 1.1s;
+        }
+
+        .vic-unit:nth-child(6) {
+            animation-delay: 1.3s;
+        }
+
+        @keyframes vicUnitLand {
+            0% {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.8);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .vic-unit-img {
+            image-rendering: pixelated;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+        }
+
+        .vic-unit.dead .vic-unit-img {
+            filter: grayscale(0.8) brightness(0.5) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+        }
+
+        /* Ground shadow under each sprite */
+        .vic-unit-shadow {
+            width: 80%;
+            height: 6px;
+            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            margin-top: -2px;
+        }
+
+        .vic-unit-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 4px;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+            white-space: nowrap;
+            letter-spacing: 0.03em;
+        }
+
+        .vic-unit-name.p1 {
+            color: rgba(120, 180, 255, 0.85);
+        }
+
+        .vic-unit-name.p2 {
+            color: rgba(255, 120, 120, 0.85);
+        }
+
+        /* ── Title ── */
+        .vic-title-wrap {
+            position: absolute;
+            top: 6%;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .vic-title {
+            font-size: clamp(48px, 10vw, 96px);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            line-height: 1;
+            opacity: 0;
+            animation: vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+        }
+
+        .vic-title.victory {
+            color: #f0d860;
+            text-shadow:
+                0 0 40px rgba(240, 200, 60, 0.4),
+                0 0 80px rgba(240, 180, 40, 0.2),
+                0 4px 0 #b08020,
+                0 6px 0 #806010;
+        }
+
+        .vic-title.defeat {
+            color: #cc3030;
+            text-shadow:
+                0 0 40px rgba(200, 40, 40, 0.3),
+                0 4px 0 #801818,
+                0 6px 0 #500c0c;
+        }
+
+        @keyframes vicTitleSlam {
+            0% {
+                opacity: 0;
+                transform: scale(2.5) translateY(-20px);
+                filter: blur(8px);
+            }
+
+            60% {
+                opacity: 1;
+                transform: scale(0.95) translateY(2px);
+                filter: blur(0);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .vic-subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 0.8s forwards;
+        }
+
+        @keyframes vicFadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── MVP Awards Panel ── */
+        .vic-awards {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 280px;
+            z-index: 10;
+        }
+
+
+        .vic-award {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(168deg, rgba(12,11,20,0.92), rgba(8,8,16,0.94));
+            border: 1px solid rgba(140, 140, 200, 0.08);
+            border-radius: 3px;
+            opacity: 0;
+            animation: vicAwardSlide 0.5s ease forwards;
+        }
+
+        .vic-award:nth-child(1) {
+            animation-delay: 1.4s;
+        }
+
+        .vic-award:nth-child(2) {
+            animation-delay: 1.7s;
+        }
+
+        .vic-award:nth-child(3) {
+            animation-delay: 2.0s;
+        }
+
+        .vic-award:nth-child(4) {
+            animation-delay: 2.3s;
+        }
+
+        .vic-award:nth-child(5) {
+            animation-delay: 2.6s;
+        }
+
+        .vic-award:nth-child(6) {
+            animation-delay: 2.9s;
+        }
+
+        .vic-award:nth-child(7) {
+            animation-delay: 3.2s;
+        }
+
+        @keyframes vicAwardSlide {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .vic-award.gold {
+            border-color: rgba(200, 170, 60, 0.3);
+            background: rgba(40, 30, 10, 0.75);
+        }
+
+        .vic-award-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .vic-award-sprite {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+            flex-shrink: 0;
+            border-radius: 4px;
+        }
+
+        .vic-award-detail {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .vic-award-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .vic-award-name {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .vic-award.gold .vic-award-name {
+            color: var(--gold);
+        }
+
+        .vic-award-stat {
+            font-size: 10px;
+            color: var(--accent);
+        }
+
+        /* ── Victory Screen: Achievements ── */
+        .vic-achievements {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: rgba(140,140,200,0.02);
+            border: 1px solid rgba(140,140,200,0.05);
+            border-radius: 10px;
+        }
+        .vic-all-achievements {
+            margin-top: 8px;
+            background: rgba(200,180,150,0.02);
+            border-color: rgba(140,140,200,0.035);
+        }
+        .vic-ach-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+        .vic-ach-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .vic-ach-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: rgba(106,138,96,0.1);
+            border: 1px solid rgba(106,138,96,0.2);
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        .vic-ach-item.locked {
+            background: rgba(140,140,200,0.02);
+            border-color: rgba(140,140,200,0.04);
+            opacity: 0.45;
+        }
+        .vic-ach-icon {
+            font-size: 14px;
+        }
+        .vic-ach-name {
+            font-weight: 700;
+            color: var(--text);
+        }
+        .vic-ach-item.locked .vic-ach-name {
+            color: var(--muted);
+        }
+
+        /* ── Bottom button bar ── */
+        .vic-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 24px 16px;
+            background: linear-gradient(180deg, transparent 0%, rgba(6, 5, 10, 0.90) 30%, rgba(6, 5, 10, 0.97) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .vic-bottom button {
+            font-size: 14px;
+            padding: 10px 22px;
+            min-width: 140px;
+        }
+
+        /* ── Elo Rating Display on Result Screen ── */
+        .vic-elo-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 10px;
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 1.2s forwards;
+        }
+        .vic-elo-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 3px;
+            background: rgba(10,10,18,0.8);
+            border: 1px solid rgba(200,180,100,0.12);
+        }
+        .vic-elo-rank-icon {
+            font-size: 20px;
+        }
+        .vic-elo-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .vic-elo-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            font-weight: 700;
+        }
+        .vic-elo-value {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .vic-elo-delta {
+            font-size: 15px;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-variant-numeric: tabular-nums;
+        }
+        .vic-elo-delta.positive {
+            color: #55dd78;
+            background: rgba(60,180,90,0.12);
+            border: 1px solid rgba(60,180,90,0.2);
+        }
+        .vic-elo-delta.negative {
+            color: #ff6b6b;
+            background: rgba(200,60,60,0.12);
+            border: 1px solid rgba(200,60,60,0.2);
+        }
+        .vic-elo-delta.neutral {
+            color: var(--muted);
+            background: rgba(140,140,200,0.04);
+            border: 1px solid rgba(200,180,150,0.1);
+        }
+
+        /* ── Per-Unit Stats Table ── */
+        .vic-stats-table-wrap {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            max-width: 420px;
+            max-height: 70vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(184,160,96,0.3) transparent;
+        }
+        .vic-stats-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 11px;
+            background: linear-gradient(168deg, rgba(12,11,20,0.88), rgba(8,8,16,0.92));
+            border: 1px solid rgba(140,140,200,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 1.6s forwards;
+        }
+        .vic-stats-table caption {
+            padding: 6px 10px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            text-align: left;
+            background: rgba(140,140,200,0.025);
+        }
+        .vic-stats-table th {
+            padding: 5px 6px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(184,160,96,0.6);
+            text-align: center;
+            border-bottom: 1px solid rgba(140,140,200,0.05);
+            background: rgba(140,140,200,0.02);
+            white-space: nowrap;
+        }
+        .vic-stats-table th:first-child { text-align: left; padding-left: 8px; }
+        .vic-stats-table td {
+            padding: 5px 6px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: var(--text);
+            border-bottom: 1px solid rgba(140,140,200,0.025);
+        }
+        .vic-stats-table td:first-child { text-align: left; padding-left: 4px; }
+        .vic-stats-table tr:last-child td { border-bottom: none; }
+        .vic-stats-table tr.team-header td {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 5px 8px;
+            border-bottom: 1px solid rgba(140,140,200,0.05);
+        }
+        .vic-stats-table tr.team-header.p1-hdr td { color: var(--p1-score); background: rgba(var(--p1-rgb),0.06); }
+        .vic-stats-table tr.team-header.p2-hdr td { color: var(--p2-score); background: rgba(var(--p2-rgb),0.06); }
+        .vic-stats-table .unit-sprite-cell {
+            display: flex; align-items: center; gap: 5px;
+        }
+        .vic-stats-table .unit-sprite-cell img {
+            width: 22px; height: 22px; image-rendering: pixelated; border-radius: 3px; flex-shrink: 0;
+        }
+        .vic-stats-table .unit-sprite-cell .unit-name-text {
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;
+        }
+        .vic-stats-table .dead-unit { opacity: 0.45; }
+        .vic-stats-table .stat-best { color: var(--gold); }
+        .vic-stats-table .stat-zero { opacity: 0.3; }
+
+        /* ── Match Duration ── */
+        /* ── Team Damage Comparison Bar ── */
+        .vic-team-dmg-bar {
+            display: flex;
+            width: 240px;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px auto 0;
+            background: rgba(140,140,200,0.04);
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 1.4s forwards;
+        }
+        .vic-team-dmg-fill-p1 {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(var(--p1-rgb),0.7), rgba(var(--p1-rgb),0.9));
+            transition: width 0.6s ease;
+        }
+        .vic-team-dmg-fill-p2 {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(var(--p2-rgb),0.9), rgba(var(--p2-rgb),0.7));
+            transition: width 0.6s ease;
+        }
+        .vic-team-dmg-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 240px;
+            margin: 2px auto 0;
+            font-size: 9px;
+            font-weight: 700;
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 1.4s forwards;
+        }
+        .vic-team-dmg-labels .p1-lbl { color: var(--p1-score); }
+        .vic-team-dmg-labels .p2-lbl { color: var(--p2-score); }
+
+        /* ── Lobby Elo Badge ── */
+        .vic-streak {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(184, 160, 96, 0.1);
+            border: 1px solid rgba(184, 160, 96, 0.2);
+            color: var(--gold);
+        }
+
+        .vic-match-info {
+            font-size: 12px;
+            color: var(--muted);
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 1s forwards;
+        }
+
+
+        /* ── Cinematic attack name banner (top-left corner) ── */
+        .cin-attack-name {
+            position: absolute;
+            top: 14%;
+            left: 4%;
+            transform: translateX(-30px) scale(0.8);
+            font-size: clamp(22px, 4.5vw, 48px);
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            text-shadow:
+                0 0 20px rgba(255, 200, 60, 0.7),
+                0 0 50px rgba(255, 160, 40, 0.35),
+                0 3px 0 rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            z-index: 20;
+            pointer-events: none;
+            white-space: nowrap;
+            font-family: 'Cinzel', serif;
+            -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
+            border-left: 3px solid rgba(255, 200, 60, 0.8);
+            padding-left: 12px;
+        }
+
+        .cin-attack-name.visible {
+            animation: cinAttackNameSlam 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes cinAttackNameSlam {
+            0% {
+                opacity: 0;
+                transform: translateX(-60px) scale(1.3);
+                filter: blur(6px);
+            }
+
+            60% {
+                opacity: 1;
+                transform: translateX(4px) scale(0.97);
+                filter: blur(0);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        .cin-attack-name.fade-out {
+            transition: opacity 0.4s ease;
+            opacity: 0;
+        }
+
+        /* ── Cinematic player labels (corners) ── */
+        .cin-player-label {
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0;
+            font-family: 'Cinzel', serif;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .cin-player-label.cin-label-attacker {
+            bottom: 13%;
+            left: 4%;
+            transform: translateY(20px);
+        }
+
+        .cin-player-label.cin-label-defender {
+            top: 14%;
+            right: 4%;
+            text-align: right;
+            align-items: flex-end;
+            transform: translateY(-20px);
+        }
+
+        .cin-player-label.visible {
+            animation: cinLabelSlide 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .cin-label-attacker.visible {
+            animation-name: cinLabelSlideUp;
+        }
+
+        .cin-label-defender.visible {
+            animation-name: cinLabelSlideDown;
+        }
+
+        @keyframes cinLabelSlideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes cinLabelSlideDown {
+            0% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cin-player-label .cin-label-player {
+            font-size: clamp(10px, 1.6vw, 16px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            opacity: 0.7;
+        }
+
+        .cin-player-label .cin-label-name {
+            font-size: clamp(16px, 3vw, 32px);
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .cin-player-label .cin-label-faction {
+            font-size: clamp(9px, 1.4vw, 14px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            opacity: 0.65;
+            margin-top: 1px;
+        }
+
+        .cin-player-label .cin-label-faction.faction-space {
+            color: rgb(90, 169, 255);
+        }
+
+        .cin-player-label .cin-label-faction.faction-time {
+            color: rgb(255, 200, 60);
+        }
+
+        .cin-player-label .cin-label-faction.faction-chaos {
+            color: rgb(255, 90, 110);
+        }
+
+        .cin-player-label .cin-label-hp {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(10px, 1.5vw, 15px);
+            font-weight: 700;
+            opacity: 0.55;
+            margin-top: 2px;
+        }
+
+        .cin-player-label.cin-label-attacker .cin-label-player,
+        .cin-player-label.cin-label-attacker .cin-label-name {
+            color: rgba(var(--cin-atk-rgb), 1);
+            text-shadow: 0 0 12px rgba(var(--cin-atk-rgb), 0.4), 0 2px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        .cin-player-label.cin-label-defender .cin-label-player,
+        .cin-player-label.cin-label-defender .cin-label-name {
+            color: rgba(var(--cin-def-rgb), 1);
+            text-shadow: 0 0 12px rgba(var(--cin-def-rgb), 0.4), 0 2px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        /* ── Cinematic floating damage numbers ── */
+        .cin-float-dmg {
+            position: absolute;
+            z-index: 22;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(48px, 8vw, 80px);
+            color: #ff4444;
+            text-shadow:
+                0 0 20px rgba(255, 0, 0, 0.8),
+                0 0 40px rgba(255, 0, 0, 0.4),
+                3px 3px 0 #330000,
+                -1px -1px 0 #550000;
+            opacity: 0;
+            letter-spacing: -2px;
+            right: 18%;
+            top: 30%;
+        }
+
+        .cin-float-dmg.pop {
+            animation: cinFloatDmgPop 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cinFloatDmgPop {
+            0% {
+                opacity: 0;
+                transform: scale(3) translateY(20px);
+                filter: blur(4px);
+            }
+
+            12% {
+                opacity: 1;
+                transform: scale(0.85) translateY(0);
+                filter: blur(0);
+            }
+
+            20% {
+                transform: scale(1.15) translateY(0);
+            }
+
+            35% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.9) translateY(-50px);
+            }
+        }
+
+        .cin-float-dmg.crit {
+            color: #ffdd00;
+            font-size: clamp(56px, 10vw, 96px);
+            text-shadow:
+                0 0 24px rgba(255, 200, 0, 0.9),
+                0 0 50px rgba(255, 160, 0, 0.5),
+                3px 3px 0 #443300,
+                -1px -1px 0 #664400;
+        }
+
+        .cin-float-dmg.dodge {
+            color: #88ddff;
+            font-size: clamp(36px, 6vw, 60px);
+            text-shadow: 0 0 16px rgba(100, 180, 255, 0.8), 2px 2px 0 #112244;
+        }
+
+        .cin-float-dmg.heal {
+            color: #44ff88;
+            text-shadow: 0 0 16px rgba(60, 255, 120, 0.8), 2px 2px 0 #003311;
+        }
+
+        /* CRIT label that flies out above the number */
+        .cin-float-crit-label {
+            position: absolute;
+            z-index: 23;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(18px, 3vw, 28px);
+            color: #ffcc00;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            text-shadow: 0 0 12px rgba(255, 200, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            right: 20%;
+            top: 22%;
+        }
+
+        .cin-float-crit-label.pop {
+            animation: cinCritLabelPop 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes cinCritLabelPop {
+            0% {
+                opacity: 0;
+                transform: scale(2) translateY(10px);
+            }
+
+            20% {
+                opacity: 1;
+                transform: scale(0.95) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+        }
+
+        /* ── Zoom navigation arrows ── */
+
+        /* ── Cinematic KO splash ── */
+        .cin-ko {
+            position: absolute;
+            z-index: 25;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(72px, 14vw, 140px);
+            color: #ff2222;
+            text-shadow:
+                0 0 30px rgba(255, 0, 0, 0.9),
+                0 0 60px rgba(255, 0, 0, 0.5),
+                4px 4px 0 #440000,
+                -2px -2px 0 #660000;
+            letter-spacing: 8px;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%) scale(4);
+            opacity: 0;
+        }
+        .cin-ko.pop {
+            animation: cinKoPop 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* ── Cinematic DEATH animation: defender collapses on KO ── */
+        .cin-defender.cin-death {
+            animation: cinDeathCollapse 1.0s cubic-bezier(0.4, 0, 0.7, 0.2) forwards !important;
+        }
+        @keyframes cinDeathCollapse {
+            0%   { transform: translateX(6px) scale(0.95); opacity: 0.95; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)); }
+            15%  { transform: translateX(10px) scale(0.97) rotate(5deg); opacity: 0.9; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)) brightness(1.8) saturate(0.3); }
+            40%  { transform: translateX(20px) rotate(18deg) scaleY(0.85) scaleX(0.9); opacity: 0.7; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)) brightness(0.6) saturate(0); }
+            70%  { transform: translateX(30px) translateY(25px) rotate(35deg) scaleY(0.5) scaleX(0.8); opacity: 0.4; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)) brightness(0.4) saturate(0); }
+            100% { transform: translateX(35px) translateY(40px) rotate(45deg) scaleY(0.25) scaleX(0.7); opacity: 0; filter: brightness(0.2) saturate(0); }
+        }
+        /* Extra defenders also collapse on death */
+        .cin-defender-extra.cin-death {
+            animation: cinDeathCollapseExtra 0.8s cubic-bezier(0.4, 0, 0.7, 0.2) forwards !important;
+        }
+        @keyframes cinDeathCollapseExtra {
+            0%   { opacity: 0.8; }
+            30%  { opacity: 0.5; filter: drop-shadow(0 4px 14px rgba(0,0,0,0.5)) brightness(0.6) saturate(0); }
+            100% { opacity: 0; transform: translateY(30px) rotate(30deg) scale(0.5); filter: brightness(0.2) saturate(0); }
+        }
+        @keyframes cinKoPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(4) rotate(-8deg); filter: blur(8px); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(0.8) rotate(2deg); filter: blur(0); }
+            25% { transform: translate(-50%, -50%) scale(1.15) rotate(-1deg); }
+            40% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9) translateY(-30px); }
+        }
+
+        /* ── Cinematic DODGE effect ── */
+        .cin-defender.cin-dodge {
+            animation: cinDodgeSlide 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+        }
+        @keyframes cinDodgeSlide {
+            0% { transform: translateX(0); }
+            30% { transform: translateX(60px) translateY(-20px); opacity: 0.5; }
+            60% { transform: translateX(40px) translateY(-10px); opacity: 0.7; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .cin-dodge-label {
+            position: absolute;
+            z-index: 24;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(36px, 7vw, 64px);
+            color: #88ddff;
+            text-shadow: 0 0 20px rgba(100, 180, 255, 0.9), 3px 3px 0 #112244;
+            right: 15%;
+            top: 35%;
+            opacity: 0;
+            letter-spacing: 3px;
+        }
+        .cin-dodge-label.pop {
+            animation: cinDodgeLabelPop 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes cinDodgeLabelPop {
+            0% { opacity: 0; transform: scale(2.5) translateX(20px); }
+            20% { opacity: 1; transform: scale(0.9) translateX(0); }
+            35% { transform: scale(1.1); }
+            60% { opacity: 1; }
+            100% { opacity: 0; transform: scale(0.95) translateY(-20px); }
+        }
+
+        /* ── Cinematic COUNTER effect ── */
+        .cin-defender.cin-counter-strike {
+            animation: cinCounterStrike 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+        }
+        @keyframes cinCounterStrike {
+            0% { transform: translateX(0); }
+            30% { transform: translateX(-40px) scale(1.1); }
+            60% { transform: translateX(-70px) scale(1.15); }
+            100% { transform: translateX(0) scale(1); }
+        }
+        .cin-counter-label {
+            position: absolute;
+            z-index: 24;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: clamp(32px, 6vw, 56px);
+            color: #ffaa22;
+            text-shadow: 0 0 20px rgba(255, 160, 0, 0.9), 3px 3px 0 #442200;
+            right: 18%;
+            top: 28%;
+            opacity: 0;
+            letter-spacing: 2px;
+        }
+        .cin-counter-label.pop {
+            animation: cinCounterLabelPop 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes cinCounterLabelPop {
+            0% { opacity: 0; transform: scale(2.5) translateX(-20px); }
+            20% { opacity: 1; transform: scale(0.9) translateX(0); }
+            35% { transform: scale(1.1); }
+            60% { opacity: 1; }
+            100% { opacity: 0; transform: scale(0.95) translateY(-15px); }
+        }
+
+        .cin-type-effect {
+            position: absolute;
+            z-index: 24;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            font-size: clamp(14px, 2.5vw, 22px);
+            font-style: italic;
+            right: 8%;
+            bottom: 30%;
+            opacity: 0;
+            letter-spacing: 1px;
+        }
+        .cin-type-effect.super-effective {
+            color: #55d38a;
+            text-shadow: 0 0 14px rgba(80, 200, 130, 0.6), 0 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .cin-type-effect.not-effective {
+            color: #a9b0d0;
+            text-shadow: 0 0 10px rgba(140, 150, 190, 0.4), 0 2px 4px rgba(0, 0, 0, 0.7);
+        }
+        .cin-type-effect.pop {
+            animation: cinTypeEffectPop 1.6s ease-out forwards;
+        }
+        @keyframes cinTypeEffectPop {
+            0% { opacity: 0; transform: translateY(10px); }
+            15% { opacity: 1; transform: translateY(0); }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* ── Turn Transition Banner ── */
+        .turn-banner-overlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: auto;
+            bottom: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            z-index: 95;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .25s ease;
+        }
+
+        .turn-banner-overlay.visible {
+            opacity: 1;
+        }
+
+        .turn-banner-card {
+            text-align: left;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: rgba(6, 10, 20, 0.92);
+            border: 1.5px solid rgba(140, 140, 200, 0.08);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+            transform: translateX(-20px) scale(0.9);
+            transition: transform .25s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        .turn-banner-overlay.visible .turn-banner-card {
+            transform: translateX(0) scale(1);
+        }
+
+
+        .turn-banner-round {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+
+        .turn-banner-player {
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .turn-banner-player.p1 {
+            color: var(--p1-color);
+        }
+
+        .turn-banner-player.p2 {
+            color: var(--p2-color);
+        }
+
+        .turn-banner-sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .turn-banner-blitz {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .turn-banner-sprite {
+            width: 36px;
+            height: 36px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+        }
+
+        .turn-banner-info {
+            text-align: left;
+        }
+
+
+        .turn-banner-unitname {
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1.15;
+        }
+
+        .turn-banner-unitsub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .turn-banner-ptag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 1px 7px;
+            border-radius: 4px;
+            margin-right: 6px;
+        }
+
+        .turn-banner-ptag.p1 {
+            background: rgba(100, 180, 255, 0.18);
+            color: var(--p1-color);
+        }
+
+        .turn-banner-ptag.p2 {
+            background: rgba(255, 100, 100, 0.18);
+            color: var(--p2-color);
+        }
+
+        /* ── Integrated Unit Detail inside Turn Banner ── */
+        .tb-unit-detail {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(200,180,150,0.1);
+            min-width: 200px;
+        }
+        .tb-unit-detail .tb-ud-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .tb-unit-detail .tb-ud-sprite {
+            width: 36px; height: 36px;
+            image-rendering: pixelated;
+            background-size: contain;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        .tb-unit-detail .tb-ud-name {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.15;
+        }
+        .tb-unit-detail .tb-ud-sub {
+            font-size: 9px;
+            color: var(--muted);
+            line-height: 1.2;
+        }
+        .tb-unit-detail .tb-ud-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .tb-unit-detail .tb-ud-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tb-unit-detail .tb-ud-bar-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--muted);
+            width: 18px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .tb-unit-detail .tb-ud-bar-track {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            min-width: 80px;
+        }
+        .tb-unit-detail .tb-ud-bar-fill-hp {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #2a7a2a, #44cc44);
+            transition: width 0.3s ease;
+        }
+        .tb-unit-detail .tb-ud-bar-fill-hp.low {
+            background: linear-gradient(90deg, #882222, #cc4444);
+        }
+        .tb-unit-detail .tb-ud-bar-fill-mp {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #2244aa, #4488ee);
+            transition: width 0.3s ease;
+        }
+        .tb-unit-detail .tb-ud-bar-text {
+            font-size: 8px;
+            color: var(--muted);
+            width: 62px;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        .tb-unit-detail .tb-ud-stats {
+            display: flex;
+            gap: 8px;
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+        .tb-unit-detail .tb-ud-stats span {
+            white-space: nowrap;
+        }
+
+
+        /* ── Round Banner (new round announcement) ── */
+        .round-banner-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 4, 10, 0.70);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .35s ease;
+        }
+        .round-banner-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .round-banner-content {
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform .4s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        .round-banner-overlay.visible .round-banner-content {
+            transform: scale(1);
+        }
+        .round-banner-label {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: rgba(184, 160, 96, 0.6);
+            margin-bottom: 4px;
+        }
+        .round-banner-number {
+            font-size: clamp(42px, 8vw, 72px);
+            font-weight: 900;
+            line-height: 1;
+            color: rgba(230, 218, 190, 0.95);
+            text-shadow: 0 0 40px rgba(184, 160, 96, 0.35), 0 2px 12px rgba(0,0,0,0.6);
+        }
+        .round-banner-line {
+            width: 120px;
+            height: 1px;
+            margin: 10px auto 0;
+            background: linear-gradient(90deg, transparent, rgba(184,160,96,0.4), transparent);
+        }
+
+        /* ── Death Banner ── */
+        .death-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(10, 12, 18, 0.92);
+            border: 2px solid rgba(140, 60, 60, 0.6);
+            border-radius: 12px;
+            padding: 14px 22px;
+            pointer-events: none;
+            animation: deathBannerAnim 2.2s ease forwards;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .death-banner-icon {
+            font-size: 28px;
+        }
+
+        .death-banner-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #d4c8b0;
+        }
+
+        .death-banner-sub {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--red);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        @keyframes deathBannerAnim {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.7);
+            }
+
+            12% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+
+            20% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            75% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1) translateY(-20px);
+            }
+        }
+
+        /* ── Low Health Screen Vignette ── */
+        @keyframes lowHealthVignette {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 0.9; }
+        }
+
+        /* ══ COMBAT BANNER — protect, pickup, status notifications ══ */
+        .combat-banner {
+            position: fixed;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.85);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: rgba(10, 12, 18, 0.93);
+            border: 2px solid rgba(200, 180, 150, 0.5);
+            border-radius: 10px;
+            padding: 10px 24px;
+            pointer-events: none;
+            animation: combatBannerAnim 2.8s ease forwards;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .combat-banner-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #d4c8b0;
+            white-space: nowrap;
+        }
+        .combat-banner-sub {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        @keyframes combatBannerAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.75); }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
+            18% { transform: translate(-50%, -50%) scale(1); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1) translateY(-16px); }
+        }
+
+        /* ── VS Splash Screen (online PvP) ── */
+        .vs-splash-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(10, 12, 18, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        .vs-splash-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .vs-splash-card {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .vs-splash-overlay.visible .vs-splash-card {
+            transform: scale(1);
+        }
+
+        .vs-team {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 120px;
+        }
+
+        .vs-team-label {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .vs-team-label.p1 {
+            color: var(--p1-color);
+        }
+
+        .vs-team-label.p2 {
+            color: var(--p2-color);
+        }
+
+        .vs-team-sprites {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .vs-team-sprites img {
+            width: 40px;
+            height: 40px;
+            image-rendering: pixelated;
+            border-radius: 4px;
+            border: 1px solid rgba(200, 180, 150, 0.1);
+            background: rgba(140, 140, 200, 0.025);
+        }
+
+        .vs-text {
+            font-size: clamp(32px, 6vw, 56px);
+            font-weight: 900;
+            color: var(--gold);
+            text-shadow: 0 0 24px rgba(184, 160, 96, 0.5);
+            letter-spacing: 4px;
+            line-height: 1;
+        }
+
+        /* ═══════════════════════════════════════════════════
+       CINEMATIC ATTACK CUTSCENE v2 — Over-the-Shoulder
+       ═══════════════════════════════════════════════════ */
+        .cin-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            image-rendering: pixelated;
+            background: #000;
+            transition: opacity 120ms ease-in;
+        }
+
+        .cin-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+            cursor: pointer;
+        }
+
+        .cin-overlay.fade-out {
+            opacity: 0;
+            transition: opacity 350ms ease-out;
+            pointer-events: none;
+        }
+
+        /* ── Skip hint (bottom-center) ── */
+        .cin-skip-hint {
+            position: absolute;
+            bottom: 6%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            pointer-events: none;
+            font-family: 'Cinzel', serif;
+            font-size: clamp(11px, 1.8vw, 15px);
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: cinSkipFadeIn 0.6s 1.2s ease forwards;
+        }
+        @keyframes cinSkipFadeIn {
+            to { opacity: 1; }
+        }
+
+        /* ── MAP-LEVEL DEATH ANIMATION ── */
+        .unit.map-dying {
+            animation: mapUnitDeath 0.8s ease-out forwards !important;
+            pointer-events: none;
+        }
+        @keyframes mapUnitDeath {
+            0%   { transform: scale(1); opacity: 1; filter: brightness(1.8) saturate(0.3); }
+            30%  { transform: scale(1.05) rotate(5deg); opacity: 0.8; filter: brightness(0.6) saturate(0) drop-shadow(0 0 8px rgba(255,0,0,0.6)); }
+            60%  { transform: scale(0.7) rotate(15deg) translateY(8px); opacity: 0.4; filter: brightness(0.3) saturate(0); }
+            100% { transform: scale(0.3) rotate(25deg) translateY(16px); opacity: 0; filter: brightness(0) saturate(0); }
+        }
+
+        .cin-scene {
+            position: absolute;
+            inset: 0;
+        }
+
+        /* ── PHASE 1: Manga closeup panel ── */
+        .cin-intro {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            opacity: 1;
+            transition: opacity 180ms ease-out;
+        }
+
+        .cin-intro.done {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cin-intro-sprite {
+            width: 360px;
+            height: 360px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: contrast(1.3) brightness(1.1) drop-shadow(0 0 40px rgba(255, 200, 100, 0.4));
+            transform: scale(1.1);
+            animation: cinIntroZoom 500ms ease-out forwards;
+        }
+
+        @keyframes cinIntroZoom {
+            0% {
+                transform: scale(3) translateY(8%);
+                opacity: 0;
+            }
+
+            30% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Manga panel borders */
+        .cin-intro-border {
+            position: absolute;
+            inset: 0;
+            z-index: 11;
+            pointer-events: none;
+            border: 6px solid #fff;
+            box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Diagonal slash line — positioned to corner, not over face */
+        .cin-intro-slash {
+            position: absolute;
+            z-index: 12;
+            pointer-events: none;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: linear-gradient(145deg, transparent 42%, rgba(200, 180, 150, 0.7) 43%, rgba(200, 180, 150, 0.9) 43.5%, rgba(200, 180, 150, 0.7) 44%, transparent 45%);
+            opacity: 0;
+            animation: cinSlashIn 250ms 250ms ease-out forwards;
+        }
+
+        @keyframes cinSlashIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-40%) translateY(-10%);
+            }
+
+            50% {
+                opacity: 0.85;
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(40%) translateY(10%);
+            }
+        }
+
+        .cin-intro-vignette {
+            position: absolute;
+            inset: 0;
+            z-index: 11;
+            background: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 20%, rgba(0, 0, 0, 0.85) 100%);
+        }
+
+        /* ── PHASE 2: 3D battle scene ── */
+        .cin-sky {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 45%;
+        }
+
+        /* Perspective ground plane */
+        .cin-ground-wrap {
+            position: absolute;
+            left: -20%;
+            right: -20%;
+            bottom: 0;
+            height: 52%;
+            perspective: 400px;
+            overflow: hidden;
+        }
+
+        .cin-ground {
+            width: 100%;
+            height: 100%;
+            transform: rotateX(45deg);
+            transform-origin: center top;
+        }
+
+        .cin-ground-fill {
+            width: 100%;
+            height: 200%;
+            background-size: 24px 24px;
+            animation: cinGroundScroll 3s linear infinite;
+        }
+
+        @keyframes cinGroundScroll {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(-24px);
+            }
+        }
+
+        /* Horizon glow */
+        .cin-horizon-glow {
+            position: absolute;
+            left: -10%;
+            right: -10%;
+            top: 44%;
+            height: 14%;
+            background: radial-gradient(ellipse 60% 100% at 50% 100%, rgba(140, 140, 200, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ── Units: Over-the-shoulder composition ── */
+        .cin-unit {
+            position: absolute;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-size: contain;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+        }
+
+        /* Attacker: massive, center-left, filling the middle */
+        .cin-attacker {
+            left: 16%;
+            bottom: -12%;
+            width: 700px;
+            height: 700px;
+            z-index: 3;
+            transform: scaleX(-1) translateX(40%) scale(0.9);
+            opacity: 0;
+            filter: drop-shadow(0 10px 40px rgba(0, 0, 0, 0.7));
+            transition: transform 400ms cubic-bezier(.2, .8, .3, 1), opacity 300ms ease;
+        }
+
+        .cin-attacker.in {
+            transform: scaleX(-1) translateX(0) scale(1);
+            opacity: 1;
+        }
+
+        .cin-attacker.lunge {
+            transform: scaleX(-1) translateX(-5%) scale(1.04);
+        }
+
+        /* Defender: medium, center-right, feet on the horizon */
+        .cin-defender {
+            right: 22%;
+            bottom: 42%;
+            width: 190px;
+            height: 190px;
+            z-index: 2;
+            transform: translateX(60%) scale(0.85);
+            opacity: 0;
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
+            transition: transform 400ms cubic-bezier(.2, .8, .3, 1), opacity 300ms ease;
+        }
+
+        .cin-defender.in {
+            transform: translateX(0) scale(1);
+            opacity: 0.95;
+        }
+
+        .cin-defender.hit {
+            transform: translateX(14px) scale(0.88) rotate(4deg);
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)) brightness(2.5);
+            transition: transform 100ms ease-out, filter 80ms ease-out;
+        }
+
+        .cin-defender.recoil {
+            transform: translateX(6px) scale(0.95);
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
+            transition: transform 350ms ease-out, filter 300ms ease-out;
+        }
+
+        /* Defender shadow on ground */
+        .cin-def-shadow {
+            position: absolute;
+            right: 20%;
+            bottom: 36%;
+            width: 130px;
+            height: 20px;
+            z-index: 1;
+            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4), transparent 70%);
+            border-radius: 50%;
+        }
+
+        /* ── Multi-target: extra defenders staggered behind primary ── */
+        .cin-defender-extra {
+            position: absolute;
+            z-index: 1;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-size: contain;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
+            opacity: 0;
+            transition: transform 400ms cubic-bezier(.2, .8, .3, 1), opacity 300ms ease;
+        }
+
+        .cin-defender-extra.slot-1 {
+            right: 10%;
+            bottom: 46%;
+            width: 140px;
+            height: 140px;
+            transform: translateX(50%) scale(0.8);
+        }
+
+        .cin-defender-extra.slot-2 {
+            right: 32%;
+            bottom: 48%;
+            width: 120px;
+            height: 120px;
+            transform: translateX(40%) scale(0.75);
+        }
+
+        .cin-defender-extra.slot-3 {
+            right: 5%;
+            bottom: 50%;
+            width: 110px;
+            height: 110px;
+            transform: translateX(40%) scale(0.7);
+        }
+
+        .cin-defender-extra.in {
+            transform: translateX(0) scale(1);
+            opacity: 0.8;
+        }
+
+        .cin-defender-extra.hit {
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)) brightness(2.5);
+            transition: filter 80ms ease-out;
+        }
+
+        .cin-defender-extra.recoil {
+            filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5));
+            transition: filter 300ms ease-out;
+        }
+
+        /* ── Projectile ── */
+        .cin-projectile {
+            position: absolute;
+            z-index: 4;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            background: radial-gradient(circle, #fff 15%, #ffd060 40%, #ff8030 75%, transparent);
+            box-shadow: 0 0 16px 8px rgba(255, 180, 60, 0.6), 0 0 40px 12px rgba(255, 120, 20, 0.25);
+        }
+
+        .cin-projectile.melee {
+            width: 60px;
+            height: 8px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(140, 140, 200, 0.2) 20%, #fff 50%, rgba(200, 220, 255, 0.3) 80%, transparent 100%);
+            box-shadow: 0 0 12px 5px rgba(200, 220, 255, 0.5), 0 -3px 8px rgba(140, 140, 200, 0.2);
+        }
+
+        .cin-projectile.magic {
+            background: radial-gradient(circle, #e8f4ff 10%, #80b0ff 40%, #4060cc 75%, transparent);
+            box-shadow: 0 0 16px 8px rgba(100, 150, 255, 0.6), 0 0 40px 12px rgba(60, 80, 200, 0.25);
+        }
+
+        /* ── Impact effects ── */
+        .cin-impact {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: rgba(200, 180, 150, 0);
+            pointer-events: none;
+        }
+
+        @keyframes cinImpactFlash {
+            0% {
+                background: rgba(200, 180, 150, 0.9);
+            }
+
+            40% {
+                background: rgba(255, 240, 200, 0.3);
+            }
+
+            100% {
+                background: transparent;
+            }
+        }
+
+        .cin-impact.flash {
+            animation: cinImpactFlash 400ms ease-out forwards;
+        }
+
+        /* Speed lines — radiate from impact point */
+        .cin-speedlines {
+            position: absolute;
+            z-index: 4;
+            pointer-events: none;
+            right: 12%;
+            bottom: 40%;
+            width: 260px;
+            height: 260px;
+            opacity: 0;
+        }
+
+        .cin-speedlines.active {
+            opacity: 1;
+        }
+
+        .cin-speedline {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 180px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(200, 180, 150, 0.8), transparent);
+            transform-origin: left center;
+            animation: cinSpeedGrow 400ms ease-out forwards;
+        }
+
+        @keyframes cinSpeedGrow {
+            0% {
+                width: 0;
+                opacity: 1;
+            }
+
+            60% {
+                width: 180px;
+                opacity: 0.8;
+            }
+
+            100% {
+                width: 220px;
+                opacity: 0;
+            }
+        }
+
+        /* Screen shake */
+        @keyframes cinShake {
+
+            0%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            10% {
+                transform: translate(-8px, 4px);
+            }
+
+            20% {
+                transform: translate(7px, -5px);
+            }
+
+            30% {
+                transform: translate(-6px, 3px);
+            }
+
+            40% {
+                transform: translate(5px, -3px);
+            }
+
+            50% {
+                transform: translate(-4px, 2px);
+            }
+
+            60% {
+                transform: translate(3px, -2px);
+            }
+
+            70% {
+                transform: translate(-2px, 1px);
+            }
+        }
+
+        .cin-scene.shake {
+            animation: cinShake 420ms ease-out;
+        }
+
+        /* ── Overlays ── */
+        .cin-vignette {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            background: radial-gradient(ellipse 65% 55% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.75) 100%);
+        }
+
+        .cin-scanlines {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            opacity: 0.1;
+            background: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0, 0, 0, 0.45) 3px, rgba(0, 0, 0, 0.45) 4px);
+        }
+
+        /* ── Damage text ── */
+        .cin-dmg {
+            position: absolute;
+            z-index: 8;
+            right: 6%;
+            bottom: 46%;
+            font-family: 'Cinzel', serif;
+            font-size: 56px;
+            font-weight: 900;
+            color: #ff3333;
+            text-shadow: 0 0 10px #ff0000, 3px 3px 0 #220000, -1px -1px 0 #440000;
+            opacity: 0;
+            pointer-events: none;
+            letter-spacing: -2px;
+            display: none;
+            /* replaced by cin-float-dmg */
+        }
+
+        @keyframes cinDmgPop {
+            0% {
+                opacity: 0;
+                transform: scale(3) translateY(0);
+            }
+
+            15% {
+                opacity: 1;
+                transform: scale(0.9) translateY(0);
+            }
+
+            25% {
+                transform: scale(1.1) translateY(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1) translateY(-6px);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(0.95) translateY(-30px);
+            }
+        }
+
+        .cin-dmg.pop {
+            animation: cinDmgPop 900ms ease-out forwards;
+        }
+
+        .cin-dmg.crit {
+            color: #ffdd00;
+            font-size: 58px;
+            text-shadow: 0 0 14px #ffaa00, 3px 3px 0 #442200, -1px -1px 0 #664400;
+        }
+
+        .cin-dmg.dodge {
+            color: #88ddff;
+            font-size: 44px;
+            text-shadow: 0 0 10px #4488cc, 2px 2px 0 #112244;
+        }
+
+        /* Letterbox */
+        .cin-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            background: #000;
+            z-index: 7;
+        }
+
+        .cin-bar-top {
+            top: 0;
+            height: 10%;
+        }
+
+        .cin-bar-bot {
+            bottom: 0;
+            height: 10%;
+        }
+/* ══════════════════════════════════════════════════════
+   VS SPLASH SCREEN — Cinematic anime-style match intro
+   ══════════════════════════════════════════════════════ */
+
+/* ── Overlay container ── */
+.vs-splash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    background: #050508;
+    opacity: 0;
+    pointer-events: none;
+    cursor: pointer;
+    overflow: hidden;
+}
+.vs-splash-overlay.vs-active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.vs-splash-overlay.vs-fade-out {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+/* Screen shake applied at the BATTLE START impact */
+.vs-splash-overlay.vs-shake {
+    animation: vsScreenShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes vsScreenShake {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-8px, 4px); }
+    20% { transform: translate(7px, -5px); }
+    30% { transform: translate(-6px, 3px); }
+    40% { transform: translate(5px, -3px); }
+    50% { transform: translate(-4px, 2px); }
+    60% { transform: translate(3px, -2px); }
+    70% { transform: translate(-2px, 1px); }
+    80% { transform: translate(1px, -1px); }
+}
+
+/* ── Stage: wraps panels, VS emblem, and slash so they can shake and clear as one ── */
+.vs-stage {
+    position: absolute;
+    inset: 0;
+    transform-origin: center center;
+    will-change: transform, opacity, filter;
+    transition: transform 0.28s ease-out, filter 0.28s ease-out;
+}
+/* Anticipation: subtle zoom-in and red rim charge to telegraph the punchline */
+.vs-stage.vs-charge {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 24px rgba(255, 60, 60, 0.45)) brightness(1.08) contrast(1.05);
+}
+/* Stage clear: violently rip the scene apart right before BATTLE START lands */
+.vs-stage.vs-stage-clear {
+    transform: scale(1.18);
+    opacity: 0;
+    filter: brightness(2);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 1, 1),
+                opacity 0.18s ease-out,
+                filter 0.18s ease-out;
+}
+
+/* ── Panels — two halves with diagonal slash ── */
+.vs-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow: hidden;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 1, 1);
+}
+.vs-panel-left {
+    left: 0;
+    transform: translateX(-110%);
+}
+.vs-panel-right {
+    right: 0;
+    transform: translateX(110%);
+}
+.vs-panel-left.vs-slide-in {
+    transform: translateX(0);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.vs-panel-right.vs-slide-in {
+    transform: translateX(0);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* When stage clears, panels shear off opposite directions */
+.vs-stage.vs-stage-clear .vs-panel-left {
+    transform: translateX(-120%) skewX(-12deg);
+}
+.vs-stage.vs-stage-clear .vs-panel-right {
+    transform: translateX(120%) skewX(-12deg);
+}
+
+/* ── Sprite row — holds all character sprites side by side ── */
+.vs-sprite-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 100px;
+    max-width: 95%;
+}
+
+/* ── Individual sprite wrapper ── */
+.vs-sprite-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(-60px) scale(0.7);
+}
+.vs-sprite-slot.vs-sprite-enter {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease-out;
+}
+
+/* ── Big character sprite ── */
+.vs-sprite-big {
+    width: var(--vs-sprite-size, clamp(100px, 18vw, 160px));
+    height: var(--vs-sprite-size, clamp(100px, 18vw, 160px));
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.7));
+}
+/* P2 sprites face left */
+/* ── Unit name label under each sprite ── */
+.vs-sprite-name {
+    font-size: clamp(9px, 1.4vw, 12px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(230, 218, 190, 0.7);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Team label ── */
+.vs-team-label {
+    font-size: clamp(11px, 1.8vw, 16px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: 8px;
+    opacity: 0;
+    transform: translateY(12px);
+}
+.vs-team-label.vs-fade-up {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+/* ── VS emblem — center of screen ── */
+.vs-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0) rotate(-20deg);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.vs-center.vs-slam {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* When stage clears, VS implodes */
+.vs-stage.vs-stage-clear .vs-center {
+    transform: translate(-50%, -50%) scale(0.2) rotate(15deg);
+    opacity: 0;
+    transition: transform 0.22s cubic-bezier(0.55, 0, 0.85, 0.3), opacity 0.18s ease-out;
+}
+.vs-text {
+    font-size: clamp(48px, 12vw, 96px);
+    font-weight: 900;
+    color: #fff;
+    text-shadow:
+        0 0 30px rgba(255, 220, 100, 0.8),
+        0 0 60px rgba(255, 180, 60, 0.5),
+        0 4px 20px rgba(0, 0, 0, 0.8);
+    letter-spacing: 6px;
+    font-style: italic;
+    line-height: 1;
+}
+
+/* ── White flash burst behind VS ── */
+.vs-burst {
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 220, 100, 0.2) 40%, transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+}
+.vs-burst.vs-burst-flash {
+    opacity: 1;
+    animation: vs-burst-anim 0.5s ease-out forwards;
+}
+@keyframes vs-burst-anim {
+    0%   { opacity: 1; transform: scale(0.3); }
+    40%  { opacity: 0.8; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1.8); }
+}
+
+/* ── Pre-impact blackout flash (masks the stage clear) ── */
+.vs-flash {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10003;
+}
+.vs-flash.vs-flash-on {
+    animation: vsFlashImpact 0.5s ease-out forwards;
+}
+@keyframes vsFlashImpact {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    60%  { opacity: 0.4; }
+    100% { opacity: 0; }
+}
+
+/* ── Radial speed lines that explode out from behind BATTLE START ── */
+/* ── "BATTLE START" centered slam (the punchline) ── */
+.vs-battle-start-wrap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10004;
+    overflow: hidden;
+    opacity: 0;
+}
+.vs-battle-start-wrap.vs-sweep-active {
+    opacity: 1;
+}
+.vs-battle-start-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(48px, 11vw, 130px);
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow:
+        0 0 40px rgba(255, 80, 80, 0.75),
+        0 0 90px rgba(255, 40, 40, 0.45),
+        0 6px 0 #8b0000,
+        0 8px 32px rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+}
+.vs-battle-start-banner.vs-sweep-in {
+    animation:
+        vsBattleSlam 0.6s ease forwards,
+        vsBattlePulse 0.9s ease-in-out 0.6s infinite alternate;
+}
+@keyframes vsBattleSlam {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(3) scaleY(0.3); }
+    40%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1.12) scaleY(1.12); }
+    65%  { transform: translate(-50%, -50%) scaleX(0.96) scaleY(0.96); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes vsBattlePulse {
+    from {
+        text-shadow:
+            0 0 40px rgba(255, 80, 80, 0.75),
+            0 0 90px rgba(255, 40, 40, 0.45),
+            0 6px 0 #8b0000,
+            0 8px 32px rgba(0, 0, 0, 0.8);
+    }
+    to {
+        text-shadow:
+            0 0 60px rgba(255, 120, 120, 0.95),
+            0 0 130px rgba(255, 60, 60, 0.7),
+            0 6px 0 #8b0000,
+            0 8px 32px rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* ── Skip hint ── */
+.vs-skip-hint {
+    position: absolute;
+    bottom: 16px;
+    right: 20px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(200, 190, 170, 0.35);
+    z-index: 10005;
+    pointer-events: none;
+}
+
+/* ── Diagonal slash line between panels ── */
+.vs-slash-line {
+    position: absolute;
+    top: -5%;
+    left: 50%;
+    width: 3px;
+    height: 115%;
+    background: linear-gradient(180deg, transparent, rgba(255, 220, 100, 0.6), rgba(255, 220, 100, 0.8), rgba(255, 220, 100, 0.6), transparent);
+    transform: translateX(-50%) rotate(5deg);
+    z-index: 10001;
+    opacity: 0;
+    box-shadow: 0 0 12px rgba(255, 220, 100, 0.4);
+}
+.vs-slash-line.vs-slash-visible {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+}
+
+/* ── Mobile adjustments ── */
+@media (max-width: 600px) {
+    .vs-sprite-big {
+        width: var(--vs-sprite-size, clamp(70px, 22vw, 110px));
+        height: var(--vs-sprite-size, clamp(70px, 22vw, 110px));
+    }
+    .vs-sprite-row {
+        gap: 2px;
+        min-height: 100px;
+    }
+    .vs-slash-line {
+        width: 2px;
+    }
+}
