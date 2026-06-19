@@ -2165,6 +2165,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   const offensiveKinds = new Set([
     'damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'splitBeam',
     'aoe', 'barrage', 'line', 'linePush', 'cross', 'aoePull', 'leapStrike', 'dash',
+    'displacement', 'pull',
   ]);
   for (const sp of allSpells) {
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
