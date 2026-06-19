@@ -5254,7 +5254,11 @@ const ThreeRenderer = (function () {
             map: tex, transparent: true, alphaTest: 0.05,
             side: THREE.DoubleSide, depthWrite: false
         });
-        var sz = PROJ_SIZE;
+        // Sprite-based projectiles (bullet/knife) are the hero visual — render them
+        // larger than the generic energy-orb projectiles so the PNG reads clearly.
+        var _szMul = (projClass === 'proj-bullet') ? 1.9
+                   : (projClass === 'proj-knife') ? 1.5 : 1;
+        var sz = PROJ_SIZE * _szMul;
         var mesh = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), mat);
         mesh._ew_billboard = true;
 

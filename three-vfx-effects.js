@@ -1492,7 +1492,9 @@ var SPELL_MAP = _EFX_DATA.S;
         var trailSize    = boltDef.boltTrailSize || 0.05;
         var trailRate    = boltDef.boltTrailRate || 7;
         var burstCount   = boltDef.boltBurstCount || 30;
-        var headGlow     = boltDef.boltHeadGlow !== false;
+        /* params.headGlow lets the caller force the bright traveling head off
+           (used by sprite-based projectiles so the PNG stays the visible head). */
+        var headGlow     = (params.headGlow != null) ? !!params.headGlow : (boltDef.boltHeadGlow !== false);
         var shake        = boltDef.shake || null;
 
         /* Muzzle flash at caster */
@@ -1564,7 +1566,7 @@ var SPELL_MAP = _EFX_DATA.S;
         var trailSize    = boltDef.boltTrailSize || 0.05;
         var trailRate    = boltDef.boltTrailRate || 7;
         var burstCount   = boltDef.boltBurstCount || 30;
-        var headGlow     = boltDef.boltHeadGlow !== false;
+        var headGlow     = (params.headGlow != null) ? !!params.headGlow : (boltDef.boltHeadGlow !== false);
 
         /* Muzzle flash at caster */
         _spawn({
@@ -1613,12 +1615,15 @@ var SPELL_MAP = _EFX_DATA.S;
             var hz = lerp(e.from.z, e.to.z, p);
 
             if (p < 1) {
-                /* ── Head glow (large bright core) ── */
-                if (e.headGlow) {
-                    e.spawnAcc += dtMs;
-                    while (e.spawnAcc >= e.trailRate) {
-                        e.spawnAcc -= e.trailRate;
+                e.spawnAcc += dtMs;
+                while (e.spawnAcc >= e.trailRate) {
+                    e.spawnAcc -= e.trailRate;
 
+                    /* ── Bright traveling head (large core + inner white flash).
+                       Skipped when headGlow is off — e.g. sprite-based projectiles
+                       (bullet.png / knife) where the PNG itself IS the visible head
+                       and a bright core sitting on top would wash it out. ── */
+                    if (e.headGlow) {
                         /* Bright core particle */
                         _spawn({
                             x: hx + rn(-2, 2), y: hy + rn(-2, 2), z: hz + rn(-2, 2),
@@ -1638,21 +1643,22 @@ var SPELL_MAP = _EFX_DATA.S;
                             size1: 0,
                             opacity0: 0.9, opacity1: 0,
                         });
-
-                        /* Trail particles (drift backward) */
-                        _spawn({
-                            x: hx + rn(-5, 5), y: hy + rn(-5, 5), z: hz + rn(-3, 3),
-                            vx: -e.dx * rn(30, 80) + rn(-20, 20),
-                            vy: -e.dy * rn(30, 80) + rn(-20, 20),
-                            vz: -e.dz * rn(15, 40) + rn(-12, 12),
-                            mode: 'billboard', sprite: e.trailSprite,
-                            ml: 180 + rn(0, 250),
-                            size0: e.ts * e.trailSize + rn(0, e.ts * 0.03),
-                            size1: 0,
-                            opacity0: 0.8 + rn(0, 0.2), opacity1: 0,
-                            drag: 1.8,
-                        });
                     }
+
+                    /* Trail particles (drift backward) — always spawn so the shot
+                       still reads as moving and the sprite gets an enhancing trail. */
+                    _spawn({
+                        x: hx + rn(-5, 5), y: hy + rn(-5, 5), z: hz + rn(-3, 3),
+                        vx: -e.dx * rn(30, 80) + rn(-20, 20),
+                        vy: -e.dy * rn(30, 80) + rn(-20, 20),
+                        vz: -e.dz * rn(15, 40) + rn(-12, 12),
+                        mode: 'billboard', sprite: e.trailSprite,
+                        ml: 180 + rn(0, 250),
+                        size0: e.ts * e.trailSize + rn(0, e.ts * 0.03),
+                        size1: 0,
+                        opacity0: 0.8 + rn(0, 0.2), opacity1: 0,
+                        drag: 1.8,
+                    });
                 }
             }
 

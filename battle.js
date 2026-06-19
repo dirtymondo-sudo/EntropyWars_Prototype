@@ -4007,17 +4007,23 @@
             if (_useBolt) {
                 const _boltFromU = unitAt(Math.round(fromX), Math.round(fromY));
                 const _boltToU = unitAt(Math.round(toX), Math.round(toY));
+                // For sprite-based projectiles (bullet/knife), kill the bolt's bright
+                // traveling head so the actual PNG sprite stays clearly visible — the
+                // bolt then only contributes muzzle flash, spark trail, and impact.
+                const _boltHeadGlow = _spriteOverride ? false : null;
                 if (_hasSpellBolt) {
                     // Per-spell bolt: standard path
                     window.ThreeVFXEffects.fire('bolt', spellMeta.id, {
                         fromX: fromX, fromY: fromY, toX: toX, toY: toY,
-                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs
+                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs,
+                        headGlow: _boltHeadGlow
                     });
                 } else {
                     // Per-unit bolt override: fire directly with the preset
                     window.ThreeVFXEffects.fireBoltDirect(_unitBoltPreset, {
                         fromX: fromX, fromY: fromY, toX: toX, toY: toY,
-                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs
+                        fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs,
+                        headGlow: _boltHeadGlow
                     });
                 }
                 // Sprite overrides keep going so the PNG renders alongside the bolt.
