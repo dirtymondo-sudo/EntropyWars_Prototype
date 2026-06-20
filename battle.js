@@ -6230,6 +6230,10 @@
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
+            // Press Turn: record this enemy's type tier if a spell collector is
+            // armed (resolved later in the caster's finishAction).
+            if (_pressDamageCollector) _collectPressHit(opts.sourceUnit || null, target, opts);
+
             const sourceUnit_pre = opts.sourceUnit || null;
             if (state.fogOfWar && !state.devAutoSim && sourceUnit_pre && sourceUnit_pre.player !== target.player) {
                 const humanPlayer = getViewerPlayer();
@@ -8458,21 +8462,25 @@
 
         // Resolve one PRESS_OUTCOME for an offensive action. Accepts a single
         // hit ctx { evaded, isCrit, effSummary:{hasStrong,hasWeak} } or an array
-        // (multi-target/AoE) reduced to worst-case: any miss dominates (penalty
-        // wins), otherwise the strongest press wins, else NORMAL.
+        // (multi-target/AoE) reduced worst-case: one dodged target drains AP
+        // (penalty); one RESISTED target denies the press (SMT-faithful) even if
+        // every other target was a weakness; otherwise the strongest press wins.
         function resolvePressOutcome(ctx) {
             const hits = Array.isArray(ctx) ? ctx : [ctx];
             const pressRank = { weakCrit: 3, weak: 2, crit: 1 };
             let anyMiss = false;
+            let anyResist = false;
             let bestPress = null;
             for (const h of hits) {
                 const o = _pressOutcomeForHit(h);
-                if (o === PRESS_OUTCOME.MISS) { anyMiss = true; continue; }
-                if (pressRank[o] != null) {
+                if (o === PRESS_OUTCOME.MISS) { anyMiss = true; }
+                else if (o === PRESS_OUTCOME.RESIST) { anyResist = true; }
+                else if (pressRank[o] != null) {
                     if (!bestPress || pressRank[o] > pressRank[bestPress]) bestPress = o;
                 }
             }
-            if (anyMiss) return PRESS_OUTCOME.MISS;
+            if (anyMiss) return PRESS_OUTCOME.MISS;       // penalty dominates
+            if (anyResist) return PRESS_OUTCOME.NORMAL;   // one resist vetoes the press
             if (bestPress) return bestPress;
             return PRESS_OUTCOME.NORMAL;
         }
@@ -8529,6 +8537,37 @@
                 showBattleDialogue([`<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`], 1100);
                 if (typeof playErrorSfx === 'function') playErrorSfx();
             }
+        }
+
+        /* Per-target press collection for spells. Spells don't roll crit/evade,
+           so a spell's press depends purely on the type tier of EVERY enemy it
+           actually damages. We arm a collector at cast time; applyDamageToUnit
+           records each damaged enemy's tier; finishAction resolves the worst-
+           case outcome (one resist/dodge vetoes the whole press). The engine
+           runs one action at a time (it waits on completionDelay before the next
+           action), so a single module-level collector can't interleave. */
+        let _pressDamageCollector = null;
+
+        function _armPressCollector(casterUnit) {
+            _pressDamageCollector = { casterId: casterUnit.id, hits: [] };
+        }
+
+        function _collectPressHit(sourceUnit, target, opts) {
+            const c = _pressDamageCollector;
+            if (!c || !sourceUnit || !target) return;
+            if (sourceUnit.id !== c.casterId) return;       // only the caster's own spell damage
+            if (target.player === sourceUnit.player) return; // enemies only
+            const atkTypes = (opts && opts.spellType) ? [opts.spellType] : (sourceUnit.types || []);
+            c.hits.push({ effSummary: getTypeEffectSummary(atkTypes, target.types || []) });
+        }
+
+        function _consumePressCollector(casterUnit, cost) {
+            const c = _pressDamageCollector;
+            _pressDamageCollector = null;
+            if (!c || c.casterId !== casterUnit.id || c.hits.length === 0) {
+                return { outcome: PRESS_OUTCOME.NORMAL, apDelta: 0, pressed: false, penalty: false };
+            }
+            return applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
         }
 
         /* ===================================================================
@@ -17704,22 +17743,13 @@
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
 
-            // Press Turn: for damaging spells, resolve press off the spell type
-            // tier vs the primary enemy target (computed now, applied at the
-            // spend site in finishAction). AoE/line that don't land on a unit at
-            // the click tile resolve NORMAL.
-            let _spellPressOutcome = PRESS_OUTCOME.NORMAL;
+            // Press Turn: arm a collector so press is resolved from EVERY enemy
+            // the spell actually damages (AoE worst-case — one resist or dodge
+            // vetoes the press). Spells don't roll crit/evade, so only the type
+            // tier matters. Consumed in finishAction, after damage has landed.
+            _pressDamageCollector = null;
             if (_PRESS_SPELL_KINDS.has(spell.kind)) {
-                const _pt = (_spellClickTarget && !_spellClickTarget.dead && _spellClickTarget.player !== unit.player)
-                    ? _spellClickTarget : null;
-                if (_pt) {
-                    const _spellAtkTypes = spell.spellType ? [spell.spellType] : (unit.types || []);
-                    _spellPressOutcome = resolvePressOutcome({
-                        evaded: false,
-                        isCrit: false,
-                        effSummary: getTypeEffectSummary(_spellAtkTypes, _pt.types || [])
-                    });
-                }
+                _armPressCollector(unit);
             }
 
             const finishAction = () => {
@@ -17734,7 +17764,7 @@
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
                 spendAP(unit, spellApCost);
-                const _spellPressRes = applyPressTurn(unit, _spellPressOutcome, { cost: spellApCost });
+                const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
