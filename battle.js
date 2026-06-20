@@ -1776,15 +1776,19 @@
             const firstHit = enemies.find(e => tiles.some(t => t.x === e.x && t.y === e.y));
             const extraTargets = firstHit ? enemies.filter(e => e !== firstHit && tiles.some(t => t.x === e.x && t.y === e.y)) : [];
             const camTarget = firstHit || { x: tx, y: ty };
+            const VFX = window.ThreeVFXEffects;
+            const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
             const cam = playOffensiveActionCamera(unit, camTarget, {
                 sourceHold: 900, targetHold: 900,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
-                attackName: spell.name
+                attackName: spell.name,
+                descentCam: hasDescent ? {
+                    telegraphMs: VFX.getDescentTelegraphMs(spell.id),
+                    descentMs: VFX.getDescentDescentMs(spell.id)
+                } : undefined
             });
             const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
 
-            const VFX = window.ThreeVFXEffects;
-            const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
             let impactDelay;
             if (hasDescent) {
                 const descentMs = VFX.getDescentTotalMs(spell.id);
@@ -1983,9 +1987,15 @@
             let cam = null;
             const camOpts = opts.cameraOpts || { sourceHold: 900, targetHold: 900 };
             if (profile.camera === 'offensive' && target) {
+                const _VFX = window.ThreeVFXEffects;
+                const _descentCam = (travel === 'descent' && _VFX && _VFX.hasMapping(spell.id, 'descent'))
+                    ? { telegraphMs: _VFX.getDescentTelegraphMs(spell.id),
+                        descentMs: _VFX.getDescentDescentMs(spell.id) }
+                    : undefined;
                 cam = playOffensiveActionCamera(unit, target, {
                     ...camOpts,
-                    attackName: spell.name
+                    attackName: spell.name,
+                    descentCam: _descentCam
                 });
             } else if (profile.camera === 'focus') {
                 _spellFocusCamera(unit, tileXY.x, tileXY.y);
@@ -2372,10 +2382,27 @@
             const viewer = getViewerPlayer();
             let idx = 0;
 
+            // End-of-round resolution is read like a map report, not an action:
+            // remember the player's live framing so we can drop into a high,
+            // strategic top-down view for the burn/poison/etc ticks and then
+            // restore their normal angle before the next turn begins.
+            const _eorPrevView = (!state.cameraDisabled)
+                ? { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz } : null;
+            function _restoreEorView() {
+                if (_eorPrevView && !state.cameraDisabled) {
+                    camera.moveTo({
+                        tilt: _eorPrevView.tilt, zoom: _eorPrevView.zoom,
+                        duration: 320, easing: 'easeInOut',
+                        _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
+                    });
+                }
+            }
+
             function processNext() {
                 if (state.winner) { if (onDone) onDone(); return; }
                 if (idx >= affected.length) {
 
+                    _restoreEorView();
                     _tickAllStatusDurations();
                     scheduleBoardRender();
                     if (onDone) onDone();
@@ -2393,8 +2420,14 @@
                 const isVisible = _isUnitVisibleToViewer(unit, viewer);
 
                 if (isVisible && !state.cameraDisabled) {
-                    const _dotZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
-                    camera.moveTo({ x: unit.x, y: unit.y, zoom: _dotZoom, duration: 350, _fogAllowed: true });
+                    // Strategic top-down framing (low tilt = looking down at the
+                    // map) rather than the third-person action angle.
+                    camera.moveTo({
+                        x: unit.x, y: unit.y,
+                        zoom: getDefaultZoom() * 1.25, tilt: 34,
+                        duration: 400, easing: 'easeInOut',
+                        _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
+                    });
                 }
 
                 const dlgMsgs = [];
@@ -5286,6 +5319,7 @@
 
             _ease(t, type) {
                 if (type === 'linear') return t;
+                if (type === 'easeIn') return t * t;
                 if (type === 'easeInOut') return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
                 return 1 - Math.pow(1 - t, 3);
@@ -6108,6 +6142,100 @@
             }, timings.sourceHold + timings.travelMs + actionMs(60));
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // _playDescentCam() — cinematic camera for sky-strike spells (meteor,
+        // nuke, cosmic slam …). Instead of the over-the-shoulder action shot,
+        // the camera settles on the impact tile while the telegraph forms,
+        // CRANES UP to the sky as the projectile spawns overhead, then follows
+        // it back DOWN to the ground, arriving with the impact. The timeline
+        // mirrors ThreeVFXEffects._fireDescent: VFX fires at sourceHold, the
+        // body spawns telegraphMs later, impact lands descentMs after that.
+        // ═══════════════════════════════════════════════════════════════════
+        function _playDescentCam(sourceUnit, target, descentCam, timings, fogAllowed, sequenceId) {
+            if (!camera._preCineView) {
+                camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
+            }
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = sourceUnit.id;
+
+            const tx = target.x, ty = target.y;
+            const ts = CONFIG.tileSize || 128;
+
+            // Ground elevation (px) of the impact tile — the focal point the
+            // meteor falls toward.
+            let groundPx = 0;
+            if (typeof window._getElevationPx === 'function' && typeof getHeightAt === 'function') {
+                const h = getHeightAt(Math.round(tx), Math.round(ty));
+                if (h > 0) groundPx = window._getElevationPx(h);
+            }
+
+            // Raise the focal point into the sky so the descending body reads as
+            // "up there" — ~matches the meteor's +900px spawn altitude.
+            const skyElevZ    = groundPx + ts * 6;
+            const groundElevZ = groundPx + ts * 0.3;
+
+            // Keep the player's current heading so the crane-up doesn't spin.
+            const yaw = camera._tyaw;
+            const baseZoom   = getDefaultZoom();
+            const skyZoom    = Math.min(2.0, baseZoom * 1.15);
+            const groundZoom = Math.min(2.6, baseZoom * 1.55);
+
+            // tilt: LOW = top-down, HIGH = near-horizontal (looks up at the sky).
+            const SETTLE_TILT = 52;   // overhead-ish while the telegraph forms
+            const SKY_TILT    = 84;   // crane up to watch the body fall in
+            const GROUND_TILT = 62;   // tilt back down onto the impact
+
+            const sourceHold  = Math.max(actionMs(200), timings.sourceHold);
+            const telegraphMs = Math.max(120, descentCam.telegraphMs || 800);
+            const descentMs   = Math.max(180, descentCam.descentMs || 700);
+
+            // 1) Settle on the impact tile so the telegraph ring reads.
+            camera.moveTo({
+                x: tx, y: ty, zoom: skyZoom, tilt: SETTLE_TILT, yaw,
+                elevZ: groundElevZ,
+                duration: actionMs(420), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true,
+                _fogAllowed: fogAllowed || undefined
+            });
+
+            // 2) Crane UP to the sky as the body is about to appear overhead.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                camera.moveTo({
+                    x: tx, y: ty, zoom: skyZoom, tilt: SKY_TILT, yaw,
+                    elevZ: skyElevZ,
+                    duration: Math.max(actionMs(260), telegraphMs * 0.9),
+                    easing: 'easeOut',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: fogAllowed || undefined
+                });
+            }, sourceHold);
+
+            // 3) Follow the body DOWN to the ground, accelerating like its fall.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                camera.moveTo({
+                    x: tx, y: ty, zoom: groundZoom, tilt: GROUND_TILT, yaw,
+                    elevZ: groundElevZ,
+                    duration: Math.max(actionMs(240), descentMs),
+                    easing: 'easeIn',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: fogAllowed || undefined
+                });
+            }, sourceHold + telegraphMs);
+
+            // 4) Impact kick.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle') return;
+                shakeBoard('hard');
+            }, sourceHold + telegraphMs + descentMs);
+        }
+
         function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
             if (!sourceUnit || !target || state.phase !== 'battle') return null;
 
@@ -6178,7 +6306,12 @@
                 && !(typeof isCinematicPresent === 'function' && isCinematicPresent())
                 && (Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y)) >= 1;
 
-            if (_cineEligible) {
+            const _descentEligible = opts.descentCam && state.cinematicActionCam && !_skipVisuals()
+                && !(typeof isCinematicPresent === 'function' && isCinematicPresent());
+
+            if (_descentEligible) {
+                _playDescentCam(sourceUnit, target, opts.descentCam, timings, _fogPassthrough, sequenceId);
+            } else if (_cineEligible) {
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId);
             } else {
 
