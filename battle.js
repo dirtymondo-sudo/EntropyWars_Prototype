@@ -6410,10 +6410,20 @@
             const sourceUnit = opts.sourceUnit || null;
             const damageType = opts.damageType || 'physical';
 
-            const typeNote = sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '';
+            // Banes (and any item/effect with a fixed type matchup) pass an
+            // explicit override so effectiveness is judged by the EFFECT's type
+            // vs the target — never the thrower's own type. 'super' forces the
+            // super-effective note; 'neutral' suppresses the matchup note. The
+            // bonus damage is already baked in by the caller, so the type
+            // multiplier is held at 1 to avoid double-counting.
+            const typeEffectOverride = opts.typeEffect || null; // 'super' | 'neutral'
+            const typeNote = typeEffectOverride
+                ? (typeEffectOverride === 'super' ? "It's super effective!" : '')
+                : (sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '');
             if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 finalDamage += getEffectiveAttackBonus(sourceUnit);
-                finalDamage = Math.max(1, Math.round(finalDamage * getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null)));
+                const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
+                finalDamage = Math.max(1, Math.round(finalDamage * _typeMult));
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
@@ -8237,7 +8247,7 @@
 
         const PRESS_OUTCOME = {
             MISS:      'miss',     // dodged/evaded → extra AP drain
-            RESIST:    'resist',   // not very effective → normal cost
+            RESIST:    'resist',   // not very effective → extra AP drain
             NORMAL:    'normal',   // neutral → normal cost
             WEAK:      'weak',     // hit a weakness → refund
             CRIT:      'crit',     // landed a crit → refund
@@ -8613,7 +8623,7 @@
                 }
             }
             if (anyMiss) return PRESS_OUTCOME.MISS;       // penalty dominates
-            if (anyResist) return PRESS_OUTCOME.NORMAL;   // one resist vetoes the press
+            if (anyResist) return PRESS_OUTCOME.RESIST;   // one resist vetoes the press AND drains AP
             if (bestPress) return bestPress;
             return PRESS_OUTCOME.NORMAL;
         }
@@ -8627,7 +8637,9 @@
             const result = { outcome, apDelta: 0, pressed: false, penalty: false };
             if (!unit) return result;
 
-            if (outcome === PRESS_OUTCOME.MISS) {
+            // A dodge/miss OR a "not very effective" hit both waste momentum and
+            // drain an extra AP (turn cut short).
+            if (outcome === PRESS_OUTCOME.MISS || outcome === PRESS_OUTCOME.RESIST) {
                 const before = unit.ap || 0;
                 spendAP(unit, PRESS_MISS_PENALTY_AP);
                 result.apDelta = (unit.ap || 0) - before; // <= 0
@@ -17646,7 +17658,10 @@
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} throws ${baneRule.name} at `, {
                         sourceUnit: unit,
                         allowMarkBonus: false,
-                        damageType: 'magic'
+                        damageType: 'magic',
+                        // Bane effectiveness keys off the bane's type vs the
+                        // target — independent of the thrower's type.
+                        typeEffect: isBaneEffective ? 'super' : 'neutral'
                     });
                     if (isBaneEffective) {
                         const _bSprite = baneRule.baneType ? `<div class="bane-sprite bane-${baneRule.baneType}" style="width:16px;height:16px;background-size:16px 16px;display:inline-block;vertical-align:middle"></div>` : '';
@@ -17662,6 +17677,10 @@
                     (_baneCam?.totalMs ?? 0) + actionMs(120));
                 window.setTimeout(() => {
                     spendAP(unit, AP_COST_ACTION);
+                    // Press Turn: a super-effective bane grants a free action,
+                    // just like hitting a weakness with an attack or spell.
+                    const _banePressRes = applyPressTurn(unit, isBaneEffective ? PRESS_OUTCOME.WEAK : PRESS_OUTCOME.NORMAL, { cost: AP_COST_ACTION });
+                    _showPressFeedback(unit, _banePressRes);
                     if (!unit._itemLog) unit._itemLog = {};
                     unit._itemLog[baneKey] = (unit._itemLog[baneKey] || 0) + 1;
                     state._actionExecuting = false;
