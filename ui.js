@@ -8445,13 +8445,13 @@
         });
 
         const _origClickTile = clickTile;
-        clickTile = function(x, y) {
+        clickTile = function(x, y, z) {
             if (_wasdOrigin && !_wasdCommitted) {
 
                 _clearWasdState(true);
                 scheduleBoardRender();
             }
-            return _origClickTile(x, y);
+            return _origClickTile(x, y, z);
         };
 
         const _origSetActionMode = typeof setActionMode === 'function' ? setActionMode : null;

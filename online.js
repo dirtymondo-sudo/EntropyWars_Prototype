@@ -132,8 +132,8 @@
         }
 
         const _onlineOrigClickTile = clickTile;
-        clickTile = function(x, y) {
-            if (!_isOnline() || state._remoteAction) return _onlineOrigClickTile(x, y);
+        clickTile = function(x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _onlineOrigClickTile(x, y, z);
             if (state.phase === 'battle' && !state.winner) {
 
                 if (state.activePlayer !== _myPlayer()) {
@@ -213,7 +213,7 @@
                     return;
                 }
             }
-            _onlineOrigClickTile(x, y);
+            _onlineOrigClickTile(x, y, z);
             if (state.phase === 'battle' && window._broadcastState) window._broadcastState();
         };
 

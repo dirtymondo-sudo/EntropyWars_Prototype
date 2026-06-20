@@ -7338,7 +7338,14 @@ const ThreeRenderer = (function () {
             if (typeof state !== 'undefined') state._clickedUnitId = unitHit ? unitHit.unitId : null;
 
             var clickZ;
-            if (typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
+            /* If the player clicked directly on a unit's sprite, target THAT unit's own
+               height. Otherwise the tile-based z below always resolves to the ground, so a
+               sky/airborne unit — or the upper unit of a stack — can never be hit. */
+            if (unitHit) {
+                var _hitU = _unitById.get(unitHit.unitId) || null;
+                if (_hitU && _hitU.z != null) clickZ = _hitU.z;
+            }
+            if (clickZ === undefined && typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
                 var _actU = _unitById.get(state.selectedUnitId) || null;
                 if (_actU) clickZ = nearestWalkableZ(tx, ty, _actU.z != null ? _actU.z : 0);
             }

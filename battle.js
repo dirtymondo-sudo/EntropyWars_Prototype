@@ -14260,7 +14260,15 @@
             }
 
             const actingUnit = getSelectedUnit();
-            const clickedUnit = unitAt(x, y);
+            /* Honor the exact sprite the player clicked (set by the renderer) so a unit
+               stacked ABOVE another — or an enemy hovering directly over your own unit —
+               resolves to the clicked unit instead of always the ground-level one. */
+            let clickedUnit = null;
+            if (state._clickedUnitId != null) {
+                const _directClicked = state.units.find(u => u.id === state._clickedUnitId && !u.dead && !u._dying);
+                if (_directClicked && _directClicked.x === x && _directClicked.y === y) clickedUnit = _directClicked;
+            }
+            if (!clickedUnit) clickedUnit = unitAt(x, y);
 
             if (!actingUnit) {
                 if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) selectUnit(clickedUnit.id);
