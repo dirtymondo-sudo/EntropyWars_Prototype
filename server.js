@@ -289,14 +289,73 @@ setInterval(() => {
 }, 3000);
 
 app.get('/api/queue-stats', (req, res) => {
+    // Per-queue breakdown so the filler-bot manager (bots.js) can tell whether a
+    // real human is stuck waiting with nobody to play. `humans`/`bots` split lets
+    // it summon exactly one filler per lonely queue and never bot-vs-bot.
+    const now = Date.now();
     const stats = {};
     for (const key in queues) {
-        stats[key] = queues[key].length;
+        const q = queues[key];
+        let humans = 0, bots = 0, oldestHuman = Infinity, oldestHumanElo = null;
+        for (const e of q) {
+            if (e.isBot) { bots++; }
+            else { humans++; if (e.joinedAt < oldestHuman) { oldestHuman = e.joinedAt; oldestHumanElo = e.elo; } }
+        }
+        stats[key] = {
+            total: q.length,
+            humans,
+            bots,
+            oldestHumanWaitMs: isFinite(oldestHuman) ? (now - oldestHuman) : 0,
+            oldestHumanElo, // ELO of the longest-waiting human (the one a filler fills for)
+        };
     }
     res.json({ queues: stats, rooms: rooms.size });
 });
 
+// ── FILLER-BOT ELO SYNC ────────────────────────────────────────────────
+// Lets bots.js pin a bot account's ELO to within ±100 of the human it's about
+// to fill for, so the match forms instantly and the human's ELO swing is fair.
+// Gated by a shared secret (BOT_ADMIN_SECRET) so real players can't move their
+// own rating; disabled entirely when the secret is unset.
+app.post('/api/bot/sync-elo', async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    const secret = process.env.BOT_ADMIN_SECRET;
+    if (!secret) {
+        return res.status(503).json({ error: 'Bot admin not enabled (set BOT_ADMIN_SECRET).' });
+    }
+    if ((req.headers['x-bot-secret'] || '') !== secret) {
+        return res.status(403).json({ error: 'Forbidden.' });
+    }
+    const { token, elo } = req.body || {};
+    if (!token) {
+        return res.status(401).json({ error: 'Token required.' });
+    }
+    let target = Math.round(Number(elo));
+    if (!isFinite(target)) {
+        return res.status(400).json({ error: 'Invalid elo.' });
+    }
+    target = Math.max(100, Math.min(4000, target));
+    try {
+        const player = await d1.getOne('SELECT id FROM players WHERE token = ?1', [token]);
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+        await d1.execute('UPDATE players SET elo = ?1, peak_elo = MAX(peak_elo, ?1) WHERE id = ?2', [target, player.id]);
+        res.json({ ok: true, elo: target });
+    } catch (err) {
+        console.error('[BOT] sync-elo error:', err.message);
+        res.status(500).json({ error: 'Failed to sync elo.' });
+    }
+});
+
 const authenticatedSockets = new Map();
+
+// Sockets that have identified themselves as filler bots (via `bot-hello`).
+// Used only to split humans-vs-bots in /api/queue-stats so bots.js can decide
+// when a real human is stuck waiting. Has no effect on matchmaking itself.
+const botSockets = new Set();
 
 const USERNAME_RE = /^[A-Za-z0-9_]{2,16}$/;
 
@@ -1015,6 +1074,19 @@ io.on('connection', (socket) => {
         socket.to(found.code).emit('friendly-config', data);
     });
 
+    // A filler bot (bots.js) announces itself right after connecting. We also
+    // retro-tag any queue entry it already created, so ordering vs queue-join
+    // never matters.
+    socket.on('bot-hello', () => {
+        botSockets.add(socket.id);
+        for (const ts in queues) {
+            for (const e of queues[ts]) {
+                if (e.socketId === socket.id) e.isBot = true;
+            }
+        }
+        console.log(`[MM] 🤖 ${socket.id} identified as filler bot`);
+    });
+
     socket.on('queue-join', (data) => {
         const teamSize = (data && data.teamSize) || 4;
         const rankedMode = (data && data.rankedMode) || 'arena';
@@ -1035,10 +1107,11 @@ io.on('connection', (socket) => {
             elo: elo,
             joinedAt: Date.now(),
             teamSize: teamSize,
-            rankedMode: rankedMode
+            rankedMode: rankedMode,
+            isBot: botSockets.has(socket.id)
         });
 
-        console.log(`[MM] ${username} (ELO ${elo}${auth ? ' [verified]' : ''}) joined ${teamSize}v${teamSize} ${rankedMode} queue (${q.length} in queue)`);
+        console.log(`[MM] ${username} (ELO ${elo}${auth ? ' [verified]' : ''}${botSockets.has(socket.id) ? ' 🤖' : ''}) joined ${teamSize}v${teamSize} ${rankedMode} queue (${q.length} in queue)`);
 
         socket.emit('queue-status', {
             position: q.length,
@@ -1244,6 +1317,7 @@ io.on('connection', (socket) => {
         removeFromAllQueues(socket.id);
 
         authenticatedSockets.delete(socket.id);
+        botSockets.delete(socket.id);
 
         const found = findRoomBySocket(socket.id);
         if (!found) return;
