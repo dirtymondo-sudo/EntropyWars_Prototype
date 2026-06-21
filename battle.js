@@ -20276,7 +20276,15 @@
                 unit.mp -= effectiveSpellCost;
 
                 const dashPath = getLinePoints(unit.x, unit.y, x, y);
-                const dashDmg = spell.dashDamage || spell.dmg || 0;
+                // Enemies caught mid-path take the lighter `dashDamage`, while the
+                // primary target (the tile we land on) takes the spell's full `dmg`
+                // — that's what the tooltip ("DMG …" + "Path DMG …") and the spell
+                // descriptions ("path enemies take N … full damage to primary
+                // target") promise. Spells that define no dashDamage have no
+                // separate path value, so every tile takes `dmg` uniformly.
+                const dashPathDmg = spell.dashDamage || spell.dmg || 0;
+                const dashPrimaryDmg = spell.dmg || dashPathDmg;
+                const dashSplitsDamage = (spell.dashDamage != null);
                 let dashHitCount = 0;
                 const casterStartX = unit.x, casterStartY = unit.y;
 
@@ -20296,11 +20304,13 @@
                 for (const pt of dashPath) {
                     const victim = unitAt(pt.x, pt.y);
                     if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
+                        const isPrimaryTarget = (pt.x === x && pt.y === y);
+                        const hitDmg = (dashSplitsDamage && isPrimaryTarget) ? dashPrimaryDmg : dashPathDmg;
                         // applyDamageToUnit returns whether the victim was killed
                         // (a boolean) and already pops its own post-mitigation
                         // "-N" damage number, so don't render the return value as
                         // floating text (that's what showed a stray "false").
-                        applyDamageToUnit(victim, dashDmg, `${spell.name}: `, {
+                        applyDamageToUnit(victim, hitDmg, `${spell.name}: `, {
                             sourceUnit: unit,
                             allowMarkBonus: true,
                             damageType: spell.damageType || 'physical',
@@ -20310,7 +20320,7 @@
                             applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
                         }
                         dashHitCount++;
-                        addLog(`${unitDisplayName(victim)} is hit for ${dashDmg} as ${unitDisplayName(unit)} dashes through!`);
+                        addLog(`${unitDisplayName(victim)} is hit for ${hitDmg} as ${unitDisplayName(unit)} dashes through!`);
                     }
                 }
 

@@ -1282,12 +1282,16 @@
         if (kind === 'dash') {
             if (!target) return 0;
             const path = g.getLinePoints(unit.x, unit.y, target.x, target.y);
-            const dashDmg = spell.dashDamage || spell.dmg || 96;
+            // Mirror the engine: path enemies take dashDamage, the primary target
+            // (landing tile) takes the full `dmg`.
+            const dashPathDmg = spell.dashDamage || spell.dmg || 96;
+            const dashPrimaryDmg = (spell.dashDamage != null) ? (spell.dmg || dashPathDmg) : dashPathDmg;
             let s = 0, hits = 0;
             for (const pt of path) {
                 const victim = v.visibleEnemies.find(e => e.x === pt.x && e.y === pt.y);
                 if (victim) {
                     hits++;
+                    const dashDmg = (pt.x === target.x && pt.y === target.y) ? dashPrimaryDmg : dashPathDmg;
                     let hitVal = dashDmg;
                     hitVal *= getTypeMultiplier(unit, victim, spell.spellType || null);
                     hitVal += getTargetPriority(victim, unit, v) * 0.3;
