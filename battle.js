@@ -13659,7 +13659,7 @@
             clearAoePreview();
 
             if (mode === 'spell' && unit) {
-                const spell = (unit.spells || []).find(s => s.name === toolName);
+                const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
                 const range = spell?.range || 3;
 
                 const rangeRows = range * 2 + 1;
@@ -13679,7 +13679,7 @@
             }
 
             if (mode === 'spell' && unit) {
-                const spell = (unit.spells || []).find(s => s.name === toolName);
+                const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
 
                 if (spell && spell.orientable && !state._spellOrientation) {
                     state.actionMenuView = 'spellOrientation';
@@ -14415,7 +14415,7 @@
                     if (state.actionMenuView === 'attackTargets') {
                         validTargets = _getAttackValidTargets(actingUnit);
                     } else {
-                        const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool);
+                        const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool) || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
                         validTargets = spell ? _getSpellValidTargets(actingUnit, spell) : [];
                     }
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
