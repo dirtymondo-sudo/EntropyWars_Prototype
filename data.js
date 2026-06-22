@@ -4198,6 +4198,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Psychic',
         displaceDistance: 2,
         collisionBonus: 64,
+        arcThrow: true,
         desc: 'Grab an enemy with telekinesis and fling them 2 tiles. +64 bonus if they hit a wall, obstacle, or another unit.'
     },
 

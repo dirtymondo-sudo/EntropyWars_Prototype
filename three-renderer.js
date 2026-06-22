@@ -2137,6 +2137,36 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* Warp Runes — flat glowing rune sigil laid on the tile. The rune is
+           "hidden" from the opponent, so only render it for its owner (the
+           viewing player). Uses the warp rune SVG from SEED_TILE_SPRITES. */
+        if (state.warpRunes && typeof SEED_TILE_SPRITES !== 'undefined' &&
+            SEED_TILE_SPRITES.warp && SEED_TILE_SPRITES.warp.length) {
+            var _runeVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            var _runeUrl = SEED_TILE_SPRITES.warp[0];
+            var _runeTs = CONFIG.tileSize || 128;
+            for (var i = 0; i < state.warpRunes.length; i++) {
+                var rr = state.warpRunes[i];
+                if (rr.owner !== _runeVp) continue;
+                var rtex = getTexture(_runeUrl);
+                if (!rtex) continue;
+                var rmat = new THREE.MeshBasicMaterial({
+                    map: rtex, transparent: true, alphaTest: 0.01,
+                    side: THREE.DoubleSide, depthWrite: false
+                });
+                var rmesh = new THREE.Mesh(new THREE.PlaneGeometry(_runeTs * 0.92, _runeTs * 0.92), rmat);
+                rmesh.rotation.x = -Math.PI / 2;
+                var rtopY = tileTopY(rr.x, rr.y);
+                rmesh.position.set(rr.x * _runeTs + _runeTs / 2, rtopY + 0.6, rr.y * _runeTs + _runeTs / 2);
+                rmesh._ew_deployable = true;
+                rmesh._ew_groundDecal = true;
+                rmesh._ew_depX = rr.x; rmesh._ew_depY = rr.y;
+                var rkey = 'dep_' + (idx++);
+                objectGroup.add(rmesh);
+                deployableMeshes.set(rkey, rmesh);
+            }
+        }
+
         _lastDeployableSerial = _computeDeployableSerial();
 
         /* ── Render state._deployedObjects (traps, decoys, walls, totems) ── */

@@ -18604,7 +18604,15 @@
                     }
 
                     if (_displaceSteps.length > 0) {
-                        animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120);
+                        if (spell.arcThrow) {
+                            // Telekinetic hurl: lift the target off the ground and
+                            // fling it in a parabola to its landing tile.
+                            const _arcMs = Math.max(actionMs(420), _displaceSteps.length * actionMs(170));
+                            animateJumpArc(target, _displaceFromX, _displaceFromY, target.x, target.y,
+                                _displaceFromZ, target.z ?? 0, _arcMs);
+                        } else {
+                            animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120);
+                        }
 
                         if (!state.cameraDisabled) {
                             ++boardCameraSequenceId;
