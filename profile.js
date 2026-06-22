@@ -59,8 +59,10 @@ function backfillProfile(p) {
   if (!p.unitBuilds) p.unitBuilds = [];
   if (!p.teamPresets) p.teamPresets = [];
   if (!p.favRaces) p.favRaces = [];
-  // Account economy mirror (read-only cache; server is the source of truth).
-  // Offline/local-only play gets starters and no purchasing.
+  // Account economy mirror. When a server token exists the server is the source
+  // of truth and this is just a read cache; with no token (offline / local-only /
+  // profiles made before the account system) this IS the wallet, and purchasing
+  // runs against it locally. Seed it so old profiles aren't stranded.
   if (!p.account || !Array.isArray(p.account.unlockedUnits)) {
     const starters = (typeof window !== 'undefined' && Array.isArray(window.ACCT_STARTER_UNITS))
       ? window.ACCT_STARTER_UNITS.slice()
@@ -69,8 +71,17 @@ function backfillProfile(p) {
     p.account = {
       gold: (typeof window !== 'undefined' && typeof window.ACCT_STARTING_GOLD === 'number') ? window.ACCT_STARTING_GOLD : 0,
       unlockedUnits: starters,
-      freeTokens: 0,
+      freeTokens: (typeof window !== 'undefined' && typeof window.ACCT_FREE_TOKENS === 'number') ? window.ACCT_FREE_TOKENS : 1,
     };
+  }
+  // One-time heal for profiles created BEFORE the account system: their account
+  // block was seeded with 0 free tokens, so grant the founding token once. The
+  // flag stops it from re-granting after the token is spent. Server-account
+  // players get their authoritative token count on login, which overrides this.
+  if (p.account && !p.account._localFounderGrant) {
+    p.account._localFounderGrant = true;
+    const grant = (typeof window !== 'undefined' && typeof window.ACCT_FREE_TOKENS === 'number') ? window.ACCT_FREE_TOKENS : 1;
+    if ((p.account.freeTokens || 0) < grant) p.account.freeTokens = grant;
   }
   return p;
 }
@@ -545,9 +556,41 @@ async function serverBankGold(matchGold, mode) {
   }
 }
 
+// Spend the LOCAL wallet when there's no server account (offline / Steam solo /
+// profiles made before the account system). Mirrors the server's purchase rules
+// (validate race, reject dupes, token-first then gold) against p.account so the
+// shop works without any login. When a token exists this is bypassed and the
+// server stays authoritative.
+function localPurchaseUnit(raceKey, useToken) {
+  const idx = getActiveProfileIndex();
+  if (idx === null) return { ok: false, error: 'No profile selected.' };
+  const p = loadProfile(idx);
+  if (!p) return { ok: false, error: 'No profile.' };
+  if (!p.account || !Array.isArray(p.account.unlockedUnits)) {
+    p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+  }
+  const races = (typeof window !== 'undefined' && Array.isArray(window.AVAILABLE_RACES)) ? window.AVAILABLE_RACES : null;
+  if (races && races.indexOf(raceKey) === -1) return { ok: false, error: 'Unknown unit.' };
+  if (p.account.unlockedUnits.includes(raceKey)) return { ok: false, error: 'Already owned.' };
+
+  const price = (typeof window !== 'undefined' && typeof window.ACCT_UNIT_PRICE === 'number') ? window.ACCT_UNIT_PRICE : 5000;
+  if (useToken && (p.account.freeTokens || 0) > 0) {
+    p.account.freeTokens -= 1;
+  } else if ((p.account.gold || 0) >= price) {
+    p.account.gold -= price;
+  } else {
+    return { ok: false, error: 'Not enough gold. (' + (p.account.gold || 0).toLocaleString() + ' / ' + price.toLocaleString() + ')' };
+  }
+  p.account.unlockedUnits = p.account.unlockedUnits.concat([raceKey]);
+  saveProfile(idx, p);
+  try { if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+  return { ok: true, data: { gold: p.account.gold, unlockedUnits: p.account.unlockedUnits.slice(), freeTokens: p.account.freeTokens } };
+}
+
 async function serverPurchaseUnit(raceKey, useToken) {
   const token = getServerToken();
-  if (!token) return { ok: false, error: 'You need an online account to unlock units.' };
+  // No server account → spend the local wallet so solo/offline play can unlock.
+  if (!token) return localPurchaseUnit(raceKey, useToken);
   try {
     const resp = await fetch('/api/economy/purchase', {
       method: 'POST',
@@ -601,6 +644,7 @@ window.ProfileSystem = {
   serverFetchEconomy,
   serverBankGold,
   serverPurchaseUnit,
+  localPurchaseUnit,
   creditLocalGold,
 };
 
