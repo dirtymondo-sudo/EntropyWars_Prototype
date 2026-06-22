@@ -18082,8 +18082,13 @@
                     //    the target (no horizontal projectile). ──
                     focusUnitPanel(target.id);
                     playSfx(spellLaunchSfx(spell));
+                    // descentCam tilts the camera UP toward the sky so the hovering
+                    // UFO is in frame, then follows the probe needle back down as it
+                    // pierces. Telegraph holds on the saucer (~550ms in the VFX) before
+                    // the needle extends; descent tracks it to the ground.
                     const cam = playOffensiveActionCamera(unit, target, {
-                        sourceHold: 700, targetHold: 1100, attackName: spell.name
+                        sourceHold: 700, targetHold: 1100, attackName: spell.name,
+                        descentCam: { telegraphMs: 550, descentMs: 200 }
                     });
                     const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(700));
                     const impactDelay = projectileDelay + actionMs(700);

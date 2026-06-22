@@ -4619,7 +4619,7 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 2 },
           desc: 'Throw back your head and howl. +2 ATK stages. The beast is unleashed.' },
         { id: 'raceBloodFrenzy', spellType: 'unholy', name: 'Blood Frenzy',
-          type: 'damage', cost: 20, apCost: 1, range: 6,
+          type: 'damage', cost: 20, apCost: 2, range: 6,
           kind: 'damage', damageType: 'physical', dmg: 150,
           chargeToTarget: true, autoTargetLowestHp: true,
           desc: 'Smell blood. Charge the visible enemy with the least health and savage them. Cannot be cast if no enemies are visible.' },

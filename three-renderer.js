@@ -318,6 +318,11 @@ const ThreeRenderer = (function () {
     }
 
     var _plateObjs = new Map();
+    /* Last rendered HP/MP fill % per unit id. Lets a freshly-rebuilt plate start at
+       the previous fill width and animate (drain) to the new value, instead of
+       snapping straight to the lower health. */
+    var _lastHpPctById = new Map();
+    var _lastMpPctById = new Map();
     /* Fake nameplates attached to decoy/clone objects so they read identically to
        real units (HP/MP/name bars). Tracked separately for per-frame scale + fog
        visibility, and cleared whenever deployables rebuild. */
@@ -2928,6 +2933,8 @@ const ThreeRenderer = (function () {
             // Update HP bar fill width (transition animates it)
             var hpFill = po.el.querySelector('.tp-hp-fill');
             if (hpFill) hpFill.style.width = hpPct + '%';
+            _lastHpPctById.set(u.id, hpPct);
+            _lastMpPctById.set(u.id, mpPct);
 
             // HP bar color is ally/enemy based — no tier swap needed
             var hpBar = po.el.querySelector('.tp-bar:not(.tp-bar-mp)');
@@ -3401,6 +3408,9 @@ const ThreeRenderer = (function () {
             if (po.css2d && po.css2d.parent) po.css2d.parent.remove(po.css2d);
         }
         _plateObjs.clear();
+        /* NOTE: do NOT clear _lastHpPctById/_lastMpPctById here — _clearPlates() runs
+           on every rebuildUnits(), and _createPlate() relies on the previous fill % to
+           animate the drain. They're cleared on dispose() / match teardown instead. */
     }
 
     function _hpTier(ratio) {
@@ -3432,6 +3442,11 @@ const ThreeRenderer = (function () {
 
         var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
         var mpPct = Math.max(0, Math.round(100 * unit.mp / (unit.maxMp || 1)));
+        /* If this unit already had a plate (it's being rebuilt mid-combat), start the
+           fill at the previously rendered width so the CSS width-transition can drain
+           it down to the new value instead of snapping. */
+        var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
+        var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
         var allyCls = _isAllyPlayer(unit.player) ? 'tp-hp-ally' : 'tp-hp-enemy';
         var ticksHtml = _buildHpTicks(unit.maxHp || 1);
 
@@ -3497,13 +3512,13 @@ const ThreeRenderer = (function () {
             typeHtml +
             '<div class="tp-bars">' +
                 '<div class="tp-bar ' + allyCls + '">' +
-                    '<div class="tp-hp-fill" style="width:' + hpPct + '%"></div>' +
+                    '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
                     ticksHtml +
                     shieldHtml +
                     '<span class="tp-bar-num">' + unit.hp + '/' + unit.maxHp + '</span>' +
                 '</div>' +
                 '<div class="tp-bar tp-bar-mp">' +
-                    '<div class="tp-mp-fill" style="width:' + mpPct + '%"></div>' +
+                    '<div class="tp-mp-fill" style="width:' + mpStartPct + '%"></div>' +
                     '<span class="tp-bar-num">' + unit.mp + '/' + unit.maxMp + '</span>' +
                 '</div>' +
             '</div>' +
@@ -3526,6 +3541,20 @@ const ThreeRenderer = (function () {
         }
 
         _plateObjs.set(unit.id, { css2d: css2d, el: wrap });
+
+        /* The fill was rendered at its previous width (hpStartPct/mpStartPct). On the
+           next frame, set it to the real value so the CSS width-transition animates the
+           change (e.g. health draining) rather than snapping. */
+        if (hpStartPct !== hpPct || mpStartPct !== mpPct) {
+            requestAnimationFrame(function () {
+                var hf = wrap.querySelector('.tp-hp-fill');
+                if (hf) hf.style.width = hpPct + '%';
+                var mf = wrap.querySelector('.tp-mp-fill');
+                if (mf) mf.style.width = mpPct + '%';
+            });
+        }
+        _lastHpPctById.set(unit.id, hpPct);
+        _lastMpPctById.set(unit.id, mpPct);
     }
 
     /* Build a nameplate for a decoy/clone that visually matches a real unit plate.
@@ -7464,6 +7493,7 @@ const ThreeRenderer = (function () {
         _nexusBarGroup = null;
         textureCache.clear(); tileMeshes.clear(); objectMeshes.clear();
         turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
+        _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
         _clearAnimations();
         initialized = false;
