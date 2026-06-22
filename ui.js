@@ -2395,7 +2395,7 @@
         }
       }
       const _hlKeyParts = _selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting
-        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnit?.id || '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + _unitPosFingerprint
+        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnit?.id || '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + _unitPosFingerprint
         : '';
       let _hlCache;
       let _hlZCache;
@@ -2763,8 +2763,44 @@
           const spell = (_selectedForHl.spells || []).find(s => s.name === state.selectedTool) || (_selectedForHl._raceAbilities || []).find(s => s.name === state.selectedTool);
           if (spell) {
             const minRange = (['heal', 'shield', 'buff', 'scan', 'summonWeather', 'bomb', 'healAll', 'aoe', 'barrage', 'seedHeal', 'seedPoison', 'leechSeed', 'warpRune', 'teleport', 'deployTurret', 'buildBridge', 'warCry', 'encore', 'remoteView'].includes(spell.kind)) ? 0 : 1;
-            if (spell.kind === 'healAll') {
+            if (_selectedForHl._skyThrowGrab && state._skyThrowHighlight) {
+              // Sky-throw "phase 2": a target is grabbed — highlight where it can be
+              // hurled (throwRange tiles around the grabbed unit), NOT the caster's
+              // spell range. Occupied landing tiles read as collision targets.
+              const _stHl = state._skyThrowHighlight;
+              const _grabId = _selectedForHl._skyThrowGrab.id;
+              for (let cy = 0; cy < bh(); cy++) {
+                for (let cx = 0; cx < bw(); cx++) {
+                  const d = Math.abs(cx - _stHl.cx) + Math.abs(cy - _stHl.cy);
+                  if (d >= 1 && d <= _stHl.range && isInside(cx, cy)) {
+                    const occ = _liveUnitMap.get(posKey(cx, cy));
+                    if (occ && !occ.dead && occ.id !== _grabId) {
+                      _hlCache.set(posKey(cx, cy), 'attack enemy');
+                    } else {
+                      _hlCache.set(posKey(cx, cy), 'move');
+                    }
+                  }
+                }
+              }
+            } else if (spell.kind === 'healAll') {
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'heal');
+            } else if (spell.kind === 'teleport' && spell.teleportAnyUnit && !state._teleportingUnit) {
+              // Phase 1 of "warp any unit": the player picks the UNIT to teleport
+              // (self / ally / enemy), NOT a destination tile yet. Highlight the
+              // selectable UNITS only — don't paint the purple destination field,
+              // which made it look like you should click an empty tile.
+              const _tpEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
+              for (const u of state.units) {
+                if (u.dead) continue;
+                const d = Math.abs(_selectedForHl.x - u.x) + Math.abs(_selectedForHl.y - u.y);
+                if (d > _tpEffRange) continue;
+                const pk = posKey(u.x, u.y);
+                if (isEnemyUnit(u, _selectedForHl) && !unitHasStatus(u, 'invisible')) {
+                  _hlCache.set(pk, 'attack enemy');
+                } else if (isAllyUnit(u, _selectedForHl)) {
+                  _hlCache.set(pk, 'move ally');
+                }
+              }
             } else if (spell.kind === 'teleport' && state._teleportingUnit) {
               const _tpEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               for (let cy = 0; cy < bh(); cy++) {

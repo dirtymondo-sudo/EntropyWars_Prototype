@@ -13594,6 +13594,9 @@
             state.selectedTool = null;
             state.pendingTarget = null;
             state._teleportingUnit = null;
+            if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
+            const _prevSel = state.units && state.units.find(u => u._skyThrowGrab);
+            if (_prevSel) { _prevSel._skyThrowGrab = null; }
             clearSpellRangePreview();
             clearAttackRangePreview();
 
@@ -14472,6 +14475,18 @@
                         }
                         return;
                     }
+                    // Valid throw destination → resolve the throw on this single click.
+                    // (No pendingTarget "click twice to confirm" step: the player already
+                    // confirmed by grabbing, and the throw tiles are highlighted.)
+                    state.pendingTarget = null;
+                    state._actionExecuting = true;
+                    if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                    clearAoePreview();
+                    clearHoveredTarget();
+                    clearSpellRangePreview();
+                    clearAttackRangePreview();
+                    scheduleBoardRender();
+                    return _execAction(() => doSpell(actingUnit, x, y, state._clickedZ));
                 } else {
                     let validTargets;
                     if (state.actionMenuView === 'attackTargets') {
@@ -17926,9 +17941,15 @@
             const minRange = _kindMeta(spell).minRange ?? 1;
 
             const isTeleportPhase2 = spell.kind === 'teleport' && state._teleportingUnit;
+            // Sky-throw "phase 2": a target is already grabbed and this click is the
+            // THROW destination. The destination can be farther than the caster's
+            // own spell range (grab range + throw range) and may sit behind terrain
+            // the caster can't see — the skyThrow handler validates the throw against
+            // throwRange itself, so skip the normal caster-range / LOS / fog gates here.
+            const isSkyThrowPhase2 = spell.kind === 'skyThrow' && unit._skyThrowGrab;
 
             const isLineDirection = spell.kind === 'line' || spell.kind === 'linePush';
-            if (!isTeleportPhase2 && !isLineDirection) {
+            if (!isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
                 const effSpellRange = getEffectiveSpellRange(unit, spell);
                 if (dEff < minRange || dEff > effSpellRange) {
                     addLog('Spell target is out of range.');
@@ -17947,7 +17968,7 @@
 
             const _isSpellSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
-            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && d > 0) {
+            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && d > 0) {
                 if (!isInVision(unit, x, y) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
                     addLog('Target is hidden in the fog.');
                     state._teleportingUnit = null;
@@ -20744,6 +20765,7 @@
                     }
                     pushUndoSnapshot(true);
                     unit._skyThrowGrab = null;
+                    state._skyThrowHighlight = null;
 
                     const casterZ = getUnitStandingHeight(unit);
                     const carryH = spell.carryHeight || 4;
