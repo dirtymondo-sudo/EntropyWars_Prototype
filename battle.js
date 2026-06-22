@@ -18074,9 +18074,55 @@
                     markDirty('selectedUnit', 'hud');
                 }
 
-                completionDelay = executeSpellAnimation(
-                    unit, spell, target, { x, y },
-                    effectiveSpellCost, spellPower, finishAction, spellApCost);
+                if (spell.id === 'raceProbe') {
+                    // ── Probe: a UFO hovers and extends a metal probe down to pierce
+                    //    the target (no horizontal projectile). ──
+                    focusUnitPanel(target.id);
+                    playSfx(spellLaunchSfx(spell));
+                    const cam = playOffensiveActionCamera(unit, target, {
+                        sourceHold: 700, targetHold: 1100, attackName: spell.name
+                    });
+                    const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(700));
+                    const impactDelay = projectileDelay + actionMs(700);
+                    completionDelay = Math.max(impactDelay + actionMs(700),
+                        (cam?.totalMs ?? (impactDelay + actionMs(700))) + actionMs(120));
+                    unit.mp -= effectiveSpellCost;
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        if (window.ThreeVFXEffects && window.ThreeVFXEffects.spawnProbeDescent3D) {
+                            window.ThreeVFXEffects.spawnProbeDescent3D(target.x, target.y);
+                        }
+                    }, projectileDelay);
+                    window.setTimeout(() => {
+                        _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
+                    }, impactDelay);
+                } else if (spell.id === 'raceTrunkThrow') {
+                    // ── Trunk Throw: hurl an actual tree on a tumbling parabolic arc. ──
+                    focusUnitPanel(target.id);
+                    playSfx(spellLaunchSfx(spell));
+                    const cam = playOffensiveActionCamera(unit, target, {
+                        sourceHold: 900, targetHold: 900, attackName: spell.name
+                    });
+                    const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                    const travelMs = cam?.travelMs ?? actionMs(560);
+                    const impactDelay = Math.max(projectileDelay + travelMs + actionMs(80), actionMs(620));
+                    completionDelay = Math.max(impactDelay + actionMs(220),
+                        (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                    unit.mp -= effectiveSpellCost;
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        if (window.ThreeVFXEffects && window.ThreeVFXEffects.spawnTrunkThrow3D) {
+                            window.ThreeVFXEffects.spawnTrunkThrow3D(unit.x, unit.y, target.x, target.y, travelMs);
+                        }
+                    }, projectileDelay);
+                    window.setTimeout(() => {
+                        _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
+                    }, impactDelay);
+                } else {
+                    completionDelay = executeSpellAnimation(
+                        unit, spell, target, { x, y },
+                        effectiveSpellCost, spellPower, finishAction, spellApCost);
+                }
             } else if (spell.kind === 'heal') {
                 // Phase 4 migration: heal uses ally support pipeline
                 const _healResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
@@ -18631,7 +18677,14 @@
                             window.setTimeout(() => {
                                 if (enemy.dead) return;
                                 let dmg = Math.max(32, Math.floor(((spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16) * _barrageWaterMult));
-                                playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
+                                if (spell.id === 'shootout' && typeof window !== 'undefined'
+                                    && window.ThreeVFXEffects && window.ThreeVFXEffects.spawnBulletRain3D
+                                    && state.phase === 'battle' && !_skipVisuals()) {
+                                    // Bullet Rain: fire a spray of bullets up that rains down on this target.
+                                    window.ThreeVFXEffects.spawnBulletRain3D(unit.x, unit.y, enemy.x, enemy.y, actionMs(400));
+                                } else {
+                                    playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
+                                }
                                 playSfx(spellLaunchSfx(spell));
                                 window.setTimeout(() => {
                                     if (enemy.dead) return;

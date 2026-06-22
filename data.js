@@ -5162,7 +5162,7 @@ const RACE_ABILITIES = {
     ],
     'grey': [
         { id: 'raceProbe', spellType: 'alien', name: 'Probe',
-          type: 'damage', cost: 20, range: 4, apCost: 1,
+          type: 'damage', cost: 20, range: 4, apCost: 2,
           kind: 'damage', damageType: 'magic', dmg: 110,
           desc: 'Probe an enemy with invasive psychic instruments. Direct magic damage.' },
         { id: 'raceAbductionBeam', spellType: 'alien', name: 'Abduction Beam',

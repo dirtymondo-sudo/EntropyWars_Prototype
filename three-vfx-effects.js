@@ -2885,6 +2885,7 @@ EFFECTS['wallOfFire_tile'] = {
     var _iceTexCache = null;
     var _woodTexCache = null;
     var _forestTexCache = null;
+    var _bulletTexCache = null;
 
     function _loadCachedTex(url) {
         var loader = new THREE.TextureLoader();
@@ -2920,6 +2921,11 @@ EFFECTS['wallOfFire_tile'] = {
         if (_forestTexCache) return _forestTexCache;
         _forestTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/forest.png');
         return _forestTexCache;
+    }
+    function _getBulletTexture() {
+        if (_bulletTexCache) return _bulletTexCache;
+        _bulletTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/bullet.png');
+        return _bulletTexCache;
     }
 
     function _spawnBoulderProjectile3D(fromTx, fromTy, toTx, toTy, travelMs) {
@@ -4099,6 +4105,267 @@ EFFECTS['wallOfFire_tile'] = {
         });
     }
 
+    /* ── Probe: a grey UFO hovers over the target, drops an abduction beam, and
+       extends a metallic probe needle straight down to pierce the victim. All
+       built from THREE geometry (no sprites). Pierce lands ~700ms in so battle.js
+       can sync damage to it. ── */
+    function _spawnProbeDescent3D(tx, ty) {
+        var scene = _getVFXScene();
+        if (!scene) return;
+
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var boost = unitZBoost();
+
+        var hoverY = wp.y + ts * 2.7;       // saucer centre hover height
+        var bodyR = ts * 0.55;
+        var bodyH = ts * 0.22;
+        var pierceY = wp.y + ts * 0.25;     // where the needle tip ends up (in the target)
+
+        var shaftR = ts * 0.035;
+        var tipR = ts * 0.075;
+        var tipLen = ts * 0.2;
+
+        // Saucer body (grey metal hull)
+        var bodyGeo = new THREE.SphereGeometry(1, 20, 12);
+        var matBody = new THREE.MeshBasicMaterial({ color: 0x9aa3b2, transparent: true, opacity: 0, depthWrite: true });
+        var body = new THREE.Mesh(bodyGeo, matBody);
+        body.renderOrder = 160; scene.add(body);
+
+        // Darker metallic equator rim
+        var rimGeo = new THREE.TorusGeometry(1, 0.13, 8, 24);
+        var matRim = new THREE.MeshBasicMaterial({ color: 0x59626f, transparent: true, opacity: 0, depthWrite: true });
+        var rim = new THREE.Mesh(rimGeo, matRim);
+        rim.rotation.x = Math.PI / 2; rim.renderOrder = 161; scene.add(rim);
+
+        // Glass cockpit dome
+        var domeGeo = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        var matDome = new THREE.MeshBasicMaterial({ color: 0x99e0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var dome = new THREE.Mesh(domeGeo, matDome);
+        dome.renderOrder = 162; scene.add(dome);
+
+        // Under-belly glow disc
+        var glowGeo = new THREE.CircleGeometry(1, 24);
+        var matGlow = new THREE.MeshBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        var glow = new THREE.Mesh(glowGeo, matGlow);
+        glow.rotation.x = -Math.PI / 2; glow.renderOrder = 159; scene.add(glow);
+
+        // Abduction beam cone
+        var beamGeo = new THREE.CylinderGeometry(0.18, 1, 1, 20, 1, true);
+        var matBeam = new THREE.MeshBasicMaterial({ color: 0x55ff99, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+        var beam = new THREE.Mesh(beamGeo, matBeam);
+        beam.renderOrder = 158; scene.add(beam);
+
+        // Probe shaft (polished metal)
+        var shaftGeo = new THREE.CylinderGeometry(1, 1, 1, 10);
+        var matShaft = new THREE.MeshBasicMaterial({ color: 0xc6cdd8, transparent: true, opacity: 0, depthWrite: true });
+        var shaft = new THREE.Mesh(shaftGeo, matShaft);
+        shaft.renderOrder = 164; scene.add(shaft);
+
+        // Probe tip (sharp cone, points down)
+        var tipGeo = new THREE.ConeGeometry(1, 1, 10);
+        var matTip = new THREE.MeshBasicMaterial({ color: 0x767f8d, transparent: true, opacity: 0, depthWrite: true });
+        var tip = new THREE.Mesh(tipGeo, matTip);
+        tip.rotation.x = Math.PI; tip.renderOrder = 165; scene.add(tip);
+
+        // Pierce flash
+        var flashGeo = new THREE.SphereGeometry(1, 12, 8);
+        var matFlash = new THREE.MeshBasicMaterial({ color: 0xccffdd, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var flash = new THREE.Mesh(flashGeo, matFlash);
+        flash.renderOrder = 166; scene.add(flash);
+
+        var totalMs = 1350;
+        var entry = { meshes: [body, rim, dome, glow, beam, shaft, tip, flash], done: false };
+
+        _animate3D(entry, totalMs, function(elapsed) {
+            var appearE = Math.min(elapsed / 320, 1); appearE = 1 - Math.pow(1 - appearE, 3);
+            var beamT = Math.max(0, Math.min((elapsed - 320) / 230, 1));
+
+            var ext; // probe extension 0 (retracted) .. 1 (fully pierced)
+            if (elapsed < 550) ext = 0;
+            else if (elapsed < 700) { var s = (elapsed - 550) / 150; ext = s * s; }
+            else if (elapsed < 900) ext = 1;
+            else { var r = Math.min((elapsed - 900) / 450, 1); ext = 1 - (1 - Math.pow(1 - r, 2)); }
+
+            var fade = elapsed < 900 ? 1 : 1 - Math.min((elapsed - 900) / 450, 1);
+            var ascend = elapsed < 900 ? 0 : Math.min((elapsed - 900) / 450, 1) * ts * 0.9;
+
+            var curHoverY = hoverY + ts * 0.6 * (1 - appearE) + ascend;
+            var curBottomY = curHoverY - bodyH * 0.5;
+
+            body.position.set(wp.x, curHoverY, wp.z);
+            body.scale.set(bodyR, bodyH, bodyR);
+            body.rotation.y = elapsed * 0.002;
+            matBody.opacity = appearE;
+
+            rim.position.set(wp.x, curHoverY, wp.z);
+            rim.scale.set(bodyR * 0.99, bodyR * 0.99, bodyH * 1.3);
+            rim.rotation.z = elapsed * 0.002;
+            matRim.opacity = appearE;
+
+            dome.position.set(wp.x, curHoverY + bodyH * 0.35, wp.z);
+            dome.scale.set(bodyR * 0.45, bodyR * 0.42, bodyR * 0.45);
+            matDome.opacity = appearE * 0.5;
+
+            var glowPulse = 1 + 0.18 * Math.sin(elapsed * 0.02);
+            glow.position.set(wp.x, curBottomY - 2, wp.z);
+            glow.scale.set(bodyR * 0.7 * glowPulse, bodyR * 0.7 * glowPulse, 1);
+            matGlow.opacity = appearE * (0.35 + 0.15 * Math.sin(elapsed * 0.02)) * fade;
+
+            var beamLen = Math.max(1, curBottomY - wp.y);
+            beam.position.set(wp.x, wp.y + beamLen * 0.5, wp.z);
+            beam.scale.set(bodyR * 0.85 * beamT, beamLen, bodyR * 0.85 * beamT);
+            beam.rotation.y = elapsed * 0.001;
+            matBeam.opacity = beamT * 0.2 * fade;
+
+            // Needle: tip slides from saucer belly down to pierceY
+            var tipY = curBottomY - (curBottomY - pierceY) * ext;
+            var shaftLen = Math.max(1, curBottomY - (tipY + tipLen));
+            shaft.position.set(wp.x, curBottomY - shaftLen * 0.5, wp.z);
+            shaft.scale.set(shaftR, shaftLen, shaftR);
+            matShaft.opacity = Math.min(1, ext * 6) * fade;
+
+            tip.position.set(wp.x, tipY + tipLen * 0.5, wp.z);
+            tip.scale.set(tipR, tipLen, tipR);
+            matTip.opacity = Math.min(1, ext * 6) * fade;
+
+            var fl = (elapsed >= 680 && elapsed < 900) ? (1 - Math.abs(elapsed - 760) / 110) : 0;
+            fl = Math.max(0, fl);
+            var fs = ts * (0.12 + 0.18 * (1 - fl));
+            flash.position.set(wp.x, pierceY, wp.z);
+            flash.scale.set(fs, fs, fs);
+            matFlash.opacity = fl * 0.85;
+        });
+    }
+
+    /* ── Trunk Throw: hurls an actual tree (the same cone-trunk + sphere-canopy
+       geometry the game uses for trees) on a parabolic arc, tumbling end over
+       end, from caster to target. ── */
+    function _spawnTrunkThrow3D(fromTx, fromTy, toTx, toTy, travelMs) {
+        var scene = _getVFXScene();
+        if (!scene) return;
+
+        var wp0 = _worldPos(fromTx, fromTy);
+        var wp1 = _worldPos(toTx, toTy);
+        var ts = wp0.ts;
+        var boost = unitZBoost();
+
+        var trunkH = ts * 0.95, trunkR = ts * 0.13, canopyR = ts * 0.42;
+
+        var group = new THREE.Group();
+
+        var trunkGeo = new THREE.ConeGeometry(trunkR, trunkH, 8, 1, false);
+        var matTrunk = new THREE.MeshBasicMaterial({ map: _getWoodTexture(), transparent: true, opacity: 1, depthWrite: true });
+        var trunk = new THREE.Mesh(trunkGeo, matTrunk);
+        trunk.position.y = 0;
+        group.add(trunk);
+
+        var canopyGeo = new THREE.SphereGeometry(canopyR, 12, 8);
+        var matCanopy = new THREE.MeshBasicMaterial({ map: _getForestTexture(), transparent: true, opacity: 1, depthWrite: true });
+        var canopy = new THREE.Mesh(canopyGeo, matCanopy);
+        canopy.position.y = trunkH * 0.55;
+        canopy.scale.set(1, 0.85, 1);
+        group.add(canopy);
+
+        group.position.set(wp0.x, wp0.y + boost, wp0.z);
+        group.renderOrder = 162;
+        scene.add(group);
+
+        var shadowGeo = new THREE.CircleGeometry(canopyR * 0.85, 12);
+        var shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+        var shadow = new THREE.Mesh(shadowGeo, shadowMat);
+        shadow.rotation.x = -Math.PI / 2;
+        shadow.position.set(wp0.x, wp0.y + 2, wp0.z);
+        shadow.renderOrder = 140;
+        scene.add(shadow);
+
+        var durMs = travelMs || 550;
+        var dx = wp1.x - wp0.x, dz = wp1.z - wp0.z;
+        var flatDist = Math.sqrt(dx * dx + dz * dz);
+        var arcPeak = Math.max(ts * 1.4, flatDist * 0.45);
+        var travelAngle = Math.atan2(dz, dx);
+
+        var entry = { meshes: [group, trunk, canopy, shadow], done: false };
+
+        _animate3D(entry, durMs, function(elapsed) {
+            var t = Math.min(elapsed / durMs, 1);
+
+            var cx = wp0.x + (wp1.x - wp0.x) * t;
+            var cz = wp0.z + (wp1.z - wp0.z) * t;
+            var baseY = (wp0.y + boost) + ((wp1.y + boost) - (wp0.y + boost)) * t;
+            var arc = arcPeak * 4 * t * (1 - t);
+            var cy = baseY + arc;
+
+            group.position.set(cx, cy, cz);
+            group.rotation.set(0, 0, 0);
+            group.rotateY(travelAngle);
+            group.rotateX(elapsed * 0.012);
+
+            var groundY = wp0.y + (wp1.y - wp0.y) * t;
+            shadow.position.set(cx, groundY + 2, cz);
+            var h = cy - groundY;
+            var ss = Math.max(0.3, 1 - h / (arcPeak * 2));
+            shadow.scale.set(ss, ss, ss);
+            shadowMat.opacity = 0.3 * ss;
+        });
+    }
+
+    /* ── Bullet Rain: fires a spray of bullet sprites up into the air from the
+       caster; they arc over and rain down onto the target. Call once per target
+       so a sweep across enemies reads as a continuous downpour. Bullets land at
+       ~landMs so battle.js can match damage to the impact. ── */
+    function _spawnBulletRain3D(srcTx, srcTy, toTx, toTy, landMs) {
+        var scene = _getVFXScene();
+        if (!scene) return;
+
+        var wp0 = _worldPos(srcTx, srcTy);
+        var wp1 = _worldPos(toTx, toTy);
+        var ts = wp0.ts;
+        var boost = unitZBoost();
+        var tex = _getBulletTexture();
+
+        var count = 6;
+        var dur = landMs || 400;
+
+        for (var i = 0; i < count; i++) {
+            (function(idx) {
+                window.setTimeout(function() {
+                    if (_suppressed()) return;
+                    var sc = _getVFXScene();
+                    if (!sc) return;
+
+                    var mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+                    var spr = new THREE.Sprite(mat);
+                    var sz = ts * 0.22;
+                    spr.scale.set(sz, sz, sz);
+
+                    var sx = wp0.x + rn(-ts * 0.15, ts * 0.15);
+                    var sz0 = wp0.z + rn(-ts * 0.15, ts * 0.15);
+                    var sy = wp0.y + boost;
+                    var ex = wp1.x + rn(-ts * 0.32, ts * 0.32);
+                    var ez = wp1.z + rn(-ts * 0.32, ts * 0.32);
+                    var ey = wp1.y + boost * 0.4;
+                    var peak = Math.max(ts * 2.0, Math.abs(ex - sx) * 0.5) + rn(0, ts * 0.6);
+
+                    spr.position.set(sx, sy, sz0);
+                    spr.renderOrder = 166;
+                    sc.add(spr);
+
+                    var entry = { meshes: [spr], done: false };
+                    _animate3D(entry, dur, function(elapsed) {
+                        var t = Math.min(elapsed / dur, 1);
+                        var cx = sx + (ex - sx) * t;
+                        var cz = sz0 + (ez - sz0) * t;
+                        var by = sy + (ey - sy) * t;
+                        var arc = peak * 4 * t * (1 - t);
+                        spr.position.set(cx, by + arc, cz);
+                        mat.opacity = t < 0.85 ? 1 : Math.max(0, 1 - (t - 0.85) / 0.15);
+                    });
+                }, idx * 35);
+            })(i);
+        }
+    }
+
     function _spawnExplosionRing3D(tx, ty, aoeRadius, opts) {
         var scene = _getVFXScene();
         if (!scene) return;
@@ -4650,6 +4917,10 @@ EFFECTS['wallOfFire_tile'] = {
 
         hasIceProjectile: hasIceProjectile,
         spawnIceSpearProjectile3D: _spawnIceSpearProjectile3D,
+
+        spawnProbeDescent3D: _spawnProbeDescent3D,
+        spawnTrunkThrow3D: _spawnTrunkThrow3D,
+        spawnBulletRain3D: _spawnBulletRain3D,
 
         buildHurricaneVortex3D: _buildHurricaneVortex3D,
         tickHurricaneVortex: _tickHurricaneVortex,
