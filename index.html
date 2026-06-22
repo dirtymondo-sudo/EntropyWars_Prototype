@@ -1114,7 +1114,10 @@
                 //    profiles are in rd.y (view-elevation) units. ──
                 float ridge(float a){ float n=fbm(vec2(a,1.7)); return 1.0-abs(2.0*n-1.0); }
                 float mtnCrest(float a){
-                    return 0.045 + ridge(a*1.3+2.0)*0.10 + ridge(a*2.9+9.0)*0.045 + fbm(vec2(a*6.0,3.0))*0.02;
+                    // mountains only rise in a few arcs (no continuous ring) so the
+                    // ground-meets-sky horizon stays open between them
+                    float patch=smoothstep(0.48,0.62, fbm(vec2(a*1.7, 19.0)));
+                    return patch*(0.03 + ridge(a*1.3+2.0)*0.11 + ridge(a*2.9+9.0)*0.05 + fbm(vec2(a*6.0,3.0))*0.02);
                 }
                 float forestCrest(float a){
                     float m=smoothstep(0.42,0.55, fbm(vec2(a*3.0,5.0)));

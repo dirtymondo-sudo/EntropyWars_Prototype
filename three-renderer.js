@@ -6546,6 +6546,10 @@ const ThreeRenderer = (function () {
             var wGeo = new THREE.CylinderGeometry(1, 1, 1, 160, 1, true);
             _envWall = new THREE.Mesh(wGeo, wallMat);
             _envWall.renderOrder = -60; _envWall.frustumCulled = false;
+            // The enclosing ring wall is retired in favour of real scattered
+            // horizon scenery (see _buildHorizonScenery). Hidden, not removed, so
+            // the dome + ground disc form an open ground-meets-sky horizon.
+            _envWall.visible = false;
 
             var domeMat = new THREE.ShaderMaterial({
                 uniforms: _envUni, vertexShader: _ENV_DOME_VS, fragmentShader: _envDomeFS(),
@@ -6632,7 +6636,146 @@ const ThreeRenderer = (function () {
         _envUni.uZodiac.value = S.zodiac;
         _envUni.uWeather.value.set(S.storm, S.snow, S.sand, S.blood);
         _envUni.uTime.value = performance.now() / 1000;
+
+        // keep the real horizon scenery in sync + atmospherically graded
+        _buildHorizonScenery();
+        _gradeHorizonScenery(S.night, S.skyEvent, S.skyAmt);
     }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  HORIZON SCENERY
+    //  Real textured background elements — abandoned / large buildings,
+    //  columns, trees and the odd rocky peak — ringing the board out on the
+    //  horizon with plenty of gaps so the ground-meets-sky line stays visible.
+    //  Built from the game's own object sprites + terrain textures (R2), so it
+    //  matches the in-world art and tilts / zooms with the camera.
+    //  ► To add the "night city" assets: drop their full R2 png urls into
+    //    _HORIZON_CITY_URLS below — they get folded into the building pool.
+    // ════════════════════════════════════════════════════════════════════
+    var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
+    var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
+    var _HORIZON_BUILDINGS = [
+        'building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6',
+        'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
+        'abandoned_building_1', 'abandoned_building_2', 'ancient_building', 'church_1', 'church_2'
+    ];
+    var _HORIZON_TREES = ['tree_2', 'tree_3', 'tree_4', 'tree_5', 'tree_6'];
+    var _HORIZON_COLUMNS = ['column_1', 'column_2', 'column_3', 'column_4'];
+    var _R2_TERR = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
+    var _HORIZON_ROCK_URLS = [_R2_TERR + 'rock.png', _R2_TERR + 'rocks_4.png'];
+    // Night-city / extra background pngs (full R2 urls). Appended into the
+    // building rotation when present.
+    var _HORIZON_CITY_URLS = [];
+
+    function _mulberry32(a) {
+        return function () {
+            a |= 0; a = (a + 0x6D2B79F5) | 0;
+            var t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    function _objUrl(k) {
+        var s = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[k] : null;
+        return s ? s.url : null;
+    }
+
+    // Flat textured billboard; its width is corrected to the real sprite aspect
+    // as soon as the image loads, so buildings/trees/columns aren't stretched.
+    function _horizonBillboard(url, h, dfltAspect) {
+        if (!url) return null;
+        var mat = new THREE.MeshBasicMaterial({
+            transparent: true, alphaTest: 0.22, side: THREE.DoubleSide, depthWrite: true, fog: false
+        });
+        _horizonMats.push(mat);
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+        m.scale.set(h * dfltAspect, h, 1);
+        m.position.y = h * 0.5; m.frustumCulled = false;
+        function _fit(t) {
+            if (!t || !t.image) return;
+            var iw = t.image.naturalWidth || t.image.width, ih = t.image.naturalHeight || t.image.height;
+            if (iw && ih) m.scale.x = h * (iw / ih);
+        }
+        var tex = getTexture(url, _fit);
+        mat.map = tex; mat.needsUpdate = true;
+        _fit(tex);
+        var g = new THREE.Group(); g.add(m); return g;
+    }
+
+    function _horizonRock(tex, w, h) {
+        var mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, depthWrite: true, fog: false });
+        mat._ew_rock = true; _horizonMats.push(mat);
+        // low-poly peak so the tiling rock texture reads as a distant mountain
+        var m = new THREE.Mesh(new THREE.ConeGeometry(w * 0.5, h, 5, 1, false), mat);
+        m.position.y = h * 0.5; m.frustumCulled = false;
+        var g = new THREE.Group(); g.add(m); return g;
+    }
+
+    function _buildHorizonScenery() {
+        if (!scene || typeof THREE === 'undefined') return;
+        var ts = CONFIG.tileSize || 128;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
+        var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
+        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0);
+        if (_horizonGroup && _horizonKey === key) return;
+        if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
+        _horizonMats.length = 0;
+        _horizonGroup = new THREE.Group();
+        _horizonGroup.name = 'horizonScenery';
+        _horizonGroup.renderOrder = -40;
+        _horizonKey = key;
+
+        var R = discR * 0.92;
+        var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
+        var slots = 110;
+        for (var i = 0; i < slots; i++) {
+            if (rng() < 0.5) continue;                          // gaps keep the horizon open
+            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.05;
+            var rr = R * (0.84 + rng() * 0.18);
+            var x = cx + Math.cos(ang) * rr;
+            var z = cz + Math.sin(ang) * rr;
+
+            var roll = rng(), mesh = null;
+            if (roll < 0.08) {
+                var rtex = getTexture(_HORIZON_ROCK_URLS[(rng() * _HORIZON_ROCK_URLS.length) | 0]);
+                if (rtex) { var rh = ts * (5 + rng() * 8); mesh = _horizonRock(rtex, rh * (1.2 + rng() * 0.7), rh); }
+            } else if (roll < 0.72) {
+                var useCity = _HORIZON_CITY_URLS.length && rng() < 0.5;
+                var burl = useCity ? _HORIZON_CITY_URLS[(rng() * _HORIZON_CITY_URLS.length) | 0]
+                                   : _objUrl(_HORIZON_BUILDINGS[(rng() * _HORIZON_BUILDINGS.length) | 0]);
+                mesh = _horizonBillboard(burl, ts * (7 + rng() * 11), 0.55);
+            } else if (roll < 0.9) {
+                mesh = _horizonBillboard(_objUrl(_HORIZON_TREES[(rng() * _HORIZON_TREES.length) | 0]), ts * (4 + rng() * 5), 0.8);
+            } else {
+                mesh = _horizonBillboard(_objUrl(_HORIZON_COLUMNS[(rng() * _HORIZON_COLUMNS.length) | 0]), ts * (5 + rng() * 6), 0.35);
+            }
+            if (!mesh) continue;
+            mesh.position.set(x, 0, z);
+            mesh.rotation.y = Math.atan2(cx - x, cz - z);       // front faces the arena
+            _horizonGroup.add(mesh);
+        }
+        scene.add(_horizonGroup);
+    }
+
+    function _gradeHorizonScenery(night, skyEvent, skyAmt) {
+        if (!_horizonMats.length) return;
+        if (!_HZ_DAY) { _HZ_DAY = new THREE.Color(0x9aa6b8); _HZ_NIGHT = new THREE.Color(0x2b3552); _hzScratch = new THREE.Color(); }
+        _hzScratch.copy(_HZ_DAY).lerp(_HZ_NIGHT, night);
+        // blood moon washes the skyline red; eclipses cool/desaturate it
+        var bloodM = (skyEvent > 0.5 && skyEvent < 1.5) ? skyAmt : 0;
+        var ecl = (skyEvent >= 1.5) ? skyAmt : 0;
+        for (var i = 0; i < _horizonMats.length; i++) {
+            var m = _horizonMats[i];
+            m.color.copy(_hzScratch);
+            if (m._ew_rock) m.color.multiplyScalar(0.82);
+            if (bloodM > 0.01) m.color.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.5);
+            if (ecl > 0.01) m.color.multiplyScalar(1.0 - ecl * 0.35);
+        }
+    }
+    var _HZ_RED = null;
 
     function init() {
         if (initialized) return;
@@ -7895,6 +8038,9 @@ const ThreeRenderer = (function () {
             css2dRenderer.domElement.parentElement.removeChild(css2dRenderer.domElement);
         }
         css2dRenderer = null;
+        if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
+        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = '';
+        _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
         if (renderer) { renderer.dispose(); renderer = null; }
         if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
         canvas = null; scene = null;
