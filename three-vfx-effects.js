@@ -639,14 +639,15 @@ EFFECTS['wallOfFire_tile'] = {
     ]
 };
 
-/* ─── CROP CIRCLE — hand-authored UFO + abduction-beam descent ───────────
+/* ─── CROP CIRCLE — hand-authored hovering UFO + descending beam ─────────
    raceCropCircle is a kind:'aoe' spell with no telegraph of its own. Mapping
    it as a "descent" routes it through the cinematic ground-view descent camera
    and the descent VFX pipeline (telegraph ring → body → impact bursts). The
-   "body" here is a flying saucer that drifts down over the target while a
-   stepped column of beam rings + a psi-pulse shaft punch down to the ground —
-   the same look as the alien Abduction Beam. The actual crop-circle imprint in
-   the ground is produced by the spell's terrainDeform when damage resolves. */
+   "body" is a flying saucer that HOVERS high over the target; the BEAM (a
+   stepped column of rings + a psi-pulse shaft) is what travels DOWN from the
+   hull to the ground. When the beam lands (impact) the saucer fires off and
+   leaves. The actual crop-circle imprint in the ground is produced by the
+   spell's terrainDeform when damage resolves. */
 EFFECTS['raceCropCircle_descent'] = {
     descentMs: 1100,
     telegraphMs: 500,
@@ -656,28 +657,35 @@ EFFECTS['raceCropCircle_descent'] = {
     impactCenterEffect: 'raceCropCircle_impact_center',
     shape: 'square',
     layers: [
-        /* the saucer, dropping out of the sky then hovering over the field */
-        { anchor: 'floor', sprite: 'ufo', ml: 2000, z: 380,
-          w0: 256, w1: 256, h0: 256, h1: 256, opacity0: 0.92,
-          _descent: { fromZ: 380, toZ: 200, ms: 900, ease: 'easeOut' } },
-        /* soft green underglow beneath the hull */
-        { anchor: 'floor', sprite: 'ufo-glow', ml: 1500, z: 250, delayMs: 120,
-          size0: 110, size1: 150, opacity0: 0.6, opacity1: 0 },
-        /* stepped beam-ring column punching down from the hull to the ground */
-        { delayMs: 120, anchor: 'floor', mode: 'world', sprite: 'ring-1', ml: 1600, z: 170, w0: 28, w1: 28, h0: 28, h1: 28, opacity0: 0.9 },
-        { delayMs: 190, anchor: 'floor', mode: 'world', sprite: 'ring-2', ml: 1530, z: 144, w0: 36, w1: 36, h0: 36, h1: 36, opacity0: 0.9 },
-        { delayMs: 260, anchor: 'floor', mode: 'world', sprite: 'ring-3', ml: 1460, z: 118, w0: 48, w1: 48, h0: 48, h1: 48, opacity0: 0.9 },
-        { delayMs: 330, anchor: 'floor', mode: 'world', sprite: 'ring-4', ml: 1390, z: 90, w0: 62, w1: 62, h0: 62, h1: 62, opacity0: 0.9 },
-        { delayMs: 400, anchor: 'floor', mode: 'world', sprite: 'ring-5', ml: 1320, z: 62, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
-        { delayMs: 470, anchor: 'floor', mode: 'world', sprite: 'ring-6', ml: 1250, z: 32, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
-        { delayMs: 540, anchor: 'floor', mode: 'world', sprite: 'ring-7', ml: 1180, z: 6, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
-        /* the vertical beam shaft */
-        { delayMs: 250, anchor: 'floor', mode: 'y-locked', sprite: 'psi-pulse', ml: 1200, w0: 60, w1: 40, h0: 120, h1: 220, opacity0: 0.8 },
+        /* the saucer hangs HIGH over the target and holds while it fires —
+           it does NOT descend; only the beam below it travels down */
+        { anchor: 'floor', sprite: 'ufo', ml: 1150, z: 340,
+          w0: 256, w1: 256, h0: 256, h1: 256, opacity0: 0.95, opacity1: 0.9 },
+        /* once the beam has landed (impact), the saucer fires off and leaves */
+        { delayMs: 1100, anchor: 'floor', sprite: 'ufo', ml: 900, z: 340,
+          w0: 256, w1: 248, h0: 256, h1: 248, opacity0: 0.9, opacity1: 0,
+          vxRange: [300, 380], vyRange: [-220, -140], vzRange: [140, 220], drag: 0 },
+        /* soft green underglow on the hull while it hovers */
+        { anchor: 'floor', sprite: 'ufo-glow', ml: 1100, z: 312, delayMs: 80,
+          size0: 120, size1: 150, opacity0: 0.6, opacity1: 0.2 },
+        /* THE BEAM — a stepped ring column that punches DOWN from the hull
+           (just under the saucer at ~z300) to the ground; rising delays make
+           the leading edge read as descending */
+        { delayMs: 60,  anchor: 'floor', mode: 'world', sprite: 'ring-1', ml: 1500, z: 296, w0: 30, w1: 30, h0: 30, h1: 30, opacity0: 0.9 },
+        { delayMs: 130, anchor: 'floor', mode: 'world', sprite: 'ring-2', ml: 1430, z: 254, w0: 40, w1: 40, h0: 40, h1: 40, opacity0: 0.9 },
+        { delayMs: 200, anchor: 'floor', mode: 'world', sprite: 'ring-3', ml: 1360, z: 212, w0: 52, w1: 52, h0: 52, h1: 52, opacity0: 0.9 },
+        { delayMs: 270, anchor: 'floor', mode: 'world', sprite: 'ring-4', ml: 1290, z: 168, w0: 64, w1: 64, h0: 64, h1: 64, opacity0: 0.9 },
+        { delayMs: 340, anchor: 'floor', mode: 'world', sprite: 'ring-5', ml: 1220, z: 124, w0: 76, w1: 76, h0: 76, h1: 76, opacity0: 0.9 },
+        { delayMs: 410, anchor: 'floor', mode: 'world', sprite: 'ring-6', ml: 1150, z: 78,  w0: 84, w1: 84, h0: 84, h1: 84, opacity0: 0.9 },
+        { delayMs: 480, anchor: 'floor', mode: 'world', sprite: 'ring-7', ml: 1080, z: 34,  w0: 88, w1: 88, h0: 88, h1: 88, opacity0: 0.9 },
+        { delayMs: 550, anchor: 'floor', mode: 'world', sprite: 'ring-5', ml: 1000, z: 6,   w0: 90, w1: 86, h0: 90, h1: 86, opacity0: 0.9 },
+        /* the vertical beam shaft, growing tall as the beam reaches the ground */
+        { delayMs: 200, anchor: 'floor', mode: 'y-locked', sprite: 'psi-pulse', ml: 1100, w0: 64, w1: 44, h0: 60, h1: 320, opacity0: 0.8 },
         /* widening green target imprint on the ground */
-        { delayMs: 120, anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 1800, z: 2, size0: 60, size1: 150, opacity0: 0.8 },
+        { delayMs: 120, anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 1700, z: 2, size0: 60, size1: 150, opacity0: 0.8 },
         /* drifting green haze + rising motes inside the beam */
-        { count: 3, delayMs: 300, anchor: 'floor', sprite: 'void-mist', ml: [900, 1400], z: 30, offsetXY: 22, vzRange: [20, 60], drag: 0.3, size0: [24, 40], size1: [60, 90], opacity0: 0.55 },
-        { count: 4, delayMs: 500, anchor: 'floor', sprite: 'psi-pulse', ml: [500, 800], z: [4, 20], offsetXY: 14, vzRange: [80, 160], drag: 0.2, size0: [4, 9], size1: [1, 3], opacity0: 0.9 },
+        { count: 3, delayMs: 350, anchor: 'floor', sprite: 'void-mist', ml: [900, 1400], z: 30, offsetXY: 22, vzRange: [20, 60], drag: 0.3, size0: [24, 40], size1: [60, 90], opacity0: 0.55 },
+        { count: 4, delayMs: 600, anchor: 'floor', sprite: 'psi-pulse', ml: [500, 800], z: [4, 20], offsetXY: 14, vzRange: [80, 160], drag: 0.2, size0: [4, 9], size1: [1, 3], opacity0: 0.9 },
     ]
 };
 
