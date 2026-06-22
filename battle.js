@@ -235,6 +235,8 @@
             // ── Utility / vision ──
             utility:      { minRange: 0, offensive: false, tileTargeted: true },
             remoteView:   { minRange: 0, offensive: false, tileTargeted: true, fogExempt: true },
+            guard:        { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true },
+            trickRoom:    { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
 
             // ── Sky / elevation combat ──
             skyDrop:      { minRange: 1, offensive: true },
@@ -635,6 +637,28 @@
                 postEffects: [],
             },
             warCry: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'buff',
+                postEffects: [],
+            },
+            guard: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'none',
+                impact: 'aura',
+                hitResponse: 'buff',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: 'buff',
+                postEffects: [],
+            },
+            trickRoom: {
                 casterAnim: 'cast',
                 camera: 'focus',
                 travel: 'none',
@@ -2519,6 +2543,17 @@
                                 if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
                                 evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
                                 addLog(`${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
+                            }
+                        }
+                        // Refresh ally buffs (e.g. Smoke Screen invisibility) for friendlies still inside the cloud.
+                        if (zone.allyStatusEffects && zone.allyStatusEffects.length) {
+                            const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
+                            for (const ally of allies) {
+                                if (area.some(t => t.x === ally.x && t.y === ally.y)) {
+                                    for (const eff of zone.allyStatusEffects) {
+                                        applyStatusPayload(ally, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `);
+                                    }
+                                }
                             }
                         }
                     }
@@ -6362,6 +6397,30 @@
 
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
+
+            // ── Chivalry: a pledged knight dashes in and intercepts the next attack on their ward ──
+            if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
+                const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
+                const attacker = opts.sourceUnit || null;
+                if (guardian && guardian.id !== target.id && attacker && isEnemyUnit(attacker, target)) {
+                    // Consume the pledge so it only fires once.
+                    target._guardedBy = null;
+                    guardian._guardingAlly = null;
+                    // Dash the guardian to an open tile beside their ward for the intercept.
+                    const _adj = [{ dx: 0, dy: 1 }, { dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }];
+                    for (const a of _adj) {
+                        const nx = target.x + a.dx, ny = target.y + a.dy;
+                        if (typeof isInside === 'function' && !isInside(nx, ny)) continue;
+                        if (typeof unitAt === 'function' && unitAt(nx, ny)) continue;
+                        guardian.x = nx; guardian.y = ny;
+                        break;
+                    }
+                    addLog(`🛡 ${unitDisplayName(guardian)} honors their oath of Chivalry and intercepts the attack meant for ${unitDisplayName(target)}!`);
+                    showFloatingTextForUnit(target, 'GUARDED!', 'protect-block', { durationMs: 1000 });
+                    scheduleBoardRender();
+                    return applyDamageToUnit(guardian, damage, sourceText, Object.assign({}, opts, { _chivalryRedirected: true }));
+                }
+            }
 
             // Press Turn: record this enemy's type tier if a spell collector is
             // armed (resolved later in the caster's finishAction).
@@ -17785,6 +17844,20 @@
 
             if (spell.kind !== 'teleport') state._teleportingUnit = null;
 
+            // ── Blood Frenzy & friends: auto-lock onto the visible enemy with the least HP ──
+            if (spell.autoTargetLowestHp) {
+                const _visEnemies = state.units.filter(u =>
+                    !u.dead && !u._dying && isEnemyUnit(u, unit) && _isUnitVisibleToViewer(u, unit.player));
+                if (!_visEnemies.length) {
+                    addLog(`${unitDisplayName(unit)} smells no blood — no visible enemies to hunt.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                let _prey = _visEnemies[0];
+                for (const e of _visEnemies) { if (e.hp < _prey.hp) _prey = e; }
+                x = _prey.x; y = _prey.y; z = undefined;
+            }
+
             if (z === undefined || z === null) {
                 z = (typeof nearestWalkableZ === 'function')
                     ? nearestWalkableZ(x, y, unit.z ?? 0)
@@ -18088,6 +18161,23 @@
                         } : e);
                     }
                     applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
+
+                    /* ── Spellsteal: rip an active buff off the target and apply it to the caster ── */
+                    if (spell.stealBuff && !unit.dead) {
+                        const tgtStatus = target.status || {};
+                        const buffKeys = Object.keys(tgtStatus).filter(k =>
+                            tgtStatus[k] > 0 && STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'buff');
+                        if (buffKeys.length) {
+                            const stolen = buffKeys[Math.floor(Math.random() * buffKeys.length)];
+                            const dur = tgtStatus[stolen];
+                            target.status[stolen] = 0;
+                            applyStatusPayload(unit, { id: stolen, duration: dur }, `${spell.name}: `, unit);
+                            addLog(`${unitDisplayName(unit)} steals ${STATUS_DEFS[stolen].label} from ${unitDisplayName(target)}!`);
+                            showFloatingTextForUnit(unit, `STOLE ${STATUS_DEFS[stolen].label.toUpperCase()}`, 'streak', { durationMs: 900 });
+                        } else {
+                            addLog(`${unitDisplayName(target)} has no spell-effects to steal.`);
+                        }
+                    }
                 }, impactDelay);
             } else if (spell.kind === 'revive') {
                 const target = state.units.find(u => u.player === unit.player && u.dead && u.x === x && u.y === y);
@@ -19324,9 +19414,21 @@
                     ownerPlayer: unit.player,
                     duration: spell.zoneDuration || 2,
                     statusEffects: spell.statusEffects || [],
+                    allyStatusEffects: spell.allyStatusEffects || [],
                     smokeConcealment: !!spell.smokeConcealment,
                     spellName: spell.name
                 });
+                // Apply ally buffs (e.g. Smoke Screen invisibility) to friendly units already inside the zone.
+                if (spell.allyStatusEffects && spell.allyStatusEffects.length) {
+                    const zoneArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                    for (const ally of state.units.filter(u => !u.dead && u.player === unit.player)) {
+                        if (zoneArea.some(t => t.x === ally.x && t.y === ally.y)) {
+                            for (const eff of spell.allyStatusEffects) {
+                                applyStatusPayload(ally, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${spell.name} → `);
+                            }
+                        }
+                    }
+                }
                 addLog(`${unitDisplayName(unit)} creates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
@@ -20223,6 +20325,51 @@
                 }
                 showFloatingTextForUnit(unit, '🎵', 'buff');
                 addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'trickRoom') {
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const dur = spell.trickRoomDuration || 3;
+                state._trickRoomRounds = dur;
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura') && state.phase === 'battle' && !_skipVisuals()) {
+                    window.ThreeVFXEffects.fire('aura', spell.id, { tx: unit.x, ty: unit.y });
+                } else { _vfxBuff(unit.x, unit.y); }
+                showFloatingTextForUnit(unit, '🔄 Trick Room', 'buff');
+                addLog(`${unitDisplayName(unit)} twists time with Trick Room! Turn order is reversed for ${dur} rounds — the slow act first.`);
+                completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'guard') {
+                const target = unitAt(x, y);
+                if (!target || isEnemyUnit(target, unit) || target.dead) {
+                    addLog('Choose a living ally to protect with Chivalry.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (target.id === unit.id) {
+                    addLog('Chivalry protects an ally, not yourself.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                // Clear any prior pledge from this knight before making a new one.
+                if (unit._guardingAlly) {
+                    const prev = state.units.find(u => u.id === unit._guardingAlly);
+                    if (prev && prev._guardedBy === unit.id) prev._guardedBy = null;
+                }
+                target._guardedBy = unit.id;
+                unit._guardingAlly = target.id;
+                _vfxBuff(target.x, target.y);
+                showFloatingTextForUnit(target, '🛡 Guarded', 'buff');
+                addLog(`${unitDisplayName(unit)} pledges Chivalry to ${unitDisplayName(target)} — the next attack against them will be intercepted.`);
                 completionDelay = actionMs(400);
             }
 

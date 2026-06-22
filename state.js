@@ -719,7 +719,9 @@
                 tiers[spd].push(u);
             }
 
-            const sortedSpeeds = Object.keys(tiers).map(Number).sort((a, b) => b - a);
+            // Trick Room: while active, reverse the speed ordering so the slowest units act first.
+            const trickRoomActive = (state._trickRoomRounds || 0) > 0;
+            const sortedSpeeds = Object.keys(tiers).map(Number).sort((a, b) => trickRoomActive ? (a - b) : (b - a));
 
             _blitzTurnOrder = [];
             for (const spd of sortedSpeeds) {
@@ -742,6 +744,9 @@
                 for (const boss of p0) _blitzTurnOrder.push(boss);
             }
             _blitzTurnIndex = 0;
+
+            // Trick Room counts down one round each time a new turn order is built.
+            if (state._trickRoomRounds > 0) state._trickRoomRounds--;
 
             state._blitzTurnOrderIds = _blitzTurnOrder.map(u => u.id);
         }

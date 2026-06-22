@@ -315,7 +315,7 @@ function getSpriteUrl(race, gender, cls) {
 function getJobDisplay(job) { return typeof window.getJobDisplayName === 'function' ? window.getJobDisplayName(job) : job; }
 function computeStats(race, cls) {
   if (typeof window.computeUnitStats === 'function') return window.computeUnitStats(race || 'homosapien', cls);
-  return window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Knight || {};
+  return window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Warrior || {};
 }
 function computeFullStats(race, cls, secJob, equipment) {
   const base = computeStats(race, cls);

@@ -5478,6 +5478,7 @@
         function isSpellNativeToClass(spell, cls) {
             if (!spell || !cls) return false;
 
+            if (cls === 'Freelancer') return true;
             if (spell._isRaceAbility) return true;
             if (spell.classRestriction === cls) return true;
             if (Array.isArray(spell.classRestrictions) && spell.classRestrictions.includes(cls)) return true;

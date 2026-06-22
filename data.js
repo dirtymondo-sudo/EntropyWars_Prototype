@@ -2529,7 +2529,7 @@ const CLASS_TEMPLATES = {
         awr: 3,
         int: 30
     },
-    Knight: {
+    Warrior: {
         cls: 'Warrior',
         job: 'Warrior',
         hp: 670,
@@ -2828,7 +2828,7 @@ const ITEM_META = {
 
 const CLASS_PASSIVES = {
     Gunslinger: 'Deadeye: +1 SPD.',
-    Knight: 'Bulwark: reduces incoming damage by 8 and Fortify shields cap at 25% max HP.',
+    Warrior: 'Bulwark: reduces incoming damage by 8 and Fortify shields cap at 25% max HP.',
     'Black Mage': 'Arcane Surge: +8 spell damage.',
     'White Mage': 'Grace: heal and revive spells gain +2 range and +24 healing power.',
     Agent: 'Field Operative: can equip up to 2 scanners and has longer inspect reach.',
@@ -4354,14 +4354,6 @@ const SHARED_NUKE = {
     desc: 'Launch a nuclear strike at target area. After 1 turn, 5×5 devastation. Enemies see the warning. Leaves scorched earth.'
 };
 
-const SHARED_WARD_OF_THORNS = {
-    id: 'sharedWardOfThorns', spellType: 'anomaly', name: 'Ward of Thorns',
-    type: 'utility', cost: 20, range: 1, apCost: 1,
-    kind: 'deployObject', objectHp: 2, blocksMovement: false,
-    detonateOnStep: true, blastRadius: 0, blastDmg: 40,
-    maxActivePerCaster: 2,
-    desc: 'Plant a thorn ward on a tile. Enemies who step on it take 40 damage. 2 charges before it wilts.'
-};
 
 const SHARED_SMOKE_SCREEN = {
     id: 'sharedSmokeScreen', spellType: 'human', name: 'Smoke Screen',
@@ -4369,16 +4361,10 @@ const SHARED_SMOKE_SCREEN = {
     kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
     smokeConcealment: true,
     statusEffects: [],
-    desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden from enemies unless adjacent.'
+    allyStatusEffects: [{ id: 'invisible', duration: 2 }],
+    desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden and turn invisible while they remain in the cloud.'
 };
 
-const SHARED_TREMOR_STEP = {
-    id: 'sharedTremorStep', spellType: 'anomaly', name: 'Tremor Step',
-    type: 'damage', cost: 30, dmg: 60, range: 3,
-    kind: 'dash', damageType: 'physical',
-    statusEffects: [{ id: 'stagger', duration: 1 }],
-    desc: 'Charge up to 3 tiles, shaking the earth with every step. Enemies in path take damage and are staggered.'
-};
 
 const SHARED_VORTEX_SLAM = {
     id: 'sharedVortexSlam', spellType: 'anomaly', name: 'Vortex Slam',
@@ -4632,24 +4618,21 @@ const RACE_ABILITIES = {
           chargeToTarget: true,
           desc: 'Leap up to 3 tiles and maul the target on landing.' },
         { id: 'raceHowl', spellType: 'human', name: 'Howl',
-          type: 'debuff', cost: 20, range: 0, apCost: 1,
-          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
-          statusEffects: [{ id: 'slow', duration: 1 }, { id: 'glare', duration: 1 }],
-          desc: 'Terrifying howl. All enemies within 2 tiles are slowed and have DEF reduced for 1 turn.' },
-        { id: 'raceBloodFrenzy', spellType: 'unholy', name: 'Blood Frenzy',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
+          type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
           statStageBoost: { atk: 2 },
-          statusEffects: [{ id: 'inspired', duration: 2 }],
-          desc: 'Unleash the beast within. +2 ATK stages and Inspired for 2 turns.' },
+          desc: 'Throw back your head and howl. +2 ATK stages. The beast is unleashed.' },
+        { id: 'raceBloodFrenzy', spellType: 'unholy', name: 'Blood Frenzy',
+          type: 'damage', cost: 20, apCost: 1, range: 6,
+          kind: 'damage', damageType: 'physical', dmg: 150,
+          chargeToTarget: true, autoTargetLowestHp: true,
+          desc: 'Smell blood. Charge the visible enemy with the least health and savage them. Cannot be cast if no enemies are visible.' },
         { id: 'raceSavageRend', spellType: 'human', name: 'Savage Rend',
           type: 'damage', cost: 30, range: 1,
           kind: 'multiHit', damageType: 'physical',
           hitDamages: [50, 50, 50],
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'Claw, claw, bite. 3-hit combo for 150 total. Bleeds the target.' },
-        SHARED_TREMOR_STEP,
-        SHARED_SMOKE_SCREEN,
         { id: 'raceFeralDive', spellType: 'human', name: 'Feral Dive',
           type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -4668,12 +4651,10 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'inspired', duration: 2 }],
           desc: 'Sprinkle enchanted dust on an ally. Inspired for 2 turns. Follow the sparkles!' },
-        { id: 'raceMushroomRing', spellType: 'anomaly', name: 'Mushroom Ring',
-          type: 'utility', cost: 25, range: 3, apCost: 1,
-          kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 40,
-          desc: 'Grow a fairy ring of mushrooms in a 3×3. Heals allies inside each round. Step inside carefully...' },
-        SHARED_TERRAFORM,
-        SHARED_WARD_OF_THORNS
+        { id: 'raceTrickRoom', spellType: 'anomaly', name: 'Trick Room',
+          type: 'utility', cost: 30, range: 0, apCost: 2,
+          kind: 'trickRoom', trickRoomDuration: 3,
+          desc: 'Warp the flow of time for 3 rounds. Turn order is reversed — the slowest units act first and the fastest act last.' }
     ],
     'reptilian': [
         { id: 'raceShedSkin', spellType: 'anomaly', name: 'Shed Skin',
@@ -4749,23 +4730,23 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'A murder of crows descends on a 3×3 area. Damages and discords enemies. The crows remember.' },
         SHARED_SUMMON_SANDSTORM,
-        SHARED_WARD_OF_THORNS
     ],
     'bigfoot': [
         { id: 'raceTremorStomp', spellType: 'anomaly', name: 'Tremor Stomp',
           type: 'damage', cost: 30, dmg: 96, range: 0,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
-          statusEffects: [{ id: 'slow', duration: 2 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Stomp the ground. 3x3 around self, damages and slows enemies 2 turns.' },
-        { id: 'raceWildResilience', spellType: 'anomaly', name: 'Wild Resilience',
-          type: 'heal', cost: 25, range: 0, apCost: 1,
-          kind: 'selfHeal', healAmt: 200,
-          statusEffects: [{ id: 'protect', duration: 1 }],
-          desc: 'Channel primal vitality. Heals 200 HP and gains Protect for 1 turn.' },
-        SHARED_RAMPART,
-        SHARED_TREMOR_STEP,
-        SHARED_FLASH_FREEZE
+          desc: 'Stomp the ground. 3x3 physical damage to all enemies around you.' },
+        { id: 'raceRealityShift', spellType: 'anomaly', name: 'Reality Shift',
+          type: 'buff', cost: 25, range: 0, apCost: 1,
+          kind: 'buff', cleanse: 99,
+          statusEffects: [{ id: 'invisible', duration: 2 }],
+          desc: 'Step sideways out of reality. Cleanse all debuffs and turn invisible for 2 turns.' },
+        { id: 'raceTrunkThrow', spellType: 'anomaly', name: 'Trunk Throw',
+          type: 'damage', cost: 25, dmg: 130, range: 4,
+          kind: 'damage', damageType: 'physical',
+          desc: 'Rip a tree from the ground and hurl it. Heavy physical damage to a single target.' },
+        SHARED_RAMPART
     ],
     'siren': [
         { id: 'raceSonicBreaker', spellType: 'anomaly', name: 'Sonic Breaker',
@@ -4856,7 +4837,6 @@ const RACE_ABILITIES = {
           pushDistance: 2,
           desc: 'Launch a detachable fist. 110 damage, pushes target 2 tiles. Reusable.' },
         SHARED_RAMPART,
-        SHARED_TREMOR_STEP
     ],
     'android': [
         { id: 'raceNeuralHack', spellType: 'tech', name: 'Neural Hack',
@@ -4891,7 +4871,6 @@ const RACE_ABILITIES = {
           kind: 'pull', damageType: 'physical', pullDistance: 2, lineOfSight: true,
           desc: 'Reach out and yank an enemy 2 tiles toward you. Come down here.' },
         SHARED_RAMPART,
-        SHARED_TREMOR_STEP
     ],
     'catgirl': [
         { id: 'raceNinefoldScratch', spellType: 'human', name: 'Ninefold Scratch',
@@ -4904,34 +4883,23 @@ const RACE_ABILITIES = {
           kind: 'escape', teleportDistance: 2,
           statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Gracefully dash 2 tiles away and vanish for 1 turn. Perfect evasive maneuver.' },
-        { id: 'raceCatsCradle', spellType: 'anomaly', name: 'Cat\'s Cradle',
-          type: 'utility', cost: 20, range: 2, apCost: 1,
-          kind: 'deployObject', objectHp: 1, blocksMovement: false,
-          detonateOnStep: true, blastRadius: 0, blastDmg: 0,
-          maxActivePerCaster: 2,
-          statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Place a string trap. First enemy to step on it is slowed 2 turns. Nyaa~ gotcha!' },
-        SHARED_WARD_OF_THORNS,
+        { id: 'raceMeow', spellType: 'anomaly', name: 'Meow',
+          type: 'debuff', cost: 18, range: 0, apCost: 1,
+          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
+          statusEffects: [{ id: 'glare', duration: 2 }],
+          desc: 'An adorable, disarming meow. All enemies within 2 tiles have their DEF lowered for 2 turns.' },
+        { id: 'raceLoveBite', spellType: 'anomaly', name: 'Love Bite',
+          type: 'damage', cost: 22, dmg: 90, range: 1,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'glare', duration: 2 }],
+          desc: 'A flirtatious nibble that draws blood. Damages an adjacent enemy and lowers their DEF for 2 turns.' },
         SHARED_SMOKE_SCREEN
     ],
     'homosapien': [
         { id: 'raceAdrenalineRush', spellType: 'human', name: 'Adrenaline Rush',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'selfHeal', selfHealPct: 0.15, cleanse: 1,
-          desc: 'Tap into survival instincts. Heal 15% max HP and cleanse 1 debuff.' },
-        { id: 'raceLastStand', spellType: 'human', name: 'Last Stand',
-          type: 'damage', cost: 30, dmg: 128, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Desperate charge up to 3 tiles. Deals more damage the lower the caster\'s HP. Staggers on hit.' },
-        { id: 'raceImprovise', spellType: 'human', name: 'Improvise',
-          type: 'buff', cost: 15, apCost: 1, range: 0,
-          kind: 'buff',
-          randomBuff: true,
-          desc: 'Humans are unpredictable. Gain a random buff: +1 ATK, or Protect, or heal 80 HP, or +2 MOV.' },
-        SHARED_SMOKE_SCREEN,
-        SHARED_RAMPART
+          desc: 'Tap into survival instincts. Heal 15% max HP and cleanse 1 debuff.' }
     ],
     'pirate': [
         { id: 'raceGrapple', spellType: 'human', name: 'Grapple',
@@ -4957,28 +4925,21 @@ const RACE_ABILITIES = {
     ],
 
     'knight': [
-        { id: 'raceShieldWall', spellType: 'human', name: 'Shield Wall',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 3 }],
-          statStageBoost: { def: 1 },
-          desc: 'Raise your shield and brace. Gain Protect for 3 turns and +1 DEF stage.' },
-        { id: 'raceHolyCharge', spellType: 'divine', name: 'Holy Charge',
-          type: 'damage', cost: 30, dmg: 140, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'A righteous cavalry charge. Rush up to 3 tiles and strike with divine force. Staggers on hit.' },
+        { id: 'raceShieldWall', spellType: 'human', name: 'Castle Fortress',
+          type: 'utility', cost: 25, apCost: 1, range: 3,
+          kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
+          dmg: 40, damageType: 'physical',
+          terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+          desc: 'Raise a 3-tile brick wall of fortress stone. Impassable rampart that walls off the battlefield.' },
         { id: 'raceOathOfValor', spellType: 'divine', name: 'Oath of Valor',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', auraRadius: 2,
           statStageBoost: { atk: 1, def: 1 },
           desc: 'Swear an oath that inspires nearby allies. +1 ATK and +1 DEF to allies within 2 tiles for 2 turns.' },
-        SHARED_RAMPART,
         { id: 'raceChivalry', spellType: 'human', name: 'Chivalry',
-          type: 'utility', cost: 15, apCost: 1, range: 3,
-          kind: 'utility',
-          desc: 'Leap to an adjacent ally and absorb the next attack aimed at them. The knight takes the hit instead.' }
+          type: 'utility', cost: 15, apCost: 1, range: 4,
+          kind: 'guard',
+          desc: 'Pledge to protect an ally. The next time that ally is targeted by an attack, you dash to their side and take the hit in their place.' }
     ],
     'shaman': [
         { id: 'raceSpiritWalk', spellType: 'anomaly', name: 'Spirit Walk',
@@ -5005,30 +4966,28 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'mad scientist': [
-        { id: 'raceTeslaTrap', spellType: 'tech', name: 'Tesla Trap',
+        { id: 'raceTeslaTrap', spellType: 'tech', name: 'Tesla Coil',
           type: 'utility', cost: 20, apCost: 1, range: 2,
           kind: 'deployObject',
           objectHp: 20, blastRadius: 1, blastDmg: 100,
           detonateOnStep: true, maxActivePerCaster: 3,
-          desc: 'Deploy an electrified trap. Detonates when an enemy steps on it. 3×3 shock damage.' },
-        { id: 'raceMutagen', spellType: 'tech', name: 'Mutagen Injection',
-          type: 'buff', cost: 25, range: 1, apCost: 1,
-          kind: 'buff',
-          statStageBoost: { atk: 2 },
-          statusEffects: [{ id: 'poison', duration: 2 }],
-          desc: 'Inject unstable mutagen into an adjacent unit. +2 ATK stages but poisons them for 2 turns.' },
-        { id: 'raceCloneDecoy', spellType: 'tech', name: 'Clone Decoy',
+          desc: 'Deploy an electrified coil. Detonates when an enemy steps on it. 3×3 shock damage.' },
+        { id: 'racePlandemic', spellType: 'tech', name: 'Plandemic',
+          type: 'damage', cost: 30, dmg: 90, range: 4,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Release an engineered contagion. 3×3 magic damage and poisons everyone hit for 3 turns.' },
+        { id: 'raceCloneDecoy', spellType: 'tech', name: 'Cloning Machine',
           type: 'utility', cost: 20, apCost: 1, range: 1,
           kind: 'deployObject',
           objectHp: 60, maxActivePerCaster: 1,
           drawsRangedAttack: true, drawsMeleeAttack: true,
-          desc: 'Spawn a decoy clone on an adjacent tile. It draws enemy attention but cannot attack.' },
-        { id: 'raceOvercharge', spellType: 'tech', name: 'Overcharge',
+          desc: 'Print a decoy clone on an adjacent tile. It draws enemy attention but cannot attack.' },
+        { id: 'raceOvercharge', spellType: 'tech', name: 'Chemical Bath',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Detonate an electromagnetic pulse. 3×3 magic damage and jams enemy abilities for 2 turns.' },
-        SHARED_SMOKE_SCREEN
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Douse a 3×3 area in caustic chemicals. Magic damage and burns everyone hit for 2 turns.' }
     ],
     'cowboy': [
         { id: 'raceFanTheHammer', spellType: 'human', name: 'Fan the Hammer',
@@ -5057,17 +5016,12 @@ const RACE_ABILITIES = {
         { id: 'raceDeneuralizer', spellType: 'tech', name: 'Deneuralizer',
           type: 'debuff', cost: 30, range: 3, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'silence', duration: 3 }],
-          desc: 'Flash the deneuralizer. Disables the target\'s last used ability — silenced for 3 turns.' },
-        { id: 'raceContainmentField', spellType: 'tech', name: 'Containment Field',
-          type: 'utility', cost: 25, apCost: 1, range: 3,
-          kind: 'terrainCreate', terrainType: 'mountain', tileCount: 4, orientable: false,
-          desc: 'Deploy a 4-tile containment barrier around a target. Traps them behind impassable walls.' },
-        { id: 'raceClassifiedWeapon', spellType: 'tech', name: 'Classified Weapon',
+          statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Flash the deneuralizer. Jams the target\'s abilities — they cannot cast their last used ability for 2 turns.' },
+        { id: 'raceClassifiedWeapon', spellType: 'alien', name: 'Classified Weapon',
           type: 'damage', cost: 30, dmg: 150, range: 4,
           kind: 'damage', damageType: 'magic',
-          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
-          desc: 'Fire an alien-tech sidearm. High damage, marks the target for +30 bonus damage for 2 turns.' },
+          desc: 'Fire an alien-tech sidearm. High single-target magic damage.' },
         { id: 'raceAgentVanish', spellType: 'tech', name: 'Agent Vanish',
           type: 'utility', cost: 15, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 3,
@@ -5099,27 +5053,11 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'marksman': [
-        { id: 'raceHeadshot', spellType: 'human', name: 'Headshot',
-          type: 'damage', cost: 30, dmg: 180, range: 5,
-          kind: 'damage', damageType: 'physical',
-          guaranteedCrit: true,
-          lineOfSight: true,
-          desc: 'One clean shot. Guaranteed critical hit at extreme range. Requires line of sight.' },
-        { id: 'raceSuppressiveFire', spellType: 'human', name: 'Suppressive Fire',
+        { id: 'raceSuppressiveFire', spellType: 'human', name: 'Bullet Skewer',
           type: 'damage', cost: 25, dmg: 60, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Lay down covering fire in a line. Damages and slows all enemies hit for 2 turns.' },
-        { id: 'raceSpotterMark', spellType: 'tech', name: 'Spotter Mark',
-          type: 'debuff', cost: 15, range: 5, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 40 }],
-          desc: 'Mark a target with a laser designator. +40 bonus damage from all sources for 3 turns.' },
-        { id: 'raceConcealedPosition', spellType: 'human', name: 'Concealed Position',
-          type: 'utility', cost: 15, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'invisible', duration: 2 }],
-          desc: 'Go prone and blend into terrain. Invisible for 2 turns or until you attack.' },
+          desc: 'Skewer everything in a line with rapid fire. Damages and slows all enemies hit for 2 turns.' },
         SHARED_SMOKE_SCREEN
     ],
     'priest': [
@@ -5149,43 +5087,34 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           desc: 'Unleash raw arcane energy. 3×3 area magic damage.' },
         { id: 'raceSpellsteal', spellType: 'unholy', name: 'Spellsteal',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff', cleanse: 1,
-          statStageBoost: { int: -1 },
-          desc: 'Siphon magical energy from a target. Steal 1 buff and reduce their INT by 1 stage.' },
+          type: 'debuff', cost: 25, range: 4, apCost: 1,
+          kind: 'debuff', stealBuff: true,
+          desc: 'Rip a spell-effect from a target. Steal one of the target\'s active buffs and apply it to yourself.' },
         { id: 'raceManaShield', spellType: 'unholy', name: 'Mana Shield',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
           shield: 200,
-          desc: 'Convert mana into a protective barrier. Absorb 200 damage.' },
-        { id: 'raceChainLightning', spellType: 'unholy', name: 'Chain Lightning',
-          type: 'damage', cost: 35, dmg: 90, range: 4,
-          kind: 'damage', damageType: 'magic',
-          bounceTargets: 2, bounceDmgFalloff: 0.7,
-          desc: 'Lightning that arcs between enemies. Hits primary target then bounces to 2 more at 70% damage.' },
-        SHARED_SMOKE_SCREEN
+          desc: 'Convert mana into a protective barrier. Absorb 200 damage.' }
     ],
     'fortune teller': [
         { id: 'raceTarotDraw', spellType: 'anomaly', name: 'Tarot Draw',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
+          type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'buff',
-          randomBuff: true,
-          desc: 'Draw from the deck of fate. A random powerful buff: ATK up, DEF up, SPD up, or full heal.' },
-        { id: 'raceCurseOfMisfortune', spellType: 'anomaly', name: 'Curse of Misfortune',
+          statStageBoost: { int: 2 },
+          desc: 'Draw from the deck of fate. Grant a unit +2 INT stages — sharpen their magic.' },
+        { id: 'raceCurseOfMisfortune', spellType: 'anomaly', name: 'Family Curse',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
           statStageBoost: { atk: -1, def: -1 },
-          desc: 'Lay a hex of bad luck. Target loses -1 ATK and -1 DEF stages.' },
+          desc: 'Lay a generational hex of bad luck. Target loses -1 ATK and -1 DEF stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', name: 'Crystal Ball',
-          type: 'buff', cost: 15, range: 0, apCost: 1,
-          kind: 'buff',
-          statStageBoost: { awr: 2 },
-          desc: 'Gaze into the crystal ball. Gain +2 AWR stages — see the future, see the battlefield.' },
-        { id: 'raceSpiritChannel', spellType: 'anomaly', name: 'Spirit Channel',
+          type: 'damage', cost: 25, dmg: 150, range: 5, apCost: 1,
+          kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
+          desc: 'Foresee a death. Mark a spot — destiny strikes the target (and any enemies beside them) for heavy magic damage 1 round later.' },
+        { id: 'raceSpiritChannel', spellType: 'anomaly', name: 'Palm Read',
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'heal', healAmt: 100, cleanse: 1,
-          desc: 'Channel ancestral spirits to heal an ally 100 HP and cleanse 1 debuff.' },
-        SHARED_SMOKE_SCREEN
+          desc: 'Read an ally\'s fate in their palm. Heal 100 HP and cleanse 1 debuff.' }
     ],
 
     'martian': [
@@ -5248,21 +5177,24 @@ const RACE_ABILITIES = {
     ],
     'grey': [
         { id: 'raceProbe', spellType: 'alien', name: 'Probe',
-          type: 'debuff', cost: 20, range: 4, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'glare', duration: 2 }, { id: 'slow', duration: 1 }],
-          desc: 'Psychically probe an enemy. Reduces DEF 2 turns, slows 1 turn.' },
+          type: 'damage', cost: 20, range: 4, apCost: 1,
+          kind: 'damage', damageType: 'magic', dmg: 110,
+          desc: 'Probe an enemy with invasive psychic instruments. Direct magic damage.' },
         { id: 'raceAbductionBeam', spellType: 'alien', name: 'Abduction Beam',
-          type: 'debuff', cost: 30, range: 4, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'stagger', duration: 1 }, { id: 'discord', duration: 1 }],
-          desc: 'Telekinetically scramble a target\'s position. Staggers and discords. The missing time is real.' },
+          type: 'damage', cost: 30, dmg: 60, range: 4, apCost: 1,
+          kind: 'skyThrow', damageType: 'physical', carryHeight: 5, dmgPerLevel: 25,
+          throwRange: 3, collisionBonus: 50,
+          desc: 'Lift an enemy into your craft with a tractor beam, then drop them. Fall damage scales with the drop; bonus damage if they land on another unit.' },
         { id: 'raceImplant', spellType: 'alien', name: 'Implant',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 30 }],
           desc: 'Plant a psychic implant. Marked for +30 bonus damage for 3 turns. You won\'t remember this.' },
-        SHARED_SMOKE_SCREEN,
-        SHARED_FLASH_FREEZE
+        { id: 'raceCropCircle', spellType: 'alien', name: 'Crop Circle',
+          type: 'damage', cost: 30, dmg: 80, range: 4, apCost: 1,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 2,
+          terrainDeform: { centerDelta: -2, edgeDelta: -1 },
+          desc: 'Burn a 5×5 crop circle into the battlefield. Magic damage and presses the terrain into a concentric ringed depression.' }
     ],
     'mantid': [
         { id: 'raceMandibleStrike', spellType: 'alien', name: 'Mandible Strike',
@@ -5280,7 +5212,6 @@ const RACE_ABILITIES = {
           chargeToTarget: true,
           desc: 'Lightning-fast lunge up to 3 tiles. You never see the mantis strike.' },
         SHARED_POISON_SWAMP,
-        SHARED_WARD_OF_THORNS
     ],
     'djinn': [
         { id: 'raceDustDevil', spellType: 'alien', name: 'Dust Devil',
@@ -5335,7 +5266,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           desc: 'Hurl a massive stone. Ignores line of sight. One eye. Perfect aim.' },
         SHARED_RAMPART,
-        SHARED_TREMOR_STEP,
         { id: 'raceTitanDrop', spellType: 'anomaly', name: 'Titan Drop',
           type: 'damage', cost: 25, dmg: 90, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
@@ -5366,7 +5296,6 @@ const RACE_ABILITIES = {
           throwRange: 3, collisionBonus: 50,
           requiresFlight: true,
           desc: 'Engage thrusters, grab an adjacent enemy, and launch them up to 3 tiles. Jet-powered precision delivery.' },
-        SHARED_TREMOR_STEP,
         SHARED_SMOKE_SCREEN
     ],
     'demon prince': [
@@ -5483,7 +5412,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 2 }, { id: 'slow', duration: 1 }],
           desc: 'Wouldst thou like to live deliciously? Discord 2 turns and slow 1 turn.' },
         SHARED_RAMPART,
-        SHARED_TREMOR_STEP,
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -5703,7 +5631,6 @@ const RACE_ABILITIES = {
           bonusVsDebuffed: 0.40,
           desc: 'I\'m not the hero. Charge up to 3 tiles. +40% damage if target has a debuff.' },
         SHARED_SMOKE_SCREEN,
-        SHARED_TREMOR_STEP
     ],
     'conspiracy theorist': [
         { id: 'raceVOXBroadcast', spellType: 'human', name: 'VOX Broadcast',
@@ -5827,7 +5754,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 140, range: 1,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           desc: 'Life finds a way. Death finds it faster. Armor-piercing bite for 140 damage.' },
-        SHARED_TREMOR_STEP,
         { id: 'raceApexPounce', spellType: 'anomaly', name: 'Apex Pounce',
           type: 'damage', cost: 25, dmg: 85, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
@@ -5898,7 +5824,6 @@ const RACE_ABILITIES = {
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
           desc: 'Strap a clockwork shield onto an ally. 100 HP shield. Perfectly safe. Probably.' },
         SHARED_RAMPART,
-        SHARED_WARD_OF_THORNS
     ],
     'kaiju': [
         { id: 'raceCataclysmStomp', spellType: 'unholy', name: 'Cataclysm Stomp',
@@ -5924,7 +5849,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
           desc: 'Leap from elevation and crash down with city-leveling force. 3×3 shockwave on landing. Damage scales with height.' },
-        SHARED_TREMOR_STEP,
         SHARED_FISSURE,
         SHARED_NUKE
     ],
@@ -6161,7 +6085,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, dmg: 100, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 2,
           desc: 'Shoulder-check an adjacent enemy. Deals damage and pushes them 2 tiles back.' },
-        SHARED_TREMOR_STEP,
         { id: 'raceRampage', spellType: 'unholy', name: 'Rampage',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
@@ -6252,7 +6175,6 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 2 },
           statusEffects: [{ id: 'inspired', duration: 2 }],
           desc: 'Enter a primal fury. +2 ATK stages and Inspired. The king of the jungle awakens.' },
-        SHARED_TREMOR_STEP,
         { id: 'raceGroundSlam', spellType: 'human', name: 'Ground Slam',
           type: 'damage', cost: 35, dmg: 80, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -6282,7 +6204,6 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
           dmg: 50, damageType: 'physical',
           desc: 'Raise labyrinth walls. 3 impassable mountain tiles. Enemies on them take damage.' },
-        SHARED_TREMOR_STEP,
         { id: 'raceHornToss', spellType: 'human', name: 'Horn Toss',
           type: 'damage', cost: 25, dmg: 90, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 3,
@@ -6649,6 +6570,8 @@ const SIM_DEFAULTS = {
     skySlam:      { simTargeting: 'unit',  simPhase: 'slow',     simFallback: 'fizzle' },
 
     utility:      { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    guard:        { simTargeting: 'unit',  simPhase: 'fast',     simFallback: 'fizzle' },
+    trickRoom:    { simTargeting: 'self',  simPhase: 'fast',     simFallback: 'fizzle' },
 };
 
 (function _applySimTurnDefaults() {
