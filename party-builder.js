@@ -192,6 +192,8 @@ const EW = {
 
 const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
+// Brightened text for the canonical type badge (legible over any background).
+const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 const STAT_KEYS = ['HP','MP','ATK','DEF','INT','SPD','RNG','MOV'];
 const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, INT:100, SPD:11, RNG:6, MOV:6 };
 const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', INT:'int', SPD:'spd', RNG:'range', MOV:'move' };
@@ -400,7 +402,8 @@ function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
 }
 function TypeChip({ type }) {
   const c = getTypeColor(type);
-  return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.14em', fontWeight:600, color:c, padding:'2px 8px', border:`1px solid ${c}44`, background:`${c}12`, textTransform:'uppercase' }}, type);
+  const text = TYPE_TEXT_C[(type || '').toLowerCase()] || c;
+  return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding:'2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
 }
 function FactionChip({ faction }) {
   const c = getFactionColor(faction);

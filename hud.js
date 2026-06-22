@@ -25,6 +25,33 @@ const EW = {
 
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
+// Brightened text colors for the canonical type badge (legible over any background).
+const TYPE_TEXT_COLORS = { human: '#c8c8e4', divine: '#f2c63c', unholy: '#c566e2', tech: '#4ecbe2', anomaly: '#ff5e98', alien: '#56d178' };
+
+// ── THE single, canonical type/kind badge used EVERYWHERE ──
+// Cut-corner chip: bright colored text on a tinted-over-dark fill + colored
+// border. `base` drives the tint/border; pass a type key to `typeBadgeStyle`
+// via opts.text for the brightened reading color. Non-type kinds (ATTACK,
+// COMBO, …) just pass their own color as base and reuse the same shape.
+function typeBadgeStyle(base, opts) {
+  opts = opts || {};
+  return {
+    display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+    fontFamily: '"DotGothic16", monospace', fontSize: opts.fontSize || 9, fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1.3,
+    color: opts.text || base,
+    background: 'linear-gradient(' + base + '22,' + base + '22), rgba(9,11,17,0.82)',
+    border: '1px solid ' + base + 'aa',
+    padding: opts.padding || '2px 7px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.85)',
+    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
+  };
+}
+function typeBadgeStyleFor(typeKey, opts) {
+  const k = (typeKey || '').toLowerCase();
+  const base = TYPE_COLORS[k] || EW.inkMute;
+  return typeBadgeStyle(base, Object.assign({ text: TYPE_TEXT_COLORS[k] || base }, opts || {}));
+}
 
 const ALLY_COLOR  = '#4a9eff';
 const ENEMY_COLOR = '#ff4a5a';
@@ -153,13 +180,10 @@ function HudBar({ label, val, max, color, pip, small, pressFlash }) {
 }
 
 function TypeChip({ name, color }) {
-  const c = color || TYPE_COLORS[(name || '').toLowerCase()] || EW.inkMute;
-  return h('span', { style: {
-    fontFamily: '"DotGothic16", monospace', fontSize: 8,
-    letterSpacing: '0.14em', color: c,
-    padding: '1px 5px', background: c + '1f',
-    border: '1px solid ' + c + '55',
-  }}, (name || '').toUpperCase());
+  const k = (name || '').toLowerCase();
+  const base = color || TYPE_COLORS[k] || EW.inkMute;
+  return h('span', { style: typeBadgeStyle(base, { text: TYPE_TEXT_COLORS[k] || base, fontSize: 8 }) },
+    (name || '').toUpperCase());
 }
 
 function UnitSprite({ unit, size, glow }) {
@@ -1635,12 +1659,7 @@ function SubMenu({ st }) {
 
           // ── Body: element badge (ALIEN…) + description ──
           h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              color: tc, background: tc + '26', border: '1px solid ' + tc + '7a',
-              padding: '2px 7px', lineHeight: '1.3', flexShrink: 0,
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 3px 100%, 0 calc(100% - 3px))',
-            }}, (sp.spellType || '').toUpperCase()),
+            h('span', { style: typeBadgeStyleFor(sp.spellType) }, (sp.spellType || '').toUpperCase()),
             desc && h('span', { style: {
               flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
               color: canCast ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
@@ -2764,12 +2783,9 @@ function EnemyActionMenu({ st }) {
 
           // ── Body: kind badge + description ──
           h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              color: badgeColor, background: badgeColor + '26', border: '1px solid ' + badgeColor + '7a',
-              padding: '2px 7px', lineHeight: '1.3', flexShrink: 0,
-              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 3px 100%, 0 calc(100% - 3px))',
-            }}, badgeText),
+            h('span', { style: spType
+              ? typeBadgeStyleFor(spType)
+              : typeBadgeStyle(badgeColor) }, badgeText),
             cardDesc && h('span', { style: {
               flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
               color: isAvail ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
@@ -3183,12 +3199,8 @@ function TileActionMenu({ st }) {
             color: isAvail ? EW.ink : EW.inkDim, letterSpacing: '0.02em',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}, a.label),
-          spType && h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 7,
-            letterSpacing: '0.12em', color: spTypeColor, padding: '0 3px',
-            background: spTypeColor + '1f', border: '1px solid ' + spTypeColor + '55',
-            flexShrink: 0,
-          }}, spType.toUpperCase()),
+          spType && h('span', { style: typeBadgeStyleFor(spType, { fontSize: 7, padding: '1px 4px' }) },
+            spType.toUpperCase()),
         ),
 
         ((!isAvail && a.reason) || a.spell) && h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
@@ -3315,6 +3327,7 @@ function showSpellTooltip(sp, evt) {
 
   const k = sp.kind || '';
   const tc = TYPE_COLORS[sp.spellType] || EW.inkMute;
+  const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;
 
   const details = [];
   if (sp.dmg) details.push('DMG ' + sp.dmg);
@@ -3348,7 +3361,7 @@ function showSpellTooltip(sp, evt) {
       sp.name +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
-      '<span style="font-family:DotGothic16,monospace;font-size:7px;letter-spacing:0.12em;color:' + tc + ';padding:1px 4px;background:' + tc + '22;border:1px solid ' + tc + '55;">' +
+      '<span style="font-family:DotGothic16,monospace;font-size:7px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:' + tcText + ';background:linear-gradient(' + tc + '22,' + tc + '22),rgba(9,11,17,0.82);border:1px solid ' + tc + 'aa;padding:1px 5px;text-shadow:0 1px 2px rgba(0,0,0,0.85);clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);">' +
         (sp.spellType || '').toUpperCase() +
       '</span>' +
       (sp.tier ? '<span style="font-family:DotGothic16,monospace;font-size:7px;color:' + EW.inkDim + ';">T' + sp.tier + '</span>' : '') +
@@ -4002,46 +4015,10 @@ function _injectHudHideStyles() {
       padding: 2px 6px 3px 8px !important;
       gap: 2px !important;
     }
+    /* Canonical type badge (see styles-base.css) — only size tuned for the plate. */
     .plate-types .type-badge {
-      font-family: 'DotGothic16', monospace !important;
       font-size: 7px !important;
-      letter-spacing: 0.14em !important;
       padding: 1px 4px !important;
-      border-radius: 0 !important;
-      text-transform: uppercase !important;
-      text-shadow: none !important;
-      font-weight: 600 !important;
-    }
-    /* Per-type colors matching React TypeChip: colored text + tinted bg + colored border */
-    .plate-types .type-badge.type-human {
-      color: #a0a0c3 !important;
-      background: rgba(160,160,195,0.12) !important;
-      border-color: rgba(160,160,195,0.33) !important;
-    }
-    .plate-types .type-badge.type-divine {
-      color: #dcaa1e !important;
-      background: rgba(220,170,30,0.12) !important;
-      border-color: rgba(220,170,30,0.33) !important;
-    }
-    .plate-types .type-badge.type-unholy {
-      color: #9632b4 !important;
-      background: rgba(150,50,180,0.12) !important;
-      border-color: rgba(150,50,180,0.33) !important;
-    }
-    .plate-types .type-badge.type-tech {
-      color: #28a0be !important;
-      background: rgba(40,160,190,0.12) !important;
-      border-color: rgba(40,160,190,0.33) !important;
-    }
-    .plate-types .type-badge.type-anomaly {
-      color: #dc3c82 !important;
-      background: rgba(220,60,130,0.12) !important;
-      border-color: rgba(220,60,130,0.33) !important;
-    }
-    .plate-types .type-badge.type-alien {
-      color: #32aa50 !important;
-      background: rgba(50,170,80,0.12) !important;
-      border-color: rgba(50,170,80,0.33) !important;
     }
 
     .plate-bars {

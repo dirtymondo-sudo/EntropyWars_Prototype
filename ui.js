@@ -6450,7 +6450,7 @@
                 for (const w of (chart.weakVs || [])) if (!weak.includes(w)) weak.push(w);
                 for (const r of (chart.resists || [])) if (!resists.includes(r)) resists.push(r);
             }
-            const pill = (t, cls) => `<span class="cdx-type-pill ${cls}" style="border-color:${_CODEX_TYPE_COLORS[t] || '#888'};color:${_CODEX_TYPE_COLORS[t] || '#888'}">${t.toUpperCase()}</span>`;
+            const pill = (t, cls) => `<span class="type-badge type-${t}">${t.toUpperCase()}</span>`;
             let html = '<div class="cdx-matchups">';
             if (strong.length) html += `<div class="cdx-mu-row"><span class="cdx-mu-label">▲ STRONG VS</span>${strong.map(t => pill(t, 'strong')).join('')}</div>`;
             if (weak.length) html += `<div class="cdx-mu-row"><span class="cdx-mu-label">▼ WEAK VS</span>${weak.map(t => pill(t, 'weak')).join('')}</div>`;
@@ -6515,7 +6515,7 @@
                             <span class="cdx-meta-tag">Default Role: <b>${defaultJob}</b></span>
                         </div>
                         <div class="cdx-type-row">
-                            ${types.map(t => `<span class="cdx-type-badge" style="background:${_CODEX_TYPE_COLORS[t] || '#555'}">${t.toUpperCase()}</span>`).join('')}
+                            ${types.map(t => `<span class="type-badge type-${t}">${t.toUpperCase()}</span>`).join('')}
                         </div>
                     </div>
                     <div class="cdx-sprite-frame">
