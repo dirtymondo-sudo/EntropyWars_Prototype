@@ -6300,6 +6300,289 @@ const ThreeRenderer = (function () {
         clearAllOverlays();
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    //  FLAT-EARTH FIRMAMENT ENVIRONMENT
+    //  Real 3D geometry living in the battle scene, sharing the game camera:
+    //  a masonic checkerboard ground plane that extends the board out to a
+    //  circular ice-wall horizon, under a firmament sky dome. Because it is
+    //  actual world geometry it tilts / rotates / zooms with the map, and you
+    //  can look up to see the sky. Reacts to the day/night cycle, sky events,
+    //  the active zodiac and the weather.
+    // ════════════════════════════════════════════════════════════════════
+    var _envGroup = null, _envGround = null, _envWall = null, _envDome = null;
+    var _envUni = null, _envInited = false;
+    var _ENV_WALL_H = 1700, _ENV_DOME_R = 16000;
+    var _envSmooth = { night: 0, skyAmt: 0, skyEvent: 0, zodiac: 0, storm: 0, snow: 0, sand: 0, blood: 0 };
+
+    var _ENV_COMMON = [
+        'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
+        'uniform float uZodiac; uniform vec4 uWeather; uniform float uOccult;',
+        'uniform vec3 uCenter; uniform float uDiscR; uniform float uWallH; uniform float uTile;',
+        '#define PI 3.14159265359',
+        '#define TAU 6.28318530718',
+        'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
+        'float hash21(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}',
+        'vec2 hash22(vec2 p){vec3 p3=fract(vec3(p.xyx)*vec3(0.1031,0.1030,0.0973));p3+=dot(p3,p3.yzx+33.33);return fract((p3.xx+p3.yz)*p3.zy);}',
+        'float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float a=hash21(i),b=hash21(i+vec2(1,0)),c=hash21(i+vec2(0,1)),d=hash21(i+vec2(1,1));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}',
+        'float fbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<5;i++){v+=a*vnoise(p);p*=2.02;a*=0.5;}return v;}'
+    ].join('\n');
+
+    var _ENV_WORLD_VS =
+        'varying vec3 vWorld;\n' +
+        'void main(){ vec4 wp=modelMatrix*vec4(position,1.0); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }';
+
+    function _envGroundFS() {
+        return 'varying vec3 vWorld;\n' + _ENV_COMMON + '\n' +
+        'float checkersGrad(vec2 uv){ vec2 w=fwidth(uv)+1e-4; vec2 i=2.0*(abs(fract((uv-0.5*w)/2.0)-0.5)-abs(fract((uv+0.5*w)/2.0)-0.5))/w; return 0.5-0.5*i.x*i.y; }\n' +
+        'void main(){\n' +
+        '  float night=uDayNight;\n' +
+        '  vec2 q=vWorld.xz-uCenter.xz; float rr=length(q); float th=atan(q.y,q.x);\n' +
+        '  float chk=checkersGrad(vWorld.xz/uTile);\n' +
+        '  vec3 darkSq=mix(vec3(0.05,0.05,0.07),vec3(0.012,0.012,0.022),night);\n' +
+        '  vec3 liteSq=mix(vec3(0.80,0.80,0.84),vec3(0.10,0.12,0.18),night);\n' +
+        '  vec3 col=mix(darkSq,liteSq,chk);\n' +
+        '  float rn=rr/uTile;\n' +
+        '  vec3 sigCol=mix(vec3(0.55,0.45,0.85),vec3(0.45,0.65,1.0),night);\n' +
+        '  float rings=smoothstep(0.95,1.0,abs(sin(rn*0.6-uTime*0.08)));\n' +
+        '  float spokes=smoothstep(0.93,1.0,abs(cos(th*6.0)));\n' +
+        '  float rosette=smoothstep(0.86,1.0,abs(sin(th*6.0+rn*0.4)));\n' +
+        '  float sig=rings*0.5+spokes*0.2+rosette*0.28;\n' +
+        '  col+=sig*sigCol*uOccult*smoothstep(3.0,12.0,rn)*0.4;\n' +
+        '  float zr=uDiscR*0.45;\n' +
+        '  col+=smoothstep(uTile*5.0,0.0,abs(rr-zr))*smoothstep(0.85,1.0,abs(cos(th*6.0)))*sigCol*uOccult*0.3;\n' +
+        '  float fog=smoothstep(uDiscR*0.16,uDiscR*0.82,rr);\n' +
+        '  vec3 haze=mix(vec3(0.62,0.74,0.86),vec3(0.03,0.05,0.11),night);\n' +
+        '  col=mix(col,haze,fog*0.97);\n' +
+        '  float rim=smoothstep(uDiscR*0.86,uDiscR,rr);\n' +
+        '  col+=rim*mix(vec3(0.5,0.75,0.95),vec3(0.18,0.38,0.66),night)*0.5;\n' +
+        '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),uWeather.w*0.4);\n' +
+        '  col=mix(col,col*vec3(1.15,1.0,0.75),uWeather.z*0.35);\n' +
+        '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),uWeather.x*0.3);\n' +
+        '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;\n' +
+        '  float ecl=(step(1.5,uSkyEvent)*step(uSkyEvent,2.5)+step(2.5,uSkyEvent))*uSkyAmt;\n' +
+        '  col=mix(col,col*vec3(1.4,0.55,0.5)+vec3(0.04,0.0,0.0),bloodM*0.45);\n' +
+        '  col=mix(col,col*vec3(0.5,0.5,0.62),ecl*0.45);\n' +
+        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));\n' +
+        '  gl_FragColor=vec4(col,1.0);\n' +
+        '}';
+    }
+
+    function _envWallFS() {
+        return 'varying vec3 vWorld;\n' + _ENV_COMMON + '\n' +
+        'void main(){\n' +
+        '  float night=uDayNight;\n' +
+        '  vec2 q=vWorld.xz-uCenter.xz; float th=atan(q.y,q.x);\n' +
+        '  float hgt=clamp(vWorld.y/uWallH,0.0,1.0);\n' +
+        '  float streak=0.5+0.5*sin(th*220.0+fbm(vec2(th*40.0,1.0))*4.0); streak=mix(0.82,1.0,streak);\n' +
+        '  float crack=smoothstep(0.62,0.68,fbm(vec2(th*90.0,hgt*6.0)));\n' +
+        '  vec3 ice=mix(vec3(0.74,0.86,0.96),vec3(0.07,0.16,0.32),night);\n' +
+        '  ice*=streak; ice+=crack*0.12*mix(1.0,0.4,night);\n' +
+        '  ice*=mix(1.2,0.3,hgt);\n' +
+        '  ice+=(1.0-hgt)*mix(vec3(0.26,0.46,0.68),vec3(0.05,0.16,0.34),night)*0.4;\n' +
+        '  vec3 col=ice;\n' +
+        '  col=mix(col,mix(vec3(0.80,0.88,0.96),vec3(0.06,0.12,0.24),night),smoothstep(0.22,0.0,hgt)*0.35);\n' +
+        '  col=mix(col,col*vec3(0.62,0.74,0.86),smoothstep(0.75,1.0,hgt)*0.5);\n' +
+        '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;\n' +
+        '  float bsun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt;\n' +
+        '  float lun=step(2.5,uSkyEvent)*uSkyAmt;\n' +
+        '  col=mix(col,col*vec3(1.4,0.5,0.45),bloodM*0.5);\n' +
+        '  col=mix(col,col*vec3(0.55,0.55,0.65),(bsun+lun)*0.4);\n' +
+        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));\n' +
+        '  gl_FragColor=vec4(col,1.0);\n' +
+        '}';
+    }
+
+    var _ENV_DOME_VS =
+        'varying vec3 vDir;\n' +
+        'void main(){ vec4 wp=modelMatrix*vec4(position,1.0); vDir=wp.xyz-cameraPosition; gl_Position=projectionMatrix*viewMatrix*wp; }';
+
+    function _envDomeFS() {
+        return 'varying vec3 vDir;\n' + _ENV_COMMON + '\n' +
+        'void main(){\n' +
+        '  vec3 rd=normalize(vDir); float night=uDayNight; float t=uTime;\n' +
+        '  float wStorm=uWeather.x,wSnow=uWeather.y,wSand=uWeather.z,wBlood=uWeather.w;\n' +
+        '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;\n' +
+        '  float bsun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt;\n' +
+        '  float lun=step(2.5,uSkyEvent)*uSkyAmt;\n' +
+        '  vec3 sunDir=normalize(vec3(0.50+0.03*sin(t*0.05),0.40,-0.58));\n' +
+        '  vec3 moonDir=normalize(vec3(-0.50,0.40,0.56+0.03*sin(t*0.04)));\n' +
+        '  float el=rd.y;\n' +
+        '  vec3 horiz=mix(vec3(0.66,0.78,0.90),vec3(0.04,0.06,0.13),night);\n' +
+        '  vec3 zen=mix(vec3(0.16,0.40,0.78),vec3(0.006,0.012,0.04),night);\n' +
+        '  vec3 grnd=mix(vec3(0.40,0.52,0.66),vec3(0.02,0.04,0.09),night);\n' +
+        '  vec3 col = el>=0.0 ? mix(horiz,zen,pow(clamp(el,0.0,1.0),0.7)) : mix(horiz,grnd,clamp(-el*3.0,0.0,1.0));\n' +
+        '  col=mix(col,col*vec3(1.5,0.42,0.38)+vec3(0.05,0.0,0.0),bloodM*0.6);\n' +
+        '  col=mix(col,col*vec3(0.40,0.40,0.52),bsun*0.6);\n' +
+        '  col=mix(col,col*vec3(0.5,0.5,0.62),lun*0.45);\n' +
+        '  float az=atan(rd.x,rd.z);\n' +
+        '  vec2 sph=vec2(az/PI, asin(clamp(rd.y,-1.0,1.0))/(PI*0.5));\n' +
+        '  { vec2 uvp=sph*vec2(60.0,34.0); vec2 g=floor(uvp),f=fract(uvp); float h=hash21(g);\n' +
+        '    if(h>=0.9){ vec2 c=hash22(g+3.1); float d=length(f-c); float core=smoothstep(0.08,0.0,d);\n' +
+        '      float tw=0.55+0.45*sin(t*(1.2+hash21(g+7.7)*3.0)+h*40.0);\n' +
+        '      col+=core*tw*(0.3+0.7*night)*vec3(0.9,0.95,1.0)*step(0.0,el); } }\n' +
+        '  for(int i=0;i<12;i++){ float fi=float(i); float a=fi/12.0*TAU;\n' +
+        '    vec3 zd=normalize(vec3(sin(a)*0.85,0.42,-cos(a)*0.85));\n' +
+        '    float dz=acos(clamp(dot(rd,zd),-1.0,1.0));\n' +
+        '    float zAct=step(abs(mod(uZodiac-fi+6.0,12.0)-6.0),0.5);\n' +
+        '    float node=smoothstep(0.03,0.0,dz); float glo=exp(-dz*10.0);\n' +
+        '    vec3 zc=mix(vec3(0.50,0.55,0.82),vec3(1.0,0.84,0.42),zAct);\n' +
+        '    col+=(node*(0.5+1.0*zAct)+glo*0.16*(0.3+zAct))*zc*(0.4+0.6*night); }\n' +
+        '  vec3 cDir=normalize(vec3(0.16,0.5,-0.82));\n' +
+        '  vec3 rgt=normalize(cross(vec3(0.0,1.0,0.0),cDir)); vec3 upv=normalize(cross(cDir,rgt));\n' +
+        '  for(int k=0;k<6;k++){ float fk=float(k);\n' +
+        '    vec2 off=(hash22(vec2(uZodiac*13.0+fk*1.7,fk*5.0))-0.5)*0.32;\n' +
+        '    vec3 cn=normalize(cDir+rgt*off.x+upv*off.y);\n' +
+        '    float dcc=acos(clamp(dot(rd,cn),-1.0,1.0)); float br=0.6+0.6*hash11(uZodiac*3.0+fk);\n' +
+        '    col+=smoothstep(0.012,0.0,dcc)*vec3(1.0,0.92,0.66)*br*(0.55+0.45*night);\n' +
+        '    col+=exp(-dcc*42.0)*vec3(0.8,0.85,1.0)*0.12*(0.4+0.6*night); }\n' +
+        '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=1.0-night; float sunR=0.05;\n' +
+        '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*5.0)*0.8+exp(-sa*1.3)*0.18;\n' +
+        '  vec3 sunWarm=mix(vec3(1.0,0.92,0.70),vec3(1.0,0.66,0.32),wSand);\n' +
+        '  vec3 sunC=disc*sunWarm*3.0+corona*sunWarm*1.2;\n' +
+        '  vec3 blackSunC=-disc*vec3(2.5)+smoothstep(sunR*1.7,sunR*1.05,abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8+corona*vec3(0.9,0.7,0.95)*0.5;\n' +
+        '  col+=mix(sunC*sunVis,blackSunC,bsun);\n' +
+        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=night; float moonR=mix(0.06,0.095,bloodM);\n' +
+        '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*42.0);\n' +
+        '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*7.0)*0.4;\n' +
+        '  vec3 moonC=mdisc*moonGrey*1.6+mGlow*moonGrey*0.6;\n' +
+        '  vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);\n' +
+        '  vec3 moonEv=mdisc*moonRed*2.0+exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;\n' +
+        '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
+        '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.0),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
+        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05,el*3.0-t*0.02));\n' +
+        '    float cover=smoothstep(0.7,0.0,el)*step(0.0,el);\n' +
+        '    vec3 cloud=mix(vec3(0.30,0.32,0.36),vec3(0.03,0.04,0.06),night);\n' +
+        '    col=mix(col,cloud,cover*smoothstep(0.35,0.7,cl)*wStorm*0.9); }\n' +
+        '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),wStorm*0.3); col*=mix(1.0,0.7,wStorm*0.5);\n' +
+        '  col=mix(col,col*vec3(0.85,0.95,1.15)+vec3(0.05,0.07,0.10),wSnow*0.5);\n' +
+        '  col=mix(col,col*vec3(1.20,1.00,0.70)+vec3(0.08,0.05,0.0),wSand*0.45);\n' +
+        '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.06,0.0,0.0),wBlood*0.5);\n' +
+        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));\n' +
+        '  gl_FragColor=vec4(col,1.0);\n' +
+        '}';
+    }
+
+    function _initEnvironment() {
+        if (_envInited || !scene || typeof THREE === 'undefined') return;
+        try {
+            _envUni = {
+                uTime: { value: 0 },
+                uDayNight: { value: 0 },
+                uSkyEvent: { value: 0 },
+                uSkyAmt: { value: 0 },
+                uZodiac: { value: 0 },
+                uWeather: { value: new THREE.Vector4(0, 0, 0, 0) },
+                uOccult: { value: 0.5 },
+                uCenter: { value: new THREE.Vector3(0, 0, 0) },
+                uDiscR: { value: 9000 },
+                uWallH: { value: _ENV_WALL_H },
+                uTile: { value: 128 }
+            };
+
+            var groundMat = new THREE.ShaderMaterial({
+                uniforms: _envUni, vertexShader: _ENV_WORLD_VS, fragmentShader: _envGroundFS(),
+                side: THREE.DoubleSide, depthWrite: true, fog: false
+            });
+            groundMat.extensions = { derivatives: true };
+            var gGeo = new THREE.CircleGeometry(1, 160); gGeo.rotateX(-Math.PI / 2);
+            _envGround = new THREE.Mesh(gGeo, groundMat);
+            _envGround.renderOrder = -50; _envGround.frustumCulled = false;
+
+            var wallMat = new THREE.ShaderMaterial({
+                uniforms: _envUni, vertexShader: _ENV_WORLD_VS, fragmentShader: _envWallFS(),
+                side: THREE.BackSide, depthWrite: true, fog: false
+            });
+            var wGeo = new THREE.CylinderGeometry(1, 1, 1, 160, 1, true);
+            _envWall = new THREE.Mesh(wGeo, wallMat);
+            _envWall.renderOrder = -60; _envWall.frustumCulled = false;
+
+            var domeMat = new THREE.ShaderMaterial({
+                uniforms: _envUni, vertexShader: _ENV_DOME_VS, fragmentShader: _envDomeFS(),
+                side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false
+            });
+            var dGeo = new THREE.SphereGeometry(1, 48, 24);
+            _envDome = new THREE.Mesh(dGeo, domeMat);
+            _envDome.renderOrder = -1000; _envDome.frustumCulled = false;
+
+            _envGroup = new THREE.Group();
+            _envGroup.add(_envDome, _envWall, _envGround);
+            scene.add(_envGroup);
+            _envInited = true;
+            console.log('[ThreeRenderer] firmament environment initialized');
+        } catch (e) {
+            console.warn('[ThreeRenderer] environment init failed', e);
+        }
+    }
+
+    function _envReadState() {
+        var night = 0;
+        try {
+            if (typeof getCurrentCyclePhase === 'function') night = getCurrentCyclePhase() === 'night' ? 1 : 0;
+            else if (document.body && document.body.dataset) night = document.body.dataset.cycle === 'night' ? 1 : 0;
+        } catch (e) {}
+        var ev = 0;
+        if (typeof state !== 'undefined' && state && state.skyEvent && state.skyEvent.type) {
+            var m = { bloodMoon: 1, solarEclipse: 2, lunarEclipse: 3 };
+            ev = m[state.skyEvent.type] || 0;
+        }
+        var zi = 0;
+        var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : window.AVAILABLE_ZODIACS;
+        if (typeof state !== 'undefined' && state && state.activeZodiac && ZL) {
+            var ki = ZL.indexOf(state.activeZodiac); if (ki >= 0) zi = ki;
+        }
+        var w = { storm: 0, snow: 0, sand: 0, blood: 0 };
+        var aw = (typeof state !== 'undefined' && state && state.activeWeather) || [];
+        for (var i = 0; i < aw.length; i++) {
+            switch (aw[i] && aw[i].type) {
+                case 'tornado': case 'hurricane': case 'thunderstorm':
+                case 'earthquake': case 'tesseractStorm': w.storm = 1; break;
+                case 'blizzard': w.snow = 1; break;
+                case 'sandstorm': case 'drought': case 'solarFlare': w.sand = 1; break;
+                case 'bloodRain': w.blood = 1; break;
+            }
+        }
+        return { night: night, ev: ev, zi: zi, w: w };
+    }
+
+    function _updateEnvironment() {
+        if (!_envInited || !_envUni) return;
+        var ts = CONFIG.tileSize || 128;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
+        var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
+
+        _envUni.uCenter.value.set(cx, 0, cz);
+        _envUni.uDiscR.value = discR;
+        _envUni.uWallH.value = _ENV_WALL_H;
+        _envUni.uTile.value = ts;
+
+        if (_envGround) { _envGround.position.set(cx, -ts * 0.06, cz); _envGround.scale.set(discR, 1, discR); }
+        if (_envWall) { _envWall.position.set(cx, _ENV_WALL_H * 0.5, cz); _envWall.scale.set(discR, _ENV_WALL_H, discR); }
+        if (_envDome) {
+            var camo = ThreeCamera.getCamera();
+            if (camo) _envDome.position.copy(camo.position);
+            _envDome.scale.setScalar(_ENV_DOME_R);
+        }
+
+        var s = _envReadState(), S = _envSmooth, k = 0.05;
+        S.night += ((s.night ? 1 : 0) - S.night) * k;
+        S.skyAmt += ((s.ev > 0 ? 1 : 0) - S.skyAmt) * k;
+        if (s.ev > 0) S.skyEvent = s.ev;
+        S.zodiac += (s.zi - S.zodiac) * 0.08;
+        S.storm += (s.w.storm - S.storm) * k;
+        S.snow += (s.w.snow - S.snow) * k;
+        S.sand += (s.w.sand - S.sand) * k;
+        S.blood += (s.w.blood - S.blood) * k;
+
+        _envUni.uDayNight.value = S.night;
+        _envUni.uSkyEvent.value = S.skyEvent;
+        _envUni.uSkyAmt.value = S.skyAmt;
+        _envUni.uZodiac.value = S.zodiac;
+        _envUni.uWeather.value.set(S.storm, S.snow, S.sand, S.blood);
+        _envUni.uTime.value = performance.now() / 1000;
+    }
+
     function init() {
         if (initialized) return;
         _parentEl = document.querySelector('.map-center');
@@ -6350,6 +6633,8 @@ const ThreeRenderer = (function () {
         if (ThreeVFX && ThreeVFX.init) {
             ThreeVFX.init(scene);
         }
+
+        _initEnvironment();
 
         if (window.ThreeLightning && ThreeLightning.init) {
             ThreeLightning.init(scene);
@@ -7236,6 +7521,8 @@ const ThreeRenderer = (function () {
             }
             camera._appliedThisFrame = false;
         }
+
+        _updateEnvironment();
 
         var tv = state._terrainVersion || 0, hv = state._heightVersion || 0, vv = state._voxelVersion || 0;
         if (tv !== _lastTerrainVersion || hv !== _lastHeightVersion || vv !== _lastVoxelVersion) rebuildTerrain();
