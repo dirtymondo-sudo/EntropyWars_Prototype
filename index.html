@@ -1033,15 +1033,16 @@
             // Mark sky-backdrop so CSS hides old gradient/nebula/starfield layers
             skyBackdrop.classList.add('shader-active');
 
+            // Hide the legacy DOM celestial discs — the shader now renders its own sun/moon
+            const _celestialOrbit = document.querySelector('.celestial-orbit');
+            if (_celestialOrbit) _celestialOrbit.style.display = 'none';
+
             const params = {
-                speed: 3.0,
-                terrainHeight: 0.5,
-                fogStepSize: 1.9,
-                noiseFreq: 2,
-                noiseAmp: 0.27,
-                colorR: 3.7,
-                colorG: 1.5,
-                colorB: 1.0
+                discRadius: 26.0,   // flat-earth disc / ice-wall radius (world units)
+                tileScale: 1.0,     // checkerboard square size
+                focal: 1.3,         // camera focal length (FOV)
+                pitch: 0.15,        // base downward pitch toward the horizon
+                occult: 0.5         // strength of masonic/occult sigils
             };
 
             const scene = new THREE.Scene();
@@ -1057,93 +1058,278 @@
                 }
             `;
 
+            // ── Flat-Earth Firmament background ──────────────────────────────
+            // A masonic checkerboard plane receding to a circular ice-wall
+            // horizon under a firmament dome. Reacts to the day/night cycle,
+            // sky events, the active zodiac and the weather (uniforms fed from
+            // game state in animate() below). Single analytic pass: ray-plane
+            // for the ground, ray-cylinder for the ice wall, dome for the sky.
             const fragmentShader = `
                 uniform float iTime;
-                uniform vec2 iResolution;
-                uniform float uSpeed;
-                uniform float uTerrainHeight;
-                uniform float uFogStepSize;
-                uniform float uNoiseFreq;
-                uniform float uNoiseAmp;
-                uniform vec3 uColorPhase;
+                uniform vec2  iResolution;
                 uniform float uCamYaw;
-                uniform float uCamTilt;
+                uniform float uPitch;
+                uniform float uFocal;
+                uniform float uDiscRadius;
+                uniform float uTileScale;
+                uniform float uDayNight;   // 0 day .. 1 night
+                uniform float uSkyEvent;   // 0 none, 1 bloodMoon, 2 blackSun, 3 lunarEclipse
+                uniform float uSkyAmt;     // 0..1
+                uniform float uZodiac;     // 0..11 active sign
+                uniform vec4  uWeather;    // storm, snow, sand, blood
+                uniform float uBass;
+                uniform float uOccult;
 
-                float hash12(vec2 p) {
-                    vec3 p3 = fract(vec3(p.xyx) * .1031);
-                    p3 += dot(p3, p3.yzx + 33.33);
-                    return fract((p3.x + p3.y) * p3.z);
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a){ float s=sin(a), c=cos(a); return mat2(c,-s,s,c); }
+
+                float hash11(float p){ p=fract(p*0.1031); p*=p+33.33; p*=p+p; return fract(p); }
+                float hash21(vec2 p){ vec3 p3=fract(vec3(p.xyx)*0.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+                vec2  hash22(vec2 p){ vec3 p3=fract(vec3(p.xyx)*vec3(0.1031,0.1030,0.0973)); p3+=dot(p3,p3.yzx+33.33); return fract((p3.xx+p3.yz)*p3.zy); }
+
+                float vnoise(vec2 p){
+                    vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+                    float a=hash21(i), b=hash21(i+vec2(1,0)), c=hash21(i+vec2(0,1)), d=hash21(i+vec2(1,1));
+                    return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+                }
+                float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*vnoise(p); p*=2.02; a*=0.5; } return v; }
+
+                // Twinkling star field over a 2D (azimuth, elevation) sky chart.
+                float starField(vec2 uvp){
+                    vec2 g=floor(uvp); vec2 f=fract(uvp);
+                    float h=hash21(g); if(h<0.86) return 0.0;
+                    vec2 c=hash22(g+3.1);
+                    float d=length(f-c);
+                    float core=smoothstep(0.09,0.0,d);
+                    float tw=0.55+0.45*sin(iTime*(1.2+hash21(g+7.7)*3.0)+h*40.0);
+                    return core*tw;
                 }
 
-                vec2 rotate(vec2 v, float t) {
-                    float s = sin(t), c = cos(t);
-                    return mat2(c, -s, s, c) * v;
-                }
+                void main(){
+                    vec2 frag=gl_FragCoord.xy;
+                    vec2 uv=(2.0*frag-iResolution.xy)/iResolution.y;
 
-                vec3 toneMap(vec3 c) {
-                    mat3 m1 = mat3(0.59719, 0.17600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
-                    mat3 m2 = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
-                    vec3 v = m1 * c;
-                    vec3 a = v * (v + -0.3254214) - 0.000090537;
-                    vec3 b = v * (0.973729 * v + 0.3429510) + 0.018081;
-                    return m2 * (a / b);
-                }
+                    // ---- camera (pinhole above a flat plane, pitched toward the horizon) ----
+                    float pitch=uPitch;
+                    float sp=sin(pitch), cp=cos(pitch);
+                    vec3 fwd=vec3(0.0,-sp,-cp);
+                    vec3 rgt=vec3(1.0,0.0,0.0);
+                    vec3 up =vec3(0.0,cp,-sp);
+                    vec3 ro =vec3(0.0,1.0,0.0);
+                    vec3 rd =normalize(uv.x*rgt + uv.y*up + uFocal*fwd);
+                    rd.xz   = rot(uCamYaw)*rd.xz;   // spin the whole world with diorama yaw
 
-                float hash(float n) {
-                    return fract(sin(n) * 43758.7253);
-                }
+                    float night=uDayNight;
+                    float R=uDiscRadius;
+                    float t=iTime;
 
-                float valueNoise(vec3 x) {
-                    vec3 p = floor(x);
-                    vec3 f = fract(x);
-                    f = f * f * (3.0 - 2.0 * f);
-                    float n = p.x + p.y * 157.0 + 113.0 * p.z;
-                    float res = mix(mix(mix(hash(n + 0.0), hash(n + 1.0), f.x),
-                                        mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
-                                    mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
-                                        mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
-                    return res * 1.8 - -1.7;
-                }
+                    float wStorm=uWeather.x, wSnow=uWeather.y, wSand=uWeather.z, wBlood=uWeather.w;
+                    float flash = step(0.4,wStorm) * wStorm * pow(hash11(floor(t*3.3)+0.5),24.0);
 
-                float fineNoise(vec3 p) {
-                    float value = -1.1;
-                    float amplitude = uNoiseAmp;
-                    p *= uNoiseFreq;
-                    for (int i = -1; i < 2; i++) {
-                        value += amplitude * valueNoise(p);
-                        p *= 1.8;
-                        amplitude *= 0.9;
+                    // sky-event flags
+                    float bloodM =step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt; // blood moon
+                    float blackSun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt; // black sun
+                    float lunE   =step(2.5,uSkyEvent)*uSkyAmt;                      // lunar eclipse
+
+                    // celestial directions (world space → spin with yaw via rd),
+                    // kept low + off-centre so the discs frame beside the board
+                    vec3 sunDir =normalize(vec3( 0.52, 0.33 + 0.02*sin(t*0.10),     -0.82));
+                    vec3 moonDir=normalize(vec3(-0.50, 0.37 + 0.02*sin(t*0.08+1.0), -0.80));
+
+                    vec3 col=vec3(0.0);
+                    bool ground=false;
+
+                    // ================= FLAT GROUND DISC =================
+                    if(rd.y < -0.0008){
+                        float tg=-ro.y/rd.y;
+                        vec3 p=ro+rd*tg;
+                        float rr=length(p.xz);
+                        if(rr < R){
+                            ground=true;
+                            float th=atan(p.z,p.x);
+
+                            // masonic checkerboard
+                            vec2 cell=floor(p.xz/uTileScale);
+                            float chk=mod(cell.x+cell.y,2.0);
+                            vec3 darkSq=mix(vec3(0.05,0.05,0.07), vec3(0.012,0.012,0.022), night);
+                            vec3 liteSq=mix(vec3(0.80,0.80,0.84), vec3(0.10,0.12,0.18), night);
+                            col=mix(darkSq, liteSq, chk);
+                            vec2 gln=abs(fract(p.xz/uTileScale)-0.5);
+                            float line=smoothstep(0.46,0.5,max(gln.x,gln.y));
+                            col+=line*mix(vec3(0.05),vec3(0.03,0.05,0.10),night)*0.6;
+
+                            // occult sigils — concentric rings, 12 spokes, rosette (subtle, stronger far out)
+                            vec3 sigCol=mix(vec3(0.55,0.45,0.85), vec3(0.45,0.65,1.0), night);
+                            float rings=smoothstep(0.95,1.0, abs(sin(rr*0.9 - t*0.08)));
+                            float spokes=smoothstep(0.93,1.0, abs(cos(th*6.0)));
+                            float rosette=smoothstep(0.86,1.0, abs(sin(th*6.0 + rr*0.5)));
+                            float sig=rings*0.6 + spokes*0.22 + rosette*0.30;
+                            col+=sig*sigCol*uOccult*smoothstep(2.0,9.0,rr)*0.45;
+
+                            // etched zodiac ring
+                            float zr=R*0.6;
+                            float zband=smoothstep(0.7,0.0, abs(rr-zr));
+                            float znode=smoothstep(0.85,1.0, abs(cos(th*6.0)));
+                            col+=zband*znode*sigCol*uOccult*0.35;
+
+                            // distance haze toward the rim
+                            float fog=smoothstep(R*0.32, R, rr);
+                            vec3 haze=mix(vec3(0.62,0.74,0.86), vec3(0.03,0.05,0.11), night);
+                            col=mix(col, haze, fog*0.93);
+
+                            // icy rim glow near disc edge
+                            float rim=smoothstep(R*0.88, R, rr);
+                            col+=rim*mix(vec3(0.5,0.75,0.95), vec3(0.18,0.38,0.66), night)*0.6;
+                        }
                     }
-                    return value;
-                }
 
-                void main() {
-                    vec2 fragCoord = gl_FragCoord.xy;
-                    float time = iTime;
-                    vec3 rayPos = vec3(-1.0, 0.8, time * uSpeed);
-                    vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
-                    vec3 rayDir = normalize(vec3(uv, 0.30));
-                    rayDir.yz = rotate(rayDir.yz, uCamTilt);
-                    rayDir.xz = rotate(rayDir.xz, uCamYaw);
+                    // ================= ICE WALL + FIRMAMENT =================
+                    if(!ground){
+                        float lxz=length(rd.xz);
+                        float tc=R/max(lxz,1e-4);
+                        float yc=ro.y + rd.y*tc;
+                        float wallH=7.0;
 
-                    float dither = hash12(fragCoord);
-                    rayPos += rayDir * dither * 0.8;
+                        if(yc>=0.0 && yc<=wallH){
+                            // ---- circumferential ICE WALL (vertical ice cliffs) ----
+                            float th=atan(rd.x,-rd.z);
+                            float hgt=yc/wallH;
+                            float streak=0.5+0.5*sin(th*150.0 + fbm(vec2(th*26.0,1.0))*4.0);
+                            streak=mix(0.82,1.0,streak);
+                            float crack=smoothstep(0.62,0.68, fbm(vec2(th*64.0, yc*0.8)));
+                            vec3 ice=mix(vec3(0.74,0.86,0.96), vec3(0.07,0.16,0.32), night);
+                            ice*=streak;
+                            ice+=crack*0.12*mix(1.0,0.4,night);
+                            ice*=mix(1.2,0.32,hgt);                                   // glowing base, dim crown
+                            ice+=(1.0-hgt)*mix(vec3(0.26,0.46,0.68), vec3(0.05,0.16,0.34), night)*0.4;
+                            col=ice;
+                            col=mix(col, mix(vec3(0.80,0.88,0.96), vec3(0.06,0.12,0.24), night), smoothstep(0.28,0.0,hgt)*0.35);
+                            // events tint the wall too
+                            col=mix(col, col*vec3(1.4,0.5,0.45), bloodM*0.5);
+                            col=mix(col, col*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
+                        } else {
+                            // ---- SKY / FIRMAMENT DOME ----
+                            float el=clamp(rd.y,0.0,1.0);
+                            vec3 horiz=mix(vec3(0.66,0.78,0.90), vec3(0.04,0.06,0.13), night);
+                            vec3 zen  =mix(vec3(0.16,0.40,0.78), vec3(0.006,0.012,0.04), night);
+                            col=mix(horiz, zen, pow(el,0.7));
 
-                    vec3 accumulatedLight = vec3(27.2);
+                            // event mood on the firmament
+                            col=mix(col, col*vec3(1.5,0.42,0.38)+vec3(0.06,0.0,0.0), bloodM*0.6);
+                            col=mix(col, col*vec3(0.40,0.40,0.52), blackSun*0.6);
+                            col=mix(col, col*vec3(0.5,0.5,0.62), lunE*0.45);
 
-                    for(float i = 8.8; i < 52.0; i++) {
-                        float height = fineNoise(vec3(rayPos.xz * 0.52, 4.3)) * uTerrainHeight;
-                        float dist = rayPos.y - height;
-                        dist += abs(fineNoise(rayPos * 0.0)) * 0.00;
-                        dist = max(abs(dist), 0.40);
-                        rayPos += rayDir * dist * uFogStepSize;
-                        vec3 color = 1.0 + sin(i * 0.12 + length(rayPos.xz * 0.15) + uColorPhase);
-                        accumulatedLight += color / dist;
+                            float az=atan(rd.x,-rd.z);
+                            vec2 sph=vec2(az/PI, el);
+
+                            // faint firmament weave
+                            float dome=fbm(sph*8.0 + vec2(t*0.01,0.0));
+                            col+=(dome-0.5)*0.03*mix(vec3(1.0), vec3(0.6,0.7,1.0), night);
+
+                            // stars (mostly at night)
+                            float stf=starField(sph*vec2(46.0,30.0));
+                            col+=stf*(0.35+0.65*night)*vec3(0.9,0.95,1.0);
+
+                            // ---- zodiac wheel: dim 12-node belt ringing the dome ----
+                            for(int i=0;i<12;i++){
+                                float fi=float(i);
+                                float a=fi/12.0*TAU;
+                                vec3 zd=normalize(vec3(sin(a)*0.85, 0.42, -cos(a)*0.85));
+                                float dz=acos(clamp(dot(rd,zd),-1.0,1.0));
+                                float zAct=step(abs(mod(uZodiac-fi+6.0,12.0)-6.0), 0.5);
+                                float node=smoothstep(0.035,0.0,dz);
+                                float glo =exp(-dz*10.0);
+                                vec3 zc=mix(vec3(0.50,0.55,0.82), vec3(1.0,0.84,0.42), zAct);
+                                col+=(node*(0.5+1.0*zAct) + glo*0.16*(0.3+zAct))*zc*(0.4+0.6*night);
+                            }
+                            // ---- active constellation, framed high & visible above the board ----
+                            vec3 cDir=normalize(vec3(0.16, 0.54, -0.82));
+                            for(int k=0;k<6;k++){
+                                float fk=float(k);
+                                vec2 off=(hash22(vec2(uZodiac*13.0+fk*1.7, fk*5.0))-0.5)*0.32;
+                                vec3 cn=normalize(cDir + rgt*off.x + up*off.y);
+                                float dcc=acos(clamp(dot(rd,cn),-1.0,1.0));
+                                float br=0.6+0.6*hash11(uZodiac*3.0+fk);
+                                col+=smoothstep(0.013,0.0,dcc)*vec3(1.0,0.92,0.66)*br*(0.55+0.45*night);
+                                col+=exp(-dcc*42.0)*vec3(0.8,0.85,1.0)*0.12*(0.4+0.6*night);
+                            }
+
+                            // ---- SUN ----
+                            float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0));
+                            float sunVis=1.0-night;
+                            float sunR=0.045;
+                            float disc=smoothstep(sunR,sunR*0.8,sa);
+                            float corona=exp(-sa*5.0)*0.8 + exp(-sa*1.3)*0.18;
+                            vec3 sunWarm=mix(vec3(1.0,0.92,0.70), vec3(1.0,0.66,0.32), wSand);
+                            vec3 sunC=disc*sunWarm*3.0 + corona*sunWarm*1.2;
+                            vec3 blackSunC = -disc*vec3(2.5)
+                                           + smoothstep(sunR*1.7,sunR*1.05, abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8
+                                           + corona*vec3(0.9,0.7,0.95)*0.5;
+                            col+=mix(sunC*sunVis, blackSunC, blackSun);
+
+                            // ---- MOON ----
+                            float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0));
+                            float moonVis=night;
+                            float moonR=mix(0.055, 0.090, bloodM);          // blood moon swells
+                            float mdisc=smoothstep(moonR,moonR*0.85,ma);
+                            float craters=fbm((rd.xy-moonDir.xy)*42.0);
+                            vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters);
+                            float mGlow=exp(-ma*7.0)*0.4;
+                            vec3 moonC=mdisc*moonGrey*1.6 + mGlow*moonGrey*0.6;
+                            vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);
+                            vec3 moonEv=mdisc*moonRed*2.0 + exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;
+                            col+=mix(moonC*moonVis, moonEv, max(bloodM,lunE));
+
+                            // subtle radiant zenith (occult)
+                            float zenGlow=smoothstep(0.85,1.0,el);
+                            col+=zenGlow*mix(vec3(0.0), vec3(0.30,0.25,0.45), night)*0.14*uOccult;
+
+                            // storm overcast — rolling cloud cover that dims the sun
+                            if(wStorm>0.01){
+                                float cl=fbm(vec2(az*2.2 + t*0.05, el*3.0 - t*0.02));
+                                float cover=smoothstep(0.7,0.0,el);                 // thickest near horizon
+                                vec3 cloud=mix(vec3(0.30,0.32,0.36), vec3(0.03,0.04,0.06), night);
+                                col=mix(col, cloud, cover*smoothstep(0.35,0.7,cl)*wStorm*0.9);
+                            }
+                        }
                     }
 
-                    vec3 finalColor = (accumulatedLight * accumulatedLight) / 3009.0;
-                    finalColor += (dither - 0.0) * 0.0425;
-                    gl_FragColor = vec4(toneMap(finalColor), 1.0);
+                    // ================= GLOBAL WEATHER GRADE =================
+                    float lum=dot(col,vec3(0.299,0.587,0.114));
+                    col=mix(col, vec3(lum), wStorm*0.35);
+                    col*=mix(1.0,0.62,wStorm*0.6);
+                    col=mix(col, col*vec3(0.85,0.95,1.15)+vec3(0.05,0.07,0.10), wSnow*0.6);
+                    col=mix(col, col*vec3(1.20,1.00,0.70)+vec3(0.10,0.06,0.00), wSand*0.5);
+                    col=mix(col, col*vec3(1.30,0.50,0.45)+vec3(0.08,0.00,0.00), wBlood*0.55);
+
+                    col+=flash*vec3(0.8,0.85,1.0);
+                    col*=1.0+uBass*0.12;
+
+                    // falling snow flecks (screen space)
+                    if(wSnow>0.01){
+                        vec2 s2=uv*vec2(iResolution.x/iResolution.y,1.0);
+                        float fall=0.0;
+                        for(int i=0;i<2;i++){
+                            float fl=float(i);
+                            vec2 q=s2*(10.0+fl*6.0); q.y+=t*(1.5+fl);
+                            vec2 id=floor(q); vec2 fr=fract(q)-0.5;
+                            fall+=smoothstep(0.09,0.0,length(fr))*step(0.92,hash21(id+fl*7.0));
+                        }
+                        col+=fall*wSnow*vec3(0.9,0.95,1.0)*0.8;
+                    }
+
+                    // edge vignette keeps the board area calm/readable
+                    float vig=smoothstep(1.7,0.4,length(uv));
+                    col*=mix(0.70,1.0,vig);
+
+                    // tonemap + dither
+                    col=col/(col+vec3(0.6));
+                    col=pow(max(col,0.0), vec3(0.95));
+                    col+=(hash21(frag+fract(t))-0.5)*0.015;
+
+                    gl_FragColor=vec4(col,1.0);
                 }
             `;
 
@@ -1154,14 +1340,18 @@
                 uniforms: {
                     iTime: { value: 0 },
                     iResolution: { value: new THREE.Vector2(1, 1) },
-                    uSpeed: { value: params.speed },
-                    uTerrainHeight: { value: params.terrainHeight },
-                    uFogStepSize: { value: params.fogStepSize },
-                    uNoiseFreq: { value: params.noiseFreq },
-                    uNoiseAmp: { value: params.noiseAmp },
-                    uColorPhase: { value: new THREE.Vector3(params.colorR, params.colorG, params.colorB) },
                     uCamYaw: { value: 0.0 },
-                    uCamTilt: { value: 0.70 }
+                    uPitch: { value: params.pitch },
+                    uFocal: { value: params.focal },
+                    uDiscRadius: { value: params.discRadius },
+                    uTileScale: { value: params.tileScale },
+                    uDayNight: { value: 0.0 },
+                    uSkyEvent: { value: 0.0 },
+                    uSkyAmt: { value: 0.0 },
+                    uZodiac: { value: 0.0 },
+                    uWeather: { value: new THREE.Vector4(0, 0, 0, 0) },
+                    uBass: { value: 0.0 },
+                    uOccult: { value: params.occult }
                 }
             });
 
@@ -1297,7 +1487,46 @@
             }
 
             const DEG2RAD = Math.PI / 180;
-            const DEFAULT_TILT_RAD = 0.70; // (90-50)° — matches default 50° diorama tilt
+
+            // ── Read the live game state that drives the firmament ──
+            // (day/night cycle, sky events, active zodiac, weather)
+            const SKY_EVENT_INDEX = { bloodMoon: 1, solarEclipse: 2, lunarEclipse: 3 };
+            function readGameSky() {
+                const S = window.state || (typeof state !== 'undefined' ? state : null);
+
+                // day/night — prefer the body dataset the HUD already maintains
+                let isNight = false;
+                const ds = document.body && document.body.dataset;
+                if (ds && (ds.cycle === 'night' || ds.cycle === 'day')) isNight = ds.cycle === 'night';
+                else if (S && S.phase === 'battle' && S.round) isNight = (S.round % 2) === 0;
+
+                // sky event
+                let ev = 0;
+                if (S && S.skyEvent && S.skyEvent.type) ev = SKY_EVENT_INDEX[S.skyEvent.type] || 0;
+
+                // active zodiac → index 0..11
+                let zi = 0;
+                const ZL = window.AVAILABLE_ZODIACS;
+                if (S && S.activeZodiac && ZL) { const k = ZL.indexOf(S.activeZodiac); if (k >= 0) zi = k; }
+
+                // weather → buckets (storm, snow, sand, blood)
+                const w = { storm: 0, snow: 0, sand: 0, blood: 0 };
+                const aw = (S && S.activeWeather) || [];
+                for (let i = 0; i < aw.length; i++) {
+                    switch (aw[i] && aw[i].type) {
+                        case 'tornado': case 'hurricane': case 'thunderstorm':
+                        case 'earthquake': case 'tesseractStorm': w.storm = 1; break;
+                        case 'blizzard': w.snow = 1; break;
+                        case 'sandstorm': case 'drought': case 'solarFlare': w.sand = 1; break;
+                        case 'bloodRain': w.blood = 1; break;
+                    }
+                }
+                return { isNight, ev, zi, w };
+            }
+
+            // smoothed background state (eased toward targets each frame)
+            let _bgNight = 0, _bgSkyAmt = 0, _bgSkyEvent = 0, _bgZodiac = 0;
+            const _bgW = { storm: 0, snow: 0, sand: 0, blood: 0 };
 
             const clock = new THREE.Clock();
             function animate() {
@@ -1305,48 +1534,44 @@
                 syncSize();
                 if (!isVisible) return;
 
-                // Sync camera orientation from diorama state
-                const s = typeof state !== 'undefined' ? state : null;
-                if (s && s.dioramaMode) {
-                    material.uniforms.uCamTilt.value = (90 - (s.dioramaTiltDeg ?? 50)) * DEG2RAD;
-                    material.uniforms.uCamYaw.value  = (s.dioramaYawDeg  ?? 0)  * DEG2RAD;
-                } else {
-                    material.uniforms.uCamTilt.value = DEFAULT_TILT_RAD;
-                    material.uniforms.uCamYaw.value  = 0.0;
-                }
+                const U = material.uniforms;
 
-                // ── Audio-reactive uniform modulation ──
+                // ── Camera: spin world with diorama yaw; horizon pitch tracks tilt gently ──
+                const s = window.state || (typeof state !== 'undefined' ? state : null);
+                let yaw = 0, tiltDeg = 50;
+                if (s && s.dioramaMode) { yaw = (s.dioramaYawDeg ?? 0) * DEG2RAD; tiltDeg = (s.dioramaTiltDeg ?? 50); }
+                U.uCamYaw.value = yaw;
+                U.uPitch.value = params.pitch + (50 - tiltDeg) * 0.001;
+
+                // ── Drive sky uniforms from game state (eased) ──
+                const g = readGameSky();
+                const k = 0.045;
+                _bgNight  += ((g.isNight ? 1 : 0) - _bgNight) * k;
+                _bgSkyAmt += ((g.ev > 0 ? 1 : 0) - _bgSkyAmt) * k;
+                if (g.ev > 0) _bgSkyEvent = g.ev;            // hold last event type while it fades out
+                _bgZodiac += (g.zi - _bgZodiac) * 0.08;
+                _bgW.storm += (g.w.storm - _bgW.storm) * k;
+                _bgW.snow  += (g.w.snow  - _bgW.snow ) * k;
+                _bgW.sand  += (g.w.sand  - _bgW.sand ) * k;
+                _bgW.blood += (g.w.blood - _bgW.blood) * k;
+
+                U.uDayNight.value = _bgNight;
+                U.uSkyEvent.value = _bgSkyEvent;
+                U.uSkyAmt.value   = _bgSkyAmt;
+                U.uZodiac.value   = _bgZodiac;
+                U.uWeather.value.set(_bgW.storm, _bgW.snow, _bgW.sand, _bgW.blood);
+
+                // ── Audio-reactive bass pulse (subtle) ──
+                let bass = 0;
                 if (audioReact.enabled) {
-                    const [rawBass, rawMid] = readAudioEnergy();
-                    const bass = rawBass * audioReact.bassGain;
-                    const mid  = rawMid  * audioReact.bassGain;
-                    const sm   = audioReact.smoothing;
-
-                    // Exponential smoothing for buttery motion
-                    _smoothBass = _smoothBass * sm + bass * (1 - sm);
-                    _smoothMid  = _smoothMid  * sm + mid  * (1 - sm);
-
-                    const b = _smoothBass;
-                    const m = _smoothMid;
-
-                    // Modulate uniforms around their base GUI values
-                    material.uniforms.uTerrainHeight.value = params.terrainHeight + b * audioReact.terrainPulse;
-                    material.uniforms.uFogStepSize.value   = params.fogStepSize   - b * audioReact.fogPulse;
-                    material.uniforms.uNoiseAmp.value      = params.noiseAmp      + b * audioReact.noisePulse;
-                    material.uniforms.uColorPhase.value.set(
-                        params.colorR + m * audioReact.colorPulse,
-                        params.colorG + b * audioReact.colorPulse * 0.6,
-                        params.colorB + m * audioReact.colorPulse * 0.3
-                    );
-                } else {
-                    // No reactivity — use raw GUI values
-                    material.uniforms.uTerrainHeight.value = params.terrainHeight;
-                    material.uniforms.uFogStepSize.value   = params.fogStepSize;
-                    material.uniforms.uNoiseAmp.value      = params.noiseAmp;
-                    material.uniforms.uColorPhase.value.set(params.colorR, params.colorG, params.colorB);
+                    const [rawBass] = readAudioEnergy();
+                    const sm = audioReact.smoothing;
+                    _smoothBass = _smoothBass * sm + (rawBass * audioReact.bassGain) * (1 - sm);
+                    bass = _smoothBass;
                 }
+                U.uBass.value = bass;
 
-                material.uniforms.iTime.value = clock.getElapsedTime();
+                U.iTime.value = clock.getElapsedTime();
                 renderer.render(scene, camera);
             }
             animate();
