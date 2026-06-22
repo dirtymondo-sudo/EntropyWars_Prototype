@@ -4393,7 +4393,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'inspired', duration: 2 }, { id: 'protect', duration: 1 }],
           desc: 'Radiate divine transcendence. All allies within 2 tiles gain Inspired 2 turns and Protect 1 turn.' },
         SHARED_TERRAFORM,
-        SHARED_FLASH_FREEZE
     ],
     'orb of light': [
         { id: 'racePrismBurst', spellType: 'divine', name: 'Prism Burst',
@@ -4410,7 +4409,6 @@ const RACE_ABILITIES = {
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Burst of pure light in all directions. Damages all enemies within 2 tiles.' },
         SHARED_TERRAFORM,
-        SHARED_FLASH_FREEZE
     ],
     'ghost': [
         { id: 'raceColdSpot', spellType: 'divine', name: 'Cold Spot',
@@ -4445,7 +4443,6 @@ const RACE_ABILITIES = {
           kind: 'swap', allyOnly: true, healOnSwap: 60,
           desc: 'Swap with an ally up to 4 tiles away. The ally heals 60 HP on arrival.' },
         SHARED_TERRAFORM,
-        SHARED_FLASH_FREEZE
     ],
     'gargoyle': [
         { id: 'racePerchForm', spellType: 'unholy', name: 'Perch Form',
@@ -4607,7 +4604,6 @@ const RACE_ABILITIES = {
           kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false,
           desc: 'Cheapest teleport in the game. It doesn\'t walk. It simply isn\'t, then is.' },
         SHARED_SMOKE_SCREEN,
-        SHARED_FLASH_FREEZE
     ],
     'werewolf': [
         { id: 'racePounce', spellType: 'human', name: 'Pounce',
@@ -4798,7 +4794,6 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'stun', duration: 1 }, { id: 'silence', duration: 1 }],
           desc: 'Target\'s consciousness encounters a fatal error. Stunned and silenced 1 turn.' },
-        SHARED_FLASH_FREEZE,
         SHARED_FISSURE
     ],
     'ai': [
@@ -4816,7 +4811,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           bonusVsDebuffed: 0.50,
           desc: 'While (alive) { suffer(); } — 80 damage, +50% bonus if target already has a debuff.' },
-        SHARED_FLASH_FREEZE
     ],
     'robot': [
         { id: 'raceChassisSlan', spellType: 'tech', name: 'Chassis Slam',
@@ -4833,7 +4827,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
           desc: 'Launch a detachable fist. 110 damage, pushes target 2 tiles. Reusable.' },
-        SHARED_RAMPART,
     ],
     'android': [
         { id: 'raceNeuralHack', spellType: 'tech', name: 'Neural Hack',
@@ -4850,7 +4843,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'glare', duration: 2 }],
           desc: 'Precision melee strike faster than human reflexes. Shreds DEF for 2 turns.' },
         SHARED_SMOKE_SCREEN,
-        SHARED_FLASH_FREEZE
     ],
 
     'giant': [
@@ -5073,7 +5065,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           bonusVsUnholy: 0.50,
           desc: 'Strike with holy wrath. 110 magic damage, +50% bonus against Unholy type units.' },
-        SHARED_RAMPART
     ],
     'wizard': [
         { id: 'raceArcaneBlast', spellType: 'unholy', name: 'Arcane Blast',
@@ -5224,7 +5215,6 @@ const RACE_ABILITIES = {
           desc: 'Trap a target in a sandglass. Stunned 1 turn. Your time has run out.' },
         SHARED_SUMMON_SANDSTORM,
         SHARED_CALL_LIGHTNING,
-        SHARED_RAMPART
     ],
     'machine elves': [
         { id: 'raceFractalNeedle', spellType: 'alien', name: 'Fractal Needle',
@@ -5241,7 +5231,6 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'crystal', tileCount: 3, orientable: true,
           dmg: 0, damageType: 'magic',
           desc: 'Create 3 crystal tiles in a line. Crystal terrain boosts DEF and blocks ranged. The pattern is the message.' },
-        SHARED_FLASH_FREEZE,
         SHARED_CALL_LIGHTNING
     ],
     'cyclops': [
@@ -5403,7 +5392,6 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'discord', duration: 2 }, { id: 'slow', duration: 1 }],
           desc: 'Wouldst thou like to live deliciously? Discord 2 turns and slow 1 turn.' },
-        SHARED_RAMPART,
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -5557,7 +5545,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }, { id: 'inspired', duration: 1 }],
           desc: 'Activate superhuman durability. Protected 2 turns, Inspired 1 turn. Bullets bounce off.' },
-        SHARED_RAMPART,
         SHARED_CALL_LIGHTNING
     ],
     'general': [
@@ -5597,7 +5584,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Quick electric bolt. 90 damage, staggers target. Bzzt.' },
-        SHARED_FLASH_FREEZE,
     ],
     'antihero': [
         { id: 'raceCosmicSlam', spellType: 'human', name: 'Cosmic Slam',
@@ -5720,7 +5706,6 @@ const RACE_ABILITIES = {
           desc: 'Deploy an Atlantean barrier. 3 HP, blocks movement and ranged. Built to last 10,000 years.' },
         SHARED_FLASH_FREEZE,
         SHARED_TIDAL_SURGE,
-        SHARED_RAMPART
     ],
     'dinosaur': [
         { id: 'raceApexCharge', spellType: 'anomaly', name: 'Apex Charge',
@@ -5745,7 +5730,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: '65 million years of predatory instinct. Leap from high ground onto prey below. Damage scales with the drop.' },
         SHARED_FISSURE,
-        SHARED_RAMPART
     ],
     'dragon': [
         { id: 'raceDragonfire', spellType: 'unholy', name: 'Dragonfire',
@@ -5772,7 +5756,6 @@ const RACE_ABILITIES = {
           desc: 'Snatch an adjacent enemy in massive claws, soar upward, and hurl them up to 3 tiles. Devastating if they hit another unit.' },
         SHARED_SCORCHED_EARTH,
         SHARED_FISSURE,
-        SHARED_RAMPART
     ],
     'ghoul': [
         { id: 'raceGhoulishBite', spellType: 'unholy', name: 'Ghoulish Bite',
@@ -6448,7 +6431,6 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 1, def: 1 },
           statusEffects: [{ id: 'inspired', duration: 2 }],
           desc: 'Battle cry of the Valkyries. All allies within 2 tiles gain +1 ATK/DEF and Inspired.' },
-        SHARED_FLASH_FREEZE
     ],
 
     'watcher': [
@@ -6474,7 +6456,6 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 90,
           desc: 'Project an astral barrier over all allies within 1 tile. 90 HP shields each.' },
-        SHARED_FLASH_FREEZE
     ]
 };
 
