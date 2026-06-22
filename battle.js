@@ -1318,7 +1318,7 @@
                 tower.hp = Math.max(0, tower.hp - tDmg);
                 const shieldLayers = getTowerShieldLayers(tower.owner);
                 const sMsg = shieldLayers > 0 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
-                addLog(`🐉 ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Dragon for ${tDmg} damage!${sMsg} (Dragon HP: ${tower.hp}/${tower.maxHp})`);
+                addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${tDmg} damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
                 grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                 showFloatingTextAtTile(x, y, `-${tDmg}`, 'damage');
                 playSfx('spellDamage');
@@ -1619,7 +1619,7 @@
             }
             const sMsg = getTowerShieldLayers(tower.owner) > 0
                 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
-            addLog(`🐉 ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Dragon for ${totalDmg} total damage!${sMsg} (Dragon HP: ${tower.hp}/${tower.maxHp})`);
+            addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${totalDmg} total damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
             showFloatingTextAtTile(x, y, `-${totalDmg}`, 'damage');
             window.setTimeout(() => { finishAction(); }, actionMs(400));
             return { handled: true, returnVal: 1 };
@@ -1744,7 +1744,7 @@
                     tDmg = Math.max(1, Math.round(tDmg * getTowerDamageMultiplier(_aoeTw.owner)));
                     _aoeTw.hp = Math.max(0, _aoeTw.hp - tDmg);
                     const _aoeSMsg = getTowerShieldLayers(_aoeTw.owner) > 0 ? ` [${getTowerShieldLabel(_aoeTw.owner)}]` : '';
-                    addLog(`🐉 ${spell.name} blasts Player ${_aoeTw.owner}'s Dragon for ${tDmg}!${_aoeSMsg} (Dragon HP: ${_aoeTw.hp}/${_aoeTw.maxHp})`);
+                    addLog(`⬡ ${spell.name} blasts Player ${_aoeTw.owner}'s Cube for ${tDmg}!${_aoeSMsg} (Cube HP: ${_aoeTw.hp}/${_aoeTw.maxHp})`);
                     showFloatingTextAtTile(tile.x, tile.y, `-${tDmg}`, 'damage');
                     playSfx('spellDamage');
                     hitCount++;
@@ -9562,7 +9562,7 @@
 
             const _winCondLabels = {
                 wipeout: '💀 Wipeout',
-                tower_destroyed: '🏰 Dragon Slain',
+                tower_destroyed: '⬡ Cube Destroyed',
                 hourglasses_collected: '⏳ Hourglasses Collected',
                 most_kills: '🗡 Most Kills',
                 most_points: '🚩 Most Points',
@@ -16334,7 +16334,7 @@
 
                 if (state.cameraDisabled) {
                     tw.hp = Math.max(0, tw.hp - damage);
-                    addLog(`🐉 ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Dragon for ${damage} damage! (Dragon HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     playSfx('uiConfirm');
                     showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
@@ -16381,7 +16381,7 @@
                     if (state.winner) return;
                     camera.snap({ x: x, y: y, zoom: towerCamZoom });
                     tw.hp = Math.max(0, tw.hp - damage);
-                    addLog(`🐉 ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Dragon for ${damage} damage! (Dragon HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
                     playHitEffect(x, y);
@@ -21152,7 +21152,7 @@
                 state._winLogged = true;
                 const winMsgs = {
                     wipeout: `Player ${state.winner} wins by eliminating all enemies!`,
-                    tower_destroyed: `Player ${state.winner} wins by slaying the enemy Dragon!`,
+                    tower_destroyed: `Player ${state.winner} wins by destroying the enemy Cube!`,
                     hourglasses_collected: `Player ${state.winner} wins by collecting all hourglasses!`,
                     most_kills: `Player ${state.winner} wins with the most kills!`,
                     most_points: `Player ${state.winner} wins with the most points!`,

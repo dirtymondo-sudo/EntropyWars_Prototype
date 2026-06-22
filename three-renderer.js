@@ -1743,21 +1743,29 @@ const ThreeRenderer = (function () {
         var ticksHtml = _buildHpTicks(maxHp);
 
         var pCls = owner === 1 ? 'tp-p1' : 'tp-p2';
+        /* Wrap in a 0×0 .tp-plate-outer just like unit plates do. Passing the
+           .tp-wrap directly to CSS2DObject lets its CSS `position:absolute;
+           bottom:0` pin it to the bottom of the full-screen CSS2D container,
+           which dumped the cube health bar far below the map. */
+        var outer = document.createElement('div');
+        outer.className = 'tp-plate-outer';
         var wrap = document.createElement('div');
         wrap.className = 'tp-wrap ' + pCls + ' tp-tower-plate';
-        wrap.style.position = 'relative';
         wrap.innerHTML =
             '<div class="tp-name"><span class="tp-lvl">⬡</span>Cube</div>' +
-            '<div class="tp-bars">' +
-                '<div class="tp-bar ' + allyCls + '">' +
-                    '<div class="tp-hp-fill" style="width:' + hpPct + '%"></div>' +
-                    ticksHtml +
-                    '<span class="tp-bar-num">' + hp + '/' + maxHp + '</span>' +
+            '<div class="tp-body">' +
+                '<div class="tp-bars">' +
+                    '<div class="tp-bar ' + allyCls + '">' +
+                        '<div class="tp-hp-fill" style="width:' + hpPct + '%"></div>' +
+                        ticksHtml +
+                        '<span class="tp-bar-num">' + hp + '/' + maxHp + '</span>' +
+                    '</div>' +
                 '</div>' +
             '</div>';
+        outer.appendChild(wrap);
 
-        var css2d = new THREE.CSS2DObject(wrap);
-        css2d.position.set(0, cubeSize * 0.9, 0);
+        var css2d = new THREE.CSS2DObject(outer);
+        css2d.position.set(0, cubeSize * 1.1, 0);
         g.add(css2d);
         g._ew_towerPlateEl = wrap;
         g._ew_lastTowerHp = hp;
@@ -3261,11 +3269,18 @@ const ThreeRenderer = (function () {
                 '  color: #ffd866; margin-right: 5px; font-size: 11px; flex-shrink: 0;',
                 '}',
 
-                '.tp-wrap .tp-bars {',
-                '  display: flex; flex-direction: column; gap: 2px;',
+                /* Body = the single black panel holding the type badge column
+                   (left) and the HP/MP bars (right) as one cohesive unit. */
+                '.tp-wrap .tp-body {',
+                '  display: flex; align-items: stretch; gap: 3px;',
                 '  background: rgba(0,0,0,0.7); border-radius: 4px;',
                 '  padding: 3px 4px; border: 1px solid rgba(255,255,255,0.12);',
                 '  box-shadow: 0 2px 8px rgba(0,0,0,0.8);',
+                '}',
+
+                '.tp-wrap .tp-bars {',
+                '  flex: 1 1 auto; min-width: 0;',
+                '  display: flex; flex-direction: column; gap: 2px;',
                 '}',
 
                 '.tp-wrap .tp-bar {',
@@ -3324,16 +3339,25 @@ const ThreeRenderer = (function () {
                 '.tp-wrap .tp-stat-up { background: rgba(50,200,100,0.3); color: #6ee2a8; }',
                 '.tp-wrap .tp-stat-dn { background: rgba(255,80,80,0.3); color: #ff7a8a; }',
 
+                /* Type badges stack vertically alongside the bars. With a single
+                   type the lone badge stretches (flex:1) to span the full height
+                   of both the HP and MP bars; with two types each badge lines up
+                   with one bar. */
                 '.tp-wrap .tp-types {',
-                '  display: flex; justify-content: center; gap: 3px;',
-                '  padding: 1px 0 2px;',
+                '  flex: 0 0 auto;',
+                '  display: flex; flex-direction: column; gap: 2px;',
                 '}',
                 '.tp-wrap .tp-type {',
+                '  flex: 1 1 0; min-height: 0;',
+                '  display: flex; align-items: center; justify-content: center;',
                 '  font-size: 9px; font-weight: 800; letter-spacing: 0.04em;',
-                '  padding: 1px 5px; border-radius: 3px; line-height: 1.3;',
+                '  padding: 0 6px; line-height: 1;',
                 '  text-transform: uppercase; color: #fff;',
                 '  text-shadow: 0 1px 2px rgba(0,0,0,0.6);',
                 '}',
+                '.tp-wrap .tp-types .tp-type:first-child { border-radius: 4px 4px 0 0; }',
+                '.tp-wrap .tp-types .tp-type:last-child  { border-radius: 0 0 4px 4px; }',
+                '.tp-wrap .tp-types .tp-type:only-child  { border-radius: 4px; }',
                 '.tp-wrap .tp-type-human   { background: #a0a0c3; }',
                 '.tp-wrap .tp-type-divine   { background: #b8900a; }',
                 '.tp-wrap .tp-type-unholy   { background: #9632b4; }',
@@ -3341,16 +3365,16 @@ const ThreeRenderer = (function () {
                 '.tp-wrap .tp-type-anomaly  { background: #c02868; }',
                 '.tp-wrap .tp-type-alien    { background: #28883e; }',
 
-                '.tp-wrap.tp-p1 .tp-bars {',
+                '.tp-wrap.tp-p1 .tp-body {',
                 '  border-color: rgba(90,170,255,0.45);',
                 '}',
-                '.tp-wrap.tp-p2 .tp-bars {',
+                '.tp-wrap.tp-p2 .tp-body {',
                 '  border-color: rgba(255,90,90,0.45);',
                 '}',
-                'body.is-p2-viewer .tp-wrap.tp-p1 .tp-bars {',
+                'body.is-p2-viewer .tp-wrap.tp-p1 .tp-body {',
                 '  border-color: rgba(255,90,90,0.45);',
                 '}',
-                'body.is-p2-viewer .tp-wrap.tp-p2 .tp-bars {',
+                'body.is-p2-viewer .tp-wrap.tp-p2 .tp-body {',
                 '  border-color: rgba(90,170,255,0.45);',
                 '}',
 
@@ -3372,7 +3396,7 @@ const ThreeRenderer = (function () {
                 '  color: #ffd866 !important;',
                 '  text-shadow: 0 0 8px rgba(255,200,0,0.9), 0 0 3px rgba(255,200,0,0.5), 0 1px 3px #000;',
                 '}',
-                '.tp-wrap.tp-active .tp-bars {',
+                '.tp-wrap.tp-active .tp-body {',
                 '  border-color: rgba(255,200,0,0.55) !important;',
                 '}',
 
@@ -3509,17 +3533,19 @@ const ThreeRenderer = (function () {
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
             '</div>' +
-            typeHtml +
-            '<div class="tp-bars">' +
-                '<div class="tp-bar ' + allyCls + '">' +
-                    '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
-                    ticksHtml +
-                    shieldHtml +
-                    '<span class="tp-bar-num">' + unit.hp + '/' + unit.maxHp + '</span>' +
-                '</div>' +
-                '<div class="tp-bar tp-bar-mp">' +
-                    '<div class="tp-mp-fill" style="width:' + mpStartPct + '%"></div>' +
-                    '<span class="tp-bar-num">' + unit.mp + '/' + unit.maxMp + '</span>' +
+            '<div class="tp-body">' +
+                typeHtml +
+                '<div class="tp-bars">' +
+                    '<div class="tp-bar ' + allyCls + '">' +
+                        '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
+                        ticksHtml +
+                        shieldHtml +
+                        '<span class="tp-bar-num">' + unit.hp + '/' + unit.maxHp + '</span>' +
+                    '</div>' +
+                    '<div class="tp-bar tp-bar-mp">' +
+                        '<div class="tp-mp-fill" style="width:' + mpStartPct + '%"></div>' +
+                        '<span class="tp-bar-num">' + unit.mp + '/' + unit.maxMp + '</span>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
             statusHtml;
@@ -3600,16 +3626,18 @@ const ThreeRenderer = (function () {
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
             '</div>' +
-            typeHtml +
-            '<div class="tp-bars">' +
-                '<div class="tp-bar ' + allyCls + '">' +
-                    '<div class="tp-hp-fill" style="width:100%"></div>' +
-                    ticksHtml +
-                    '<span class="tp-bar-num">' + maxHp + '/' + maxHp + '</span>' +
-                '</div>' +
-                '<div class="tp-bar tp-bar-mp">' +
-                    '<div class="tp-mp-fill" style="width:100%"></div>' +
-                    '<span class="tp-bar-num">' + maxMp + '/' + maxMp + '</span>' +
+            '<div class="tp-body">' +
+                typeHtml +
+                '<div class="tp-bars">' +
+                    '<div class="tp-bar ' + allyCls + '">' +
+                        '<div class="tp-hp-fill" style="width:100%"></div>' +
+                        ticksHtml +
+                        '<span class="tp-bar-num">' + maxHp + '/' + maxHp + '</span>' +
+                    '</div>' +
+                    '<div class="tp-bar tp-bar-mp">' +
+                        '<div class="tp-mp-fill" style="width:100%"></div>' +
+                        '<span class="tp-bar-num">' + maxMp + '/' + maxMp + '</span>' +
+                    '</div>' +
                 '</div>' +
             '</div>';
 
@@ -7336,6 +7364,31 @@ const ThreeRenderer = (function () {
     var _onMouseMove = null, _onClick = null, _onContextMenu = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
     var _lastHitX = -1, _lastHitY = -1;
+
+    /* Raycast the floating tower cubes and return the hit cube group (carries
+       _ew_towerOwner), or null. Used so a cube can be clicked to attack/target it. */
+    function _pickTowerCube(clientX, clientY) {
+        if (!_towerCubes.length || !canvas) return null;
+        var cam = ThreeCamera.getCamera();
+        if (!cam) return null;
+        var rect = canvas.getBoundingClientRect();
+        var ndc = new THREE.Vector2(
+            ((clientX - rect.left) / rect.width) * 2 - 1,
+            -((clientY - rect.top) / rect.height) * 2 + 1
+        );
+        var rc = new THREE.Raycaster();
+        rc.setFromCamera(ndc, cam);
+        var hits = rc.intersectObjects(_towerCubes, true);
+        for (var i = 0; i < hits.length; i++) {
+            var obj = hits[i].object;
+            while (obj) {
+                if (obj._ew_towerCube) return obj;
+                obj = obj.parent;
+            }
+        }
+        return null;
+    }
+
     function _bindInput() {
         if (!canvas) return;
 
@@ -7345,6 +7398,12 @@ const ThreeRenderer = (function () {
             _updateUnitHover(unitHit ? unitHit.unitId : null);
 
             var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
+            /* Hovering the floating cube resolves to the tower's own tile. */
+            var tcHover = _pickTowerCube(e.clientX, e.clientY);
+            if (tcHover) {
+                var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
+                if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
+            }
             if (hit) {
                 var tx = hit.tileX, ty = hit.tileY;
                 updateHoverHighlight(tx, ty);
@@ -7386,6 +7445,16 @@ const ThreeRenderer = (function () {
 
                 var _clickUnit = _unitById.get(unitHit.unitId) || null;
                 if (_clickUnit) { tx = _clickUnit.x; ty = _clickUnit.y; }
+            }
+            /* Clicking the floating tower cube targets the tower on its own tile.
+               (screenToTile would otherwise return a parallax-shifted ground tile
+               because the cube hovers a tile above the board.) */
+            if (tx === undefined) {
+                var tcHit = _pickTowerCube(e.clientX, e.clientY);
+                if (tcHit) {
+                    var _tw = state.towers ? state.towers[tcHit._ew_towerOwner] : null;
+                    if (_tw) { tx = _tw.x; ty = _tw.y; }
+                }
             }
             if (tx === undefined) {
                 var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);

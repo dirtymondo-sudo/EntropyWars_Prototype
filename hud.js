@@ -1907,7 +1907,7 @@ function SubMenu({ st }) {
             const adv = getTypeEffectSummary(unit.types || [], tUnit.types || []);
             typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
           }
-        } else if (t.kind === 'tower') { label = '🐉 Dragon'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
+        } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
         else if (t.kind === 'turret') { label = '🔧 Turret'; hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
         else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
         else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
