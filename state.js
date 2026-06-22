@@ -985,7 +985,7 @@
             const allUnits = state.units.filter(u => !u.dead);
             const sourceUnit = state.units.find(u => u.id === ds.sourceUnitId);
             for (const tile of area) {
-                const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && u.player !== ds.sourcePlayer);
+                const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
                 if (hit && !hit.dead) {
                     applyDamageToUnit(hit, ds.dmg, `${ds.spellName} detonates: `, {
                         sourceUnit,

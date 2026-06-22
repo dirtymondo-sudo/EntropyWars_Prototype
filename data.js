@@ -4150,7 +4150,8 @@ const SPELL_LIBRARY = [
         equipCost: 25,
         dmg: 224,
         range: 4,
-        kind: 'aoe',
+        kind: 'delayed',
+        delayTurns: 2,
         damageType: 'magic',
         aoeRadius: 2,
         tier: 'III',
@@ -4158,8 +4159,9 @@ const SPELL_LIBRARY = [
         classRestriction: 'Engineer',
         statusEffects: [{ id: 'burn', duration: 3 }],
         friendlyFire: true,
+        leaveTerrain: 'scorched',
         terrainDeform: { centerDelta: -3, edgeDelta: -1 },
-        desc: 'Launch a tactical nuke at a 5x5 area. Devastating damage — hits EVERYONE including allies.'
+        desc: 'Mark a 5x5 area for a tactical nuke. Detonates after 2 rounds for devastating damage — hits EVERYONE including allies. Everyone sees it coming.'
     },
 
     {

@@ -639,6 +639,66 @@ EFFECTS['wallOfFire_tile'] = {
     ]
 };
 
+/* ─── CROP CIRCLE — hand-authored UFO + abduction-beam descent ───────────
+   raceCropCircle is a kind:'aoe' spell with no telegraph of its own. Mapping
+   it as a "descent" routes it through the cinematic ground-view descent camera
+   and the descent VFX pipeline (telegraph ring → body → impact bursts). The
+   "body" here is a flying saucer that drifts down over the target while a
+   stepped column of beam rings + a psi-pulse shaft punch down to the ground —
+   the same look as the alien Abduction Beam. The actual crop-circle imprint in
+   the ground is produced by the spell's terrainDeform when damage resolves. */
+EFFECTS['raceCropCircle_descent'] = {
+    descentMs: 1100,
+    telegraphMs: 500,
+    aoeRadius: 2,
+    telegraphSprite: 'target-ring-green',
+    impactTileEffect: 'raceCropCircle_impact_tile',
+    impactCenterEffect: 'raceCropCircle_impact_center',
+    shape: 'square',
+    layers: [
+        /* the saucer, dropping out of the sky then hovering over the field */
+        { anchor: 'floor', sprite: 'ufo', ml: 2000, z: 380,
+          w0: 256, w1: 256, h0: 256, h1: 256, opacity0: 0.92,
+          _descent: { fromZ: 380, toZ: 200, ms: 900, ease: 'easeOut' } },
+        /* soft green underglow beneath the hull */
+        { anchor: 'floor', sprite: 'ufo-glow', ml: 1500, z: 250, delayMs: 120,
+          size0: 110, size1: 150, opacity0: 0.6, opacity1: 0 },
+        /* stepped beam-ring column punching down from the hull to the ground */
+        { delayMs: 120, anchor: 'floor', mode: 'world', sprite: 'ring-1', ml: 1600, z: 170, w0: 28, w1: 28, h0: 28, h1: 28, opacity0: 0.9 },
+        { delayMs: 190, anchor: 'floor', mode: 'world', sprite: 'ring-2', ml: 1530, z: 144, w0: 36, w1: 36, h0: 36, h1: 36, opacity0: 0.9 },
+        { delayMs: 260, anchor: 'floor', mode: 'world', sprite: 'ring-3', ml: 1460, z: 118, w0: 48, w1: 48, h0: 48, h1: 48, opacity0: 0.9 },
+        { delayMs: 330, anchor: 'floor', mode: 'world', sprite: 'ring-4', ml: 1390, z: 90, w0: 62, w1: 62, h0: 62, h1: 62, opacity0: 0.9 },
+        { delayMs: 400, anchor: 'floor', mode: 'world', sprite: 'ring-5', ml: 1320, z: 62, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
+        { delayMs: 470, anchor: 'floor', mode: 'world', sprite: 'ring-6', ml: 1250, z: 32, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
+        { delayMs: 540, anchor: 'floor', mode: 'world', sprite: 'ring-7', ml: 1180, z: 6, w0: 80, w1: 80, h0: 80, h1: 80, opacity0: 0.9 },
+        /* the vertical beam shaft */
+        { delayMs: 250, anchor: 'floor', mode: 'y-locked', sprite: 'psi-pulse', ml: 1200, w0: 60, w1: 40, h0: 120, h1: 220, opacity0: 0.8 },
+        /* widening green target imprint on the ground */
+        { delayMs: 120, anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 1800, z: 2, size0: 60, size1: 150, opacity0: 0.8 },
+        /* drifting green haze + rising motes inside the beam */
+        { count: 3, delayMs: 300, anchor: 'floor', sprite: 'void-mist', ml: [900, 1400], z: 30, offsetXY: 22, vzRange: [20, 60], drag: 0.3, size0: [24, 40], size1: [60, 90], opacity0: 0.55 },
+        { count: 4, delayMs: 500, anchor: 'floor', sprite: 'psi-pulse', ml: [500, 800], z: [4, 20], offsetXY: 14, vzRange: [80, 160], drag: 0.2, size0: [4, 9], size1: [1, 3], opacity0: 0.9 },
+    ]
+};
+
+EFFECTS['raceCropCircle_impact_tile'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2200, z: 1, size0: 110, size1: 132, opacity0: 0.6 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [350, 600], z: 2, offsetXY: 12, vxRange: 60, vyRange: 60, vzRange: [10, 40], gravity: 80, drag: 0.9, size0: [8, 14], size1: [22, 36], opacity0: 0.55 },
+        { count: 3, anchor: 'floor', sprite: 'void-mist', ml: [500, 900], z: 8, offsetXY: 16, vzRange: [15, 45], drag: 0.4, size0: [14, 22], size1: [38, 58], opacity0: 0.45 },
+    ]
+};
+
+EFFECTS['raceCropCircle_impact_center'] = {
+    shake: 'soft',
+    layers: [
+        { sprite: 'flash', ml: 360, z: 10, size0: 160, size1: 40 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 900, z: 2, size0: 80, size1: 200, opacity0: 0.7 },
+    ]
+};
+
+SPELL_MAP['raceCropCircle'] = { descent: 'raceCropCircle_descent' };
+
     /* ─── BOLT EFFECT DEFINITIONS ────────────────────────────────────
        These are config objects read by _fireBoltMapped(), NOT layer-based
        effects. They define the core/trail/burst sprites for each bolt type.

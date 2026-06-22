@@ -6204,9 +6204,9 @@
                 if (h > 0) groundPx = window._getElevationPx(h);
             }
 
-            // Raise the focal point into the sky so the descending body reads as
-            // "up there" — ~matches the meteor's +900px spawn altitude.
-            const skyElevZ    = groundPx + ts * 6;
+            // Keep the focal point ANCHORED at ground level the whole shot. The
+            // camera should sit low, near the ground, and TILT UP to watch the
+            // body fall in from the sky — NOT crane up to the body's altitude.
             const groundElevZ = groundPx + ts * 0.3;
 
             // Keep the player's current heading so the crane-up doesn't spin.
@@ -6217,7 +6217,7 @@
 
             // tilt: LOW = top-down, HIGH = near-horizontal (looks up at the sky).
             const SETTLE_TILT = 52;   // overhead-ish while the telegraph forms
-            const SKY_TILT    = 84;   // crane up to watch the body fall in
+            const SKY_TILT    = 85;   // tilt nearly horizontal to look UP at the falling body
             const GROUND_TILT = 62;   // tilt back down onto the impact
 
             const sourceHold  = Math.max(actionMs(200), timings.sourceHold);
@@ -6233,14 +6233,17 @@
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // 2) Crane UP to the sky as the body is about to appear overhead.
+            // 2) Stay LOW at ground level and tilt up toward the sky so the
+            //    incoming body falls into frame from above. The focal point
+            //    stays on the ground (groundElevZ) — only the tilt changes, so
+            //    the camera does NOT rise up to the body's altitude.
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
                     x: tx, y: ty, zoom: skyZoom, tilt: SKY_TILT, yaw,
-                    elevZ: skyElevZ,
+                    elevZ: groundElevZ,
                     duration: Math.max(actionMs(260), telegraphMs * 0.9),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
@@ -18837,11 +18840,32 @@
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
 
-                    // Beam VFX
-                    const _useVfx3dBeam = (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    // Projectile / Beam VFX. Spells with a projectileOverride
+                    // (e.g. quarterback Bullet Pass → football) hurl the actual
+                    // sprite down the line instead of an energy beam.
+                    const _lineProjOverride = spell.projectileOverride
+                        || (typeof _getProjectileOverride === 'function' ? _getProjectileOverride(unit, spell) : null);
+                    const _useVfx3dBeam = !_lineProjOverride && (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'beam'));
-                    if (_useVfx3dBeam) {
+                    if (_lineProjOverride) {
+                        // Fly the sprite from the caster to the far end of the
+                        // route (last in-bounds, passable tile within range).
+                        const _maxLine = spell.range || lineRange;
+                        let _endX = unit.x, _endY = unit.y;
+                        for (let _li = 1; _li <= _maxLine; _li++) {
+                            const _ex = unit.x + dx * _li, _ey = unit.y + dy * _li;
+                            if (!isInside(_ex, _ey)) break;
+                            _endX = _ex; _endY = _ey;
+                            if (!isTerrainPassable(_ex, _ey) && !spell.destroysObstacles) break;
+                        }
+                        const _projLaunch = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                        const _projFlyMs = Math.max(actionMs(220), impactDelay - _projLaunch);
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle' || _skipVisuals()) return;
+                            playProjectile(unit.x, unit.y, _endX, _endY, 'damage', _projFlyMs, spell.spellType, _lineProjOverride, spell);
+                        }, _projLaunch);
+                    } else if (_useVfx3dBeam) {
                         const _beamTiles = [];
                         { let _bx = unit.x + dx, _by = unit.y + dy;
                             for (let _bi = 0; _bi < lineRange; _bi++) {
@@ -19380,6 +19404,7 @@
                     spellName: spell.name,
                     roundsLeft: delay,
                     statusEffects: spell.statusEffects || [],
+                    friendlyFire: !!spell.friendlyFire,
                     leaveTerrain: spell.leaveTerrain || null,
                     terrainDeform: spell.terrainDeform || null
                 });
