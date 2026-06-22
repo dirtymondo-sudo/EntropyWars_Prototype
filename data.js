@@ -2857,25 +2857,6 @@ function getRaceLabel(race, gender) {
 const SPELL_LIBRARY = [
 
     {
-        id: 'shoot',
-        spellType: 'human',
-        name: 'Shoot',
-        type: 'damage',
-        cost: 10,
-        equipCost: 10,
-        dmg: 104,
-        range: 3,
-        kind: 'damage',
-        damageType: 'physical',
-        projectileOverride: 'proj-bullet',
-        tier: 'I',
-        school: 'Gunslinger',
-        classRestriction: 'Gunslinger',
-        jobPreference: ['Gunslinger'],
-        actedTargetBonus: 16,
-        desc: 'Reliable ranged poke. Deals extra damage to targets that already acted.'
-    },
-    {
         id: 'fortify',
         spellType: 'divine',
         name: 'Fortify',
@@ -2916,7 +2897,7 @@ const SPELL_LIBRARY = [
     {
         id: 'heal1',
         spellType: 'divine',
-        name: 'Heal I',
+        name: 'Heal',
         type: 'heal',
         cost: 25,
         equipCost: 20,
@@ -2934,7 +2915,7 @@ const SPELL_LIBRARY = [
     {
         id: 'fire1',
         spellType: 'unholy',
-        name: 'Fire I',
+        name: 'Fireball',
         type: 'damage',
         cost: 30,
         equipCost: 20,
@@ -3031,7 +3012,7 @@ const SPELL_LIBRARY = [
     {
         id: 'revive1',
         spellType: 'divine',
-        name: 'Revive I',
+        name: 'Revive',
         type: 'heal',
         cost: 25,
         equipCost: 15,
@@ -3047,7 +3028,7 @@ const SPELL_LIBRARY = [
     {
         id: 'protect1',
         spellType: 'divine',
-        name: 'Protect I',
+        name: 'Protect',
         type: 'buff',
         cost: 30,
         equipCost: 10,
@@ -3082,7 +3063,7 @@ const SPELL_LIBRARY = [
     {
         id: 'thunder1',
         spellType: 'anomaly',
-        name: 'Thunder I',
+        name: 'Thunderbolt',
         type: 'damage',
         cost: 40,
         equipCost: 15,
@@ -3142,7 +3123,7 @@ const SPELL_LIBRARY = [
     {
         id: 'doubleShot',
         spellType: 'tech',
-        name: 'Double Shot',
+        name: 'Double Pump',
         type: 'damage',
         cost: 25,
         equipCost: 10,
@@ -3160,7 +3141,7 @@ const SPELL_LIBRARY = [
     {
         id: 'ricochet1',
         spellType: 'anomaly',
-        name: 'Ricochet I',
+        name: 'Ricochet',
         type: 'damage',
         cost: 30,
         equipCost: 15,
@@ -3180,7 +3161,7 @@ const SPELL_LIBRARY = [
     {
         id: 'shootout',
         spellType: 'human',
-        name: 'Shootout',
+        name: 'Bullet Rain',
         type: 'damage',
         cost: 40,
         equipCost: 20,
@@ -3193,6 +3174,23 @@ const SPELL_LIBRARY = [
         school: 'Gunslinger',
         classRestriction: 'Gunslinger',
         desc: 'Unload on all enemies within range. Hits each for moderate damage.'
+    },
+    {
+        id: 'pistolWhip',
+        spellType: 'human',
+        name: 'Pistol Whip',
+        type: 'damage',
+        cost: 10,
+        equipCost: 10,
+        dmg: 144,
+        range: 1,
+        kind: 'damage',
+        damageType: 'physical',
+        tier: 'I',
+        school: 'Gunslinger',
+        classRestriction: 'Gunslinger',
+        jobPreference: ['Gunslinger'],
+        desc: 'Crack an adjacent enemy across the face with your pistol. Cheap, reliable close-range physical damage.'
     },
 
     {
@@ -3212,41 +3210,6 @@ const SPELL_LIBRARY = [
         maxActivePerCaster: 3,
         blastRadius: 1,
         desc: 'Place a bomb on any tile without allies (1 AP). Each Agent can maintain up to 3. Use Detonate to trigger them.'
-    },
-    {
-        id: 'scanPulse',
-        spellType: 'alien',
-        name: 'Scan Pulse',
-        type: 'utility',
-        cost: 20,
-        equipCost: 10,
-        apCost: 1,
-        range: 0,
-        kind: 'scan',
-        tier: 'I',
-        school: 'Agent',
-        classRestriction: 'Agent',
-        desc: 'Scan the nearby field. Marks the whole area, but only reveals the nearest hidden objective and item.'
-    },
-    {
-        id: 'electroDart',
-        spellType: 'tech',
-        name: 'Electro Dart',
-        type: 'damage',
-        cost: 15,
-        equipCost: 15,
-        dmg: 128,
-        range: 3,
-        kind: 'damage',
-        damageType: 'physical',
-        tier: 'I',
-        school: 'Agent',
-        classRestriction: 'Agent',
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Quick ranged strike that stuns the target for 1 turn.'
     },
     {
         id: 'taser',
@@ -3406,23 +3369,21 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'wildGrowth',
-        spellType: 'anomaly',
-        name: 'Wild Growth',
+        spellType: 'divine',
+        name: 'Healing Spring',
         type: 'utility',
         cost: 25,
         equipCost: 15,
-        dmg: 64,
         apCost: 2,
         range: 3,
         kind: 'terrainCreate',
-        terrainType: 'grass',
+        terrainType: 'healing_spring',
         tileCount: 3,
         orientable: true,
-        damageType: 'magic',
         tier: 'I',
         school: 'Harvester',
         classRestriction: 'Harvester',
-        desc: 'Spread fertile grass in a 3-tile line (horizontal or vertical). Damages enemies caught in the growth. Creates ground for seeds and healing terrain.'
+        desc: 'Conjure a 3-tile healing spring in a line (horizontal or vertical). Allies standing on it recover HP each turn. Deals no damage to enemies.'
     },
 
     {
@@ -3509,26 +3470,6 @@ const SPELL_LIBRARY = [
         desc: 'Deploy a turret on an empty tile (1 AP). Auto-attacks the nearest enemy within 2 tiles each round for 64 damage. Max 2 per Engineer. Enemies can destroy turrets.'
     },
     {
-        id: 'buildBridge',
-        spellType: 'human',
-        name: 'Build Bridge',
-        type: 'utility',
-        cost: 25,
-        equipCost: 10,
-        dmg: 48,
-        apCost: 2,
-        range: 3,
-        kind: 'terrainCreate',
-        terrainType: 'bridge',
-        tileCount: 3,
-        orientable: true,
-        damageType: 'physical',
-        tier: 'I',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Construct a 3-tile bridge in a line (horizontal or vertical) over any terrain. Damages enemies caught in the construction. Creates new flanking routes.'
-    },
-    {
         id: 'overclock',
         spellType: 'divine',
         name: 'Overclock',
@@ -3548,7 +3489,7 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'plasmaGun',
-        spellType: 'tech',
+        spellType: 'alien',
         name: 'Plasma Gun',
         type: 'damage',
         cost: 30,
@@ -3565,7 +3506,7 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'freeEnergy',
-        spellType: 'tech',
+        spellType: 'divine',
         name: 'Free Energy',
         type: 'heal',
         cost: 50,
@@ -3668,7 +3609,7 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'groundSlam',
-        spellType: 'earth',
+        spellType: 'human',
         name: 'Ground Slam',
         type: 'damage',
         cost: 35,
@@ -3700,8 +3641,8 @@ const SPELL_LIBRARY = [
         school: 'Raider',
         classRestriction: 'Raider',
         jobPreference: ['Raider'],
-        statusEffects: [{ id: 'slow', duration: 2 }, { id: 'stagger', duration: 1 }],
-        desc: 'Grab an adjacent enemy in an unbreakable hold. Staggers and heavily slows them.'
+        statusEffects: [{ id: 'stun', duration: 1 }],
+        desc: 'Grab an adjacent enemy in an unbreakable hold, stunning them so they cannot act next turn.'
     },
     {
         id: 'rampage',
@@ -3837,24 +3778,9 @@ const SPELL_LIBRARY = [
     },
 
     {
-        id: 'mimic',
-        spellType: 'anomaly',
-        name: 'Mimic',
-        type: 'utility',
-        cost: 30,
-        equipCost: 15,
-        range: 3,
-        kind: 'utility',
-        tier: 'II',
-        school: 'Freelancer',
-        classRestriction: 'Freelancer',
-        jobPreference: ['Freelancer'],
-        desc: 'Copy the last spell cast by any unit on the field and cast it at full power. Flexibility at a premium MP cost.'
-    },
-    {
         id: 'jackOfAll',
         spellType: 'human',
-        name: 'Jack of All',
+        name: 'Pep Talk',
         type: 'buff',
         cost: 25,
         equipCost: 15,
@@ -3977,22 +3903,6 @@ const SPELL_LIBRARY = [
         desc: 'Call down a meteor strike on a 3x3 area. Massive magic damage, applies a 3-turn burn, and scorches the impact site.'
     },
 
-    {
-        id: 'divineIntervention',
-        spellType: 'divine',
-        name: 'Divine Intervention',
-        type: 'heal',
-        cost: 85,
-        equipCost: 25,
-        heal: 140,
-        range: 0,
-        kind: 'healAll',
-        tier: 'III',
-        school: 'White Mage',
-        classRestriction: 'White Mage',
-        cleanse: true,
-        desc: 'Channel divine power to heal all living allies and cleanse all debuffs. Costly but clutch.'
-    },
 
     {
         id: 'empBurst',
@@ -4037,11 +3947,8 @@ const SPELL_LIBRARY = [
         statusEffects: [{
             id: 'silence',
             duration: 2
-        }, {
-            id: 'slow',
-            duration: 2
         }],
-        desc: 'Tear apart an enemy\'s mind. Heavy magic damage, silences for 2 turns, and slows for 2 turns. Total shutdown.'
+        desc: 'Tear apart an enemy\'s mind. Heavy magic damage and silences for 2 turns. Total shutdown.'
     },
 
     {
@@ -4059,6 +3966,7 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         aoeRadius: 1,
+        leaveTerrain: 'dark_woods',
         statusEffects: [{
             id: 'slow',
             duration: 2
@@ -4066,28 +3974,9 @@ const SPELL_LIBRARY = [
             id: 'poison',
             duration: 3
         }],
-        desc: 'Erupt thorny vines in a 3x3 area. Damages, poisons for 3 turns, and slows all enemies caught for 2 turns.'
+        desc: 'Erupt thorny vines in a 3x3 area. Damages, poisons for 3 turns, and slows all enemies caught for 2 turns. Leaves dark woods in its wake.'
     },
 
-    {
-        id: 'siegeTurret',
-        spellType: 'tech',
-        name: 'Siege Turret',
-        type: 'utility',
-        cost: 60,
-        equipCost: 25,
-        range: 2,
-        kind: 'deployTurret',
-        tier: 'III',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        maxActivePerCaster: 1,
-        turretHp: 3,
-        hitsToKill: 3,
-        turretDmg: 112,
-        turretRange: 3,
-        desc: 'Deploy a heavily armored siege turret (3 hits to destroy, 14 dmg, 3 range). Max 1 per Engineer. A dominant area-denial weapon.'
-    },
 
     {
         id: 'fiveGTower',
@@ -4132,50 +4021,7 @@ const SPELL_LIBRARY = [
         desc: 'Play a devastating requiem that damages all enemies within range and applies Discord for 2 turns. The ultimate debuff anthem.'
     },
 
-    {
-        id: 'wildcard',
-        spellType: 'anomaly',
-        name: 'Wildcard',
-        type: 'damage',
-        cost: 40,
-        equipCost: 25,
-        dmg: 200,
-        range: 3,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 'III',
-        school: 'Freelancer',
-        classRestriction: 'Freelancer',
-        jobPreference: ['Freelancer'],
-        guaranteedStatus: true,
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Unleash a chaotic blast of unstable energy. Heavy magic damage with guaranteed stun. Embraces the chaos.'
-    },
 
-    {
-        id: 'thunderDash',
-        spellType: 'alien',
-        name: 'Thunder Dash',
-        type: 'damage',
-        cost: 30,
-        equipCost: 20,
-        dmg: 128,
-        range: 4,
-        kind: 'dash',
-        damageType: 'physical',
-        tier: 'II',
-        school: 'Warrior',
-        classRestriction: 'Warrior',
-        dashDamage: 48,
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Dash up to 4 tiles in a crackling blitz. Damages enemies in your path for 48 and stuns the primary target for 1 turn.'
-    },
     {
         id: 'voidRush',
         spellType: 'anomaly',
@@ -4239,27 +4085,6 @@ const SPELL_LIBRARY = [
     },
 
     {
-        id: 'tidalCrash',
-        spellType: 'anomaly',
-        name: 'Tidal Crash',
-        type: 'damage',
-        cost: 30,
-        equipCost: 20,
-        dmg: 120,
-        range: 3,
-        kind: 'dash',
-        damageType: 'magic',
-        tier: 'II',
-        school: 'Harvester',
-        classRestriction: 'Harvester',
-        dashDamage: 48,
-        statusEffects: [{
-            id: 'slow',
-            duration: 2
-        }],
-        desc: 'Surge forward in a wave of nature energy up to 3 tiles. Path enemies take 48 damage. Primary target is drenched and slowed.'
-    },
-    {
         id: 'sonicCharge',
         spellType: 'anomaly',
         name: 'Sonic Charge',
@@ -4281,24 +4106,6 @@ const SPELL_LIBRARY = [
         desc: 'Ride a shockwave of sound up to 4 tiles. Path enemies take 40 damage. Primary target suffers Discord.'
     },
 
-    {
-        id: 'fire2',
-        spellType: 'unholy',
-        name: 'Fire II',
-        type: 'damage',
-        cost: 40,
-        equipCost: 20,
-        dmg: 176,
-        range: 3,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 'II',
-        school: 'Black Mage',
-        classRestriction: 'Black Mage',
-        projectileOverride: 'proj-fire',
-        statusEffects: [{ id: 'burn', duration: 3 }],
-        desc: 'A more intense fire blast. Stronger damage and inflicts a longer burn.'
-    },
 
     {
         id: 'cleanse',
@@ -4371,8 +4178,8 @@ const SPELL_LIBRARY = [
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        statusEffects: [{ id: 'slow', duration: 2 }],
-        desc: 'A precise long-range shot to the legs. Deals damage and heavily slows for 2 turns.'
+        statusEffects: [{ id: 'stun', duration: 1 }],
+        desc: 'A precise long-range shot to the legs. Deals damage and stuns the target for 1 turn.'
     },
 
     {
@@ -11183,16 +10990,16 @@ const SPELL_SLOT_MAX = 8;
 
 const CLASS_SPELL_LEARN_ORDER = {
 
-    'Gunslinger':  ['shoot', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
+    'Gunslinger':  ['pistolWhip', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
     'Warrior':      ['fortify', 'guardSlash', 'shieldBash', 'dragonSlash', 'judgment'],
-    'Black Mage':  ['fire1', 'thunder1', 'fire2', 'wallOfFire', 'meteor'],
-    'White Mage':  ['heal1', 'radiantBolt', 'cleanse', 'exorcism', 'divineIntervention'],
-    'Agent':       ['knifeThrow', 'placeBomb', 'scanPulse', 'sneakSlash', 'empBurst'],
+    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'meteor', 'thunderstorm'],
+    'White Mage':  ['heal1', 'radiantBolt', 'cleanse', 'exorcism', 'healAll'],
+    'Agent':       ['knifeThrow', 'placeBomb', 'sneakSlash', 'taser', 'empBurst'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
     'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'leechSeed', 'overgrowth'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'buildBridge', 'freeEnergy', 'fiveGTower', 'overclock', 'siegeTurret'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'freeEnergy', 'fiveGTower', 'overclock'],
     'Harbinger':   ['lullaby', 'warCry', 'discordance', 'encore', 'requiem'],
-    'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch', 'mimic', 'wildcard'],
+    'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],
     'Sniper':      ['kneecapShot', 'spotter', 'steadyAim', 'precisionShot', 'headshot'],
 };

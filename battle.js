@@ -7725,18 +7725,18 @@
                     const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
                     const preferred = {
-                        'Agent': ['empBurst', 'taser', 'electroDart', 'placeBomb', 'scanPulse'],
+                        'Agent': ['empBurst', 'taser', 'placeBomb', 'sneakSlash', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
-                        'White Mage': ['divineIntervention', 'healAll', 'revive1', 'heal1', 'protect1'],
+                        'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
                         'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
-                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'shoot'],
+                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['overgrowth', 'lifeDrain', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                        'Engineer': ['siegeTurret', 'fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret', 'buildBridge'],
+                        'Engineer': ['fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                         'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
                         'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
-                        'Freelancer': ['wildcard', 'mimic', 'jackOfAll', 'improvise']
+                        'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
                     } [cls] || [];
                     const eligible = getEligibleSpellsForClass(cls, race);
                     const candidateIds = [...preferred, ...eligible.map(s => s.id)];
@@ -7855,18 +7855,18 @@
             const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
             const preferred = {
-                'Agent': ['empBurst', 'taser', 'electroDart', 'placeBomb', 'scanPulse'],
+                'Agent': ['empBurst', 'taser', 'placeBomb', 'sneakSlash', 'knifeThrow'],
                 'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
-                'White Mage': ['divineIntervention', 'healAll', 'revive1', 'heal1', 'protect1'],
+                'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
                 'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
-                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'shoot'],
+                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                 'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                 'Harvester': ['overgrowth', 'lifeDrain', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                'Engineer': ['siegeTurret', 'fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret', 'buildBridge'],
+                'Engineer': ['fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                 'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
                 'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                 'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
-                'Freelancer': ['wildcard', 'mimic', 'jackOfAll', 'improvise']
+                'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
             } [cls] || [];
             const eligible = getEligibleSpellsForClass(cls, race);
             const candidateIds = [...preferred, ...eligible.map(s => s.id)];

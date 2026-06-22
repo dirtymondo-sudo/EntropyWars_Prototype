@@ -590,6 +590,55 @@ function _hydrateEffects() {
 var EFFECTS = _hydrateEffects();
 var SPELL_MAP = _EFX_DATA.S;
 
+/* ─── WALL OF FIRE — hand-authored "real fire" override ──────────────────
+   The auto-generated wallOfFire_tile read as a couple of flat flame quads.
+   This rebuilds it as a dense, layered, flickering sheet of flame: a warm
+   ground glow, many tapered flame tongues of varied width/height spread
+   across the whole tile, a bright white-hot core, fast licking tips, rising
+   embers and drifting smoke. `_loop`/`_loopMs` (honored by _fireWall) make
+   it re-ignite several times so it reads as a sustained roaring wall rather
+   than a one-shot puff. Lifetimes overlap the loop interval for continuity. */
+EFFECTS['wallOfFire_tile'] = {
+    _loop: 8,
+    _loopMs: 300,
+    layers: [
+        /* scorched ground decal */
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1100, z: 1,
+          size0: 120, size1: 140, opacity0: 0.85, opacity1: 0 },
+        /* broad warm light pool */
+        { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 700, z: 2,
+          size0: 132, size1: 156, opacity0: 0.5, opacity1: 0 },
+        /* tight bright glow at the base */
+        { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 480, z: 3,
+          size0: 64, size1: 96, opacity0: 0.85, opacity1: 0 },
+        /* main roaring tongues — fill the tile width, tall and tapered */
+        { anchor: 'floor', mode: 'y-locked', sprite: 'flame', count: 5, offsetXY: 36,
+          ml: [560, 880], w0: [26, 42], w1: [10, 18], h0: [44, 66], h1: [150, 220],
+          opacity0: 0.9, opacity1: 0 },
+        /* mid-height body flames — denser, narrower */
+        { anchor: 'floor', mode: 'y-locked', sprite: 'flame', count: 7, offsetXY: 46,
+          ml: [420, 700], w0: [16, 26], w1: [6, 12], h0: [30, 52], h1: [92, 150],
+          opacity0: 0.95, opacity1: 0 },
+        /* white-hot core up the centre */
+        { anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', count: 3, offsetXY: 22,
+          ml: [460, 720], w0: [18, 30], w1: [8, 14], h0: [42, 62], h1: [104, 156],
+          opacity0: 1, opacity1: 0 },
+        /* fast licking flame tips — flicker, rise slightly */
+        { anchor: 'floor', mode: 'y-locked', sprite: 'flame', count: 7, offsetXY: 42,
+          ml: [180, 360], w0: [8, 14], w1: [3, 7], h0: [16, 28], h1: [52, 96],
+          opacity0: 1, opacity1: 0, vzRange: [20, 70] },
+        /* rising embers / sparks */
+        { anchor: 'floor', mode: 'billboard', sprite: 'ember', count: 10, offsetXY: 50,
+          ml: [500, 900], z: 8, size0: [4, 9], size1: 1,
+          vxRange: 90, vyRange: 90, vzRange: [80, 210], gravity: 280, drag: 1.3,
+          opacity0: 1, opacity1: 0 },
+        /* drifting smoke crown */
+        { anchor: 'floor', mode: 'billboard', sprite: 'smoke', count: 2, delayMs: 160,
+          ml: [800, 1300], z: 32, size0: [40, 56], size1: [110, 150],
+          vzRange: [28, 56], drag: 0.4, opacity0: 0.5, opacity1: 0 },
+    ]
+};
+
     /* ─── BOLT EFFECT DEFINITIONS ────────────────────────────────────
        These are config objects read by _fireBoltMapped(), NOT layer-based
        effects. They define the core/trail/burst sprites for each bolt type.
@@ -1245,13 +1294,22 @@ var SPELL_MAP = _EFX_DATA.S;
         if (!wallDef) return;
         var tiles = params.tiles || [];
         var stagger = params.staggerMs != null ? params.staggerMs : 80;
+        /* Sustained walls (e.g. Wall of Fire) re-ignite several times so the
+           flames read as a continuous roar instead of a single burst. Each
+           re-emission re-randomizes the flame tongues for a live flicker. */
+        var loops = Math.max(1, wallDef._loop || 1);
+        var loopMs = wallDef._loopMs || 0;
         for (var i = 0; i < tiles.length; i++) {
-            (function(t) {
-                window.setTimeout(function() {
-                    if (_suppressed()) return;
-                    _spawnEffect(wallDef, { tx: t.x, ty: t.y });
-                }, i * stagger);
-            })(tiles[i]);
+            (function(t, baseDelay) {
+                for (var r = 0; r < loops; r++) {
+                    (function(rep) {
+                        window.setTimeout(function() {
+                            if (_suppressed()) return;
+                            _spawnEffect(wallDef, { tx: t.x, ty: t.y });
+                        }, baseDelay + rep * loopMs);
+                    })(r);
+                }
+            })(tiles[i], i * stagger);
         }
 
         if (_spell3DGeometry[spellId] && tiles.length > 0) {
