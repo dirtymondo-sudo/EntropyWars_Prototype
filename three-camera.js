@@ -79,8 +79,19 @@ const ThreeCamera = (function () {
         const yawRad  = cam.yaw  * DEG2RAD;
 
         const targetPosX = focalX + dist * Math.sin(tiltRad) * Math.sin(yawRad);
-        const targetPosY = focalY + dist * Math.cos(tiltRad);
+        let   targetPosY = focalY + dist * Math.cos(tiltRad);
         const targetPosZ = focalZ + dist * Math.sin(tiltRad) * Math.cos(yawRad);
+
+        /* ── AAA floor collision ──
+           This is an orbit rig: posY = focalY + dist*cos(tilt). As the pitch
+           cranes up toward the horizon (tilt → 90°) the orbit drops to ground
+           level, and past it the camera would sink THROUGH the board ("below
+           the map"). Clamp the camera so it rides just above the ground it is
+           orbiting — it slides along the floor and keeps looking up at the sky
+           instead of clipping under the world. */
+        const groundClearance = ts * 0.35;
+        const floorY = Math.max(0, focalY) + groundClearance;
+        if (targetPosY < floorY) targetPosY = floorY;
 
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;

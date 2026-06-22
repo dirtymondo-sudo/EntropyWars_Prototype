@@ -4472,7 +4472,10 @@
                 if (!_tiltActive) return;
                 const dx = e.clientX - _tiltStartX;
                 const dy = e.clientY - _tiltStartY;
-                const newTilt = Math.round(Math.max(0, Math.min(180, _tiltStartDeg + dy * 0.3)) * 10) / 10;
+                // Clamp pitch to [top-down .. near-horizontal]. 88° lets the
+                // camera crane up and look at the sky/horizon without rotating
+                // past vertical (which would drop it below the map).
+                const newTilt = Math.round(Math.max(0, Math.min(88, _tiltStartDeg + dy * 0.3)) * 10) / 10;
                 const newYaw = Math.round((_yawStartDeg + dx * 0.4) * 10) / 10;
                 const tiltChanged = Math.abs(newTilt - (state.dioramaTiltDeg ?? 50)) >= 0.1;
                 const yawChanged = Math.abs(newYaw - (state.dioramaYawDeg ?? 0)) >= 0.1;
@@ -4637,7 +4640,9 @@
                     const midX = (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3;
                     const dy = midY - _touch3StartY;
                     const dx = midX - _touch3StartX;
-                    const newTilt = Math.round(Math.max(0, Math.min(180, _touch3StartTilt + dy * 0.3)) * 10) / 10;
+                    // Clamp pitch so craning up reaches the sky/horizon but never
+                    // rotates past vertical and dips the camera below the map.
+                    const newTilt = Math.round(Math.max(0, Math.min(88, _touch3StartTilt + dy * 0.3)) * 10) / 10;
                     const newYaw = Math.round((_touch3StartYaw + dx * 0.4) * 10) / 10;
                     if (typeof camera !== 'undefined') {
                         camera.snap({ _force: true, tilt: newTilt, yaw: newYaw });

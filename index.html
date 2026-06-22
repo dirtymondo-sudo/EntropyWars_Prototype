@@ -1107,6 +1107,63 @@
                     return core*tw;
                 }
 
+                // Procedural horizon skyline — scattered mountains, forests, ruins,
+                // colonnades, buildings and spires ringing the disc. Returns the
+                // elevation (in rd.y units, i.e. sin of the view angle) of the
+                // silhouette crest at azimuth a, and writes a 0..1 "built" weight
+                // (0 = natural ridge/forest, 1 = masonry/tower) used for tinting.
+                float skylineHeight(float a, out float built){
+                    built=0.0;
+
+                    // distant mountain ranges — two smooth, slowly rolling ridges
+                    float m1=fbm(vec2(a*1.10 + 3.0, 1.5));
+                    float m2=fbm(vec2(a*2.30 + 9.0, 5.5));
+                    float mountains=0.020 + m1*0.085 + m2*0.035;
+
+                    // forest / tree line — denser high-frequency canopy bumps
+                    float tf=fbm(vec2(a*15.0, 2.0));
+                    float forest=0.016 + tf*tf*0.055;
+
+                    float h=max(mountains, forest);
+                    built=smoothstep(mountains, mountains+0.004, forest)*0.15; // forest barely "built"
+
+                    // discrete man-made structures placed in angular cells
+                    float cells=44.0;
+                    float ac=a*(1.0/TAU)+0.5;
+                    float idx=floor(ac*cells);
+                    float fc=fract(ac*cells);          // 0..1 across the cell
+                    float seed=hash11(idx*1.731+0.17);
+                    if(seed>0.42){
+                        float t=hash11(idx*3.17+0.6);  // structure type
+                        float d=abs(fc-0.5);           // distance from cell centre
+                        if(t<0.42){
+                            // BUILDING — broad block with a taller central tier
+                            float bw=0.17 + hash11(idx*5.1)*0.15;
+                            float bh=0.060 + hash11(idx*6.7)*0.110;
+                            float b=step(d,bw)*bh + step(d,bw*0.5)*0.030;
+                            if(b>h){ h=b; built=1.0; }
+                        } else if(t<0.66){
+                            // COLONNADE — a row of slender columns (ruined temple)
+                            float ch=0.045 + hash11(idx*7.3)*0.075;
+                            float reps=fract(fc*5.0);
+                            float c=step(abs(reps-0.5),0.16)*ch*step(d,0.46);
+                            if(c>h){ h=c; built=0.75; }
+                        } else if(t<0.84){
+                            // RUINS — broken jagged wall, uneven crenellations
+                            float rw=0.14 + hash11(idx*8.9)*0.10;
+                            float jag=0.030 + hash11(floor(fc*8.0)+idx*1.3)*0.055;
+                            float r=step(d,rw)*jag;
+                            if(r>h){ h=r; built=0.6; }
+                        } else {
+                            // SPIRE / watchtower — thin and tall
+                            float sh=0.110 + hash11(idx*9.7)*0.120;
+                            float s=step(d,0.045)*sh + step(d,0.10)*0.040;
+                            if(s>h){ h=s; built=0.9; }
+                        }
+                    }
+                    return h;
+                }
+
                 void main(){
                     vec2 frag=gl_FragCoord.xy;
                     vec2 uv=(2.0*frag-iResolution.xy)/iResolution.y;
@@ -1185,31 +1242,9 @@
                         }
                     }
 
-                    // ================= ICE WALL + FIRMAMENT =================
+                    // ================= HORIZON SKYLINE + FIRMAMENT =================
                     if(!ground){
-                        float lxz=length(rd.xz);
-                        float tc=R/max(lxz,1e-4);
-                        float yc=ro.y + rd.y*tc;
-                        float wallH=7.0;
-
-                        if(yc>=0.0 && yc<=wallH){
-                            // ---- circumferential ICE WALL (vertical ice cliffs) ----
-                            float th=atan(rd.x,-rd.z);
-                            float hgt=yc/wallH;
-                            float streak=0.5+0.5*sin(th*150.0 + fbm(vec2(th*26.0,1.0))*4.0);
-                            streak=mix(0.82,1.0,streak);
-                            float crack=smoothstep(0.62,0.68, fbm(vec2(th*64.0, yc*0.8)));
-                            vec3 ice=mix(vec3(0.74,0.86,0.96), vec3(0.07,0.16,0.32), night);
-                            ice*=streak;
-                            ice+=crack*0.12*mix(1.0,0.4,night);
-                            ice*=mix(1.2,0.32,hgt);                                   // glowing base, dim crown
-                            ice+=(1.0-hgt)*mix(vec3(0.26,0.46,0.68), vec3(0.05,0.16,0.34), night)*0.4;
-                            col=ice;
-                            col=mix(col, mix(vec3(0.80,0.88,0.96), vec3(0.06,0.12,0.24), night), smoothstep(0.28,0.0,hgt)*0.35);
-                            // events tint the wall too
-                            col=mix(col, col*vec3(1.4,0.5,0.45), bloodM*0.5);
-                            col=mix(col, col*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
-                        } else {
+                        {
                             // ---- SKY / FIRMAMENT DOME ----
                             float el=clamp(rd.y,0.0,1.0);
                             vec3 horiz=mix(vec3(0.66,0.78,0.90), vec3(0.04,0.06,0.13), night);
@@ -1292,6 +1327,42 @@
                                 float cover=smoothstep(0.7,0.0,el);                 // thickest near horizon
                                 vec3 cloud=mix(vec3(0.30,0.32,0.36), vec3(0.03,0.04,0.06), night);
                                 col=mix(col, cloud, cover*smoothstep(0.35,0.7,cl)*wStorm*0.9);
+                            }
+                        }
+
+                        // ---- HORIZON SKYLINE (scattered mountains, forests, ruins, towers) ----
+                        {
+                            float az2=atan(rd.x,-rd.z);
+                            float built;
+                            float skyH=skylineHeight(az2, built);
+                            float ev=rd.y;                                 // true view elevation
+                            float edge=0.0045;
+                            float silMask=smoothstep(-edge,edge, skyH-ev)  // 1 below the crest
+                                        * smoothstep(-0.075,-0.02, ev);    // fade out below the horizon
+                            if(silMask>0.001){
+                                vec3 silDay=vec3(0.09,0.11,0.15);
+                                vec3 silNight=vec3(0.015,0.022,0.05);
+                                vec3 silCol=mix(silDay, silNight, night);
+                                // atmospheric perspective — hazy base, darker crest
+                                float crest=clamp(ev/max(skyH,0.001),0.0,1.0);
+                                vec3 hazeT=mix(vec3(0.55,0.66,0.80), vec3(0.05,0.08,0.16), night);
+                                silCol=mix(mix(hazeT,silCol,0.55), silCol, crest);
+                                // natural ridges/forest read cooler-green, masonry stays neutral
+                                silCol=mix(silCol*vec3(0.85,0.98,0.92), silCol, built);
+                                // event grading on the skyline
+                                silCol=mix(silCol, silCol*vec3(1.4,0.5,0.45), bloodM*0.5);
+                                silCol=mix(silCol, silCol*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
+                                col=mix(col, silCol, silMask);
+
+                                // warm windows twinkling on the tall built structures at night
+                                if(built>0.85){
+                                    vec2 wc=floor(vec2(az2*120.0, ev*150.0));
+                                    float wlit=step(0.62, hash21(wc));
+                                    float wtw=0.55+0.45*sin(t*2.0 + hash21(wc+3.7)*30.0);
+                                    col+=wlit*wtw*silMask*night
+                                         *step(0.018,ev)*step(ev,skyH-0.008)
+                                         *vec3(1.0,0.72,0.32)*0.45;
+                                }
                             }
                         }
                     }
