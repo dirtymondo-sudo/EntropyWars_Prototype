@@ -6311,7 +6311,7 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     var _envGroup = null, _envGround = null, _envWall = null, _envDome = null;
     var _envUni = null, _envInited = false;
-    var _ENV_WALL_H = 1700, _ENV_DOME_R = 16000;
+    var _ENV_WALL_H = 3200, _ENV_DOME_R = 16000;
     var _envSmooth = { night: 0, skyAmt: 0, skyEvent: 0, zodiac: 0, storm: 0, snow: 0, sand: 0, blood: 0 };
 
     var _ENV_COMMON = [
@@ -6367,29 +6367,80 @@ const ThreeRenderer = (function () {
         '}';
     }
 
+    // Horizon skyline drawn on the ring wall: layered distant snow mountains,
+    // a ruined occult city (ziggurats / towers with lit windows / domed temples
+    // with glowing sigils / obelisks) and a forest fringe. Everything above the
+    // silhouette crest is discarded so the firmament dome shows through, and the
+    // whole band tilts / rotates / zooms with the map like real world geometry.
     function _envWallFS() {
-        return 'varying vec3 vWorld;\n' + _ENV_COMMON + '\n' +
-        'void main(){\n' +
-        '  float night=uDayNight;\n' +
-        '  vec2 q=vWorld.xz-uCenter.xz; float th=atan(q.y,q.x);\n' +
-        '  float hgt=clamp(vWorld.y/uWallH,0.0,1.0);\n' +
-        '  float streak=0.5+0.5*sin(th*220.0+fbm(vec2(th*40.0,1.0))*4.0); streak=mix(0.82,1.0,streak);\n' +
-        '  float crack=smoothstep(0.62,0.68,fbm(vec2(th*90.0,hgt*6.0)));\n' +
-        '  vec3 ice=mix(vec3(0.74,0.86,0.96),vec3(0.07,0.16,0.32),night);\n' +
-        '  ice*=streak; ice+=crack*0.12*mix(1.0,0.4,night);\n' +
-        '  ice*=mix(1.2,0.3,hgt);\n' +
-        '  ice+=(1.0-hgt)*mix(vec3(0.26,0.46,0.68),vec3(0.05,0.16,0.34),night)*0.4;\n' +
-        '  vec3 col=ice;\n' +
-        '  col=mix(col,mix(vec3(0.80,0.88,0.96),vec3(0.06,0.12,0.24),night),smoothstep(0.22,0.0,hgt)*0.35);\n' +
-        '  col=mix(col,col*vec3(0.62,0.74,0.86),smoothstep(0.75,1.0,hgt)*0.5);\n' +
-        '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;\n' +
-        '  float bsun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt;\n' +
-        '  float lun=step(2.5,uSkyEvent)*uSkyAmt;\n' +
-        '  col=mix(col,col*vec3(1.4,0.5,0.45),bloodM*0.5);\n' +
-        '  col=mix(col,col*vec3(0.55,0.55,0.65),(bsun+lun)*0.4);\n' +
-        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));\n' +
-        '  gl_FragColor=vec4(col,1.0);\n' +
-        '}';
+        return [
+        'varying vec3 vWorld;', _ENV_COMMON,
+        // ── silhouette crest profiles (functions of ring azimuth) ──
+        'float ridge(float a){ float n=fbm(vec2(a,1.7)); return 1.0-abs(2.0*n-1.0); }',
+        'float mtnCrest(float a){ return 0.12 + ridge(a*1.3+2.0)*0.26 + ridge(a*2.9+9.0)*0.12 + fbm(vec2(a*6.0,3.0))*0.05; }',
+        'float forestCrest(float a){ float m=smoothstep(0.42,0.55,fbm(vec2(a*3.0,5.0)));',
+        '  float n=fbm(vec2(a*34.0,4.0)); float n2=fbm(vec2(a*82.0,9.0)); return m*(0.05+n*n*0.12+n2*0.03); }',
+        'float cityCrest(float a, out float fc, out float kind){',
+        '  float cells=24.0; float ac=a*(1.0/TAU)+0.5; float idx=floor(ac*cells); fc=fract(ac*cells);',
+        '  float seed=hash11(idx*1.37+0.2); kind=floor(hash11(idx*2.7+0.5)*4.0);',
+        '  if(seed<0.5){ kind=-1.0; return 0.0; }',
+        '  float d=abs(fc-0.5); float bw=0.20+hash11(idx*4.4)*0.15; float bh=0.17+hash11(idx*3.1)*0.21; float h=0.0;',
+        '  if(kind<0.5){ float st=clamp((0.5-d)/max(bw,1e-3),0.0,1.0); h=step(d,bw)*bh*(0.4+0.6*floor(st*3.0)/3.0); }', // ziggurat
+        '  else if(kind<1.5){ float tw=bw*0.5; h=step(d,tw)*(bh*1.4+0.10); }',                                          // tower
+        '  else if(kind<2.5){ float body=step(d,bw)*bh*0.6; float dm=step(d,bw*0.6)*sqrt(max(0.0,1.0-pow(d/(bw*0.6+1e-3),2.0)))*0.14; h=body+dm; }', // domed temple
+        '  else { h=step(d,0.055)*(bh*0.7+0.24); }',                                                                    // obelisk
+        '  return h;',
+        '}',
+        'float glyph(vec2 p){ float ring=smoothstep(0.045,0.0,abs(length(p-vec2(0.0,0.16))-0.11));',
+        '  float stem=smoothstep(0.03,0.0,abs(p.x))*step(-0.20,p.y)*step(p.y,0.16);',
+        '  float bar=smoothstep(0.03,0.0,abs(p.y))*step(-0.14,p.x)*step(p.x,0.14); return clamp(ring+stem+bar,0.0,1.0); }',
+        // ── per-layer shading ──
+        'vec3 shadeMtn(float a,float hg,float cr,float laz,vec3 lc,vec3 sk,float night){',
+        '  float up=clamp(hg/max(cr,1e-3),0.0,1.0);',
+        '  vec3 rock=mix(vec3(0.11,0.13,0.19),vec3(0.03,0.05,0.11),night); rock*=0.7+0.55*fbm(vec2(a*55.0,hg*22.0));',
+        '  float face=0.5+0.5*cos(a-laz); float snow=smoothstep(0.55-0.12*face,0.82,up);',
+        '  vec3 snowC=mix(vec3(0.80,0.88,1.0),vec3(0.26,0.40,0.64),night)+lc*face*0.30;',
+        '  vec3 c=mix(rock,snowC,snow); c+=lc*face*0.07*(0.4+0.6*up);',
+        '  c=mix(sk*0.9,c,clamp(up*1.7,0.12,1.0)); return c; }',
+        'vec3 shadeFor(float a,float hg,float cr,vec3 sk,float night){',
+        '  float up=clamp(hg/max(cr,1e-3),0.0,1.0);',
+        '  vec3 canopy=mix(vec3(0.06,0.13,0.09),vec3(0.015,0.04,0.05),night); canopy*=0.55+0.85*fbm(vec2(a*110.0,hg*34.0));',
+        '  float biolum=step(0.93,hash21(floor(vec2(a*220.0,hg*150.0))))*(0.4+0.6*night);',
+        '  vec3 c=canopy+biolum*vec3(0.25,0.7,0.55)*0.5; c=mix(sk*0.85,c,clamp(up*1.9,0.18,1.0)); return c; }',
+        'vec3 shadeCity(float a,float hg,float cr,float fc,float kind,float laz,vec3 lc,vec3 sk,float night,float t){',
+        '  float up=clamp(hg/max(cr,1e-3),0.0,1.0);',
+        '  vec3 stone=mix(vec3(0.16,0.15,0.20),vec3(0.04,0.045,0.09),night); stone*=0.85+0.22*(0.5+0.5*sin(fc*70.0));',
+        '  float face=0.5+0.5*cos(a-laz); stone+=lc*face*0.10; vec3 c=stone;',
+        '  if(kind<1.5){ float gx=floor(fc*16.0),gy=floor(up*11.0); vec2 wf=fract(vec2(fc*16.0,up*11.0))-0.5;',
+        '    float lit=step(0.45,hash21(vec2(gx,gy)+floor(a*5.0)));',
+        '    float win=smoothstep(0.34,0.16,max(abs(wf.x),abs(wf.y)));',
+        '    float flick=0.7+0.3*sin(t*3.0+hash21(vec2(gx,gy))*30.0);',
+        '    c+=win*lit*flick*vec3(1.0,0.72,0.34)*(0.3+1.0*night)*step(0.06,up)*step(up,0.95); }',
+        '  else { vec3 gc=mix(vec3(0.55,0.45,0.85),vec3(0.55,0.75,1.0),night);',
+        '    float g=glyph(vec2(fc-0.5,up-0.5)*vec2(3.2,2.2))*(0.6+0.4*sin(t*1.5+a*3.0)); c+=g*gc*(0.5+0.8*night); }',
+        '  c+=sk*smoothstep(0.72,1.0,up)*0.32; c=mix(sk*0.85,c,clamp(up*1.7,0.16,1.0)); return c; }',
+        'void main(){',
+        '  float night=uDayNight; float t=uTime;',
+        '  vec2 q=vWorld.xz-uCenter.xz; float a=atan(q.y,q.x); float hgt=clamp(vWorld.y/uWallH,0.0,1.0);',
+        '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;',
+        '  float bsun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt; float lun=step(2.5,uSkyEvent)*uSkyAmt;',
+        '  vec3 sunDir=normalize(vec3(0.50,0.40,-0.58)); vec3 moonDir=normalize(vec3(-0.50,0.40,0.56));',
+        '  float lightAz=mix(atan(sunDir.z,sunDir.x),atan(moonDir.z,moonDir.x),night);',
+        '  vec3 lightCol=mix(vec3(1.0,0.85,0.55),vec3(0.55,0.68,0.95),night); lightCol=mix(lightCol,vec3(0.95,0.25,0.15),bloodM);',
+        '  vec3 skyTint=mix(vec3(0.62,0.74,0.86),vec3(0.06,0.10,0.20),night);',
+        '  float fc,kind; float cc=cityCrest(a,fc,kind); float mc=mtnCrest(a); float fcr=forestCrest(a);',
+        '  vec3 col;',
+        '  if(fcr>0.004 && hgt<=fcr){ col=shadeFor(a,hgt,fcr,skyTint,night); }',           // forest (nearest)
+        '  else if(kind>=0.0 && hgt<=cc){ col=shadeCity(a,hgt,cc,fc,kind,lightAz,lightCol,skyTint,night,t); }', // city (mid)
+        '  else if(hgt<=mc){ col=shadeMtn(a,hgt,mc,lightAz,lightCol,skyTint,night); }',     // mountains (back)
+        '  else { discard; }',                                                              // sky above the crest
+        '  col=mix(col,col*vec3(1.4,0.5,0.45),bloodM*0.5); col=mix(col,col*vec3(0.55,0.55,0.65),(bsun+lun)*0.4);',
+        '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),uWeather.x*0.3);',
+        '  col=mix(col,col*vec3(0.85,0.95,1.15),uWeather.y*0.4); col=mix(col,col*vec3(1.15,1.0,0.75),uWeather.z*0.35);',
+        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));',
+        '  gl_FragColor=vec4(col,1.0);',
+        '}'
+        ].join('\n');
     }
 
     var _ENV_DOME_VS =

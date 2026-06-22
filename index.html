@@ -1107,61 +1107,66 @@
                     return core*tw;
                 }
 
-                // Procedural horizon skyline — scattered mountains, forests, ruins,
-                // colonnades, buildings and spires ringing the disc. Returns the
-                // elevation (in rd.y units, i.e. sin of the view angle) of the
-                // silhouette crest at azimuth a, and writes a 0..1 "built" weight
-                // (0 = natural ridge/forest, 1 = masonry/tower) used for tinting.
-                float skylineHeight(float a, out float built){
-                    built=0.0;
-
-                    // distant mountain ranges — two smooth, slowly rolling ridges
-                    float m1=fbm(vec2(a*1.10 + 3.0, 1.5));
-                    float m2=fbm(vec2(a*2.30 + 9.0, 5.5));
-                    float mountains=0.020 + m1*0.085 + m2*0.035;
-
-                    // forest / tree line — denser high-frequency canopy bumps
-                    float tf=fbm(vec2(a*15.0, 2.0));
-                    float forest=0.016 + tf*tf*0.055;
-
-                    float h=max(mountains, forest);
-                    built=smoothstep(mountains, mountains+0.004, forest)*0.15; // forest barely "built"
-
-                    // discrete man-made structures placed in angular cells
-                    float cells=44.0;
-                    float ac=a*(1.0/TAU)+0.5;
-                    float idx=floor(ac*cells);
-                    float fc=fract(ac*cells);          // 0..1 across the cell
-                    float seed=hash11(idx*1.731+0.17);
-                    if(seed>0.42){
-                        float t=hash11(idx*3.17+0.6);  // structure type
-                        float d=abs(fc-0.5);           // distance from cell centre
-                        if(t<0.42){
-                            // BUILDING — broad block with a taller central tier
-                            float bw=0.17 + hash11(idx*5.1)*0.15;
-                            float bh=0.060 + hash11(idx*6.7)*0.110;
-                            float b=step(d,bw)*bh + step(d,bw*0.5)*0.030;
-                            if(b>h){ h=b; built=1.0; }
-                        } else if(t<0.66){
-                            // COLONNADE — a row of slender columns (ruined temple)
-                            float ch=0.045 + hash11(idx*7.3)*0.075;
-                            float reps=fract(fc*5.0);
-                            float c=step(abs(reps-0.5),0.16)*ch*step(d,0.46);
-                            if(c>h){ h=c; built=0.75; }
-                        } else if(t<0.84){
-                            // RUINS — broken jagged wall, uneven crenellations
-                            float rw=0.14 + hash11(idx*8.9)*0.10;
-                            float jag=0.030 + hash11(floor(fc*8.0)+idx*1.3)*0.055;
-                            float r=step(d,rw)*jag;
-                            if(r>h){ h=r; built=0.6; }
-                        } else {
-                            // SPIRE / watchtower — thin and tall
-                            float sh=0.110 + hash11(idx*9.7)*0.120;
-                            float s=step(d,0.045)*sh + step(d,0.10)*0.040;
-                            if(s>h){ h=s; built=0.9; }
-                        }
-                    }
+                // ── Procedural horizon skyline (shared aesthetic with the in-game
+                //    firmament wall): layered distant snow mountains, a ruined occult
+                //    city (ziggurats / towers with lit windows / domed temples with
+                //    glowing sigils / obelisks) and a forest fringe. All crest
+                //    profiles are in rd.y (view-elevation) units. ──
+                float ridge(float a){ float n=fbm(vec2(a,1.7)); return 1.0-abs(2.0*n-1.0); }
+                float mtnCrest(float a){
+                    return 0.045 + ridge(a*1.3+2.0)*0.10 + ridge(a*2.9+9.0)*0.045 + fbm(vec2(a*6.0,3.0))*0.02;
+                }
+                float forestCrest(float a){
+                    float m=smoothstep(0.42,0.55, fbm(vec2(a*3.0,5.0)));
+                    float n=fbm(vec2(a*34.0,4.0)); float n2=fbm(vec2(a*82.0,9.0));
+                    return m*(0.018+n*n*0.045+n2*0.012);
+                }
+                float cityCrest(float a, out float fc, out float kind){
+                    float cells=30.0; float ac=a*(1.0/TAU)+0.5; float idx=floor(ac*cells); fc=fract(ac*cells);
+                    float seed=hash11(idx*1.37+0.2); kind=floor(hash11(idx*2.7+0.5)*4.0);
+                    if(seed<0.5){ kind=-1.0; return 0.0; }
+                    float d=abs(fc-0.5); float bw=0.20+hash11(idx*4.4)*0.15; float bh=0.065+hash11(idx*3.1)*0.085; float h=0.0;
+                    if(kind<0.5){ float st=clamp((0.5-d)/max(bw,1e-3),0.0,1.0); h=step(d,bw)*bh*(0.4+0.6*floor(st*3.0)/3.0); }      // ziggurat
+                    else if(kind<1.5){ float tw=bw*0.5; h=step(d,tw)*(bh*1.4+0.045); }                                            // tower
+                    else if(kind<2.5){ float body=step(d,bw)*bh*0.6; float dm=step(d,bw*0.6)*sqrt(max(0.0,1.0-pow(d/(bw*0.6+1e-3),2.0)))*0.055; h=body+dm; } // domed temple
+                    else { h=step(d,0.055)*(bh*0.7+0.10); }                                                                       // obelisk
                     return h;
+                }
+                float glyph(vec2 p){
+                    float ring=smoothstep(0.045,0.0, abs(length(p-vec2(0.0,0.16))-0.11));
+                    float stem=smoothstep(0.03,0.0, abs(p.x))*step(-0.20,p.y)*step(p.y,0.16);
+                    float bar =smoothstep(0.03,0.0, abs(p.y))*step(-0.14,p.x)*step(p.x,0.14);
+                    return clamp(ring+stem+bar,0.0,1.0);
+                }
+                vec3 shadeMtn(float a,float ev,float cr,float laz,vec3 lc,vec3 sk,float night){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 rock=mix(vec3(0.11,0.13,0.19), vec3(0.03,0.05,0.11), night); rock*=0.7+0.55*fbm(vec2(a*55.0,ev*120.0));
+                    float face=0.5+0.5*cos(a-laz); float snow=smoothstep(0.55-0.12*face,0.82,up);
+                    vec3 snowC=mix(vec3(0.80,0.88,1.0), vec3(0.26,0.40,0.64), night)+lc*face*0.30;
+                    vec3 c=mix(rock,snowC,snow); c+=lc*face*0.07*(0.4+0.6*up);
+                    c=mix(sk*0.9,c,clamp(up*1.7,0.12,1.0)); return c;
+                }
+                vec3 shadeFor(float a,float ev,float cr,vec3 sk,float night){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 canopy=mix(vec3(0.06,0.13,0.09), vec3(0.015,0.04,0.05), night); canopy*=0.55+0.85*fbm(vec2(a*110.0,ev*180.0));
+                    float biolum=step(0.93, hash21(floor(vec2(a*220.0,ev*900.0))))*(0.4+0.6*night);
+                    vec3 c=canopy+biolum*vec3(0.25,0.7,0.55)*0.5; c=mix(sk*0.85,c,clamp(up*1.9,0.18,1.0)); return c;
+                }
+                vec3 shadeCity(float a,float ev,float cr,float fc,float kind,float laz,vec3 lc,vec3 sk,float night,float t){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 stone=mix(vec3(0.16,0.15,0.20), vec3(0.04,0.045,0.09), night); stone*=0.85+0.22*(0.5+0.5*sin(fc*70.0));
+                    float face=0.5+0.5*cos(a-laz); stone+=lc*face*0.10; vec3 c=stone;
+                    if(kind<1.5){
+                        float gx=floor(fc*16.0),gy=floor(up*11.0); vec2 wf=fract(vec2(fc*16.0,up*11.0))-0.5;
+                        float lit=step(0.45, hash21(vec2(gx,gy)+floor(a*5.0)));
+                        float win=smoothstep(0.34,0.16, max(abs(wf.x),abs(wf.y)));
+                        float flick=0.7+0.3*sin(t*3.0 + hash21(vec2(gx,gy))*30.0);
+                        c+=win*lit*flick*vec3(1.0,0.72,0.34)*(0.3+1.0*night)*step(0.06,up)*step(up,0.95);
+                    } else {
+                        vec3 gc=mix(vec3(0.55,0.45,0.85), vec3(0.55,0.75,1.0), night);
+                        float g=glyph(vec2(fc-0.5,up-0.5)*vec2(3.2,2.2))*(0.6+0.4*sin(t*1.5+a*3.0)); c+=g*gc*(0.5+0.8*night);
+                    }
+                    c+=sk*smoothstep(0.72,1.0,up)*0.32; c=mix(sk*0.85,c,clamp(up*1.7,0.16,1.0)); return c;
                 }
 
                 void main(){
@@ -1330,39 +1335,33 @@
                             }
                         }
 
-                        // ---- HORIZON SKYLINE (scattered mountains, forests, ruins, towers) ----
+                        // ---- HORIZON SKYLINE (mountains / occult city / forest fringe) ----
                         {
                             float az2=atan(rd.x,-rd.z);
-                            float built;
-                            float skyH=skylineHeight(az2, built);
                             float ev=rd.y;                                 // true view elevation
-                            float edge=0.0045;
-                            float silMask=smoothstep(-edge,edge, skyH-ev)  // 1 below the crest
-                                        * smoothstep(-0.075,-0.02, ev);    // fade out below the horizon
-                            if(silMask>0.001){
-                                vec3 silDay=vec3(0.09,0.11,0.15);
-                                vec3 silNight=vec3(0.015,0.022,0.05);
-                                vec3 silCol=mix(silDay, silNight, night);
-                                // atmospheric perspective — hazy base, darker crest
-                                float crest=clamp(ev/max(skyH,0.001),0.0,1.0);
-                                vec3 hazeT=mix(vec3(0.55,0.66,0.80), vec3(0.05,0.08,0.16), night);
-                                silCol=mix(mix(hazeT,silCol,0.55), silCol, crest);
-                                // natural ridges/forest read cooler-green, masonry stays neutral
-                                silCol=mix(silCol*vec3(0.85,0.98,0.92), silCol, built);
-                                // event grading on the skyline
-                                silCol=mix(silCol, silCol*vec3(1.4,0.5,0.45), bloodM*0.5);
-                                silCol=mix(silCol, silCol*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
-                                col=mix(col, silCol, silMask);
+                            // light direction (sun by day, moon by night) for facing-light
+                            float laz=mix(atan(sunDir.x,-sunDir.z), atan(moonDir.x,-moonDir.z), night);
+                            vec3  lcol=mix(vec3(1.0,0.85,0.55), vec3(0.55,0.68,0.95), night);
+                            lcol=mix(lcol, vec3(0.95,0.25,0.15), bloodM);
+                            vec3  skT=mix(vec3(0.62,0.74,0.86), vec3(0.06,0.10,0.20), night);
 
-                                // warm windows twinkling on the tall built structures at night
-                                if(built>0.85){
-                                    vec2 wc=floor(vec2(az2*120.0, ev*150.0));
-                                    float wlit=step(0.62, hash21(wc));
-                                    float wtw=0.55+0.45*sin(t*2.0 + hash21(wc+3.7)*30.0);
-                                    col+=wlit*wtw*silMask*night
-                                         *step(0.018,ev)*step(ev,skyH-0.008)
-                                         *vec3(1.0,0.72,0.32)*0.45;
-                                }
+                            float fc,kind;
+                            float cc=cityCrest(az2,fc,kind);
+                            float mc=mtnCrest(az2);
+                            float fcr=forestCrest(az2);
+                            float top=max(max(cc,mc),fcr);
+                            // soft AA on the silhouette crest + fade below the horizon line
+                            float edge=0.004;
+                            float band=smoothstep(-edge,edge, top-ev)*smoothstep(-0.07,-0.02, ev);
+                            if(band>0.001){
+                                vec3 sil;
+                                if(fcr>0.004 && ev<=fcr)            sil=shadeFor(az2,ev,fcr,skT,night);
+                                else if(kind>=0.0 && ev<=cc)        sil=shadeCity(az2,ev,cc,fc,kind,laz,lcol,skT,night,t);
+                                else                                sil=shadeMtn(az2,ev,mc,laz,lcol,skT,night);
+                                // event grading on the skyline
+                                sil=mix(sil, sil*vec3(1.4,0.5,0.45), bloodM*0.5);
+                                sil=mix(sil, sil*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
+                                col=mix(col, sil, band);
                             }
                         }
                     }
