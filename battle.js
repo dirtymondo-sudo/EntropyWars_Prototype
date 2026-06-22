@@ -17829,6 +17829,46 @@
             });
         }
 
+        // ── Spellsteal / Borrowed Claw: take one of the target's spells and give it to the caster ──
+        function _stealSpellFrom(caster, target, label) {
+            if (!caster || !target) return false;
+            const known = new Set([
+                ...((caster.spells || []).map(s => s && s.id)),
+                ...((caster._raceAbilities || []).map(s => s && s.id))
+            ].filter(Boolean));
+            const pool = [];
+            for (const s of (target.spells || [])) {
+                if (s && s.id && s.kind !== 'basicAttack' && (s.cost || 0) > 0) pool.push({ from: 'spells', spell: s });
+            }
+            for (const s of (target._raceAbilities || [])) {
+                if (s && s.id && s.kind !== 'basicAttack') pool.push({ from: 'race', spell: s });
+            }
+            if (!pool.length) {
+                addLog(`${label}${unitDisplayName(target)} has no spell to steal.`);
+                return false;
+            }
+            let candidates = pool.filter(p => !known.has(p.spell.id));
+            if (!candidates.length) candidates = pool;
+            const pick = candidates[Math.floor(Math.random() * candidates.length)];
+            const stolen = pick.spell;
+            // Remove it from the victim.
+            if (pick.from === 'spells') {
+                target.spells = (target.spells || []).filter(s => s !== stolen);
+                if (Array.isArray(target._spellSlots)) target._spellSlots = target._spellSlots.filter(id => id !== stolen.id);
+            } else {
+                target._raceAbilities = (target._raceAbilities || []).filter(s => s !== stolen);
+            }
+            // Grant a fresh copy to the thief.
+            if (!Array.isArray(caster.spells)) caster.spells = [];
+            if (!known.has(stolen.id)) {
+                caster.spells.push(Object.assign({}, stolen));
+                if (Array.isArray(caster._spellSlots)) caster._spellSlots.push(stolen.id);
+            }
+            addLog(`${label}${unitDisplayName(caster)} steals ${stolen.name} from ${unitDisplayName(target)}!`);
+            showFloatingTextForUnit(caster, `STOLE ${stolen.name}`, 'streak', { durationMs: 1100 });
+            return true;
+        }
+
         function doSpell(unit, x, y, z) {
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
@@ -18029,6 +18069,11 @@
                 const target = _tgtResult.target;
                 panelFocusTarget = target;
 
+                if (spell.stealSpell && target) {
+                    _stealSpellFrom(unit, target, `${spell.name}: `);
+                    markDirty('selectedUnit', 'hud');
+                }
+
                 completionDelay = executeSpellAnimation(
                     unit, spell, target, { x, y },
                     effectiveSpellCost, spellPower, finishAction, spellApCost);
@@ -18162,21 +18207,10 @@
                     }
                     applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
 
-                    /* ── Spellsteal: rip an active buff off the target and apply it to the caster ── */
-                    if (spell.stealBuff && !unit.dead) {
-                        const tgtStatus = target.status || {};
-                        const buffKeys = Object.keys(tgtStatus).filter(k =>
-                            tgtStatus[k] > 0 && STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'buff');
-                        if (buffKeys.length) {
-                            const stolen = buffKeys[Math.floor(Math.random() * buffKeys.length)];
-                            const dur = tgtStatus[stolen];
-                            target.status[stolen] = 0;
-                            applyStatusPayload(unit, { id: stolen, duration: dur }, `${spell.name}: `, unit);
-                            addLog(`${unitDisplayName(unit)} steals ${STATUS_DEFS[stolen].label} from ${unitDisplayName(target)}!`);
-                            showFloatingTextForUnit(unit, `STOLE ${STATUS_DEFS[stolen].label.toUpperCase()}`, 'streak', { durationMs: 900 });
-                        } else {
-                            addLog(`${unitDisplayName(target)} has no spell-effects to steal.`);
-                        }
+                    /* ── Spellsteal: take one of the target's spells and add it to the caster's kit ── */
+                    if (spell.stealSpell && !unit.dead) {
+                        _stealSpellFrom(unit, target, `${spell.name}: `);
+                        markDirty('selectedUnit', 'hud');
                     }
                 }, impactDelay);
             } else if (spell.kind === 'revive') {

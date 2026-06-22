@@ -4514,7 +4514,6 @@ const RACE_ABILITIES = {
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.60,
           desc: 'Devastating close-range life drain. 160 damage, heals 60%. Come closer, darling.' },
         SHARED_POISON_SWAMP,
-        SHARED_SMOKE_SCREEN
     ],
     'zombie': [
         { id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
@@ -4591,7 +4590,6 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Snatch an adjacent enemy into the sky and release them. Damage scales with height. They never speak of what they saw up there.' },
-        SHARED_SMOKE_SCREEN,
         SHARED_SUMMON_SANDSTORM
     ],
     'shadow entity': [
@@ -4679,8 +4677,8 @@ const RACE_ABILITIES = {
     'skinwalker': [
         { id: 'raceBorrowedClaw', spellType: 'anomaly', name: 'Borrowed Claw',
           type: 'damage', cost: 25, dmg: 144, range: 1,
-          kind: 'damage', damageType: 'physical', stealBuff: true,
-          desc: 'Savage melee strike that steals one random buff from the target.' },
+          kind: 'damage', damageType: 'physical', stealSpell: true,
+          desc: 'Savage melee strike that rips a spell from the target — they lose it, you learn it.' },
         { id: 'raceSkinSwap', spellType: 'anomaly', name: 'Skin Swap',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
@@ -4818,7 +4816,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           bonusVsDebuffed: 0.50,
           desc: 'While (alive) { suffer(); } — 80 damage, +50% bonus if target already has a debuff.' },
-        SHARED_SMOKE_SCREEN,
         SHARED_FLASH_FREEZE
     ],
     'robot': [
@@ -4963,7 +4960,6 @@ const RACE_ABILITIES = {
           selfHealPct: 0.50, cleanse: 99,
           statStageBoost: { atk: 1, def: 1 },
           desc: 'Enter a deep trance. Heal 50% max HP, cleanse ALL debuffs, and gain +1 ATK/DEF. Costs 2 AP.' },
-        SHARED_SMOKE_SCREEN
     ],
     'mad scientist': [
         { id: 'raceTeslaTrap', spellType: 'tech', name: 'Tesla Coil',
@@ -5010,7 +5006,6 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 10, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 2,
           desc: 'Dodge-roll 2 tiles in any direction. Quick repositioning.' },
-        SHARED_SMOKE_SCREEN
     ],
     'men in black': [
         { id: 'raceDeneuralizer', spellType: 'tech', name: 'Deneuralizer',
@@ -5050,7 +5045,6 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Rewire an enemy\'s neural pathways. Discorded for 2 turns — they may attack their own allies.' },
-        SHARED_SMOKE_SCREEN
     ],
     'marksman': [
         { id: 'raceSuppressiveFire', spellType: 'human', name: 'Bullet Skewer',
@@ -5088,8 +5082,8 @@ const RACE_ABILITIES = {
           desc: 'Unleash raw arcane energy. 3×3 area magic damage.' },
         { id: 'raceSpellsteal', spellType: 'unholy', name: 'Spellsteal',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
-          kind: 'debuff', stealBuff: true,
-          desc: 'Rip a spell-effect from a target. Steal one of the target\'s active buffs and apply it to yourself.' },
+          kind: 'debuff', stealSpell: true,
+          desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
         { id: 'raceManaShield', spellType: 'unholy', name: 'Mana Shield',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
@@ -5296,7 +5290,6 @@ const RACE_ABILITIES = {
           throwRange: 3, collisionBonus: 50,
           requiresFlight: true,
           desc: 'Engage thrusters, grab an adjacent enemy, and launch them up to 3 tiles. Jet-powered precision delivery.' },
-        SHARED_SMOKE_SCREEN
     ],
     'demon prince': [
         { id: 'raceDarkDominion', spellType: 'unholy', name: 'Dark Dominion',
@@ -5365,7 +5358,6 @@ const RACE_ABILITIES = {
           maxActivePerCaster: 1,
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Place a dream snare. First enemy to step on it is stunned 1 turn. You\'re still dreaming.' },
-        SHARED_SMOKE_SCREEN,
         SHARED_GLACIAL_TOMB
     ],
     'fallen angel': [
@@ -5526,7 +5518,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Weave a web between dimensions over 3×3 for 2 turns. Enemies inside are heavily slowed.' },
         SHARED_POISON_SWAMP,
-        SHARED_SMOKE_SCREEN
     ],
     'cosmic wraith': [
         { id: 'raceEntropicBeam', spellType: 'alien', name: 'Entropic Beam',
@@ -5590,7 +5581,6 @@ const RACE_ABILITIES = {
           desc: 'Call in an artillery barrage. After 1 turn, 3×3 devastation. Fire for effect.' },
         SHARED_NUKE,
         SHARED_RAMPART,
-        SHARED_SMOKE_SCREEN
     ],
     'droid': [
         { id: 'raceSystemAnalysis', spellType: 'tech', name: 'System Analysis',
@@ -5608,7 +5598,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Quick electric bolt. 90 damage, staggers target. Bzzt.' },
         SHARED_FLASH_FREEZE,
-        SHARED_SMOKE_SCREEN
     ],
     'antihero': [
         { id: 'raceCosmicSlam', spellType: 'human', name: 'Cosmic Slam',
@@ -5630,7 +5619,6 @@ const RACE_ABILITIES = {
           chargeToTarget: true,
           bonusVsDebuffed: 0.40,
           desc: 'I\'m not the hero. Charge up to 3 tiles. +40% damage if target has a debuff.' },
-        SHARED_SMOKE_SCREEN,
     ],
     'conspiracy theorist': [
         { id: 'raceVOXBroadcast', spellType: 'human', name: 'VOX Broadcast',
@@ -5648,7 +5636,6 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
           desc: 'They can\'t get in if you\'re wrapped tight enough. Grants a 100 HP damage shield.' },
-        SHARED_SMOKE_SCREEN,
         SHARED_SUMMON_SANDSTORM
     ],
     'overlord': [
@@ -5695,7 +5682,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'overclock', duration: 1 }, { id: 'inspired', duration: 1 }, { id: 'protect', duration: 1 }],
           desc: 'This was always how it was going to end. Overclock + Inspired + Protect for 1 turn.' },
-        SHARED_SMOKE_SCREEN,
         SHARED_TERRAFORM
     ],
     'politician': [
@@ -5715,7 +5701,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'I yield the floor to NO ONE. 3×3 zone for 2 turns. Enemies inside are silenced.' },
         SHARED_NUKE,
-        SHARED_SMOKE_SCREEN
     ],
 
     'atlantean': [
@@ -5805,7 +5790,6 @@ const RACE_ABILITIES = {
           kind: 'selfHeal', selfHealPct: 0.25,
           desc: 'Feed on the fallen. Heal 25% max HP. Waste not, want not.' },
         SHARED_POISON_SWAMP,
-        SHARED_SMOKE_SCREEN
     ],
     'gnome': [
         { id: 'raceClockworkTurret', spellType: 'anomaly', name: 'Clockwork Turret',
@@ -5942,7 +5926,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 2 }],
           statStageBoost: { atk: -1 },
           desc: 'Irresistible charm ray. Target is confused 2 turns and ATK reduced.' },
-        SHARED_SMOKE_SCREEN,
         { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 130, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -6032,7 +6015,6 @@ const RACE_ABILITIES = {
           statStageBoost: { spd: 2 },
           statusEffects: [{ id: 'inspired', duration: 2 }],
           desc: 'Hit the nitrous. +2 SPD stages and Inspired for 2 turns. VTEC kicked in, yo.' },
-        SHARED_SMOKE_SCREEN
     ],
 
     'ice queen': [
@@ -6267,7 +6249,6 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 130,
           desc: 'Project a protective lens over an ally. 130 HP damage shield.' },
-        SHARED_SMOKE_SCREEN
     ],
 
     'quarterback': [
@@ -6332,7 +6313,6 @@ const RACE_ABILITIES = {
           kind: 'ricochet', damageType: 'physical',
           bounceDamage: 70, bounceRadius: 2,
           desc: 'Arrow splits on first hit, striking a second nearby enemy. Two birds, one arrow.' },
-        SHARED_SMOKE_SCREEN
     ],
 
     'santa clause': [
@@ -6442,7 +6422,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
           desc: 'Leap from high ground onto prey. Damage scales with elevation.' },
-        SHARED_SMOKE_SCREEN
     ],
 
     'valkraye': [
@@ -7101,6 +7080,21 @@ const STATUS_DEFS = {
         atkDelta: 24,
         armorDelta: 10,
         iconSrc: createStatusIconDataUri('🎵', '#3a2a18', '#fff0d6', '#d4a44a')
+    },
+    regen: {
+        icon: '💚',
+        glyph: '💚',
+        short: 'RGN',
+        label: 'Regen',
+        colorText: 'regenerating',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('💚', '#173920', '#ddffe6', '#68d98a'),
+        onRoundEnd(unit) {
+            if (!unit || unit.dead) return;
+            applyHealingToUnit(unit, 40, null);
+        }
     },
     inspiredWeak: {
         icon: '🎶',
