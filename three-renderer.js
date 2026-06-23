@@ -5792,10 +5792,13 @@ const ThreeRenderer = (function () {
         if (_floatDomOverlay || !_parentEl) return;
         var ov = document.createElement('div');
         ov.id = 'floatTextOverlay';
-        // z-index above #css2dOverlay (7) so numbers always read over name plates.
+        // Must out-rank every other layer INSIDE .map-center — the name-plate CSS2D
+        // overlay (z 7), #boardStage (z 10) and the intent-badge layer (z 15) — so the
+        // numbers always read on top of them. .map-center is itself z-index:1, so this
+        // big value is still safely contained BELOW the HUD (which lives outside it).
         ov.style.cssText =
             'position:absolute;top:0;left:0;width:100%;height:100%;' +
-            'pointer-events:none;z-index:9;overflow:hidden;';
+            'pointer-events:none;z-index:9999;overflow:hidden;';
         _parentEl.appendChild(ov);
         _floatDomOverlay = ov;
     }
@@ -5875,9 +5878,9 @@ const ThreeRenderer = (function () {
         var cam = ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
         var screenH = _parentEl ? _parentEl.clientHeight : 0;
-        // pxScale (0.7) keeps the on-screen size matched to the old WebGL quads.
+        // pxScale sets the on-screen size of the numbers (world→screen px factor).
         var halfTanFov = cam ? Math.tan((cam.fov * Math.PI / 180) / 2) : 0;
-        var pxScale = 0.7;
+        var pxScale = 0.58;
         var i = _floatTweens.length;
         while (i--) {
             var tw = _floatTweens[i];
