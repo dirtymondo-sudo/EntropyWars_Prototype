@@ -6786,6 +6786,13 @@ const ThreeRenderer = (function () {
     // repeat at 1×1 and tile via geometry UVs instead, so the textures are
     // never shared with — or mutated against — the in-world terrain tiles, and
     // every face keeps the same pixel density as the rest of the game.
+    // Background elements are far away and constantly drifting/spinning. With
+    // NearestFilter + no mipmaps + heavy UV tiling, every screen pixel samples a
+    // near-random texel as the body moves → the textures "buzz"/shimmer (moiré),
+    // and the renderer runs with antialias:false so nothing hides it. Distant
+    // scenery doesn't need crisp 1:1 pixels, so we trade pixel-art sharpness for
+    // trilinear mipmapping + anisotropy, which is the correct distance AA and
+    // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
         if (_hzTexCache[terrainKey] !== undefined) return _hzTexCache[terrainKey];
@@ -6793,10 +6800,22 @@ const ThreeRenderer = (function () {
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-        tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;   // trilinear: smooth minification at distance
+        tex.generateMipmaps = true;
+        try {
+            var maxA = (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? renderer.capabilities.getMaxAnisotropy() : 1;
+            tex.anisotropy = Math.min(8, maxA || 1);       // sharpen grazing angles without shimmer
+        } catch (e) {}
         _hzTexCache[terrainKey] = tex;
         return tex;
     }
+
+    // Background elements sit far from the camera, so they don't need full
+    // in-world pixel density — fewer texture repeats means larger texels, less
+    // shimmer, and less "too many pixels" buzz. This factor coarsens every
+    // horizon UV tiling (1.0 = same density as terrain; lower = fewer repeats).
+    var HZ_TEX_DENSITY = 0.5;
 
     // Tile a box's UVs so each face shows ~one texture per tileSize, per-face
     // (so a wide base and a tall column keep the same pixel density).
@@ -6804,7 +6823,7 @@ const ThreeRenderer = (function () {
         var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
         var dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]]; // px,nx,py,ny,pz,nz
         for (var face = 0; face < 6; face++) {
-            var su = dims[face][0] / ts, sv = dims[face][1] / ts;
+            var su = dims[face][0] / ts * HZ_TEX_DENSITY, sv = dims[face][1] / ts * HZ_TEX_DENSITY;
             for (var v = 0; v < 4; v++) {
                 var idx = face * 4 + v;
                 if (idx >= uv.count) break;
@@ -6817,6 +6836,7 @@ const ThreeRenderer = (function () {
     // Uniformly tile a geometry's 0..1 UVs (cylinders / spheres) by (su, sv).
     function _hzScaleUV(geo, su, sv) {
         var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
+        su *= HZ_TEX_DENSITY; sv *= HZ_TEX_DENSITY;       // coarser density for far scenery
         for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
         uv.needsUpdate = true;
     }
@@ -7158,8 +7178,8 @@ const ThreeRenderer = (function () {
         var ROSTER = [
             [0.13, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
             [0.24, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
-            [0.33, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
-            [0.45, _hzPyramid,        false, -0.48,  0.55],   // great pyramids
+            [0.34, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
+            [0.40, _hzPyramid,        false, -0.48,  0.55],   // great pyramids (rarer now)
             [0.53, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
             [0.61, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
             [0.68, _hzObelisk,        false, -0.45,  0.58],   // obelisks
@@ -7172,9 +7192,9 @@ const ThreeRenderer = (function () {
 
         var slots = 132;
         for (var i = 0; i < slots; i++) {
-            if (rng() < 0.50) continue;                          // open gaps keep the void airy
-            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.18;
-            var rr = discR * (0.46 + rng() * 0.58);              // varied depth into the void
+            if (rng() < 0.62) continue;                          // more open gaps → less clumped
+            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.30;  // wider angular jitter
+            var rr = discR * (0.62 + rng() * 0.78);              // pushed further out + wider depth band
             var x = cx + Math.cos(ang) * rr;
             var z = cz + Math.sin(ang) * rr;
 
