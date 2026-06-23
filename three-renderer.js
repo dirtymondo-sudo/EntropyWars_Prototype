@@ -6303,8 +6303,9 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     //  FLAT-EARTH FIRMAMENT ENVIRONMENT
     //  Real 3D geometry living in the battle scene, sharing the game camera:
-    //  no floor at all — only a distant molten rift far below and a firmament
-    //  sky dome above, so the board floats in open void. Because it is
+    //  no floor and no horizon at all — a single full-sphere cosmic dome (deep
+    //  nebula + milky-way band + layered starfield) wraps the scene in every
+    //  direction, so the board floats in seamless open space. Because it is
     //  actual world geometry it tilts / rotates / zooms with the map, and you
     //  can look up to see the sky. Reacts to the day/night cycle, sky events,
     //  the active zodiac and the weather.
@@ -6467,20 +6468,48 @@ const ThreeRenderer = (function () {
         '  float lun=step(2.5,uSkyEvent)*uSkyAmt;\n' +
         '  vec3 sunDir=normalize(vec3(0.50+0.03*sin(t*0.05),0.40,-0.58));\n' +
         '  vec3 moonDir=normalize(vec3(-0.50,0.40,0.56+0.03*sin(t*0.04)));\n' +
-        '  float el=rd.y;\n' +
-        '  vec3 horiz=mix(vec3(0.66,0.78,0.90),vec3(0.04,0.06,0.13),night);\n' +
-        '  vec3 zen=mix(vec3(0.16,0.40,0.78),vec3(0.006,0.012,0.04),night);\n' +
-        '  vec3 grnd=mix(vec3(0.40,0.52,0.66),vec3(0.02,0.04,0.09),night);\n' +
-        '  vec3 col = el>=0.0 ? mix(horiz,zen,pow(clamp(el,0.0,1.0),0.7)) : mix(horiz,grnd,clamp(-el*3.0,0.0,1.0));\n' +
-        '  col=mix(col,col*vec3(1.5,0.42,0.38)+vec3(0.05,0.0,0.0),bloodM*0.6);\n' +
-        '  col=mix(col,col*vec3(0.40,0.40,0.52),bsun*0.6);\n' +
-        '  col=mix(col,col*vec3(0.5,0.5,0.62),lun*0.45);\n' +
-        '  float az=atan(rd.x,rd.z);\n' +
-        '  vec2 sph=vec2(az/PI, asin(clamp(rd.y,-1.0,1.0))/(PI*0.5));\n' +
-        '  { vec2 uvp=sph*vec2(60.0,34.0); vec2 g=floor(uvp),f=fract(uvp); float h=hash21(g);\n' +
-        '    if(h>=0.9){ vec2 c=hash22(g+3.1); float d=length(f-c); float core=smoothstep(0.08,0.0,d);\n' +
-        '      float tw=0.55+0.45*sin(t*(1.2+hash21(g+7.7)*3.0)+h*40.0);\n' +
-        '      col+=core*tw*(0.3+0.7*night)*vec3(0.9,0.95,1.0)*step(0.0,el); } }\n' +
+        '  float el=rd.y; float az=atan(rd.x,rd.z); float lat=asin(clamp(el,-1.0,1.0))/(PI*0.5);\n' +
+        '  vec2 sph=vec2(az/PI, lat);\n' +
+        '  vec2 nd=vec2(az/PI, el);\n' +
+        // ── seamless deep-space gradient (no horizon line at all) ──
+        '  float v=el*0.5+0.5;\n' +
+        '  vec3 deepLo=mix(vec3(0.060,0.040,0.092),vec3(0.022,0.014,0.048),night);\n' +
+        '  vec3 deepMd=mix(vec3(0.034,0.034,0.078),vec3(0.012,0.011,0.030),night);\n' +
+        '  vec3 deepHi=mix(vec3(0.014,0.024,0.060),vec3(0.004,0.006,0.020),night);\n' +
+        '  vec3 col=mix(deepLo,deepMd,smoothstep(0.0,0.55,v)); col=mix(col,deepHi,smoothstep(0.45,1.0,v));\n' +
+        // ── volumetric nebula clouds, slowly drifting, multi-hue ──
+        '  float n1=fbm(nd*vec2(2.4,3.0)+vec2(t*0.004,0.0));\n' +
+        '  float n2=fbm(nd*vec2(5.5,6.5)-vec2(t*0.006,0.4));\n' +
+        '  float n3=fbm(nd*vec2(11.0,13.0)+vec2(0.0,t*0.003));\n' +
+        '  float neb=clamp(n1*0.65+n2*0.45+n3*0.20-0.34,0.0,1.0); neb=pow(neb,1.6);\n' +
+        '  vec3 nebMag =mix(vec3(0.46,0.12,0.52),vec3(0.22,0.05,0.34),night);\n' +
+        '  vec3 nebTeal=mix(vec3(0.06,0.30,0.44),vec3(0.03,0.14,0.26),night);\n' +
+        '  vec3 nebGold=mix(vec3(0.55,0.30,0.18),vec3(0.30,0.16,0.10),night);\n' +
+        '  float mxA=fbm(nd*1.6+7.0); float mxB=fbm(nd*2.3-3.0);\n' +
+        '  vec3 nebCol=mix(nebTeal,nebMag,smoothstep(0.30,0.70,mxA)); nebCol=mix(nebCol,nebGold,smoothstep(0.55,0.85,mxB)*0.6);\n' +
+        '  col+=neb*nebCol*(0.95+0.5*night);\n' +
+        // ── galactic band: a great-circle milky way, dust + denser stars ──
+        '  vec3 gaxis=normalize(vec3(0.36,0.52,-0.77)); float gb=dot(rd,gaxis); float band=exp(-gb*gb*9.0);\n' +
+        '  float bandTex=fbm(nd*vec2(7.0,3.0)+vec2(5.0,0.0));\n' +
+        '  col+=band*(0.30+0.55*bandTex)*mix(vec3(0.30,0.26,0.40),vec3(0.18,0.16,0.30),night);\n' +
+        // ── sky-event mood applied to the backdrop (stars stay crisp on top) ──
+        '  col=mix(col,col*vec3(1.5,0.42,0.38)+vec3(0.04,0.0,0.0),bloodM*0.55);\n' +
+        '  col=mix(col,col*vec3(0.45,0.45,0.60),bsun*0.5);\n' +
+        '  col=mix(col,col*vec3(0.55,0.55,0.70),lun*0.40);\n' +
+        // ── layered starfield: size / brightness / colour variation + twinkle ──
+        '  vec3 starAcc=vec3(0.0);\n' +
+        '  for(int li=0;li<4;li++){ float fl=float(li); float sc=34.0+fl*46.0;\n' +
+        '    vec2 uv=vec2(sph.x*sc*1.9, lat*sc); vec2 g=floor(uv), f=fract(uv); float h=hash21(g+fl*23.1);\n' +
+        '    float thr=0.92 - band*0.10 - fl*0.012;\n' +
+        '    if(h>thr){ vec2 c=hash22(g+fl*4.3); float d=length(f-c);\n' +
+        '      float sz=0.05+0.13*hash11(h*13.7); float core=smoothstep(sz,0.0,d); float halo=exp(-d*d*55.0)*0.35;\n' +
+        '      float tw=0.55+0.45*sin(t*(0.8+hash11(h*7.3)*3.5)+h*52.0);\n' +
+        '      float mag=hash11(h*5.1); float bri=(core+halo)*tw*(0.35+0.85*mag*mag);\n' +
+        '      vec3 sct=mix(vec3(0.65,0.78,1.0),vec3(1.0,0.86,0.62),hash11(h*9.9));\n' +
+        '      sct=mix(sct,vec3(1.0,0.50,0.45),step(0.97,hash11(h*3.3))*0.7);\n' +
+        '      starAcc+=sct*bri; } }\n' +
+        '  col+=starAcc*(1.0+0.5*night)*(1.0-0.6*wStorm);\n' +
+        // ── zodiac wheel nodes ──
         '  for(int i=0;i<12;i++){ float fi=float(i); float a=fi/12.0*TAU;\n' +
         '    vec3 zd=normalize(vec3(sin(a)*0.85,0.42,-cos(a)*0.85));\n' +
         '    float dz=acos(clamp(dot(rd,zd),-1.0,1.0));\n' +
@@ -6488,6 +6517,7 @@ const ThreeRenderer = (function () {
         '    float node=smoothstep(0.03,0.0,dz); float glo=exp(-dz*10.0);\n' +
         '    vec3 zc=mix(vec3(0.50,0.55,0.82),vec3(1.0,0.84,0.42),zAct);\n' +
         '    col+=(node*(0.5+1.0*zAct)+glo*0.16*(0.3+zAct))*zc*(0.4+0.6*night); }\n' +
+        // ── active constellation ──
         '  vec3 cDir=normalize(vec3(0.16,0.5,-0.82));\n' +
         '  vec3 rgt=normalize(cross(vec3(0.0,1.0,0.0),cDir)); vec3 upv=normalize(cross(cDir,rgt));\n' +
         '  for(int k=0;k<6;k++){ float fk=float(k);\n' +
@@ -6496,29 +6526,32 @@ const ThreeRenderer = (function () {
         '    float dcc=acos(clamp(dot(rd,cn),-1.0,1.0)); float br=0.6+0.6*hash11(uZodiac*3.0+fk);\n' +
         '    col+=smoothstep(0.012,0.0,dcc)*vec3(1.0,0.92,0.66)*br*(0.55+0.45*night);\n' +
         '    col+=exp(-dcc*42.0)*vec3(0.8,0.85,1.0)*0.12*(0.4+0.6*night); }\n' +
-        '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=1.0-night; float sunR=0.05;\n' +
+        // ── sun (a warm star, or a black sun during a solar eclipse) ──
+        '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=1.0-night*0.85; float sunR=0.05;\n' +
         '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*5.0)*0.8+exp(-sa*1.3)*0.18;\n' +
         '  vec3 sunWarm=mix(vec3(1.0,0.92,0.70),vec3(1.0,0.66,0.32),wSand);\n' +
         '  vec3 sunC=disc*sunWarm*3.0+corona*sunWarm*1.2;\n' +
         '  vec3 blackSunC=-disc*vec3(2.5)+smoothstep(sunR*1.7,sunR*1.05,abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8+corona*vec3(0.9,0.7,0.95)*0.5;\n' +
         '  col+=mix(sunC*sunVis,blackSunC,bsun);\n' +
-        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=night; float moonR=mix(0.06,0.095,bloodM);\n' +
+        // ── moon ──
+        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=0.35+0.65*night; float moonR=mix(0.06,0.095,bloodM);\n' +
         '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*42.0);\n' +
         '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*7.0)*0.4;\n' +
         '  vec3 moonC=mdisc*moonGrey*1.6+mGlow*moonGrey*0.6;\n' +
         '  vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);\n' +
         '  vec3 moonEv=mdisc*moonRed*2.0+exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;\n' +
         '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
-        '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.0),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
-        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05,el*3.0-t*0.02));\n' +
-        '    float cover=smoothstep(0.7,0.0,el)*step(0.0,el);\n' +
-        '    vec3 cloud=mix(vec3(0.30,0.32,0.36),vec3(0.03,0.04,0.06),night);\n' +
-        '    col=mix(col,cloud,cover*smoothstep(0.35,0.7,cl)*wStorm*0.9); }\n' +
-        '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),wStorm*0.3); col*=mix(1.0,0.7,wStorm*0.5);\n' +
-        '  col=mix(col,col*vec3(0.85,0.95,1.15)+vec3(0.05,0.07,0.10),wSnow*0.5);\n' +
-        '  col=mix(col,col*vec3(1.20,1.00,0.70)+vec3(0.08,0.05,0.0),wSand*0.45);\n' +
-        '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.06,0.0,0.0),wBlood*0.5);\n' +
-        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.95));\n' +
+        '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.10,0.08,0.18),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
+        // ── storm overcast: seamless, weighted to the lower sky, no hard edge ──
+        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05, v*3.0 - t*0.02));\n' +
+        '    float cover=smoothstep(0.70,0.12,v);\n' +
+        '    vec3 cloud=mix(vec3(0.16,0.17,0.22),vec3(0.03,0.035,0.06),night);\n' +
+        '    col=mix(col,cloud,cover*smoothstep(0.40,0.70,cl)*wStorm*0.85); }\n' +
+        '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),wStorm*0.25); col*=mix(1.0,0.72,wStorm*0.5);\n' +
+        '  col=mix(col,col*vec3(0.85,0.95,1.15)+vec3(0.04,0.06,0.09),wSnow*0.4);\n' +
+        '  col=mix(col,col*vec3(1.18,1.00,0.74)+vec3(0.05,0.03,0.0),wSand*0.35);\n' +
+        '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),wBlood*0.45);\n' +
+        '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.92));\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
     }
@@ -6622,10 +6655,10 @@ const ThreeRenderer = (function () {
         _envUni.uWallH.value = _ENV_WALL_H;
         _envUni.uTile.value = ts;
 
-        // The molten/cracked plane is no longer the floor the map sits on —
-        // it's banished far below as a distant abyssal rift, so the board and
-        // all the scenery read as floating high in the void above it.
-        if (_envGround) { _envGround.position.set(cx, -discR * 0.62, cz); _envGround.scale.set(discR * 1.35, 1, discR * 1.35); }
+        // No ground plane and no rift disc — both created a hard horizon line.
+        // The full-sphere cosmic dome is now the one seamless backdrop in every
+        // direction, so the board and scenery read as floating in open space.
+        if (_envGround) _envGround.visible = false;
         if (_envWall) { _envWall.position.set(cx, _ENV_WALL_H * 0.5, cz); _envWall.scale.set(discR, _ENV_WALL_H, discR); }
         if (_envDome) {
             var camo = ThreeCamera.getCamera();
