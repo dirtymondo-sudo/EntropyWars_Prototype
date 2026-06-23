@@ -6303,7 +6303,7 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     //  FLAT-EARTH FIRMAMENT ENVIRONMENT
     //  Real 3D geometry living in the battle scene, sharing the game camera:
-    //  a masonic checkerboard ground plane that extends the board out to a
+    //  a scorched abyssal ground plane that extends the board out to a
     //  circular ice-wall horizon, under a firmament sky dome. Because it is
     //  actual world geometry it tilts / rotates / zooms with the map, and you
     //  can look up to see the sky. Reacts to the day/night cycle, sky events,
@@ -6332,29 +6332,39 @@ const ThreeRenderer = (function () {
         'void main(){ vec4 wp=modelMatrix*vec4(position,1.0); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }';
 
     function _envGroundFS() {
+        // No more masonic checkerboard. The ground is now an abstract scorched
+        // abyssal plain — charred obsidian with large-scale value drift, fine
+        // grain and dim aether/lava seeping up through cracks — ringed by faint
+        // esoteric sigils far out and dissolving into a fog horizon.
         return 'varying vec3 vWorld;\n' + _ENV_COMMON + '\n' +
-        'float checkersGrad(vec2 uv){ vec2 w=fwidth(uv)+1e-4; vec2 i=2.0*(abs(fract((uv-0.5*w)/2.0)-0.5)-abs(fract((uv+0.5*w)/2.0)-0.5))/w; return 0.5-0.5*i.x*i.y; }\n' +
         'void main(){\n' +
         '  float night=uDayNight;\n' +
-        '  vec2 q=vWorld.xz-uCenter.xz; float rr=length(q); float th=atan(q.y,q.x);\n' +
-        '  float chk=checkersGrad(vWorld.xz/uTile);\n' +
-        '  vec3 darkSq=mix(vec3(0.05,0.05,0.07),vec3(0.012,0.012,0.022),night);\n' +
-        '  vec3 liteSq=mix(vec3(0.80,0.80,0.84),vec3(0.10,0.12,0.18),night);\n' +
-        '  vec3 col=mix(darkSq,liteSq,chk);\n' +
+        '  vec2 p=vWorld.xz; vec2 q=p-uCenter.xz; float rr=length(q); float th=atan(q.y,q.x);\n' +
+        '  float big=fbm(p/(uTile*6.0));\n' +
+        '  float grain=fbm(p/(uTile*0.55));\n' +
+        '  vec3 charC=mix(vec3(0.028,0.025,0.032),vec3(0.006,0.006,0.013),night);\n' +
+        '  vec3 ashC =mix(vec3(0.075,0.068,0.082),vec3(0.020,0.019,0.030),night);\n' +
+        '  vec3 col=mix(charC,ashC,clamp(big*0.7+grain*0.3,0.0,1.0));\n' +
+        '  // glowing fissures — molten by day, aetheric violet by night\n' +
+        '  float crk=fbm(p/(uTile*2.1)+vec2(11.3,4.7));\n' +
+        '  float crack=smoothstep(0.45,0.50,crk)*smoothstep(0.57,0.51,crk);\n' +
+        '  vec3 emberC=mix(vec3(0.95,0.34,0.12),vec3(0.42,0.30,0.92),night);\n' +
+        '  float pulse=0.6+0.4*sin(uTime*0.6+crk*32.0);\n' +
+        '  col+=crack*emberC*(0.22+0.45*night)*pulse*smoothstep(0.0,uTile*4.0,rr);\n' +
         '  float rn=rr/uTile;\n' +
-        '  vec3 sigCol=mix(vec3(0.55,0.45,0.85),vec3(0.45,0.65,1.0),night);\n' +
-        '  float rings=smoothstep(0.95,1.0,abs(sin(rn*0.6-uTime*0.08)));\n' +
-        '  float spokes=smoothstep(0.93,1.0,abs(cos(th*6.0)));\n' +
-        '  float rosette=smoothstep(0.86,1.0,abs(sin(th*6.0+rn*0.4)));\n' +
-        '  float sig=rings*0.5+spokes*0.2+rosette*0.28;\n' +
-        '  col+=sig*sigCol*uOccult*smoothstep(3.0,12.0,rn)*0.4;\n' +
+        '  vec3 sigCol=mix(vec3(0.45,0.40,0.82),vec3(0.42,0.62,1.0),night);\n' +
+        '  float rings=smoothstep(0.96,1.0,abs(sin(rn*0.5-uTime*0.05)));\n' +
+        '  float spokes=smoothstep(0.95,1.0,abs(cos(th*9.0)));\n' +
+        '  float rosette=smoothstep(0.90,1.0,abs(sin(th*6.0+rn*0.35)));\n' +
+        '  float sig=rings*0.5+spokes*0.16+rosette*0.22;\n' +
+        '  col+=sig*sigCol*uOccult*smoothstep(4.0,16.0,rn)*0.34;\n' +
         '  float zr=uDiscR*0.45;\n' +
-        '  col+=smoothstep(uTile*5.0,0.0,abs(rr-zr))*smoothstep(0.85,1.0,abs(cos(th*6.0)))*sigCol*uOccult*0.3;\n' +
-        '  float fog=smoothstep(uDiscR*0.16,uDiscR*0.82,rr);\n' +
-        '  vec3 haze=mix(vec3(0.62,0.74,0.86),vec3(0.03,0.05,0.11),night);\n' +
+        '  col+=smoothstep(uTile*5.0,0.0,abs(rr-zr))*smoothstep(0.85,1.0,abs(cos(th*6.0)))*sigCol*uOccult*0.25;\n' +
+        '  float fog=smoothstep(uDiscR*0.14,uDiscR*0.80,rr);\n' +
+        '  vec3 haze=mix(vec3(0.50,0.60,0.72),vec3(0.02,0.035,0.085),night);\n' +
         '  col=mix(col,haze,fog*0.97);\n' +
         '  float rim=smoothstep(uDiscR*0.86,uDiscR,rr);\n' +
-        '  col+=rim*mix(vec3(0.5,0.75,0.95),vec3(0.18,0.38,0.66),night)*0.5;\n' +
+        '  col+=rim*mix(vec3(0.45,0.68,0.92),vec3(0.16,0.34,0.62),night)*0.45;\n' +
         '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),uWeather.w*0.4);\n' +
         '  col=mix(col,col*vec3(1.15,1.0,0.75),uWeather.z*0.35);\n' +
         '  float lum=dot(col,vec3(0.299,0.587,0.114)); col=mix(col,vec3(lum),uWeather.x*0.3);\n' +
@@ -6639,19 +6649,26 @@ const ThreeRenderer = (function () {
 
         // keep the real horizon scenery in sync + atmospherically graded
         _buildHorizonScenery();
+        _animateFloaters(_envUni.uTime.value);
         _gradeHorizonScenery(S.night, S.skyEvent, S.skyAmt);
     }
 
     // ════════════════════════════════════════════════════════════════════
     //  HORIZON SCENERY
-    //  Surreal landmarks built from real THREE geometry — nexus-textured
-    //  mountain peaks, stairways to nowhere and abandoned greek temple ruins —
-    //  ringing the board out on the horizon with plenty of gaps so the
-    //  ground-meets-sky line stays visible. Everything is solid world
-    //  geometry so it tilts / rotates / zooms with the map, and it is graded
-    //  by the day/night cycle + sky events just like the rest of the scene.
+    //  Surreal landmarks built from real THREE geometry, telling an abstract,
+    //  apocalyptic, esoteric visual story. A ground layer of monuments stands on
+    //  the scorched plain — nexus-textured peaks, greek colonnade ruins,
+    //  stairways to nowhere, great pyramids (some tilted and half-sunk), stepped
+    //  ziggurats, gateways to nowhere, obelisks, leaning black monoliths,
+    //  toppled colossi and crystal outcrops — and a sparser floating layer of
+    //  broken islands, sacred-geometry orbital haloes and drifting crystal
+    //  shards hangs in the sky, gently bobbing and spinning. Plenty of gaps keep
+    //  the ground-meets-sky line visible. Everything is solid world geometry so
+    //  it tilts / rotates / zooms with the map, and it is graded by the
+    //  day/night cycle + sky events just like the rest of the scene.
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
+    var _horizonFloaters = [];          // { obj, baseY, amp, spd, phase, spin }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
 
     function _mulberry32(a) {
@@ -6847,6 +6864,214 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    // Uniformly tile a non-box geometry (cone / cylinder / torus / poly) whose
+    // base UVs span 0..1, by an approximate world size so it keeps terrain
+    // pixel density. Thin wrapper around _hzScaleUV for readability.
+    function _hzTileUV(geo, worldU, worldV, ts) {
+        _hzScaleUV(geo, Math.max(1, worldU / ts), Math.max(1, worldV / ts));
+    }
+
+    // A great pyramid. Some are pristine; others are tilted and half-swallowed
+    // by the ground — monuments of a civilisation the apocalypse came for.
+    function _hzPyramid(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex(rng() < 0.5 ? 'desert' : 'wasteland') || _hzTex('scorched');
+        var base = rng() < 0.5 ? 0xd6c39a : 0xb6a78c;
+        var h = ts * (7 + rng() * 8);
+        var r = h * (0.78 + rng() * 0.35);
+        var geo = new THREE.ConeGeometry(r, h, 4, 1, false);
+        _hzTileUV(geo, r, h, ts);
+        var m = new THREE.Mesh(geo, _hzGeoMat(tex, base));
+        m.rotation.y = Math.PI / 4;                       // present a flat face
+        m.position.y = h * 0.5;
+        g.add(m);
+        if (rng() < 0.45) {                               // tilted & sinking
+            g.rotation.z = (rng() - 0.5) * 0.5;
+            g.position.y = -h * (0.10 + rng() * 0.28);
+        }
+        return g;
+    }
+
+    // Mesopotamian stepped ziggurat — diminishing terraces crowned by a shrine.
+    function _hzZiggurat(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('bricks_1') || _hzTex('ruins');
+        var tiers = 4 + (rng() * 3 | 0);
+        var w = ts * (6 + rng() * 3.5);
+        var th = ts * (0.9 + rng() * 0.4);
+        var y = 0;
+        for (var i = 0; i < tiers; i++) {
+            var f = 1 - i / (tiers + 1.2);
+            var tw = w * f;
+            var box = _hzBox(tw, th, tw, ts, _hzGeoMat(tex, i % 2 ? 0xc6b694 : 0xd6c6a4));
+            box.position.y = y + th * 0.5;
+            g.add(box);
+            y += th;
+        }
+        var shrine = _hzBox(w * 0.16, th * 1.5, w * 0.16, ts, _hzGeoMat(tex, 0xb29070));
+        shrine.position.y = y + th * 0.75;
+        g.add(shrine);
+        return g;
+    }
+
+    // A solitary leaning monolith — a black obsidian slab, sentinel and omen.
+    function _hzMonolith(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('obsidian');
+        var h = ts * (8 + rng() * 9);
+        var w = ts * (1.5 + rng() * 1.1), d = w * (0.28 + rng() * 0.12);
+        var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x1f232d));
+        slab.position.y = h * 0.5;
+        g.add(slab);
+        g.rotation.z = (rng() - 0.5) * 0.22;              // ominous lean
+        g.rotation.x = (rng() - 0.5) * 0.06;
+        return g;
+    }
+
+    // A free-standing gateway to nowhere — two piers and a lintel framing only
+    // sky. Sometimes a pier has crumbled and the lintel hangs broken.
+    function _hzGateway(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('bricks_2') || _hzTex('ruins');
+        var base = 0xcabfa2;
+        var h = ts * (5 + rng() * 4.5);
+        var pw = ts * (0.8 + rng() * 0.45);
+        var gap = ts * (2.2 + rng() * 1.6);
+        var leftBroken = rng() < 0.3;
+        var lh = leftBroken ? h * (0.4 + rng() * 0.3) : h;
+        var L = _hzBox(pw, lh, pw, ts, _hzGeoMat(tex, base));
+        L.position.set(-gap * 0.5, lh * 0.5, 0); g.add(L);
+        var R = _hzBox(pw, h, pw, ts, _hzGeoMat(tex, base));
+        R.position.set(gap * 0.5, h * 0.5, 0); g.add(R);
+        if (!leftBroken) {
+            var lint = _hzBox(gap + pw * 2.0, pw * 1.1, pw, ts, _hzGeoMat(tex, base * 1));
+            lint.position.set(0, h + pw * 0.5, 0); g.add(lint);
+        } else {
+            var stub = _hzBox(gap * 0.55, pw * 1.0, pw, ts, _hzGeoMat(tex, 0xb8ad90));
+            stub.position.set(gap * 0.18, h + pw * 0.45, 0);
+            stub.rotation.z = -0.12; g.add(stub);
+        }
+        return g;
+    }
+
+    // A tapered obelisk capped by a pyramidion — fingers of dead empires.
+    function _hzObelisk(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('scorched') || _hzTex('wasteland');
+        var h = ts * (7 + rng() * 6);
+        var w = ts * (0.6 + rng() * 0.35);
+        var geo = new THREE.CylinderGeometry(w * 0.55, w, h, 4, 1);
+        _hzTileUV(geo, w, h, ts);
+        var shaft = new THREE.Mesh(geo, _hzGeoMat(tex, 0xbcad8e));
+        shaft.rotation.y = Math.PI / 4; shaft.position.y = h * 0.5; g.add(shaft);
+        var capGeo = new THREE.ConeGeometry(w * 0.78, w * 1.15, 4, 1);
+        _hzTileUV(capGeo, w, w, ts);
+        var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xc8b896));
+        cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.55; g.add(cap);
+        return g;
+    }
+
+    // A toppled colossus: a felled giant column lying in the dust with its
+    // drums scattered around it — the Ozymandias beat of the skyline.
+    function _hzColossus(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('bricks_2') || _hzTex('ruins');
+        var len = ts * (8 + rng() * 6), r = ts * (0.8 + rng() * 0.4);
+        var body = _hzCyl(r, r, len, 12, ts, _hzGeoMat(tex, 0xd0c4a6));
+        body.rotation.z = Math.PI / 2; body.position.set(0, r, 0); g.add(body);
+        // a broken capital block at one end
+        var cap = _hzBox(r * 2.6, r * 1.0, r * 2.6, ts, _hzGeoMat(tex, 0xc6ba9c));
+        cap.position.set(-len * 0.5 - r, r, 0); cap.rotation.z = 0.1; g.add(cap);
+        var drums = 2 + (rng() * 3 | 0);
+        for (var i = 0; i < drums; i++) {
+            var dh = ts * (0.7 + rng() * 0.6);
+            var drum = _hzCyl(r * 0.95, r, dh, 12, ts, _hzGeoMat(tex, 0xc8bc9e));
+            drum.position.set(len * 0.5 + ts * (0.6 + i * 0.95), r * (0.7 + rng() * 0.4), (rng() - 0.5) * ts * 1.6);
+            drum.rotation.set((rng() - 0.5) * 0.7, rng() * Math.PI, Math.PI / 2 + (rng() - 0.5) * 0.5);
+            g.add(drum);
+        }
+        return g;
+    }
+
+    // A cluster of crystalline shards thrusting from the ground — alien, lit
+    // from within. Reused on the ground and floating in the air.
+    function _hzCrystalShards(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('crystal') || _hzTex('obsidian');
+        var n = 3 + (rng() * 4 | 0);
+        for (var i = 0; i < n; i++) {
+            var h = ts * (3 + rng() * 6), r = h * (0.14 + rng() * 0.12);
+            var geo = new THREE.ConeGeometry(r, h, 5, 1);
+            _hzTileUV(geo, r, h, ts);
+            var m = new THREE.Mesh(geo, _hzGeoMat(tex, 0x9fb6e8));
+            var a = rng() * Math.PI * 2, rad = ts * (0.3 + rng() * 1.6);
+            m.position.set(Math.cos(a) * rad, h * 0.5, Math.sin(a) * rad);
+            m.rotation.set((rng() - 0.5) * 0.45, rng() * Math.PI, (rng() - 0.5) * 0.45);
+            g.add(m);
+        }
+        return g;
+    }
+
+    // A broken-off island of land hovering in the air: a slab top (with a small
+    // ruin or crystals) over a tapered rocky underside, debris trailing below.
+    function _hzFloatingIsland(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var topTex = _hzTex(rng() < 0.5 ? 'wasteland' : 'scorched') || _hzTex('dirt');
+        var rockTex = _hzTex('cliff') || _hzTex('rock');
+        var r = ts * (3 + rng() * 3.5), topH = ts * 0.8;
+        var top = _hzCyl(r, r * 0.95, topH, 9, ts, _hzGeoMat(topTex, 0xb6a886));
+        g.add(top);
+        var uh = r * (1.4 + rng() * 0.9);
+        var ug = new THREE.ConeGeometry(r * 0.95, uh, 9, 1);
+        _hzTileUV(ug, r, uh, ts);
+        var under = new THREE.Mesh(ug, _hzGeoMat(rockTex, 0x6e665a));
+        under.rotation.x = Math.PI; under.position.y = -topH * 0.5 - uh * 0.5; g.add(under);
+        if (rng() < 0.65) {                               // crown it
+            var crown = rng() < 0.5 ? _hzGreekRuin(rng) : _hzCrystalShards(rng);
+            crown.scale.setScalar(0.5); crown.position.y = topH * 0.5; g.add(crown);
+        }
+        // a few chunks of falling debris
+        var deb = 2 + (rng() * 3 | 0);
+        for (var i = 0; i < deb; i++) {
+            var s = ts * (0.4 + rng() * 0.5);
+            var chunk = _hzBox(s, s, s, ts, _hzGeoMat(rockTex, 0x6a6256));
+            var a = rng() * Math.PI * 2;
+            chunk.position.set(Math.cos(a) * r * (0.3 + rng() * 0.5), -uh * (0.4 + rng() * 0.8), Math.sin(a) * r * (0.3 + rng() * 0.5));
+            chunk.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
+            g.add(chunk);
+        }
+        return g;
+    }
+
+    // Sacred-geometry orbital halo — tilted obsidian rings spinning around a
+    // glowing crystal core, like a derelict armillary sphere adrift in the sky.
+    function _hzSacredRings(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var ringTex = _hzTex('obsidian');
+        var R = ts * (2.6 + rng() * 2.6);
+        var n = 2 + (rng() * 2 | 0);
+        for (var i = 0; i < n; i++) {
+            var rr = R * (0.6 + i * 0.30);
+            var tg = new THREE.TorusGeometry(rr, ts * 0.12, 6, 44);
+            _hzTileUV(tg, 2 * Math.PI * rr, ts, ts);
+            var ring = new THREE.Mesh(tg, _hzGeoMat(ringTex, 0x8a7fae));
+            ring.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
+            g.add(ring);
+        }
+        var core = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.62, 0), _hzGeoMat(_hzTex('crystal'), 0xc2cef2));
+        g.add(core);
+        return g;
+    }
+
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || 128;
@@ -6858,6 +7083,7 @@ const ThreeRenderer = (function () {
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonMats.length = 0;
+        _horizonFloaters.length = 0;
         _horizonGroup = new THREE.Group();
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
@@ -6865,29 +7091,76 @@ const ThreeRenderer = (function () {
 
         var R = discR * 0.92;
         var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
-        var slots = 90;
+
+        // ── ground layer: monuments standing on the scorched plain ──
+        // Weighted roster, cumulative thresholds. Mountains stay the back wall;
+        // the rest tells a fallen-civilisation story scattered with open gaps.
+        var GROUND = [
+            [0.30, _hzMountain],      // distant faceted peaks (back layer)
+            [0.44, _hzGreekRuin],     // colonnade ruins
+            [0.55, _hzStairway],      // stairways to nowhere
+            [0.66, _hzPyramid],       // great pyramids (some sinking)
+            [0.74, _hzZiggurat],      // stepped temples
+            [0.82, _hzGateway],       // gateways to nowhere
+            [0.88, _hzObelisk],       // obelisks
+            [0.93, _hzMonolith],      // leaning black monoliths
+            [0.97, _hzColossus],      // toppled colossi
+            [1.00, _hzCrystalShards]  // crystal outcrops
+        ];
+        var slots = 96;
         for (var i = 0; i < slots; i++) {
             if (rng() < 0.55) continue;                         // gaps keep the horizon open
             var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.06;
             var rr = R * (0.82 + rng() * 0.20);
             var x = cx + Math.cos(ang) * rr;
             var z = cz + Math.sin(ang) * rr;
-
-            // nexus-textured mountains form the back layer; ruins + stairways fill the rest
             var roll = rng(), mesh = null;
-            if (roll < 0.44) {
-                mesh = _hzMountain(rng);
-            } else if (roll < 0.76) {
-                mesh = _hzGreekRuin(rng);
-            } else {
-                mesh = _hzStairway(rng);
+            for (var gi = 0; gi < GROUND.length; gi++) {
+                if (roll < GROUND[gi][0]) { mesh = GROUND[gi][1](rng); break; }
             }
             if (!mesh) continue;
             mesh.position.set(x, 0, z);
             mesh.rotation.y = Math.atan2(cx - x, cz - z);       // front faces the arena
             _horizonGroup.add(mesh);
         }
+
+        // ── floating layer: islands, haloes and shards drifting in the sky ──
+        // Sparser, set further back and lifted off the ground; gently animated
+        // in _updateEnvironment so the background quietly breathes.
+        var FLOAT = [_hzFloatingIsland, _hzSacredRings, _hzCrystalShards, _hzFloatingIsland];
+        var fslots = 26;
+        for (var j = 0; j < fslots; j++) {
+            if (rng() < 0.55) continue;
+            var fang = (j / fslots) * Math.PI * 2 + (rng() - 0.5) * 0.12;
+            var frr = R * (0.70 + rng() * 0.28);
+            var fx = cx + Math.cos(fang) * frr;
+            var fz = cz + Math.sin(fang) * frr;
+            var fy = ts * (5 + rng() * 11);
+            var fmesh = FLOAT[(rng() * FLOAT.length) | 0](rng);
+            if (!fmesh) continue;
+            fmesh.position.set(fx, fy, fz);
+            fmesh.rotation.y = Math.atan2(cx - fx, cz - fz);
+            _horizonGroup.add(fmesh);
+            _horizonFloaters.push({
+                obj: fmesh, baseY: fy,
+                amp: ts * (0.4 + rng() * 0.9),
+                spd: 0.12 + rng() * 0.22,
+                phase: rng() * Math.PI * 2,
+                spin: (rng() < 0.5 ? 1 : -1) * (0.0006 + rng() * 0.0016)
+            });
+        }
+
         scene.add(_horizonGroup);
+    }
+
+    // Gentle drift for the floating background scenery — a slow vertical bob
+    // plus a lazy spin, giving the skyline cinematic, dream-like motion.
+    function _animateFloaters(t) {
+        for (var i = 0; i < _horizonFloaters.length; i++) {
+            var f = _horizonFloaters[i];
+            f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
+            f.obj.rotation.y += f.spin;
+        }
     }
 
     function _gradeHorizonScenery(night, skyEvent, skyAmt) {
