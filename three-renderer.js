@@ -6644,28 +6644,18 @@ const ThreeRenderer = (function () {
 
     // ════════════════════════════════════════════════════════════════════
     //  HORIZON SCENERY
-    //  Real textured background elements — abandoned / large buildings,
-    //  columns, trees and the odd rocky peak — ringing the board out on the
-    //  horizon with plenty of gaps so the ground-meets-sky line stays visible.
-    //  Built from the game's own object sprites + terrain textures (R2), so it
-    //  matches the in-world art and tilts / zooms with the camera.
-    //  ► To add the "night city" assets: drop their full R2 png urls into
-    //    _HORIZON_CITY_URLS below — they get folded into the building pool.
+    //  Surreal landmarks built from real THREE geometry — ancient pyramids
+    //  (textured with the nexus terrain sprite), stairways to nowhere,
+    //  giant trees, abandoned greek temple ruins and the odd rocky peak —
+    //  ringing the board out on the horizon with plenty of gaps so the
+    //  ground-meets-sky line stays visible. Everything is solid world
+    //  geometry so it tilts / rotates / zooms with the map, and it is graded
+    //  by the day/night cycle + sky events just like the rest of the scene.
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
-    var _HORIZON_BUILDINGS = [
-        'building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6',
-        'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
-        'abandoned_building_1', 'abandoned_building_2', 'ancient_building', 'church_1', 'church_2'
-    ];
-    var _HORIZON_TREES = ['tree_2', 'tree_3', 'tree_4', 'tree_5', 'tree_6'];
-    var _HORIZON_COLUMNS = ['column_1', 'column_2', 'column_3', 'column_4'];
     var _R2_TERR = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
     var _HORIZON_ROCK_URLS = [_R2_TERR + 'rock.png', _R2_TERR + 'rocks_4.png'];
-    // Night-city / extra background pngs (full R2 urls). Appended into the
-    // building rotation when present.
-    var _HORIZON_CITY_URLS = [];
 
     function _mulberry32(a) {
         return function () {
@@ -6712,6 +6702,167 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.add(m); return g;
     }
 
+    // ── geometry helpers for the landmark structures ──
+    // Repeat-wrapped terrain texture CLONES, cached per (key,repeat). We clone
+    // so we never mutate the shared in-world terrain textures' wrap/repeat.
+    var _hzTexCache = {};
+    function _hzRepeatTex(terrainKey, repX, repY) {
+        var ck = terrainKey + ':' + repX + 'x' + repY;
+        if (_hzTexCache[ck]) return _hzTexCache[ck];
+        var src = getTerrainTexture(terrainKey);
+        if (!src) return null;
+        var tex = src.clone();
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repX, repY);
+        tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+        tex.needsUpdate = true;
+        // the clone shares the source Image object; bump it once the source loads
+        if (!src.image || !src.image.complete) {
+            var u = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
+            if (u) getTexture(u, function () { tex.needsUpdate = true; });
+        }
+        _hzTexCache[ck] = tex;
+        return tex;
+    }
+
+    // Textured MeshBasicMaterial registered for day/night grading. The grade
+    // pass multiplies the texture by `base` * the atmospheric tint, so `base`
+    // sets the structure's intrinsic stone/wood/foliage colour.
+    function _hzGeoMat(tex, base) {
+        var mat = new THREE.MeshBasicMaterial({
+            map: tex || null,
+            color: new THREE.Color(base == null ? 0xffffff : base),
+            side: THREE.FrontSide, depthWrite: true, fog: false
+        });
+        mat._ew_hzBase = new THREE.Color(base == null ? 0xffffff : base);
+        _horizonMats.push(mat);
+        return mat;
+    }
+
+    // Ancient stepped pyramid, textured with the nexus terrain sprite.
+    function _hzPyramid(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzRepeatTex('nexus', 2, 2);
+        var tiers = 5 + (rng() * 3 | 0);
+        var baseW = ts * (10 + rng() * 6);
+        var totalH = baseW * (0.85 + rng() * 0.35);
+        var tierH = totalH / tiers;
+        for (var t = 0; t < tiers; t++) {
+            var f = 1 - t / tiers;                       // shrink toward the apex
+            var w = baseW * (0.16 + 0.84 * f);
+            var mat = _hzGeoMat(tex, 0xffffff);          // let the nexus colours speak
+            var box = new THREE.Mesh(new THREE.BoxGeometry(w, tierH * 1.02, w), mat);
+            box.position.y = tierH * (t + 0.5);
+            g.add(box);
+        }
+        // small capstone glow tile
+        var capMat = _hzGeoMat(tex, 0xffffff);
+        var cap = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.12, tierH * 0.5, baseW * 0.12), capMat);
+        cap.position.y = totalH + tierH * 0.25;
+        g.add(cap);
+        return g;
+    }
+
+    // A surreal floating stairway climbing up and ending in mid-air.
+    function _hzStairway(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var topTex = _hzRepeatTex('bricks_3', 1, 1);
+        var sideTex = _hzRepeatTex('ruins', 1, 1) || topTex;
+        var steps = 16 + (rng() * 12 | 0);
+        var stepW = ts * (2.4 + rng() * 1.8);
+        var rise = ts * (0.55 + rng() * 0.25);
+        var depth = ts * (0.85 + rng() * 0.35);
+        var lean = (rng() - 0.5) * 0.18;                 // slight sideways drift
+        for (var s = 0; s < steps; s++) {
+            var topMat = _hzGeoMat(topTex, 0xe6ddca);
+            var sideMat = _hzGeoMat(sideTex, 0xb3a892);
+            var mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+            var tread = new THREE.Mesh(new THREE.BoxGeometry(stepW, rise * 0.4, depth), mats);
+            tread.position.set(s * stepW * lean, rise * (s + 0.5), -depth * s);
+            g.add(tread);
+        }
+        return g;
+    }
+
+    // Giant tree — fat textured trunk plus a cluster of foliage blobs.
+    function _hzGiantTree(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var woodTex = _hzRepeatTex('wood', 2, 5);
+        var foliTex = _hzRepeatTex('forest', 3, 3);
+        var trunkH = ts * (8 + rng() * 6);
+        var trunkR = ts * (0.7 + rng() * 0.5);
+        var trunkMat = _hzGeoMat(woodTex, 0x5e4634);
+        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.55, trunkR, trunkH, 9, 1), trunkMat);
+        trunk.position.y = trunkH * 0.5;
+        g.add(trunk);
+        var canopyR = ts * (3.4 + rng() * 1.8);
+        var canopyBase = trunkH * 0.92;
+        var greens = [0x256a28, 0x2f7a33, 0x1f5e2a, 0x387f30];
+        var blobs = 5 + (rng() * 3 | 0);
+        for (var b = 0; b < blobs; b++) {
+            var mat = _hzGeoMat(foliTex, greens[(rng() * greens.length) | 0]);
+            var r = canopyR * (0.55 + rng() * 0.55);
+            var blob = new THREE.Mesh(new THREE.SphereGeometry(r, 9, 7), mat);
+            var ang = rng() * Math.PI * 2, rad = canopyR * 0.55 * rng();
+            blob.position.set(Math.cos(ang) * rad, canopyBase + (rng() - 0.25) * canopyR * 0.9, Math.sin(ang) * rad);
+            blob.scale.y = 0.85;
+            g.add(blob);
+        }
+        return g;
+    }
+
+    // Abandoned greek temple — a stylobate, a colonnade of (some broken)
+    // columns and a partial entablature beam.
+    function _hzGreekRuin(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var stoneTex = _hzRepeatTex('bricks_2', 2, 1);
+        var colTex = _hzRepeatTex('bricks_2', 1, 5);
+        var beamTex = _hzRepeatTex('ruins', 3, 1) || stoneTex;
+        var cols = 4 + (rng() * 4 | 0);
+        var spacing = ts * 2.0;
+        var colH = ts * (5 + rng() * 3);
+        var colR = ts * 0.55;
+        var baseW = spacing * (cols - 1) + ts * 2.2;
+        var baseH = ts * 1.1;
+        var baseD = ts * 3.0;
+
+        var baseMat = _hzGeoMat(stoneTex, 0xe2d8bf);
+        var stylobate = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseD), baseMat);
+        stylobate.position.y = baseH * 0.5;
+        g.add(stylobate);
+
+        var startX = -spacing * (cols - 1) / 2;
+        var allIntact = true;
+        for (var c = 0; c < cols; c++) {
+            var broken = rng() < 0.35;
+            var h = broken ? colH * (0.3 + rng() * 0.45) : colH;
+            if (broken) allIntact = false;
+            var colMat = _hzGeoMat(colTex, 0xe6dcc4);
+            var col = new THREE.Mesh(new THREE.CylinderGeometry(colR * 0.9, colR, h, 12, 1), colMat);
+            col.position.set(startX + c * spacing, baseH + h * 0.5, 0);
+            g.add(col);
+            if (!broken) {
+                var capMat = _hzGeoMat(stoneTex, 0xe6dcc4);
+                var cap = new THREE.Mesh(new THREE.BoxGeometry(colR * 2.5, ts * 0.4, colR * 2.5), capMat);
+                cap.position.set(startX + c * spacing, baseH + h + ts * 0.18, 0);
+                g.add(cap);
+            }
+        }
+        // entablature beam spanning the colonnade when enough columns survive
+        if (allIntact || rng() < 0.5) {
+            var span = allIntact ? baseW * 0.96 : baseW * (0.4 + rng() * 0.4);
+            var beamMat = _hzGeoMat(beamTex, 0xd8cdb0);
+            var beam = new THREE.Mesh(new THREE.BoxGeometry(span, ts * 0.7, colR * 2.6), beamMat);
+            beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + ts * 0.5, 0);
+            g.add(beam);
+        }
+        return g;
+    }
+
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || 128;
@@ -6730,27 +6881,27 @@ const ThreeRenderer = (function () {
 
         var R = discR * 0.92;
         var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
-        var slots = 110;
+        var slots = 90;
         for (var i = 0; i < slots; i++) {
-            if (rng() < 0.5) continue;                          // gaps keep the horizon open
-            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.05;
-            var rr = R * (0.84 + rng() * 0.18);
+            if (rng() < 0.55) continue;                         // gaps keep the horizon open
+            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.06;
+            var rr = R * (0.82 + rng() * 0.20);
             var x = cx + Math.cos(ang) * rr;
             var z = cz + Math.sin(ang) * rr;
 
+            // distant rocky peaks form the back layer; surreal landmarks fill the rest
             var roll = rng(), mesh = null;
-            if (roll < 0.08) {
+            if (roll < 0.14) {
                 var rtex = getTexture(_HORIZON_ROCK_URLS[(rng() * _HORIZON_ROCK_URLS.length) | 0]);
                 if (rtex) { var rh = ts * (5 + rng() * 8); mesh = _horizonRock(rtex, rh * (1.2 + rng() * 0.7), rh); }
-            } else if (roll < 0.72) {
-                var useCity = _HORIZON_CITY_URLS.length && rng() < 0.5;
-                var burl = useCity ? _HORIZON_CITY_URLS[(rng() * _HORIZON_CITY_URLS.length) | 0]
-                                   : _objUrl(_HORIZON_BUILDINGS[(rng() * _HORIZON_BUILDINGS.length) | 0]);
-                mesh = _horizonBillboard(burl, ts * (7 + rng() * 11), 0.55);
-            } else if (roll < 0.9) {
-                mesh = _horizonBillboard(_objUrl(_HORIZON_TREES[(rng() * _HORIZON_TREES.length) | 0]), ts * (4 + rng() * 5), 0.8);
+            } else if (roll < 0.42) {
+                mesh = _hzGiantTree(rng);
+            } else if (roll < 0.62) {
+                mesh = _hzPyramid(rng);
+            } else if (roll < 0.84) {
+                mesh = _hzGreekRuin(rng);
             } else {
-                mesh = _horizonBillboard(_objUrl(_HORIZON_COLUMNS[(rng() * _HORIZON_COLUMNS.length) | 0]), ts * (5 + rng() * 6), 0.35);
+                mesh = _hzStairway(rng);
             }
             if (!mesh) continue;
             mesh.position.set(x, 0, z);
@@ -6769,7 +6920,10 @@ const ThreeRenderer = (function () {
         var ecl = (skyEvent >= 1.5) ? skyAmt : 0;
         for (var i = 0; i < _horizonMats.length; i++) {
             var m = _horizonMats[i];
-            m.color.copy(_hzScratch);
+            // geometry landmarks carry an intrinsic base colour; billboards/rocks
+            // default to white (so they read as plain texture * atmosphere).
+            if (m._ew_hzBase) m.color.copy(m._ew_hzBase).multiply(_hzScratch);
+            else m.color.copy(_hzScratch);
             if (m._ew_rock) m.color.multiplyScalar(0.82);
             if (bloodM > 0.01) m.color.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.5);
             if (ecl > 0.01) m.color.multiplyScalar(1.0 - ecl * 0.35);
