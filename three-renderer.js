@@ -6709,6 +6709,7 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
     var _horizonFloaters = [];          // { obj, baseY, amp, spd, phase, spin }
+    var _hzGlowPulse = [];              // self-lit accents that breathe: { mat, mesh, baseOp, opAmp, baseScl, sclAmp, spd, phase }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
 
     // ── Atmospheric haze (lightweight "background fog") ──
@@ -6855,6 +6856,48 @@ const ThreeRenderer = (function () {
         return mat;
     }
 
+    // ── Self-lit glow accents ───────────────────────────────────────────
+    // Luminous cores/auras/runes that make the esoteric landmarks "pop" and
+    // push the backdrop into bloom territory (post bloom threshold ≈ 0.82, so
+    // these bright additive surfaces bloom on their own). Deliberately NOT
+    // registered in _horizonMats, so the day/night + haze grade never dims
+    // them — an astral light that survives every sky. Tracked separately so
+    // they breathe with a slow opacity/scale pulse.
+    function _hzGlowMat(color, opacity) {
+        return new THREE.MeshBasicMaterial({
+            color: new THREE.Color(color), transparent: true, opacity: opacity,
+            blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+            side: THREE.DoubleSide
+        });
+    }
+    // register a glow material/mesh so it gently breathes over time
+    function _hzPulse(mat, mesh, opAmp, sclAmp, spd) {
+        _hzGlowPulse.push({
+            mat: mat, mesh: mesh || null,
+            baseOp: mat.opacity, opAmp: opAmp || 0,
+            baseScl: mesh ? mesh.scale.x : 1, sclAmp: sclAmp || 0,
+            spd: spd || (0.35 + Math.random() * 0.55),
+            phase: Math.random() * Math.PI * 2
+        });
+        return mat;
+    }
+    // A luminous core: a bright additive solid that blooms, wrapped in a soft
+    // view-independent aura shell — the signature "lit from within" astral glow.
+    // Returns a group centred at the origin.
+    function _hzGlowCore(radius, color, auraColor) {
+        var g = new THREE.Group();
+        var coreMat = _hzGlowMat(color, 0.95);
+        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 1), coreMat);
+        g.add(core);
+        _hzPulse(coreMat, core, 0.14, 0.07, 0.45 + Math.random() * 0.6);
+        var auraMat = _hzGlowMat(auraColor || color, 0.26);
+        auraMat.side = THREE.BackSide;
+        var aura = new THREE.Mesh(new THREE.SphereGeometry(radius * 2.3, 16, 12), auraMat);
+        g.add(aura);
+        _hzPulse(auraMat, aura, 0.12, 0.16, 0.30 + Math.random() * 0.4);
+        return g;
+    }
+
     // box mesh whose UVs tile per-face at terrain pixel density
     function _hzBox(w, h, d, ts, mat) {
         var geo = new THREE.BoxGeometry(w, h, d);
@@ -6962,6 +7005,11 @@ const ThreeRenderer = (function () {
         m.rotation.y = Math.PI / 4;                       // present a flat face
         m.position.y = h * 0.5;
         g.add(m);
+        if (rng() < 0.4) {                                // a lit capstone on some — a golden apex
+            var capstone = _hzGlowCore(r * 0.14, 0xfff0c0, 0xffcf80);
+            capstone.position.y = h;
+            g.add(capstone);
+        }
         if (rng() < 0.45) {                               // tilted & sinking
             g.rotation.z = (rng() - 0.5) * 0.5;
             g.position.y = -h * (0.10 + rng() * 0.28);
@@ -7002,6 +7050,13 @@ const ThreeRenderer = (function () {
         var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x1f232d));
         slab.position.y = h * 0.5;
         g.add(slab);
+        // a glowing rune-seam down the obsidian face — a cold, eerie sigil light
+        var runeCol = (rng() < 0.5) ? 0x66ffd0 : 0x8a7bff;   // sickly green or arcane violet
+        var runeMat = _hzGlowMat(runeCol, 0.6);
+        var rune = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.14, h * 0.66), runeMat);
+        rune.position.set(0, h * 0.5, d * 0.5 + 1.5);
+        g.add(rune);
+        _hzPulse(runeMat, null, 0.30, 0, 0.30 + rng() * 0.45);
         g.rotation.z = (rng() - 0.5) * 0.22;              // ominous lean
         g.rotation.x = (rng() - 0.5) * 0.06;
         return g;
@@ -7026,6 +7081,12 @@ const ThreeRenderer = (function () {
         if (!leftBroken) {
             var lint = _hzBox(gap + pw * 2.0, pw * 1.1, pw, ts, _hzGeoMat(tex, base * 1));
             lint.position.set(0, h + pw * 0.5, 0); g.add(lint);
+            // a faint shimmering veil filling the arch — a dream-portal to nowhere
+            var veilMat = _hzGlowMat(0xb38cff, 0.14);
+            var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.92), veilMat);
+            veil.position.set(0, h * 0.5, 0);
+            g.add(veil);
+            _hzPulse(veilMat, veil, 0.07, 0.03, 0.25 + rng() * 0.35);
         } else {
             var stub = _hzBox(gap * 0.55, pw * 1.0, pw, ts, _hzGeoMat(tex, 0xb8ad90));
             stub.position.set(gap * 0.18, h + pw * 0.45, 0);
@@ -7049,6 +7110,10 @@ const ThreeRenderer = (function () {
         _hzTileUV(capGeo, w, w, ts);
         var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xc8b896));
         cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.55; g.add(cap);
+        // a warm ember light crowning the pyramidion — a lit beacon of dead empires
+        var tip = _hzGlowCore(w * 0.5, 0xffd9a0, 0xffb060);
+        tip.position.y = h + w * 1.0;
+        g.add(tip);
         return g;
     }
 
@@ -7091,7 +7156,18 @@ const ThreeRenderer = (function () {
             m.position.set(Math.cos(a) * rad, h * 0.5, Math.sin(a) * rad);
             m.rotation.set((rng() - 0.5) * 0.45, rng() * Math.PI, (rng() - 0.5) * 0.45);
             g.add(m);
+            // inner light — an additive shell so each shard glows from within
+            var glowMat = _hzGlowMat(0xbfd4ff, 0.20);
+            var glow = new THREE.Mesh(geo, glowMat);
+            glow.position.copy(m.position); glow.rotation.copy(m.rotation);
+            glow.scale.set(1.16, 1.04, 1.16);
+            g.add(glow);
+            _hzPulse(glowMat, null, 0.12, 0, 0.4 + rng() * 0.6);
         }
+        // a soft pooled glow at the base where the shards erupt
+        var pool = _hzGlowCore(ts * 0.5, 0x8fc0ff, 0x6f9fe0);
+        pool.position.y = ts * 0.25;
+        g.add(pool);
         return g;
     }
 
@@ -7143,8 +7219,33 @@ const ThreeRenderer = (function () {
             ring.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
             g.add(ring);
         }
-        var core = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.62, 0), _hzGeoMat(_hzTex('crystal'), 0xc2cef2));
+        // glowing crystal heart at the centre of the armillary — the bloom-lit
+        // core the rings orbit, an eerie astral beacon adrift in the void.
+        var heartCol = (rng() < 0.5) ? 0x9fd8ff : 0xc7a9ff;   // cold cyan or violet
+        var core = _hzGlowCore(ts * 0.6, heartCol, heartCol);
         g.add(core);
+        // a faint shaded crystal nucleus inside the glow so it reads as solid
+        var nucleus = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.5, 0), _hzGeoMat(_hzTex('crystal'), 0xc2cef2));
+        g.add(nucleus);
+        return g;
+    }
+
+    // A loose constellation of wandering astral lights — pure bloom-lit orbs in
+    // varied otherworldly hues, drifting in the deep. No geometry to ground them;
+    // they read as distant stars, spirits or stray sparks of imagination, the
+    // soul of the "time, space & reality collided" backdrop.
+    function _hzAstralOrbs(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var palette = [0x9fd8ff, 0xb38cff, 0xff9fd0, 0xfff0a0, 0x8fffd0, 0xff8f8f];
+        var n = 2 + (rng() * 4 | 0);
+        for (var i = 0; i < n; i++) {
+            var col = palette[(rng() * palette.length) | 0];
+            var orb = _hzGlowCore(ts * (0.45 + rng() * 0.75), col, col);
+            var a = rng() * Math.PI * 2, rad = ts * (0.5 + rng() * 3.2);
+            orb.position.set(Math.cos(a) * rad, (rng() - 0.5) * ts * 3.0, Math.sin(a) * rad);
+            g.add(orb);
+        }
         return g;
     }
 
@@ -7160,6 +7261,7 @@ const ThreeRenderer = (function () {
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonMats.length = 0;
         _horizonFloaters.length = 0;
+        _hzGlowPulse.length = 0;
         _horizonGroup = new THREE.Group();
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
@@ -7186,7 +7288,8 @@ const ThreeRenderer = (function () {
             [0.76, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
             [0.82, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
             [0.90, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
-            [0.96, _hzCrystalShards,  true,  -0.60,  0.70],   // crystal clusters
+            [0.945, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
+            [0.975, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
             [1.00, _hzSacredRings,    true,  -0.60,  0.72]    // sacred-geometry haloes
         ];
 
@@ -7240,6 +7343,13 @@ const ThreeRenderer = (function () {
             var f = _horizonFloaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
+        }
+        // breathe the self-lit glow accents — a slow luminous swell
+        for (var j = 0; j < _hzGlowPulse.length; j++) {
+            var p = _hzGlowPulse[j];
+            var s = Math.sin(t * p.spd + p.phase);
+            if (p.opAmp) p.mat.opacity = Math.max(0, p.baseOp + s * p.opAmp);
+            if (p.sclAmp && p.mesh) p.mesh.scale.setScalar(p.baseScl * (1 + s * p.sclAmp));
         }
     }
 
