@@ -185,26 +185,41 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   action of an activation (`unit._aiLoopCount === 1`).
 - **Cinematic action cam** (`state.cinematicActionCam`, persisted in
   localStorage `ew_cinematicActionCam`; toggles: pause menu Video → "Action
-  Cam", dev bar "3P"): `_playCineActionShot` swoops to tilt 72 behind the
-  caster, yaw = atan2(-dx,-dy) **+16° off-axis** so the caster reads
-  bottom-corner foreground (Pokémon OTS, not dead-centered); focal sits
-  0.32–0.62 of the way toward the target. Zoom is RELATIVE to
-  `getDefaultZoom()` (≈ whole-board view): `default × (4.4 − 0.3·dist)`,
-  clamped — do NOT use `computeZoomForVisibleTiles` for this, its flat-view
-  model badly underestimates what a tilt-72 perspective shows. The shot
-  dollies down-range at fire time (easeOut, arrives with the hit) +
-  `shakeBoard('normal')` impact kick. Ownership token
-  `camera._cineShotId`/`_cineShotUnitId` guards the dolly and the deferred
-  `selectUnit` activation pan from fighting each other. `camera._preCineView`
-  remembers the player's overhead tilt/yaw/zoom; it is restored by
-  softResetToUnit/reset/selectUnit for MANUAL local units, while auto/AI
-  units keep streaming from the cinematic framing. Bane-vial item throws
-  (`doItem` baneType branch) route through `playOffensiveActionCamera` like
-  attacks (throw anim/projectile delayed by `cam.sourceHold`). The shot is
-  elevation-aware: focal height lerps from caster to target elevation along
-  the line of fire and tilt pitches with the slope (clamped 55–88: ~57–61
-  firing down from height/flight, 72 flat, 83–88 looking up at airborne or
-  high-ground targets).
+  Cam", dev bar "3P"): `_playCineActionShot` (base tilt const 72) swoops
+  behind the caster, yaw = atan2(-dx,-dy) **+16° off-axis** so the caster
+  reads bottom-corner foreground (Pokémon OTS, not dead-centered). **2026-06
+  AAA pass** (pull-back + headroom + steeper look-down): focal now sits
+  **0.5–0.72** of the way toward the TARGET (was 0.32–0.62 toward the caster)
+  so the target frames with headroom and its nameplate stays on-screen; zoom
+  RELATIVE to `getDefaultZoom()` (≈ whole-board view) pulled back to
+  `default × (2.7 − 0.18·dist)` clamped **1.35–2.8** (was 4.4−0.3·dist /
+  ≤4.0, which cropped the caster and pushed the target off the top) — do NOT
+  use `computeZoomForVisibleTiles`, its flat-view model badly underestimates
+  what a tilted perspective shows. The shot dollies down-range at fire time
+  (easeOut, arrives with the hit) + `shakeBoard('normal')` impact kick.
+  Ownership token `camera._cineShotId`/`_cineShotUnitId` guards the dolly and
+  the deferred `selectUnit` activation pan from fighting each other.
+  `camera._preCineView` remembers the player's overhead tilt/yaw/zoom;
+  restored by softResetToUnit/reset/selectUnit for MANUAL local units, while
+  auto/AI units keep streaming from the cinematic framing. Bane-vial item
+  throws (`doItem` baneType branch) route through `playOffensiveActionCamera`
+  like attacks (throw anim/projectile delayed by `cam.sourceHold`). The shot
+  is elevation-aware: focal height lerps caster→target elevation + a headroom
+  term, and **tilt pitches harder with the slope (coeff 1.15, clamped 40–80):
+  ~40–52 firing DOWN from height/flight for a real 3rd-person look at the
+  ground (was clamped ≥55, "didn't tilt toward the ground enough"), 72 flat,
+  ≤80 looking up at airborne/high targets — capped below the horizon so
+  nameplates keep headroom instead of climbing off the top edge.**
+- **Sky-strike descent cam** (`_playDescentCam`, meteor/nuke/cosmic slam via
+  `opts.descentCam`): **2026-06 reworked into 3 beats** — (1) SWOOP to an
+  over-the-shoulder 3rd-person view behind the caster (yaw = atan2(-dx,-dy)
+  +16°, tilt 64, focal 0.62 toward impact) while the telegraph ring forms;
+  (2) CRANE UP to the sky (tilt 86, focal back on the impact tile at ground
+  elevZ) as the body spawns overhead so it falls into frame from above; (3)
+  tilt back DOWN (tilt 58, zoom in) following the body onto the impact,
+  `shakeBoard('hard')` on the hit. Beat timing keys off `sourceHold` /
+  `descentCam.telegraphMs` / `descentMs` (mirrors `ThreeVFXEffects._fireDescent`).
+  Self-cast / zero-range meteors keep the player's heading (no spin).
 - **camera._busy lifecycle (STALL TRAP):** `_waitForAnimationsThen` polls
   `camera.isBusy()` (8s max per wait). `boardCameraResetTimer` is a SHARED
   slot that any pan/reset/focus cancels — never park a busy-release there or
