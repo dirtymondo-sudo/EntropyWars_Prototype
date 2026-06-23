@@ -5079,7 +5079,7 @@ const RACE_ABILITIES = {
           desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
         { id: 'raceManaShield', spellType: 'unholy', name: 'Mana Shield',
           type: 'buff', cost: 20, range: 0, apCost: 1,
-          kind: 'buff',
+          kind: 'shield',
           shield: 200,
           desc: 'Convert mana into a protective barrier. Absorb 200 damage.' }
     ],
@@ -7103,6 +7103,32 @@ const STATUS_DEFS = {
         stack: 'max',
         armorDelta: 15,
         iconSrc: createStatusIconDataUri('🛡', '#1a2a3a', '#c8e8ff', '#5a9ad4')
+    },
+
+    // Carrier statuses for stat-stage buffs/debuffs (statStageBoost). The actual
+    // ATK/DEF/SPD/INT magnitude lives on unit.statStages; these only provide the
+    // duration tick, icon, and "empowered/weakened" label.
+    statUp: {
+        icon: '⬆️',
+        glyph: '⬆',
+        short: 'PWR',
+        label: 'Empowered',
+        colorText: 'empowered',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'replace',
+        iconSrc: createStatusIconDataUri('⬆', '#1f3a18', '#e6ffd6', '#7ad44a')
+    },
+    statDown: {
+        icon: '⬇️',
+        glyph: '⬇',
+        short: 'WKN',
+        label: 'Weakened',
+        colorText: 'weakened',
+        kind: 'debuff',
+        category: 'debuff',
+        stack: 'replace',
+        iconSrc: createStatusIconDataUri('⬇', '#3a1818', '#ffd6d6', '#d44a4a')
     },
 
     shield: {

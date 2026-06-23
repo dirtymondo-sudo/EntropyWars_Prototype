@@ -2711,7 +2711,8 @@
             const sleepMod = getSleepAffinityModifier(unit).int || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).int || 0;
             const weatherMod = getWeatherStatMod(unit).int || 0;
-            return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod) * getZodiacBonus(unit).mult));
+            const stageMod = (typeof getStatStageDelta === 'function') ? getStatStageDelta(unit, 'int') : 0;
+            return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod + stageMod) * getZodiacBonus(unit).mult));
         }
 
         function getStatusAwrOverride(unit) {

@@ -117,7 +117,7 @@
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
 
-                const spdDiff = (enemy.spd || 0) - (unit.spd || 0);
+                const spdDiff = ((enemy.spd || 0) + getStatStageDelta(enemy, 'spd')) - ((unit.spd || 0) + getStatStageDelta(unit, 'spd'));
                 const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
                 const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * 0.03 + awrDiff * 0.02));
                 if (Math.random() >= chance) continue;
@@ -2086,6 +2086,10 @@
         }
 
         function getSpellRangeTiles(unit, spell) {
+            // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
+            // target the caster's own tile; without this they'd produce an empty
+            // range set and any confirm/hover path would wrongly say "out of range".
+            if (unit && spell && isSpellSelfCast(spell)) return [{ x: unit.x, y: unit.y }];
             if (!unit || !spell || !spell.range) return [];
             const tiles = [];
             const effRange = getEffectiveSpellRange(unit, spell);
@@ -2149,11 +2153,57 @@
         }
 
         function getStatusArmorDelta(unit) {
-            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.armorDelta || 0), 0);
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.armorDelta || 0), 0)
+                + getStatStageDelta(unit, 'def');
         }
 
         function getStatusAtkDelta(unit) {
-            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.atkDelta || 0), 0);
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.atkDelta || 0), 0)
+                + getStatStageDelta(unit, 'atk');
+        }
+
+        // ── Stat-stage buffs (statStageBoost) ─────────────────────────────────
+        // Many race abilities (Howl, Blood Ritual, Perch Form, …) carry a
+        // `statStageBoost: { atk, def, spd, int }`. Each stage maps to a flat
+        // stat delta and rides a carrier status ('statUp'/'statDown') so the
+        // existing duration-tick + status UI handle expiry and display.
+        const STAT_STAGE_STEP = { atk: 14, def: 9, spd: 3, int: 12 };
+        const STAT_STAGE_DURATION = 3;
+
+        function getStatStageDelta(unit, stat) {
+            if (!unit || !unit.statStages) return 0;
+            // Stages only count while a carrier status is live; once it ticks
+            // away the accumulated numbers are stale and contribute nothing.
+            if (!unitHasStatus(unit, 'statUp') && !unitHasStatus(unit, 'statDown')) return 0;
+            return (unit.statStages[stat] || 0) * (STAT_STAGE_STEP[stat] || 0);
+        }
+
+        function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null) {
+            if (!target || target.dead || !boost) return;
+            // Fresh application (no live carrier): clear any stale magnitudes.
+            if (!unitHasStatus(target, 'statUp') && !unitHasStatus(target, 'statDown')) {
+                target.statStages = { atk: 0, def: 0, spd: 0, int: 0 };
+            } else if (!target.statStages) {
+                target.statStages = { atk: 0, def: 0, spd: 0, int: 0 };
+            }
+            const st = target.statStages;
+            const parts = [];
+            for (const stat of ['atk', 'def', 'spd', 'int']) {
+                const n = boost[stat] || 0;
+                if (!n) continue;
+                st[stat] = (st[stat] || 0) + n;
+                parts.push(`${n > 0 ? '+' : ''}${n} ${stat.toUpperCase()}`);
+            }
+            if (!parts.length) return;
+            const anyPos = ['atk', 'def', 'spd', 'int'].some(s => (st[s] || 0) > 0);
+            const anyNeg = ['atk', 'def', 'spd', 'int'].some(s => (st[s] || 0) < 0);
+            if (anyPos) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            if (anyNeg) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            const net = ['atk', 'def', 'spd', 'int'].reduce((s, k) => s + (boost[k] || 0), 0);
+            if (typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(target, parts.join(' '), net >= 0 ? 'buff' : 'debuff', { durationMs: 1200 });
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
         }
 
         function getStatusMoveDelta(unit) {
@@ -3138,6 +3188,10 @@
                         clearStatus(u, key);
                         addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
                     }
+                }
+                // Drop stale stat-stage magnitudes once both carriers expire.
+                if (u.statStages && !unitHasStatus(u, 'statUp') && !unitHasStatus(u, 'statDown')) {
+                    delete u.statStages;
                 }
             }
         }
@@ -8343,7 +8397,7 @@
                 return refUnit.dead || refUnit._dying ? [] : [refUnit];
             }
             return state.units.filter(u => u.player === player && !u.dead && !u._dying)
-                .sort((a, b) => (b.spd || 5) - (a.spd || 5));
+                .sort((a, b) => ((b.spd || 5) + getStatStageDelta(b, 'spd')) - ((a.spd || 5) + getStatStageDelta(a, 'spd')));
         }
 
         function getHostileUnits(player, refUnit) {
@@ -18287,6 +18341,7 @@
                 if (!_buffResult) return 0;
                 panelFocusTarget = _buffResult.target;
                 applyStatusEffects(_buffResult.target, spell.statusEffects, `${spell.name}: `, unit);
+                if (spell.statStageBoost) applyStatStageBoost(_buffResult.target, spell.statStageBoost, `${spell.name}: `, unit);
             } else if (spell.kind === 'debuff') {
                 const target = unitAt(x, y);
                 if (!target || isAllyUnit(target, unit)) {
@@ -18381,6 +18436,7 @@
                         } : e);
                     }
                     applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
+                    if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
 
                     /* ── Spellsteal: take one of the target's spells and add it to the caster's kit ── */
                     if (spell.stealSpell && !unit.dead) {
@@ -20559,6 +20615,7 @@
                 let buffCount = 0;
                 for (const ally of allies) {
                     applyStatusEffects(ally, [{ id: ally.id === unit.id ? 'inspiredWeak' : 'inspired', duration: 2 }], `${spell.name}: `, unit);
+                    if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
                     buffCount++;
                 }
                 showFloatingTextForUnit(unit, '🎵', 'buff');
