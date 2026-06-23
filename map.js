@@ -1005,6 +1005,7 @@
             { modeId: 'normal', name: 'Skirmish', size: '4×4', team: 2, floors: false, w: 4, h: 4 },
             { modeId: 'prebuilt_apartment', name: 'Apartment', size: '4×4', team: 2, floors: false, w: 4, h: 4, isPrebuilt: true },
             { modeId: 'prebuilt_skirmish', name: 'Outpost', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
+            { modeId: 'prebuilt_entropy_vale', name: 'Entropy Vale', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
             { modeId: 'prebuilt_suburb', name: 'Suburb', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
             { modeId: 'prebuilt_bunker', name: 'Bunker', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
             { modeId: 'prebuilt_ravine', name: 'Ravine', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },

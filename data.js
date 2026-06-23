@@ -7339,6 +7339,14 @@ function computeAccountMatchGold(opts) {
 
 const MAP_LAYOUT_PRESETS = {
 
+    // Natural-landscape map: smooth rolling heightfield terrain (see three-renderer
+    // BEVEL/natural path). naturalTerrain flag opts this map into the beveled,
+    // sloped-ground rendering; all other maps keep the classic flat-cube voxels.
+    prebuilt_entropy_vale: {
+        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, naturalTerrain: true
+    },
+
     normal: {
         sections: {
             above:   null,
@@ -7613,6 +7621,64 @@ let BARRIER_OPENINGS_X = [2, 6, 9];
 let MAP_HAS_FLOORS = true;
 
 const PREBUILT_MAPS = {
+    prebuilt_entropy_vale: {
+        name: 'Entropy Vale', w: 16, h: 16,
+        grid: [
+            [1,1,1,1,1,1,1,50,8,11,5,5,5,5,11,50],
+            [1,1,1,50,50,50,50,1,8,5,28,28,28,28,5,8],
+            [1,1,1,50,50,1,1,8,11,28,28,28,28,28,28,5],
+            [1,50,1,1,1,8,8,5,5,28,28,28,28,28,28,5],
+            [1,1,1,1,14,5,11,5,28,28,28,28,28,28,28,5],
+            [1,1,1,50,50,8,11,28,28,28,28,28,28,28,28,5],
+            [1,1,1,1,1,5,11,5,28,28,28,28,28,28,5,5],
+            [50,1,1,1,50,1,8,5,5,5,5,5,5,5,5,5],
+            [1,1,1,1,1,8,8,8,8,5,5,5,5,5,5,1],
+            [1,1,2,2,2,8,8,8,8,11,11,5,5,5,5,1],
+            [1,2,3,3,3,8,8,8,8,50,8,11,5,5,1,1],
+            [1,2,3,3,3,3,2,1,1,1,1,1,1,50,50,50],
+            [1,2,3,3,3,3,2,15,1,1,1,1,50,1,1,1],
+            [50,2,3,3,3,3,2,1,1,1,1,8,5,1,1,1],
+            [50,1,2,2,2,2,1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,50,1,1,1,1,1]
+        ],
+        heightMap: [
+            [0,0,0,2,2,2,1,2,3,4,5,5,5,5,4,2],
+            [0,0,0,2,2,2,2,2,3,5,6,6,6,6,5,3],
+            [0,0,0,1,2,2,2,3,4,6,6,6,6,6,6,5],
+            [2,1,1,1,2,3,3,4,5,6,6,6,6,6,6,5],
+            [0,0,1,1,2,3,4,5,6,6,6,6,6,6,6,5],
+            [0,0,0,1,2,3,4,6,6,6,6,6,6,6,6,5],
+            [1,0,0,0,1,3,4,5,6,6,6,6,6,6,5,4],
+            [1,0,0,0,1,2,3,5,5,5,5,5,5,5,4,3],
+            [0,0,0,0,0,2,2,2,2,5,5,5,5,5,4,2],
+            [0,0,0,0,0,2,2,2,2,4,4,5,5,4,3,2],
+            [0,0,0,0,0,2,2,2,2,2,3,4,4,3,2,1],
+            [0,0,0,0,0,0,0,0,0,1,2,2,2,2,1,1],
+            [0,0,0,0,0,0,0,0,0,1,2,2,2,2,1,1],
+            [1,0,0,0,0,0,0,0,0,1,2,3,3,0,0,0],
+            [1,0,0,0,0,0,0,0,1,1,2,2,2,0,0,0],
+            [0,0,0,0,0,0,0,1,2,2,2,2,2,0,0,0]
+        ],
+        objects: [
+            [[],[],[],[],[],[],[],[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[{oid:1,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[{oid:17,alignX:'center',alignY:'bottom'}],[{oid:2,alignX:'center',alignY:'bottom'}],[{oid:18,alignX:'center',alignY:'bottom'}],[{oid:43,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[{oid:2,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[{oid:19,alignX:'center',alignY:'bottom'}],[{oid:42,alignX:'center',alignY:'bottom'}],[{oid:20,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}]],
+            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+            [[{oid:1,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[]],
+            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
+        ],
+        spawns: {"1":[{"x":14,"y":14},{"x":15,"y":14},{"x":14,"y":15},{"x":15,"y":15},{"x":13,"y":15},{"x":15,"y":13}],"2":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}]}
+    },
     prebuilt_skirmish: {
         name: 'Skirmish', w: 8, h: 8,
         grid: [

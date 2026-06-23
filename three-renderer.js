@@ -12,6 +12,273 @@ const ThreeRenderer = (function () {
     const BILLBOARD_DEFAULT_H = 1.2;
     const TURRET_COLORS = { 1: 0x4466aa, 2: 0xaa4444 };
 
+    /* ════════════════════════════════════════════════════════════════════
+     *  BEVELED / NATURAL TERRAIN
+     *  Instead of razor-edged voxel cubes, ground tiles are built with a
+     *  chamfered top lip, slightly battered (out-flaring) walls and a gently
+     *  domed organic top. From above it is still a perfect square grid (every
+     *  tile keeps its exact centre & footprint, so movement / spell / range
+     *  logic is untouched) but the silhouette reads as eroded, natural rock —
+     *  a PS1/PS2-era low-poly look. Structured terrains (bricks, road, water,
+     *  lava) keep their flat cubes. Flip BEVEL.enabled = false to revert.
+     * ════════════════════════════════════════════════════════════════════ */
+    var BEVEL = {
+        enabled: true,
+        edge: 0.17,    // top-plate horizontal inset (× tile) — chamfer width
+        drop: 0.085,   // chamfer vertical drop (× tile)
+        batter: 0.05,  // wall taper — top narrower than base (× tile)
+        topSegs: 4,    // top subdivisions (organic doming resolution)
+        amp: 0.055,    // organic top swell amplitude (× tile)
+        freq: 0.85,    // organic noise frequency (cycles per tile)
+        ruins: true,   // mid-ground esoteric ruins ring around the arena
+        scatter: true  // light natural boulder scatter on open ground
+    };
+    /* terrains that STAY hard cubes (man-made / structured) */
+    var _CUBE_TERRAIN_SET = { bricks_1: 1, bricks_2: 1, bricks_3: 1, bricks: 1, road: 1, road_2: 1, metal: 1, metal_floor: 1 };
+
+    function _ewValHash(ix, iz) {
+        var h = Math.sin(ix * 127.1 + iz * 311.7) * 43758.5453;
+        return h - Math.floor(h);
+    }
+    function _ewSmoothNoise(u, v) {
+        var iu = Math.floor(u), iv = Math.floor(v);
+        var fu = u - iu, fv = v - iv;
+        var su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+        var a = _ewValHash(iu, iv), b = _ewValHash(iu + 1, iv);
+        var c = _ewValHash(iu, iv + 1), d = _ewValHash(iu + 1, iv + 1);
+        return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
+    }
+    /* Small, smooth, deterministic vertical swell as a function of world X/Z.
+     * Continuous everywhere; shared by terrain tops, tile-surface queries and
+     * highlight draping so units, ranges and ground all ride the same surface. */
+    function _surfaceLift(wx, wz) {
+        if (!BEVEL.enabled || BEVEL.amp <= 0) return 0;
+        var ts = CONFIG.tileSize || 128;
+        var f = BEVEL.freq / ts;
+        var n = _ewSmoothNoise(wx * f, wz * f) * 0.65
+              + _ewSmoothNoise(wx * f * 2.3 + 11.5, wz * f * 2.3 + 7.1) * 0.35;
+        return (n - 0.5) * 2.0 * (ts * BEVEL.amp);
+    }
+    function _isBeveledTerrain(tKey) {
+        if (!BEVEL.enabled) return false;
+        if (!tKey || tKey.indexOf('void') === 0) return false;
+        if (_CUBE_TERRAIN_SET[tKey]) return false;
+        if (typeof _FLUID_TERRAIN_SET !== 'undefined' && _FLUID_TERRAIN_SET[tKey]) return false;
+        if (tKey === 'lava') return false;
+        return true;
+    }
+
+    /* Beveled tile: chamfered top lip (top material), battered walls + base
+     * (side material), organic domed top. Centred on origin like BoxGeometry,
+     * so the caller positions it exactly as it positions a flat box. Material
+     * groups match buildBoxMaterials: group index 2 = top, 0 = sides. Built
+     * double-sided (see _buildBeveledMaterials) so winding is never an issue. */
+    function _buildBeveledTileGeo(ts, boxH, cx, cz) {
+        var H2 = ts / 2;
+        var topY = boxH / 2, botY = -boxH / 2;
+        var inset = ts * BEVEL.edge;
+        var drop = Math.min(ts * BEVEL.drop, boxH * 0.4);
+        var batter = ts * BEVEL.batter;
+        var segs = Math.max(1, BEVEL.topSegs | 0);
+        var plateE = H2 - inset;   // top plate half-extent
+        var rimE = H2 - batter;    // chamfer outer / wall top half-extent
+        var rimY = topY - drop;    // chamfer base / wall top height
+
+        var pos = [], uv = [], idx = [];
+
+        /* ── top plate (organic dome; edges pinned flat so the chamfer meets
+              it watertight and neighbouring tiles stay flush) ── */
+        var grid = [];
+        for (var gj = 0; gj <= segs; gj++) {
+            grid[gj] = [];
+            for (var gi = 0; gi <= segs; gi++) {
+                var lx = -plateE + (gi / segs) * (plateE * 2);
+                var lz = -plateE + (gj / segs) * (plateE * 2);
+                var onEdge = (gi === 0 || gi === segs || gj === 0 || gj === segs);
+                var lift = onEdge ? 0 : _surfaceLift(cx + lx, cz + lz);
+                grid[gj][gi] = pos.length / 3;
+                pos.push(lx, topY + lift, lz);
+                uv.push(0.5 + lx / ts, 0.5 + lz / ts);
+            }
+        }
+        for (var qj = 0; qj < segs; qj++) {
+            for (var qi = 0; qi < segs; qi++) {
+                var a = grid[qj][qi], b = grid[qj][qi + 1];
+                var c = grid[qj + 1][qi], d = grid[qj + 1][qi + 1];
+                idx.push(a, c, b, b, c, d);
+            }
+        }
+
+        function quad(p0, p1, p2, p3, vRatio) {
+            var base = pos.length / 3;
+            pos.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2],
+                     p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+            var vb = (vRatio == null) ? 1 : vRatio;
+            uv.push(0, 0, 1, 0, 1, vb, 0, vb);
+            idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        }
+
+        /* ── chamfer lip (top material) ── 4 trapezoids plate→rim ── */
+        var P = function (sx, sz) { return [sx * plateE, topY, sz * plateE]; };
+        var R = function (sx, sz) { return [sx * rimE, rimY, sz * rimE]; };
+        quad(P(1, -1), P(1, 1), R(1, 1), R(1, -1));   // +X
+        quad(P(-1, 1), P(-1, -1), R(-1, -1), R(-1, 1)); // -X
+        quad(P(1, 1), P(-1, 1), R(-1, 1), R(1, 1));    // +Z
+        quad(P(-1, -1), P(1, -1), R(1, -1), R(-1, -1)); // -Z
+        var nTopIdx = idx.length;
+
+        /* ── battered walls (side material) rim→base, flaring out at the foot ── */
+        var B = function (sx, sz) { return [sx * H2, botY, sz * H2]; };
+        var vR = boxH / ts;
+        quad(R(1, -1), R(1, 1), B(1, 1), B(1, -1), vR);
+        quad(R(-1, 1), R(-1, -1), B(-1, -1), B(-1, 1), vR);
+        quad(R(1, 1), R(-1, 1), B(-1, 1), B(1, 1), vR);
+        quad(R(-1, -1), R(1, -1), B(1, -1), B(-1, -1), vR);
+        /* base cap (rarely seen; keeps it a closed solid) */
+        quad(B(-1, -1), B(-1, 1), B(1, 1), B(1, -1));
+        var nSideIdx = idx.length - nTopIdx;
+
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setIndex(idx);
+        geo.addGroup(0, nTopIdx, 2);
+        geo.addGroup(nTopIdx, nSideIdx, 0);
+        geo.computeVertexNormals();
+        return geo;
+    }
+
+    /* ── Natural rolling-heightfield terrain (opt-in per map) ──────────────
+     * When state.naturalTerrain is set (currently only the "Entropy Vale"
+     * map), ground tiles are rendered as ONE continuous, smoothly sloped
+     * landform instead of stacked flat voxel cubes: each tile's four top
+     * corners sit at the AVERAGE height of the tiles meeting at that corner,
+     * so adjacent tiles share corner heights and the surface flows seamlessly
+     * into hills, valleys and mountains. The board still maps 1:1 to a square
+     * grid (centres & footprints unchanged) so all gameplay logic is intact.
+     * Every OTHER map is completely unaffected — it keeps the classic path. */
+    function _naturalTerrainActive() {
+        return BEVEL.enabled && !!(typeof state !== 'undefined' && state && state.naturalTerrain);
+    }
+    function _lerp(a, b, t) { return a + (b - a) * t; }
+    function _hLevelAt(x, y) {
+        if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) || 0;
+        return (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
+    }
+    /* world-Y of the grid corner (gx,gy): mean height of the up-to-4 tiles
+       that touch it × elevStep — this is what welds neighbours together. */
+    function _cornerHeightY(gx, gy, elevStep, _bw, _bh) {
+        var sum = 0, cnt = 0;
+        for (var dy = -1; dy <= 0; dy++) {
+            for (var dx = -1; dx <= 0; dx++) {
+                var tx = gx + dx, ty = gy + dy;
+                if (tx >= 0 && ty >= 0 && tx < _bw && ty < _bh) { sum += _hLevelAt(tx, ty); cnt++; }
+            }
+        }
+        return cnt ? (sum / cnt) * elevStep : 0;
+    }
+    /* smooth surface height at local (lu,lv) in [0..1] across tile (x,y):
+       bilinear blend of the 4 corner heights + a small organic swell. */
+    function _naturalSurfaceYLocal(x, y, lu, lv, _bw, _bh, elevStep) {
+        var ts = CONFIG.tileSize || 128;
+        var Y00 = _cornerHeightY(x,     y,     elevStep, _bw, _bh);
+        var Y10 = _cornerHeightY(x + 1, y,     elevStep, _bw, _bh);
+        var Y01 = _cornerHeightY(x,     y + 1, elevStep, _bw, _bh);
+        var Y11 = _cornerHeightY(x + 1, y + 1, elevStep, _bw, _bh);
+        var top = _lerp(_lerp(Y00, Y10, lu), _lerp(Y01, Y11, lu), lv);
+        return top + _surfaceLift(x * ts + lu * ts, y * ts + lv * ts);
+    }
+    function _naturalSurfaceY(x, y) {
+        var ts = CONFIG.tileSize || 128;
+        var elevStep = ts * ELEV_STEP_RATIO;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        return _naturalSurfaceYLocal(x, y, 0.5, 0.5, _bw, _bh, elevStep);
+    }
+    function _isNaturalRenderTile(x, y) {
+        if (!_naturalTerrainActive()) return false;
+        var t = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null;
+        if (!t || t.indexOf('void') === 0) return false;
+        if (typeof _FLUID_TERRAIN_SET !== 'undefined' && _FLUID_TERRAIN_SET[t]) return false;
+        if (t === 'lava') return false;
+        return true;
+    }
+    /* Build one smooth landform tile: subdivided sloped top (top material) +
+       skirts dropping to a soil floor ONLY where a neighbour is void/off-board
+       (interior edges are continuous with neighbours, so no walls/z-fighting). */
+    function _buildNaturalTileMesh(x, y, ts, elevStep, _bw, _bh, tKey, sKey) {
+        var segs = 5;
+        var floorY = -elevStep; // a tile of soil below the lowest ground → rim cliffs
+        var pos = [], uv = [], idx = [], grid = [];
+        function surf(lu, lv) { return _naturalSurfaceYLocal(x, y, lu, lv, _bw, _bh, elevStep); }
+        for (var j = 0; j <= segs; j++) {
+            grid[j] = [];
+            for (var i = 0; i <= segs; i++) {
+                var lu = i / segs, lv = j / segs;
+                grid[j][i] = pos.length / 3;
+                pos.push((lu - 0.5) * ts, surf(lu, lv), (lv - 0.5) * ts);
+                uv.push(lu, lv);
+            }
+        }
+        for (var qj = 0; qj < segs; qj++) {
+            for (var qi = 0; qi < segs; qi++) {
+                var a = grid[qj][qi], b = grid[qj][qi + 1];
+                var c = grid[qj + 1][qi], d = grid[qj + 1][qi + 1];
+                idx.push(a, c, b, b, c, d);
+            }
+        }
+        var nTopIdx = idx.length;
+        function isVoidN(tx, ty) {
+            if (tx < 0 || ty < 0 || tx >= _bw || ty >= _bh) return true;
+            var t = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
+            return !t || t.indexOf('void') === 0;
+        }
+        function topPt(i, jj) { var lu = i / segs, lv = jj / segs; return [(lu - 0.5) * ts, surf(lu, lv), (lv - 0.5) * ts]; }
+        function skirt(p0, p1) {
+            var base = pos.length / 3;
+            pos.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p1[0], floorY, p1[2], p0[0], floorY, p0[2]);
+            uv.push(0, 0, 1, 0, 1, (p1[1] - floorY) / ts, 0, (p0[1] - floorY) / ts);
+            idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        }
+        var s;
+        if (isVoidN(x + 1, y)) for (s = 0; s < segs; s++) skirt(topPt(segs, s), topPt(segs, s + 1));
+        if (isVoidN(x - 1, y)) for (s = 0; s < segs; s++) skirt(topPt(0, s + 1), topPt(0, s));
+        if (isVoidN(x, y + 1)) for (s = 0; s < segs; s++) skirt(topPt(s + 1, segs), topPt(s, segs));
+        if (isVoidN(x, y - 1)) for (s = 0; s < segs; s++) skirt(topPt(s, 0), topPt(s + 1, 0));
+        var nSideIdx = idx.length - nTopIdx;
+
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setIndex(idx);
+        geo.addGroup(0, nTopIdx, 2);
+        if (nSideIdx > 0) geo.addGroup(nTopIdx, nSideIdx, 0);
+        geo.computeVertexNormals();
+        return new THREE.Mesh(geo, _buildBeveledMaterials(tKey, sKey));
+    }
+
+    var _bevelMatCache = new Map();
+    function _buildBeveledMaterials(topKey, sideKey) {
+        var ck = (topKey || '_') + '|' + (sideKey || topKey || '_');
+        if (_bevelMatCache.has(ck)) return _bevelMatCache.get(ck);
+        var topTex = getTerrainTexture(topKey);
+        var sideTex = getTerrainTexture(sideKey || topKey);
+        if (sideTex) { sideTex.wrapS = THREE.RepeatWrapping; sideTex.wrapT = THREE.RepeatWrapping; }
+        var mats = [];
+        for (var i = 0; i < 6; i++) {
+            var isTop = (i === 2);
+            var tex = isTop ? topTex : sideTex;
+            if (tex) { mats.push(new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })); }
+            else {
+                var c = new THREE.Color(isTop ? 0x556655 : 0x443322);
+                mats.push(new THREE.MeshLambertMaterial({ color: c, side: THREE.DoubleSide }));
+            }
+        }
+        for (var mi = 0; mi < mats.length; mi++) mats[mi]._ew_shared = true;
+        _bevelMatCache.set(ck, mats);
+        return mats;
+    }
+
     function _isP2Viewer() {
         return !!(window._NET && window._NET.online && window._NET.myPlayer === 2);
     }
@@ -831,13 +1098,33 @@ const ThreeRenderer = (function () {
 
     function _minSlab(ts) { return ts * ELEV_STEP_RATIO; }
 
+    /* Organic top-swell at a tile's centre, matching the beveled terrain dome
+       (0 for flat-cube / fluid / multi-layer tiles). Keeps props, units, range
+       tiles and highlights riding the same surface as the ground mesh. */
+    /* True when a tile is rendered as beveled organic ground (single-layer,
+       natural terrain) — i.e. its top actually follows the surface swell. */
+    function _tileIsBeveled(x, y) {
+        if (!_naturalTerrainActive()) return false;
+        var col = state.boardColumns && state.boardColumns[y] && state.boardColumns[y][x];
+        if (col && col.length > 1) return false;
+        var tKey = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y)
+                 : (col && col.length ? col[col.length - 1].terrain : null);
+        return _isBeveledTerrain(tKey);
+    }
+    function _tileSurfaceLift(x, y) {
+        if (BEVEL.amp <= 0 || !_tileIsBeveled(x, y)) return 0;
+        var ts = CONFIG.tileSize || 128;
+        return _surfaceLift(x * ts + ts / 2, y * ts + ts / 2);
+    }
+
     function tileTopY(x, y) {
+        if (_isNaturalRenderTile(x, y)) return _naturalSurfaceY(x, y);
         var ts = CONFIG.tileSize || 128;
 
         var h = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
               : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
 
-        var base = h * ts * ELEV_STEP_RATIO;
+        var base = h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y);
 
         if (typeof getObjectAt === 'function') {
             var obj = getObjectAt(x, y);
@@ -858,9 +1145,11 @@ const ThreeRenderer = (function () {
             return h * ts * ELEV_STEP_RATIO;
         }
 
+        if (_isNaturalRenderTile(ux, uy)) return _naturalSurfaceY(ux, uy);
+
         var baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
                   : (state.boardHeights && state.boardHeights[uy]) ? (state.boardHeights[uy][ux] || 0) : 0;
-        var elevPx = baseH * ts * ELEV_STEP_RATIO;
+        var elevPx = baseH * ts * ELEV_STEP_RATIO + _tileSurfaceLift(ux, uy);
         var roofExtra = 0;
         if (typeof getObjectAt === 'function') {
             var obj = getObjectAt(ux, uy);
@@ -1127,6 +1416,13 @@ const ThreeRenderer = (function () {
                 if (col && col.length > 1) {
                     for (var ci = 0; ci < col.length; ci++) colFp += col[ci].z + ':' + col[ci].terrain + ',';
                 }
+                if (_naturalTerrainActive() && tKey && tKey.indexOf('void') !== 0 && tKey !== 'lava' && !_FLUID_TERRAIN_SET[tKey]) {
+                    /* neighbour heights weld our corners → fingerprint them so an
+                       edit to any neighbour correctly rebuilds this landform tile */
+                    colFp = 'nat:' + _hLevelAt(x - 1, y) + ',' + _hLevelAt(x + 1, y) + ',' + _hLevelAt(x, y - 1) + ','
+                          + _hLevelAt(x, y + 1) + ',' + _hLevelAt(x - 1, y - 1) + ',' + _hLevelAt(x + 1, y + 1) + ','
+                          + _hLevelAt(x + 1, y - 1) + ',' + _hLevelAt(x - 1, y + 1);
+                }
                 var k = x + ',' + y;
                 var ex = tileMeshes.get(k);
                 if (ex && ex._ew_terrain === tKey && ex._ew_height === ht && ex._ew_colFp === colFp && !full) {
@@ -1141,8 +1437,14 @@ const ThreeRenderer = (function () {
                 if (isLava) lavaTiles.push({ x: x, y: y });
 
                 var stairInfo = _isStairTile(x, y, htLegacy, _bw, _bh);
+                var natural = _naturalTerrainActive() && tKey && tKey.indexOf('void') !== 0
+                            && !isLava && !_FLUID_TERRAIN_SET[tKey];
                 var m;
-                if (stairInfo) {
+                if (natural) {
+                    /* one continuous sloped landform; ignores voxel stacking */
+                    m = _buildNaturalTileMesh(x, y, ts, elevStep, _bw, _bh, tKey, sKey);
+                    m.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
+                } else if (stairInfo) {
                     m = _buildStairMesh(x, y, ts, elevStep, tKey, sKey, stairInfo);
                     m._ew_isStair = true;
                 } else if (col && col.length > 1) {
@@ -1954,6 +2256,15 @@ const ThreeRenderer = (function () {
                 var m = null;
                 if (_ROCK_TERRAIN_SET[terrain])    m = _buildRockCluster3D(dx, dy);
                 if (_CRYSTAL_TERRAIN_SET[terrain]) m = _buildCrystalCluster3D(dx, dy);
+                /* Light natural boulder scatter on open beveled ground (a few
+                   strewn rocks so the organic terrain reads as a real, eroded
+                   landscape). Separate low-density hash; never on water/lava/
+                   structured tiles, and only where nothing else was placed. */
+                if (!m && BEVEL.scatter && _naturalTerrainActive() && _isBeveledTerrain(terrain) &&
+                    !_ROCK_TERRAIN_SET[terrain] && !_CRYSTAL_TERRAIN_SET[terrain]) {
+                    var sHash = (dx * 191 + dy * 313 + 29) & 0xFF;
+                    if (sHash < 22) m = _buildRockCluster3D(dx, dy); /* ~8.5% of open ground */
+                }
                 if (m) _terrainDecoGroup.add(m);
             }
         }
@@ -3821,6 +4132,60 @@ const ThreeRenderer = (function () {
         return _hlSharedGeo;
     }
 
+    /* Draped highlight tile — a subdivided quad whose vertices follow the
+       beveled terrain swell, so range/spell overlays hug the ground topology
+       instead of hovering as flat decals. Falls back to a flat quad when
+       BEVEL is disabled (identical to the old PlaneGeometry decal). */
+    function _buildDrapeGeo(hx, hy, ts, frac) {
+        var s = ts * frac, half = s / 2, segs = 4;
+        var cx = hx * ts + ts / 2, cz = hy * ts + ts / 2;
+        /* natural tiles: drape over the smooth sloped landform; beveled tiles:
+           follow the organic swell; everything else: flat (classic decal). */
+        var nat = _isNaturalRenderTile(hx, hy);
+        var elevStep = ts * ELEV_STEP_RATIO;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        var natCenter = nat ? _naturalSurfaceY(hx, hy) : 0;
+        var liftC = _tileSurfaceLift(hx, hy);
+        var doLift = (BEVEL.amp > 0 && _tileIsBeveled(hx, hy));
+        var pos = [], uv = [], idx = [], grid = [];
+        for (var gj = 0; gj <= segs; gj++) {
+            grid[gj] = [];
+            for (var gi = 0; gi <= segs; gi++) {
+                var lx = -half + (gi / segs) * s;
+                var lz = -half + (gj / segs) * s;
+                var y;
+                if (nat) {
+                    var lu = 0.5 + lx / ts, lv = 0.5 + lz / ts;
+                    y = _naturalSurfaceYLocal(hx, hy, lu, lv, _bw, _bh, elevStep) - natCenter;
+                } else {
+                    y = doLift ? (_surfaceLift(cx + lx, cz + lz) - liftC) : 0;
+                }
+                grid[gj][gi] = pos.length / 3;
+                pos.push(lx, y, lz);
+                uv.push(gi / segs, gj / segs);
+            }
+        }
+        for (var qj = 0; qj < segs; qj++) {
+            for (var qi = 0; qi < segs; qi++) {
+                var a = grid[qj][qi], b = grid[qj][qi + 1];
+                var c = grid[qj + 1][qi], d = grid[qj + 1][qi + 1];
+                idx.push(a, c, b, b, c, d);
+            }
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setIndex(idx);
+        return geo;
+    }
+    function _makeHlTile(hx, hy, mat, frac, yOff) {
+        var ts = CONFIG.tileSize || 128;
+        var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff, hy * ts + ts / 2);
+        return mesh;
+    }
+
     function _getSharedHlMat(hlType) {
 
         var matKey = hlType;
@@ -3864,18 +4229,11 @@ const ThreeRenderer = (function () {
             cache = null;
         }
         if (cache && cache.map && cache.map.size > 0) {
-            var hlGeo = _getSharedHlGeo(ts);
             cache.map.forEach(function(hlType, pk) {
                 var comma = pk.indexOf(',');
                 var hx = parseInt(pk.substring(0, comma), 10);
                 var hy = parseInt(pk.substring(comma + 1), 10);
-
-                var topY = tileTopY(hx, hy) + 0.3;
-                var mat = _getSharedHlMat(hlType);
-                var plane = new THREE.Mesh(hlGeo, mat);
-                plane.rotation.x = -Math.PI / 2;
-                plane.position.set(hx * ts + ts / 2, topY, hy * ts + ts / 2);
-                highlightGroup.add(plane);
+                highlightGroup.add(_makeHlTile(hx, hy, _getSharedHlMat(hlType), 0.92, 0.3));
             });
             return;
         }
@@ -3885,7 +4243,6 @@ const ThreeRenderer = (function () {
         var sel = (function(){ var _u = _unitById.get(state.selectedUnitId); return (_u && !_u.dead) ? _u : null; })();
         if (!sel) { _lastHlKey = ''; return; }
 
-        var fbGeo = _getSharedHlGeo(ts);
         var tiles = null;
         if (state.actionMode === 'move' && typeof G.getMoveTiles === 'function') {
             tiles = G.getMoveTiles(sel);
@@ -3893,11 +4250,7 @@ const ThreeRenderer = (function () {
                 for (var mi = 0; mi < tiles.length; mi++) {
                     var mt = tiles[mi];
                     var mType = mt._jump ? 'move-jump' : mt._takeoff ? 'move-takeoff' : 'move';
-                    var mTopY = tileTopY(mt.x, mt.y) + 0.3;
-                    var mPlane = new THREE.Mesh(fbGeo, _getSharedHlMat(mType));
-                    mPlane.rotation.x = -Math.PI / 2;
-                    mPlane.position.set(mt.x * ts + ts / 2, mTopY, mt.y * ts + ts / 2);
-                    highlightGroup.add(mPlane);
+                    highlightGroup.add(_makeHlTile(mt.x, mt.y, _getSharedHlMat(mType), 0.92, 0.3));
                 }
             }
         } else if (state.actionMode === 'jump' && typeof G.getJumpTiles === 'function') {
@@ -3905,11 +4258,7 @@ const ThreeRenderer = (function () {
             if (tiles) {
                 for (var ji = 0; ji < tiles.length; ji++) {
                     var jt = tiles[ji];
-                    var jTopY = tileTopY(jt.x, jt.y) + 0.3;
-                    var jPlane = new THREE.Mesh(fbGeo, _getSharedHlMat('move-jump'));
-                    jPlane.rotation.x = -Math.PI / 2;
-                    jPlane.position.set(jt.x * ts + ts / 2, jTopY, jt.y * ts + ts / 2);
-                    highlightGroup.add(jPlane);
+                    highlightGroup.add(_makeHlTile(jt.x, jt.y, _getSharedHlMat('move-jump'), 0.92, 0.3));
                 }
             }
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
@@ -3917,11 +4266,7 @@ const ThreeRenderer = (function () {
             if (tiles) {
                 for (var ai = 0; ai < tiles.length; ai++) {
                     var at = tiles[ai];
-                    var aTopY = tileTopY(at.x, at.y) + 0.3;
-                    var aPlane = new THREE.Mesh(fbGeo, _getSharedHlMat('attack'));
-                    aPlane.rotation.x = -Math.PI / 2;
-                    aPlane.position.set(at.x * ts + ts / 2, aTopY, at.y * ts + ts / 2);
-                    highlightGroup.add(aPlane);
+                    highlightGroup.add(_makeHlTile(at.x, at.y, _getSharedHlMat('attack'), 0.92, 0.3));
                 }
             }
         } else if (state.actionMode === 'inspect' && typeof G.getInspectTiles === 'function') {
@@ -3929,11 +4274,7 @@ const ThreeRenderer = (function () {
             if (tiles) {
                 for (var ii = 0; ii < tiles.length; ii++) {
                     var it = tiles[ii];
-                    var iTopY = tileTopY(it.x, it.y) + 0.3;
-                    var iPlane = new THREE.Mesh(fbGeo, _getSharedHlMat('inspect'));
-                    iPlane.rotation.x = -Math.PI / 2;
-                    iPlane.position.set(it.x * ts + ts / 2, iTopY, it.y * ts + ts / 2);
-                    highlightGroup.add(iPlane);
+                    highlightGroup.add(_makeHlTile(it.x, it.y, _getSharedHlMat('inspect'), 0.92, 0.3));
                 }
             }
         }
@@ -3954,16 +4295,10 @@ const ThreeRenderer = (function () {
         if (isPreview) _previewBaseOpacity[name] = opacity;
         for (var i = 0; i < tiles.length; i++) {
             var t = tiles[i];
-            var topY = tileTopY(t.x, t.y) + (name === 'aoe' ? 0.6 : 0.2);
             var tileColor = (t.color !== undefined) ? t.color : color;
             var tileOpacity = (t.opacity !== undefined) ? t.opacity : opacity;
             var oMat = _makeHlMaterial(tileColor, tileOpacity, isPreview ? 0.85 : 0.65, 0);
-            var plane = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.92, ts * 0.92),
-                oMat
-            );
-            plane.rotation.x = -Math.PI / 2;
-            plane.position.set(t.x * ts + ts / 2, topY, t.y * ts + ts / 2);
+            var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2));
             plane._ew_overlay = name;
             highlightGroup.add(plane);
             meshes.push(plane);
@@ -6743,6 +7078,7 @@ const ThreeRenderer = (function () {
 
         // keep the real horizon scenery in sync + atmospherically graded
         _buildHorizonScenery();
+        _buildArenaRuins();
         _animateFloaters(_envUni.uTime.value);
         _gradeHorizonScenery(S.night, S.skyEvent, S.skyAmt);
 
@@ -7419,6 +7755,89 @@ const ThreeRenderer = (function () {
         }
 
         scene.add(_horizonGroup);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  ARENA RUINS  — mid-ground esoteric architecture
+    //  The same broken-architecture vocabulary as the far horizon (colonnades,
+    //  toppled colossi, obelisks, leaning monoliths, gateways, ziggurats,
+    //  pyramids, crystal shards) but brought CLOSE: a grounded ring resting on
+    //  the board's own plane, framing the battlefield so it reads as one
+    //  surviving fragment of a vast ruined, apocalyptic world. Placed entirely
+    //  OUTSIDE the playable footprint, so it never overlaps tiles or units.
+    //  Materials grade with the day/night cycle (via _hzGeoMat → _horizonMats);
+    //  not haze-stamped, so they stay crisp and present rather than dissolving.
+    // ════════════════════════════════════════════════════════════════════
+    var _arenaRuinsGroup = null, _arenaRuinsKey = '';
+    function _buildArenaRuins() {
+        if (!scene || typeof THREE === 'undefined') return;
+        if (!BEVEL.ruins || !_naturalTerrainActive()) {
+            if (_arenaRuinsGroup) { scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); _arenaRuinsGroup = null; _arenaRuinsKey = ''; }
+            return;
+        }
+        var ts = CONFIG.tileSize || 128;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
+        // Match the horizon's key exactly so the ruins always rebuild in lockstep
+        // with it — their materials live in the same _horizonMats grade list.
+        var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
+        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0);
+        if (_arenaRuinsGroup && _arenaRuinsKey === key) return;
+        if (_arenaRuinsGroup) { scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
+        _arenaRuinsGroup = new THREE.Group();
+        _arenaRuinsGroup.name = 'arenaRuins';
+        _arenaRuinsGroup.renderOrder = -30;
+        _arenaRuinsKey = key;
+
+        var boardR = Math.sqrt(cx * cx + cz * cz);   // half-diagonal of the board
+        var rng = _mulberry32(0x9E37 + _bw * 131 + _bh * 977);
+
+        // upright landmarks that read well standing on the ground
+        var BUILDERS = [
+            _hzGreekRuin, _hzColossus, _hzObelisk, _hzMonolith,
+            _hzGateway, _hzZiggurat, _hzPyramid, _hzCrystalShards
+        ];
+        var count = 11 + (rng() * 7 | 0);
+        for (var i = 0; i < count; i++) {
+            var ang = (i / count) * Math.PI * 2 + (rng() - 0.5) * 0.55;
+            var rad = boardR * (1.35 + rng() * 1.55);          // safely outside the board
+            var x = cx + Math.cos(ang) * rad;
+            var z = cz + Math.sin(ang) * rad;
+            var build = BUILDERS[(rng() * BUILDERS.length) | 0];
+            var mesh = build(rng);
+            if (!mesh) continue;
+            mesh.scale.setScalar(0.55 + rng() * 0.75);
+            // most stand on the board plane; some sink / lean as collapsed ruins
+            var sink = (rng() < 0.4) ? -ts * (0.4 + rng() * 1.6) : 0;
+            mesh.position.set(x, sink, z);
+            mesh.rotation.y = Math.atan2(cx - x, cz - z) + (rng() - 0.5) * 0.6;
+            mesh.rotation.z = (rng() - 0.5) * 0.10;            // tilt of a leaning ruin
+            mesh.rotation.x = (rng() - 0.5) * 0.05;
+            _arenaRuinsGroup.add(mesh);
+        }
+
+        // low scattered rubble hugging the void's edge — broken drums & blocks
+        var rubbleTex = _hzTex('ruins') || _hzTex('bricks_2');
+        var rubble = 10 + (rng() * 10 | 0);
+        for (var r = 0; r < rubble; r++) {
+            var ra = rng() * Math.PI * 2;
+            var rr = boardR * (1.12 + rng() * 1.7);
+            var piece;
+            if (rng() < 0.5) {
+                var dr = ts * (0.4 + rng() * 0.5);
+                piece = _hzCyl(dr, dr, ts * (0.4 + rng() * 0.5), 10, ts, _hzGeoMat(rubbleTex, 0xb8ac8e));
+                piece.rotation.z = Math.PI / 2 + (rng() - 0.5);
+            } else {
+                var bs = ts * (0.45 + rng() * 0.6);
+                piece = _hzBox(bs, bs * (0.5 + rng() * 0.6), bs, ts, _hzGeoMat(rubbleTex, 0xa99d80));
+            }
+            piece.position.set(cx + Math.cos(ra) * rr, -ts * (0.1 + rng() * 0.5), cz + Math.sin(ra) * rr);
+            piece.rotation.y = rng() * Math.PI * 2;
+            _arenaRuinsGroup.add(piece);
+        }
+
+        scene.add(_arenaRuinsGroup);
     }
 
     // Gentle drift for the floating background scenery — a slow vertical bob
@@ -8854,6 +9273,8 @@ const ThreeRenderer = (function () {
         _floatDomOverlay = null;
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = '';
+        if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
+        _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
         if (renderer) { renderer.dispose(); renderer = null; }
         if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);

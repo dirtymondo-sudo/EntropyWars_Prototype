@@ -145,6 +145,15 @@
                 spawns: { 1: [{x:6,y:6},{x:7,y:6},{x:6,y:7},{x:7,y:7}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}] },
                 defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
             },
+            prebuilt_entropy_vale: {
+                id: 'prebuilt_entropy_vale', label: 'Entropy Vale', desc: '16×16 natural landscape, 6v6',
+                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
+                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
+                hasTowers: false, isPrebuilt: true,
+                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
+                spawns: { 1: [{x:14,y:14},{x:15,y:14},{x:14,y:15},{x:15,y:15},{x:13,y:15},{x:15,y:13}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:0},{x:0,y:2}] },
+                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'] }
+            },
             prebuilt_compound: {
                 id: 'prebuilt_compound', label: 'Compound', desc: '12×12 prebuilt, 4v4',
                 boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
@@ -1078,6 +1087,10 @@
             BARRIER_ROWS = [...layout.barrierRows];
             BARRIER_OPENINGS_X = [...layout.barrierOpeningsX];
             MAP_HAS_FLOORS = !!layout.hasFloors;
+            /* Opt this map into smooth rolling-heightfield terrain rendering
+               (three-renderer reads state.naturalTerrain). All other maps stay
+               classic flat-cube voxels. */
+            state.naturalTerrain = !!layout.naturalTerrain;
 
             if (!layout.isElliptical) state.zoneMap = null;
 
