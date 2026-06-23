@@ -2469,7 +2469,8 @@
                     if (hpLost > 0) {
                         dlgMsgs.push(`<span class="dlg-damage">${def.icon || '⚠'} ${unitDisplayName(unit)} takes ${hpLost} damage from ${def.label || key}!</span>`);
                         if (isVisible) {
-                            showFloatingTextForUnit(unit, `-${hpLost}`, 'damage', { durationMs: 900 });
+                            // NOTE: def.onRoundEnd already routes through applyDamageToUnit,
+                            // which shows the floating "-N". Don't show a second one here.
                             triggerStatusWiggle(unit);
 
                             const _dotSfxMap = { poison: 'poisonDamage', burn: 'burningDamage', drowning: 'drowningDamage', lava_burn: 'burningDamage' };
@@ -2478,7 +2479,7 @@
                     } else if (hpLost < 0) {
                         dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${unitDisplayName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
                         if (isVisible) {
-                            showFloatingTextForUnit(unit, `+${Math.abs(hpLost)}`, 'heal', { durationMs: 900 });
+                            // applyHealingToUnit (called by onRoundEnd) already shows the "+N".
                             _vfxHeal(unit.x, unit.y);
                         }
                     }
@@ -2527,7 +2528,7 @@
                                     let evt = events.find(e => e.unit === ally);
                                     if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
                                     evt.msgs.push(`<span class="dlg-heal">✨ ${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
-                                    evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                                    evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                                     addLog(`${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP.`);
                                 }
                             }
@@ -2610,7 +2611,7 @@
                             let evt = events.find(e => e.unit === ally);
                             if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
                             evt.msgs.push(`<span class="dlg-heal">✨ ${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
-                            evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                            evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                             addLog(`${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP.`);
                         }
                     }
@@ -2651,7 +2652,7 @@
                             if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
                             if (healed > 0) {
                                 evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} for ${healed} HP</span>`);
-                                evt.floats.push({ text: `+${healed}`, type: 'heal' });
+                                evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                             }
                             if (manaAmt > 0) {
                                 evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
@@ -2696,10 +2697,13 @@
                 if (evt.unit.dead) continue;
                 const isVisible = _isUnitVisibleToViewer(evt.unit, viewer);
                 if (isVisible) {
+                    // Heal floats were already shown by applyHealingToUnit (tracked via
+                    // evt.didHeal); only non-heal floats (e.g. spawn-zone scorch damage,
+                    // which mutates hp directly) still need to be drawn here.
                     for (const f of evt.floats) {
                         showFloatingTextForUnit(evt.unit, f.text, f.type, { durationMs: 1200 });
                     }
-                    if (evt.floats.some(f => f.type === 'heal')) {
+                    if (evt.didHeal) {
                         flashHeal(evt.unit);
                         _vfxHeal(evt.unit.x, evt.unit.y);
                     }
@@ -8736,8 +8740,8 @@
             if (!unit || !res) return;
             if (_skipVisuals()) return;
             if (res.pressed) {
-                showFloatingTextForUnit(unit, 'PRESS!', 'crit', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚡ Press! Free action!</span>`], 1100);
+                showFloatingTextForUnit(unit, '+1 AP!', 'revive', { durationMs: 1000, jitterY: -26 });
+                showBattleDialogue([`<span class="dlg-effective">⚡ +1 AP — Free action!</span>`], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.penalty) {
                 showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });

@@ -465,26 +465,35 @@ const ThreeRenderer = (function () {
     var FLOAT_STAGGER_Y = 36;
     var FLOAT_STAGGER_WINDOW = 600;
 
+    // Damage/heal/mana NUMBERS render with a vertical gradient (`grad`, top→bottom)
+    // and a heavier gothic-serif weight; WORD callouts ("SUPER EFFECTIVE", "DODGE!")
+    // fall back to the flat `color` and a lighter, letter-spaced label treatment so
+    // the two read as clearly different things. _buildFloatTextTexture picks which
+    // path to use per string (numeric vs. label).
+    var _GRAD_FIRE = ['#ffd23a', '#ff7a18', '#d11010']; // orange → red (damage)
+    var _GRAD_LIFE = ['#c8ffd6', '#48e06d', '#12993a']; // pale → deep green (heal)
+    var _GRAD_MANA = ['#d6f1ff', '#5bb8ff', '#1f6fe0']; // pale → deep blue (mana)
+    var _GRAD_GOLD = ['#fff3b0', '#ffd24a', '#e0a000']; // light → amber (gold/AP/level)
     var _FLOAT_STYLES = {
-        'damage':        { color: '#ff4444', stroke: '#000000', fontSize: 48 },
-        'heal':          { color: '#44ff66', stroke: '#000000', fontSize: 46 },
-        'mp':            { color: '#6ec8ff', stroke: '#000000', fontSize: 40 },
-        'revive':        { color: '#ffd700', stroke: '#000000', fontSize: 48 },
-        'crit':          { color: '#ffcc00', stroke: '#000000', fontSize: 58 },
-        'dodge':         { color: '#ccccdd', stroke: '#000000', fontSize: 40 },
-        'counter':       { color: '#ff8844', stroke: '#000000', fontSize: 42 },
-        'xp':            { color: '#dda0ff', stroke: '#000000', fontSize: 34 },
-        'levelup':       { color: '#ffd700', stroke: '#000000', fontSize: 54 },
-        'streak':        { color: '#ff4444', stroke: '#000000', fontSize: 48 },
-        'laststd':       { color: '#ffd700', stroke: '#000000', fontSize: 52 },
-        'overkill':      { color: '#ff2222', stroke: '#000000', fontSize: 56 },
-        'achieve':       { color: '#ffd700', stroke: '#000000', fontSize: 40 },
-        'protect-block': { color: '#44aaff', stroke: '#000000', fontSize: 42 },
-        'pickup':        { color: '#ffd700', stroke: '#000000', fontSize: 38 },
-        'buff':          { color: '#88ddff', stroke: '#000000', fontSize: 40 },
-        'debuff':        { color: '#cc66ff', stroke: '#000000', fontSize: 40 },
-        'status':        { color: '#ffcc44', stroke: '#000000', fontSize: 38 },
-        'neutral':       { color: '#ffffff', stroke: '#000000', fontSize: 40 },
+        'damage':        { color: '#ff5a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 52 },
+        'heal':          { color: '#5cf07e', grad: _GRAD_LIFE, stroke: '#052813', fontSize: 50 },
+        'mp':            { color: '#6ec8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 44 },
+        'revive':        { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 50 },
+        'crit':          { color: '#ffcc00', grad: _GRAD_GOLD, stroke: '#3a1a00', fontSize: 64, label: true },
+        'dodge':         { color: '#d6d9e6', stroke: '#10131c', fontSize: 42, label: true },
+        'counter':       { color: '#ff9a55', grad: _GRAD_FIRE, stroke: '#2a1000', fontSize: 44, label: true },
+        'xp':            { color: '#dda0ff', stroke: '#22103a', fontSize: 36, label: true },
+        'levelup':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 56, label: true },
+        'streak':        { color: '#ff6a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 50, label: true },
+        'laststd':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 54, label: true },
+        'overkill':      { color: '#ff3a2a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 60, label: true },
+        'achieve':       { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 42, label: true },
+        'protect-block': { color: '#5cb8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 42, label: true },
+        'pickup':        { color: '#ffd86b', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 40 },
+        'buff':          { color: '#9fe6ff', stroke: '#052236', fontSize: 42, label: true },
+        'debuff':        { color: '#d68cff', stroke: '#22103a', fontSize: 42, label: true },
+        'status':        { color: '#ffd86b', stroke: '#3a2600', fontSize: 40, label: true },
+        'neutral':       { color: '#f0f0f0', stroke: '#101010', fontSize: 42, label: true },
     };
 
     var hitFxGroup = null;
@@ -5684,64 +5693,86 @@ const ThreeRenderer = (function () {
 
     function _buildFloatTextTexture(text, kind) {
         var style = _FLOAT_STYLES[kind] || _FLOAT_STYLES['damage'];
+        var raw = String(text == null ? '' : text);
+
+        // A "number" pop (e.g. "-128", "+45", "+30 MP") gets the punchy gradient
+        // glyph; everything else is a word callout ("SUPER EFFECTIVE!", "DODGE!")
+        // rendered flat + letter-spaced so it reads as a different layer of feedback.
+        var isNumber = /^[+\-]?\d/.test(raw.trim()) && !style.label;
+
         var fontSize = style.fontSize || 48;
-        var fontFamily = "'DotGothic16', monospace";
-        var fontWeight = '900';
+        // Gothic / serif face (loaded in index.html) for that JRPG damage-number look.
+        var fontFamily = "'Cinzel', Georgia, 'Times New Roman', serif";
+        var fontWeight = isNumber ? '900' : '700';
+        var letterSpacing = isNumber ? 0 : Math.max(1, Math.round(fontSize * 0.06));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
 
         var c = document.createElement('canvas');
         var ctx = c.getContext('2d');
         ctx.font = fontStr;
-        var metrics = ctx.measureText(text);
+        if ('letterSpacing' in ctx) ctx.letterSpacing = letterSpacing + 'px';
+        var metrics = ctx.measureText(raw);
 
-        var outlineW = Math.max(3, Math.round(fontSize * 0.08));
-        var padX = outlineW * 4 + 8;
+        var outlineW = Math.max(3, Math.round(fontSize * (isNumber ? 0.09 : 0.07)));
+        var padX = outlineW * 4 + 8 + letterSpacing;
         var padY = outlineW * 4 + 8;
         var tw = Math.ceil(metrics.width) + padX * 2;
-        var th = Math.ceil(fontSize * 1.3) + padY * 2;
+        var th = Math.ceil(fontSize * 1.4) + padY * 2;
         c.width = tw; c.height = th;
         ctx = c.getContext('2d');
         ctx.font = fontStr;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = letterSpacing + 'px';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         var cx = tw / 2;
         var cy = th / 2;
 
+        // Drop shadow (offset, soft) for legibility over any board color.
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
+        ctx.shadowBlur = isNumber ? 10 : 7;
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 4;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillText(text, cx, cy);
+        ctx.fillText(raw, cx, cy);
         ctx.restore();
 
+        // Thick dark outline → thin black inner outline (two passes for a clean edge).
         ctx.save();
         ctx.lineWidth = outlineW * 2.5;
         ctx.lineJoin = 'round';
         ctx.miterLimit = 2;
         ctx.strokeStyle = style.stroke || '#000000';
-        ctx.strokeText(text, cx, cy);
-        ctx.restore();
-
-        ctx.save();
-        ctx.lineWidth = outlineW * 1.2;
-        ctx.lineJoin = 'round';
-        ctx.miterLimit = 2;
+        ctx.strokeText(raw, cx, cy);
+        ctx.lineWidth = outlineW * 1.1;
         ctx.strokeStyle = '#000000';
-        ctx.strokeText(text, cx, cy);
+        ctx.strokeText(raw, cx, cy);
         ctx.restore();
 
+        // Fill: vertical gradient for numbers, flat color for word callouts.
         ctx.save();
-        ctx.fillStyle = style.color || '#ffffff';
-        ctx.fillText(text, cx, cy);
+        if (isNumber && style.grad && style.grad.length) {
+            var g = ctx.createLinearGradient(0, cy - fontSize * 0.62, 0, cy + fontSize * 0.55);
+            var stops = style.grad;
+            for (var si = 0; si < stops.length; si++) {
+                g.addColorStop(stops.length === 1 ? 0 : si / (stops.length - 1), stops[si]);
+            }
+            ctx.fillStyle = g;
+        } else {
+            ctx.fillStyle = style.color || '#ffffff';
+        }
+        ctx.fillText(raw, cx, cy);
         ctx.restore();
 
+        // Top sheen — a bright highlight on the upper third sells the metallic pop.
         ctx.save();
-        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.rect(0, 0, tw, cy);
+        ctx.clip();
+        ctx.globalAlpha = isNumber ? 0.42 : 0.25;
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(text, cx, cy - 1);
+        ctx.fillText(raw, cx, cy - Math.max(1, fontSize * 0.03));
         ctx.restore();
 
         var tex = new THREE.CanvasTexture(c);
@@ -5791,7 +5822,10 @@ const ThreeRenderer = (function () {
         }
         var surfaceY = _tileSurfaceY(tileX, tileY, zLevel);
 
-        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO + quadH / 2 + 12 + staggerLift;
+        // Spawn at the unit's torso/upper-chest (~0.6 of sprite height) instead of
+        // above the head — the number then rises (FLOAT_RISE_PX) up past the head
+        // for that punchy JRPG pop. Stagger lift keeps stacked pops from overlapping.
+        var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * 0.6 + staggerLift;
 
         var wx = tileX * ts + ts / 2 + jx;
         var wz = tileY * ts + ts / 2 + jy;
