@@ -2222,6 +2222,30 @@
             return mult;
         }
 
+        // Pick a starting race for a default-party slot that the local human
+        // (player 1) actually owns. The archetype default race (e.g. Gunslinger
+        // -> martian) is often a locked vessel, which would make the team fail
+        // the unlock gate on Lock In / Start. If that default isn't unlocked,
+        // fall back to an owned race whose default job matches the slot, then to
+        // any owned race. Returns undefined to keep the archetype default when
+        // no unlock list applies (dev unlock, etc.).
+        function ownedRaceForJobSlot(job) {
+            if (typeof isUnitUnlocked !== 'function') return undefined;
+            const archetypeRace = (getArchetypeForJob(job) || {}).race;
+            // Keep the archetype default when the player already owns it.
+            if (archetypeRace && isUnitUnlocked(archetypeRace)) return archetypeRace;
+            if (typeof AVAILABLE_RACES === 'undefined' || typeof RACE_DEFAULT_JOBS === 'undefined') {
+                return undefined;
+            }
+            // Prefer an owned vessel whose natural job matches this slot.
+            const sameJob = AVAILABLE_RACES.filter(r => RACE_DEFAULT_JOBS[r] === job && isUnitUnlocked(r));
+            if (sameJob.length) return sameJob[0];
+            // Otherwise any owned vessel keeps the team legal.
+            const anyOwned = AVAILABLE_RACES.filter(r => isUnitUnlocked(r));
+            if (anyOwned.length) return anyOwned[0];
+            return undefined;
+        }
+
         function makeDefaultPartyMeta() {
             const out = {
                 1: [],
@@ -2232,7 +2256,9 @@
                 const size = Math.max(CONFIG.teamSize, builds.length);
                 for (let i = 0; i < size; i++) {
                     const job = builds[i] || 'Gunslinger';
-                    out[player].push(resolveIdentityForBuild(job));
+                    // Only the local human (player 1) is gated on unlocks.
+                    const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) } : {};
+                    out[player].push(resolveIdentityForBuild(job, identity));
                 }
             });
             return out;
@@ -2245,7 +2271,9 @@
                 const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[player]?.length || 0);
                 for (let i = 0; i < size; i++) {
                     if (!state.partyMeta[player][i]) {
-                        state.partyMeta[player][i] = resolveIdentityForBuild((state.partyBuilds?.[player]?.[i]) || 'Gunslinger');
+                        const job = (state.partyBuilds?.[player]?.[i]) || 'Gunslinger';
+                        const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) } : {};
+                        state.partyMeta[player][i] = resolveIdentityForBuild(job, identity);
                     }
                 }
             });
@@ -2991,7 +3019,11 @@
                     let repairedLo = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), cls);
                     const archetype = getArchetypeForJob(cls);
                     const priorMeta = state.partyMeta[player]?.[idx] || {};
-                    const race = priorMeta.race || archetype.race || 'homosapien';
+                    // For the local human (player 1), don't fall back to a locked
+                    // archetype default race — pick an owned vessel so the team
+                    // can pass the unlock gate on Lock In / Start.
+                    const defaultRace = (player === 1 ? ownedRaceForJobSlot(cls) : null) || archetype.race || 'homosapien';
+                    const race = priorMeta.race || defaultRace;
 
                     const hasAnySpell = repairedLo.spells.some(s => s);
                     if (!hasAnySpell && typeof randomSpellLoadoutForClass === 'function') {
