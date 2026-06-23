@@ -6303,8 +6303,8 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     //  FLAT-EARTH FIRMAMENT ENVIRONMENT
     //  Real 3D geometry living in the battle scene, sharing the game camera:
-    //  a scorched abyssal ground plane that extends the board out to a
-    //  circular ice-wall horizon, under a firmament sky dome. Because it is
+    //  no floor at all — only a distant molten rift far below and a firmament
+    //  sky dome above, so the board floats in open void. Because it is
     //  actual world geometry it tilts / rotates / zooms with the map, and you
     //  can look up to see the sky. Reacts to the day/night cycle, sky events,
     //  the active zodiac and the weather.
@@ -6332,10 +6332,10 @@ const ThreeRenderer = (function () {
         'void main(){ vec4 wp=modelMatrix*vec4(position,1.0); vWorld=wp.xyz; gl_Position=projectionMatrix*viewMatrix*wp; }';
 
     function _envGroundFS() {
-        // No more masonic checkerboard. The ground is now an abstract scorched
-        // abyssal plain — charred obsidian with large-scale value drift, fine
-        // grain and dim aether/lava seeping up through cracks — ringed by faint
-        // esoteric sigils far out and dissolving into a fog horizon.
+        // Not a floor any more — this plane is banished far below the floating
+        // board as a distant molten rift: charred obsidian with large-scale
+        // value drift, fine grain and aether/lava seeping up through glowing
+        // cracks, ringed by faint esoteric sigils and dissolving into haze.
         return 'varying vec3 vWorld;\n' + _ENV_COMMON + '\n' +
         'void main(){\n' +
         '  float night=uDayNight;\n' +
@@ -6622,7 +6622,10 @@ const ThreeRenderer = (function () {
         _envUni.uWallH.value = _ENV_WALL_H;
         _envUni.uTile.value = ts;
 
-        if (_envGround) { _envGround.position.set(cx, -ts * 0.06, cz); _envGround.scale.set(discR, 1, discR); }
+        // The molten/cracked plane is no longer the floor the map sits on —
+        // it's banished far below as a distant abyssal rift, so the board and
+        // all the scenery read as floating high in the void above it.
+        if (_envGround) { _envGround.position.set(cx, -discR * 0.62, cz); _envGround.scale.set(discR * 1.35, 1, discR * 1.35); }
         if (_envWall) { _envWall.position.set(cx, _ENV_WALL_H * 0.5, cz); _envWall.scale.set(discR, _ENV_WALL_H, discR); }
         if (_envDome) {
             var camo = ThreeCamera.getCamera();
@@ -6654,16 +6657,16 @@ const ThreeRenderer = (function () {
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  HORIZON SCENERY
+    //  VOID SCENERY
     //  Surreal landmarks built from real THREE geometry, telling an abstract,
-    //  apocalyptic, esoteric visual story. A ground layer of monuments stands on
-    //  the scorched plain — nexus-textured peaks, greek colonnade ruins,
-    //  stairways to nowhere, great pyramids (some tilted and half-sunk), stepped
-    //  ziggurats, gateways to nowhere, obelisks, leaning black monoliths,
-    //  toppled colossi and crystal outcrops — and a sparser floating layer of
-    //  broken islands, sacred-geometry orbital haloes and drifting crystal
-    //  shards hangs in the sky, gently bobbing and spinning. Plenty of gaps keep
-    //  the ground-meets-sky line visible. Everything is solid world geometry so
+    //  apocalyptic, esoteric visual story. There is no floor: the board floats
+    //  in an open void and these bodies hang suspended all around it — at varied
+    //  directions, depths and elevations (far below the board as well as high
+    //  above) — every one drifting gently. The cast: nexus-textured floating
+    //  peaks, greek colonnade ruins, stairways to nowhere, great pyramids,
+    //  stepped ziggurats, gateways to nowhere, obelisks, leaning black
+    //  monoliths, toppled colossi, broken sky-islands, drifting crystal clusters
+    //  and sacred-geometry orbital haloes. Everything is solid world geometry so
     //  it tilts / rotates / zooms with the map, and it is graded by the
     //  day/night cycle + sky events just like the rest of the scene.
     // ════════════════════════════════════════════════════════════════════
@@ -7089,64 +7092,67 @@ const ThreeRenderer = (function () {
         _horizonGroup.renderOrder = -40;
         _horizonKey = key;
 
-        var R = discR * 0.92;
         var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
 
-        // ── ground layer: monuments standing on the scorched plain ──
-        // Weighted roster, cumulative thresholds. Mountains stay the back wall;
-        // the rest tells a fallen-civilisation story scattered with open gaps.
-        var GROUND = [
-            [0.30, _hzMountain],      // distant faceted peaks (back layer)
-            [0.44, _hzGreekRuin],     // colonnade ruins
-            [0.55, _hzStairway],      // stairways to nowhere
-            [0.66, _hzPyramid],       // great pyramids (some sinking)
-            [0.74, _hzZiggurat],      // stepped temples
-            [0.82, _hzGateway],       // gateways to nowhere
-            [0.88, _hzObelisk],       // obelisks
-            [0.93, _hzMonolith],      // leaning black monoliths
-            [0.97, _hzColossus],      // toppled colossi
-            [1.00, _hzCrystalShards]  // crystal outcrops
+        // There is no ground plane any more — the board floats in an open void,
+        // and so does everything else. Each landmark is a free-floating body
+        // suspended all around the map: varied compass directions, distances AND
+        // elevations (well below the board as well as high above it), every one
+        // drifting gently. The weighted roster cumulative-thresholds the type;
+        // `tumble` bodies (crystals, haloes) spin freely on all axes while the
+        // rest hang roughly upright with a slow turn and an organic tilt.
+        //   thr,  builder,          tumble, yLoFactor, yHiFactor   (× discR)
+        var ROSTER = [
+            [0.13, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
+            [0.24, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
+            [0.33, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
+            [0.45, _hzPyramid,        false, -0.48,  0.55],   // great pyramids
+            [0.53, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
+            [0.61, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
+            [0.68, _hzObelisk,        false, -0.45,  0.58],   // obelisks
+            [0.76, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
+            [0.82, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
+            [0.90, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
+            [0.96, _hzCrystalShards,  true,  -0.60,  0.70],   // crystal clusters
+            [1.00, _hzSacredRings,    true,  -0.60,  0.72]    // sacred-geometry haloes
         ];
-        var slots = 96;
+
+        var slots = 132;
         for (var i = 0; i < slots; i++) {
-            if (rng() < 0.55) continue;                         // gaps keep the horizon open
-            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.06;
-            var rr = R * (0.82 + rng() * 0.20);
+            if (rng() < 0.50) continue;                          // open gaps keep the void airy
+            var ang = (i / slots) * Math.PI * 2 + (rng() - 0.5) * 0.18;
+            var rr = discR * (0.46 + rng() * 0.58);              // varied depth into the void
             var x = cx + Math.cos(ang) * rr;
             var z = cz + Math.sin(ang) * rr;
-            var roll = rng(), mesh = null;
-            for (var gi = 0; gi < GROUND.length; gi++) {
-                if (roll < GROUND[gi][0]) { mesh = GROUND[gi][1](rng); break; }
-            }
-            if (!mesh) continue;
-            mesh.position.set(x, 0, z);
-            mesh.rotation.y = Math.atan2(cx - x, cz - z);       // front faces the arena
-            _horizonGroup.add(mesh);
-        }
 
-        // ── floating layer: islands, haloes and shards drifting in the sky ──
-        // Sparser, set further back and lifted off the ground; gently animated
-        // in _updateEnvironment so the background quietly breathes.
-        var FLOAT = [_hzFloatingIsland, _hzSacredRings, _hzCrystalShards, _hzFloatingIsland];
-        var fslots = 26;
-        for (var j = 0; j < fslots; j++) {
-            if (rng() < 0.55) continue;
-            var fang = (j / fslots) * Math.PI * 2 + (rng() - 0.5) * 0.12;
-            var frr = R * (0.70 + rng() * 0.28);
-            var fx = cx + Math.cos(fang) * frr;
-            var fz = cz + Math.sin(fang) * frr;
-            var fy = ts * (5 + rng() * 11);
-            var fmesh = FLOAT[(rng() * FLOAT.length) | 0](rng);
-            if (!fmesh) continue;
-            fmesh.position.set(fx, fy, fz);
-            fmesh.rotation.y = Math.atan2(cx - fx, cz - fz);
-            _horizonGroup.add(fmesh);
+            var roll = rng(), pick = null;
+            for (var ri = 0; ri < ROSTER.length; ri++) {
+                if (roll < ROSTER[ri][0]) { pick = ROSTER[ri]; break; }
+            }
+            if (!pick) continue;
+            var mesh = pick[1](rng);
+            if (!mesh) continue;
+            var tumble = pick[2];
+            var y = (pick[3] + rng() * (pick[4] - pick[3])) * discR;
+            mesh.position.set(x, y, z);
+
+            var spin;
+            if (tumble) {
+                mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+                spin = (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028);
+            } else {
+                mesh.rotation.y = Math.atan2(cx - x, cz - z);    // face the board
+                mesh.rotation.z += (rng() - 0.5) * 0.10;         // organic float tilt
+                mesh.rotation.x += (rng() - 0.5) * 0.06;
+                spin = rng() < 0.4 ? (rng() < 0.5 ? 1 : -1) * (0.0003 + rng() * 0.0008) : 0;
+            }
+            _horizonGroup.add(mesh);
             _horizonFloaters.push({
-                obj: fmesh, baseY: fy,
-                amp: ts * (0.4 + rng() * 0.9),
-                spd: 0.12 + rng() * 0.22,
+                obj: mesh, baseY: y,
+                amp: ts * (0.5 + rng() * 1.6),
+                spd: 0.08 + rng() * 0.22,
                 phase: rng() * Math.PI * 2,
-                spin: (rng() < 0.5 ? 1 : -1) * (0.0006 + rng() * 0.0016)
+                spin: spin
             });
         }
 
