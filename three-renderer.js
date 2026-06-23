@@ -6644,9 +6644,8 @@ const ThreeRenderer = (function () {
 
     // ════════════════════════════════════════════════════════════════════
     //  HORIZON SCENERY
-    //  Surreal landmarks built from real THREE geometry — ancient pyramids
-    //  (textured with the nexus terrain sprite), stairways to nowhere,
-    //  giant trees, abandoned greek temple ruins and the odd rocky peak —
+    //  Surreal landmarks built from real THREE geometry — nexus-textured
+    //  mountain peaks, stairways to nowhere and abandoned greek temple ruins —
     //  ringing the board out on the horizon with plenty of gaps so the
     //  ground-meets-sky line stays visible. Everything is solid world
     //  geometry so it tilts / rotates / zooms with the map, and it is graded
@@ -6654,8 +6653,6 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
-    var _R2_TERR = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
-    var _HORIZON_ROCK_URLS = [_R2_TERR + 'rock.png', _R2_TERR + 'rocks_4.png'];
 
     function _mulberry32(a) {
         return function () {
@@ -6693,13 +6690,21 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.add(m); return g;
     }
 
-    function _horizonRock(tex, w, h) {
-        var mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, depthWrite: true, fog: false });
-        mat._ew_rock = true; _horizonMats.push(mat);
-        // low-poly peak so the tiling rock texture reads as a distant mountain
-        var m = new THREE.Mesh(new THREE.ConeGeometry(w * 0.5, h, 5, 1, false), mat);
+    // Distant mountain peak, textured with the nexus terrain sprite.
+    function _hzMountain(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('nexus');
+        var h = ts * (9 + rng() * 10);
+        var r = h * (0.55 + rng() * 0.40);               // base radius
+        var seg = 5 + (rng() * 3 | 0);                   // low-poly, faceted peak
+        var geo = new THREE.ConeGeometry(r, h, seg, 1, false);
+        // tile around the base circumference and up the slant for terrain density
+        _hzScaleUV(geo, Math.max(1, (2 * Math.PI * r) / ts), Math.max(1, h / ts));
+        var m = new THREE.Mesh(geo, _hzGeoMat(tex, 0xffffff));
         m.position.y = h * 0.5; m.frustumCulled = false;
-        var g = new THREE.Group(); g.add(m); return g;
+        g.add(m);
+        return g;
     }
 
     // ── geometry helpers for the landmark structures ──
@@ -6771,30 +6776,6 @@ const ThreeRenderer = (function () {
         return new THREE.Mesh(geo, mat);
     }
 
-    // Ancient stepped pyramid, textured with the nexus terrain sprite.
-    function _hzPyramid(rng) {
-        var ts = CONFIG.tileSize || 128;
-        var g = new THREE.Group();
-        var tex = _hzTex('nexus');
-        var tiers = 5 + (rng() * 3 | 0);
-        var baseW = ts * (10 + rng() * 6);
-        var totalH = baseW * (0.85 + rng() * 0.35);
-        var tierH = totalH / tiers;
-        for (var t = 0; t < tiers; t++) {
-            var f = 1 - t / tiers;                       // shrink toward the apex
-            var w = baseW * (0.16 + 0.84 * f), th = tierH * 1.02;
-            var box = _hzBox(w, th, w, ts, _hzGeoMat(tex, 0xffffff)); // let the nexus colours speak
-            box.position.y = tierH * (t + 0.5);
-            g.add(box);
-        }
-        // small capstone
-        var cw = baseW * 0.12, ch = tierH * 0.5;
-        var cap = _hzBox(cw, ch, cw, ts, _hzGeoMat(tex, 0xffffff));
-        cap.position.y = totalH + tierH * 0.25;
-        g.add(cap);
-        return g;
-    }
-
     // A surreal floating stairway climbing up and ending in mid-air.
     function _hzStairway(rng) {
         var ts = CONFIG.tileSize || 128;
@@ -6816,35 +6797,6 @@ const ThreeRenderer = (function () {
             var tread = new THREE.Mesh(geo, mats);
             tread.position.set(s * stepW * lean, rise * (s + 0.5), -depth * s);
             g.add(tread);
-        }
-        return g;
-    }
-
-    // Giant tree — fat textured trunk plus a cluster of foliage blobs.
-    function _hzGiantTree(rng) {
-        var ts = CONFIG.tileSize || 128;
-        var g = new THREE.Group();
-        var woodTex = _hzTex('wood');
-        var foliTex = _hzTex('forest');
-        var trunkH = ts * (8 + rng() * 6);
-        var trunkR = ts * (0.7 + rng() * 0.5);
-        var trunk = _hzCyl(trunkR * 0.55, trunkR, trunkH, 9, ts, _hzGeoMat(woodTex, 0x5e4634));
-        trunk.position.y = trunkH * 0.5;
-        g.add(trunk);
-        var canopyR = ts * (3.4 + rng() * 1.8);
-        var canopyBase = trunkH * 0.92;
-        var greens = [0x256a28, 0x2f7a33, 0x1f5e2a, 0x387f30];
-        var blobs = 5 + (rng() * 3 | 0);
-        for (var b = 0; b < blobs; b++) {
-            var mat = _hzGeoMat(foliTex, greens[(rng() * greens.length) | 0]);
-            var r = canopyR * (0.55 + rng() * 0.55);
-            var geo = new THREE.SphereGeometry(r, 9, 7);
-            _hzScaleUV(geo, Math.max(1, (2 * Math.PI * r) / ts), Math.max(1, (Math.PI * r) / ts));
-            var blob = new THREE.Mesh(geo, mat);
-            var ang = rng() * Math.PI * 2, rad = canopyR * 0.55 * rng();
-            blob.position.set(Math.cos(ang) * rad, canopyBase + (rng() - 0.25) * canopyR * 0.9, Math.sin(ang) * rad);
-            blob.scale.y = 0.85;
-            g.add(blob);
         }
         return g;
     }
@@ -6921,16 +6873,11 @@ const ThreeRenderer = (function () {
             var x = cx + Math.cos(ang) * rr;
             var z = cz + Math.sin(ang) * rr;
 
-            // distant rocky peaks form the back layer; surreal landmarks fill the rest
+            // nexus-textured mountains form the back layer; ruins + stairways fill the rest
             var roll = rng(), mesh = null;
-            if (roll < 0.14) {
-                var rtex = getTexture(_HORIZON_ROCK_URLS[(rng() * _HORIZON_ROCK_URLS.length) | 0]);
-                if (rtex) { var rh = ts * (5 + rng() * 8); mesh = _horizonRock(rtex, rh * (1.2 + rng() * 0.7), rh); }
-            } else if (roll < 0.42) {
-                mesh = _hzGiantTree(rng);
-            } else if (roll < 0.62) {
-                mesh = _hzPyramid(rng);
-            } else if (roll < 0.84) {
+            if (roll < 0.44) {
+                mesh = _hzMountain(rng);
+            } else if (roll < 0.76) {
                 mesh = _hzGreekRuin(rng);
             } else {
                 mesh = _hzStairway(rng);
