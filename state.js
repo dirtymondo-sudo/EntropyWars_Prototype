@@ -4472,10 +4472,12 @@
                 if (!_tiltActive) return;
                 const dx = e.clientX - _tiltStartX;
                 const dy = e.clientY - _tiltStartY;
-                // Clamp pitch to [top-down .. near-horizontal]. 88° lets the
-                // camera crane up and look at the sky/horizon without rotating
-                // past vertical (which would drop it below the map).
-                const newTilt = Math.round(Math.max(0, Math.min(88, _tiltStartDeg + dy * 0.3)) * 10) / 10;
+                // Clamp pitch to [top-down .. craned up into the sky]. 0° is
+                // straight down, 90° is dead-level at the horizon, and past 90°
+                // the gaze pitches UP at the sky dome (the camera rides the
+                // ground floor instead of dipping below the map — see
+                // ThreeCamera.sync). 135° = ~45° above the horizon.
+                const newTilt = Math.round(Math.max(0, Math.min(135, _tiltStartDeg + dy * 0.3)) * 10) / 10;
                 const newYaw = Math.round((_yawStartDeg + dx * 0.4) * 10) / 10;
                 const tiltChanged = Math.abs(newTilt - (state.dioramaTiltDeg ?? 50)) >= 0.1;
                 const yawChanged = Math.abs(newYaw - (state.dioramaYawDeg ?? 0)) >= 0.1;
@@ -4640,9 +4642,10 @@
                     const midX = (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3;
                     const dy = midY - _touch3StartY;
                     const dx = midX - _touch3StartX;
-                    // Clamp pitch so craning up reaches the sky/horizon but never
-                    // rotates past vertical and dips the camera below the map.
-                    const newTilt = Math.round(Math.max(0, Math.min(88, _touch3StartTilt + dy * 0.3)) * 10) / 10;
+                    // Clamp pitch so craning up cranes the gaze into the sky
+                    // (past 90° the camera rides the ground floor and looks up
+                    // at the sky dome rather than dipping below the map).
+                    const newTilt = Math.round(Math.max(0, Math.min(135, _touch3StartTilt + dy * 0.3)) * 10) / 10;
                     const newYaw = Math.round((_touch3StartYaw + dx * 0.4) * 10) / 10;
                     if (typeof camera !== 'undefined') {
                         camera.snap({ _force: true, tilt: newTilt, yaw: newYaw });

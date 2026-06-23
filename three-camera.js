@@ -78,20 +78,41 @@ const ThreeCamera = (function () {
         const tiltRad = cam.tilt * DEG2RAD;
         const yawRad  = cam.yaw  * DEG2RAD;
 
-        const targetPosX = focalX + dist * Math.sin(tiltRad) * Math.sin(yawRad);
-        let   targetPosY = focalY + dist * Math.cos(tiltRad);
-        const targetPosZ = focalZ + dist * Math.sin(tiltRad) * Math.cos(yawRad);
+        /* View DIRECTION the camera faces (eye → scene), from pitch/yaw alone.
+           This is the key to looking at the sky: at tilt 0 we stare straight
+           down (dirY = -1); at tilt 90 we look dead level at the horizon
+           (dirY = 0); PAST 90 the gaze pitches UP into the sky (dirY > 0). We
+           keep this direction even when the eye is later clamped to the floor,
+           so craning past the horizon reveals the sky dome instead of the
+           underside of the board. */
+        const dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
+        const dirY = -Math.cos(tiltRad);
+        const dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
+
+        /* Ideal orbit eye: the focal point pushed back along -dir by `dist`.
+           (Algebraically identical to the old focal + dist·sin/cos rig.) */
+        const targetPosX = focalX - dist * dirX;
+        let   targetPosY = focalY - dist * dirY;
+        const targetPosZ = focalZ - dist * dirZ;
 
         /* ── AAA floor collision ──
-           This is an orbit rig: posY = focalY + dist*cos(tilt). As the pitch
-           cranes up toward the horizon (tilt → 90°) the orbit drops to ground
-           level, and past it the camera would sink THROUGH the board ("below
-           the map"). Clamp the camera so it rides just above the ground it is
-           orbiting — it slides along the floor and keeps looking up at the sky
-           instead of clipping under the world. */
+           As the pitch cranes up toward (and past) the horizon the orbit eye
+           drops to ground level and would sink THROUGH the board ("below the
+           map"). Clamp ONLY the eye so it rides just above the ground it is
+           orbiting. The look target below is rebuilt from the preserved view
+           direction — so a floored camera keeps tilting its gaze up at the sky
+           instead of being yanked back down to stare at the board. */
         const groundClearance = ts * 0.35;
         const floorY = Math.max(0, focalY) + groundClearance;
         if (targetPosY < floorY) targetPosY = floorY;
+
+        /* Look target = eye + viewDir · dist. When the eye is unclamped this is
+           exactly the ground focal point (classic orbit framing); when the eye
+           has been floored, the gaze still rides the original up-pitched
+           direction, craning toward the sky. */
+        const targetLookX = targetPosX + dist * dirX;
+        const targetLookY = targetPosY + dist * dirY;
+        const targetLookZ = targetPosZ + dist * dirZ;
 
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
@@ -102,9 +123,9 @@ const ThreeCamera = (function () {
             _smoothPosX = targetPosX;
             _smoothPosY = targetPosY;
             _smoothPosZ = targetPosZ;
-            _smoothLookX = focalX;
-            _smoothLookY = focalY;
-            _smoothLookZ = focalZ;
+            _smoothLookX = targetLookX;
+            _smoothLookY = targetLookY;
+            _smoothLookZ = targetLookZ;
             _initialized = true;
         } else {
             const st = _smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME;
@@ -113,9 +134,9 @@ const ThreeCamera = (function () {
             _smoothPosX  = _damp(_smoothPosX,  targetPosX, st, dt);
             _smoothPosY  = _damp(_smoothPosY,  targetPosY, st, dt);
             _smoothPosZ  = _damp(_smoothPosZ,  targetPosZ, st, dt);
-            _smoothLookX = _damp(_smoothLookX, focalX,     st, dt);
-            _smoothLookY = _damp(_smoothLookY, focalY,     st, dt);
-            _smoothLookZ = _damp(_smoothLookZ, focalZ,     st, dt);
+            _smoothLookX = _damp(_smoothLookX, targetLookX, st, dt);
+            _smoothLookY = _damp(_smoothLookY, targetLookY, st, dt);
+            _smoothLookZ = _damp(_smoothLookZ, targetLookZ, st, dt);
         }
 
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
