@@ -6703,26 +6703,44 @@ const ThreeRenderer = (function () {
     }
 
     // ── geometry helpers for the landmark structures ──
-    // Repeat-wrapped terrain texture CLONES, cached per (key,repeat). We clone
-    // so we never mutate the shared in-world terrain textures' wrap/repeat.
+    // Dedicated horizon texture instances (one per terrain key) loaded through
+    // the module loader so they upload reliably once the PNG arrives. We keep
+    // repeat at 1×1 and tile via geometry UVs instead, so the textures are
+    // never shared with — or mutated against — the in-world terrain tiles, and
+    // every face keeps the same pixel density as the rest of the game.
     var _hzTexCache = {};
-    function _hzRepeatTex(terrainKey, repX, repY) {
-        var ck = terrainKey + ':' + repX + 'x' + repY;
-        if (_hzTexCache[ck]) return _hzTexCache[ck];
-        var src = getTerrainTexture(terrainKey);
-        if (!src) return null;
-        var tex = src.clone();
+    function _hzTex(terrainKey) {
+        if (_hzTexCache[terrainKey] !== undefined) return _hzTexCache[terrainKey];
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
+        if (!url) { _hzTexCache[terrainKey] = null; return null; }
+        var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(repX, repY);
         tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
-        tex.needsUpdate = true;
-        // the clone shares the source Image object; bump it once the source loads
-        if (!src.image || !src.image.complete) {
-            var u = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
-            if (u) getTexture(u, function () { tex.needsUpdate = true; });
-        }
-        _hzTexCache[ck] = tex;
+        _hzTexCache[terrainKey] = tex;
         return tex;
+    }
+
+    // Tile a box's UVs so each face shows ~one texture per tileSize, per-face
+    // (so a wide base and a tall column keep the same pixel density).
+    function _hzBoxUV(geo, w, h, d, ts) {
+        var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
+        var dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]]; // px,nx,py,ny,pz,nz
+        for (var face = 0; face < 6; face++) {
+            var su = dims[face][0] / ts, sv = dims[face][1] / ts;
+            for (var v = 0; v < 4; v++) {
+                var idx = face * 4 + v;
+                if (idx >= uv.count) break;
+                uv.setXY(idx, uv.getX(idx) * su, uv.getY(idx) * sv);
+            }
+        }
+        uv.needsUpdate = true;
+    }
+
+    // Uniformly tile a geometry's 0..1 UVs (cylinders / spheres) by (su, sv).
+    function _hzScaleUV(geo, su, sv) {
+        var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
+        for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+        uv.needsUpdate = true;
     }
 
     // Textured MeshBasicMaterial registered for day/night grading. The grade
@@ -6739,26 +6757,39 @@ const ThreeRenderer = (function () {
         return mat;
     }
 
+    // box mesh whose UVs tile per-face at terrain pixel density
+    function _hzBox(w, h, d, ts, mat) {
+        var geo = new THREE.BoxGeometry(w, h, d);
+        _hzBoxUV(geo, w, h, d, ts);
+        return new THREE.Mesh(geo, mat);
+    }
+    // cylinder whose UVs tile around the circumference + up the height
+    function _hzCyl(rTop, rBot, h, seg, ts, mat) {
+        var geo = new THREE.CylinderGeometry(rTop, rBot, h, seg, 1);
+        var rAvg = (rTop + rBot) * 0.5;
+        _hzScaleUV(geo, Math.max(1, (2 * Math.PI * rAvg) / ts), Math.max(1, h / ts));
+        return new THREE.Mesh(geo, mat);
+    }
+
     // Ancient stepped pyramid, textured with the nexus terrain sprite.
     function _hzPyramid(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var tex = _hzRepeatTex('nexus', 2, 2);
+        var tex = _hzTex('nexus');
         var tiers = 5 + (rng() * 3 | 0);
         var baseW = ts * (10 + rng() * 6);
         var totalH = baseW * (0.85 + rng() * 0.35);
         var tierH = totalH / tiers;
         for (var t = 0; t < tiers; t++) {
             var f = 1 - t / tiers;                       // shrink toward the apex
-            var w = baseW * (0.16 + 0.84 * f);
-            var mat = _hzGeoMat(tex, 0xffffff);          // let the nexus colours speak
-            var box = new THREE.Mesh(new THREE.BoxGeometry(w, tierH * 1.02, w), mat);
+            var w = baseW * (0.16 + 0.84 * f), th = tierH * 1.02;
+            var box = _hzBox(w, th, w, ts, _hzGeoMat(tex, 0xffffff)); // let the nexus colours speak
             box.position.y = tierH * (t + 0.5);
             g.add(box);
         }
-        // small capstone glow tile
-        var capMat = _hzGeoMat(tex, 0xffffff);
-        var cap = new THREE.Mesh(new THREE.BoxGeometry(baseW * 0.12, tierH * 0.5, baseW * 0.12), capMat);
+        // small capstone
+        var cw = baseW * 0.12, ch = tierH * 0.5;
+        var cap = _hzBox(cw, ch, cw, ts, _hzGeoMat(tex, 0xffffff));
         cap.position.y = totalH + tierH * 0.25;
         g.add(cap);
         return g;
@@ -6768,18 +6799,21 @@ const ThreeRenderer = (function () {
     function _hzStairway(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var topTex = _hzRepeatTex('bricks_3', 1, 1);
-        var sideTex = _hzRepeatTex('ruins', 1, 1) || topTex;
+        var topTex = _hzTex('bricks_3');
+        var sideTex = _hzTex('ruins') || topTex;
         var steps = 16 + (rng() * 12 | 0);
         var stepW = ts * (2.4 + rng() * 1.8);
         var rise = ts * (0.55 + rng() * 0.25);
         var depth = ts * (0.85 + rng() * 0.35);
+        var th = rise * 0.4;
         var lean = (rng() - 0.5) * 0.18;                 // slight sideways drift
+        var topMat = _hzGeoMat(topTex, 0xe6ddca);
+        var sideMat = _hzGeoMat(sideTex, 0xb3a892);
+        var mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
         for (var s = 0; s < steps; s++) {
-            var topMat = _hzGeoMat(topTex, 0xe6ddca);
-            var sideMat = _hzGeoMat(sideTex, 0xb3a892);
-            var mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
-            var tread = new THREE.Mesh(new THREE.BoxGeometry(stepW, rise * 0.4, depth), mats);
+            var geo = new THREE.BoxGeometry(stepW, th, depth);
+            _hzBoxUV(geo, stepW, th, depth, ts);
+            var tread = new THREE.Mesh(geo, mats);
             tread.position.set(s * stepW * lean, rise * (s + 0.5), -depth * s);
             g.add(tread);
         }
@@ -6790,12 +6824,11 @@ const ThreeRenderer = (function () {
     function _hzGiantTree(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var woodTex = _hzRepeatTex('wood', 2, 5);
-        var foliTex = _hzRepeatTex('forest', 3, 3);
+        var woodTex = _hzTex('wood');
+        var foliTex = _hzTex('forest');
         var trunkH = ts * (8 + rng() * 6);
         var trunkR = ts * (0.7 + rng() * 0.5);
-        var trunkMat = _hzGeoMat(woodTex, 0x5e4634);
-        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.55, trunkR, trunkH, 9, 1), trunkMat);
+        var trunk = _hzCyl(trunkR * 0.55, trunkR, trunkH, 9, ts, _hzGeoMat(woodTex, 0x5e4634));
         trunk.position.y = trunkH * 0.5;
         g.add(trunk);
         var canopyR = ts * (3.4 + rng() * 1.8);
@@ -6805,7 +6838,9 @@ const ThreeRenderer = (function () {
         for (var b = 0; b < blobs; b++) {
             var mat = _hzGeoMat(foliTex, greens[(rng() * greens.length) | 0]);
             var r = canopyR * (0.55 + rng() * 0.55);
-            var blob = new THREE.Mesh(new THREE.SphereGeometry(r, 9, 7), mat);
+            var geo = new THREE.SphereGeometry(r, 9, 7);
+            _hzScaleUV(geo, Math.max(1, (2 * Math.PI * r) / ts), Math.max(1, (Math.PI * r) / ts));
+            var blob = new THREE.Mesh(geo, mat);
             var ang = rng() * Math.PI * 2, rad = canopyR * 0.55 * rng();
             blob.position.set(Math.cos(ang) * rad, canopyBase + (rng() - 0.25) * canopyR * 0.9, Math.sin(ang) * rad);
             blob.scale.y = 0.85;
@@ -6819,9 +6854,8 @@ const ThreeRenderer = (function () {
     function _hzGreekRuin(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var stoneTex = _hzRepeatTex('bricks_2', 2, 1);
-        var colTex = _hzRepeatTex('bricks_2', 1, 5);
-        var beamTex = _hzRepeatTex('ruins', 3, 1) || stoneTex;
+        var stoneTex = _hzTex('bricks_2');
+        var beamTex = _hzTex('ruins') || stoneTex;
         var cols = 4 + (rng() * 4 | 0);
         var spacing = ts * 2.0;
         var colH = ts * (5 + rng() * 3);
@@ -6830,8 +6864,7 @@ const ThreeRenderer = (function () {
         var baseH = ts * 1.1;
         var baseD = ts * 3.0;
 
-        var baseMat = _hzGeoMat(stoneTex, 0xe2d8bf);
-        var stylobate = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseD), baseMat);
+        var stylobate = _hzBox(baseW, baseH, baseD, ts, _hzGeoMat(stoneTex, 0xe2d8bf));
         stylobate.position.y = baseH * 0.5;
         g.add(stylobate);
 
@@ -6841,13 +6874,12 @@ const ThreeRenderer = (function () {
             var broken = rng() < 0.35;
             var h = broken ? colH * (0.3 + rng() * 0.45) : colH;
             if (broken) allIntact = false;
-            var colMat = _hzGeoMat(colTex, 0xe6dcc4);
-            var col = new THREE.Mesh(new THREE.CylinderGeometry(colR * 0.9, colR, h, 12, 1), colMat);
+            var col = _hzCyl(colR * 0.9, colR, h, 12, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
             col.position.set(startX + c * spacing, baseH + h * 0.5, 0);
             g.add(col);
             if (!broken) {
-                var capMat = _hzGeoMat(stoneTex, 0xe6dcc4);
-                var cap = new THREE.Mesh(new THREE.BoxGeometry(colR * 2.5, ts * 0.4, colR * 2.5), capMat);
+                var cw = colR * 2.5, capH = ts * 0.4;
+                var cap = _hzBox(cw, capH, cw, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
                 cap.position.set(startX + c * spacing, baseH + h + ts * 0.18, 0);
                 g.add(cap);
             }
@@ -6855,8 +6887,8 @@ const ThreeRenderer = (function () {
         // entablature beam spanning the colonnade when enough columns survive
         if (allIntact || rng() < 0.5) {
             var span = allIntact ? baseW * 0.96 : baseW * (0.4 + rng() * 0.4);
-            var beamMat = _hzGeoMat(beamTex, 0xd8cdb0);
-            var beam = new THREE.Mesh(new THREE.BoxGeometry(span, ts * 0.7, colR * 2.6), beamMat);
+            var bh = ts * 0.7, bd = colR * 2.6;
+            var beam = _hzBox(span, bh, bd, ts, _hzGeoMat(beamTex, 0xd8cdb0));
             beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + ts * 0.5, 0);
             g.add(beam);
         }
