@@ -1990,6 +1990,10 @@
             const SLIDE_MS = 480;
             const pendingStrikes = [];
             let anyMoved = false;
+            // The storm the camera will focus on and follow this round (prefer
+            // one that actually strikes; otherwise the first that moves).
+            let focusFrom = null, focusStrike = null;
+            let _followLeadMs = 0;
 
             // Phase 1 — advance every homing vortex to its new position. No damage yet.
             for (const weather of state.activeWeather) {
@@ -2034,7 +2038,10 @@
                     const k = posKey(nx, ny);
                     if (!sweptKeys.has(k)) { sweptKeys.add(k); sweptTiles.push({ x: nx, y: ny }); }
                 }
-                if (nx !== cx || ny !== cy) anyMoved = true;
+                if (nx !== cx || ny !== cy) {
+                    anyMoved = true;
+                    if (!focusFrom) focusFrom = { fromX: cx, fromY: cy, toX: nx, toY: ny };
+                }
                 weather.tiles = [{ x: nx, y: ny }];
 
                 // Converting storms (blizzard) freeze every tile they pass over.
@@ -2056,11 +2063,43 @@
                     continue;
                 }
 
+                if (!focusStrike) focusStrike = { fromX: cx, fromY: cy, toX: nx, toY: ny };
                 pendingStrikes.push({ weather, def, caster, nx, ny, struck });
             }
 
             // Show the storms gliding to their new tiles before resolving their hits.
             if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+
+            // Camera: pan to the homing storm and glide along its path so the
+            // player watches the vortex hunt and strike. The battle camera
+            // lives in another script's closure, so reach it via window.GAME.
+            const _cam = (typeof window !== 'undefined' && window.GAME) ? window.GAME._camera : null;
+            const _focus = focusStrike || focusFrom;
+            if (_cam && _focus && !_skipVisuals() && !state.cameraDisabled
+                && typeof getDefaultZoom === 'function') {
+                _followLeadMs = 320;
+                const _stormZoom = getDefaultZoom() * 1.35;
+                const _stormTilt = 52;   // angled so the funnel and the ground both read
+                // Swoop focus onto the storm's starting tile…
+                _cam.moveTo({
+                    x: _focus.fromX, y: _focus.fromY,
+                    zoom: _stormZoom, tilt: _stormTilt,
+                    duration: _followLeadMs, easing: 'easeInOut',
+                    _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
+                });
+                // …then glide with it to where it lands this round.
+                if (_focus.toX !== _focus.fromX || _focus.toY !== _focus.fromY) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || state.cameraDisabled) return;
+                        _cam.moveTo({
+                            x: _focus.toX, y: _focus.toY,
+                            zoom: _stormZoom, tilt: _stormTilt,
+                            duration: SLIDE_MS, easing: 'linear',
+                            _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
+                        });
+                    }, _followLeadMs);
+                }
+            }
 
             // Phase 2 — now that the vortices have arrived, hurt and displace whoever
             // they swept over.
@@ -2114,9 +2153,11 @@
                 }
             };
 
-            // Wait out the slide only when something actually moved and we're animating.
-            if (pendingStrikes.length && anyMoved && !_skipVisuals()) {
-                window.setTimeout(applyStrikes, SLIDE_MS);
+            // Wait out the camera focus-in and the storm's slide before
+            // resolving hits, so the vortex visibly arrives (and the camera
+            // catches up to it) before anyone is struck.
+            if (!_skipVisuals() && (anyMoved || _followLeadMs > 0)) {
+                window.setTimeout(applyStrikes, _followLeadMs + (anyMoved ? SLIDE_MS : 0));
             } else {
                 applyStrikes();
             }

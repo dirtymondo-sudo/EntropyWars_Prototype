@@ -220,6 +220,27 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   `shakeBoard('hard')` on the hit. Beat timing keys off `sourceHold` /
   `descentCam.telegraphMs` / `descentMs` (mirrors `ThreeVFXEffects._fireDescent`).
   Self-cast / zero-range meteors keep the player's heading (no spin).
+- **End-of-round camera sequence (2026-06):** when a round ends
+  (`maybeAdvanceTurn`, blitz, `!nextUnit`), `showEndOfRoundOverview()` pulls
+  back to a near-top-down **tactical overhead of the whole battlefield**
+  (board center, tilt 32, `getFullMapZoom()`). The EOR phases then drop in
+  from it: `processEndOfRoundStatuses` holds the overhead ~460ms, then **pans
+  to each unit taking poison/burn/drown DoT** (tilt 34, `getDefaultZoom()×1.25`)
+  and restores to overhead between units; `processHomingWeather` (state.js)
+  **focuses and follows each weather vortex along its path** (reaches the
+  battle camera via `window.GAME._camera` since it's in another script's
+  closure — pans to the storm's start tile over 320ms then glides to its
+  landing tile over `SLIDE_MS`, tilt 52, `getDefaultZoom()×1.35`; strike
+  resolution waits `followLeadMs + SLIDE_MS`); `processEndOfRoundRegen`
+  re-frames to the overhead so every `+HP/+MP` float reads at once.
+- **EOR combat-log de-bloat (2026-06):** the global regen log is a single
+  summary line; spawn-zone friendly regen (`processEndOfRoundZonesAndSeeds`)
+  no longer logs one `Spawn zone heals NAME (+HP, +MP)` line PER unit — it
+  accumulates `_szRegenUnits`/`_szCleanseUnits` and logs one
+  `🏠 Spawn zones restore N units…` line (per-unit `+HP/+MP` floats + subtitle
+  dialogue still show on the board). The round-start subtitle/log is now
+  `⚡ Round N — Fight!` (was "Blitz!"); the bottom subtitle bar mirrors the
+  latest combat-log line (`_renderDialogueBox`), so that one string drives both.
 - **camera._busy lifecycle (STALL TRAP):** `_waitForAnimationsThen` polls
   `camera.isBusy()` (8s max per wait). `boardCameraResetTimer` is a SHARED
   slot that any pan/reset/focus cancels — never park a busy-release there or

@@ -2506,7 +2506,13 @@
                 window.setTimeout(processNext, delay);
             }
 
-            processNext();
+            // Let the tactical overhead (shown as the round ends) read for a
+            // beat before swooping down onto the first afflicted unit.
+            if (state.cameraDisabled) {
+                processNext();
+            } else {
+                window.setTimeout(processNext, 460);
+            }
         }
 
         function processEndOfRoundZonesAndSeeds(onDone) {
@@ -2620,6 +2626,10 @@
 
             /* ── Spawn Zone end-of-round effects ── */
             if (state.spawnZones) {
+                // Friendly spawn-zone regen is summarized into a single combat
+                // log line at the end (per-unit "+HP/+MP" floats still show on
+                // the board) so the log isn't flooded every round.
+                let _szRegenUnits = 0, _szCleanseUnits = 0;
                 for (const unit of state.units) {
                     if (unit.dead) continue;
                     const zoneOwner = getSpawnZoneOwnerAt(unit.x, unit.y);
@@ -2660,7 +2670,8 @@
                             if (cleansedAny) {
                                 evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone cleanses ${unitDisplayName(unit)}</span>`);
                             }
-                            addLog(`Spawn zone heals ${unitDisplayName(unit)} (+${healed} HP, +${manaAmt} MP)${cleansedAny ? ' and cleanses debuffs' : ''}.`);
+                            if (healed > 0 || manaAmt > 0) _szRegenUnits++;
+                            if (cleansedAny) _szCleanseUnits++;
                         }
                     } else {
                         /* Enemy in opponent's spawn zone: 35% maxHP damage */
@@ -2682,6 +2693,13 @@
                             defeatUnit(unit, killer);
                         }
                     }
+                }
+                if (_szRegenUnits > 0 || _szCleanseUnits > 0) {
+                    let _szMsg = '🏠 Spawn zones ';
+                    if (_szRegenUnits > 0) _szMsg += `restore ${_szRegenUnits} unit${_szRegenUnits > 1 ? 's' : ''}`;
+                    if (_szRegenUnits > 0 && _szCleanseUnits > 0) _szMsg += ' and ';
+                    if (_szCleanseUnits > 0) _szMsg += `cleanse ${_szCleanseUnits} unit${_szCleanseUnits > 1 ? 's' : ''}`;
+                    addLog(_szMsg + '.');
                 }
             }
 
@@ -2765,6 +2783,11 @@
                 if (onDone) onDone();
                 return;
             }
+
+            // Frame the whole board from the tactical overhead so every unit's
+            // regen "+HP/+MP" reads at once (a storm follow may have pulled the
+            // camera off to one side just before this).
+            showEndOfRoundOverview();
 
             for (const h of healed) {
                 if (h.unit) {
@@ -6046,6 +6069,22 @@
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
                 zoom: getFullMapZoom(), duration: 380, _bypassCap: true, _allowZoomChange: true
+            });
+        }
+
+        // Pull back to a high, near-top-down tactical view of the WHOLE
+        // battlefield for the end-of-round resolution beats (status ticks,
+        // weather, regen). The player reads the situation like a strategy map
+        // before the next round; the per-event cameras (DoT pans, storm
+        // follow) then drop in from this framing. Called once at the start of
+        // the end-of-round sequence.
+        function showEndOfRoundOverview() {
+            if (_skipVisuals() || state.cameraDisabled) return;
+            camera.moveTo({
+                x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
+                zoom: getFullMapZoom(), tilt: 32,
+                duration: 520, easing: 'easeInOut',
+                _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
 
@@ -11939,6 +11978,10 @@
 
                     _roundAdvanceInProgress = true;
 
+                    // Establish a tactical overhead of the whole battlefield
+                    // before resolving the end-of-round beats below.
+                    showEndOfRoundOverview();
+
                     processEndOfRoundStatuses(function _afterStatusPhase() {
                     if (state.winner) return;
 
@@ -12035,7 +12078,7 @@
 
                     _reStopBuffering();
 
-                    addLog(`⚡ Round ${state.round} — Blitz!`);
+                    addLog(`⚡ Round ${state.round} — Fight!`);
 
                     for (const u of state.units) {
                         if (!u.dead) grantXP(u, XP_PASSIVE_PER_ROUND, 'round');
