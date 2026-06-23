@@ -547,7 +547,11 @@ const ThreePost = (function () {
         _renderer = renderer;
         _scene = scene;
 
-        renderer.toneMapping = THREE.NoToneMapping;
+        // LinearToneMapping (not NoToneMapping) so toneMappingExposure actually
+        // takes effect — it just multiplies scene colour by exposure and clamps,
+        // so at exposure 1.0 it matches the old NoToneMapping look, but now the
+        // day/night exposure grade + the pause-menu Brightness slider work.
+        renderer.toneMapping = THREE.LinearToneMapping;
         renderer.toneMappingExposure = 1.0;
         renderer.setClearColor(0x000000, 0);
 
