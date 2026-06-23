@@ -6687,6 +6687,10 @@ const ThreeRenderer = (function () {
         _buildHorizonScenery();
         _animateFloaters(_envUni.uTime.value);
         _gradeHorizonScenery(S.night, S.skyEvent, S.skyAmt);
+
+        // volumetric light shafts raking down onto the board
+        _buildLightRays();
+        _updateLightRays(_envUni.uTime.value, S.night, S.skyEvent, S.skyAmt);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -6706,6 +6710,22 @@ const ThreeRenderer = (function () {
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
     var _horizonFloaters = [];          // { obj, baseY, amp, spd, phase, spin }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
+
+    // ── Atmospheric haze (lightweight "background fog") ──
+    // Real depth fog is keyed on camera distance, but our camera orbits far from
+    // the board, so scene.fog would grey out the playfield. Instead we fade only
+    // the far background scenery toward a pale haze colour by WORLD distance — a
+    // few colour-lerps on materials we already grade each frame, so it costs
+    // nothing extra and never touches the board, units or terrain.
+    var _HZ_HAZE_DAY = null, _HZ_HAZE_NIGHT = null, _hzHaze = null;
+
+    // ── Volumetric light shafts (god rays) ──
+    // A handful of additive box-prism beams raking down onto the board. Solid
+    // world geometry, so they tilt / orbit with the map and read as real shafts
+    // of light. Tiny fragment shader + 6 meshes ⇒ negligible cost.
+    var _rayGroup = null, _rayKey = '', _rayShafts = [];
+    var _RAY_VS = null, _RAY_FS = null;
+    var _RAY_DAY = null, _RAY_NIGHT = null, _rayCol = null, _RAY_RED = null;
 
     function _mulberry32(a) {
         return function () {
@@ -7179,6 +7199,7 @@ const ThreeRenderer = (function () {
                 mesh.rotation.x += (rng() - 0.5) * 0.06;
                 spin = rng() < 0.4 ? (rng() < 0.5 ? 1 : -1) * (0.0003 + rng() * 0.0008) : 0;
             }
+            _stampHorizonHaze(mesh, rr, y, discR);
             _horizonGroup.add(mesh);
             _horizonFloaters.push({
                 obj: mesh, baseY: y,
@@ -7202,13 +7223,35 @@ const ThreeRenderer = (function () {
         }
     }
 
+    // Tag every material under a background landmark with how much atmospheric
+    // haze it should soak up, from its WORLD distance into the void (and a touch
+    // extra for bodies hanging far below the board). Done once at build time so
+    // the per-frame grade is just a colour-lerp.
+    function _stampHorizonHaze(obj, rr, y, discR) {
+        var dn = discR > 0 ? Math.min(1, rr / (discR * 1.04)) : 0;
+        var hz = Math.pow(Math.max(0, (dn - 0.30) / 0.70), 1.15);   // clear near, hazy far
+        var below = (y < 0 && discR > 0) ? Math.min(1, (-y) / (discR * 0.5)) * 0.22 : 0;
+        hz = Math.min(0.9, hz + below);
+        obj.traverse(function (o) {
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) ms[i]._ew_hzHaze = hz;
+        });
+    }
+
     function _gradeHorizonScenery(night, skyEvent, skyAmt) {
         if (!_horizonMats.length) return;
         if (!_HZ_DAY) { _HZ_DAY = new THREE.Color(0x9aa6b8); _HZ_NIGHT = new THREE.Color(0x2b3552); _hzScratch = new THREE.Color(); }
-        _hzScratch.copy(_HZ_DAY).lerp(_HZ_NIGHT, night);
         // blood moon washes the skyline red; eclipses cool/desaturate it
         var bloodM = (skyEvent > 0.5 && skyEvent < 1.5) ? skyAmt : 0;
         var ecl = (skyEvent >= 1.5) ? skyAmt : 0;
+        _hzScratch.copy(_HZ_DAY).lerp(_HZ_NIGHT, night);
+        // The haze tint the far scenery dissolves into — a pale, slightly brighter
+        // version of the sky so distant bodies melt into the firmament.
+        if (!_HZ_HAZE_DAY) { _HZ_HAZE_DAY = new THREE.Color(0xc4cedd); _HZ_HAZE_NIGHT = new THREE.Color(0x39455f); _hzHaze = new THREE.Color(); }
+        _hzHaze.copy(_HZ_HAZE_DAY).lerp(_HZ_HAZE_NIGHT, night);
+        if (bloodM > 0.01) _hzHaze.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.4);
+        if (ecl > 0.01) _hzHaze.multiplyScalar(1.0 - ecl * 0.3);
         for (var i = 0; i < _horizonMats.length; i++) {
             var m = _horizonMats[i];
             // geometry landmarks carry an intrinsic base colour; billboards/rocks
@@ -7218,9 +7261,111 @@ const ThreeRenderer = (function () {
             if (m._ew_rock) m.color.multiplyScalar(0.82);
             if (bloodM > 0.01) m.color.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.5);
             if (ecl > 0.01) m.color.multiplyScalar(1.0 - ecl * 0.35);
+            // dissolve the far background into atmospheric haze
+            if (m._ew_hzHaze) m.color.lerp(_hzHaze, m._ew_hzHaze);
         }
     }
     var _HZ_RED = null;
+
+    // ════════════════════════════════════════════════════════════════════
+    //  VOLUMETRIC LIGHT SHAFTS  (geometry "god rays" cast down on the board)
+    //  Each shaft is a tall box prism with an additive shader that fades soft
+    //  toward its sides and tapers off at top and bottom, so the solid box
+    //  reads as a cone of light. They share one low "sun" direction so they
+    //  rake across the board, and being real world geometry they tilt / orbit
+    //  with the map and are graded by the day/night cycle + sky events.
+    // ════════════════════════════════════════════════════════════════════
+    function _ensureRayShaders() {
+        if (_RAY_VS) return;
+        _RAY_VS =
+            'varying vec3 vLocal;\n' +
+            'void main(){ vLocal = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+        _RAY_FS =
+            'precision mediump float;\n' +
+            'varying vec3 vLocal;\n' +
+            'uniform float uTime; uniform vec3 uColor; uniform float uIntensity; uniform float uSeed;\n' +
+            'void main(){\n' +
+            '  float r = length(vec2(vLocal.x, vLocal.z)) * 2.0;\n' +        // 0 core → 1 face edge
+            '  float radial = pow(smoothstep(1.0, 0.0, r), 1.7);\n' +        // soft round falloff
+            '  float yy = vLocal.y + 0.5;\n' +                              // 0 bottom → 1 top
+            '  float vert = smoothstep(0.0, 0.30, yy) * smoothstep(1.0, 0.42, yy);\n' +
+            '  float flick = 0.82 + 0.18 * sin(uTime * 1.1 + uSeed + vLocal.y * 5.0);\n' +
+            '  float a = radial * vert * uIntensity * flick;\n' +
+            '  if (a <= 0.002) discard;\n' +
+            '  gl_FragColor = vec4(uColor * a, a);\n' +
+            '}';
+    }
+
+    function _buildLightRays() {
+        if (!scene || typeof THREE === 'undefined') return;
+        var ts = CONFIG.tileSize || 128;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        var key = _bw + 'x' + _bh + '@' + ts;
+        if (_rayGroup && _rayKey === key) return;
+        if (_rayGroup) { scene.remove(_rayGroup); _disposeR(_rayGroup); }
+        _rayShafts.length = 0;
+        _rayGroup = new THREE.Group();
+        _rayGroup.name = 'lightShafts';
+        _rayGroup.renderOrder = 2;
+        _rayKey = key;
+        _ensureRayShaders();
+
+        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
+        var W = _bw * ts, H = _bh * ts;
+        var shaftH = Math.max(2200, _bh * ts * 1.1 + 1800);
+        // one shared low-sun direction so the beams rake the board consistently
+        var sunTiltX = 0.22, sunTiltZ = 0.16, sunYaw = -0.6;
+        var rng = _mulberry32(0xBEAC07 + _bw * 131 + _bh * 17 + ts);
+        var N = 6;
+        for (var i = 0; i < N; i++) {
+            var cw = ts * (1.1 + rng() * 1.0);
+            var geo = new THREE.BoxGeometry(cw, shaftH, cw);
+            var uni = {
+                uTime: { value: 0 },
+                uColor: { value: new THREE.Color(0xfff0d2) },
+                uIntensity: { value: 0.15 + rng() * 0.08 },
+                uSeed: { value: rng() * 6.2832 }
+            };
+            var mat = new THREE.ShaderMaterial({
+                uniforms: uni, vertexShader: _RAY_VS, fragmentShader: _RAY_FS,
+                transparent: true, blending: THREE.AdditiveBlending,
+                depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false
+            });
+            var m = new THREE.Mesh(geo, mat);
+            // scatter landing points across (and a touch beyond) the board
+            var lx = cx + (rng() - 0.5) * W * 1.15;
+            var lz = cz + (rng() - 0.5) * H * 1.15;
+            m.position.set(lx, shaftH * 0.45, lz);   // base dips into the board, top high above
+            m.rotation.set(sunTiltX + (rng() - 0.5) * 0.06, sunYaw + (rng() - 0.5) * 0.20, sunTiltZ + (rng() - 0.5) * 0.06);
+            m.frustumCulled = false;
+            _rayGroup.add(m);
+            _rayShafts.push({
+                mesh: m, uni: uni, baseInt: uni.uIntensity.value,
+                baseRotZ: m.rotation.z, sway: (rng() < 0.5 ? 1 : -1) * (0.02 + rng() * 0.03),
+                phase: rng() * 6.2832
+            });
+        }
+        scene.add(_rayGroup);
+    }
+
+    function _updateLightRays(t, night, skyEvent, skyAmt) {
+        if (!_rayShafts.length) return;
+        if (!_RAY_DAY) { _RAY_DAY = new THREE.Color(0xfff0d2); _RAY_NIGHT = new THREE.Color(0x9fb8ff); _rayCol = new THREE.Color(); }
+        _rayCol.copy(_RAY_DAY).lerp(_RAY_NIGHT, night);
+        var bloodM = (skyEvent > 0.5 && skyEvent < 1.5) ? skyAmt : 0;
+        var ecl = (skyEvent >= 1.5) ? skyAmt : 0;
+        if (bloodM > 0.01) _rayCol.lerp(_RAY_RED || (_RAY_RED = new THREE.Color(0xff5a3c)), bloodM * 0.6);
+        // beams soften at night and all but vanish under an eclipse
+        var intMul = (1.0 - night * 0.45) * (1.0 - ecl * 0.7);
+        for (var i = 0; i < _rayShafts.length; i++) {
+            var s = _rayShafts[i];
+            s.uni.uTime.value = t;
+            s.uni.uColor.value.copy(_rayCol);
+            s.uni.uIntensity.value = s.baseInt * intMul;
+            s.mesh.rotation.z = s.baseRotZ + Math.sin(t * 0.25 + s.phase) * s.sway;
+        }
+    }
 
     function init() {
         if (initialized) return;
