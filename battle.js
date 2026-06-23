@@ -9128,6 +9128,23 @@
 
             if (kind === 'line' || kind === 'linePush') return true;
 
+            // Leap-strike spells (e.g. Feral Dive) can only be cast onto an enemy that
+            // is BELOW the caster's current standing height. Treat the spell as having a
+            // valid target only when such an enemy is in range — otherwise the ability
+            // menu greys it out instead of letting the player click a spell that will
+            // immediately fail with "Must be above the target".
+            if (kind === 'leapStrike') {
+                const casterZ = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(unit) : (unit.z ?? 0);
+                const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
+                return enemies.some(e => {
+                    const d = distToTarget(unit.x, unit.y, e, unit.z);
+                    if (d < 1 || d > range) return false;
+                    if (!spell.ignoresLineOfSight && isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)) return false;
+                    const eZ = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(e) : (e.z ?? 0);
+                    return casterZ > eZ;
+                });
+            }
+
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam'].includes(kind)) {
                 const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
