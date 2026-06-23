@@ -6202,6 +6202,10 @@
             const fxaaOn = typeof ThreePost!=='undefined'&&ThreePost.isFXAAEnabled&&ThreePost.isFXAAEnabled();
             const isNativePixel = typeof window==='undefined'||window._ewPixelRatio!==1;
             const crtOn = typeof ThreePost!=='undefined'&&ThreePost.isCinematicFilterEnabled&&ThreePost.isCinematicFilterEnabled();
+            const bloomStr = (typeof ThreePost!=='undefined'&&ThreePost.getBloomStrength)?ThreePost.getBloomStrength():0;
+            const bloomMaxV = (typeof ThreePost!=='undefined'&&ThreePost.getBloomMaxStrength)?ThreePost.getBloomMaxStrength():1.6;
+            const bloomPct = Math.round(bloomStr*100);
+            const bloomMaxPct = Math.round(bloomMaxV*100);
 
             const ps = state.particleSettings || {};
             const pKeys = ['projectiles','aoe','movement','healing','buffs','status','levelUp','death','combos'];
@@ -6224,6 +6228,11 @@
                     <div class="pm-set-toggles">
                         <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${crtOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicFilter)ThreePost.setCinematicFilter(this.checked);"><span class="pm-toggle-label">CRT Filter</span><span class="pm-toggle-hint">scanlines + vignette</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Bloom</span>
+                        <input type="range" min="0" max="${bloomMaxPct}" step="5" value="${bloomPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setBloomStrength)ThreePost.setBloomStrength(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                        <span class="pm-vol-val">${bloomStr.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

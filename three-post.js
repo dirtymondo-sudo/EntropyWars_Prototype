@@ -12,6 +12,22 @@ const ThreePost = (function () {
     var BLOOM_RADIUS   = 0.4;
     var BLOOM_THRESHOLD = 0.82;
 
+    // User-controllable bloom (persisted, tuned via the pause-menu slider). The
+    // day/night presets carry bloomStr 0, so without this floor bloom is
+    // invisible — this strength drives the astral glow on the self-lit scenery,
+    // VFX and other bright surfaces. A strength of 0 turns bloom off entirely.
+    var BLOOM_USER_STRENGTH  = 0.8;    // default glow intensity (slider value)
+    var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
+    var BLOOM_USER_THRESHOLD = 0.6;    // lower → more of the scene blooms
+    var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
+    try {
+        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength') : null;
+        if (_bloomSaved !== null) {
+            var _bv = parseFloat(_bloomSaved);
+            if (!isNaN(_bv)) BLOOM_USER_STRENGTH = Math.max(0, Math.min(BLOOM_MAX_STRENGTH, _bv));
+        }
+    } catch (e) {}
+
     var _cinematicPass = null;
     var _cinematicEnabled = false;
 
@@ -175,8 +191,15 @@ const ThreePost = (function () {
             _renderer.toneMappingExposure = _cur.exposure;
         }
         if (_bloomPass) {
-            _bloomPass.strength = _cur.bloomStr;
-            _bloomPass.threshold = _cur.bloomThr;
+            var _bloomOn = BLOOM_USER_STRENGTH > 0;
+            _bloomPass.enabled = _bloomOn;
+            if (_bloomOn) {
+                // floor the env grade (which is 0 by day/night) to the user level
+                // so the glow is always visible, and let bright sky-events add to it
+                _bloomPass.strength  = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH);
+                _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
+                _bloomPass.radius    = BLOOM_USER_RADIUS;
+            }
         }
     }
 
@@ -536,6 +559,18 @@ const ThreePost = (function () {
         renderPass.clearAlpha = 0;
         _composer.addPass(renderPass);
 
+        // Bloom — blooms the raw scene before AA/cinematic. Driven each frame by
+        // _applyCurrent (env grade floored to the user strength) and gated by the
+        // pause-menu toggle. This pass was previously never created, so bloom did
+        // nothing; instantiating it here is what makes the glow visible at all.
+        if (THREE.UnrealBloomPass) {
+            _bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(w, h), BLOOM_USER_STRENGTH, BLOOM_USER_RADIUS, BLOOM_USER_THRESHOLD
+            );
+            _bloomPass.enabled = (BLOOM_USER_STRENGTH > 0);
+            _composer.addPass(_bloomPass);
+        }
+
         if (THREE.FXAAShader) {
             _fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
             var pixelRatio = renderer.getPixelRatio();
@@ -553,7 +588,7 @@ const ThreePost = (function () {
         _composer.addPass(_cinematicPass);
 
         _ready = true;
-        console.log('[ThreePost] initialized — FXAA + cinematic filter + directional/hemi lighting');
+        console.log('[ThreePost] initialized — bloom + FXAA + cinematic filter + directional/hemi lighting');
     }
 
     function render(cam) {
@@ -597,6 +632,29 @@ const ThreePost = (function () {
         if (radius !== undefined)    _bloomPass.radius    = radius;
         if (threshold !== undefined) _bloomPass.threshold = threshold;
     }
+
+    function setBloomStrength(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        BLOOM_USER_STRENGTH = Math.max(0, Math.min(BLOOM_MAX_STRENGTH, s));
+        if (_bloomPass) {
+            var on = BLOOM_USER_STRENGTH > 0;
+            _bloomPass.enabled = on;
+            if (on) {
+                _bloomPass.strength  = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH);
+                _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
+                _bloomPass.radius    = BLOOM_USER_RADIUS;
+            }
+        }
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength', String(BLOOM_USER_STRENGTH)); } catch (e) {}
+    }
+
+    function getBloomStrength()    { return BLOOM_USER_STRENGTH; }
+    function getBloomMaxStrength() { return BLOOM_MAX_STRENGTH; }
+
+    // back-compat shims (toggle → strength)
+    function setBloomEnabled(enabled) { setBloomStrength(enabled ? (BLOOM_USER_STRENGTH > 0 ? BLOOM_USER_STRENGTH : 0.8) : 0); }
+    function isBloomEnabled() { return BLOOM_USER_STRENGTH > 0; }
 
     function setExposure(val) {
         if (_renderer) _renderer.toneMappingExposure = val;
@@ -700,6 +758,11 @@ const ThreePost = (function () {
         render: render,
         resize: resize,
         setBloom: setBloom,
+        setBloomEnabled: setBloomEnabled,
+        isBloomEnabled: isBloomEnabled,
+        setBloomStrength: setBloomStrength,
+        getBloomStrength: getBloomStrength,
+        getBloomMaxStrength: getBloomMaxStrength,
         setExposure: setExposure,
         setFXAA: setFXAA,
         isFXAAEnabled: isFXAAEnabled,
