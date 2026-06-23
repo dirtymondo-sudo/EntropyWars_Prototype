@@ -14,17 +14,30 @@ const ThreePost = (function () {
 
     // User-controllable bloom (persisted, tuned via the pause-menu slider). The
     // day/night presets carry bloomStr 0, so without this floor bloom is
-    // invisible — this strength drives the astral glow on the self-lit scenery,
-    // VFX and other bright surfaces. A strength of 0 turns bloom off entirely.
-    var BLOOM_USER_STRENGTH  = 0.8;    // default glow intensity (slider value)
+    // invisible. A strength of 0 turns bloom off entirely.
+    var BLOOM_USER_STRENGTH  = 0.35;   // default glow intensity (slider value)
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
-    var BLOOM_USER_THRESHOLD = 0.6;    // lower → more of the scene blooms
+    var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
     var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
     try {
-        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength') : null;
+        // _v2 key: the default changed (1.0 → 0.35), so ignore stale saved values
+        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v2') : null;
         if (_bloomSaved !== null) {
             var _bv = parseFloat(_bloomSaved);
             if (!isNaN(_bv)) BLOOM_USER_STRENGTH = Math.max(0, Math.min(BLOOM_MAX_STRENGTH, _bv));
+        }
+    } catch (e) {}
+
+    // User brightness — a multiplier on the day/night tone-mapping exposure.
+    // Daytime ambient pushes the map surfaces and the spawn zones bright enough
+    // to bloom hard, so this lets the player dial the overall brightness down.
+    var _exposureUser = 1.0;
+    var EXPOSURE_MIN = 0.55, EXPOSURE_MAX = 1.25;
+    try {
+        var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_exposure') : null;
+        if (_expSaved !== null) {
+            var _ev = parseFloat(_expSaved);
+            if (!isNaN(_ev)) _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
         }
     } catch (e) {}
 
@@ -188,7 +201,7 @@ const ThreePost = (function () {
             _ambientLight.intensity = _cur.ambInt;
         }
         if (_renderer) {
-            _renderer.toneMappingExposure = _cur.exposure;
+            _renderer.toneMappingExposure = _cur.exposure * _exposureUser;
         }
         if (_bloomPass) {
             var _bloomOn = BLOOM_USER_STRENGTH > 0;
@@ -646,11 +659,21 @@ const ThreePost = (function () {
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
         }
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength', String(BLOOM_USER_STRENGTH)); } catch (e) {}
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v2', String(BLOOM_USER_STRENGTH)); } catch (e) {}
     }
 
     function getBloomStrength()    { return BLOOM_USER_STRENGTH; }
     function getBloomMaxStrength() { return BLOOM_MAX_STRENGTH; }
+
+    function setExposureScale(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
+        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _exposureUser;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_exposure', String(_exposureUser)); } catch (e) {}
+    }
+    function getExposureScale() { return _exposureUser; }
+    function getExposureRange() { return { min: EXPOSURE_MIN, max: EXPOSURE_MAX }; }
 
     // back-compat shims (toggle → strength)
     function setBloomEnabled(enabled) { setBloomStrength(enabled ? (BLOOM_USER_STRENGTH > 0 ? BLOOM_USER_STRENGTH : 0.8) : 0); }
@@ -763,6 +786,9 @@ const ThreePost = (function () {
         setBloomStrength: setBloomStrength,
         getBloomStrength: getBloomStrength,
         getBloomMaxStrength: getBloomMaxStrength,
+        setExposureScale: setExposureScale,
+        getExposureScale: getExposureScale,
+        getExposureRange: getExposureRange,
         setExposure: setExposure,
         setFXAA: setFXAA,
         isFXAAEnabled: isFXAAEnabled,

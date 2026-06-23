@@ -6206,6 +6206,11 @@
             const bloomMaxV = (typeof ThreePost!=='undefined'&&ThreePost.getBloomMaxStrength)?ThreePost.getBloomMaxStrength():1.6;
             const bloomPct = Math.round(bloomStr*100);
             const bloomMaxPct = Math.round(bloomMaxV*100);
+            const expVal = (typeof ThreePost!=='undefined'&&ThreePost.getExposureScale)?ThreePost.getExposureScale():1.0;
+            const expRange = (typeof ThreePost!=='undefined'&&ThreePost.getExposureRange)?ThreePost.getExposureRange():{min:0.55,max:1.25};
+            const expPct = Math.round(expVal*100);
+            const expMinPct = Math.round(expRange.min*100);
+            const expMaxPct = Math.round(expRange.max*100);
 
             const ps = state.particleSettings || {};
             const pKeys = ['projectiles','aoe','movement','healing','buffs','status','levelUp','death','combos'];
@@ -6233,6 +6238,11 @@
                         <span class="pm-setting-label">Bloom</span>
                         <input type="range" min="0" max="${bloomMaxPct}" step="5" value="${bloomPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setBloomStrength)ThreePost.setBloomStrength(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
                         <span class="pm-vol-val">${bloomStr.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Brightness</span>
+                        <input type="range" min="${expMinPct}" max="${expMaxPct}" step="1" value="${expPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setExposureScale)ThreePost.setExposureScale(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                        <span class="pm-vol-val">${expVal.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

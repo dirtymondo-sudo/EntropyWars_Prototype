@@ -6881,20 +6881,47 @@ const ThreeRenderer = (function () {
         });
         return mat;
     }
-    // A luminous core: a bright additive solid that blooms, wrapped in a soft
-    // view-independent aura shell — the signature "lit from within" astral glow.
-    // Returns a group centred at the origin.
+    // Soft radial glow texture (one shared canvas gradient) for sprite auras —
+    // fades to fully transparent at the rim, so a glow never shows the hard
+    // circular outline an additive sphere/disc gives. Cached + reused; never
+    // disposed by _disposeR (it only disposes materials, not their maps).
+    var _hzGlowTex = null;
+    function _hzGlowTexture() {
+        if (_hzGlowTex) return _hzGlowTex;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = c.height = 128;
+        var ctx = c.getContext('2d');
+        var grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        grad.addColorStop(0.00, 'rgba(255,255,255,1.0)');
+        grad.addColorStop(0.20, 'rgba(255,255,255,0.55)');
+        grad.addColorStop(0.48, 'rgba(255,255,255,0.15)');
+        grad.addColorStop(1.00, 'rgba(255,255,255,0.0)');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
+        _hzGlowTex = new THREE.CanvasTexture(c);
+        _hzGlowTex.minFilter = THREE.LinearFilter;
+        _hzGlowTex.magFilter = THREE.LinearFilter;
+        return _hzGlowTex;
+    }
+    // A camera-facing additive glow sprite with a soft radial falloff (no hard
+    // silhouette). Optionally breathes.
+    function _hzGlowSprite(size, color, opacity, opAmp, sclAmp, spd) {
+        var mat = new THREE.SpriteMaterial({
+            map: _hzGlowTexture(), color: new THREE.Color(color),
+            blending: THREE.AdditiveBlending, transparent: true, opacity: opacity,
+            depthWrite: false, fog: false
+        });
+        var sp = new THREE.Sprite(mat);
+        sp.scale.set(size, size, 1);
+        if (opAmp || sclAmp) _hzPulse(mat, sp, opAmp || 0, sclAmp || 0, spd);
+        return sp;
+    }
+    // A luminous core: a soft radial aura sprite wrapped around a brighter,
+    // smaller core sprite — the "lit from within" astral glow, always facing the
+    // camera with a soft edge (no lazy circle outline). Centred at the origin.
     function _hzGlowCore(radius, color, auraColor) {
         var g = new THREE.Group();
-        var coreMat = _hzGlowMat(color, 0.95);
-        var core = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 1), coreMat);
-        g.add(core);
-        _hzPulse(coreMat, core, 0.14, 0.07, 0.45 + Math.random() * 0.6);
-        var auraMat = _hzGlowMat(auraColor || color, 0.26);
-        auraMat.side = THREE.BackSide;
-        var aura = new THREE.Mesh(new THREE.SphereGeometry(radius * 2.3, 16, 12), auraMat);
-        g.add(aura);
-        _hzPulse(auraMat, aura, 0.12, 0.16, 0.30 + Math.random() * 0.4);
+        g.add(_hzGlowSprite(radius * 5.2, auraColor || color, 0.40, 0.11, 0.10, 0.30 + Math.random() * 0.4));
+        g.add(_hzGlowSprite(radius * 2.2, color, 0.85, 0.12, 0.07, 0.45 + Math.random() * 0.6));
         return g;
     }
 
