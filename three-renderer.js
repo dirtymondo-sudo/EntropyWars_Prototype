@@ -468,7 +468,7 @@ const ThreeRenderer = (function () {
     // Damage/heal/mana NUMBERS render with a vertical gradient (`grad`, top→bottom)
     // and a heavier gothic-serif weight; WORD callouts ("SUPER EFFECTIVE", "DODGE!")
     // fall back to the flat `color` and a lighter, letter-spaced label treatment so
-    // the two read as clearly different things. _buildFloatTextTexture picks which
+    // the two read as clearly different things. _buildFloatTextCanvas picks which
     // path to use per string (numeric vs. label).
     var _GRAD_FIRE = ['#ffd23a', '#ff7a18', '#d11010']; // orange → red (damage)
     var _GRAD_LIFE = ['#c8ffd6', '#48e06d', '#12993a']; // pale → deep green (heal)
@@ -5691,7 +5691,7 @@ const ThreeRenderer = (function () {
         _tetherTweens.length = 0;
     }
 
-    function _buildFloatTextTexture(text, kind) {
+    function _buildFloatTextCanvas(text, kind) {
         var style = _FLOAT_STYLES[kind] || _FLOAT_STYLES['damage'];
         var raw = String(text == null ? '' : text);
 
@@ -5775,28 +5775,45 @@ const ThreeRenderer = (function () {
         ctx.fillText(raw, cx, cy - Math.max(1, fontSize * 0.03));
         ctx.restore();
 
-        var tex = new THREE.CanvasTexture(c);
-        tex.magFilter = THREE.LinearFilter;
-        tex.minFilter = THREE.LinearFilter;
-        return { texture: tex, width: tw, height: th };
+        c.style.width = tw + 'px';
+        c.style.height = th + 'px';
+        return c;
+    }
+
+    // Floating combat numbers/text render into a dedicated DOM overlay (_floatDomOverlay)
+    // that sits ABOVE both the WebGL canvas (sprites) and the CSS2D nameplate layer, so
+    // they're never occluded by a sprite or a name plate. Each pop stores its world-space
+    // anchor; _updateFloatTextTweens projects that to screen pixels every frame (matching
+    // the camera the way _scalePlates does) and animates scale/opacity via CSS transforms.
+    var _floatDomOverlay = null;
+    var _floatProjVec = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+
+    function _ensureFloatOverlay() {
+        if (_floatDomOverlay || !_parentEl) return;
+        var ov = document.createElement('div');
+        ov.id = 'floatTextOverlay';
+        // z-index above #css2dOverlay (7) so numbers always read over name plates.
+        ov.style.cssText =
+            'position:absolute;top:0;left:0;width:100%;height:100%;' +
+            'pointer-events:none;z-index:9;overflow:hidden;';
+        _parentEl.appendChild(ov);
+        _floatDomOverlay = ov;
     }
 
     function startFloatingText(tileX, tileY, text, kind, durationMs, opts) {
-        if (!floatTextGroup || !scene) return;
+        _ensureFloatOverlay();
+        if (!_floatDomOverlay) return;
         opts = opts || {};
         var ts = CONFIG.tileSize || 128;
 
-        var info = _buildFloatTextTexture(text, kind);
-        var mat = new THREE.MeshBasicMaterial({
-            map: info.texture, transparent: true, alphaTest: 0.01,
-            side: THREE.DoubleSide, depthWrite: false, depthTest: true
-        });
-
-        var pxScale = 0.7;
-        var quadW = info.width * pxScale;
-        var quadH = info.height * pxScale;
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(quadW, quadH), mat);
-        mesh._ew_billboard = true;
+        var el = _buildFloatTextCanvas(text, kind);
+        el.style.position = 'absolute';
+        el.style.left = '0';
+        el.style.top = '0';
+        el.style.transformOrigin = '50% 50%';
+        el.style.willChange = 'transform, opacity';
+        el.style.opacity = '0';
+        _floatDomOverlay.appendChild(el);
 
         var jx = Number.isFinite(opts.jitterX) ? opts.jitterX * 0.4 : (Math.random() * 8 - 4);
         var jy = Number.isFinite(opts.jitterY) ? opts.jitterY * 0.4 : (Math.random() * 5 - 2.5);
@@ -5830,17 +5847,13 @@ const ThreeRenderer = (function () {
         var wx = tileX * ts + ts / 2 + jx;
         var wz = tileY * ts + ts / 2 + jy;
 
-        mesh.position.set(wx, startY, wz);
-
-        mesh.material.opacity = 0;
-        mesh.scale.set(0, 0, 1);
-        floatTextGroup.add(mesh);
-
         var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd');
 
         var tw = {
             id: ++_floatIdCounter,
-            mesh: mesh,
+            el: el,
+            wx: wx,
+            wz: wz,
             startY: startY,
             riseY: FLOAT_RISE_PX,
             startTime: performance.now(),
@@ -5851,63 +5864,77 @@ const ThreeRenderer = (function () {
         _floatTweens.push(tw);
     }
 
+    function _removeFloatTween(tw) {
+        if (tw.el && tw.el.parentNode) tw.el.parentNode.removeChild(tw.el);
+        tw.el = null;
+    }
+
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
         var now = performance.now();
         var cam = ThreeCamera.getCamera();
+        var screenW = _parentEl ? _parentEl.clientWidth : 0;
+        var screenH = _parentEl ? _parentEl.clientHeight : 0;
+        // pxScale (0.7) keeps the on-screen size matched to the old WebGL quads.
+        var halfTanFov = cam ? Math.tan((cam.fov * Math.PI / 180) / 2) : 0;
+        var pxScale = 0.7;
         var i = _floatTweens.length;
         while (i--) {
             var tw = _floatTweens[i];
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
 
             var riseT = 1 - Math.pow(1 - t, 3);
-            tw.mesh.position.y = tw.startY + tw.riseY * riseT;
-
-            if (cam) {
-                tw.mesh.rotation.y = Math.atan2(
-                    cam.position.x - tw.mesh.position.x,
-                    cam.position.z - tw.mesh.position.z
-                );
-            }
+            var worldY = tw.startY + tw.riseY * riseT;
 
             var opacity;
             if (t < 0.06) {
-
                 opacity = Math.min(1, t / 0.06);
             } else if (t < 0.75) {
-
                 opacity = 1;
             } else {
-
                 var fadeT = (t - 0.75) / 0.25;
                 opacity = 1 - fadeT * fadeT;
             }
-            tw.mesh.material.opacity = Math.max(0, opacity);
 
             var sc;
             var overshoot = tw.isBig ? 1.6 : 1.35;
             if (t < 0.08) {
-
                 var slamT = t / 0.08;
                 sc = overshoot * (1 - Math.pow(1 - slamT, 3));
             } else if (t < 0.18) {
-
                 var settleT = (t - 0.08) / 0.10;
                 sc = overshoot + (1.0 - overshoot) * (1 - Math.pow(1 - settleT, 2));
             } else if (t < 0.22) {
-
                 var bounceT = (t - 0.18) / 0.04;
                 sc = 1.0 + 0.05 * Math.sin(bounceT * Math.PI);
             } else {
                 sc = 1.0;
             }
-            tw.mesh.scale.set(sc, sc, 1);
+
+            if (tw.el && cam && screenH > 0 && halfTanFov > 0) {
+                _floatProjVec.set(tw.wx, worldY, tw.wz);
+                var dist = _floatProjVec.distanceTo(cam.position);
+                if (dist < 1) dist = 1;
+                _floatProjVec.project(cam);
+                // Behind the camera or off-screen depth → hide this frame.
+                if (_floatProjVec.z > 1) {
+                    tw.el.style.opacity = '0';
+                } else {
+                    var sx = (_floatProjVec.x * 0.5 + 0.5) * screenW;
+                    var sy = (-_floatProjVec.y * 0.5 + 0.5) * screenH;
+                    // World→screen size (px per world unit) at this depth, ×pxScale —
+                    // mirrors _scalePlates so numbers track zoom like sprites/plates.
+                    var worldToPx = screenH / (2 * dist * halfTanFov);
+                    var k = sc * pxScale * worldToPx;
+                    tw.el.style.left = sx + 'px';
+                    tw.el.style.top = sy + 'px';
+                    tw.el.style.transform = 'translate(-50%,-50%) scale(' + k.toFixed(4) + ')';
+                    tw.el.style.opacity = Math.max(0, opacity).toFixed(3);
+                }
+            }
 
             if (t >= 1) {
-                floatTextGroup.remove(tw.mesh);
-                tw.mesh.geometry.dispose();
-                tw.mesh.material.dispose();
-                if (tw.mesh.material.map) tw.mesh.material.map.dispose();
+                _removeFloatTween(tw);
                 _floatTweens.splice(i, 1);
             }
         }
@@ -5915,13 +5942,7 @@ const ThreeRenderer = (function () {
 
     function _clearFloatTextTweens() {
         for (var i = 0; i < _floatTweens.length; i++) {
-            var tw = _floatTweens[i];
-            if (tw.mesh) {
-                floatTextGroup.remove(tw.mesh);
-                tw.mesh.geometry.dispose();
-                if (tw.mesh.material.map) tw.mesh.material.map.dispose();
-                tw.mesh.material.dispose();
-            }
+            _removeFloatTween(_floatTweens[i]);
         }
         _floatTweens.length = 0;
     }
@@ -7615,6 +7636,8 @@ const ThreeRenderer = (function () {
             ThreeLightning.init(scene);
         }
 
+        _ensureFloatOverlay();
+
         initialized = true;
         console.log('[ThreeRenderer] initialized (CSS2DRenderer enabled)');
     }
@@ -7625,6 +7648,8 @@ const ThreeRenderer = (function () {
         active = true;
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
+        _ensureFloatOverlay();
+        if (_floatDomOverlay) _floatDomOverlay.style.display = '';
         _ensureIntentBadgeContainer();
         if (_intentBadgeContainer) _intentBadgeContainer.style.display = '';
 
@@ -7701,6 +7726,8 @@ const ThreeRenderer = (function () {
         if (renderer) renderer.setAnimationLoop(null);
         if (canvas) canvas.style.display = 'none';
         if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
+        _clearFloatTextTweens();
+        if (_floatDomOverlay) _floatDomOverlay.style.display = 'none';
         _clearNexusBars();
         if (_intentBadgeContainer) _intentBadgeContainer.style.display = 'none';
         clearIntentBadges();
@@ -8819,6 +8846,9 @@ const ThreeRenderer = (function () {
             css2dRenderer.domElement.parentElement.removeChild(css2dRenderer.domElement);
         }
         css2dRenderer = null;
+        _clearFloatTextTweens();
+        if (_floatDomOverlay && _floatDomOverlay.parentElement) _floatDomOverlay.parentElement.removeChild(_floatDomOverlay);
+        _floatDomOverlay = null;
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
