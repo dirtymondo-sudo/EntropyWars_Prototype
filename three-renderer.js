@@ -160,6 +160,113 @@ const ThreeRenderer = (function () {
     function _naturalTerrainActive() {
         return BEVEL.enabled && !!(typeof state !== 'undefined' && state && state.naturalTerrain);
     }
+
+    /* ── EW master palette ─────────────────────────────────────────────────
+     * ONE cohesive, hand-tuned palette that the whole world is meant to draw
+     * from, so shared materials share a colour — the green of the grass IS the
+     * green of the trees (both ent_verdant), wood IS bark (ent_bark), etc. The
+     * intent is a single source of truth for terrain, props and (eventually)
+     * unit sprites. 37 swatches in six ramps, each anchored on a unit type-badge
+     * colour (human / alien / divine / unholy / anomaly / tech) and including
+     * that badge's UI text-tint + the fog colours, so it stays continuous with
+     * the existing HUD.
+     *
+     * Applied as a MULTIPLY tint over the existing terrain textures (so sprite
+     * detail survives) ONLY while _naturalTerrainActive() — i.e. on the
+     * "Entropy Vale" map. Every other map keeps its original colours. Gameplay-
+     * identity colours (player blue/red towers, spawn markers, deployed walls/
+     * totems/traps) are deliberately left alone so they stay readable. */
+    var EW_PAL = {
+        /* Void / Stone (human) — neutral cool base */
+        ent_void:'#0c0c13', ent_pitch:'#1a1a28', ent_graphite:'#2a2a3e', ent_slate:'#3a3a52',
+        ent_stone:'#565673', ent_ash:'#8a93a8', ent_silver:'#a0a0c3', ent_mist:'#c8c8e4', ent_bone:'#e9e9f4',
+        /* Verdant (alien) — all vegetation */
+        ent_moss:'#18512a', ent_pine:'#226e30', ent_verdant:'#32aa50', ent_leaf:'#56d178', ent_sprout:'#92e8a6',
+        /* Tidal (tech) — water / ice / sky / fog */
+        ent_depth:'#123c50', ent_tidal:'#1c6f88', ent_teal:'#28a0be', ent_cyan:'#4ecbe2',
+        ent_frost:'#a6e8f2', ent_astral:'#22ccff', ent_haze:'#1188aa',
+        /* Gilded (divine) — earth / wood / sand / peaks */
+        ent_umber:'#3e2c1c', ent_bark:'#6b4a2e', ent_clay:'#9c7440', ent_gold:'#dcaa1e',
+        ent_sun:'#f2c63c', ent_sand:'#ecdca0',
+        /* Arcane (unholy) — crystal / obsidian / void-magic */
+        ent_voidviolet:'#311646', ent_amethyst:'#5e2a80', ent_violet:'#9632b4', ent_orchid:'#c566e2', ent_lilac:'#e3b3ff',
+        /* Ember (anomaly) — hazard / scorched / lava / fire */
+        ent_maroon:'#4f1828', ent_blood:'#88283e', ent_rose:'#dc3c82', ent_pink:'#ff5e98', ent_ember:'#e8643c', ent_flame:'#ff9a4a'
+    };
+
+    /* terrain / prop key → master-palette swatch. Keys that should look the same
+       point at the SAME swatch (grass + tree canopy → ent_verdant). */
+    var _EV_MAP = {
+        /* vegetation → verdant ramp */
+        grass:'ent_verdant', grass_2:'ent_verdant', grass_rocky:'ent_pine', purple_grass:'ent_amethyst',
+        forest:'ent_pine', forest_2:'ent_pine', dark_woods:'ent_moss', tree:'ent_verdant', tree_top:'ent_verdant',
+        poison:'ent_moss', poison_bog:'ent_moss', mushroom:'ent_orchid',
+        /* water / ice / sky → tidal ramp */
+        water:'ent_teal', deep_water:'ent_depth', ice:'ent_frost', healing_spring:'ent_cyan',
+        well:'ent_tidal', sky_open:'ent_astral', cloud:'ent_mist', cloud_thick:'ent_bone', storm:'ent_amethyst',
+        /* crystal / arcane → arcane ramp */
+        crystal:'ent_violet', purple_bog:'ent_amethyst', obsidian:'ent_voidviolet',
+        nexus:'ent_violet', nexus_cave:'ent_amethyst', nexus_sky:'ent_orchid',
+        /* hazard / burnt → ember ramp */
+        scorched:'ent_maroon', lava:'ent_ember', poison_seed:'ent_blood',
+        /* earth / wood / sand / sacred → gilded ramp */
+        dirt:'ent_clay', desert:'ent_sand', wasteland:'ent_clay', sanctuary:'ent_sand',
+        wood:'ent_bark', wood_planks:'ent_bark', bridge:'ent_bark', road:'ent_ash',
+        bricks_1:'ent_clay', bricks_2:'ent_clay', mountain_top:'ent_sand', beanstalk:'ent_pine',
+        /* stone / structural / neutral → void-stone ramp */
+        mountain:'ent_stone', mountain_2:'ent_slate', cliff:'ent_slate', ruins:'ent_ash',
+        rocks_1:'ent_stone', rocks_2:'ent_stone', rocks_3:'ent_stone', rocks_4:'ent_slate', rocks_5:'ent_slate',
+        rock_wall_1:'ent_slate', rock_wall_2:'ent_slate', rubble_1:'ent_ash', rubble_2:'ent_ash',
+        rubble_3:'ent_ash', rubble_4:'ent_ash', urban_wall:'ent_stone', urban_street:'ent_ash',
+        cave_floor:'ent_slate', cave_wall:'ent_graphite', cave_entrance:'ent_pitch'
+    };
+
+    /* A multiply tint can only darken, so each swatch is lightened toward white
+       by this fixed amount before it's multiplied onto a texture — this lifts
+       the result back up to roughly the swatch's own value while keeping the
+       relationships between swatches intact. Shared swatch ⇒ shared tint. */
+    var EW_TINT_MIX = 0.32;
+
+    function _hexToInt(h) { return parseInt(h.replace('#',''), 16); }
+    function _evLighten(hex, amt) {
+        var r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+        r = Math.round(r + (255 - r) * amt);
+        g = Math.round(g + (255 - g) * amt);
+        b = Math.round(b + (255 - b) * amt);
+        return (r << 16) | (g << 8) | b;
+    }
+    /* Resolve a swatch NAME (e.g. 'ent_verdant') to its raw palette int. */
+    function _ewSwatch(name) {
+        var h = EW_PAL[name];
+        return h ? _hexToInt(h) : 0x808080;
+    }
+    /* Resolve a terrain/prop KEY to its lightened multiply-tint hex (int). */
+    var _evTintCache = {};
+    function _evTintHex(key) {
+        if (!key) return null;
+        if (key in _evTintCache) return _evTintCache[key];
+        var name = _EV_MAP[key] || 'ent_ash';        /* neutral stone default */
+        var hex = _evLighten(_ewSwatch(name), EW_TINT_MIX);
+        _evTintCache[key] = hex;
+        return hex;
+    }
+    /* THREE.Color for a terrain/prop key (cached). */
+    var _evColorCache = {};
+    function _evColor(key) {
+        var hex = _evTintHex(key);
+        if (hex == null) return null;
+        if (!(hex in _evColorCache)) _evColorCache[hex] = new THREE.Color(hex);
+        return _evColorCache[hex];
+    }
+    /* Apply the palette tint for `key` onto a material's .color (multiply),
+       no-op unless the Entropy Vale palette is active. */
+    function _evTintMat(mat, key) {
+        if (!mat || !mat.color || !_naturalTerrainActive()) return mat;
+        var c = _evColor(key);
+        if (c) mat.color.copy(c);
+        return mat;
+    }
+
     function _lerp(a, b, t) { return a + (b - a) * t; }
     function _hLevelAt(x, y) {
         if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) || 0;
@@ -282,7 +389,8 @@ const ThreeRenderer = (function () {
 
     var _bevelMatCache = new Map();
     function _buildBeveledMaterials(topKey, sideKey) {
-        var ck = (topKey || '_') + '|' + (sideKey || topKey || '_');
+        var evp = _naturalTerrainActive();
+        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
         if (_bevelMatCache.has(ck)) return _bevelMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
         var sideTex = getTerrainTexture(sideKey || topKey);
@@ -295,9 +403,10 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < 6; i++) {
             var isTop = (i === 2);
             var tex = isTop ? topTex : sideTex;
-            if (tex) { mats.push(new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide })); }
+            var faceKey = isTop ? topKey : (sideKey || topKey);
+            if (tex) { mats.push(_evTintMat(new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }), faceKey)); }
             else {
-                var c = new THREE.Color(isTop ? 0x556655 : 0x443322);
+                var c = evp ? _evColor(faceKey) : new THREE.Color(isTop ? 0x556655 : 0x443322);
                 mats.push(new THREE.MeshLambertMaterial({ color: c, side: THREE.DoubleSide }));
             }
         }
@@ -934,7 +1043,8 @@ const ThreeRenderer = (function () {
     var _terrainMatCache = new Map();
 
     function buildBoxMaterials(topKey, sideKey) {
-        var ck = (topKey || '_') + '|' + (sideKey || topKey || '_');
+        var evp = _naturalTerrainActive();
+        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
         if (_terrainMatCache.has(ck)) return _terrainMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
         var sideTex = getTerrainTexture(sideKey || topKey);
@@ -947,10 +1057,11 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < 6; i++) {
             var isTop = (i === 2);
             var tex = isTop ? topTex : sideTex;
+            var faceKey = isTop ? topKey : (sideKey || topKey);
 
-            if (tex) { mats.push(new THREE.MeshLambertMaterial({ map: tex })); }
+            if (tex) { mats.push(_evTintMat(new THREE.MeshLambertMaterial({ map: tex }), faceKey)); }
             else {
-                var c = new THREE.Color(isTop ? 0x556655 : 0x443322);
+                var c = evp ? _evColor(faceKey) : new THREE.Color(isTop ? 0x556655 : 0x443322);
                 mats.push(new THREE.MeshLambertMaterial({ color: c }));
             }
         }
@@ -975,6 +1086,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < 6; i++) {
             var isTop = (i === 2);
             var tex = isTop ? topTex : sideTex;
+            var faceKey = isTop ? topKey : (sideKey || topKey);
             var matOpts = {
                 emissive: emissiveColor,
                 emissiveIntensity: emissiveInt
@@ -984,7 +1096,7 @@ const ThreeRenderer = (function () {
             } else {
                 matOpts.color = new THREE.Color(isTop ? 0x883311 : 0x661100);
             }
-            mats.push(new THREE.MeshLambertMaterial(matOpts));
+            mats.push(_evTintMat(new THREE.MeshLambertMaterial(matOpts), faceKey));
         }
         return mats;
     }
@@ -1020,7 +1132,7 @@ const ThreeRenderer = (function () {
             matOpts.emissiveIntensity = isNight ? 0.7 : 0.25;
         }
 
-        var mat = new THREE.MeshLambertMaterial(matOpts);
+        var mat = _evTintMat(new THREE.MeshLambertMaterial(matOpts), terrainKey);
 
         var waveTex1 = _getFluidTex(terrainKey, 1);
         var waveTex2 = _getFluidTex(terrainKey, 2);
@@ -1097,7 +1209,7 @@ const ThreeRenderer = (function () {
                 }
                 if (sideTex) matOpts.map = sideTex;
                 else matOpts.color = new THREE.Color(isLava ? 0x661100 : 0x443322);
-                mats.push(new THREE.MeshLambertMaterial(matOpts));
+                mats.push(_evTintMat(new THREE.MeshLambertMaterial(matOpts), sideKey || topKey));
             }
         }
         return mats;
@@ -1736,8 +1848,8 @@ const ThreeRenderer = (function () {
 
         var roofTex = getTerrainTexture('bricks_3');
         var roofMat = roofTex
-            ? new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide })
-            : new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
+            ? _evTintMat(new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide }), 'bricks_1')
+            : new THREE.MeshBasicMaterial({ color: _naturalTerrainActive() ? _evTintHex('bricks_1') : 0x8b6b4a, side: THREE.DoubleSide });
         var roofTilesN = isHouse ? Math.max(2, Math.round(side / ts)) : 1;
         if (roofTilesN <= 1) {
             var roofGeo = new THREE.PlaneGeometry(side, side);
@@ -1801,8 +1913,15 @@ const ThreeRenderer = (function () {
                     fuv.needsUpdate = true;
                 }
 
+                var _faceCol;
+                if (_naturalTerrainActive()) {
+                    var _wh = _evColor('urban_wall');
+                    _faceCol = new THREE.Color(_wh.r * b, _wh.g * b, _wh.b * b);
+                } else {
+                    _faceCol = new THREE.Color(b, b, b);
+                }
                 var faceMat = new THREE.MeshBasicMaterial({
-                    map: wallTex, color: new THREE.Color(b, b, b),
+                    map: wallTex, color: _faceCol,
                     transparent: true, alphaTest: 0.1,
                     side: THREE.DoubleSide, depthWrite: true
                 });
@@ -1975,11 +2094,13 @@ const ThreeRenderer = (function () {
         /* trunk — tapered cone with wood texture, tiled to match terrain pixel density */
         var trunkGeo = new THREE.ConeGeometry(trunkR, trunkH, 8, 1, false);
         var woodTex = _getTreeWoodTex();
+        var _evp = _naturalTerrainActive();
+        var _trunkCol = _evp ? _evTintHex('wood') : v.trunkColor;
         var trunkMat;
         if (woodTex) {
-            trunkMat = new THREE.MeshBasicMaterial({ map: woodTex, color: new THREE.Color(v.trunkColor), depthWrite: true });
+            trunkMat = new THREE.MeshBasicMaterial({ map: woodTex, color: new THREE.Color(_trunkCol), depthWrite: true });
         } else {
-            trunkMat = new THREE.MeshBasicMaterial({ color: v.trunkColor, depthWrite: true });
+            trunkMat = new THREE.MeshBasicMaterial({ color: _trunkCol, depthWrite: true });
         }
         var trunk = new THREE.Mesh(trunkGeo, trunkMat);
         trunk.position.y = trunkH * 0.5;
@@ -1988,11 +2109,12 @@ const ThreeRenderer = (function () {
         /* canopy — squished sphere with forest texture, tiled so pixels stay crisp */
         var canopyGeo = new THREE.SphereGeometry(canopyR, 10, 7);
         var forestTex = _getTreeForestTex();
+        var _canopyCol = _evp ? _evTintHex('tree') : v.canopyColor;   /* shares grass swatch (ent_verdant) */
         var canopyMat;
         if (forestTex) {
-            canopyMat = new THREE.MeshBasicMaterial({ map: forestTex, color: new THREE.Color(v.canopyColor), depthWrite: true });
+            canopyMat = new THREE.MeshBasicMaterial({ map: forestTex, color: new THREE.Color(_canopyCol), depthWrite: true });
         } else {
-            canopyMat = new THREE.MeshBasicMaterial({ color: v.canopyColor, depthWrite: true });
+            canopyMat = new THREE.MeshBasicMaterial({ color: _canopyCol, depthWrite: true });
         }
         var canopy = new THREE.Mesh(canopyGeo, canopyMat);
         canopy.scale.set(1, v.canopySquish, 1);
@@ -2145,11 +2267,11 @@ const ThreeRenderer = (function () {
         function _pickFoliageMat(srcMat) {
             var mname = (srcMat && srcMat.name) || '';
             if (mname === 'Tree_Leaves') {
-                return new THREE.MeshLambertMaterial({
+                return _evTintMat(new THREE.MeshLambertMaterial({
                     map: leafTex, side: THREE.DoubleSide, depthWrite: true
-                });
+                }), 'tree');   /* tree canopy shares the grass swatch (ent_verdant) */
             }
-            return new THREE.MeshLambertMaterial({ map: barkTex });
+            return _evTintMat(new THREE.MeshLambertMaterial({ map: barkTex }), 'wood');
         }
 
         var model = src.clone(true);
@@ -2183,9 +2305,9 @@ const ThreeRenderer = (function () {
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
         var w = ts, h = ts * BILLBOARD_DEFAULT_H;
         if (spr && spr.width && spr.height) { h = ts * BILLBOARD_DEFAULT_H; w = h * (spr.width / spr.height); }
-        var mat = new THREE.MeshBasicMaterial({
+        var mat = _evTintMat(new THREE.MeshBasicMaterial({
             map: tex, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide, depthWrite: true
-        });
+        }), objKey);
         var g = new THREE.Group();
 
         var planeA = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
@@ -2252,9 +2374,9 @@ const ThreeRenderer = (function () {
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
         var w = ts, h = ts * BILLBOARD_DEFAULT_H;
         if (spr && spr.width && spr.height) { h = ts * BILLBOARD_DEFAULT_H; w = h * (spr.width / spr.height); }
-        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), _evTintMat(new THREE.MeshBasicMaterial({
             map: tex, transparent: true, alphaTest: 0.1, side: THREE.DoubleSide, depthWrite: true
-        }));
+        }), objKey));
         m.position.set(x*ts+ts/2, topY+h/2, y*ts+ts/2); m._ew_billboard = true; return m;
     }
 
@@ -2399,9 +2521,20 @@ const ThreeRenderer = (function () {
             baseGeo.computeVertexNormals();
 
             var shade = 0.5 + _sr() * 0.3;
-            var mat = rockTex
-                ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(shade, shade * 0.95, shade * 0.9), depthWrite: true })
-                : new THREE.MeshBasicMaterial({ color: new THREE.Color(shade * 0.6, shade * 0.55, shade * 0.5), depthWrite: true });
+            var mat;
+            if (_naturalTerrainActive()) {
+                /* Entropy Vale: human lavender-grey, varied per rock by `shade` */
+                var _hb = _evColor('rocks_1');
+                var _f = 0.74 + shade * 0.34;
+                var _rc = new THREE.Color(_hb.r * _f, _hb.g * _f, _hb.b * _f);
+                mat = rockTex
+                    ? new THREE.MeshBasicMaterial({ map: rockTex, color: _rc, depthWrite: true })
+                    : new THREE.MeshBasicMaterial({ color: _rc, depthWrite: true });
+            } else {
+                mat = rockTex
+                    ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(shade, shade * 0.95, shade * 0.9), depthWrite: true })
+                    : new THREE.MeshBasicMaterial({ color: new THREE.Color(shade * 0.6, shade * 0.55, shade * 0.5), depthWrite: true });
+            }
 
             var rock = new THREE.Mesh(baseGeo, mat);
             rock.scale.set(radius, radius, radius);
@@ -2429,7 +2562,10 @@ const ThreeRenderer = (function () {
         var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
 
         var crystalTex = _getCrystalTexture();
-        var crystalColors = [0x8844cc, 0x6633aa, 0xaa55ee, 0x9944dd, 0x7733bb];
+        var crystalColors = _naturalTerrainActive()
+            ? [ _ewSwatch('ent_amethyst'), _ewSwatch('ent_violet'), _ewSwatch('ent_orchid'),
+                _ewSwatch('ent_violet'), _ewSwatch('ent_amethyst') ]
+            : [0x8844cc, 0x6633aa, 0xaa55ee, 0x9944dd, 0x7733bb];
         var count = 3 + Math.floor(_sr() * 3); /* 3-5 crystals */
 
         for (var ci = 0; ci < count; ci++) {
@@ -2459,7 +2595,8 @@ const ThreeRenderer = (function () {
 
             /* Inner glow — slightly smaller, additive */
             var glowMat = new THREE.MeshBasicMaterial({
-                color: 0xccaaff, transparent: true, opacity: 0.15,
+                color: _naturalTerrainActive() ? _ewSwatch('ent_lilac') : 0xccaaff,
+                transparent: true, opacity: 0.15,
                 side: THREE.BackSide, depthWrite: false,
                 blending: THREE.AdditiveBlending
             });
