@@ -1655,10 +1655,15 @@ const ThreeRenderer = (function () {
         /* Houses (building_*, abandoned_building_*, ancient_building) occupy a
            clean 2×2-tile footprint so they read as proper structures and their
            roofs (below) tile to match. Columns / church / shop keep their own
-           sprite-derived size. Height (roofZ / gameH) is unchanged, so LOS and
-           roof-standing heights stay identical. */
+           sprite-derived size. We remember how much we widened the footprint
+           (houseFactor) and apply the same factor to the height below, so a
+           building that's twice as wide is also proportionally taller. */
         var isHouse = objKey.indexOf('building') !== -1;
-        if (isHouse) side = Math.round(ts * 2);
+        var houseFactor = 1;
+        if (isHouse) {
+            houseFactor = (ts * 2) / Math.max(1, side);
+            side = Math.round(ts * 2);
+        }
         var fullWallH = Math.round(trimmedH * scale);
 
         var profile = oSpr._topProfile;
@@ -1681,6 +1686,16 @@ const ThreeRenderer = (function () {
             roofZ = Math.round(ts * DEFAULT_BUILDING_HEIGHT_TILES);
         }
         var wallH = fullWallH || roofZ;
+
+        /* Footprint was widened to 2×2 — scale the height by the same factor so
+           the building keeps its proportions and grows taller, not just wider.
+           gameH (below) is derived from the scaled roofZ, so LOS and the
+           roof-standing height rise to match the taller building, and the roof
+           tile-highlight (which rides tileTopY + _roofZPx) follows automatically. */
+        if (isHouse) {
+            roofZ = Math.round(roofZ * houseFactor);
+            wallH = wallH * houseFactor;
+        }
 
         /* Game height is pinned to the legacy half-tile basis so the 1:1 visual
            step doesn't change LOS / roof-standing heights. The prism is then
@@ -4244,7 +4259,19 @@ const ThreeRenderer = (function () {
     function _makeHlTile(hx, hy, mat, frac, yOff) {
         var ts = CONFIG.tileSize || 128;
         var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
-        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff, hy * ts + ts / 2);
+        /* On a walkable roof, tileTopY is the roof-standing height but the roof
+           mesh itself is drawn a hair above it, so lift the highlight clear of
+           the roof plane — otherwise the (depth-tested) overlay is occluded by
+           the roof and the tile looks un-highlighted. */
+        var roofLift = 0;
+        if (typeof getObjectAt === 'function') {
+            var hobj = getObjectAt(hx, hy);
+            if (hobj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[hobj] && OBJECT_RULES[hobj].roofWalkable) {
+                var hoSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[hobj] : null;
+                if (hoSpr && hoSpr._roofZPx > 0) roofLift = 1.5;
+            }
+        }
+        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff + roofLift, hy * ts + ts / 2);
         return mesh;
     }
 
