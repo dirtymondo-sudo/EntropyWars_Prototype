@@ -1145,22 +1145,32 @@ const ThreeRenderer = (function () {
     }
 
     function tileTopY(x, y) {
-        if (_isNaturalRenderTile(x, y)) return _naturalSurfaceY(x, y);
         var ts = CONFIG.tileSize || 128;
+
+        /* Roof-walkable buildings are anchored to the VOXEL ground (baseH*ts) and
+           their roof plane sits at baseH*ts + _roofZPx, INDEPENDENT of the natural
+           smoothing (_buildBuildingPrism uses getBaseHeightAt, not tileTopY). Resolve
+           the roof the same way FIRST so roof move-tiles / VFX land on the roof — on
+           natural terrain the old code returned _naturalSurfaceY (ground) and buried
+           them at the base. */
+        if (typeof getObjectAt === 'function') {
+            var robj = getObjectAt(x, y);
+            if (robj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[robj] && OBJECT_RULES[robj].roofWalkable) {
+                var rSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[robj] : null;
+                if (rSpr && rSpr._roofZPx > 0) {
+                    var rH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
+                           : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
+                    return rH * ts * ELEV_STEP_RATIO + rSpr._roofZPx;
+                }
+            }
+        }
+
+        if (_isNaturalRenderTile(x, y)) return _naturalSurfaceY(x, y);
 
         var h = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
               : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
 
-        var base = h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y);
-
-        if (typeof getObjectAt === 'function') {
-            var obj = getObjectAt(x, y);
-            if (obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[obj] && OBJECT_RULES[obj].roofWalkable) {
-                var oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
-                if (oSpr && oSpr._roofZPx > 0) base += oSpr._roofZPx;
-            }
-        }
-        return base;
+        return h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y);
     }
 
     function unitSurfaceY(unit) {
@@ -1172,20 +1182,28 @@ const ThreeRenderer = (function () {
             return h * ts * ELEV_STEP_RATIO;
         }
 
+        /* Roof-walkable building tiles only expose the ROOF as a standing surface
+           (getWalkableSurfaces returns [roofZ] alone), so a unit on this tile is on
+           the roof — place it on the roof plane (voxel base + _roofZPx) on EVERY
+           terrain type, including natural, so it doesn't sink to ground level. */
+        if (typeof getObjectAt === 'function') {
+            var robj = getObjectAt(ux, uy);
+            if (robj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[robj] && OBJECT_RULES[robj].roofWalkable) {
+                var rSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[robj] : null;
+                if (rSpr && rSpr._roofZPx > 0) {
+                    var rH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
+                           : (state.boardHeights && state.boardHeights[uy]) ? (state.boardHeights[uy][ux] || 0) : 0;
+                    return rH * ts * ELEV_STEP_RATIO + rSpr._roofZPx;
+                }
+            }
+        }
+
         if (_isNaturalRenderTile(ux, uy)) return _naturalSurfaceY(ux, uy);
 
         var baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
                   : (state.boardHeights && state.boardHeights[uy]) ? (state.boardHeights[uy][ux] || 0) : 0;
         var elevPx = baseH * ts * ELEV_STEP_RATIO + _tileSurfaceLift(ux, uy);
-        var roofExtra = 0;
-        if (typeof getObjectAt === 'function') {
-            var obj = getObjectAt(ux, uy);
-            if (obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[obj] && OBJECT_RULES[obj].roofWalkable) {
-                var oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
-                if (oSpr && oSpr._roofZPx > 0) roofExtra = oSpr._roofZPx;
-            }
-        }
-        return elevPx + roofExtra;
+        return elevPx;
     }
 
     function _escHtml(s) { return (typeof escapeHtml === 'function') ? escapeHtml(s) : String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
