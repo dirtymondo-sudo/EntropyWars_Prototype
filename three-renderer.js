@@ -2139,11 +2139,13 @@ const ThreeRenderer = (function () {
     }
 
     /* ──────────────────────────────────────────────────────────────────────
-       FOLIAGE OBJ MODELS — Entropy Vale experiment
+       FOLIAGE OBJ MODELS — default trees (originally the Entropy Vale experiment)
        Swaps the procedural cone+sphere trees for real 3D meshes pulled from the
-       R2 /Assets/foilage bucket, but ONLY on natural-terrain maps (currently
-       just "Entropy Vale"). Old/preset maps keep the procedural _buildTree3D look
-       untouched. This is the shared basis future natural maps inherit.
+       R2 /Assets/foilage bucket. These are now the DEFAULT trees on EVERY map;
+       _buildTree3D survives only as the per-tile fallback while a model is still
+       loading (or fails). The Entropy-Vale-only behaviour that remains is the
+       palette tint (_evTintMat), which no-ops on other maps, so non-natural maps
+       get the same tree geometry with their normal untinted wood/leaf sprites.
 
        Bucket contents discovered:
          OBJ/Tree_1..Tree_10.obj        — leafy trees (materials: Bark + Tree_Leaves)
@@ -2688,7 +2690,7 @@ const ThreeRenderer = (function () {
                 /* Tower cubes are built from live tower state, not the static object */
                 continue;
             }
-            else if (_isTreeKey(ok))              m = (_naturalTerrainActive() ? _buildFoliageObj(ok, x, y) : null) || _buildTree3D(ok, x, y);
+            else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok))      m = _buildBuildingPrism(ok, x, y);
             else if (_isCrossBillboard(ok))   m = _buildCrossBillboard(ok, x, y);
             else if (_isBarrierKey(ok))       m = _buildBarrierSlab(ok, x, y);
