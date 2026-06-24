@@ -626,7 +626,7 @@ const TERRAIN_SPRITES = {
     purple_grass:     [`${_T}/purple_grass.png`],
     grass_2:          [`${_T}/grass_2.png`],
     wasteland:        [`${_T}/wasteland.png`],
-    mountain_top:     [`${_T}/mountain_top.png`],
+    mountain_top:     [`${_T}/mountain.png`],
     forest_2:         [`${_T}/forest_2.png`],
     mountain_2:       [`${_T}/mountain_2.png`],
 

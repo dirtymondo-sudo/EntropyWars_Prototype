@@ -211,13 +211,28 @@ const ThreeRenderer = (function () {
         var floorY = -elevStep; // a tile of soil below the lowest ground → rim cliffs
         var pos = [], uv = [], idx = [], grid = [];
         function surf(lu, lv) { return _naturalSurfaceYLocal(x, y, lu, lv, _bw, _bh, elevStep); }
+
+        /* Steep tiles stretch the top texture because the sloped face is much
+           longer than the flat tile footprint while the UV span stays 0..1.
+           Repeat the texture by the slope's length/footprint ratio (rounded to
+           an integer so the tiling still lines up with flat neighbours at the
+           shared edge) so texel density stays roughly constant — no stretching. */
+        var _cY00 = _cornerHeightY(x,     y,     elevStep, _bw, _bh);
+        var _cY10 = _cornerHeightY(x + 1, y,     elevStep, _bw, _bh);
+        var _cY01 = _cornerHeightY(x,     y + 1, elevStep, _bw, _bh);
+        var _cY11 = _cornerHeightY(x + 1, y + 1, elevStep, _bw, _bh);
+        var _dU = (Math.abs(_cY10 - _cY00) + Math.abs(_cY11 - _cY01)) / 2;
+        var _dV = (Math.abs(_cY01 - _cY00) + Math.abs(_cY11 - _cY10)) / 2;
+        var uRep = Math.max(1, Math.round(Math.sqrt(ts * ts + _dU * _dU) / ts));
+        var vRep = Math.max(1, Math.round(Math.sqrt(ts * ts + _dV * _dV) / ts));
+
         for (var j = 0; j <= segs; j++) {
             grid[j] = [];
             for (var i = 0; i <= segs; i++) {
                 var lu = i / segs, lv = j / segs;
                 grid[j][i] = pos.length / 3;
                 pos.push((lu - 0.5) * ts, surf(lu, lv), (lv - 0.5) * ts);
-                uv.push(lu, lv);
+                uv.push(lu * uRep, lv * vRep);
             }
         }
         for (var qj = 0; qj < segs; qj++) {
@@ -228,10 +243,18 @@ const ThreeRenderer = (function () {
             }
         }
         var nTopIdx = idx.length;
-        function isVoidN(tx, ty) {
+        /* Drop a closing skirt wherever the continuous landform ENDS — i.e. the
+           neighbour is off-board, void, or a non-natural tile (water/lava/fluid)
+           that renders as its own flat voxel box. Without this, a height gap to
+           such a neighbour leaves a see-through hole in the map. Natural-render
+           neighbours are welded by shared corner heights, so they get no wall. */
+        function needsSkirt(tx, ty) {
             if (tx < 0 || ty < 0 || tx >= _bw || ty >= _bh) return true;
             var t = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
-            return !t || t.indexOf('void') === 0;
+            if (!t || t.indexOf('void') === 0) return true;
+            if (typeof _FLUID_TERRAIN_SET !== 'undefined' && _FLUID_TERRAIN_SET[t]) return true;
+            if (t === 'lava') return true;
+            return false;
         }
         function topPt(i, jj) { var lu = i / segs, lv = jj / segs; return [(lu - 0.5) * ts, surf(lu, lv), (lv - 0.5) * ts]; }
         function skirt(p0, p1) {
@@ -241,10 +264,10 @@ const ThreeRenderer = (function () {
             idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
         }
         var s;
-        if (isVoidN(x + 1, y)) for (s = 0; s < segs; s++) skirt(topPt(segs, s), topPt(segs, s + 1));
-        if (isVoidN(x - 1, y)) for (s = 0; s < segs; s++) skirt(topPt(0, s + 1), topPt(0, s));
-        if (isVoidN(x, y + 1)) for (s = 0; s < segs; s++) skirt(topPt(s + 1, segs), topPt(s, segs));
-        if (isVoidN(x, y - 1)) for (s = 0; s < segs; s++) skirt(topPt(s, 0), topPt(s + 1, 0));
+        if (needsSkirt(x + 1, y)) for (s = 0; s < segs; s++) skirt(topPt(segs, s), topPt(segs, s + 1));
+        if (needsSkirt(x - 1, y)) for (s = 0; s < segs; s++) skirt(topPt(0, s + 1), topPt(0, s));
+        if (needsSkirt(x, y + 1)) for (s = 0; s < segs; s++) skirt(topPt(s + 1, segs), topPt(s, segs));
+        if (needsSkirt(x, y - 1)) for (s = 0; s < segs; s++) skirt(topPt(s, 0), topPt(s + 1, 0));
         var nSideIdx = idx.length - nTopIdx;
 
         var geo = new THREE.BufferGeometry();
@@ -263,6 +286,10 @@ const ThreeRenderer = (function () {
         if (_bevelMatCache.has(ck)) return _bevelMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
         var sideTex = getTerrainTexture(sideKey || topKey);
+        /* Top texture must wrap so steep tiles can repeat it (see uRep/vRep in
+           _buildNaturalTileMesh); flat tiles keep a 0..1 span so this is a no-op
+           for them. */
+        if (topTex) { topTex.wrapS = THREE.RepeatWrapping; topTex.wrapT = THREE.RepeatWrapping; }
         if (sideTex) { sideTex.wrapS = THREE.RepeatWrapping; sideTex.wrapT = THREE.RepeatWrapping; }
         var mats = [];
         for (var i = 0; i < 6; i++) {
@@ -1624,6 +1651,14 @@ const ThreeRenderer = (function () {
         var side = Math.round(coreW * scale);
 
         if (!trim && side < ts * 0.3) side = Math.round(ts * 0.85);
+
+        /* Houses (building_*, abandoned_building_*, ancient_building) occupy a
+           clean 2×2-tile footprint so they read as proper structures and their
+           roofs (below) tile to match. Columns / church / shop keep their own
+           sprite-derived size. Height (roofZ / gameH) is unchanged, so LOS and
+           roof-standing heights stay identical. */
+        var isHouse = objKey.indexOf('building') !== -1;
+        if (isHouse) side = Math.round(ts * 2);
         var fullWallH = Math.round(trimmedH * scale);
 
         var profile = oSpr._topProfile;
@@ -1667,9 +1702,24 @@ const ThreeRenderer = (function () {
         g.add(darkBox);
 
         var roofTex = getTerrainTexture('bricks_3');
-        var roofMat = roofTex
-            ? new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide })
-            : new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
+        var roofMat;
+        if (roofTex) {
+            if (isHouse) {
+                /* clone so we don't change the shared bricks_3 texture used
+                   elsewhere, then tile it across the 2×2 roof (one brick panel
+                   per tile) instead of stretching a single panel over the whole
+                   roof — which read as "just one tile". */
+                roofTex = roofTex.clone();
+                roofTex.needsUpdate = true;
+                roofTex.wrapS = THREE.RepeatWrapping;
+                roofTex.wrapT = THREE.RepeatWrapping;
+                var roofRep = Math.max(2, Math.round(side / ts));
+                roofTex.repeat.set(roofRep, roofRep);
+            }
+            roofMat = new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide });
+        } else {
+            roofMat = new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
+        }
         var roofGeo = new THREE.PlaneGeometry(side, side);
         var roofMesh = new THREE.Mesh(roofGeo, roofMat);
         roofMesh.rotation.x = -Math.PI / 2;
@@ -4954,6 +5004,60 @@ const ThreeRenderer = (function () {
         };
     }
 
+    /* Topographic fog cell: a holographic wire box whose bottom ring hugs the
+       sloped terrain surface (the four welded corner heights) and whose rings
+       step up parallel to that slope, so the fog grid drapes over hills and
+       valleys instead of sitting as an axis-aligned cube. Used for natural
+       (rolling-heightfield) tiles; flat/voxel tiles keep _buildFogCube. */
+    function _buildFogSlopedCube(x, y, ts, isEdge) {
+        var elevStep = ts * ELEV_STEP_RATIO;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+        /* surface Y at the four tile corners — group sits at world-y 0, so these
+           local Ys already place the ring on the terrain. */
+        var Y00 = _naturalSurfaceYLocal(x, y, 0, 0, _bw, _bh, elevStep);
+        var Y10 = _naturalSurfaceYLocal(x, y, 1, 0, _bw, _bh, elevStep);
+        var Y11 = _naturalSurfaceYLocal(x, y, 1, 1, _bw, _bh, elevStep);
+        var Y01 = _naturalSurfaceYLocal(x, y, 0, 1, _bw, _bh, elevStep);
+        var fogH = ts * (isEdge ? FOG_EDGE_HEIGHT_RATIO : FOG_CUBE_HEIGHT_RATIO);
+        var h = ts / 2;
+        var c = [
+            [-h, Y00, -h],
+            [ h, Y10, -h],
+            [ h, Y11,  h],
+            [-h, Y01,  h]
+        ];
+        var pts = [];
+        function seg(a, ay, b, by) { pts.push(a[0], ay, a[2], b[0], by, b[2]); }
+        var layers = isEdge ? 1 : 2;
+        for (var L = 0; L <= layers; L++) {
+            var off = fogH * (L / layers);
+            for (var i = 0; i < 4; i++) {
+                var a = c[i], b = c[(i + 1) % 4];
+                seg(a, a[1] + off, b, b[1] + off);
+            }
+        }
+        for (var k = 0; k < 4; k++) {
+            var p = c[k];
+            seg(p, p[1], p, p[1] + fogH);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        _ensureFogMats();
+        var lineMat = isEdge ? _fogEdgeMat : _fogCoreMat;
+        var group = new THREE.Group();
+        group.add(new THREE.LineSegments(geo, lineMat));
+        group.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
+        return {
+            group: group,
+            wireframes: group.children,
+            isEdge: isEdge,
+            tileX: x,
+            tileY: y,
+            lineMat: lineMat
+        };
+    }
+
     function rebuildFog() {
         if (!fogGroup) return;
         _clearGroup(fogGroup);
@@ -4980,9 +5084,10 @@ const ThreeRenderer = (function () {
                 var pk = x + ',' + y;
                 if (visible.has(pk)) continue;
 
-                var topY = tileTopY(x, y);
                 var isEdge = _fogIsEdgeTile(x, y, visible);
-                var entry = _buildFogCube(x, y, ts, isEdge, topY);
+                var entry = _isNaturalRenderTile(x, y)
+                    ? _buildFogSlopedCube(x, y, ts, isEdge)
+                    : _buildFogCube(x, y, ts, isEdge, tileTopY(x, y));
 
                 fogGroup.add(entry.group);
                 _fogMeshes.set(pk, entry);
