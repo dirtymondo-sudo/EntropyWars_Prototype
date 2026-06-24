@@ -20417,7 +20417,10 @@
                     let dmg = Math.max(32, (spell.dmg || 144) + spellPower + Math.floor(Math.random() * 40) - 16);
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} drains life from `, {
                         sourceUnit: unit,
-                        damageType: 'magic'
+                        damageType: 'magic',
+                        // Type matchup keys off the SPELL's type (e.g. unholy vs
+                        // anomaly), never the caster's own type.
+                        spellType: spell.spellType || null
                     });
                     let drainMult = spell.drainPct || 0.50;
                     if (unit.cls === 'Harvester') drainMult *= 1.20;
