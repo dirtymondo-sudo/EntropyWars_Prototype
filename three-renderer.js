@@ -2008,14 +2008,16 @@ const ThreeRenderer = (function () {
        Bucket contents discovered:
          OBJ/Tree_1..Tree_10.obj        — leafy trees (materials: Bark + Tree_Leaves)
          OBJ/DeadTree_1..DeadTree_10.obj — bare trees  (material:  Bark)
-         Textures/Tree_Leaves.png        — stylized green canopy texture (UV-mapped)
+       The OBJ geometry is wrapped with the game's existing pixel terrain sprites
+       (wood.png on the trunk/branches, a grass/forest sprite on the canopy) so
+       the models read in the same hand-pixelled style as the rest of the board.
        Models are loaded once, cached, and cloned per tile (shared geometry). The
        async load flips _objectsDirty so the real meshes swap in once ready; until
        then each tile falls back to the procedural tree.
        ────────────────────────────────────────────────────────────────────── */
     var _R2_FOLIAGE        = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/foilage/';
     var _FOLIAGE_OBJ_BASE  = _R2_FOLIAGE + 'OBJ/';
-    var _FOLIAGE_LEAF_TEX  = _R2_FOLIAGE + 'Textures/Tree_Leaves.png';
+    var _FOLIAGE_TERRAIN_TEX = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
 
     /* Map the 6 logical tree keys onto distinct bucket models so a forest reads
        as a varied mix of full-canopy and bare trees. Tweak to experiment. */
@@ -2027,29 +2029,40 @@ const ThreeRenderer = (function () {
         tree_5: 'DeadTree_2',
         tree_6: 'DeadTree_5'
     };
-    /* Bark tint per key (the bucket ships a leaf texture but no bark texture). */
-    var _FOLIAGE_BARK_COLOR = {
-        tree: 0x5a4030, tree_2: 0x604535, tree_3: 0x4a3828,
-        tree_4: 0x553d2a, tree_5: 0x6b5742, tree_6: 0x4e3a2c
+    /* Pixel sprite wrapped on the trunk/branches (Bark material group). */
+    var _FOLIAGE_BARK_TEX = 'wood.png';
+    /* Pixel sprite wrapped on the canopy (Tree_Leaves group), per key so the
+       forest varies. Swap freely between forest_2 / grass_2 / purple_grass.
+       (tree_5/tree_6 are bare DeadTree models — they have no leaf group.) */
+    var _FOLIAGE_LEAF_TEX_FOR_KEY = {
+        tree:   'forest_2.png',
+        tree_2: 'grass_2.png',
+        tree_3: 'forest_2.png',
+        tree_4: 'purple_grass.png',
+        tree_5: 'forest_2.png',
+        tree_6: 'forest_2.png'
     };
-    /* Subtle per-key canopy tint multiplier so the shared leaf texture varies a
-       little tree to tree (tree_5/tree_6 are bare DeadTree models — unused). */
-    var _FOLIAGE_LEAF_COLOR = {
-        tree: 0xcfe6a6, tree_2: 0xbfdc92, tree_3: 0xc4e6a8,
-        tree_4: 0xd6ecb2, tree_5: 0xffffff, tree_6: 0xffffff
-    };
+    /* How many times each sprite tiles across the model's UVs (the OBJ UVs span
+       ~0..2.3, so this multiplies on top). Higher = smaller, denser pixels that
+       stretch/distort less across big canopy and trunk faces. */
+    var _FOLIAGE_BARK_REPEAT = 2.5;
+    var _FOLIAGE_LEAF_REPEAT = 2.5;
 
     var _foliageModelCache = {};   /* name -> { obj, loading, failed } */
-    var _foliageLeafTexObj = null;
+    var _foliageTexCache   = {};   /* file -> THREE.Texture (Nearest, tiled) */
 
-    function _getFoliageLeafTex() {
-        if (_foliageLeafTexObj) return _foliageLeafTexObj;
-        _foliageLeafTexObj = textureLoader.load(_FOLIAGE_LEAF_TEX, function() { _objectsDirty = true; });
-        _foliageLeafTexObj.wrapS = THREE.RepeatWrapping;
-        _foliageLeafTexObj.wrapT = THREE.RepeatWrapping;
-        _foliageLeafTexObj.magFilter = THREE.LinearFilter;
-        _foliageLeafTexObj.minFilter = THREE.LinearMipMapLinearFilter;
-        return _foliageLeafTexObj;
+    /* Load a terrain sprite as a tiling, pixel-filtered (NearestFilter) texture
+       to wrap onto the foliage geometry — matches the rest of the board's look. */
+    function _getFoliagePixelTex(file, repeat) {
+        if (_foliageTexCache[file]) return _foliageTexCache[file];
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file, function() { _objectsDirty = true; });
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.NearestFilter;
+        t.repeat.set(repeat || 1, repeat || 1);
+        _foliageTexCache[file] = t;
+        return t;
     }
 
     function _normalizeFoliageModel(root) {
@@ -2103,24 +2116,22 @@ const ThreeRenderer = (function () {
         var bb = src._ew_bbox;
         var modelH = (bb.max.y - bb.min.y) || 1;
 
-        var leafTex = _getFoliageLeafTex();
-        var barkCol = _FOLIAGE_BARK_COLOR[objKey] || 0x5a4030;
-        var leafCol = _FOLIAGE_LEAF_COLOR[objKey] || 0xffffff;
+        var barkTex = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT);
+        var leafFile = _FOLIAGE_LEAF_TEX_FOR_KEY[objKey] || 'forest_2.png';
+        var leafTex = _getFoliagePixelTex(leafFile, _FOLIAGE_LEAF_REPEAT);
 
         /* OBJLoader gives a mesh that uses several materials an ARRAY of
            materials (one per geometry group). Map element-wise so the
-           Tree_Leaves group keeps the leaf texture and the Bark group stays
-           solid wood — checking node.material.name alone would miss the leaves. */
+           Tree_Leaves group gets the canopy sprite and the Bark group gets the
+           wood sprite — checking node.material.name alone would miss the leaves. */
         function _pickFoliageMat(srcMat) {
             var mname = (srcMat && srcMat.name) || '';
             if (mname === 'Tree_Leaves') {
                 return new THREE.MeshLambertMaterial({
-                    map: leafTex, color: new THREE.Color(leafCol),
-                    transparent: false, alphaTest: 0.5,
-                    side: THREE.DoubleSide, depthWrite: true
+                    map: leafTex, side: THREE.DoubleSide, depthWrite: true
                 });
             }
-            return new THREE.MeshLambertMaterial({ color: barkCol });
+            return new THREE.MeshLambertMaterial({ map: barkTex });
         }
 
         var model = src.clone(true);
