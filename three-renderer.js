@@ -1998,6 +1998,157 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ──────────────────────────────────────────────────────────────────────
+       FOLIAGE OBJ MODELS — Entropy Vale experiment
+       Swaps the procedural cone+sphere trees for real 3D meshes pulled from the
+       R2 /Assets/foilage bucket, but ONLY on natural-terrain maps (currently
+       just "Entropy Vale"). Old/preset maps keep the procedural _buildTree3D look
+       untouched. This is the shared basis future natural maps inherit.
+
+       Bucket contents discovered:
+         OBJ/Tree_1..Tree_10.obj        — leafy trees (materials: Bark + Tree_Leaves)
+         OBJ/DeadTree_1..DeadTree_10.obj — bare trees  (material:  Bark)
+         Textures/Tree_Leaves.png        — stylized green canopy texture (UV-mapped)
+       Models are loaded once, cached, and cloned per tile (shared geometry). The
+       async load flips _objectsDirty so the real meshes swap in once ready; until
+       then each tile falls back to the procedural tree.
+       ────────────────────────────────────────────────────────────────────── */
+    var _R2_FOLIAGE        = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/foilage/';
+    var _FOLIAGE_OBJ_BASE  = _R2_FOLIAGE + 'OBJ/';
+    var _FOLIAGE_LEAF_TEX  = _R2_FOLIAGE + 'Textures/Tree_Leaves.png';
+
+    /* Map the 6 logical tree keys onto distinct bucket models so a forest reads
+       as a varied mix of full-canopy and bare trees. Tweak to experiment. */
+    var _FOLIAGE_MODEL_FOR_KEY = {
+        tree:   'Tree_1',
+        tree_2: 'Tree_3',
+        tree_3: 'Tree_6',
+        tree_4: 'Tree_9',
+        tree_5: 'DeadTree_2',
+        tree_6: 'DeadTree_5'
+    };
+    /* Bark tint per key (the bucket ships a leaf texture but no bark texture). */
+    var _FOLIAGE_BARK_COLOR = {
+        tree: 0x5a4030, tree_2: 0x604535, tree_3: 0x4a3828,
+        tree_4: 0x553d2a, tree_5: 0x6b5742, tree_6: 0x4e3a2c
+    };
+    /* Subtle per-key canopy tint multiplier so the shared leaf texture varies a
+       little tree to tree (tree_5/tree_6 are bare DeadTree models — unused). */
+    var _FOLIAGE_LEAF_COLOR = {
+        tree: 0xcfe6a6, tree_2: 0xbfdc92, tree_3: 0xc4e6a8,
+        tree_4: 0xd6ecb2, tree_5: 0xffffff, tree_6: 0xffffff
+    };
+
+    var _foliageModelCache = {};   /* name -> { obj, loading, failed } */
+    var _foliageLeafTexObj = null;
+
+    function _getFoliageLeafTex() {
+        if (_foliageLeafTexObj) return _foliageLeafTexObj;
+        _foliageLeafTexObj = textureLoader.load(_FOLIAGE_LEAF_TEX, function() { _objectsDirty = true; });
+        _foliageLeafTexObj.wrapS = THREE.RepeatWrapping;
+        _foliageLeafTexObj.wrapT = THREE.RepeatWrapping;
+        _foliageLeafTexObj.magFilter = THREE.LinearFilter;
+        _foliageLeafTexObj.minFilter = THREE.LinearMipMapLinearFilter;
+        return _foliageLeafTexObj;
+    }
+
+    function _normalizeFoliageModel(root) {
+        /* Mark every child geometry shared so _disposeR keeps it alive across the
+           clones placed on the board. */
+        root.traverse(function(node) {
+            if (node.isMesh && node.geometry) node.geometry._ew_shared = true;
+        });
+        root._ew_bbox = new THREE.Box3().setFromObject(root);
+        return root;
+    }
+
+    /* Kick a one-time async load; returns the loaded Object3D or null while it is
+       still loading / failed. */
+    function _loadFoliageModel(name) {
+        var entry = _foliageModelCache[name];
+        if (entry) return entry.obj;
+        entry = _foliageModelCache[name] = { obj: null, loading: true, failed: false };
+        if (typeof THREE.OBJLoader !== 'function') { entry.loading = false; entry.failed = true; return null; }
+        try {
+            new THREE.OBJLoader().load(
+                _FOLIAGE_OBJ_BASE + name + '.obj',
+                function(root) {
+                    _normalizeFoliageModel(root);
+                    entry.obj = root; entry.loading = false;
+                    _objectsDirty = true;   /* re-render so the model swaps in */
+                },
+                undefined,
+                function() { entry.loading = false; entry.failed = true; }
+            );
+        } catch (e) { entry.loading = false; entry.failed = true; }
+        return null;
+    }
+
+    function _foliageHash(x, y) {
+        var h = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+        h = (h ^ (h >>> 13)) >>> 0;
+        return h;
+    }
+
+    /* Placed foliage model for (objKey,x,y). Null if the model isn't ready yet —
+       caller then falls back to _buildTree3D for that tile. */
+    function _buildFoliageObj(objKey, x, y) {
+        var name = _FOLIAGE_MODEL_FOR_KEY[objKey];
+        if (!name) return null;
+        var src = _loadFoliageModel(name);
+        if (!src || !src._ew_bbox) return null;
+
+        var ts = CONFIG.tileSize || 128;
+        var topY = tileTopY(x, y);
+        var bb = src._ew_bbox;
+        var modelH = (bb.max.y - bb.min.y) || 1;
+
+        var leafTex = _getFoliageLeafTex();
+        var barkCol = _FOLIAGE_BARK_COLOR[objKey] || 0x5a4030;
+        var leafCol = _FOLIAGE_LEAF_COLOR[objKey] || 0xffffff;
+
+        /* OBJLoader gives a mesh that uses several materials an ARRAY of
+           materials (one per geometry group). Map element-wise so the
+           Tree_Leaves group keeps the leaf texture and the Bark group stays
+           solid wood — checking node.material.name alone would miss the leaves. */
+        function _pickFoliageMat(srcMat) {
+            var mname = (srcMat && srcMat.name) || '';
+            if (mname === 'Tree_Leaves') {
+                return new THREE.MeshLambertMaterial({
+                    map: leafTex, color: new THREE.Color(leafCol),
+                    transparent: false, alphaTest: 0.5,
+                    side: THREE.DoubleSide, depthWrite: true
+                });
+            }
+            return new THREE.MeshLambertMaterial({ color: barkCol });
+        }
+
+        var model = src.clone(true);
+        model.traverse(function(node) {
+            if (!node.isMesh) return;
+            node.material = Array.isArray(node.material)
+                ? node.material.map(_pickFoliageMat)
+                : _pickFoliageMat(node.material);
+        });
+
+        /* Stand the tree ~1.9 tiles tall with a little deterministic jitter so a
+           cluster of the same key doesn't look stamped. */
+        var rnd = _foliageHash(x, y);
+        var jitter = 0.85 + ((rnd & 0xff) / 255) * 0.45;     /* 0.85 .. 1.30 */
+        var s = (ts * 1.9 / modelH) * jitter;
+
+        model.scale.setScalar(s);
+        model.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
+        model.position.z = -((bb.min.z + bb.max.z) * 0.5) * s;
+        model.position.y = -bb.min.y * s;
+        model.rotation.y = (rnd % 360) * Math.PI / 180;
+
+        var g = new THREE.Group();
+        g.add(model);
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
+    }
+
     function _buildCrossBillboard(objKey, x, y) {
         var ts = CONFIG.tileSize || 128, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
@@ -2371,7 +2522,7 @@ const ThreeRenderer = (function () {
                 /* Tower cubes are built from live tower state, not the static object */
                 continue;
             }
-            else if (_isTreeKey(ok))              m = _buildTree3D(ok, x, y);
+            else if (_isTreeKey(ok))              m = (_naturalTerrainActive() ? _buildFoliageObj(ok, x, y) : null) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok))      m = _buildBuildingPrism(ok, x, y);
             else if (_isCrossBillboard(ok))   m = _buildCrossBillboard(ok, x, y);
             else if (_isBarrierKey(ok))       m = _buildBarrierSlab(ok, x, y);
