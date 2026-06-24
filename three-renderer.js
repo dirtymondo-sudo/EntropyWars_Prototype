@@ -1702,29 +1702,35 @@ const ThreeRenderer = (function () {
         g.add(darkBox);
 
         var roofTex = getTerrainTexture('bricks_3');
-        var roofMat;
-        if (roofTex) {
-            if (isHouse) {
-                /* clone so we don't change the shared bricks_3 texture used
-                   elsewhere, then tile it across the 2×2 roof (one brick panel
-                   per tile) instead of stretching a single panel over the whole
-                   roof — which read as "just one tile". */
-                roofTex = roofTex.clone();
-                roofTex.needsUpdate = true;
-                roofTex.wrapS = THREE.RepeatWrapping;
-                roofTex.wrapT = THREE.RepeatWrapping;
-                var roofRep = Math.max(2, Math.round(side / ts));
-                roofTex.repeat.set(roofRep, roofRep);
-            }
-            roofMat = new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide });
+        var roofMat = roofTex
+            ? new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide })
+            : new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
+        var roofTilesN = isHouse ? Math.max(2, Math.round(side / ts)) : 1;
+        if (roofTilesN <= 1) {
+            var roofGeo = new THREE.PlaneGeometry(side, side);
+            var roofMesh = new THREE.Mesh(roofGeo, roofMat);
+            roofMesh.rotation.x = -Math.PI / 2;
+            roofMesh.position.y = roofZ + 0.5;
+            g.add(roofMesh);
         } else {
-            roofMat = new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
+            /* Roof = an N×N grid of brick panels (one per footprint tile) so it
+               reads as a real multi-tile roof instead of a single stretched
+               panel. Each quad samples the full 0..1 texture, so there's no
+               RepeatWrapping (which renders black on NPOT textures). */
+            var cell = side / roofTilesN;
+            for (var rxi = 0; rxi < roofTilesN; rxi++) {
+                for (var rzi = 0; rzi < roofTilesN; rzi++) {
+                    var cellMesh = new THREE.Mesh(new THREE.PlaneGeometry(cell, cell), roofMat);
+                    cellMesh.rotation.x = -Math.PI / 2;
+                    cellMesh.position.set(
+                        -side / 2 + cell / 2 + rxi * cell,
+                        roofZ + 0.5,
+                        -side / 2 + cell / 2 + rzi * cell
+                    );
+                    g.add(cellMesh);
+                }
+            }
         }
-        var roofGeo = new THREE.PlaneGeometry(side, side);
-        var roofMesh = new THREE.Mesh(roofGeo, roofMat);
-        roofMesh.rotation.x = -Math.PI / 2;
-        roofMesh.position.y = roofZ + 0.5;
-        g.add(roofMesh);
 
         var wallTex = getObjectTexture(objKey);
         if (wallTex) {
@@ -1777,6 +1783,12 @@ const ThreeRenderer = (function () {
 
         /* For columns, offset from center to edge/corner so they don't clip with units */
         var posOffX = 0, posOffZ = 0;
+        /* A 2×2 house is centred on the 2×2 tile block whose NW corner is its
+           tile (x,y): tiles (x,y),(x+1,y),(x,y+1),(x+1,y+1). Shifting it by half
+           a tile puts it dead-centre on those four tiles, so it never overhangs
+           onto a neighbouring (possibly sloped) tile. The map data flattens &
+           paves exactly that block. */
+        if (isHouse) { posOffX = ts / 2; posOffZ = ts / 2; }
         if (objKey.startsWith('column_')) {
             var stack = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : [];
             var entry = null;
