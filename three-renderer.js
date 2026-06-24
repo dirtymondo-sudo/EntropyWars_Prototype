@@ -1782,13 +1782,16 @@ const ThreeRenderer = (function () {
 
         if (!trim && side < ts * 0.3) side = Math.round(ts * 0.85);
 
-        /* Houses (building_*, abandoned_building_*, ancient_building) occupy a
-           clean 2×2-tile footprint so they read as proper structures and their
-           roofs (below) tile to match. Columns / church / shop keep their own
-           sprite-derived size. We remember how much we widened the footprint
-           (houseFactor) and apply the same factor to the height below, so a
-           building that's twice as wide is also proportionally taller. */
-        var isHouse = objKey.indexOf('building') !== -1;
+        /* Houses occupy a clean 2×2-tile footprint so they read as proper
+           structures and their roofs (below) tile to match. Every roofWalkable
+           object is a house — that's building_*, abandoned_building_*,
+           ancient_building AND church / church_* / shop (item shop), so the old
+           shop/church now match the buildings instead of staying 1×1. Columns
+           (not roofWalkable) keep their own sprite-derived size. We remember how
+           much we widened the footprint (houseFactor) and apply the same factor
+           to the height below, so a building that's twice as wide is also
+           proportionally taller. */
+        var isHouse = (typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[objKey] && OBJECT_RULES[objKey].roofWalkable);
         var houseFactor = 1;
         if (isHouse) {
             houseFactor = (ts * 2) / Math.max(1, side);
@@ -2691,7 +2694,15 @@ const ThreeRenderer = (function () {
                 continue;
             }
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
-            else if (_isBuildingKey(ok))      m = _buildBuildingPrism(ok, x, y);
+            else if (_isBuildingKey(ok)) {
+                /* 2×2 houses occupy four tiles but only the NW-anchor draws the
+                   prism. The other three tiles carry a footprint-shadow entry
+                   (_fp) so gameplay (roof-walk / climb / height) sees the full
+                   block; skip drawing on those so we don't stack four prisms. */
+                var _ostk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+                if (_ostk && _ostk[0] && _ostk[0]._fp) continue;
+                m = _buildBuildingPrism(ok, x, y);
+            }
             else if (_isCrossBillboard(ok))   m = _buildCrossBillboard(ok, x, y);
             else if (_isBarrierKey(ok))       m = _buildBarrierSlab(ok, x, y);
             else                              m = _buildBillboard(ok, x, y);

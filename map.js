@@ -2953,6 +2953,38 @@
                     delete window._prebuiltObjects;
                 }
 
+                /* ── 2×2 building footprints ──────────────────────────────────
+                   A roofWalkable building (building_*, ancient/abandoned, church,
+                   church_*, shop) is drawn as a 2×2 block anchored at its NW tile,
+                   covering (x,y),(x+1,y),(x,y+1),(x+1,y+1). Stamp a footprint
+                   "shadow" of the same object onto the three SE tiles so every
+                   getObjectAt-based check — roof-walk surfaces, height, climb
+                   access, LOS — treats all four tiles as the building and units
+                   can stand anywhere on the roof. The shadow carries _fp:true so
+                   the renderer only draws the prism once (at the anchor). The map
+                   data flattens each block to one height, so the roof is level. */
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                    const cell = state.boardObjects?.[y]?.[x];
+                    if (!Array.isArray(cell) || !cell.length) continue;
+                    const f = cell[0];
+                    if (!f || f._fp || !f.key) continue;
+                    const rule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[f.key] : null;
+                    if (!rule || !rule.roofWalkable) continue;
+                    const baseH = state.boardHeights?.[y]?.[x] ?? 0;
+                    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {
+                        const fx = x + dx, fy = y + dy;
+                        if (fx >= w || fy >= h) continue;
+                        const occ = state.boardObjects?.[fy]?.[fx];
+                        if (Array.isArray(occ) && occ.length) continue;
+                        state.boardObjects[fy][fx] = [{
+                            key: f.key, alignX: f.alignX || 'center', alignY: f.alignY || 'bottom',
+                            rot: f.rot || 0, flipX: !!f.flipX, flipY: !!f.flipY, _fp: true
+                        }];
+                        if (state.boardObjectAlign?.[fy]) state.boardObjectAlign[fy][fx] = (f.alignX || 'center') + ',' + (f.alignY || 'bottom');
+                        if (state.boardHeights?.[fy]) state.boardHeights[fy][fx] = baseH;
+                    }
+                }
+
                 if (_pb.voxels) {
                     state.boardVoxels = [];
                     for (let _vy = 0; _vy < h; _vy++) {
