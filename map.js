@@ -2169,6 +2169,14 @@
         const TOWER_DEF = 15;
         const TOWER_VISION_RANGE = 4;
 
+        /* LOS-ONLY VISION: a unit reveals any tile it has a clear line of sight
+           to, regardless of distance — the old per-unit "vision range" no longer
+           caps what a unit can see through the fog of war. Terrain/buildings still
+           block sight (3D raycast), so hills and structures create the fog now.
+           Structures (wards/towers) and the telescope keep their own fixed ranges.
+           Flip to false to restore the classic range-limited fog. */
+        const LOS_ONLY_VISION = true;
+
         function getTowerShieldLayers(towerOwner) { return 0; }
         function getTowerDamageMultiplier(towerOwner) { return 1.0; }
         function getTowerShieldLabel(towerOwner) { return ''; }
@@ -3290,13 +3298,13 @@
 
             const vr = getUnitVisionRange(unit);
             const uz = unit.z ?? null;
-            if ((Math.abs(unit.x - tx) + Math.abs(unit.y - ty)) <= vr && (unit.wallVision || !isVisionBlockedByTerrain(unit.x, unit.y, tx, ty, uz))) return true;
+            if ((LOS_ONLY_VISION || (Math.abs(unit.x - tx) + Math.abs(unit.y - ty)) <= vr) && (unit.wallVision || !isVisionBlockedByTerrain(unit.x, unit.y, tx, ty, uz))) return true;
 
             if (state.teamVision) {
                 const allies = state.units.filter(u => !u.dead && u.player === unit.player && u.id !== unit.id);
                 for (const ally of allies) {
                     const avr = getUnitVisionRange(ally);
-                    if ((Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
+                    if ((LOS_ONLY_VISION || (Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr) && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
                 }
             }
 
@@ -3305,7 +3313,7 @@
                 const allies = state.units.filter(u => !u.dead && u.player === unit.player && u.id !== unit.id && unitHasWalkieTalkie(u));
                 for (const ally of allies) {
                     const avr = getUnitVisionRange(ally);
-                    if ((Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
+                    if ((LOS_ONLY_VISION || (Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr) && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
                 }
             }
 
@@ -3355,12 +3363,18 @@
             const visible = new Set();
             const size = bw(), sizeH = bh();
 
-            function addVisibleFrom(sx, sy, visionRange, sourceZ, wallVision) {
-                for (let dy = -visionRange; dy <= visionRange; dy++) {
-                    for (let dx = -visionRange; dx <= visionRange; dx++) {
-                        const tx = sx + dx, ty = sy + dy;
-                        if (tx < 0 || ty < 0 || tx >= size || ty >= sizeH) continue;
-                        if ((Math.abs(dx) + Math.abs(dy)) <= visionRange && (wallVision || !isVisionBlockedByTerrain(sx, sy, tx, ty, sourceZ))) {
+            function addVisibleFrom(sx, sy, visionRange, sourceZ, wallVision, losOnly) {
+                /* losOnly (units): sweep the WHOLE board and let line-of-sight
+                   decide — distance no longer limits a unit's vision. Otherwise
+                   (wards/towers) keep the bounded Manhattan-range box. */
+                const x0 = losOnly ? 0 : Math.max(0, sx - visionRange);
+                const x1 = losOnly ? size - 1 : Math.min(size - 1, sx + visionRange);
+                const y0 = losOnly ? 0 : Math.max(0, sy - visionRange);
+                const y1 = losOnly ? sizeH - 1 : Math.min(sizeH - 1, sy + visionRange);
+                for (let ty = y0; ty <= y1; ty++) {
+                    for (let tx = x0; tx <= x1; tx++) {
+                        if (!losOnly && (Math.abs(tx - sx) + Math.abs(ty - sy)) > visionRange) continue;
+                        if (wallVision || !isVisionBlockedByTerrain(sx, sy, tx, ty, sourceZ)) {
                             visible.add(posKey(tx, ty));
                         }
                     }
@@ -3372,14 +3386,14 @@
             if (state.squadLeaderMode && player === 1 && !state.teamVision) {
                 const leader = state.squadLeaderUnitId ? state.units.find(u => u.id === state.squadLeaderUnitId && isAlive(u)) : null;
                 if (leader) {
-                    addVisibleFrom(leader.x, leader.y, getUnitVisionRange(leader), leader.z ?? null, leader.wallVision);
+                    addVisibleFrom(leader.x, leader.y, getUnitVisionRange(leader), leader.z ?? null, leader.wallVision, LOS_ONLY_VISION);
                     if (state._fogRevealTiles) {
                         for (const pk of state._fogRevealTiles) visible.add(pk);
                     }
                     if (unitHasWalkieTalkie(leader)) {
                         const allies = state.units.filter(u => isAlive(u) && u.id !== leader.id && unitHasWalkieTalkie(u));
                         for (const ally of allies) {
-                            addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision);
+                            addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
                         }
                     }
                     return visible;
@@ -3389,7 +3403,7 @@
             if (state.teamVision) {
                 const allies = state.units.filter(isAlive);
                 for (const ally of allies) {
-                    addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision);
+                    addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
                 }
             } else {
                 let unit;
@@ -3410,7 +3424,7 @@
                     }
                 }
                 if (!unit) return visible;
-                addVisibleFrom(unit.x, unit.y, getUnitVisionRange(unit), unit.z ?? null, unit.wallVision);
+                addVisibleFrom(unit.x, unit.y, getUnitVisionRange(unit), unit.z ?? null, unit.wallVision, LOS_ONLY_VISION);
             }
 
             if (state._fogRevealTiles) {
@@ -3427,7 +3441,7 @@
                 if (selectedUnit && unitHasWalkieTalkie(selectedUnit)) {
                     const allies = state.units.filter(u => isAlive(u) && u.id !== selectedUnit.id && unitHasWalkieTalkie(u));
                     for (const ally of allies) {
-                        addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision);
+                        addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
                     }
                 }
             }
