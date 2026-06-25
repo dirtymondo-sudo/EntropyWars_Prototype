@@ -3024,10 +3024,29 @@ function _computeTileActions(actingUnit, tx, ty) {
     }
   }
 
-  if (unitAP >= 1 && !onSelf) {
+  if (unitAP >= 1) {
     const effRange = typeof getEffectiveRange === 'function' ? getEffectiveRange(actingUnit) : (actingUnit.range || 1) + 1;
-    const inRange = dist >= 1 && dist <= effRange;
+    // Structures (turret / deployed object / seed) occupy a tile and can sit directly
+    // BELOW a flying unit — i.e. on the unit's own tile (dist 0). Allow dist 0 here so
+    // a flyer can attack straight down; only enemy UNITS require dist >= 1.
+    const inRange = dist <= effRange;
+    const inRangeUnit = dist >= 1 && dist <= effRange;
     const losBlocked = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+
+    // Enemy base tower / Cube — give it the same one-click "Attack" entry as turrets.
+    const tower = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
+    if (tower && tower.hp > 0 && tower.x === tx && tower.y === ty) {
+      const canAtk = inRangeUnit && !losBlocked;
+      actions.push({
+        id: 'attack:tower', label: 'Attack Cube', icon: '⚔', category: 'attack',
+        apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
+        handler: canAtk ? () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('attack');
+          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
+        } : null,
+      });
+    }
 
     const turret = (state.turrets || []).find(t => t.x === tx && t.y === ty && t.owner !== actingUnit.player && t.hp > 0);
     if (turret) {

@@ -3967,7 +3967,10 @@
             let _apAlive = 0; for (let i = 0; i < state.units.length; i++) { if (!state.units[i].dead) _apAlive++; }
             const _apcItemCount = unit.items ? Object.keys(unit.items).reduce((s, k) => s + (unit.items[k] || 0), 0) : 0;
             const _apcStatusKeys = unit.status ? Object.keys(unit.status).filter(k => unit.status[k] > 0).sort().join(',') : '';
-            const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys;
+            // Include destructible-structure counts so the Attack button refreshes the
+            // instant a turret / deployed object / seed is placed or destroyed nearby.
+            const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0);
+            const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys + '|' + _apcStructs;
             if (key === _actionPanelCache.key) return _actionPanelCache;
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
             const enemies = getHostileUnits(unit.player);
@@ -3985,11 +3988,15 @@
                     if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y)) hasAttack = true;
                 }
             }
+            // Structures (turrets, deployed objects, seeds) occupy a tile and may sit
+            // directly BELOW a flying unit — i.e. on the unit's own tile (d === 0). Use
+            // d <= effRange (no lower bound) so a flyer can attack straight down and the
+            // Attack button isn't greyed out in that case.
             if (!hasAttack && state.turrets) {
                 for (const t of state.turrets) {
                     if (t.owner !== unit.player && t.hp > 0) {
                         const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
-                        if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y)) { hasAttack = true; break; }
+                        if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y)) { hasAttack = true; break; }
                     }
                 }
             }
@@ -4000,7 +4007,15 @@
                     const isOwn = obj.ownerPlayer === unit.player;
                     if (isOwn && !(obj.detonateOnAttack && obj.blastRadius > 0)) continue;
                     const d = Math.abs(obj.x - unit.x) + Math.abs(obj.y - unit.y);
-                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y)) { hasAttack = true; break; }
+                    if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y)) { hasAttack = true; break; }
+                }
+            }
+
+            if (!hasAttack && state.plantedSeeds) {
+                for (const s of state.plantedSeeds) {
+                    if (s.owner === unit.player) continue;
+                    const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
+                    if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y)) { hasAttack = true; break; }
                 }
             }
             _actionPanelCache = {
