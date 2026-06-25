@@ -8651,6 +8651,34 @@ const ThreeRenderer = (function () {
             });
         }
 
+        // ── Guaranteed sacred-geometry haloes ────────────────────────────────
+        // The weighted ROSTER above makes the armillary rings rare (~2.3% slice
+        // ⇒ ~1 per map, frequently zero). They're a signature backdrop motif, so
+        // restore the old reliable behaviour: spawn a handful every map with the
+        // same free-floating placement (varied compass dir / depth / elevation,
+        // tumbling) the roster bodies use.
+        var ringWant = 5 + (rng() * 4 | 0);
+        for (var rgi = 0; rgi < ringWant; rgi++) {
+            var rMesh = _hzSacredRings(rng);
+            if (!rMesh) continue;
+            var rAng = (rgi / ringWant) * Math.PI * 2 + (rng() - 0.5) * 0.80;
+            var rRad = discR * (0.62 + rng() * 0.78);
+            var rX = cx + Math.cos(rAng) * rRad;
+            var rZ = cz + Math.sin(rAng) * rRad;
+            var rY = (-0.60 + rng() * 1.32) * discR;        // matches roster ring yLo/yHi
+            rMesh.position.set(rX, rY, rZ);
+            rMesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+            _stampHorizonHaze(rMesh, rRad, rY, discR);
+            _horizonGroup.add(rMesh);
+            _horizonFloaters.push({
+                obj: rMesh, baseY: rY,
+                amp: ts * (0.5 + rng() * 1.6),
+                spd: 0.08 + rng() * 0.22,
+                phase: rng() * Math.PI * 2,
+                spin: (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028)
+            });
+        }
+
         scene.add(_horizonGroup);
     }
 
