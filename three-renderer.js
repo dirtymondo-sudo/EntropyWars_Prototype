@@ -5864,14 +5864,19 @@ const ThreeRenderer = (function () {
     function startWalkTween(unit, path, onDone) {
         if (!path || !path.length) { if (onDone) onDone(); return; }
         var fullPath = [{ x: unit.x, y: unit.y, z: unit.z || 0 }].concat(path);
-        var stepMs = Math.max(140, Math.min(220, 200 - path.length * 5));
+        var segs = fullPath.length - 1;
+        // One steady pace across the WHOLE path so multi-tile moves glide as a
+        // single motion instead of stop-starting at every waypoint. Longer paths
+        // get a slightly quicker per-tile pace so a 3-tile move doesn't drag.
+        var perTile = Math.max(135, 190 - segs * 12);
+        var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;
         _walkTweens.set(unit.id, {
             path: fullPath,
-            stepIdx: 0,
-            stepStart: performance.now(),
-            stepMs: stepMs,
+            segs: segs,
+            startTime: performance.now(),
+            totalMs: totalMs,
             isFlying: _isFlying,
             onDone: onDone || null
         });
@@ -5890,12 +5895,16 @@ const ThreeRenderer = (function () {
         var _wkVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _walkTweens) {
             var uid = entry[0], tw = entry[1];
-            var elapsed = now - tw.stepStart;
-            var t = Math.min(elapsed / tw.stepMs, 1);
-            var ease = _easeInOut(t);
+            // Progress along the ENTIRE path, eased once end-to-end: gentle accel
+            // leaving the start tile, constant speed through the middle, gentle
+            // decel into the destination. No more easing (and stopping) per tile.
+            var gt = Math.min((now - tw.startTime) / tw.totalMs, 1);
+            var traveled = _easeInOut(gt) * tw.segs;
+            var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
+            var ease = traveled - stepIdx; // linear within the current segment
 
-            var from = tw.path[tw.stepIdx];
-            var to = tw.path[Math.min(tw.stepIdx + 1, tw.path.length - 1)];
+            var from = tw.path[stepIdx];
+            var to = tw.path[stepIdx + 1];
             var fromY = _tileSurfaceY(from.x, from.y, from.z);
             var toY = _tileSurfaceY(to.x, to.y, to.z);
 
@@ -5926,21 +5935,16 @@ const ThreeRenderer = (function () {
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
             }
 
-            if (t >= 1) {
-                tw.stepIdx++;
-                tw.stepStart = now;
-                if (tw.stepIdx >= tw.path.length - 1) {
-
-                    var final = tw.path[tw.path.length - 1];
-                    if (ue && ue.group) {
-                        var fy = _tileSurfaceY(final.x, final.y, final.z);
-                        var fSink = ue.group._ew_subSink || 0;
-                        ue.group.position.set(final.x * ts + ts / 2, fy - fSink, final.y * ts + ts / 2);
-                        ue.group._ew_spriteTopY = fy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
-                    }
-                    toRemove.push(uid);
-                    if (tw.onDone) tw.onDone();
+            if (gt >= 1) {
+                var final = tw.path[tw.path.length - 1];
+                if (ue && ue.group) {
+                    var fy = _tileSurfaceY(final.x, final.y, final.z);
+                    var fSink = ue.group._ew_subSink || 0;
+                    ue.group.position.set(final.x * ts + ts / 2, fy - fSink, final.y * ts + ts / 2);
+                    ue.group._ew_spriteTopY = fy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
                 }
+                toRemove.push(uid);
+                if (tw.onDone) tw.onDone();
             }
         }
         for (var r = 0; r < toRemove.length; r++) _walkTweens.delete(toRemove[r]);
