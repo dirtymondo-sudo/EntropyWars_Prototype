@@ -1006,6 +1006,7 @@
             { modeId: 'prebuilt_apartment', name: 'Apartment', size: '4×4', team: 2, floors: false, w: 4, h: 4, isPrebuilt: true },
             { modeId: 'prebuilt_skirmish', name: 'Outpost', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
             { modeId: 'prebuilt_entropy_vale', name: 'Entropy Vale', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
+            { modeId: 'prebuilt_entropy_monuments', name: 'Monument Proving Grounds', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
             { modeId: 'prebuilt_suburb', name: 'Suburb', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
             { modeId: 'prebuilt_bunker', name: 'Bunker', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
             { modeId: 'prebuilt_ravine', name: 'Ravine', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
@@ -1750,6 +1751,7 @@
 
         function buildColumnsFromLegacy() {
             const h = bh(), w = bw();
+            state._hollowVoxels = false;   // legacy/procedural maps are always solid
             state.boardColumns = [];
             state.boardVoxels = [];
             for (let y = 0; y < h; y++) {
@@ -1794,18 +1796,26 @@
                         return entry;
                     }).sort((a, b) => a.z - b.z);
 
-                    const topZ = sorted[sorted.length - 1].z;
-                    const existingZ = new Set(sorted.map(b => b.z));
-                    const filled = [];
-                    const baseTerrain = sorted[0].terrain;
-                    for (let z = 0; z <= topZ; z++) {
-                        if (existingZ.has(z)) {
-                            filled.push(sorted.find(b => b.z === z));
-                        } else {
-                            filled.push({ z, terrain: baseTerrain });
+                    /* Hollow-voxel maps (e.g. arches: a walkable span floating
+                       over open ground) keep gaps so units can pass underneath
+                       and the renderer leaves the underside open. Solid maps fill
+                       every z from 0..top as before. */
+                    if (state._hollowVoxels) {
+                        row.push(sorted);
+                    } else {
+                        const topZ = sorted[sorted.length - 1].z;
+                        const existingZ = new Set(sorted.map(b => b.z));
+                        const filled = [];
+                        const baseTerrain = sorted[0].terrain;
+                        for (let z = 0; z <= topZ; z++) {
+                            if (existingZ.has(z)) {
+                                filled.push(sorted.find(b => b.z === z));
+                            } else {
+                                filled.push({ z, terrain: baseTerrain });
+                            }
                         }
+                        row.push(filled);
                     }
-                    row.push(filled);
                 }
                 state.boardColumns.push(row);
             }
@@ -1831,6 +1841,9 @@
 
         function fillVoxelsDown() {
             if (!state.boardVoxels?.length) return;
+            /* Skip the solidify pass on hollow-voxel maps so authored gaps
+               (e.g. the open span under an arch) are preserved. */
+            if (state._hollowVoxels) return;
             for (let y = 0; y < state.boardVoxels.length; y++) {
                 const row = state.boardVoxels[y];
                 if (!row) continue;
@@ -2914,6 +2927,9 @@
                 _initHeightGrid();
 
                 const _pb = PREBUILT_MAPS[activeGameMode];
+                /* Opt this map into hollow voxel columns (preserve authored gaps
+                   for walk-under arches / overhangs). Default: solid. */
+                state._hollowVoxels = !!_pb.hollowVoxels;
                 if (_pb.heightMap) {
 
                     for (let _hy = 0; _hy < h; _hy++) {

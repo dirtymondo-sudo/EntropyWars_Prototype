@@ -1630,19 +1630,50 @@ const ThreeRenderer = (function () {
                         var zTerrainMap = {};
                         for (var ci = 0; ci < col.length; ci++) zTerrainMap[col[ci].z] = col[ci].terrain || 'grass';
 
+                        /* Group the column into contiguous block-runs, breaking
+                           at terrain changes AND at GAPS (missing z levels). A gap
+                           means the run below it is capped by an open surface — its
+                           top block is where a unit stands, so it is left undrawn
+                           (toZ = lastPresent-1), leaving the space above open (this
+                           is what makes walk-under arches / overhangs render hollow).
+                           A terrain boundary inside a solid stack keeps its boundary
+                           block drawn (it is enclosed from above). For a fully solid
+                           column this produces exactly the same runs as before. */
                         var runs = [];
-                        var runStartZ = 0;
-                        var runTerrain = zTerrainMap[0] || 'grass';
-                        for (var zz = 1; zz < topZ; zz++) {
-                            var zzTerrain = zTerrainMap[zz] || runTerrain;
-                            if (zzTerrain !== runTerrain) {
-                                runs.push({ fromZ: runStartZ, toZ: zz - 1, terrain: runTerrain });
-                                runStartZ = zz;
-                                runTerrain = zzTerrain;
+                        var segStart = -1, segTerrain = null;
+                        for (var zz = 0; zz <= topZ; zz++) {
+                            var zPresent = Object.prototype.hasOwnProperty.call(zTerrainMap, zz);
+                            if (zPresent) {
+                                var zt = zTerrainMap[zz] || 'grass';
+                                if (segStart === -1) { segStart = zz; segTerrain = zt; }
+                                else if (zt !== segTerrain) {
+                                    runs.push({ fromZ: segStart, toZ: zz - 1, terrain: segTerrain });
+                                    segStart = zz; segTerrain = zt;
+                                }
+                            } else if (segStart !== -1) {
+                                /* gap: last present block (zz-1) is this run's open
+                                   surface — undrawn, so leave it out of the cubes */
+                                runs.push({ fromZ: segStart, toZ: zz - 2, terrain: segTerrain });
+                                segStart = -1; segTerrain = null;
                             }
                         }
+                        if (segStart !== -1) {
+                            /* topmost run: its top block (topZ) is the open surface */
+                            runs.push({ fromZ: segStart, toZ: topZ - 1, terrain: segTerrain });
+                        }
 
-                        runs.push({ fromZ: runStartZ, toZ: topZ - 1, terrain: runTerrain });
+                        /* Exposed ground floor: if z0 exists but z1 is a gap (open
+                           space above ground — e.g. the walkable area UNDER a hollow
+                           arch), draw a flat ground slab (top at y=0) like a normal
+                           flat tile, so the floor renders instead of an empty void. */
+                        if (Object.prototype.hasOwnProperty.call(zTerrainMap, 0) &&
+                            !Object.prototype.hasOwnProperty.call(zTerrainMap, 1)) {
+                            var gTerr = zTerrainMap[0] || 'grass';
+                            var gSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[gTerr] ?? null) : null;
+                            var gMesh = new THREE.Mesh(_getBoxGeo(ts, elevStep), buildBoxMaterials(gTerr, gSKey));
+                            gMesh.position.set(0, -elevStep / 2, 0);
+                            m.add(gMesh);
+                        }
 
                         for (var ri = 0; ri < runs.length; ri++) {
                             var run = runs[ri];
