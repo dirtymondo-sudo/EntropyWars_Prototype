@@ -430,6 +430,38 @@ fluorescent` monument builders + the `moon/carpet/gold/metal/leaves` terrains ar
 worked example. Tree tops/canopies are textured from `leaves.png` (three-renderer
 `_getTreeForestTex` + `_FOLIAGE_LEAF_TEX_FOR_KEY`).
 
+### 2026-06 map set #2 — Stonehenge / Pyramids of Giza / Atlantis (worked example #2)
+Added three Tier-1/2 maps via the 5 touch-points above (modeIds `prebuilt_stonehenge`
+16×16 6v6, `prebuilt_giza` 20×20 6v6, `prebuilt_atlantis` 24×24 8v8). Authored with a
+deterministic generator + height-aware BFS validator (kept in scratchpad as
+`genmaps.js`/`inject.js`; regenerate + re-inject rather than hand-editing the big
+arrays). Key lessons from this batch:
+- **Monument kinds first exercised in-game this batch: `pyramid`, `colossus`, `rings`**
+  (previously only `monolith/flag/rover/crystal/obelisk/lightpillar/goldgate/greek/
+  exitsign` were used by real maps). All builders are safe: `_hzColossus`/`_hzSacredRings`
+  are pure procedural THREE geometry; `_hzModelPyramid` (kind `pyramid`) streams the
+  shipped `Pyramid/Pyramid.glb` from R2 (`_buildMonumentObj` try/catches a bad builder →
+  monument silently absent, never a crash).
+- **Climbable landmarks:** `pyramid`, `ziggurat`, `obelisk`, `stairway`, `colossus` are
+  the ONLY kinds in `_MON_COLLISION` (map.js ~1882) — they stamp `grass`-terrain voxels
+  (hidden under the model) so units can climb them. `pyramid`/`ziggurat` use
+  `rr-max(|dx|,|dy|)` (rr=floor(foot/2)) ⇒ a stepped, climbable mound capped at `maxH`;
+  Giza's great pyramid (foot 7 ⇒ climb 3 levels) is a sniper perch. Everything else
+  (`monolith/crystal/greek/rings/...`) is **decorative** — for stone cover you must raise
+  the heightMap yourself (Stonehenge's sarsens = 1-tile pillars at height 3/4 with a
+  `monolith` visual on top; the 4 cardinal gaps are the sanctum entrances).
+- **`rings` (`_hzSacredRings`) is NOT a ground stone circle** — it's a floating obsidian
+  armillary with a glowing crystal core. Used it as Stonehenge's arcane ley-line
+  centerpiece (on-brand for the supernatural/conspiracy tone), not as the henge itself.
+- **Water as a soft barrier:** `deep_water` is passable (1-step climb onto a height-1
+  marble plaza) but inflicts stacking `drowning` (3 turns) unless flying/deep-water-
+  adapted (`TERRAIN_RULES.deep_water`). Atlantis uses a deep-water moat around the
+  central crystal-spire plaza + 4 cardinal `bridge` runs as the safe chokepoints — a
+  soft objective gate the AI won't get permanently stuck on. `bricks_1/2`=marble,
+  `gold`=plaza core, `crystal`=spire base (raised to height 2 for verticality).
+- All three validated: spawns mutually reachable, ≥95% tiles reachable, terrain/object
+  ids in range, grid/heightMap/objects dims == w×h, all files `node --check` clean.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
