@@ -2726,7 +2726,9 @@ const ThreeRenderer = (function () {
             greek: _hzGreekRuin, mountain: _hzMountain, crystal: _hzCrystalShards,
             rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
-            lightpillar: _hzLightPillar, fluorescent: _hzFluorescent
+            lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
+            obelisk_rock: _hzObeliskRock, exitsign: _hzExitSign,
+            monolith_rock: _hzMonolithRock
         };
         return _MON_BUILDERS;
     }
@@ -8503,6 +8505,64 @@ const ThreeRenderer = (function () {
         _hzPulse(veilMat, veil, 0.10, 0.02, 0.25 + rng() * 0.3);
         var crown = _hzGlowCore(ts * 0.7, 0xffe9a8, 0xffcf66);
         crown.position.y = h + pw * 0.9; g.add(crown);
+        return g;
+    }
+
+    // A wide rocks_1 monolith — a broad standing stone slab (the old obsidian
+    // monolith, re-cut in rock and widened) with a faint glowing seam.
+    function _hzMonolithRock(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('rocks_1');
+        var h = ts * (8 + rng() * 7);
+        var w = ts * (3.0 + rng() * 1.4), d = w * (0.32 + rng() * 0.1);   // much wider slab
+        var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x8f8a82));
+        slab.position.y = h * 0.5; g.add(slab);
+        var seamMat = _hzGlowMat(0x8a7bff, 0.5);
+        var seam = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.12, h * 0.66), seamMat);
+        seam.position.set(0, h * 0.5, d * 0.5 + 1.5); g.add(seam);
+        _hzPulse(seamMat, null, 0.28, 0, 0.3 + rng() * 0.4);
+        return g;
+    }
+
+    // A wide rocks_1 obelisk — a broad stone monolith capped by a pyramidion.
+    function _hzObeliskRock(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var tex = _hzTex('rocks_1');
+        var h = ts * (7 + rng() * 5);
+        var w = ts * (1.4 + rng() * 0.6);              // much wider than _hzObelisk
+        var geo = new THREE.CylinderGeometry(w * 0.62, w, h, 4, 1);
+        _hzTileUV(geo, w, h, ts);
+        var shaft = new THREE.Mesh(geo, _hzGeoMat(tex, 0x938d84));
+        shaft.rotation.y = Math.PI / 4; shaft.position.y = h * 0.5; g.add(shaft);
+        var capGeo = new THREE.ConeGeometry(w * 0.82, w * 1.1, 4, 1);
+        _hzTileUV(capGeo, w, w, ts);
+        var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xa39c92));
+        cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.5; g.add(cap);
+        return g;
+    }
+
+    // A glowing EXIT sign on a slim post — a freestanding wayfinder in the maze
+    // (stands on the floor since the backrooms has no ceiling to hang from).
+    function _hzExitSign(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var postH = ts * 1.7;
+        var post = _hzCyl(ts * 0.05, ts * 0.05, postH, 6, ts, _hzGeoMat(_hzTex('metal'), 0x52555c));
+        post.position.y = postH * 0.5; g.add(post);
+        // green housing box
+        var housing = _hzBox(ts * 0.95, ts * 0.42, ts * 0.12, ts, _hzGeoMat(_hzTex('metal'), 0x1d6b32));
+        housing.position.y = postH + ts * 0.21; g.add(housing);
+        // luminous EXIT face (double-sided so it reads from both directions)
+        var faceMat = _hzGlowMat(0x6dff9a, 0.85);
+        var face = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.86, ts * 0.34), faceMat);
+        face.position.set(0, postH + ts * 0.21, ts * 0.07); g.add(face);
+        var faceB = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.86, ts * 0.34), faceMat);
+        faceB.rotation.y = Math.PI; faceB.position.set(0, postH + ts * 0.21, -ts * 0.07); g.add(faceB);
+        _hzPulse(faceMat, null, 0.14, 0, 0.8 + rng() * 1.2);
+        var glow = _hzGlowCore(ts * 0.45, 0x8fffb4, 0x4fe07f);
+        glow.position.y = postH + ts * 0.21; g.add(glow);
         return g;
     }
 

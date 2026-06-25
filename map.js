@@ -5737,6 +5737,8 @@
             'gold',
             'metal',
             'leaves',
+            'wallpaper',
+            'cloud_2',
         ];
 
         const ME_TERRAIN_TO_ID = {};

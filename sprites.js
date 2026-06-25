@@ -661,6 +661,8 @@ const TERRAIN_SPRITES = {
     gold:             [`${_T}/gold.png`],
     metal:            [`${_T}/metal.png`],
     leaves:           [`${_T}/leaves.png`],
+    wallpaper:        [`${_T}/wallpaper.png`],
+    cloud_2:          [`${_T}/cloud_2.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {
