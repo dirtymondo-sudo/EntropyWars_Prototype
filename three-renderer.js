@@ -2727,8 +2727,7 @@ const ThreeRenderer = (function () {
             rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
             lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
-            obelisk_rock: _hzObeliskRock, exitsign: _hzExitSign,
-            monolith_rock: _hzMonolithRock
+            exitsign: _hzExitSign
         };
         return _MON_BUILDERS;
     }
@@ -8210,10 +8209,10 @@ const ThreeRenderer = (function () {
     function _hzMonolith(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var tex = _hzTex('obsidian');
+        var tex = _hzTex('rocks_1');
         var h = ts * (8 + rng() * 9);
         var w = ts * (1.5 + rng() * 1.1), d = w * (0.28 + rng() * 0.12);
-        var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x1f232d));
+        var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x8f8a82));
         slab.position.y = h * 0.5;
         g.add(slab);
         // a glowing rune-seam down the obsidian face — a cold, eerie sigil light
@@ -8505,41 +8504,6 @@ const ThreeRenderer = (function () {
         _hzPulse(veilMat, veil, 0.10, 0.02, 0.25 + rng() * 0.3);
         var crown = _hzGlowCore(ts * 0.7, 0xffe9a8, 0xffcf66);
         crown.position.y = h + pw * 0.9; g.add(crown);
-        return g;
-    }
-
-    // A wide rocks_1 monolith — a broad standing stone slab (the old obsidian
-    // monolith, re-cut in rock and widened) with a faint glowing seam.
-    function _hzMonolithRock(rng) {
-        var ts = CONFIG.tileSize || 128;
-        var g = new THREE.Group();
-        var tex = _hzTex('rocks_1');
-        var h = ts * (8 + rng() * 7);
-        var w = ts * (3.0 + rng() * 1.4), d = w * (0.32 + rng() * 0.1);   // much wider slab
-        var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x8f8a82));
-        slab.position.y = h * 0.5; g.add(slab);
-        var seamMat = _hzGlowMat(0x8a7bff, 0.5);
-        var seam = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.12, h * 0.66), seamMat);
-        seam.position.set(0, h * 0.5, d * 0.5 + 1.5); g.add(seam);
-        _hzPulse(seamMat, null, 0.28, 0, 0.3 + rng() * 0.4);
-        return g;
-    }
-
-    // A wide rocks_1 obelisk — a broad stone monolith capped by a pyramidion.
-    function _hzObeliskRock(rng) {
-        var ts = CONFIG.tileSize || 128;
-        var g = new THREE.Group();
-        var tex = _hzTex('rocks_1');
-        var h = ts * (7 + rng() * 5);
-        var w = ts * (1.4 + rng() * 0.6);              // much wider than _hzObelisk
-        var geo = new THREE.CylinderGeometry(w * 0.62, w, h, 4, 1);
-        _hzTileUV(geo, w, h, ts);
-        var shaft = new THREE.Mesh(geo, _hzGeoMat(tex, 0x938d84));
-        shaft.rotation.y = Math.PI / 4; shaft.position.y = h * 0.5; g.add(shaft);
-        var capGeo = new THREE.ConeGeometry(w * 0.82, w * 1.1, 4, 1);
-        _hzTileUV(capGeo, w, w, ts);
-        var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xa39c92));
-        cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.5; g.add(cap);
         return g;
     }
 

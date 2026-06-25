@@ -7757,7 +7757,7 @@ const PREBUILT_MAPS = {
             [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
             [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
         ],
-        monuments: [{"kind":"monolith_rock","x":8,"y":8,"foot":3,"maxH":8,"seed":42},{"kind":"flag","x":6,"y":9,"foot":1.6,"maxH":3.6,"seed":7},{"kind":"rover","x":9,"y":6,"foot":2.2,"maxH":1.7,"seed":3},{"kind":"crystal","x":2,"y":12,"foot":2,"maxH":4,"seed":11},{"kind":"crystal","x":12,"y":2,"foot":2,"maxH":4,"seed":19},{"kind":"obelisk_rock","x":13,"y":13,"foot":2.6,"maxH":6,"seed":5},{"kind":"obelisk_rock","x":2,"y":2,"foot":2.6,"maxH":6,"seed":6}],
+        monuments: [{"kind":"monolith","x":8,"y":8,"foot":2,"maxH":7,"seed":42},{"kind":"flag","x":6,"y":9,"foot":1.6,"maxH":3.6,"seed":7},{"kind":"rover","x":9,"y":6,"foot":2.2,"maxH":1.7,"seed":3},{"kind":"crystal","x":2,"y":12,"foot":2,"maxH":4,"seed":11},{"kind":"crystal","x":12,"y":2,"foot":2,"maxH":4,"seed":19},{"kind":"obelisk","x":13,"y":13,"foot":1.6,"maxH":5,"seed":5},{"kind":"obelisk","x":2,"y":2,"foot":1.6,"maxH":5,"seed":6}],
         spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":15,"y":15},{"x":14,"y":15},{"x":15,"y":14},{"x":14,"y":14}]}
     },
     prebuilt_heaven: {
@@ -7828,7 +7828,7 @@ const PREBUILT_MAPS = {
             [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
             [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
         ],
-        monuments: [{"kind":"lightpillar","x":9,"y":9,"foot":2.2,"maxH":20,"seed":99},{"kind":"goldgate","x":9,"y":5,"foot":5,"maxH":8,"seed":21},{"kind":"goldgate","x":10,"y":14,"foot":5,"maxH":8,"seed":22},{"kind":"greek","x":5,"y":5,"foot":5,"maxH":6,"seed":31},{"kind":"greek","x":14,"y":5,"foot":5,"maxH":6,"seed":32},{"kind":"greek","x":5,"y":14,"foot":5,"maxH":6,"seed":33},{"kind":"greek","x":14,"y":14,"foot":5,"maxH":6,"seed":34},{"kind":"lightpillar","x":5,"y":5,"foot":1.4,"maxH":16,"seed":41},{"kind":"lightpillar","x":14,"y":5,"foot":1.4,"maxH":16,"seed":42},{"kind":"lightpillar","x":5,"y":14,"foot":1.4,"maxH":16,"seed":43},{"kind":"lightpillar","x":14,"y":14,"foot":1.4,"maxH":16,"seed":44},{"kind":"obelisk_rock","x":2,"y":9,"foot":2.6,"maxH":8,"seed":51},{"kind":"obelisk_rock","x":17,"y":10,"foot":2.6,"maxH":8,"seed":52}],
+        monuments: [{"kind":"lightpillar","x":9,"y":9,"foot":2.2,"maxH":20,"seed":99},{"kind":"goldgate","x":9,"y":5,"foot":5,"maxH":8,"seed":21},{"kind":"goldgate","x":10,"y":14,"foot":5,"maxH":8,"seed":22},{"kind":"greek","x":5,"y":5,"foot":5,"maxH":6,"seed":31},{"kind":"greek","x":14,"y":5,"foot":5,"maxH":6,"seed":32},{"kind":"greek","x":5,"y":14,"foot":5,"maxH":6,"seed":33},{"kind":"greek","x":14,"y":14,"foot":5,"maxH":6,"seed":34},{"kind":"lightpillar","x":5,"y":5,"foot":1.4,"maxH":16,"seed":41},{"kind":"lightpillar","x":14,"y":5,"foot":1.4,"maxH":16,"seed":42},{"kind":"lightpillar","x":5,"y":14,"foot":1.4,"maxH":16,"seed":43},{"kind":"lightpillar","x":14,"y":14,"foot":1.4,"maxH":16,"seed":44},{"kind":"obelisk","x":2,"y":9,"foot":1.6,"maxH":7,"seed":51},{"kind":"obelisk","x":17,"y":10,"foot":1.6,"maxH":7,"seed":52}],
         spawns: {"1":[{"x":9,"y":18},{"x":10,"y":18},{"x":8,"y":18},{"x":11,"y":18},{"x":9,"y":17},{"x":10,"y":17}],"2":[{"x":10,"y":1},{"x":9,"y":1},{"x":11,"y":1},{"x":8,"y":1},{"x":10,"y":2},{"x":9,"y":2}]}
     },
     prebuilt_backrooms: {
