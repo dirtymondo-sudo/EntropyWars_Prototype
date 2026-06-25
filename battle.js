@@ -18070,6 +18070,19 @@
                 x = _prey.x; y = _prey.y; z = undefined;
             }
 
+            // ── Self-cast / self-centered spells always originate on the caster ──
+            // EMP Burst, Quake, Whirlwind (aoeOriginSelf) plus warCry/healAll/scan/
+            // self-buffs (selfCast) center on the caster's own tile, NOT a clicked
+            // victim. But several entry points pass the intended *target's* tile as
+            // (x,y): the HUD action cards call doSpell(unit, targetUnit.x, targetUnit.y)
+            // and the AI hands in an enemy tile. Those spells carry range 0, so the
+            // range gate below then rejects the (far) target with "Spell target is out
+            // of range." Force the target back onto the caster here so the gate always
+            // passes and the AoE centers correctly, regardless of who called us.
+            if (isSpellSelfCast(spell)) {
+                x = unit.x; y = unit.y; z = unit.z;
+            }
+
             if (z === undefined || z === null) {
                 z = (typeof nearestWalkableZ === 'function')
                     ? nearestWalkableZ(x, y, unit.z ?? 0)
