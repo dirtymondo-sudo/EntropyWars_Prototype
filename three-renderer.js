@@ -161,6 +161,12 @@ const ThreeRenderer = (function () {
         return BEVEL.enabled && !!(typeof state !== 'undefined' && state && state.naturalTerrain);
     }
 
+    /* The Entropy Vale colour-PALETTE tint has been removed. Terrain GEOMETRY
+       (the natural rolling heightfield) is still driven by _naturalTerrainActive()
+       above; this separate flag governs ONLY the palette colour tint and is off,
+       so terrain, props, trees, rocks and crystals keep their original colours. */
+    function _evPaletteActive() { return false; }
+
     /* ── EW master palette ─────────────────────────────────────────────────
      * ONE cohesive, hand-tuned palette that the whole world is meant to draw
      * from, so shared materials share a colour — the green of the grass IS the
@@ -259,11 +265,11 @@ const ThreeRenderer = (function () {
         return _evColorCache[hex];
     }
     /* Apply the palette tint for `key` onto a material's .color (multiply),
-       no-op unless the Entropy Vale palette is active. */
+       no-op unless the Entropy Vale palette is active.
+       DISABLED: the Entropy Vale colour tint has been removed, so terrain/props
+       keep their original untinted textures. The natural rolling-heightfield
+       landform (see _naturalTerrainActive) is unaffected. */
     function _evTintMat(mat, key) {
-        if (!mat || !mat.color || !_naturalTerrainActive()) return mat;
-        var c = _evColor(key);
-        if (c) mat.color.copy(c);
         return mat;
     }
 
@@ -389,7 +395,7 @@ const ThreeRenderer = (function () {
 
     var _bevelMatCache = new Map();
     function _buildBeveledMaterials(topKey, sideKey) {
-        var evp = _naturalTerrainActive();
+        var evp = _evPaletteActive();
         var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
         if (_bevelMatCache.has(ck)) return _bevelMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
@@ -1043,7 +1049,7 @@ const ThreeRenderer = (function () {
     var _terrainMatCache = new Map();
 
     function buildBoxMaterials(topKey, sideKey) {
-        var evp = _naturalTerrainActive();
+        var evp = _evPaletteActive();
         var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
         if (_terrainMatCache.has(ck)) return _terrainMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
@@ -1852,7 +1858,7 @@ const ThreeRenderer = (function () {
         var roofTex = getTerrainTexture('bricks_3');
         var roofMat = roofTex
             ? _evTintMat(new THREE.MeshBasicMaterial({ map: roofTex, side: THREE.DoubleSide }), 'bricks_1')
-            : new THREE.MeshBasicMaterial({ color: _naturalTerrainActive() ? _evTintHex('bricks_1') : 0x8b6b4a, side: THREE.DoubleSide });
+            : new THREE.MeshBasicMaterial({ color: 0x8b6b4a, side: THREE.DoubleSide });
         var roofTilesN = isHouse ? Math.max(2, Math.round(side / ts)) : 1;
         if (roofTilesN <= 1) {
             var roofGeo = new THREE.PlaneGeometry(side, side);
@@ -1917,7 +1923,7 @@ const ThreeRenderer = (function () {
                 }
 
                 var _faceCol;
-                if (_naturalTerrainActive()) {
+                if (_evPaletteActive()) {
                     var _wh = _evColor('urban_wall');
                     _faceCol = new THREE.Color(_wh.r * b, _wh.g * b, _wh.b * b);
                 } else {
@@ -2097,7 +2103,7 @@ const ThreeRenderer = (function () {
         /* trunk — tapered cone with wood texture, tiled to match terrain pixel density */
         var trunkGeo = new THREE.ConeGeometry(trunkR, trunkH, 8, 1, false);
         var woodTex = _getTreeWoodTex();
-        var _evp = _naturalTerrainActive();
+        var _evp = false;   /* Entropy Vale colour tint removed — keep original tree colours */
         var _trunkCol = _evp ? _evTintHex('wood') : v.trunkColor;
         var trunkMat;
         if (woodTex) {
@@ -2527,19 +2533,10 @@ const ThreeRenderer = (function () {
 
             var shade = 0.5 + _sr() * 0.3;
             var mat;
-            if (_naturalTerrainActive()) {
-                /* Entropy Vale: human lavender-grey, varied per rock by `shade` */
-                var _hb = _evColor('rocks_1');
-                var _f = 0.74 + shade * 0.34;
-                var _rc = new THREE.Color(_hb.r * _f, _hb.g * _f, _hb.b * _f);
-                mat = rockTex
-                    ? new THREE.MeshBasicMaterial({ map: rockTex, color: _rc, depthWrite: true })
-                    : new THREE.MeshBasicMaterial({ color: _rc, depthWrite: true });
-            } else {
-                mat = rockTex
-                    ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(shade, shade * 0.95, shade * 0.9), depthWrite: true })
-                    : new THREE.MeshBasicMaterial({ color: new THREE.Color(shade * 0.6, shade * 0.55, shade * 0.5), depthWrite: true });
-            }
+            /* Entropy Vale colour tint removed — rocks use the default grey shading on every map */
+            mat = rockTex
+                ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(shade, shade * 0.95, shade * 0.9), depthWrite: true })
+                : new THREE.MeshBasicMaterial({ color: new THREE.Color(shade * 0.6, shade * 0.55, shade * 0.5), depthWrite: true });
 
             var rock = new THREE.Mesh(baseGeo, mat);
             rock.scale.set(radius, radius, radius);
@@ -2567,7 +2564,7 @@ const ThreeRenderer = (function () {
         var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
 
         var crystalTex = _getCrystalTexture();
-        var crystalColors = _naturalTerrainActive()
+        var crystalColors = _evPaletteActive()
             ? [ _ewSwatch('ent_amethyst'), _ewSwatch('ent_violet'), _ewSwatch('ent_orchid'),
                 _ewSwatch('ent_violet'), _ewSwatch('ent_amethyst') ]
             : [0x8844cc, 0x6633aa, 0xaa55ee, 0x9944dd, 0x7733bb];
@@ -2600,7 +2597,7 @@ const ThreeRenderer = (function () {
 
             /* Inner glow — slightly smaller, additive */
             var glowMat = new THREE.MeshBasicMaterial({
-                color: _naturalTerrainActive() ? _ewSwatch('ent_lilac') : 0xccaaff,
+                color: _evPaletteActive() ? _ewSwatch('ent_lilac') : 0xccaaff,
                 transparent: true, opacity: 0.15,
                 side: THREE.BackSide, depthWrite: false,
                 blending: THREE.AdditiveBlending
