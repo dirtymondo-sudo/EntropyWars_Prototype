@@ -8330,7 +8330,6 @@ const ThreeRenderer = (function () {
             [0.118, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
             [0.217, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
             [0.308, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
-            [0.362, _hzPyramid,        false, -0.48,  0.55],   // great pyramids (procedural)
             [0.480, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
             [0.552, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
             [0.615, _hzObelisk,        false, -0.45,  0.58],   // obelisks
@@ -8424,10 +8423,11 @@ const ThreeRenderer = (function () {
         var rng = _mulberry32(0x9E37 + _bw * 131 + _bh * 977);
 
         // upright landmarks that read well standing on the ground — including the
-        // esoteric misc models (textured pyramid, watcher eyeball)
+        // esoteric misc models (textured pyramid, watcher eyeball). The old
+        // procedural _hzPyramid (wasteland-textured) is intentionally omitted.
         var BUILDERS = [
             _hzGreekRuin, _hzColossus, _hzObelisk, _hzMonolith,
-            _hzGateway, _hzZiggurat, _hzPyramid, _hzCrystalShards,
+            _hzGateway, _hzZiggurat, _hzCrystalShards,
             _hzModelPyramid, _hzModelEyeball
         ];
         var count = 11 + (rng() * 7 | 0);
