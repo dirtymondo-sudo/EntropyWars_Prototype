@@ -7904,7 +7904,9 @@ const ThreeRenderer = (function () {
         var h = ts * (8 + rng() * 7);
         // glTF UVs assume flipY:false — the default TextureLoader flips, which
         // would render the bake upside-down, so build this one with flipY off.
-        var tex = _miscTex(_R2_MISC + 'Pyramid/Textures/BakedPyramid.png');
+        // (Use TextureBake.png — the baked sandstone diffuse; BakedPyramid.png in
+        // that folder is an all-black map and renders the pyramid pure black.)
+        var tex = _miscTex(_R2_MISC + 'Pyramid/Textures/TextureBake.png');
         if (tex && tex.flipY !== false) { tex.flipY = false; tex.needsUpdate = true; }
         var g = _miscModelInstance(_R2_MISC + 'Pyramid/Pyramid.glb', true, h, {
             matPick: function () {
