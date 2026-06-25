@@ -7420,12 +7420,12 @@ const MAP_LAYOUT_PRESETS = {
 
     prebuilt_compound: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
 
     prebuilt_crossroads: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
 
     prebuilt_citadel: {
@@ -7496,7 +7496,7 @@ const MAP_LAYOUT_PRESETS = {
     },
     prebuilt_babel: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_archipelago: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'water' }, buffer2: null, below: null },
@@ -7540,7 +7540,7 @@ const MAP_LAYOUT_PRESETS = {
     },
     prebuilt_village_siege: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_crystal_cavern: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
@@ -7548,7 +7548,7 @@ const MAP_LAYOUT_PRESETS = {
     },
     prebuilt_divided_city: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 13, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_caldera_summit: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 13, label: 'Earth', baseTerrain: 'dirt' }, buffer2: null, below: null },
@@ -7557,15 +7557,15 @@ const MAP_LAYOUT_PRESETS = {
 
     prebuilt_apartment: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 3, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_suburb: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_rift_plaza: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_bunker: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
@@ -7597,7 +7597,7 @@ const MAP_LAYOUT_PRESETS = {
     },
     prebuilt_palimpsest: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
     },
     prebuilt_pyramid: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
@@ -7713,11 +7713,11 @@ const PREBUILT_MAPS = {
         ],
         objects: [
             [[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[]],
+            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
             [[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}]],
-            [[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[]],
+            [[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
             [[],[],[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}]],
-            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
+            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
             [[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
             [[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]]
         ],
@@ -9872,7 +9872,7 @@ const PREBUILT_MAPS = {
         objects: [
             [[],[],[],[]],
             [[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[]],
+            [[],[],[],[]],
             [[],[],[],[]]
         ],
         spawns: {"1":[{"x":0,"y":2},{"x":0,"y":3}],"2":[{"x":3,"y":0},{"x":3,"y":1}]}
@@ -9900,13 +9900,13 @@ const PREBUILT_MAPS = {
             [3,3,4,4,3,3,3,3]
         ],
         objects: [
-            [[{oid:36,alignX:'center',alignY:'bottom'}],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:35,alignX:'center',alignY:'bottom'}]],
+            [[{oid:36,alignX:'center',alignY:'bottom'}],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}]],
             [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[]],
+            [[],[],[],[],[],[],[],[]],
             [[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[{oid:23,alignX:'center',alignY:'bottom'}],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[]],
             [[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[]],
+            [[],[],[],[],[],[],[],[]],
             [[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[{oid:37,alignX:'center',alignY:'bottom'}]]
         ],
         spawns: {"1":[{"x":0,"y":6},{"x":1,"y":6},{"x":0,"y":7},{"x":1,"y":7}],"2":[{"x":6,"y":0},{"x":7,"y":0},{"x":6,"y":1},{"x":7,"y":1}]}

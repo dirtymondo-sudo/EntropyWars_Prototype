@@ -8473,7 +8473,7 @@ const ThreeRenderer = (function () {
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  STREET LAMPS  — Entropy Vale only
+    //  STREET LAMPS  — Entropy Vale + maps flagged streetLamps (urban/built)
     //  A handful of cosmetic 3D street lamps (the /Assets/misc "Street Lamp.obj")
     //  standing ON the board beside its built environment — the placed buildings
     //  and any street/brick/path/ruin tiles — each crowned with a glowing lantern.
@@ -8507,10 +8507,16 @@ const ThreeRenderer = (function () {
         }
         return out;
     }
+    // Street lamps render on the natural-terrain map (Entropy Vale) and on any
+    // map that opts in via state.streetLamps (the thematically urban/built maps).
+    function _streetLampsEnabled() {
+        if (_naturalTerrainActive()) return true;
+        return !!(typeof state !== 'undefined' && state && state.streetLamps);
+    }
     function _buildStreetLamps() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || 128;
-        if (!_naturalTerrainActive()) {
+        if (!_streetLampsEnabled()) {
             if (_streetLampGroup) { scene.remove(_streetLampGroup); _disposeR(_streetLampGroup); _streetLampGroup = null; _streetLampKey = ''; }
             if (typeof ThreePost !== 'undefined' && ThreePost && ThreePost.rebuildStreetLampLights) ThreePost.rebuildStreetLampLights([], ts);
             return;
@@ -8560,15 +8566,48 @@ const ThreeRenderer = (function () {
             }
         }
 
+        // Tiles a lamp must never stand on: any built/occupied tile (so it
+        // flanks a structure instead of sitting on its roof) or a fluid/void tile.
+        var occupied = {};
+        for (var bi = 0; bi < built.length; bi++) occupied[built[bi].x + ',' + built[bi].y] = 1;
+        function _tileOpenForLamp(x, y) {
+            if (x < 0 || y < 0 || x >= _bw || y >= _bh) return false;
+            if (occupied[x + ',' + y]) return false;                       // a built tile
+            var cell = (state.boardObjects && state.boardObjects[y]) ? state.boardObjects[y][x] : null;
+            if (cell && (Array.isArray(cell) ? cell.length : cell)) return false;   // a placed prop
+            if (typeof getTerrainAt === 'function') {
+                var tk = (getTerrainAt(x, y) || '').replace(/_\d+$/, '');
+                if (_FLUID_TERRAIN_SET[tk] || tk === 'void') return false;
+            }
+            return true;
+        }
+
         var heads = [];   // world positions for ThreePost point-lights
         for (var c = 0; c < chosen.length; c++) {
             var t = chosen[c];
-            // nudge the post off the built tile toward the nearest open neighbour
-            // (board-centre side) so it stands beside the building/street, not on it
-            var nx = (t.x < cx / ts) ? t.x + 1 : t.x - 1;
-            var ny = (t.y < cz / ts) ? t.y + 1 : t.y - 1;
-            nx = Math.max(0, Math.min(_bw - 1, nx));
-            ny = Math.max(0, Math.min(_bh - 1, ny));
+            // nudge the post off the built tile to an adjacent OPEN tile (toward
+            // board centre first) so it stands beside the building/street, never
+            // on top of it. If nothing beside it is open, skip rather than cover.
+            var towardX = (t.x < cx / ts) ? 1 : -1;
+            var towardY = (t.y < cz / ts) ? 1 : -1;
+            var cand = [
+                { x: t.x + towardX, y: t.y },
+                { x: t.x, y: t.y + towardY },
+                { x: t.x + towardX, y: t.y + towardY },
+                { x: t.x - towardX, y: t.y },
+                { x: t.x, y: t.y - towardY },
+                { x: t.x + towardX, y: t.y - towardY },
+                { x: t.x - towardX, y: t.y + towardY },
+                { x: t.x - towardX, y: t.y - towardY }
+            ];
+            var spot = null;
+            for (var ci = 0; ci < cand.length; ci++) {
+                if (_tileOpenForLamp(cand[ci].x, cand[ci].y)) { spot = cand[ci]; break; }
+            }
+            if (!spot) continue;
+            var nx = spot.x, ny = spot.y;
+            // reserve the chosen tile so two lamps never share it
+            occupied[nx + ',' + ny] = 1;
             var wx = nx * ts + ts / 2;
             var wz = ny * ts + ts / 2;
             var topY = tileTopY(nx, ny);

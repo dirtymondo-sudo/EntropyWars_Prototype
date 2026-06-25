@@ -1091,6 +1091,10 @@
                (three-renderer reads state.naturalTerrain). All other maps stay
                classic flat-cube voxels. */
             state.naturalTerrain = !!layout.naturalTerrain;
+            /* Opt this map into cosmetic 3D street lamps beside its built
+               environment (three-renderer reads state.streetLamps). Natural
+               terrain (Entropy Vale) already gets lamps via its own gate. */
+            state.streetLamps = !!layout.streetLamps;
 
             if (!layout.isElliptical) state.zoneMap = null;
 
