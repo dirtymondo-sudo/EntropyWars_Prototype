@@ -7683,10 +7683,11 @@ const PREBUILT_MAPS = {
     },
     prebuilt_entropy_monuments: {
         name: 'Monument Proving Grounds', w: 16, h: 16,
-        // FLAT voxel ground (no naturalTerrain bevel, no voxel-built monuments).
-        // Every landmark is a real 3D mesh (state.monuments) reusing the esoteric-
-        // background _hz* geometry, scaled up to read at map scale. foot =
-        // footprint width in tiles; maxH caps height in tiles; seed = stable RNG.
+        // FLAT voxel map: solid grass columns with the standard z=3 ground floor
+        // (heightMap all 3, voxels z0..z3). No naturalTerrain bevel. Every landmark
+        // is a real 3D mesh (state.monuments) reusing the esoteric-background _hz*
+        // geometry, scaled up to read at map scale and seated on the z=3 surface.
+        // foot = footprint width in tiles; maxH caps height in tiles; seed = RNG.
         monuments: [
             { kind: 'pyramid',  x: 4,  y: 4,  foot: 6, maxH: 7, seed: 7 },
             { kind: 'ziggurat', x: 11, y: 4,  foot: 6, maxH: 6, seed: 3 },
@@ -7715,22 +7716,40 @@ const PREBUILT_MAPS = {
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ],
         heightMap: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+        ],
+        voxels: [
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
+            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]]
         ],
         objects: [
             [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],

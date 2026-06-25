@@ -1752,7 +1752,6 @@
         function buildColumnsFromLegacy() {
             const h = bh(), w = bw();
             state._hollowVoxels = false;   // legacy/procedural maps are always solid
-            state.monuments = null;        // clear any monuments from a prior map load
             state.boardColumns = [];
             state.boardVoxels = [];
             for (let y = 0; y < h; y++) {
@@ -2484,6 +2483,7 @@
         function initMap(fullBoard, reserved) {
             const w = bw(), h = bh();
             const board = fullBoard;
+            state.monuments = null;   // default; prebuilt maps may set it below
 
             function _initObjectGrid() {
                 state.boardObjects = Array.from({ length: h }, () => Array(w).fill(null));

@@ -2744,7 +2744,13 @@ const ThreeRenderer = (function () {
         g.scale.set(s, s, s);
         g.updateMatrixWorld(true);
         box = new THREE.Box3().setFromObject(g);
-        g.position.set(mon.x * ts + ts / 2, -box.min.y, mon.y * ts + ts / 2);   // sit on ground
+        /* Sit on the tile's ground surface (maps have a z>=3 floor, so y!=0). */
+        var surfaceY = 0;
+        try {
+            if (typeof _tileSurfaceY === 'function') surfaceY = _tileSurfaceY(mon.x, mon.y);
+            else if (typeof getHeightAt === 'function') surfaceY = (getHeightAt(mon.x, mon.y) || 0) * ts * ELEV_STEP_RATIO;
+        } catch (e) { surfaceY = 0; }
+        g.position.set(mon.x * ts + ts / 2, surfaceY - box.min.y, mon.y * ts + ts / 2);
         g._ew_monument = true;
         return g;
     }
