@@ -7894,12 +7894,23 @@ const ThreeRenderer = (function () {
     }
 
     // ── Esoteric background landmarks built from the misc models ──────────
-    // A great textured pyramid (real .glb) crowned with a lit ember capstone —
-    // the same "lit beacon of a dead empire" beat as the procedural obelisk.
+    // A great pyramid (real .glb geometry) wearing its baked desert texture and
+    // crowned with a lit ember capstone — the same "lit beacon of a dead empire"
+    // beat as the procedural obelisk. The .glb only embeds Mask.png (a mask, not
+    // the diffuse), so we override its material with the real BakedPyramid.png
+    // bake as an unlit map — that way it never renders flat/dark.
     function _hzModelPyramid(rng) {
         var ts = CONFIG.tileSize || 128;
         var h = ts * (8 + rng() * 7);
-        var g = _miscModelInstance(_R2_MISC + 'Pyramid/Pyramid.glb', true, h, null);
+        // glTF UVs assume flipY:false — the default TextureLoader flips, which
+        // would render the bake upside-down, so build this one with flipY off.
+        var tex = _miscTex(_R2_MISC + 'Pyramid/Textures/BakedPyramid.png');
+        if (tex && tex.flipY !== false) { tex.flipY = false; tex.needsUpdate = true; }
+        var g = _miscModelInstance(_R2_MISC + 'Pyramid/Pyramid.glb', true, h, {
+            matPick: function () {
+                return new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide, fog: false });
+            }
+        });
         var cap = _hzGlowCore(h * 0.10, 0xffe6b0, 0xffc070);
         cap.position.y = h * 1.0;
         g.add(cap);
@@ -7908,35 +7919,29 @@ const ThreeRenderer = (function () {
 
     // A colossal disembodied eyeball adrift in the void, wrapped in an eerie
     // astral aura — the watcher of the apocalypse. Tumbles slowly (set in the
-    // roster) so it seems to scan the battlefield.
+    // roster) so it seems to scan the battlefield. The model has a separate
+    // transparent cornea/lens group (Eye_Tranz) — if we render it opaque it
+    // greys out the iris/pupil underneath, so that group is kept see-through
+    // while the sclera/iris/pupil show the painted Eye_D diffuse.
     function _hzModelEyeball(rng) {
         var ts = CONFIG.tileSize || 128;
         var h = ts * (3.5 + rng() * 3.5);
         var tex = _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
         var g = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, h, {
-            matPick: function () {
+            matPick: function (node, srcMat) {
+                var nm = (srcMat && srcMat.name) || '';
+                if (nm.indexOf('Eye_Tranz') === 0) {       // glassy cornea — barely there
+                    return new THREE.MeshBasicMaterial({
+                        color: 0xdfe6f2, transparent: true, opacity: 0.10,
+                        depthWrite: false, side: THREE.FrontSide, fog: false
+                    });
+                }
                 return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false });
             }
         });
         var aura = _hzGlowCore(h * 0.46, 0xff5f8f, 0x9a4cff);   // sickly violet halo
         aura.position.y = h * 0.5;
         g.add(aura);
-        return g;
-    }
-
-    // A ribbon of highway tearing off into nothing — several road segments laid
-    // end-to-end, a faded asphalt scar hanging in the deep. Mostly flat, so it
-    // is fit by its horizontal span and tilted by the roster's float jitter.
-    function _hzModelRoad(rng) {
-        var ts = CONFIG.tileSize || 128;
-        var span = ts * (12 + rng() * 8);
-        var tex = _miscTex(_R2_MISC + 'road/road.png');
-        var g = _miscModelInstance(_R2_MISC + 'road/road.obj', false, span, {
-            fit: 'span', repeat: 3 + (rng() * 3 | 0),
-            matPick: function () {
-                return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false, color: 0xb9b9c2 });
-            }
-        });
         return g;
     }
 
@@ -8333,9 +8338,8 @@ const ThreeRenderer = (function () {
             [0.855, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
             [0.882, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
             [0.905, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
-            [0.941, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
-            [0.973, _hzModelEyeball,  true,  -0.55,  0.70],   // watcher eyeball — tumbles/scans
-            [1.00,  _hzModelRoad,     false, -0.55,  0.60]    // highway-to-nowhere ribbon
+            [0.952, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
+            [1.00,  _hzModelEyeball,  true,  -0.55,  0.70]    // watcher eyeball — tumbles/scans
         ];
 
         var slots = 132;
@@ -8418,11 +8422,11 @@ const ThreeRenderer = (function () {
         var rng = _mulberry32(0x9E37 + _bw * 131 + _bh * 977);
 
         // upright landmarks that read well standing on the ground — including the
-        // esoteric misc models (textured pyramid, watcher eyeball, highway ribbon)
+        // esoteric misc models (textured pyramid, watcher eyeball)
         var BUILDERS = [
             _hzGreekRuin, _hzColossus, _hzObelisk, _hzMonolith,
             _hzGateway, _hzZiggurat, _hzPyramid, _hzCrystalShards,
-            _hzModelPyramid, _hzModelEyeball, _hzModelRoad
+            _hzModelPyramid, _hzModelEyeball
         ];
         var count = 11 + (rng() * 7 | 0);
         for (var i = 0; i < count; i++) {
@@ -8468,26 +8472,61 @@ const ThreeRenderer = (function () {
 
     // ════════════════════════════════════════════════════════════════════
     //  STREET LAMPS  — Entropy Vale only
-    //  A ring of real 3D street lamps (the /Assets/misc "Street Lamp.obj")
-    //  lining the battlefield, each crowned with a glowing lantern head. The
-    //  post is a dark metal silhouette; the glass lantern is self-lit (blooms)
-    //  and backed by an additive glow sprite. The actual cast light onto the
-    //  board — warm flickering point-lights, graded day↔night exactly like the
-    //  lava and ward lights — is registered with ThreePost.rebuildStreetLampLights.
-    //  Placed just OUTSIDE the playable footprint so they never overlap tiles.
+    //  A handful of cosmetic 3D street lamps (the /Assets/misc "Street Lamp.obj")
+    //  standing ON the board beside its built environment — the placed buildings
+    //  and any street/brick/path/ruin tiles — each crowned with a glowing lantern.
+    //  The post is a dark metal silhouette; the glass lantern is self-lit (blooms)
+    //  with an additive halo, and casts a warm flickering point-light graded
+    //  day↔night exactly like the lava/ward lights. Lamps sit just off a built
+    //  tile (nudged toward the nearest open neighbour) so they flank, not cover it.
     // ════════════════════════════════════════════════════════════════════
     var _streetLampGroup = null, _streetLampKey = '';
+    var _STREET_TERRAIN = { road: 1, bricks: 1, brick: 1, pathway: 1, path: 1, ruins: 1, stairs: 1, cobble: 1 };
+    // Tiles that read as "built environment" — a placed structure (any object
+    // that isn't a tree) or a street/brick/path/ruin terrain — the spots a real
+    // street lamp would stand beside.
+    function _collectBuiltTiles(_bw, _bh) {
+        if (typeof _initBuildingKeys === 'function') _initBuildingKeys();
+        var out = [];
+        for (var y = 0; y < _bh; y++) {
+            for (var x = 0; x < _bw; x++) {
+                var built = false;
+                var cell = (state.boardObjects && state.boardObjects[y]) ? state.boardObjects[y][x] : null;
+                if (cell) {
+                    var k = Array.isArray(cell) ? (cell[0] ? cell[0].key : null) : cell;
+                    if (k && !_isTreeKey(k)) built = true;     // any non-tree structure
+                }
+                if (!built && typeof getTerrainAt === 'function') {
+                    var tk = (getTerrainAt(x, y) || '').replace(/_\d+$/, '');
+                    if (_STREET_TERRAIN[tk]) built = true;
+                }
+                if (built) out.push({ x: x, y: y });
+            }
+        }
+        return out;
+    }
     function _buildStreetLamps() {
         if (!scene || typeof THREE === 'undefined') return;
+        var ts = CONFIG.tileSize || 128;
         if (!_naturalTerrainActive()) {
             if (_streetLampGroup) { scene.remove(_streetLampGroup); _disposeR(_streetLampGroup); _streetLampGroup = null; _streetLampKey = ''; }
-            if (typeof ThreePost !== 'undefined' && ThreePost && ThreePost.rebuildStreetLampLights) ThreePost.rebuildStreetLampLights([], CONFIG.tileSize || 128);
+            if (typeof ThreePost !== 'undefined' && ThreePost && ThreePost.rebuildStreetLampLights) ThreePost.rebuildStreetLampLights([], ts);
             return;
         }
-        var ts = CONFIG.tileSize || 128;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
-        var key = _bw + 'x' + _bh + 'x' + ts;
+
+        var built = _collectBuiltTiles(_bw, _bh);
+        // Fallback: if the map exposes no built tiles, drop a sparse interior
+        // spread so the lamps still light the field rather than vanishing.
+        if (!built.length) {
+            for (var fy = 2; fy < _bh - 1; fy += 5) {
+                for (var fx = 2; fx < _bw - 1; fx += 5) built.push({ x: fx, y: fy });
+            }
+        }
+        // key off the built-tile signature so we rebuild only when the map changes
+        var sig = ''; for (var s = 0; s < built.length; s++) sig += built[s].x + ',' + built[s].y + ';';
+        var key = _bw + 'x' + _bh + 'x' + ts + '#' + sig;
         if (_streetLampGroup && _streetLampKey === key) return;
         if (_streetLampGroup) { scene.remove(_streetLampGroup); _disposeR(_streetLampGroup); }
         _streetLampGroup = new THREE.Group();
@@ -8496,61 +8535,58 @@ const ThreeRenderer = (function () {
         _streetLampKey = key;
 
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
-        var lampH = ts * 2.3;                 // ~2.3 tiles tall
-        var headY = lampH * 0.86;             // lantern sits near the top
-        var outset = ts * 0.62;               // push the post just off the board edge
+        var lampH = ts * 2.0;                  // ~2 tiles tall
+        var headY = lampH * 0.86;              // lantern sits near the top
         var rng = _mulberry32(0x1A77 + _bw * 53 + _bh * 311);
 
         // dark metal post + self-lit warm glass lantern (bright → blooms)
         function _lampMat(node, srcMat) {
             var nm = (srcMat && srcMat.name) || '';
-            if (nm === 'Glass') {
-                return new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false });
-            }
+            if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false });
             return new THREE.MeshLambertMaterial({ color: 0x23262e, fog: false });
         }
 
+        // Pick up to MAX lamps spread evenly across the built tiles.
+        var MAX_LAMPS = 6;
+        var chosen = [];
+        if (built.length) {
+            var stride = Math.max(1, built.length / MAX_LAMPS);
+            for (var i = 0; chosen.length < MAX_LAMPS; i++) {
+                var idx = Math.floor(i * stride);
+                if (idx >= built.length) break;
+                chosen.push(built[idx]);
+            }
+        }
+
         var heads = [];   // world positions for ThreePost point-lights
-        function _placeLamp(wx, wz, sampleX, sampleY) {
-            var topY = tileTopY(Math.max(0, Math.min(_bw - 1, sampleX)), Math.max(0, Math.min(_bh - 1, sampleY)));
+        for (var c = 0; c < chosen.length; c++) {
+            var t = chosen[c];
+            // nudge the post off the built tile toward the nearest open neighbour
+            // (board-centre side) so it stands beside the building/street, not on it
+            var nx = (t.x < cx / ts) ? t.x + 1 : t.x - 1;
+            var ny = (t.y < cz / ts) ? t.y + 1 : t.y - 1;
+            nx = Math.max(0, Math.min(_bw - 1, nx));
+            ny = Math.max(0, Math.min(_bh - 1, ny));
+            var wx = nx * ts + ts / 2;
+            var wz = ny * ts + ts / 2;
+            var topY = tileTopY(nx, ny);
+
             var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: _lampMat });
             lamp.position.set(wx, topY, wz);
-            lamp.rotation.y = Math.atan2(cx - wx, cz - wz) + (rng() - 0.5) * 0.25;  // face inward
+            lamp.rotation.y = Math.atan2(cx - wx, cz - wz) + (rng() - 0.5) * 0.4;
             _streetLampGroup.add(lamp);
 
-            // additive lantern glow so the head pops even before/without the model
-            var glow = _hzGlowCore(ts * 0.34, 0xffd27a, 0xff9a3c);
+            var glow = _hzGlowCore(ts * 0.30, 0xffd27a, 0xff9a3c);
             glow.position.set(wx, topY + headY, wz);
             _streetLampGroup.add(glow);
 
             heads.push({ wx: wx, wy: topY + headY, wz: wz });
         }
 
-        var step = 3;                          // a lamp roughly every 3 tiles
-        for (var x = 1; x < _bw - 1; x += step) {
-            _placeLamp(x * ts + ts / 2, -outset, x, 0);                  // top edge
-            _placeLamp(x * ts + ts / 2, _bh * ts + outset, x, _bh - 1);  // bottom edge
-        }
-        for (var y = 1; y < _bh - 1; y += step) {
-            _placeLamp(-outset, y * ts + ts / 2, 0, y);                  // left edge
-            _placeLamp(_bw * ts + outset, y * ts + ts / 2, _bw - 1, y);  // right edge
-        }
-
         scene.add(_streetLampGroup);
 
-        // Every lamp shows a glowing lantern (cheap additive sprite), but real
-        // cast point-lights are expensive + GPU-light-limited, so only a spread
-        // subset of heads becomes actual illumination (the rest read as lit by
-        // their own bloom halo). Mirrors the lava lights' deliberate cap.
-        var MAX_LAMP_LIGHTS = 8;
-        var litHeads = heads;
-        if (heads.length > MAX_LAMP_LIGHTS) {
-            litHeads = [];
-            var stride = heads.length / MAX_LAMP_LIGHTS;
-            for (var li = 0; li < MAX_LAMP_LIGHTS; li++) litHeads.push(heads[Math.floor(li * stride)]);
-        }
         if (typeof ThreePost !== 'undefined' && ThreePost && ThreePost.rebuildStreetLampLights) {
-            ThreePost.rebuildStreetLampLights(litHeads, ts);
+            ThreePost.rebuildStreetLampLights(heads, ts);
         }
     }
 
