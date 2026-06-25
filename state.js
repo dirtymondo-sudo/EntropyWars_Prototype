@@ -155,7 +155,7 @@
                 defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'] }
             },
             prebuilt_entropy_monuments: {
-                id: 'prebuilt_entropy_monuments', label: 'Monument Proving Grounds', desc: '16×16 voxel testbed — climbable monuments (pyramids, stairs, hollow arch), 6v6',
+                id: 'prebuilt_entropy_monuments', label: 'Monument Proving Grounds', desc: '16×16 flat voxel testbed — real 3D landmarks (pyramid, ziggurat, greek ruin, arch, obelisk, colossus), 6v6',
                 boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
                 winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
                 hasTowers: false, isPrebuilt: true,
