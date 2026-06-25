@@ -2049,7 +2049,7 @@ const ThreeRenderer = (function () {
         if (_treeForestTex) {
             _treeForestTex.wrapS = THREE.RepeatWrapping;
             _treeForestTex.wrapT = THREE.RepeatWrapping;
-            _treeForestTex.repeat.set(3, 2);
+            _treeForestTex.repeat.set(1.5, 1);
         }
         return _treeForestTex;
     }
