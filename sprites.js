@@ -654,6 +654,13 @@ const TERRAIN_SPRITES = {
     grass_rocky:      [`${_T}/grass_rocky.png`],
     purple_bog:       [`${_T}/purple_bog.png`],
     urban_street:     [`${_T}/urban_street.png`],
+
+    // New terrain sprites (Moon / Backrooms / Heaven map set)
+    moon:             [`${_T}/moon.png`],
+    carpet:           [`${_T}/carpet.png`],
+    gold:             [`${_T}/gold.png`],
+    metal:            [`${_T}/metal.png`],
+    leaves:           [`${_T}/leaves.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {

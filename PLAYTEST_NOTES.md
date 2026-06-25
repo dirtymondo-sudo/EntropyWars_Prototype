@@ -396,6 +396,40 @@ so no more goto timeouts. Page-load in the harnesses now uses `waitUntil:'commit
 poll-for-globals (don't wait on `'load'`). **Real-player fix** (out of repo): serve
 assets from a real Cloudflare custom domain / CDN instead of the throttled `*.r2.dev`.
 
+## Adding a new prebuilt map (5 touch-points — miss one and it won't load/show)
+A "prebuilt" map (fixed grid, the `prebuilt_*` modeIds) is wired across FIVE files.
+All of them are on R2, so edits must be re-uploaded to take effect:
+1. **`data.js` → `PREBUILT_MAPS[modeId]`** — the actual layout:
+   `{ name, w, h, grid[h][w], heightMap[h][w], objects[h][w] (arrays of {oid,...}),
+   monuments? [{kind,x,y,foot,maxH,seed,solid?}], spawns{1:[{x,y}],2:[...]} }`.
+   `grid` values are 1-based indices into `ME_TERRAIN_IDS` (map.js ~5656); `oid` →
+   `ME_OBJECT_IDS`. `forest`/`forest_2`/`tree` terrain auto-converts to grass + a 3D
+   tree object (map.js ~4096). **Walls = a height step > `MAX_CLIMB_HEIGHT` (=1,
+   battle.js:69):** a column ≥2 taller than its neighbour blocks ground units (flyers
+   pass over). Validate every authored map with a height-aware BFS from each spawn so
+   no tile is an un-exitable pit and both teams are connected.
+2. **`data.js` → `MAP_LAYOUT_PRESETS[modeId]`** — `{sections:{earth:{startRow:0,
+   endRow:h-1,baseTerrain}}, barrierRows:[], barrierOpeningsX:[], hasFloors:false}`.
+   Missing ⇒ falls back to `large` (wrong size/floors).
+3. **`state.js` → `GAME_MODES[modeId]`** — `{id,label,desc, boardSize/Width/Height,
+   teamSize, winHourglasses, hiddenItemSpawns, blitzMode:true, hasTowers:false,
+   isPrebuilt:true, terrainPatches, spawns, defaultBuilds}`. Spawns MUST match #1.
+4. **`state.js` → every `MULTIPLAYER_MODES[*].compatibleMaps`** — a HARD allowlist
+   (map.js:1130, match-select.js:539). Add the modeId to each mode you want it
+   playable in, or it never appears in the map picker.
+5. **`map.js` → `MS_MAP_LIST`** — the menu card `{modeId,name,size,team,w,h,
+   isPrebuilt:true}`. The card's minimap thumbnail is rendered from `PREBUILT_MAPS.grid`.
+
+New terrain types need: a sprite URL in `sprites.js` `TERRAIN_SPRITES`, a rule in
+`data.js` `TERRAIN_RULES`, and an entry appended to `map.js` `ME_TERRAIN_IDS` (the
+index is its grid id). Custom 3D landmarks are `state.monuments` entries whose `kind`
+maps to an `_hz*` builder in three-renderer.js `_monBuilders()`; kinds absent from
+`_MON_COLLISION` (map.js ~1879) are purely decorative (no tile blocking).
+The June-2026 map set (Moon/Heaven/Backrooms) + the `flag/rover/goldgate/lightpillar/
+fluorescent` monument builders + the `moon/carpet/gold/metal/leaves` terrains are the
+worked example. Tree tops/canopies are textured from `leaves.png` (three-renderer
+`_getTreeForestTex` + `_FOLIAGE_LEAF_TEX_FOR_KEY`).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

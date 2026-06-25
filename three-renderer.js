@@ -2083,7 +2083,9 @@ const ThreeRenderer = (function () {
     }
     function _getTreeForestTex() {
         if (_treeForestTex) return _treeForestTex;
-        _treeForestTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/forest.png');
+        /* Tree canopies/tops are textured with the dedicated leaves.png sprite
+           (was forest.png — the old grass/forest tile). */
+        _treeForestTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/leaves.png');
         if (_treeForestTex) {
             _treeForestTex.wrapS = THREE.RepeatWrapping;
             _treeForestTex.wrapT = THREE.RepeatWrapping;
@@ -2220,16 +2222,17 @@ const ThreeRenderer = (function () {
     };
     /* Pixel sprite wrapped on the trunk/branches (Bark material group). */
     var _FOLIAGE_BARK_TEX = 'wood.png';
-    /* Pixel sprite wrapped on the canopy (Tree_Leaves group), per key so the
-       forest varies. Swap freely between forest_2 / grass_2 / purple_grass.
+    /* Pixel sprite wrapped on the canopy (Tree_Leaves group). All tree tops now
+       use the dedicated leaves.png sprite instead of the old grass/forest tiles
+       (forest_2 / grass_2 / purple_grass).
        (tree_5/tree_6 are bare DeadTree models — they have no leaf group.) */
     var _FOLIAGE_LEAF_TEX_FOR_KEY = {
-        tree:   'forest_2.png',
-        tree_2: 'grass_2.png',
-        tree_3: 'forest_2.png',
-        tree_4: 'purple_grass.png',
-        tree_5: 'forest_2.png',
-        tree_6: 'forest_2.png'
+        tree:   'leaves.png',
+        tree_2: 'leaves.png',
+        tree_3: 'leaves.png',
+        tree_4: 'leaves.png',
+        tree_5: 'leaves.png',
+        tree_6: 'leaves.png'
     };
     /* How many times each sprite tiles across the model's UVs (the OBJ UVs span
        ~0..2.3, so this multiplies on top). Higher = smaller, denser pixels that
@@ -2721,7 +2724,9 @@ const ThreeRenderer = (function () {
             ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
             greek: _hzGreekRuin, mountain: _hzMountain, crystal: _hzCrystalShards,
-            rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland
+            rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
+            flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
+            lightpillar: _hzLightPillar, fluorescent: _hzFluorescent
         };
         return _MON_BUILDERS;
     }
@@ -8405,6 +8410,135 @@ const ThreeRenderer = (function () {
             orb.position.set(Math.cos(a) * rad, (rng() - 0.5) * ts * 3.0, Math.sin(a) * rad);
             g.add(orb);
         }
+        return g;
+    }
+
+    // ── Custom on-board monument props (Moon / Heaven / Backrooms map set) ───
+    // Built from the same _hz* helpers as the esoteric landmarks so they grade
+    // with day/night and keep terrain pixel density. Registered in _monBuilders
+    // and driven by state.monuments = [{kind,x,y,foot,maxH,seed}]. None of these
+    // kinds appear in _MON_COLLISION, so they are purely decorative (no tile
+    // blocking) — tactical cover on these maps comes from terrain height.
+
+    // Planted Stars-and-Stripes — a rigid (airless-moon) flag on a metal pole.
+    function _hzFlag(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var poleH = ts * 4.2, poleR = ts * 0.07;
+        var pole = _hzCyl(poleR, poleR, poleH, 8, ts, _hzGeoMat(_hzTex('metal'), 0xc9cdd6));
+        pole.position.y = poleH * 0.5; g.add(pole);
+        var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 8, 6), _hzGeoMat(_hzTex('gold'), 0xffd873));
+        knob.position.y = poleH + ts * 0.05; g.add(knob);
+        var fw = ts * 2.3, fh = ts * 1.35, stripes = 7, sh = fh / stripes;
+        var flag = new THREE.Group();
+        for (var i = 0; i < stripes; i++) {
+            var col = (i % 2 === 0) ? 0xc0312b : 0xf2f2f2;      // red / white
+            var strip = _hzBox(fw, sh, ts * 0.04, ts, _hzGeoMat(null, col));
+            strip.position.set(fw * 0.5, fh - sh * (i + 0.5), 0);
+            flag.add(strip);
+        }
+        var ch = sh * 4, cw = fw * 0.42;                        // blue canton
+        var canton = _hzBox(cw, ch, ts * 0.05, ts, _hzGeoMat(null, 0x2a3b7a));
+        canton.position.set(cw * 0.5, fh - ch * 0.5, ts * 0.012);
+        flag.add(canton);
+        flag.position.set(poleR, poleH - fh, 0);
+        flag.rotation.y = -0.12;                                // a slight curl
+        g.add(flag);
+        return g;
+    }
+
+    // Lunar roving vehicle — gold-foil chassis, dish antenna, twin seats, 4 wheels.
+    function _hzRover(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var foil = function () { return _hzGeoMat(_hzTex('gold'), 0xd9b24a); };
+        var dark = function () { return _hzGeoMat(_hzTex('metal'), 0x3a3d44); };
+        var bodyW = ts * 1.9, bodyH = ts * 0.3, bodyD = ts * 1.0, wheelR = ts * 0.26;
+        var chassis = _hzBox(bodyW, bodyH, bodyD, ts, foil());
+        chassis.position.y = wheelR + bodyH * 0.5; g.add(chassis);
+        for (var s = 0; s < 2; s++) {
+            var seat = _hzBox(ts * 0.5, ts * 0.4, ts * 0.55, ts, dark());
+            seat.position.set(-bodyW * 0.16 + s * ts * 0.6, wheelR + bodyH + ts * 0.2, 0); g.add(seat);
+            var back = _hzBox(ts * 0.5, ts * 0.45, ts * 0.08, ts, dark());
+            back.position.set(-bodyW * 0.16 + s * ts * 0.6, wheelR + bodyH + ts * 0.42, -bodyD * 0.22); g.add(back);
+        }
+        var wx = bodyW * 0.42, wz = bodyD * 0.42;
+        [[-wx, -wz], [wx, -wz], [-wx, wz], [wx, wz]].forEach(function (p) {
+            var wheel = _hzCyl(wheelR, wheelR, ts * 0.28, 12, ts, dark());
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(p[0], wheelR, p[1]); g.add(wheel);
+        });
+        var mast = _hzCyl(ts * 0.03, ts * 0.03, ts * 1.1, 6, ts, dark());
+        mast.position.set(-bodyW * 0.4, wheelR + bodyH + ts * 0.55, bodyD * 0.3); g.add(mast);
+        var dishGeo = new THREE.SphereGeometry(ts * 0.45, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('metal'), 0xe8e8ee));
+        dish.scale.set(1, 0.35, 1);
+        dish.position.set(-bodyW * 0.4, wheelR + bodyH + ts * 1.05, bodyD * 0.3);
+        dish.rotation.x = -0.5; g.add(dish);
+        return g;
+    }
+
+    // The Golden Gates — two fluted gold pillars under an ornate lintel, a
+    // luminous veil filling the threshold and a crowning glow.
+    function _hzGoldGate(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var goldTex = _hzTex('gold');
+        var base = 0xe9c25a;
+        var h = ts * (7 + rng() * 2);
+        var pw = ts * 1.0, gap = ts * 3.0;
+        [-1, 1].forEach(function (sgn) {
+            var pillar = _hzCyl(pw * 0.42, pw * 0.5, h, 14, ts, _hzGeoMat(goldTex, base));
+            pillar.position.set(sgn * gap * 0.5, h * 0.5, 0); g.add(pillar);
+            var cap = _hzBox(pw * 1.3, pw * 0.5, pw * 1.3, ts, _hzGeoMat(goldTex, 0xf3d885));
+            cap.position.set(sgn * gap * 0.5, h + pw * 0.2, 0); g.add(cap);
+            var finial = new THREE.Mesh(new THREE.SphereGeometry(pw * 0.3, 10, 8), _hzGeoMat(goldTex, 0xffe9a0));
+            finial.position.set(sgn * gap * 0.5, h + pw * 0.55, 0); g.add(finial);
+        });
+        var lintel = _hzBox(gap + pw * 2.0, pw * 0.9, pw * 1.1, ts, _hzGeoMat(goldTex, 0xf0d27a));
+        lintel.position.y = h + pw * 0.05; g.add(lintel);
+        var veilMat = _hzGlowMat(0xfff3c8, 0.20);
+        var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.94), veilMat);
+        veil.position.set(0, h * 0.5, 0); g.add(veil);
+        _hzPulse(veilMat, veil, 0.10, 0.02, 0.25 + rng() * 0.3);
+        var crown = _hzGlowCore(ts * 0.7, 0xffe9a8, 0xffcf66);
+        crown.position.y = h + pw * 0.9; g.add(crown);
+        return g;
+    }
+
+    // A pillar of holy light rising into the sky from a dais.
+    function _hzLightPillar(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var h = ts * (16 + rng() * 8), r = ts * (0.7 + rng() * 0.4);
+        var beamMat = _hzGlowMat(0xfff6d6, 0.16);
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r, h, 16, 1, true), beamMat);
+        beam.position.y = h * 0.5; g.add(beam);
+        _hzPulse(beamMat, null, 0.06, 0, 0.2 + rng() * 0.3);
+        var coreMat = _hzGlowMat(0xffffff, 0.30);
+        var core = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.18, r * 0.32, h, 12, 1, true), coreMat);
+        core.position.y = h * 0.5; g.add(core);
+        _hzPulse(coreMat, null, 0.12, 0, 0.3 + rng() * 0.4);
+        var pool = _hzGlowCore(r * 1.6, 0xfff0c0, 0xffd870);
+        pool.position.y = ts * 0.2; g.add(pool);
+        return g;
+    }
+
+    // Backrooms hanging fluorescent — a buzzing light panel on a ceiling conduit.
+    function _hzFluorescent(rng) {
+        var ts = CONFIG.tileSize || 128;
+        var g = new THREE.Group();
+        var conduitH = ts * 2.6;
+        var stem = _hzCyl(ts * 0.04, ts * 0.04, conduitH, 6, ts, _hzGeoMat(_hzTex('metal'), 0x6a6d74));
+        stem.position.y = conduitH * 0.5; g.add(stem);
+        var housing = _hzBox(ts * 1.3, ts * 0.12, ts * 0.42, ts, _hzGeoMat(_hzTex('metal'), 0xc4c7cf));
+        housing.position.y = conduitH; g.add(housing);
+        var panelMat = _hzGlowMat(0xfdfbe6, 0.8);
+        var panel = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15, ts * 0.34), panelMat);
+        panel.rotation.x = Math.PI / 2; panel.position.y = conduitH - ts * 0.07; g.add(panel);
+        _hzPulse(panelMat, null, 0.2, 0, 1.3 + rng() * 1.8);     // sickly flicker/hum
+        var glow = _hzGlowCore(ts * 0.6, 0xf8f4d0, 0xeae6b0);
+        glow.position.y = conduitH - ts * 0.2; g.add(glow);
         return g;
     }
 

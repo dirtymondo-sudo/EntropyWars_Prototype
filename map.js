@@ -1051,6 +1051,9 @@
             { modeId: 'prebuilt_village_siege', name: 'Village Siege', size: '16×12', team: 6, floors: false, w: 16, h: 12, isPrebuilt: true },
             { modeId: 'prebuilt_canyon', name: 'Canyon', size: '18×10', team: 6, floors: false, w: 18, h: 10, isPrebuilt: true },
             { modeId: 'prebuilt_divided_city', name: 'Divided City', size: '20×14', team: 8, floors: false, w: 20, h: 14, isPrebuilt: true },
+            { modeId: 'prebuilt_moon', name: 'Moon', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
+            { modeId: 'prebuilt_heaven', name: 'Heaven', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
+            { modeId: 'prebuilt_backrooms', name: 'Backrooms', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
         ];
 
         let _msSelectedGM = 0;
@@ -5729,6 +5732,11 @@
             'grass_rocky',
             'purple_bog',
             'urban_street',
+            'moon',
+            'carpet',
+            'gold',
+            'metal',
+            'leaves',
         ];
 
         const ME_TERRAIN_TO_ID = {};
