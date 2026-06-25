@@ -1564,6 +1564,13 @@ const ThreeRenderer = (function () {
                 var tKey, ht, col;
 
                 col = state.boardColumns[y] && state.boardColumns[y][x];
+                /* Monument tiles carry invisible climb/collision voxels (gameplay
+                   reads the full column); render only up to the ground floor so the
+                   smooth _hz* mesh is the visual, not a stack of blocky cubes. */
+                if (col && col.length && state._monumentTiles) {
+                    var _mcap = state._monumentTiles.get(x + ',' + y);
+                    if (_mcap !== undefined) col = col.filter(function (b) { return b.z <= _mcap; });
+                }
                 if (col && col.length) {
                     tKey = col[col.length - 1].terrain || 'grass';
                     ht = col[col.length - 1].z;
@@ -2710,7 +2717,8 @@ const ThreeRenderer = (function () {
     var _MON_BUILDERS = null;
     function _monBuilders() {
         if (!_MON_BUILDERS) _MON_BUILDERS = {
-            pyramid: _hzPyramid, ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
+            pyramid: _hzModelPyramid, pyramid_cone: _hzPyramid,
+            ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
             greek: _hzGreekRuin, mountain: _hzMountain, crystal: _hzCrystalShards,
             rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland
@@ -2744,11 +2752,18 @@ const ThreeRenderer = (function () {
         g.scale.set(s, s, s);
         g.updateMatrixWorld(true);
         box = new THREE.Box3().setFromObject(g);
-        /* Sit on the tile's ground surface (maps have a z>=3 floor, so y!=0). */
+        /* Sit on the tile's GROUND floor (maps have a z>=3 floor). Use the recorded
+           monument floor, not getHeightAt — the latter now returns the stamped
+           collision peak (e.g. a pyramid centre), which would float the mesh up. */
         var surfaceY = 0;
         try {
-            if (typeof _tileSurfaceY === 'function') surfaceY = _tileSurfaceY(mon.x, mon.y);
-            else if (typeof getHeightAt === 'function') surfaceY = (getHeightAt(mon.x, mon.y) || 0) * ts * ELEV_STEP_RATIO;
+            var floorZ;
+            if (state._monumentTiles && state._monumentTiles.has(mon.x + ',' + mon.y)) {
+                floorZ = state._monumentTiles.get(mon.x + ',' + mon.y);
+            } else if (typeof getHeightAt === 'function') {
+                floorZ = getHeightAt(mon.x, mon.y) || 0;
+            } else floorZ = 0;
+            surfaceY = floorZ * ts * ELEV_STEP_RATIO;
         } catch (e) { surfaceY = 0; }
         g.position.set(mon.x * ts + ts / 2, surfaceY - box.min.y, mon.y * ts + ts / 2);
         g._ew_monument = true;

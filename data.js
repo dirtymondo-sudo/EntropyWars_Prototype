@@ -7694,7 +7694,7 @@ const PREBUILT_MAPS = {
             { kind: 'greek',    x: 4,  y: 11, foot: 7, maxH: 5, seed: 4 },
             { kind: 'arch',     x: 10, y: 10, foot: 5, maxH: 6, seed: 5 },
             { kind: 'obelisk',  x: 8,  y: 8,  foot: 2, maxH: 8, seed: 9 },
-            { kind: 'stairway', x: 8,  y: 1,  foot: 4, maxH: 5, seed: 2 },
+            { kind: 'stairway', x: 8,  y: 2,  foot: 6, maxH: 8, seed: 2 },
             { kind: 'colossus', x: 13, y: 8,  foot: 5, maxH: 3, seed: 6 }
         ],
         grid: [

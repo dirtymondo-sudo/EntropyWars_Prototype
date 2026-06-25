@@ -1865,6 +1865,65 @@
             }
         }
 
+        /* Stamp gameplay collision for on-board monuments into the voxel grid. The
+           smooth _hz* mesh is the visual; these voxels are the solid the engine
+           already understands — tall stacks block movement (MAX_CLIMB_HEIGHT) and
+           sight, stepped stacks are climbable. They are NOT drawn: rebuildTerrain
+           caps the rendered height to the recorded floor on these tiles, so no
+           blocky cubes show. Profiles add height ABOVE each tile's current floor:
+             pyramid/ziggurat → stepped rings (climbable, "scale" it)
+             stairway         → a rising flight of steps (climbable)
+             obelisk          → a tall thin solid (impassable, blocks sight)
+             colossus         → a low platform you can clamber onto
+           greek & arch are left passable (visual-only) for now. */
+        const _MON_COLLISION = {
+            pyramid:  (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
+            ziggurat: (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
+            stairway: (dx, dy, rr) => dy + rr,
+            obelisk:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
+            colossus: (dx, dy, rr) => 1
+        };
+        function _stampMonumentCollision() {
+            state._monumentTiles = null;
+            try {
+                if (!state.monuments || !state.monuments.length || !state.boardVoxels?.length) return;
+                const W = bw(), H = bh();
+                const tiles = new Map();
+                const curTop = (x, y) => {
+                    const c = state.boardVoxels?.[y]?.[x];
+                    if (!c || !c.length) return 0;
+                    let m = 0; for (const b of c) if (b.z > m) m = b.z;
+                    return m;
+                };
+                for (const mon of state.monuments) {
+                    const prof = _MON_COLLISION[mon.kind];
+                    if (!prof || mon.solid === false) continue;
+                    const F = Math.max(1, mon.foot || 3);
+                    const rr = Math.floor(F / 2);
+                    const cap = (typeof mon.maxH === 'number') ? mon.maxH : 99;
+                    for (let dy = -rr; dy <= rr; dy++) {
+                        for (let dx = -rr; dx <= rr; dx++) {
+                            const x = mon.x + dx, y = mon.y + dy;
+                            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                            let addH = prof(dx, dy, rr) | 0;
+                            if (addH <= 0) continue;
+                            if (addH > cap) addH = cap;
+                            const floor = curTop(x, y);
+                            const colV = state.boardVoxels[y][x] || (state.boardVoxels[y][x] = []);
+                            const have = new Set(colV.map(b => b.z));
+                            for (let z = floor + 1; z <= floor + addH; z++) {
+                                if (!have.has(z)) colV.push({ z, terrain: 'grass' });
+                            }
+                            const key = x + ',' + y;
+                            const prev = tiles.get(key);
+                            tiles.set(key, (prev === undefined) ? floor : Math.min(prev, floor));
+                        }
+                    }
+                }
+                state._monumentTiles = tiles.size ? tiles : null;
+            } catch (e) { state._monumentTiles = null; }
+        }
+
         function ensureUnitZCoords() {
             for (const unit of state.units) {
                 if (unit.dead) continue;
@@ -3024,6 +3083,9 @@
                     fillVoxelsDown();
                     state._voxelVersion = (state._voxelVersion || 0) + 1;
                 }
+
+                /* Stamp monument collision into the voxel grid before columns build */
+                _stampMonumentCollision();
 
                 _initTowersFromObjects();
                 _initNexusFromObjects();
