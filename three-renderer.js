@@ -2700,6 +2700,55 @@ const ThreeRenderer = (function () {
         _lastTerrainDecoSerial = _computeTerrainDecoSerial();
     }
 
+    /* ── On-board MONUMENTS ───────────────────────────────────────────────
+       Reuse the existing esoteric-background geometry (_hz* builders) as real
+       on-map landmarks instead of authoring any new art. We just adjust them to
+       be board-compatible: drive the builder with a deterministic seed (stable
+       per placement), force it upright (drop the baked-in random tilt/sink),
+       scale it to a tile footprint, and sit it on the ground at a board tile.
+       Map data supplies state.monuments = [{kind,x,y,foot,maxH,seed}]. */
+    var _MON_BUILDERS = null;
+    function _monBuilders() {
+        if (!_MON_BUILDERS) _MON_BUILDERS = {
+            pyramid: _hzPyramid, ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
+            obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
+            greek: _hzGreekRuin, mountain: _hzMountain, crystal: _hzCrystalShards,
+            rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland
+        };
+        return _MON_BUILDERS;
+    }
+    function _monRng(seed) {
+        var s = (seed | 0) || 1;
+        return function () {
+            s = s + 0x6D2B79F5 | 0;
+            var t = Math.imul(s ^ s >>> 15, 1 | s);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+    function _buildMonumentObj(mon) {
+        if (!mon || typeof THREE === 'undefined') return null;
+        var fn = _monBuilders()[mon.kind];
+        if (!fn) return null;
+        var ts = CONFIG.tileSize || 128;
+        var g;
+        try { g = fn(_monRng(mon.seed || 1)); } catch (e) { return null; }
+        if (!g) return null;
+        g.rotation.set(0, 0, 0);                 // force upright (drop baked ruin tilt)
+        g.position.set(0, 0, 0);
+        g.updateMatrixWorld(true);
+        var box = new THREE.Box3().setFromObject(g);
+        var size = new THREE.Vector3(); box.getSize(size);
+        var s = ((mon.foot || 3) * ts) / Math.max(size.x, size.z, 1);   // fit footprint
+        if (mon.maxH) { var sH = (mon.maxH * ts) / Math.max(size.y, 1); if (sH < s) s = sH; }
+        g.scale.set(s, s, s);
+        g.updateMatrixWorld(true);
+        box = new THREE.Box3().setFromObject(g);
+        g.position.set(mon.x * ts + ts / 2, -box.min.y, mon.y * ts + ts / 2);   // sit on ground
+        g._ew_monument = true;
+        return g;
+    }
+
     function rebuildObjects() {
         if (!objectGroup) return;
         var rem = []; for (var i = 0; i < objectGroup.children.length; i++) { var ch = objectGroup.children[i]; if (!ch._ew_turretId && ch !== _terrainDecoGroup) rem.push(ch); }
@@ -2736,6 +2785,15 @@ const ThreeRenderer = (function () {
             else                              m = _buildBillboard(ok, x, y);
             if (m) { objectGroup.add(m); objectMeshes.set(x+','+y, m); }
         }}
+
+        /* On-board monuments (reused esoteric geometry) — cleared & rebuilt with
+           the rest of objectGroup each pass (they carry no _ew_turretId). */
+        if (state.monuments && state.monuments.length) {
+            for (var monI = 0; monI < state.monuments.length; monI++) {
+                var monMesh = _buildMonumentObj(state.monuments[monI]);
+                if (monMesh) objectGroup.add(monMesh);
+            }
+        }
 
         /* Build tower cubes from live state.towers — these float above their tile */
         if (state.towers) {

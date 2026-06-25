@@ -1752,6 +1752,7 @@
         function buildColumnsFromLegacy() {
             const h = bh(), w = bw();
             state._hollowVoxels = false;   // legacy/procedural maps are always solid
+            state.monuments = null;        // clear any monuments from a prior map load
             state.boardColumns = [];
             state.boardVoxels = [];
             for (let y = 0; y < h; y++) {
@@ -2930,6 +2931,8 @@
                 /* Opt this map into hollow voxel columns (preserve authored gaps
                    for walk-under arches / overhangs). Default: solid. */
                 state._hollowVoxels = !!_pb.hollowVoxels;
+                /* On-board monuments (reused esoteric 3D geometry). */
+                state.monuments = Array.isArray(_pb.monuments) ? _pb.monuments : null;
                 if (_pb.heightMap) {
 
                     for (let _hy = 0; _hy < h; _hy++) {

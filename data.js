@@ -7689,6 +7689,16 @@ const PREBUILT_MAPS = {
         // square brick pyramid, a stair-to-nowhere, and a hollow gateway arch
         // you climb (via the stair) onto and fall off of.
         hollowVoxels: true,
+        // Real esoteric-background geometry reused as on-board landmarks (visual
+        // pass for sizing review; collision/walkable wiring comes next). kind ->
+        // _hz* builder; foot = footprint width in tiles; maxH caps height in tiles.
+        monuments: [
+            { kind: 'pyramid',  x: 3,  y: 13, foot: 3, maxH: 4, seed: 7 },
+            { kind: 'ziggurat', x: 7,  y: 13, foot: 3, maxH: 4, seed: 3 },
+            { kind: 'arch',     x: 11, y: 13, foot: 3, maxH: 4, seed: 5 },
+            { kind: 'obelisk',  x: 5,  y: 14, foot: 1, maxH: 5, seed: 9 },
+            { kind: 'stairway', x: 9,  y: 14, foot: 3, maxH: 4, seed: 2 }
+        ],
         grid: [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
             [1,1,5,5,5,5,5,5,1,1,1,1,1,1,1,1],
