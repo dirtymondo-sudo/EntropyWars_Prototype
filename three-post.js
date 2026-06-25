@@ -356,6 +356,76 @@ const ThreePost = (function () {
         }
     }
 
+    // ── Street lamp lights (Entropy Vale) ───────────────────────────────
+    // Warm flickering point-lights crowning the street lamps that line the
+    // battlefield — same authored behaviour as the ward/lava lights: dim by day,
+    // bright at night, with an additive glow plane and a subtle flame flicker.
+    var _streetLampLights = [];
+    var _streetLampGroup = null;
+
+    var LAMP_LIGHT_COLOR_DAY   = 0xffcf8a;
+    var LAMP_LIGHT_COLOR_NIGHT = 0xffb84d;
+    var LAMP_LIGHT_INTENSITY_DAY   = 0.35;
+    var LAMP_LIGHT_INTENSITY_NIGHT = 1.6;
+    var LAMP_LIGHT_DISTANCE   = 420;
+    var LAMP_LIGHT_DECAY      = 1.5;
+
+    // heads: [{ wx, wy, wz }] world positions of each lantern. Point-lights only —
+    // the visible bloom halo is the renderer's _hzGlowCore sprite at each head
+    // (this mirrors the lava lights, which likewise contribute light, not glow).
+    function rebuildStreetLampLights(heads, tileSize) {
+        if (!_scene) return;
+
+        if (!_streetLampGroup) {
+            _streetLampGroup = new THREE.Group();
+            _streetLampGroup.name = 'streetLampLights';
+            _scene.add(_streetLampGroup);
+        }
+
+        for (var i = 0; i < _streetLampLights.length; i++) {
+            var entry = _streetLampLights[i];
+            _streetLampGroup.remove(entry.light);
+            if (entry.light.dispose) entry.light.dispose();
+        }
+        _streetLampLights = [];
+
+        if (!heads || !heads.length) return;
+
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var isNight = (cycle === 'night');
+        var lightColor = isNight ? LAMP_LIGHT_COLOR_NIGHT : LAMP_LIGHT_COLOR_DAY;
+        var lightIntensity = isNight ? LAMP_LIGHT_INTENSITY_NIGHT : LAMP_LIGHT_INTENSITY_DAY;
+
+        for (var i = 0; i < heads.length; i++) {
+            var hd = heads[i];
+
+            var pl = new THREE.PointLight(lightColor, lightIntensity, LAMP_LIGHT_DISTANCE, LAMP_LIGHT_DECAY);
+            pl.position.set(hd.wx, hd.wy, hd.wz);
+            pl._ew_lampLight = true;
+            _streetLampGroup.add(pl);
+
+            _streetLampLights.push({ light: pl });
+        }
+    }
+
+    function _updateStreetLampLights() {
+        if (_streetLampLights.length === 0) return;
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var isNight = (cycle === 'night');
+        var baseIntensity = isNight ? LAMP_LIGHT_INTENSITY_NIGHT : LAMP_LIGHT_INTENSITY_DAY;
+        var now = performance.now() * 0.001;
+
+        for (var i = 0; i < _streetLampLights.length; i++) {
+            var entry = _streetLampLights[i];
+            var flicker = 1.0
+                + 0.06 * Math.sin(now * 5.7 + i * 1.9)
+                + 0.04 * Math.sin(now * 11.3 + i * 3.7)
+                + 0.02 * Math.sin(now * 1.9 + i * 4.4);
+            entry.light.intensity = baseIntensity * flicker;
+            entry.light.color.set(isNight ? LAMP_LIGHT_COLOR_NIGHT : LAMP_LIGHT_COLOR_DAY);
+        }
+    }
+
     var _lavaLights = [];
     var _lavaLightGroup = null;
     var MAX_LAVA_LIGHTS = 4;
@@ -612,6 +682,7 @@ const ThreePost = (function () {
 
         syncLighting();
         _updateWardLights();
+        _updateStreetLampLights();
         _updateLavaLights();
         _updateUnitLights();
 
@@ -746,6 +817,15 @@ const ThreePost = (function () {
             _unitLightGroup = null;
         }
 
+        if (_streetLampGroup) {
+            for (var i = 0; i < _streetLampLights.length; i++) {
+                if (_streetLampLights[i].light && _streetLampLights[i].light.dispose) _streetLampLights[i].light.dispose();
+            }
+            _streetLampLights = [];
+            if (_scene && _streetLampGroup.parent) _scene.remove(_streetLampGroup);
+            _streetLampGroup = null;
+        }
+
         if (_sunLight && _scene) _scene.remove(_sunLight);
         if (_hemiLight && _scene) _scene.remove(_hemiLight);
         if (_ambientLight && _scene) _scene.remove(_ambientLight);
@@ -801,6 +881,7 @@ const ThreePost = (function () {
         rebuildWardLights: rebuildWardLights,
         rebuildUnitLights: rebuildUnitLights,
         rebuildLavaLights: rebuildLavaLights,
+        rebuildStreetLampLights: rebuildStreetLampLights,
         setCinematicFilter: setCinematicFilter,
         isCinematicFilterEnabled: isCinematicFilterEnabled,
         setCinematicParam: setCinematicParam,
