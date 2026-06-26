@@ -6454,13 +6454,13 @@
                 .me-editor-hud::-webkit-scrollbar-track { background: transparent; }
 
                 .me-help-bar {
-                    font-size: 10px;
-                    line-height: 1.5;
-                    color: rgba(220,220,255,0.65);
+                    font-size: 9.5px;
+                    line-height: 1.35;
+                    color: rgba(220,220,255,0.6);
                     background: rgba(124,77,255,0.10);
                     border: 1px solid rgba(124,77,255,0.22);
                     border-radius: 7px;
-                    padding: 6px 9px;
+                    padding: 4px 9px;
                     text-align: center;
                 }
 
@@ -6468,12 +6468,12 @@
                     background: rgba(18,16,28,0.55);
                     border: 1px solid rgba(255,255,255,0.07);
                     border-radius: 9px;
-                    padding: 9px 9px 10px;
+                    padding: 8px 9px;
                     display: flex;
                     flex-direction: column;
-                    gap: 7px;
+                    gap: 6px;
                 }
-                .me-section-palette { flex: 1 1 auto; min-height: 300px; }
+                .me-section-palette { flex: 1 1 auto; min-height: 340px; }
 
                 /* Clickable collapsible header for each panel. */
                 .me-editor-hud .me-section-label {
@@ -6508,15 +6508,15 @@
                 .me-editor-hud .me-section-body {
                     display: flex;
                     flex-direction: column;
-                    gap: 7px;
+                    gap: 6px;
                 }
                 .me-editor-hud .me-section-palette .me-section-body { flex: 1 1 auto; min-height: 0; }
 
-                .me-editor-hud .me-tool-row { display: flex; flex-wrap: wrap; gap: 6px; }
+                .me-editor-hud .me-tool-row { display: flex; flex-wrap: wrap; gap: 5px; }
                 .me-editor-hud .me-tool {
                     flex: 1 1 auto;
                     min-width: 70px;
-                    padding: 8px 6px;
+                    padding: 7px 6px;
                     font-size: 12px;
                     border-radius: 7px;
                     border: 1px solid rgba(255,255,255,0.10);
@@ -6587,8 +6587,8 @@
                     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
                     gap: 6px;
                     align-content: start;
-                    min-height: 240px;
-                    max-height: calc(100vh - 210px);
+                    min-height: 0;
+                    max-height: none;
                     overflow-y: auto;
                     padding: 8px;
                     background: rgba(10,8,18,0.6);
@@ -6678,36 +6678,63 @@
                 }
                 .me-editor-hud .me-tint-swatch:hover { transform: scale(1.12); border-color: #fff; }
 
-                .me-editor-hud .me-hud-actions { display: flex; flex-wrap: wrap; gap: 5px; }
-                .me-editor-hud .me-hud-actions .me-btn { flex: 1 1 auto; }
+                /* Generic pill button (Save, etc.) */
                 .me-editor-hud .me-btn {
-                    padding: 8px 10px; font-size: 12px; border-radius: 7px; cursor: pointer;
+                    padding: 8px 12px; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer;
+                    display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
                     border: 1px solid rgba(255,255,255,0.12); background: rgba(46,40,66,0.9); color: #eee;
-                    transition: background 0.12s, border-color 0.12s;
+                    transition: background 0.12s, border-color 0.12s, transform 0.05s;
                 }
                 .me-editor-hud .me-btn:hover:not([disabled]) { background: rgba(86,72,130,0.95); border-color: rgba(160,140,255,0.5); }
+                .me-editor-hud .me-btn:active:not([disabled]) { transform: translateY(1px); }
                 .me-editor-hud .me-btn[disabled] { cursor: default; }
-                .me-editor-hud .me-btn-danger { background: rgba(150,40,40,0.85); border-color: rgba(255,120,120,0.4); }
+                .me-editor-hud .me-btn-danger { background: rgba(150,40,40,0.85); border-color: rgba(255,120,120,0.4); color: #fff; }
                 .me-editor-hud .me-btn-danger:hover { background: rgba(190,50,50,0.95); }
+                .me-editor-hud .me-btn-icon { flex: 0 0 auto; width: 40px; padding: 0; font-size: 14px; }
                 .me-editor-hud .me-btn-play {
-                    background: linear-gradient(180deg,#3ad17a,#1f9e54); border-color: #8df0b6; color:#062; font-weight: 800;
+                    flex: 0 0 auto; padding: 8px 16px;
+                    background: linear-gradient(180deg,#3ad17a,#1f9e54); border-color: #8df0b6; color:#04341c; font-weight: 800;
+                    box-shadow: 0 2px 10px rgba(31,158,84,0.35);
                 }
                 .me-editor-hud .me-btn-play:hover { background: linear-gradient(180deg,#46e588,#27b863); }
 
-                .me-editor-hud .me-hud-bottom { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+                /* ── Top action toolbar — uniform, evenly-sized buttons, single row ── */
+                .me-editor-hud .me-toolbar { display: flex; gap: 5px; align-items: stretch; flex-wrap: nowrap; }
+                .me-editor-hud .me-tbtn {
+                    flex: 1 1 0; min-width: 0; height: 38px; padding: 0 4px;
+                    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+                    font-size: 9.5px; font-weight: 600; line-height: 1.1; white-space: nowrap;
+                    border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+                    background: rgba(46,40,66,0.9); color: #e9e6f6; cursor: pointer;
+                    transition: background 0.12s, border-color 0.12s, transform 0.05s;
+                }
+                .me-editor-hud .me-tbtn .ico { font-size: 14px; line-height: 1; }
+                .me-editor-hud .me-tbtn:hover:not([disabled]) { background: rgba(86,72,130,0.95); border-color: rgba(160,140,255,0.5); }
+                .me-editor-hud .me-tbtn:active:not([disabled]) { transform: translateY(1px); }
+                .me-editor-hud .me-tbtn[disabled] { opacity: 0.38; cursor: default; }
+                .me-editor-hud .me-tbar-sep { flex: 0 0 1px; align-self: center; width: 1px; height: 24px; background: rgba(255,255,255,0.12); }
+
+                /* ── File row (name / save / load / delete) — single row ── */
+                .me-editor-hud .me-filebar { display: flex; gap: 6px; align-items: stretch; flex-wrap: nowrap; }
                 .me-editor-hud .me-name-input {
-                    flex: 1 1 120px; min-width: 100px; padding: 8px 10px; border-radius: 7px;
+                    flex: 1 1 0; min-width: 0; padding: 8px 10px; border-radius: 8px;
                     border: 1px solid rgba(255,255,255,0.14); background: rgba(12,10,20,0.8); color: #fff; font-size: 12px;
                 }
+                .me-editor-hud .me-name-input:focus { outline: none; border-color: rgba(160,140,255,0.8); }
                 .me-editor-hud .me-load-select {
-                    flex: 1 1 110px; padding: 7px 8px; border-radius: 7px;
+                    flex: 1 1 0; min-width: 0; padding: 7px 8px; border-radius: 8px;
                     border: 1px solid rgba(255,255,255,0.14); background: rgba(30,26,44,0.9); color: #fff; font-size: 11px;
                 }
+                .me-editor-hud .me-filebar .me-btn { flex: 0 0 auto; }
+
+                /* ── Header ── */
                 .me-editor-hud .me-hud-header { display: flex; align-items: center; gap: 8px; }
-                .me-editor-hud .me-hud-title { font-weight: 800; letter-spacing: 0.04em; }
+                .me-editor-hud .me-hud-title { font-weight: 800; letter-spacing: 0.04em; font-size: 14px; }
+                .me-editor-hud .me-hud-spacer { flex: 1 1 auto; }
                 .me-editor-hud .me-hud-back {
-                    padding: 6px 10px; border-radius: 7px; cursor: pointer;
-                    border: 1px solid rgba(255,255,255,0.14); background: rgba(46,40,66,0.9); color: #eee; font-size: 12px;
+                    flex: 0 0 auto; width: 34px; height: 34px; padding: 0; font-size: 16px; line-height: 1;
+                    border-radius: 8px; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(46,40,66,0.9); color: #eee;
                 }
                 .me-editor-hud .me-hud-back:hover { background: rgba(86,72,130,0.95); }
             `;
@@ -6729,14 +6756,37 @@
 
             hud.innerHTML = `
                 <div class="me-hud-header">
-                    <button class="me-hud-back" onclick="window._meBack()">← Back</button>
+                    <button class="me-hud-back" onclick="window._meBack()" title="Back">←</button>
                     <span class="me-hud-title">Map Editor</span>
+                    <span class="me-hud-spacer"></span>
+                    <button class="me-btn me-btn-play" onclick="window._mePlayTest()">▶ Play Test</button>
+                </div>
+
+                <div class="me-toolbar">
+                    <button class="me-tbtn" id="meUndoBtn" onclick="window._meUndo()" disabled style="opacity:0.38" title="Undo (Ctrl+Z)"><span class="ico">↩</span>Undo</button>
+                    <button class="me-tbtn" id="meRedoBtn" onclick="window._meRedo()" disabled style="opacity:0.38" title="Redo (Ctrl+Y)"><span class="ico">↪</span>Redo</button>
+                    <span class="me-tbar-sep"></span>
+                    <button class="me-tbtn" onclick="window._meClear()" title="Clear the whole board"><span class="ico">✕</span>Clear</button>
+                    <button class="me-tbtn" onclick="window._meFill()" title="Fill the board with the selected tile"><span class="ico">▩</span>Fill</button>
+                    <button class="me-tbtn" onclick="window._meRandomize()" title="Randomize the board"><span class="ico">🎲</span>Random</button>
+                    <span class="me-tbar-sep"></span>
+                    <button class="me-tbtn" onclick="window._meImport()" title="Import a map from text"><span class="ico">⬇</span>Import</button>
+                    <button class="me-tbtn" onclick="window._meExport()" title="Export this map to text"><span class="ico">⬆</span>Export</button>
+                </div>
+
+                <div class="me-filebar">
+                    <input type="text" class="me-name-input" id="meMapName" placeholder="Map name…" value="Custom Map" />
+                    <button class="me-btn" onclick="window._meSave()" title="Save this map">💾 Save</button>
+                    <select class="me-load-select" id="meLoadSelect" onchange="window._meLoadSelected()">
+                        <option value="">— Load saved —</option>
+                    </select>
+                    <button class="me-btn me-btn-danger me-btn-icon" onclick="window._meDeleteSaved()" title="Delete the selected saved map">🗑️</button>
                 </div>
 
                 <div class="me-help-bar">Click to place · drag to paint · right-click a tile for options · Ctrl+Z / Ctrl+Y</div>
 
-                <div class="me-section" id="meSec-size">
-                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-size')"><span class="me-sec-caret">▾</span> Canvas Size</button>
+                <div class="me-section collapsed" id="meSec-size">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-size')"><span class="me-sec-caret">▾</span> Canvas Size · <span id="meSizeSummary">${_meW}×${_meH}</span></button>
                     <div class="me-section-body">
                     <div class="me-hud-size-row">
                         <span class="me-label">W</span>
@@ -6770,7 +6820,7 @@
                     </div>
                 </div>
 
-                <div class="me-section" id="meSec-elev">
+                <div class="me-section collapsed" id="meSec-elev">
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-elev')"><span class="me-sec-caret">▾</span> Elevation</button>
                     <div class="me-section-body">
                     <div class="me-tool-row me-elev-row">
@@ -6803,26 +6853,6 @@
                     </div>
                     <div class="me-palette" id="mePalette"></div>
                     </div>
-                </div>
-
-                <div class="me-hud-actions">
-                    <button class="me-btn me-btn-sm" id="meUndoBtn" onclick="window._meUndo()" disabled style="opacity:0.4">↩ Undo</button>
-                    <button class="me-btn me-btn-sm" id="meRedoBtn" onclick="window._meRedo()" disabled style="opacity:0.4">↪ Redo</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meClear()">Clear</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meFill()">Fill</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meRandomize()">🎲 Random</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meExport()">⬆ Export</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meImport()">⬇ Import</button>
-                </div>
-
-                <div class="me-hud-bottom">
-                    <input type="text" class="me-name-input" id="meMapName" placeholder="Map name…" value="Custom Map" />
-                    <button class="me-btn" onclick="window._meSave()">💾 Save</button>
-                    <select class="me-load-select" id="meLoadSelect" onchange="window._meLoadSelected()">
-                        <option value="">— Load —</option>
-                    </select>
-                    <button class="me-btn me-btn-danger" onclick="window._meDeleteSaved()">🗑️</button>
-                    <button class="me-btn me-btn-play" onclick="window._mePlayTest()">▶ Play Test</button>
                 </div>
             `;
 
@@ -7827,6 +7857,8 @@
                 if (wv) wv.textContent = _meW;
                 const hv = document.getElementById('meHeightVal');
                 if (hv) hv.textContent = _meH;
+                const ss = document.getElementById('meSizeSummary');
+                if (ss) ss.textContent = _meW + '×' + _meH;
                 _meSyncToState();
                 if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                 if (typeof renderBoard === 'function') renderBoard();
