@@ -4095,6 +4095,7 @@ const ThreeRenderer = (function () {
                 '  left: 0; bottom: 0;',
                 '  transform: translateX(-50%);',
                 '  transform-origin: center bottom;',
+                '  transition: opacity 0.22s ease, filter 0.22s ease;',
                 '}',
 
                 '.tp-wrap .tp-name {',
@@ -4242,6 +4243,30 @@ const ThreeRenderer = (function () {
                 '  border-color: rgba(255,200,0,0.55) !important;',
                 '}',
 
+                /* ---- Visual hierarchy ----------------------------------------
+                   Nameplates float over every unit at once, so by default they
+                   compete for attention. Let the secondary ones recede and only
+                   bring a plate to full strength when it is directly relevant:
+                   the unit whose turn it is (tp-active), the one under the cursor
+                   (tp-hovered), or the current action's target (tp-targeted).
+                   Enemy plates sit back the furthest — the player only needs to
+                   read an enemy when they are about to act on it. */
+                '.tp-wrap.tp-enemy { opacity: 0.42; filter: saturate(0.8); }',
+                '.tp-wrap.tp-ally  { opacity: 0.8; }',
+                '.tp-wrap.tp-active, .tp-wrap.tp-hovered, .tp-wrap.tp-targeted {',
+                '  opacity: 1 !important; filter: none !important;',
+                '}',
+                /* Engaging an enemy (hover or target) pops its plate with a red
+                   accent so the player clearly sees what they are aiming at. */
+                '.tp-wrap.tp-enemy.tp-hovered .tp-body,',
+                '.tp-wrap.tp-enemy.tp-targeted .tp-body {',
+                '  border-color: rgba(255,90,90,0.9) !important;',
+                '  box-shadow: 0 0 11px rgba(255,60,60,0.5), 0 2px 8px rgba(0,0,0,0.8);',
+                '}',
+                '.tp-wrap.tp-targeted .tp-name {',
+                '  text-shadow: 0 0 9px rgba(255,120,120,0.8), 0 1px 3px #000;',
+                '}',
+
                 '.tp-eff-badge {',
                 '  position: absolute; top: -2px; right: -6px; width: 16px; height: 16px;',
                 '  border-radius: 50%; font-size: 11px; font-weight: 900;',
@@ -4294,6 +4319,9 @@ const ThreeRenderer = (function () {
 
         var wrap = document.createElement('div');
         var pCls = unit.player === 1 ? 'tp-p1' : 'tp-p2';
+        /* Ally/enemy is viewer-relative (a P2 viewer's own team is player 2), so
+           the visual-hierarchy dimming keys off this, not the raw p1/p2 side. */
+        pCls += _isAllyPlayer(unit.player) ? ' tp-ally' : ' tp-enemy';
 
         var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
         if (blitzUnit && blitzUnit.id === unit.id) pCls += ' tp-active';
@@ -5212,6 +5240,10 @@ const ThreeRenderer = (function () {
         }
         if (canvas) canvas.style.cursor = 'pointer';
 
+        /* Bring the hovered unit's nameplate to full strength (visual hierarchy). */
+        var hpo = _plateObjs.get(unitId);
+        if (hpo && hpo.el) hpo.el.classList.add('tp-hovered');
+
         var entry = unitEntries.get(unitId);
         if (!entry || !entry.group) return;
         var ts = CONFIG.tileSize || 128;
@@ -5225,6 +5257,10 @@ const ThreeRenderer = (function () {
         entry.group.add(_hoverGlowMesh);
     }
     function _clearUnitHover() {
+        if (_hoveredUnitId != null) {
+            var cpo = _plateObjs.get(_hoveredUnitId);
+            if (cpo && cpo.el) cpo.el.classList.remove('tp-hovered');
+        }
         if (_hoverGlowMesh) {
             if (_hoverGlowMesh.parent) _hoverGlowMesh.parent.remove(_hoverGlowMesh);
             _hoverGlowMesh.geometry.dispose();
