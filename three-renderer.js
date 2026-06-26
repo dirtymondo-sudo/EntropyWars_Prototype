@@ -7727,7 +7727,44 @@ const ThreeRenderer = (function () {
     // _horizonFogDirty flag, checked each frame.
     var _retroFogHorizon = false;
     var _horizonFogDirty = false;
-    var _retroFogColorLin = null;
+
+    // Inject a per-FRAGMENT mood fog into a scenery material. Mixing the final
+    // fragment (after texturing) is what actually dissolves textured bodies —
+    // lerping material.color only tints them, leaving the texture detail crisp,
+    // which is why they kept reading as clear. The band is computed from the
+    // fragment's world altitude (el = view-ray .y) with the SAME shape the dome
+    // shader uses, and it shares the dome's fog uniforms, so object haze and sky
+    // haze are pixel-for-pixel one continuous horizon. Gated by uHzFogAmt (0 when
+    // the filter is off), so injecting it is harmless to the default look and
+    // never needs removing. Additive self-lit glows are skipped so they shine on.
+    function _injectHorizonFog(mat) {
+        if (!mat || mat._ew_hzFogInjected) return;
+        if (!mat.color || mat.blending === THREE.AdditiveBlending || mat.isSpriteMaterial) return;
+        if (!_envUni) return;   // dome uniforms not ready yet — retry on the next dirty pass
+        mat._ew_hzFogInjected = true;
+        var _prevOBC = mat.onBeforeCompile;
+        mat.onBeforeCompile = function (shader) {
+            if (_prevOBC) _prevOBC(shader);
+            shader.uniforms.uHzFogColor = _envUni.uFogColor;
+            shader.uniforms.uHzFogTop   = _envUni.uFogTop;
+            shader.uniforms.uHzFogAmt   = _envUni.uFogAmount;
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;')
+                .replace('#include <project_vertex>', '#include <project_vertex>\n  vHzWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogAmt;')
+                .replace('#include <dithering_fragment>',
+                    '#include <dithering_fragment>\n' +
+                    '  if (uHzFogAmt > 0.001) {\n' +
+                    '    float hzEl = normalize(vHzWorldPos - cameraPosition).y;\n' +
+                    '    float hzT = clamp(hzEl / max(uHzFogTop, 0.0001), 0.0, 1.0);\n' +
+                    '    float hzBand = 1.0 - (hzT * hzT * (3.0 - 2.0 * hzT));\n' +   // smoothstep complement
+                    '    hzBand = pow(hzBand, 1.6) * uHzFogAmt;\n' +
+                    '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uHzFogColor, clamp(hzBand, 0.0, 0.95));\n' +
+                    '  }');
+        };
+        mat.needsUpdate = true;
+    }
 
     function _applyHorizonFog() {
         _horizonFogDirty = false;
@@ -7738,7 +7775,8 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < ms.length; i++) {
                 var m = ms[i];
                 if (!m) continue;
-                if (m.fog !== false) { m.fog = false; m.needsUpdate = true; }  // backdrop never uses distance fog
+                if (m.fog !== false) { m.fog = false; m.needsUpdate = true; }  // backdrop never uses uniform distance fog
+                _injectHorizonFog(m);   // per-fragment altitude fog (covers async misc models too)
             }
         });
     }
@@ -9046,15 +9084,10 @@ const ThreeRenderer = (function () {
         var hz = Math.pow(Math.max(0, (dn - 0.30) / 0.70), 1.15);   // clear near, hazy far
         var below = (y < 0 && discR > 0) ? Math.min(1, (-y) / (discR * 0.5)) * 0.22 : 0;
         hz = Math.min(0.9, hz + below);
-        // View-ray altitude of this body (el = sin of its angle above the horizon).
-        // The camera sits ~800u from the board centre while bodies are 6k–15k out,
-        // so measuring from the centre is a good approximation and stays stable as
-        // the camera orbits. Lets the retro fog haze match the dome's horizon band.
-        var elev = (rr !== 0 || y !== 0) ? (y / Math.sqrt(rr * rr + y * y)) : 0;
         obj.traverse(function (o) {
             if (!o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
-            for (var i = 0; i < ms.length; i++) { ms[i]._ew_hzHaze = hz; ms[i]._ew_hzElev = elev; }
+            for (var i = 0; i < ms.length; i++) ms[i]._ew_hzHaze = hz;
         });
     }
 
@@ -9071,17 +9104,6 @@ const ThreeRenderer = (function () {
         _hzHaze.copy(_HZ_HAZE_DAY).lerp(_HZ_HAZE_NIGHT, night);
         if (bloodM > 0.01) _hzHaze.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.4);
         if (ecl > 0.01) _hzHaze.multiplyScalar(1.0 - ecl * 0.3);
-        // When the retro mood fog is on, dissolve the scenery into the SAME
-        // horizon band the dome uses: keyed on each body's world altitude so the
-        // bodies above the band stay clear and the ones at/below it melt into the
-        // mood fog colour — object haze and sky haze become one continuous horizon.
-        var retroFog = _retroFogHorizon;
-        var fogTop = 0.10 + 0.20 * _retroFogThickness;          // matches the dome FS
-        var fogAmt = 0.80 + 0.20 * _retroFogThickness;
-        if (retroFog) {
-            if (!_retroFogColorLin) _retroFogColorLin = new THREE.Color();
-            _retroFogColorLin.setHex(_retroFogColorHex);
-        }
         for (var i = 0; i < _horizonMats.length; i++) {
             var m = _horizonMats[i];
             // geometry landmarks carry an intrinsic base colour; billboards/rocks
@@ -9091,18 +9113,10 @@ const ThreeRenderer = (function () {
             if (m._ew_rock) m.color.multiplyScalar(0.82);
             if (bloodM > 0.01) m.color.lerp(_HZ_RED || (_HZ_RED = new THREE.Color(0x7a2118)), bloodM * 0.5);
             if (ecl > 0.01) m.color.multiplyScalar(1.0 - ecl * 0.35);
-            if (retroFog) {
-                // altitude band: 1 at/below the horizon, 0 above fogTop (smoothstep
-                // complement, pow 1.6 — identical shape to the dome's haze band).
-                var elev = m._ew_hzElev || 0;
-                var t = (fogTop > 0.0001) ? Math.max(0, Math.min(1, elev / fogTop)) : 1;
-                var band = 1.0 - (t * t * (3.0 - 2.0 * t));
-                band = Math.pow(band, 1.6) * fogAmt;
-                if (band > 0.001) m.color.lerp(_retroFogColorLin, Math.min(0.95, band));
-            } else if (m._ew_hzHaze) {
-                // default pale-sky atmospheric haze (retro fog off)
-                m.color.lerp(_hzHaze, m._ew_hzHaze);
-            }
+            // Default pale-sky atmospheric haze. Skipped when the retro mood fog is
+            // on — there the per-fragment shader fog (see _injectHorizonFog) does
+            // the dissolving, keyed on world altitude to match the dome exactly.
+            if (!_retroFogHorizon && m._ew_hzHaze) m.color.lerp(_hzHaze, m._ew_hzHaze);
         }
     }
     var _HZ_RED = null;
