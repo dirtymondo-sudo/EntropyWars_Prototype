@@ -537,6 +537,21 @@ const OBJ_SHOP = `${_S}/itemshop.png`;
 const _T = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain';
 const _O = `${_T}/objects`;
 
+/* Inline SVG thumbnail for the lamp-post object (editor palette only — the real
+   in-game render is the authored 3D street-lamp model). Kept inline so the
+   editor needs no extra uploaded asset. */
+const _LAMP_POST_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">' +
+    '<circle cx="32" cy="14" r="11" fill="rgba(255,214,130,0.30)"/>' +
+    '<rect x="29" y="20" width="6" height="38" rx="2" fill="#2c303a"/>' +
+    '<rect x="21" y="56" width="22" height="6" rx="2.5" fill="#1b1e24"/>' +
+    '<path d="M25 20 H39 L36 12 H28 Z" fill="#3a404b"/>' +
+    '<rect x="26.5" y="6" width="11" height="11" rx="2.5" fill="#ffe6a8" stroke="#b8893a" stroke-width="1.5"/>' +
+    '<line x1="29" y1="8.5" x2="29" y2="14.5" stroke="#b8893a" stroke-width="0.8"/>' +
+    '<line x1="35" y1="8.5" x2="35" y2="14.5" stroke="#b8893a" stroke-width="0.8"/>' +
+    '</svg>'
+);
+
 const OBJECT_SPRITES = {
     church:       { url: `${_O}/church_2.png` },
     shop:         { url: `${_O}/itemshop.png` },
@@ -574,6 +589,12 @@ const OBJECT_SPRITES = {
     abandoned_building_2: { url: `${_O}/abandoned_building_2.png` },
     stairs:       { url: `${_O}/stairs.png` },
     stairs_2:     { url: `${_T}/barrier_passage.png` },
+    /* Lamp posts render in-game as the authored 3D street-lamp model
+       (Assets/misc/streetlamp/Street Lamp.obj) — see _buildLampPostObj in
+       three-renderer.js. These url icons are only the editor palette thumbnails
+       (inline SVG, so no extra asset upload is needed). */
+    lamp_post:    { url: _LAMP_POST_ICON, model3d: true },
+    lamp_post_2:  { url: _LAMP_POST_ICON, model3d: true },
     pathway_1:    { url: `${_O}/pathway_1.png` },
     pathway_2:    { url: `${_O}/pathway_2.png` },
     church_1:     { url: `${_O}/church_1.png` },
@@ -686,6 +707,10 @@ const TERRAIN_SPRITES = {
     leaves_3:         [`${_T}/leaves_3.png`],
     leaves_4:         [`${_T}/leaves_4.png`],
     leaves_5:         [`${_T}/leaves_5.png`],
+
+    // New terrain sprites (aluminium + checkerboard floor)
+    aluminium:        [`${_T}/aluminium.png`],
+    checkerboard:     [`${_T}/checkerboard.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {

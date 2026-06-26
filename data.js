@@ -982,7 +982,9 @@ const TERRAIN_RULES = {
     leaves_2: { label: 'Leafy Bower II',  short: 'LV2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     leaves_3: { label: 'Leafy Bower III', short: 'LV3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     leaves_4: { label: 'Leafy Bower IV',  short: 'LV4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    leaves_5: { label: 'Leafy Bower V',   short: 'LV5', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
+    leaves_5: { label: 'Leafy Bower V',   short: 'LV5', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    aluminium:    { label: 'Aluminium',    short: 'ALU', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    checkerboard: { label: 'Checkerboard', short: 'CHK', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
 };
 
 const OBJECT_RULES = {
@@ -1414,6 +1416,24 @@ const OBJECT_RULES = {
     pathway_2: {
         label: 'Pathway 2',
         short: 'PW2',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+    },
+    lamp_post: {
+        label: 'Lamp Post',
+        short: 'LMP',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+    },
+    lamp_post_2: {
+        label: 'Lamp Post 2',
+        short: 'LP2',
         passable: true,
         blocksLanding: false,
         blocksRanged: false,

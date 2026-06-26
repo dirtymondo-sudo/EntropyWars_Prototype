@@ -14482,9 +14482,11 @@
             state._clickedZ = z;
 
             if (state.phase === 'editor') {
-                if (typeof window._meEditorClickTile === 'function') {
-                    window._meEditorClickTile(x, y);
-                }
+                /* Editor placement is driven entirely by the pointer-down / drag
+                   path (handleTileDragStart → _meEditorClickTile). The browser's
+                   synthetic 'click' that follows would place a SECOND time on the
+                   same tile (double-stacking objects, raising elevation twice), so
+                   the click event is a no-op in the editor. */
                 return;
             }
 

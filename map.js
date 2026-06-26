@@ -5772,6 +5772,8 @@
             'leaves_3',
             'leaves_4',
             'leaves_5',
+            'aluminium',
+            'checkerboard',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -5826,6 +5828,8 @@
             'pathway_1',
             'pathway_2',
             'stairs_2',
+            'lamp_post',
+            'lamp_post_2',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -5833,7 +5837,7 @@
         const ME_PALETTE_CATS = [
             { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rubble_1','rubble_2','rubble_3','rubble_4'] },
-            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','wood_planks','wood','urban_street','urban_wall','metal','metal_2','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper'] },
+            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper'] },
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
             { label: 'Water', keys: ['water','deep_water','bridge','ice'] },
             { label: 'Lava', keys: ['lava'] },
@@ -5855,6 +5859,7 @@
             { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
             { label: 'Churches', keys: ['church_1','church_2'] },
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
+            { label: 'Props', keys: ['lamp_post','lamp_post_2'] },
         ];
 
         let _meW = 12, _meH = 12;
@@ -5963,18 +5968,26 @@
             _meRedoStack.length = 0;
             _meUpdateUndoRedoButtons();
         }
+        function _meRefreshEditorView() {
+            _meRenderGrid();
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                _meRebuildEditorOverlays3D();
+            }
+        }
         function _meUndo() {
             if (_meUndoStack.length === 0) return;
             _meRedoStack.push(_meSnapshotState());
             _meRestoreSnapshot(_meUndoStack.pop());
-            _meRenderGrid();
+            _meRefreshEditorView();
             _meUpdateUndoRedoButtons();
         }
         function _meRedo() {
             if (_meRedoStack.length === 0) return;
             _meUndoStack.push(_meSnapshotState());
             _meRestoreSnapshot(_meRedoStack.pop());
-            _meRenderGrid();
+            _meRefreshEditorView();
             _meUpdateUndoRedoButtons();
         }
         function _meUpdateUndoRedoButtons() {
@@ -6244,7 +6257,15 @@
             }
         };
 
-        window._meEditorDragStart = function() { _meEditorDragging = true; };
+        /* Snapshot for undo ONCE at the start of a paint stroke, before any tile
+           is modified, so the whole click (or click-drag) is a single undo step.
+           (Previously the snapshot push lived in _meEditorClickTile guarded by
+           !_meEditorDragging, but dragging was already set true here before the
+           first paint — so strokes were never recorded and Undo did nothing.) */
+        window._meEditorDragStart = function() {
+            if (!_meEditorDragging) _mePushUndo();
+            _meEditorDragging = true;
+        };
         window._meEditorDragEnd = function() { _meEditorDragging = false; };
 
         function _meUpdateEditorOverlays() {
@@ -6288,16 +6309,8 @@
                         tile.appendChild(s);
                     }
 
-                    const col = _meGetColumn(x, y);
-                    if (col.length > 0) {
-                        const topZ = col[col.length - 1].z;
-                        const b = document.createElement('div');
-                        b.className = 'me-diorama-overlay me-diorama-elev-badge';
-                        b.style.color = col.length > 1 ? 'rgba(0,255,160,0.95)' : 'rgba(220,180,60,0.95)';
-                        b.textContent = (col.length > 1 ? col.length + '× ' : '') + 'Z' + topZ;
-                        b.style.transform = 'translateZ(5px)';
-                        tile.appendChild(b);
-                    }
+                    /* Elevation number badge removed — distracting while editing.
+                       The voxel stack height is visible on the board itself. */
                 }
             }
         }
@@ -6384,22 +6397,9 @@
                         _editorOverlay3DGroup.add(plane);
                     }
 
-                    const col = _meGetColumn(x, y);
-                    if (col.length > 0) {
-                        const topZ = col[col.length - 1].z;
-                        if (topZ > 0 || col.length > 1) {
-                            const labelEl = document.createElement('div');
-                            labelEl.className = 'me-3d-label me-3d-height-label';
-                            labelEl.textContent = (col.length > 1 ? col.length + '× ' : '') + 'Z' + topZ;
-                            labelEl.style.cssText = 'font-size:10px;font-weight:600;padding:1px 4px;border-radius:2px;pointer-events:none;' +
-                                'background:rgba(0,0,0,0.6);font-family:DotGothic16,monospace;' +
-                                'color:' + (col.length > 1 ? 'rgba(0,255,160,0.95)' : 'rgba(220,180,60,0.95)') + ';';
-                            const css2d = new THREE.CSS2DObject(labelEl);
-                            css2d.position.set(x * ts + ts / 2, topY + 6, y * ts + ts / 2);
-                            _editorOverlay3DGroup.add(css2d);
-                            _editorOverlay3DLabels.push(css2d);
-                        }
-                    }
+                    /* Per-tile elevation number labels (e.g. "Z3", "2× Z1") were
+                       removed — they cluttered the board while raising/placing
+                       elevation. The 3D voxel stack itself shows the height. */
                 }
             }
 
@@ -6411,12 +6411,215 @@
         window._meUpdateEditorOverlays = _meUpdateEditorOverlays;
         window._meRebuildEditorOverlays3D = _meRebuildEditorOverlays3D;
 
+        /* The editor's base stylesheet lives in styles-editor.css (R2). This
+           injects an additive layer that organizes the HUD into clean labeled
+           sections, makes the palette/height picker scroll instead of sprawl,
+           and sharpens active/hover states — without redefining the base look. */
+        function _meInjectEditorStyles() {
+            if (document.getElementById('meEditorInjectedStyles')) return;
+            const s = document.createElement('style');
+            s.id = 'meEditorInjectedStyles';
+            s.textContent = `
+                .me-editor-hud, .me-editor-hud * { box-sizing: border-box; }
+                .me-editor-hud {
+                    display: flex !important;
+                    flex-direction: column;
+                    gap: 8px;
+                    max-height: 100vh;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    padding: 10px 10px 14px;
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(124,77,255,0.6) transparent;
+                }
+                .me-editor-hud::-webkit-scrollbar { width: 8px; }
+                .me-editor-hud::-webkit-scrollbar-thumb { background: rgba(124,77,255,0.55); border-radius: 4px; }
+                .me-editor-hud::-webkit-scrollbar-track { background: transparent; }
+
+                .me-help-bar {
+                    font-size: 10px;
+                    line-height: 1.5;
+                    color: rgba(220,220,255,0.65);
+                    background: rgba(124,77,255,0.10);
+                    border: 1px solid rgba(124,77,255,0.22);
+                    border-radius: 7px;
+                    padding: 6px 9px;
+                    text-align: center;
+                }
+
+                .me-section {
+                    background: rgba(18,16,28,0.55);
+                    border: 1px solid rgba(255,255,255,0.07);
+                    border-radius: 9px;
+                    padding: 9px 9px 10px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 7px;
+                }
+                .me-section-palette { flex: 1 1 auto; min-height: 220px; }
+
+                .me-section-label {
+                    font-size: 9.5px;
+                    font-weight: 700;
+                    letter-spacing: 0.12em;
+                    text-transform: uppercase;
+                    color: rgba(180,160,255,0.85);
+                    margin-bottom: 1px;
+                }
+
+                .me-editor-hud .me-tool-row { display: flex; flex-wrap: wrap; gap: 6px; }
+                .me-editor-hud .me-tool {
+                    flex: 1 1 auto;
+                    min-width: 70px;
+                    padding: 8px 6px;
+                    font-size: 12px;
+                    border-radius: 7px;
+                    border: 1px solid rgba(255,255,255,0.10);
+                    background: rgba(40,36,58,0.8);
+                    color: #e8e6f4;
+                    cursor: pointer;
+                    transition: background 0.12s, border-color 0.12s, transform 0.05s;
+                }
+                .me-editor-hud .me-tool:hover { background: rgba(70,60,104,0.9); border-color: rgba(160,140,255,0.5); }
+                .me-editor-hud .me-tool:active { transform: translateY(1px); }
+                .me-editor-hud .me-tool.active {
+                    background: linear-gradient(180deg, rgba(140,100,255,0.95), rgba(108,70,225,0.95));
+                    border-color: rgba(190,170,255,0.95);
+                    color: #fff;
+                    box-shadow: 0 0 0 1px rgba(190,170,255,0.5), 0 2px 8px rgba(124,77,255,0.4);
+                }
+                .me-editor-hud .me-tool-p1.active { background: linear-gradient(180deg, #5b9bff, #2f6fdf); border-color: #9cc4ff; box-shadow: 0 0 0 1px rgba(120,170,255,0.6); }
+                .me-editor-hud .me-tool-p2.active { background: linear-gradient(180deg, #ff6b6b, #d23b3b); border-color: #ffb0b0; box-shadow: 0 0 0 1px rgba(255,140,140,0.6); }
+
+                .me-editor-hud .me-hud-size-row,
+                .me-editor-hud .me-z-cursor-wrap,
+                .me-editor-hud .me-elev-picker-wrap { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+                .me-editor-hud .me-hud-size-row button,
+                .me-editor-hud .me-z-btn {
+                    width: 26px; height: 26px; padding: 0;
+                    border-radius: 6px; border: 1px solid rgba(255,255,255,0.14);
+                    background: rgba(50,44,72,0.9); color: #fff; cursor: pointer; font-size: 15px; line-height: 1;
+                }
+                .me-editor-hud .me-hud-size-row button:hover,
+                .me-editor-hud .me-z-btn:hover { background: rgba(90,76,140,0.95); }
+                .me-editor-hud .me-size-val, .me-editor-hud .me-z-value { min-width: 22px; text-align: center; font-weight: 700; color: #fff; }
+                .me-editor-hud .me-label, .me-editor-hud .me-z-label, .me-editor-hud .me-elev-label { font-size: 11px; color: rgba(210,205,235,0.85); }
+                .me-editor-hud .me-z-hint { font-size: 10px; color: rgba(170,255,210,0.8); margin-left: auto; }
+
+                .me-editor-hud .me-elev-picker {
+                    display: flex; flex-wrap: wrap; gap: 4px;
+                    max-height: 92px; overflow-y: auto;
+                    padding: 2px; flex: 1 1 auto;
+                }
+                .me-editor-hud .me-hbtn {
+                    width: 28px; height: 26px; padding: 0;
+                    border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
+                    background: rgba(46,40,66,0.9); color: #ddd; cursor: pointer; font-size: 11px;
+                }
+                .me-editor-hud .me-hbtn:hover { background: rgba(86,72,130,0.95); }
+                .me-editor-hud .me-hbtn.active { background: linear-gradient(180deg,#8c64ff,#6c46e1); color:#fff; border-color: rgba(190,170,255,0.9); }
+                .me-editor-hud .me-hbtn-zero { color: #ff9; }
+
+                .me-editor-hud .me-search {
+                    width: 100%; box-sizing: border-box;
+                    padding: 8px 10px; border-radius: 7px;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(12,10,20,0.8); color: #fff; font-size: 12px;
+                }
+                .me-editor-hud .me-search:focus { outline: none; border-color: rgba(160,140,255,0.8); }
+
+                .me-editor-hud .me-tab-row { display: flex; gap: 4px; }
+                .me-editor-hud .me-tab {
+                    flex: 1; padding: 7px 4px; font-size: 11.5px; cursor: pointer;
+                    border-radius: 7px 7px 0 0; border: 1px solid rgba(255,255,255,0.08); border-bottom: none;
+                    background: rgba(30,26,44,0.8); color: rgba(220,216,240,0.7);
+                }
+                .me-editor-hud .me-tab:hover { background: rgba(54,46,80,0.9); color: #fff; }
+                .me-editor-hud .me-tab.active { background: rgba(90,70,160,0.92); color: #fff; border-color: rgba(160,140,255,0.6); }
+
+                .me-editor-hud .me-palette {
+                    flex: 1 1 auto;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+                    gap: 6px;
+                    align-content: start;
+                    max-height: 42vh;
+                    overflow-y: auto;
+                    padding: 8px;
+                    background: rgba(10,8,18,0.6);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 0 0 8px 8px;
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(124,77,255,0.6) transparent;
+                }
+                .me-editor-hud .me-palette::-webkit-scrollbar { width: 8px; }
+                .me-editor-hud .me-palette::-webkit-scrollbar-thumb { background: rgba(124,77,255,0.55); border-radius: 4px; }
+                .me-editor-hud .me-pal-cat {
+                    grid-column: 1 / -1;
+                    font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+                    color: rgba(175,160,235,0.85); padding: 6px 2px 1px; border-top: 1px solid rgba(255,255,255,0.06);
+                }
+                .me-editor-hud .me-pal-cat:first-child { border-top: none; }
+                .me-editor-hud .me-pal-cat-gamemode { color: #ffd479; }
+                .me-editor-hud .me-pal-item {
+                    display: flex; flex-direction: column; align-items: center; gap: 3px;
+                    padding: 4px 2px; border-radius: 7px; cursor: pointer;
+                    border: 1px solid transparent; background: rgba(255,255,255,0.02);
+                    transition: background 0.1s, border-color 0.1s, transform 0.05s;
+                }
+                .me-editor-hud .me-pal-item:hover { background: rgba(124,77,255,0.16); border-color: rgba(160,140,255,0.4); }
+                .me-editor-hud .me-pal-item:active { transform: scale(0.96); }
+                .me-editor-hud .me-pal-item.active { background: rgba(124,77,255,0.28); border-color: rgba(190,170,255,0.95); box-shadow: 0 0 0 1px rgba(190,170,255,0.5); }
+                .me-editor-hud .me-pal-swatch {
+                    width: 48px; height: 48px; border-radius: 6px;
+                    background-size: cover; background-position: center;
+                    border: 1px solid rgba(0,0,0,0.4); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+                }
+                .me-editor-hud .me-pal-label { font-size: 9px; line-height: 1.1; text-align: center; color: rgba(225,222,245,0.9); word-break: break-word; }
+
+                .me-editor-hud .me-hud-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+                .me-editor-hud .me-hud-actions .me-btn { flex: 1 1 auto; }
+                .me-editor-hud .me-btn {
+                    padding: 8px 10px; font-size: 12px; border-radius: 7px; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.12); background: rgba(46,40,66,0.9); color: #eee;
+                    transition: background 0.12s, border-color 0.12s;
+                }
+                .me-editor-hud .me-btn:hover:not([disabled]) { background: rgba(86,72,130,0.95); border-color: rgba(160,140,255,0.5); }
+                .me-editor-hud .me-btn[disabled] { cursor: default; }
+                .me-editor-hud .me-btn-danger { background: rgba(150,40,40,0.85); border-color: rgba(255,120,120,0.4); }
+                .me-editor-hud .me-btn-danger:hover { background: rgba(190,50,50,0.95); }
+                .me-editor-hud .me-btn-play {
+                    background: linear-gradient(180deg,#3ad17a,#1f9e54); border-color: #8df0b6; color:#062; font-weight: 800;
+                }
+                .me-editor-hud .me-btn-play:hover { background: linear-gradient(180deg,#46e588,#27b863); }
+
+                .me-editor-hud .me-hud-bottom { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+                .me-editor-hud .me-name-input {
+                    flex: 1 1 120px; min-width: 100px; padding: 8px 10px; border-radius: 7px;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(12,10,20,0.8); color: #fff; font-size: 12px;
+                }
+                .me-editor-hud .me-load-select {
+                    flex: 1 1 110px; padding: 7px 8px; border-radius: 7px;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(30,26,44,0.9); color: #fff; font-size: 11px;
+                }
+                .me-editor-hud .me-hud-header { display: flex; align-items: center; gap: 8px; }
+                .me-editor-hud .me-hud-title { font-weight: 800; letter-spacing: 0.04em; }
+                .me-editor-hud .me-hud-back {
+                    padding: 6px 10px; border-radius: 7px; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(46,40,66,0.9); color: #eee; font-size: 12px;
+                }
+                .me-editor-hud .me-hud-back:hover { background: rgba(86,72,130,0.95); }
+            `;
+            document.head.appendChild(s);
+        }
+
         function _meShowEditorHUD() {
             let hud = document.getElementById('meEditorHUD');
             if (hud) { hud.style.display = ''; return; }
 
             const mapRow = document.getElementById('mapRow');
             if (!mapRow) return;
+
+            _meInjectEditorStyles();
 
             hud = document.createElement('div');
             hud.id = 'meEditorHUD';
@@ -6427,60 +6630,81 @@
                     <button class="me-hud-back" onclick="window._meBack()">← Back</button>
                     <span class="me-hud-title">Map Editor</span>
                 </div>
-                <div class="me-hud-size-row">
-                    <span class="me-label">W</span>
-                    <button onclick="window._meResizeW(-1)">−</button>
-                    <span id="meWidthVal">${_meW}</span>
-                    <button onclick="window._meResizeW(1)">+</button>
-                    <span class="me-label" style="margin-left:8px">H</span>
-                    <button onclick="window._meResizeH(-1)">−</button>
-                    <span id="meHeightVal">${_meH}</span>
-                    <button onclick="window._meResizeH(1)">+</button>
+
+                <div class="me-help-bar">Click to place · drag to paint · right-click a tile for options · Ctrl+Z / Ctrl+Y</div>
+
+                <div class="me-section">
+                    <div class="me-section-label">Canvas Size</div>
+                    <div class="me-hud-size-row">
+                        <span class="me-label">W</span>
+                        <button onclick="window._meResizeW(-1)">−</button>
+                        <span class="me-size-val" id="meWidthVal">${_meW}</span>
+                        <button onclick="window._meResizeW(1)">+</button>
+                        <span class="me-label" style="margin-left:10px">H</span>
+                        <button onclick="window._meResizeH(-1)">−</button>
+                        <span class="me-size-val" id="meHeightVal">${_meH}</span>
+                        <button onclick="window._meResizeH(1)">+</button>
+                    </div>
                 </div>
-                <div class="me-tool-row">
-                    <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')">🖌️ Paint</button>
-                    <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')">🏠 Object</button>
-                    <button class="me-tool" id="meTool-select" onclick="window._meSetTool('select')">🎯 Select/Rotate</button>
-                    <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')">🧹 Erase</button>
-                    <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')">✖ Erase Obj</button>
+
+                <div class="me-section">
+                    <div class="me-section-label">Tools</div>
+                    <div class="me-tool-row">
+                        <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')" title="Paint terrain">🖌️ Paint</button>
+                        <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')" title="Place objects">🏠 Object</button>
+                        <button class="me-tool" id="meTool-select" onclick="window._meSetTool('select')" title="Select & rotate a placed object">🎯 Select</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')" title="Erase terrain at this tile">🧹 Erase</button>
+                        <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')" title="Erase the top object on this tile">✖ Erase Obj</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool me-tool-p1" id="meTool-spawn1" onclick="window._meSetTool('spawn1')" title="Place a Player 1 spawn">🔵 P1 Spawn</button>
+                        <button class="me-tool me-tool-p2" id="meTool-spawn2" onclick="window._meSetTool('spawn2')" title="Place a Player 2 spawn">🔴 P2 Spawn</button>
+                    </div>
                 </div>
-                <div class="me-tool-row">
-                    <button class="me-tool" id="meTool-spawn1" onclick="window._meSetTool('spawn1')">🔵 P1</button>
-                    <button class="me-tool" id="meTool-spawn2" onclick="window._meSetTool('spawn2')">🔴 P2</button>
-                    <!-- Sanctuary tools removed: spawn zones are auto-generated -->
+
+                <div class="me-section">
+                    <div class="me-section-label">Elevation</div>
+                    <div class="me-tool-row me-elev-row">
+                        <button class="me-tool" id="meTool-elevUp" onclick="window._meSetTool('elevUp')" title="Raise a tile by one level">⬆ Raise</button>
+                        <button class="me-tool" id="meTool-elevDown" onclick="window._meSetTool('elevDown')" title="Lower a tile by one level">⬇ Lower</button>
+                        <button class="me-tool" id="meTool-elevSet" onclick="window._meSetTool('elevSet')" title="Set a tile to the chosen height">📐 Set</button>
+                    </div>
+                    <div class="me-z-cursor-wrap">
+                        <span class="me-z-label">Z Layer</span>
+                        <button class="me-z-btn" onclick="window._meAdjustZ(-1)">−</button>
+                        <span class="me-z-value" id="meActiveZVal">${_meActiveZ}</span>
+                        <button class="me-z-btn" onclick="window._meAdjustZ(1)">+</button>
+                        <span class="me-z-hint" id="meZHint"></span>
+                    </div>
+                    <div class="me-elev-picker-wrap">
+                        <span class="me-elev-label">Height</span>
+                        <div class="me-elev-picker" id="meElevPicker"></div>
+                    </div>
                 </div>
-                <div class="me-tool-row me-elev-row">
-                    <button class="me-tool" id="meTool-elevUp" onclick="window._meSetTool('elevUp')">⬆ Raise</button>
-                    <button class="me-tool" id="meTool-elevDown" onclick="window._meSetTool('elevDown')">⬇ Lower</button>
-                    <button class="me-tool" id="meTool-elevSet" onclick="window._meSetTool('elevSet')">📐 Set</button>
+
+                <div class="me-section me-section-palette">
+                    <div class="me-section-label">Palette</div>
+                    <input type="text" class="me-search" id="meSearch" placeholder="🔍 Search tiles…" oninput="window._meOnSearch()" />
+                    <div class="me-tab-row">
+                        <button class="me-tab active" id="meTab-terrain" onclick="window._meSetTab('terrain')">Terrain</button>
+                        <button class="me-tab" id="meTab-objects" onclick="window._meSetTab('objects')">Objects</button>
+                        <button class="me-tab" id="meTab-monuments" onclick="window._meSetTab('monuments')">Monuments</button>
+                    </div>
+                    <div class="me-palette" id="mePalette"></div>
                 </div>
-                <div class="me-z-cursor-wrap">
-                    <span class="me-z-label">Z Layer:</span>
-                    <button class="me-z-btn" onclick="window._meAdjustZ(-1)">−</button>
-                    <span class="me-z-value" id="meActiveZVal">${_meActiveZ}</span>
-                    <button class="me-z-btn" onclick="window._meAdjustZ(1)">+</button>
-                    <span class="me-z-hint" id="meZHint"></span>
-                </div>
-                <div class="me-elev-picker-wrap">
-                    <span class="me-elev-label">Height:</span>
-                    <div class="me-elev-picker" id="meElevPicker"></div>
-                </div>
-                <input type="text" class="me-search" id="meSearch" placeholder="Search tiles…" oninput="window._meOnSearch()" />
-                <div class="me-tab-row">
-                    <button class="me-tab active" id="meTab-terrain" onclick="window._meSetTab('terrain')">Terrain</button>
-                    <button class="me-tab" id="meTab-objects" onclick="window._meSetTab('objects')">Objects</button>
-                    <button class="me-tab" id="meTab-monuments" onclick="window._meSetTab('monuments')">Monuments</button>
-                </div>
-                <div class="me-palette" id="mePalette"></div>
+
                 <div class="me-hud-actions">
                     <button class="me-btn me-btn-sm" id="meUndoBtn" onclick="window._meUndo()" disabled style="opacity:0.4">↩ Undo</button>
                     <button class="me-btn me-btn-sm" id="meRedoBtn" onclick="window._meRedo()" disabled style="opacity:0.4">↪ Redo</button>
                     <button class="me-btn me-btn-sm" onclick="window._meClear()">Clear</button>
                     <button class="me-btn me-btn-sm" onclick="window._meFill()">Fill</button>
                     <button class="me-btn me-btn-sm" onclick="window._meRandomize()">🎲 Random</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meExport()">Export</button>
-                    <button class="me-btn me-btn-sm" onclick="window._meImport()">Import</button>
+                    <button class="me-btn me-btn-sm" onclick="window._meExport()">⬆ Export</button>
+                    <button class="me-btn me-btn-sm" onclick="window._meImport()">⬇ Import</button>
                 </div>
+
                 <div class="me-hud-bottom">
                     <input type="text" class="me-name-input" id="meMapName" placeholder="Map name…" value="Custom Map" />
                     <button class="me-btn" onclick="window._meSave()">💾 Save</button>
@@ -6506,10 +6730,16 @@
                 picker.innerHTML = ph;
             }
 
-            _meRenderPalette();
             _mePopulateSavedList();
             _meUpdateToolButtons();
-            _meRenderElevationPalette();
+            /* Show the palette that matches the active tool. Default is Paint, so
+               the terrain swatches should be visible on open — the elevation guide
+               only belongs when an elevation tool is selected. */
+            if (_meTool === 'elevUp' || _meTool === 'elevDown' || _meTool === 'elevSet') {
+                _meRenderElevationPalette();
+            } else {
+                _meRenderPalette();
+            }
         }
 
         function _meHideEditorHUD() {
@@ -6964,8 +7194,13 @@
             _meTool = t;
             _meUpdateToolButtons();
 
+            /* Keep the palette in sync with the tool: elevation tools show the
+               elevation guide, everything else shows the terrain/object swatches
+               (so switching back from an elev tool doesn't leave the guide stuck). */
             if (t === 'elevUp' || t === 'elevDown' || t === 'elevSet') {
                 _meRenderElevationPalette();
+            } else {
+                _meRenderPalette();
             }
 
             const hint = document.getElementById('meZHint');

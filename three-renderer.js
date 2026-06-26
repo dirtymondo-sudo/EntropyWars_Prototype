@@ -2480,6 +2480,49 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* Lamp posts placed from the map editor render as the SAME authored 3D model
+       used by the cosmetic Entropy-Vale street lamps (Assets/misc/streetlamp/
+       Street Lamp.obj): a dark metal post with a self-lit warm lantern and a
+       soft glow head. Honors an editor-authored rotation (entry.rot). */
+    function _buildLampPostObj(objKey, x, y) {
+        if (typeof _miscModelInstance !== 'function') return null;
+        var ts = CONFIG.tileSize || 128;
+        var topY = tileTopY(x, y);
+        var lampH = ts * 2.0;             // ~2 tiles tall (matches the auto lamps)
+        var headY = lampH * 0.86;         // lantern sits near the top
+
+        function _lampMat(node, srcMat) {
+            var nm = (srcMat && srcMat.name) || '';
+            if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false });
+            return new THREE.MeshLambertMaterial({ color: 0x23262e, fog: false });
+        }
+
+        var g = new THREE.Group();
+        var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: _lampMat });
+
+        var rot = 0;
+        try {
+            var stack = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (stack) {
+                for (var i = 0; i < stack.length; i++) {
+                    var ek = stack[i].key || stack[i];
+                    if (ek === objKey && stack[i].rot) { rot = stack[i].rot; break; }
+                }
+            }
+        } catch (e) {}
+        lamp.rotation.y = -rot * Math.PI / 180;
+        g.add(lamp);
+
+        if (typeof _hzGlowCore === 'function') {
+            var glow = _hzGlowCore(ts * 0.30, 0xffd27a, 0xff9a3c);
+            glow.position.y = headY;
+            g.add(glow);
+        }
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
+    }
+
     function _buildBillboard(objKey, x, y) {
         var ts = CONFIG.tileSize || 128, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
@@ -2862,6 +2905,7 @@ const ThreeRenderer = (function () {
                    billboard sprite for the object. */
                 continue;
             }
+            else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the
@@ -10437,6 +10481,18 @@ const ThreeRenderer = (function () {
         return null;
     }
 
+    /* In the map editor, the pointer ray must resolve a tile even over empty
+       cells (which have no terrain mesh). Try the mesh raycast first, then fall
+       back to a flat ground-plane intersection so click-to-place is reliable. */
+    function _editorResolveTile(clientX, clientY) {
+        var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
+        if (hit) return hit;
+        if (typeof state !== 'undefined' && state.phase === 'editor' && ThreeCamera.screenToTilePlane) {
+            return ThreeCamera.screenToTilePlane(clientX, clientY, canvas, 0);
+        }
+        return hit;
+    }
+
     function _bindInput() {
         if (!canvas) return;
 
@@ -10445,7 +10501,7 @@ const ThreeRenderer = (function () {
             var unitHit = ThreeCamera.screenToUnit(e.clientX, e.clientY, canvas, unitGroup);
             _updateUnitHover(unitHit ? unitHit.unitId : null);
 
-            var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
+            var hit = _editorResolveTile(e.clientX, e.clientY);
             /* Hovering the floating cube resolves to the tower's own tile. */
             var tcHover = _pickTowerCube(e.clientX, e.clientY);
             if (tcHover) {
@@ -10531,14 +10587,14 @@ const ThreeRenderer = (function () {
 
         _onMouseDown = function(e) {
             if (e.button !== 0) return;
-            var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
+            var hit = _editorResolveTile(e.clientX, e.clientY);
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);
         };
 
         _onTouchStart = function(e) {
             if (!e.touches || !e.touches.length) return;
             var touch = e.touches[0];
-            var hit = ThreeCamera.screenToTile(touch.clientX, touch.clientY, canvas, terrainGroup, objectGroup);
+            var hit = _editorResolveTile(touch.clientX, touch.clientY);
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);
         };
 

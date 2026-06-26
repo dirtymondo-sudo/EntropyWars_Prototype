@@ -171,6 +171,35 @@ const ThreeCamera = (function () {
         };
     }
 
+    /* Resolve a board tile by intersecting the pointer ray with a flat ground
+       plane at world-height planeY (default 0), independent of any terrain
+       mesh. The mesh-based screenToTile() returns null over empty/blank tiles
+       (no geometry to hit), which made single clicks fail in the map editor —
+       this fallback always resolves the tile under the cursor so click-to-place
+       works on empty cells. */
+    function screenToTilePlane(screenX, screenY, canvas, planeY) {
+        if (!threeCamera) return null;
+
+        const rect = canvas.getBoundingClientRect();
+        const ndc = new THREE.Vector2(
+            ((screenX - rect.left) / rect.width)  *  2 - 1,
+            -((screenY - rect.top)  / rect.height) * 2 + 1
+        );
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(ndc, threeCamera);
+
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(planeY || 0));
+        const pt = new THREE.Vector3();
+        if (!raycaster.ray.intersectPlane(plane, pt)) return null;
+
+        const ts = tileSize;
+        return {
+            tileX: Math.floor(pt.x / ts),
+            tileY: Math.floor(pt.z / ts)
+        };
+    }
+
     function screenToUnit(screenX, screenY, canvas, unitGroup) {
         if (!threeCamera || !unitGroup || unitGroup.children.length === 0) return null;
 
@@ -242,6 +271,7 @@ const ThreeCamera = (function () {
         resize,
         sync,
         screenToTile,
+        screenToTilePlane,
         screenToUnit,
         screenDeltaToWorldXZ,
         setTileSize,
