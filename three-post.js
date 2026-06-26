@@ -152,7 +152,10 @@ const ThreePost = (function () {
         // far orbit camera, exp2 fog hazes the whole board, so it's an opt-in mood
         // lever the player dials with the density slider, not a forced default.
         fogEnabled:     false,
-        fogDensity:     0.00035
+        // Calibrated to the world scale: camera ~800u from the board, horizon
+        // scenery 6k–15k out. At ~0.0002 the board stays readable, near landmarks
+        // poke out of the haze, and the deepest ones dissolve completely.
+        fogDensity:     0.0002
     };
     try {
         var _retroSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_retro') : null;
@@ -290,17 +293,26 @@ const ThreePost = (function () {
     // camera it hazes the whole board uniformly — that's why it's opt-in and the
     // density is player-tunable. Colour follows the active mood preset.
     function _applySceneFog() {
-        if (!_scene) return;
-        if (_retro.fogEnabled) {
-            var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
-            if (_scene.fog && _scene.fog.isFogExp2) {
-                _scene.fog.color.setHex(p.fogColor);
-                _scene.fog.density = _retro.fogDensity;
+        if (_scene) {
+            if (_retro.fogEnabled) {
+                var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
+                if (_scene.fog && _scene.fog.isFogExp2) {
+                    _scene.fog.color.setHex(p.fogColor);
+                    _scene.fog.density = _retro.fogDensity;
+                } else {
+                    _scene.fog = new THREE.FogExp2(p.fogColor, _retro.fogDensity);
+                }
             } else {
-                _scene.fog = new THREE.FogExp2(p.fogColor, _retro.fogDensity);
+                _scene.fog = null;
             }
-        } else {
-            _scene.fog = null;
+        }
+        // Also reach the background scenery: its landmark materials are built
+        // fog:false, so without this the mood fog would haze the board but leave
+        // the far esoteric bodies floating crisp in front of it. The renderer
+        // flips fog on the solid scenery materials (camera-distance fade) so the
+        // deepest landmarks dissolve into the haze and the nearer ones poke out.
+        if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setHorizonFog) {
+            ThreeRenderer.setHorizonFog(_retro.fogEnabled);
         }
     }
 

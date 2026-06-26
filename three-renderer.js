@@ -7669,6 +7669,7 @@ const ThreeRenderer = (function () {
 
         // keep the real horizon scenery in sync + atmospherically graded
         _buildHorizonScenery();
+        if (_horizonFogDirty) _applyHorizonFog();   // re-apply retro fog after rebuilds / async model loads
         _buildArenaRuins();
         _buildStreetLamps();
         _animateFloaters(_envUni.uTime.value);
@@ -7695,6 +7696,44 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
     var _horizonFloaters = [];          // { obj, baseY, amp, spd, phase, spin }
+
+    // ── Retro scene-fog reaching the background scenery ──────────────────
+    // The horizon landmarks are built with fog:false (scene.fog was never used).
+    // The retro filter's optional scene.fog therefore hits the board but skips
+    // the backdrop, which reads wrong. When ThreePost turns its mood fog on it
+    // calls setHorizonFog(true): we flip fog:true on the solid scenery materials
+    // so the far esoteric bodies dissolve into the haze by camera distance (the
+    // camera sits ~800u from the board but the scenery is 6k–15k out, so near
+    // landmarks poke out of the fog while the deepest ones are fully buried).
+    // Additive self-lit glows are left alone — fog on additive blending darkens
+    // them and rims them with halos. Async-loaded misc models (pyramid/eye) and
+    // map rebuilds re-apply via the _horizonFogDirty flag, checked each frame.
+    var _retroFogHorizon = false;
+    var _horizonFogDirty = false;
+
+    function _applyHorizonFog() {
+        _horizonFogDirty = false;
+        if (!_horizonGroup) return;
+        _horizonGroup.traverse(function (o) {
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i];
+                if (!m) continue;
+                if (m.blending === THREE.AdditiveBlending) continue;   // self-lit glow
+                if (m.isSpriteMaterial) continue;                       // billboard glow sprites
+                if (!!m.fog === _retroFogHorizon) continue;
+                m.fog = _retroFogHorizon;
+                m.needsUpdate = true;                                   // recompile with/without fog chunk
+            }
+        });
+    }
+
+    function setHorizonFog(enabled) {
+        _retroFogHorizon = !!enabled;
+        _horizonFogDirty = true;
+        _applyHorizonFog();
+    }
     var _hzGlowPulse = [];              // self-lit accents that breathe: { mat, mesh, baseOp, opAmp, baseScl, sclAmp, spd, phase }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
 
@@ -7957,6 +7996,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             _objectsDirty = true;
+            _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
         function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; }
         try {
@@ -8587,6 +8627,7 @@ const ThreeRenderer = (function () {
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
         _horizonKey = key;
+        _horizonFogDirty = true;   // freshly-built scenery must pick up the current retro-fog state
 
         var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
 
@@ -10423,6 +10464,8 @@ const ThreeRenderer = (function () {
         startHitEffect,
 
         hasActiveAnims,
+
+        setHorizonFog,
 
         get _scene() { return scene; }
     };
