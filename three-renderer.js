@@ -7303,7 +7303,7 @@ const ThreeRenderer = (function () {
         'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
         'uniform float uZodiac; uniform vec4 uWeather; uniform float uOccult;',
         'uniform vec3 uCenter; uniform float uDiscR; uniform float uWallH; uniform float uTile;',
-        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop;',
+        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand;',
         '#define PI 3.14159265359',
         '#define TAU 6.28318530718',
         'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
@@ -7539,11 +7539,13 @@ const ThreeRenderer = (function () {
         '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.92));\n' +
         // ── retro mood fog: a haze bank hugging the horizon that thins toward the
         //    zenith, so the lower sky drowns in fog while the stars / sun / moon
-        //    overhead stay clear. el (rd.y) is the view-ray altitude: <=0 horizon
-        //    & below → full fog, fading to 0 by uFogTop. Applied to the final
-        //    display colour so the horizon band matches the colour the distance
-        //    fog fades the scenery into. uFogAmount is 0 when the filter is off.
-        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(0.0,uFogTop,max(el,0.0)); fb=pow(fb,1.6);\n' +
+        //    overhead stay clear. el (rd.y) is the view-ray altitude. The band
+        //    fully CLEARS at uFogTop (the horizon line — 0 = board level / z=0) and
+        //    ramps to full over uFogBand BELOW it, so the fog sits at/under the
+        //    board horizon instead of climbing into the sky. Applied to the final
+        //    display colour so it matches the colour the distance fog fades the
+        //    scenery into. uFogAmount is 0 when the filter is off.
+        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(uFogTop-uFogBand,uFogTop,el); fb=pow(fb,1.6);\n' +
         '    col=mix(col,uFogColor,clamp(fb*uFogAmount,0.0,1.0)); }\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
@@ -7567,7 +7569,8 @@ const ThreeRenderer = (function () {
                 // retro mood fog banked along the horizon (0 amount = off)
                 uFogColor: { value: new THREE.Vector3(0.17, 0.29, 0.32) },
                 uFogAmount: { value: 0.0 },
-                uFogTop: { value: 0.48 }
+                uFogTop: { value: 0.0 },
+                uFogBand: { value: 0.5 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -7747,19 +7750,21 @@ const ThreeRenderer = (function () {
             if (_prevOBC) _prevOBC(shader);
             shader.uniforms.uHzFogColor = _envUni.uFogColor;
             shader.uniforms.uHzFogTop   = _envUni.uFogTop;
+            shader.uniforms.uHzFogBand  = _envUni.uFogBand;
             shader.uniforms.uHzFogAmt   = _envUni.uFogAmount;
             shader.vertexShader = shader.vertexShader
                 .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\n  vHzWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
             shader.fragmentShader = shader.fragmentShader
-                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogAmt;')
+                .replace('#include <common>', '#include <common>\nvarying vec3 vHzWorldPos;\nuniform vec3 uHzFogColor;\nuniform float uHzFogTop;\nuniform float uHzFogBand;\nuniform float uHzFogAmt;')
                 .replace('#include <dithering_fragment>',
                     '#include <dithering_fragment>\n' +
                     '  if (uHzFogAmt > 0.001) {\n' +
                     '    float hzEl = normalize(vHzWorldPos - cameraPosition).y;\n' +
-                    '    float hzT = clamp(hzEl / max(uHzFogTop, 0.0001), 0.0, 1.0);\n' +
-                    '    float hzBand = 1.0 - (hzT * hzT * (3.0 - 2.0 * hzT));\n' +   // smoothstep complement
-                    '    hzBand = pow(hzBand, 1.6) * uHzFogAmt;\n' +
+                    // same band shape as the dome: clears at uHzFogTop (the board
+                    // horizon), ramps to full over uHzFogBand below it.
+                    '    float hzS = smoothstep(uHzFogTop - uHzFogBand, uHzFogTop, hzEl);\n' +
+                    '    float hzBand = pow(1.0 - hzS, 1.6) * uHzFogAmt;\n' +
                     '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uHzFogColor, clamp(hzBand, 0.0, 0.95));\n' +
                     '  }');
         };
@@ -7791,6 +7796,11 @@ const ThreeRenderer = (function () {
     // regardless of whether the dome inits before or after the fog toggle.
     var _retroFogColorHex = 0x2b4a52;
     var _retroFogThickness = 0.4;
+    // View-ray altitude at which the haze fully CLEARS. 0 = the fog dissolves
+    // exactly at the board horizon (z=0 board level) and banks below it — the
+    // realistic ground-fog default. The pause-menu "Fog Horizon" slider raises it
+    // to let the haze climb up into the sky.
+    var _retroFogHorizonY = 0.0;
     var _retroFogScratch = null;
 
     function _applyDomeFog() {
@@ -7800,21 +7810,25 @@ const ThreeRenderer = (function () {
             _retroFogScratch.setHex(_retroFogColorHex);
             _envUni.uFogColor.value.set(_retroFogScratch.r, _retroFogScratch.g, _retroFogScratch.b);
             _envUni.uFogAmount.value = 0.80 + 0.20 * _retroFogThickness;   // near-opaque horizon band
-            // How high up the sky the haze climbs, as view-ray altitude (el = sin
-            // of the angle above the horizon). Kept low so it reads as a horizon
-            // bank, not a wall: 0.10..0.30 ≈ only ~6°–17° above the horizon, so the
-            // sky opens up almost immediately as you tilt off the horizon line.
-            _envUni.uFogTop.value    = 0.10 + 0.20 * _retroFogThickness;
+            // uFogTop = altitude where the haze fully clears (the horizon line);
+            // uFogBand = how far below it ramps to full. With uFogTop at 0 the fog
+            // dissolves right at the board horizon and sits below it, instead of
+            // climbing into the sky. A thicker fog gets a slightly deeper ramp.
+            _envUni.uFogTop.value    = _retroFogHorizonY;
+            _envUni.uFogBand.value   = 0.35 + 0.30 * _retroFogThickness;
         } else {
             _envUni.uFogAmount.value = 0.0;
         }
     }
 
-    function setHorizonFog(enabled, colorHex, thickness) {
+    function setHorizonFog(enabled, colorHex, thickness, horizon) {
         _retroFogHorizon = !!enabled;
         if (colorHex != null) _retroFogColorHex = colorHex;
         if (typeof thickness === 'number' && !isNaN(thickness)) {
             _retroFogThickness = Math.max(0, Math.min(1, thickness));
+        }
+        if (typeof horizon === 'number' && !isNaN(horizon)) {
+            _retroFogHorizonY = Math.max(0, horizon);
         }
         _horizonFogDirty = true;
         _applyHorizonFog();

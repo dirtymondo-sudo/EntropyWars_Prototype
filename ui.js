@@ -6202,6 +6202,14 @@
             const fxaaOn = typeof ThreePost!=='undefined'&&ThreePost.isFXAAEnabled&&ThreePost.isFXAAEnabled();
             const isNativePixel = typeof window==='undefined'||window._ewPixelRatio!==1;
             const crtOn = typeof ThreePost!=='undefined'&&ThreePost.isCinematicFilterEnabled&&ThreePost.isCinematicFilterEnabled();
+            const vignetteOn = typeof ThreePost!=='undefined'&&ThreePost.isVignetteEnabled&&ThreePost.isVignetteEnabled();
+            const cinState = (typeof ThreePost!=='undefined'&&ThreePost.getCinematicState)?ThreePost.getCinematicState():{scanline:0.07,chroma:0.8,curvature:0,vigAmount:0.45,vigSize:0.42,vigSoft:0.55};
+            const scanPct = Math.max(0,Math.min(100,Math.round((cinState.scanline/0.30)*100)));
+            const chromaPct = Math.max(0,Math.min(100,Math.round((cinState.chroma/3.0)*100)));
+            const curvePct = Math.max(0,Math.min(100,Math.round((cinState.curvature/0.50)*100)));
+            const vigAmtPct = Math.max(0,Math.min(100,Math.round(cinState.vigAmount*100)));
+            const vigSizePct = Math.max(0,Math.min(100,Math.round(((cinState.vigSize-0.20)/0.50)*100)));
+            const crtVigOn = crtOn || vignetteOn;
             const bloomStr = (typeof ThreePost!=='undefined'&&ThreePost.getBloomStrength)?ThreePost.getBloomStrength():0;
             const bloomMaxV = (typeof ThreePost!=='undefined'&&ThreePost.getBloomMaxStrength)?ThreePost.getBloomMaxStrength():1.6;
             const bloomPct = Math.round(bloomStr*100);
@@ -6220,6 +6228,8 @@
             const retroPresets = (_TP && _TP.getRetroPresets) ? _TP.getRetroPresets() : [];
             const retroFogOn = !!(_TP && _TP.isRetroFogEnabled && _TP.isRetroFogEnabled());
             const retroFogDensity = (_TP && _TP.getRetroFogDensity) ? _TP.getRetroFogDensity() : 0.00035;
+            const retroFogHorizon = (_TP && _TP.getRetroFogHorizon) ? _TP.getRetroFogHorizon() : 0.0;
+            const fogHorizonPct = Math.max(0, Math.min(100, Math.round((retroFogHorizon/0.50)*100)));
             const grainPct = Math.max(0, Math.min(100, Math.round((retroState.grain/0.12)*100)));
             const fogPct = Math.max(0, Math.min(100, Math.round((retroFogDensity/0.0008)*100)));
             const ditherPct = Math.round(retroState.ditherStrength*100);
@@ -6246,7 +6256,6 @@
                     <div class="pm-set-group-title">Graphics</div>
                     <div class="pm-set-toggles">
                         <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
-                        <label class="pm-toggle"><input type="checkbox" ${crtOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicFilter)ThreePost.setCinematicFilter(this.checked);"><span class="pm-toggle-label">CRT Filter</span><span class="pm-toggle-hint">scanlines + vignette</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Bloom</span>
@@ -6272,6 +6281,45 @@
                             <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();_renderPauseMenu();">Race</button>
                             <button class="pm-seg-btn${nametagMode==='job'?' active':''}" onclick="state.nametagMode='job';markDirty('board');renderIfDirty();_renderPauseMenu();">Job</button>
                             <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();_renderPauseMenu();">Lv</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pm-set-group pm-collapsible">
+                    <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';}else{b.style.display='none';c.style.transform='rotate(0)';}">
+                        <span class="pm-set-group-title" style="margin-bottom:0">CRT / Vignette</span>
+                        <span class="pm-collapse-summary">${crtOn?(vignetteOn?'crt + vig':'crt'):(vignetteOn?'vignette':'off')}</span>
+                        <span class="pm-collapse-chev"${crtVigOn?' style="transform:rotate(180deg)"':''}>▾</span>
+                    </button>
+                    <div class="pm-collapse-body" style="display:${crtVigOn?'block':'none'}">
+                        <div class="pm-set-toggles" style="margin-top:10px">
+                            <label class="pm-toggle"><input type="checkbox" ${crtOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicFilter)ThreePost.setCinematicFilter(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">CRT Filter</span><span class="pm-toggle-hint">scanlines + chroma</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${vignetteOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setVignetteEnabled)ThreePost.setVignetteEnabled(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">Vignette</span><span class="pm-toggle-hint">dark corners</span></label>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Scanlines</span>
+                            <input type="range" min="0" max="100" step="5" value="${scanPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicParam)ThreePost.setCinematicParam('scanline',(this.value/100)*0.30);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${scanPct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Chromatic</span>
+                            <input type="range" min="0" max="100" step="5" value="${chromaPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicParam)ThreePost.setCinematicParam('chroma',(this.value/100)*3.0);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${chromaPct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Curvature</span>
+                            <input type="range" min="0" max="100" step="5" value="${curvePct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicParam)ThreePost.setCinematicParam('curvature',(this.value/100)*0.50);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${curvePct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Vignette Strength</span>
+                            <input type="range" min="0" max="100" step="5" value="${vigAmtPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicParam)ThreePost.setCinematicParam('vigAmount',this.value/100);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${vigAmtPct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Vignette Size</span>
+                            <input type="range" min="0" max="100" step="5" value="${vigSizePct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicParam)ThreePost.setCinematicParam('vigSize',0.20+(this.value/100)*0.50);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${vigSizePct}%</span>
                         </div>
                     </div>
                 </div>
@@ -6322,6 +6370,11 @@
                             <span class="pm-setting-label">Fog Density</span>
                             <input type="range" min="0" max="100" step="5" value="${fogPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFogDensity)ThreePost.setRetroFogDensity((this.value/100)*0.0008);this.nextElementSibling.textContent=this.value+'%';">
                             <span class="pm-vol-val">${fogPct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Fog Horizon</span>
+                            <input type="range" min="0" max="100" step="5" value="${fogHorizonPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFogHorizon)ThreePost.setRetroFogHorizon((this.value/100)*0.50);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${fogHorizonPct}%</span>
                         </div>
                     </div>
                 </div>

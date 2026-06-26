@@ -42,7 +42,42 @@ const ThreePost = (function () {
     } catch (e) {}
 
     var _cinematicPass = null;
-    var _cinematicEnabled = false;
+
+    // ── CRT / cinematic filter + vignette state ─────────────────────────
+    // The cinematic pass hosts two INDEPENDENT effects: the CRT look (scanlines
+    // + chromatic aberration + barrel curvature + flicker) and a separate corner
+    // vignette. Each toggles on its own — the pass runs whenever EITHER is on —
+    // and every knob below is a pause-menu slider, persisted as one JSON blob.
+    // Vignette strength defaults low: the old build hard-wired a full-strength
+    // vignette into the CRT filter, which read as far too heavy.
+    var _cin = {
+        crt:        false,   // scanlines + chroma + curvature + flicker
+        vignette:   false,   // dark-corner vignette (independent of CRT)
+        scanline:   0.07,    // scanline darkening (uScanlineAlpha)
+        chroma:     0.8,     // chromatic-aberration shift in px (uChromaShift)
+        curvature:  0.0,     // barrel distortion (uCurvature)
+        vigAmount:  0.45,    // vignette strength (0 = none, 1 = full darkening)
+        vigSize:    0.42,    // vignette radius (uVignetteSize)
+        vigSoft:    0.55     // vignette edge softness (uVignetteSoft)
+    };
+    try {
+        var _cinSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_cinematic') : null;
+        if (_cinSaved) {
+            var _cs = JSON.parse(_cinSaved);
+            if (_cs && typeof _cs === 'object') {
+                ['crt', 'vignette'].forEach(function (k) { if (typeof _cs[k] === 'boolean') _cin[k] = _cs[k]; });
+                ['scanline', 'chroma', 'curvature', 'vigAmount', 'vigSize', 'vigSoft'].forEach(function (k) {
+                    if (typeof _cs[k] === 'number' && !isNaN(_cs[k])) _cin[k] = _cs[k];
+                });
+            }
+        }
+    } catch (e) {}
+
+    function _saveCinematic() {
+        try {
+            if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cinematic', JSON.stringify(_cin));
+        } catch (e) {}
+    }
 
     var _CinematicShader = {
         uniforms: {
@@ -54,6 +89,8 @@ const ThreePost = (function () {
             'uChromaShift':   { value: 0.8 },
             'uVignetteSize':  { value: 0.42 },
             'uVignetteSoft':  { value: 0.55 },
+            'uVignetteAmount':{ value: 0.0 },
+            'uCrtAmount':     { value: 0.0 },
             'uCurvature':     { value: 0.0 }
         },
         vertexShader: [
@@ -72,11 +109,13 @@ const ThreePost = (function () {
             'uniform float uChromaShift;',
             'uniform float uVignetteSize;',
             'uniform float uVignetteSoft;',
+            'uniform float uVignetteAmount;',
+            'uniform float uCrtAmount;',
             'uniform float uCurvature;',
             'varying vec2 vUv;',
             '',
             'vec2 curveUV(vec2 uv) {',
-            '  if (uCurvature < 0.001) return uv;',
+            '  if (uCurvature < 0.001 || uCrtAmount < 0.001) return uv;',
             '  vec2 c = uv * 2.0 - 1.0;',
             '  c *= 1.0 + uCurvature * dot(c, c);',
             '  return c * 0.5 + 0.5;',
@@ -90,7 +129,8 @@ const ThreePost = (function () {
             '    return;',
             '  }',
             '',
-            '  float px = uChromaShift / uResolution.x;',
+            '  // ── CRT look (chroma + scanlines + flicker), scaled by uCrtAmount ──',
+            '  float px = (uChromaShift * uCrtAmount) / uResolution.x;',
             '  float r = texture2D(tDiffuse, vec2(uv.x - px, uv.y)).r;',
             '  vec4 center = texture2D(tDiffuse, uv);',
             '  float b = texture2D(tDiffuse, vec2(uv.x + px, uv.y)).b;',
@@ -99,15 +139,16 @@ const ThreePost = (function () {
             '  float scanY = uv.y * uResolution.y * uScanlineScale;',
             '  float scanline = sin(scanY * 3.14159) * 0.5 + 0.5;',
             '  scanline = pow(scanline, 1.2);',
-            '  col.rgb *= 1.0 - uScanlineAlpha * (1.0 - scanline);',
+            '  col.rgb *= 1.0 - (uScanlineAlpha * uCrtAmount) * (1.0 - scanline);',
             '',
-            '  float flicker = 1.0 - 0.006 * sin(uTime * 8.3);',
+            '  float flicker = 1.0 - (0.006 * uCrtAmount) * sin(uTime * 8.3);',
             '  col.rgb *= flicker;',
             '',
+            '  // ── vignette (independent of the CRT look), scaled by uVignetteAmount ──',
             '  vec2 vc = uv - 0.5;',
             '  float vDist = dot(vc, vc);',
             '  float vignette = smoothstep(uVignetteSize, uVignetteSize - uVignetteSoft, vDist);',
-            '  col.rgb *= vignette;',
+            '  col.rgb *= mix(1.0, vignette, clamp(uVignetteAmount, 0.0, 1.0));',
             '',
             '  gl_FragColor = col;',
             '}'
@@ -155,7 +196,12 @@ const ThreePost = (function () {
         // Calibrated to the world scale: camera ~800u from the board, horizon
         // scenery 6k–15k out. At ~0.0002 the board stays readable, near landmarks
         // poke out of the haze, and the deepest ones dissolve completely.
-        fogDensity:     0.0002
+        fogDensity:     0.0002,
+        // Altitude (view-ray .y) at which the horizon haze band fully CLEARS.
+        // 0 = the fog dissolves exactly at the board horizon (z=0 board level) and
+        // sits below it — the realistic ground-fog default; higher lets the haze
+        // climb up into the sky. Tuned by the pause-menu "Fog Horizon" slider.
+        fogHorizon:     0.0
     };
     try {
         var _retroSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_retro') : null;
@@ -164,7 +210,7 @@ const ThreePost = (function () {
             if (_rs && typeof _rs === 'object') {
                 if (typeof _rs.preset === 'string' && RETRO_PRESETS[_rs.preset]) _retro.preset = _rs.preset;
                 ['enabled','fogEnabled'].forEach(function (k) { if (typeof _rs[k] === 'boolean') _retro[k] = _rs[k]; });
-                ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity'].forEach(function (k) {
+                ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity','fogHorizon'].forEach(function (k) {
                     if (typeof _rs[k] === 'number' && !isNaN(_rs[k])) _retro[k] = _rs[k];
                 });
             }
@@ -316,7 +362,7 @@ const ThreePost = (function () {
         if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setHorizonFog) {
             var _fp = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
             var _thick = Math.max(0, Math.min(1, _retro.fogDensity / 0.0005));
-            ThreeRenderer.setHorizonFog(_retro.fogEnabled, _fp.fogColor, _thick);
+            ThreeRenderer.setHorizonFog(_retro.fogEnabled, _fp.fogColor, _thick, _retro.fogHorizon);
         }
     }
 
@@ -877,7 +923,7 @@ const ThreePost = (function () {
 
         _cinematicPass = new THREE.ShaderPass(_CinematicShader);
         _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
-        _cinematicPass.enabled = _cinematicEnabled;
+        _applyCinematicUniforms();
         _composer.addPass(_cinematicPass);
 
         // Retro / Haunted-PS1 pass — LAST, so grade + dither are the final thing
@@ -1069,19 +1115,52 @@ const ThreePost = (function () {
         _ready = false;
     }
 
-    function setCinematicFilter(enabled) {
-        _cinematicEnabled = !!enabled;
-        if (_cinematicPass) _cinematicPass.enabled = _cinematicEnabled;
-    }
-
-    function isCinematicFilterEnabled() {
-        return _cinematicEnabled;
-    }
-
-    function setCinematicParam(key, value) {
+    // Push the current _cin state into the shader uniforms and decide whether the
+    // pass runs at all. uCrtAmount/uVignetteAmount are the master gates: 0 fully
+    // bypasses that effect, so the CRT look and the vignette are truly separable.
+    function _applyCinematicUniforms() {
         if (!_cinematicPass) return;
         var u = _cinematicPass.material.uniforms;
-        if (u[key]) u[key].value = value;
+        u['uScanlineAlpha'].value  = _cin.scanline;
+        u['uChromaShift'].value    = _cin.chroma;
+        u['uCurvature'].value      = _cin.curvature;
+        u['uVignetteSize'].value   = _cin.vigSize;
+        u['uVignetteSoft'].value   = _cin.vigSoft;
+        u['uVignetteAmount'].value = _cin.vignette ? _cin.vigAmount : 0.0;
+        u['uCrtAmount'].value      = _cin.crt ? 1.0 : 0.0;
+        _cinematicPass.enabled = !!(_cin.crt || _cin.vignette);
+    }
+
+    // CRT look = scanlines + chromatic aberration + barrel curvature + flicker.
+    // The vignette is now a SEPARATE toggle (setVignetteEnabled).
+    function setCinematicFilter(enabled) {
+        _cin.crt = !!enabled;
+        _applyCinematicUniforms();
+        _saveCinematic();
+    }
+    function isCinematicFilterEnabled() { return _cin.crt; }
+
+    function setVignetteEnabled(enabled) {
+        _cin.vignette = !!enabled;
+        _applyCinematicUniforms();
+        _saveCinematic();
+    }
+    function isVignetteEnabled() { return _cin.vignette; }
+
+    // Tunable keys: scanline, chroma, curvature, vigAmount, vigSize, vigSoft
+    function setCinematicParam(key, value) {
+        var v = parseFloat(value);
+        if (isNaN(v)) return;
+        if (!(key in _cin) || typeof _cin[key] !== 'number') return;
+        _cin[key] = v;
+        _applyCinematicUniforms();
+        _saveCinematic();
+    }
+    function getCinematicParam(key) { return _cin[key]; }
+    function getCinematicState() {
+        var out = {};
+        for (var k in _cin) out[k] = _cin[k];
+        return out;
     }
 
     // ── Retro / Haunted-PS1 filter API ──────────────────────────────────
@@ -1140,6 +1219,16 @@ const ThreePost = (function () {
         _saveRetro();
     }
     function getRetroFogDensity() { return _retro.fogDensity; }
+    // Horizon-haze clear altitude: 0 = fog dissolves at the board horizon (z=0),
+    // higher lets it climb up into the sky. See _retro.fogHorizon.
+    function setRetroFogHorizon(value) {
+        var v = parseFloat(value);
+        if (isNaN(v)) return;
+        _retro.fogHorizon = Math.max(0, v);
+        _applySceneFog();
+        _saveRetro();
+    }
+    function getRetroFogHorizon() { return _retro.fogHorizon; }
 
     return {
         init: init,
@@ -1165,7 +1254,11 @@ const ThreePost = (function () {
         rebuildStreetLampLights: rebuildStreetLampLights,
         setCinematicFilter: setCinematicFilter,
         isCinematicFilterEnabled: isCinematicFilterEnabled,
+        setVignetteEnabled: setVignetteEnabled,
+        isVignetteEnabled: isVignetteEnabled,
         setCinematicParam: setCinematicParam,
+        getCinematicParam: getCinematicParam,
+        getCinematicState: getCinematicState,
         setRetroFilter: setRetroFilter,
         isRetroFilterEnabled: isRetroFilterEnabled,
         setRetroPreset: setRetroPreset,
@@ -1178,6 +1271,8 @@ const ThreePost = (function () {
         isRetroFogEnabled: isRetroFogEnabled,
         setRetroFogDensity: setRetroFogDensity,
         getRetroFogDensity: getRetroFogDensity,
+        setRetroFogHorizon: setRetroFogHorizon,
+        getRetroFogHorizon: getRetroFogHorizon,
         isReady: isReady,
         dispose: dispose
     };
