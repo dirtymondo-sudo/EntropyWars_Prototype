@@ -1636,6 +1636,28 @@ const ThreeRenderer = (function () {
                     colFp += '|st:' + _topSd + ',' + _hLevelAt(x, y - 1) + ',' + _hLevelAt(x, y + 1) + ','
                           + _hLevelAt(x - 1, y) + ',' + _hLevelAt(x + 1, y);
                 }
+                /* Map-editor per-terrain tint is multiplied onto the materials at
+                   build time (_evTintMat) but is invisible to the geometry cache,
+                   so changing a tint left already-built tiles showing the stale
+                   colour. Fold the active tint(s) for every terrain this tile uses
+                   (top + side + each block's terrain/side) into the fingerprint so
+                   a tint change — or a fill onto an already-placed terrain —
+                   actually rebuilds the affected tiles. */
+                var _tints = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
+                if (_tints) {
+                    var _tintFp = '';
+                    var _addTint = function (kk) { if (kk && _tints[kk]) _tintFp += kk + '=' + _tints[kk] + ';'; };
+                    _addTint(tKey);
+                    _addTint(sKey);
+                    if (col && col.length) {
+                        for (var _ti = 0; _ti < col.length; _ti++) {
+                            var _ck = col[_ti].terrain;
+                            _addTint(_ck);
+                            if (typeof TERRAIN_SIDE_SPRITES !== 'undefined') _addTint(TERRAIN_SIDE_SPRITES[_ck] ?? null);
+                        }
+                    }
+                    if (_tintFp) colFp += '|tint:' + _tintFp;
+                }
                 var k = x + ',' + y;
                 var ex = tileMeshes.get(k);
                 if (ex && ex._ew_terrain === tKey && ex._ew_height === ht && ex._ew_colFp === colFp && !full) {

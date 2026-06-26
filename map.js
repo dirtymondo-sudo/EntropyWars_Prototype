@@ -6078,6 +6078,21 @@
             return _meVoxels?.[y]?.[x] || [];
         }
 
+        /* The Z that a paint / fill should write to. When a tile already has a
+           column, target its VISIBLE top block as long as the active layer sits
+           at or below it — so you can recolour / re-terrain the surface you can
+           see (and the tile you just filled) without first bumping the active Z
+           up to the column's height. Painting with the active Z set ABOVE the
+           column still writes there, so stacking / raising a new layer works. */
+        function _meSurfacePaintZ(x, y) {
+            const col = _meGetColumn(x, y);
+            if (col.length) {
+                const topZ = col[col.length - 1].z;
+                if (_meActiveZ <= topZ) return topZ;
+            }
+            return _meActiveZ;
+        }
+
         function _meEmptyObjGrid(h,w){ return Array.from({length:h},()=>Array.from({length:w},()=>[])); }
         function _meObjEntry(oid,ax,ay,rot,fx,fy,leaf){ const e={oid:oid||0,alignX:ax||'center',alignY:ay||'bottom',rot:rot||0,flipX:!!fx,flipY:!!fy}; if(leaf)e.leaf=leaf; return e; }
         function _meIsTreeKey(key){ return key==='tree'||key==='tree_2'||key==='tree_3'||key==='tree_4'||key==='tree_5'||key==='tree_6'; }
@@ -8191,7 +8206,7 @@
             if (_meTool === 'paint') {
                 const tid = ME_TERRAIN_TO_ID[_meSelectedTerrain] || 1;
 
-                _meSetVoxel(x, y, _meActiveZ, tid);
+                _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
                 const rule = TERRAIN_RULES[_meSelectedTerrain];
                 if (rule && !rule.passable) {
                     _meSpawns[1] = _meSpawns[1].filter(s => !(s.x === x && s.y === y));
@@ -8541,7 +8556,10 @@
                 if (!_meVoxels) _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
                 for (let y = 0; y < _meH; y++) {
                     for (let x = 0; x < _meW; x++) {
-                        _meSetVoxel(x, y, _meActiveZ, tid);
+                        /* Recolour the visible surface of each column (not a buried
+                           layer) so "Fill" changes the terrain you actually see and
+                           the chosen tint applies to every tile. */
+                        _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
                     }
                 }
             }
