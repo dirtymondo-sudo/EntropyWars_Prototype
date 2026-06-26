@@ -114,6 +114,196 @@ const ThreePost = (function () {
         ].join('\n')
     };
 
+    // ── Retro / Haunted-PS1 filter ──────────────────────────────────────
+    // A single final post pass that reproduces the "Haunted PS1 / King's Field"
+    // look from the retro aesthetic guide: optional chunky pixelation (UV-snap
+    // downscale), a mood colour-grade + tint, ordered (Bayer) dithering with
+    // colour-depth quantization (the signature weave), and a touch of animated
+    // film grain. It runs LAST so the period-correct colour depth is the final
+    // thing the eye sees (grade + dither after bloom/AA, per the guide).
+    var _retroPass = null;
+
+    // Mood palettes — each drives the tint, tint amount, saturation, contrast
+    // black/white points and a base colour-depth, distilled from the reference
+    // screenshots (teal crypt, green field, amber apocalypse, dreamy rose,
+    // faded nostalgia). Selecting one re-seeds the Tint and Colour-Depth sliders.
+    // fogColor: the mood haze colour used when the optional scene-fog toggle is on.
+    var RETRO_PRESETS = {
+        teal:  { label: 'Eerie Teal',   tint: [0.80, 1.05, 1.04], tintAmount: 0.55, saturation: 0.82, loIn: 0.03, hiIn: 0.95, levels: 24, fogColor: 0x14323a },
+        green: { label: 'Haunted Green', tint: [0.78, 1.08, 0.84], tintAmount: 0.60, saturation: 0.80, loIn: 0.04, hiIn: 0.94, levels: 20, fogColor: 0x1b3a2e },
+        amber: { label: 'Apocalypse',    tint: [1.12, 0.92, 0.68], tintAmount: 0.55, saturation: 0.86, loIn: 0.04, hiIn: 0.96, levels: 22, fogColor: 0x3a2412 },
+        dream: { label: 'Dreamy',        tint: [1.08, 0.94, 1.05], tintAmount: 0.45, saturation: 0.98, loIn: 0.02, hiIn: 0.97, levels: 28, fogColor: 0x3a2433 },
+        faded: { label: 'Faded',         tint: [1.02, 0.99, 0.92], tintAmount: 0.30, saturation: 0.62, loIn: 0.05, hiIn: 0.93, levels: 16, fogColor: 0x2a2a26 }
+    };
+
+    // Live state (persisted as one JSON blob). pixelSize/dither*/grain are
+    // preset-independent; levels + tintAmount are seeded by the preset but then
+    // fine-tunable via the Colour-Depth / Tint sliders.
+    var _retro = {
+        enabled:        false,
+        preset:         'teal',
+        pixelSize:      1.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        ditherStrength: 0.6,
+        ditherScale:    1.0,    // size of a dither cell in source pixels (bigger = coarser weave)
+        grain:          0.04,
+        levels:         24.0,   // colour levels per channel (lower = chunkier banding)
+        tintAmount:     0.55,
+        // Optional tinted scene fog (King's-Field haze). Off by default: with the
+        // far orbit camera, exp2 fog hazes the whole board, so it's an opt-in mood
+        // lever the player dials with the density slider, not a forced default.
+        fogEnabled:     false,
+        fogDensity:     0.00035
+    };
+    try {
+        var _retroSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_retro') : null;
+        if (_retroSaved) {
+            var _rs = JSON.parse(_retroSaved);
+            if (_rs && typeof _rs === 'object') {
+                if (typeof _rs.preset === 'string' && RETRO_PRESETS[_rs.preset]) _retro.preset = _rs.preset;
+                ['enabled','fogEnabled'].forEach(function (k) { if (typeof _rs[k] === 'boolean') _retro[k] = _rs[k]; });
+                ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity'].forEach(function (k) {
+                    if (typeof _rs[k] === 'number' && !isNaN(_rs[k])) _retro[k] = _rs[k];
+                });
+            }
+        }
+    } catch (e) {}
+
+    function _saveRetro() {
+        try {
+            if (typeof localStorage !== 'undefined') localStorage.setItem('ew_retro', JSON.stringify(_retro));
+        } catch (e) {}
+    }
+
+    var _RetroShader = {
+        uniforms: {
+            'tDiffuse':       { value: null },
+            'uResolution':    { value: new THREE.Vector2(1, 1) },
+            'uTime':          { value: 0.0 },
+            'uPixelSize':     { value: 1.0 },
+            'uLevels':        { value: 24.0 },
+            'uDitherStrength':{ value: 0.6 },
+            'uDitherScale':   { value: 1.0 },
+            'uTint':          { value: new THREE.Vector3(0.80, 1.05, 1.04) },
+            'uTintAmount':    { value: 0.55 },
+            'uSaturation':    { value: 0.82 },
+            'uLevelsInOut':   { value: new THREE.Vector2(0.03, 0.95) },
+            'uGrain':         { value: 0.04 }
+        },
+        vertexShader: [
+            'varying vec2 vUv;',
+            'void main() {',
+            '  vUv = uv;',
+            '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+            '}'
+        ].join('\n'),
+        fragmentShader: [
+            'uniform sampler2D tDiffuse;',
+            'uniform vec2 uResolution;',
+            'uniform float uTime;',
+            'uniform float uPixelSize;',
+            'uniform float uLevels;',
+            'uniform float uDitherStrength;',
+            'uniform float uDitherScale;',
+            'uniform vec3 uTint;',
+            'uniform float uTintAmount;',
+            'uniform float uSaturation;',
+            'uniform vec2 uLevelsInOut;',
+            'uniform float uGrain;',
+            'varying vec2 vUv;',
+            '',
+            '// 4x4 ordered Bayer matrix, 0..15 (unrolled — no dynamic array indexing for WebGL1)',
+            'float bayer4x4(vec2 p) {',
+            '  float x = mod(p.x, 4.0);',
+            '  float y = mod(p.y, 4.0);',
+            '  float idx = x + y * 4.0;',
+            '  float m = 0.0;',
+            '  if (idx < 0.5) m = 0.0; else if (idx < 1.5) m = 8.0; else if (idx < 2.5) m = 2.0; else if (idx < 3.5) m = 10.0;',
+            '  else if (idx < 4.5) m = 12.0; else if (idx < 5.5) m = 4.0; else if (idx < 6.5) m = 14.0; else if (idx < 7.5) m = 6.0;',
+            '  else if (idx < 8.5) m = 3.0; else if (idx < 9.5) m = 11.0; else if (idx < 10.5) m = 1.0; else if (idx < 11.5) m = 9.0;',
+            '  else if (idx < 12.5) m = 15.0; else if (idx < 13.5) m = 7.0; else if (idx < 14.5) m = 13.0; else m = 5.0;',
+            '  return m / 16.0;',
+            '}',
+            '',
+            'float hash(vec2 p) {',
+            '  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);',
+            '}',
+            '',
+            'vec3 grade(vec3 c) {',
+            '  // contrast / level remap',
+            '  c = clamp((c - uLevelsInOut.x) / max(0.001, uLevelsInOut.y - uLevelsInOut.x), 0.0, 1.0);',
+            '  // desaturate slightly',
+            '  float l = dot(c, vec3(0.299, 0.587, 0.114));',
+            '  c = mix(vec3(l), c, uSaturation);',
+            '  // tint toward the mood colour (multiply keeps darks dark)',
+            '  c = mix(c, c * uTint, uTintAmount);',
+            '  return c;',
+            '}',
+            '',
+            'void main() {',
+            '  // 1. optional chunky pixelation (UV-snap downscale)',
+            '  vec2 uv = vUv;',
+            '  if (uPixelSize > 1.0) {',
+            '    vec2 cells = uResolution / uPixelSize;',
+            '    uv = (floor(vUv * cells) + 0.5) / cells;',
+            '  }',
+            '  vec3 c = texture2D(tDiffuse, uv).rgb;',
+            '',
+            '  // 2. grade BEFORE dither so the period-correct depth is final',
+            '  c = grade(c);',
+            '',
+            '  // 3. ordered dither + quantize (the signature weave). Cells are keyed',
+            '  //    to the (snapped) uv so they ride along with the pixelation grid.',
+            '  vec2 dcoord = floor(uv * uResolution / max(1.0, uDitherScale));',
+            '  float threshold = bayer4x4(dcoord) - 0.5;',
+            '  c += threshold * (uDitherStrength / uLevels);',
+            '  c = floor(c * uLevels + 0.5) / uLevels;',
+            '',
+            '  // 4. a little animated grain over the static dither adds life',
+            '  if (uGrain > 0.0) {',
+            '    float g = hash(uv * uResolution + fract(uTime)) - 0.5;',
+            '    c += g * uGrain;',
+            '  }',
+            '',
+            '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
+            '}'
+        ].join('\n')
+    };
+
+    // Push the full _retro state (including the active preset's tint/sat/contrast)
+    // into the live shader uniforms.
+    function _applyRetroUniforms() {
+        if (!_retroPass) return;
+        var u = _retroPass.material.uniforms;
+        var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
+        u.uPixelSize.value      = _retro.pixelSize;
+        u.uLevels.value         = _retro.levels;
+        u.uDitherStrength.value = _retro.ditherStrength;
+        u.uDitherScale.value    = _retro.ditherScale;
+        u.uTintAmount.value     = _retro.tintAmount;
+        u.uTint.value.set(p.tint[0], p.tint[1], p.tint[2]);
+        u.uSaturation.value     = p.saturation;
+        u.uLevelsInOut.value.set(p.loIn, p.hiIn);
+        u.uGrain.value          = _retro.grain;
+    }
+
+    // Optional tinted scene fog. Keyed on camera distance, so with the far orbit
+    // camera it hazes the whole board uniformly — that's why it's opt-in and the
+    // density is player-tunable. Colour follows the active mood preset.
+    function _applySceneFog() {
+        if (!_scene) return;
+        if (_retro.fogEnabled) {
+            var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
+            if (_scene.fog && _scene.fog.isFogExp2) {
+                _scene.fog.color.setHex(p.fogColor);
+                _scene.fog.density = _retro.fogDensity;
+            } else {
+                _scene.fog = new THREE.FogExp2(p.fogColor, _retro.fogDensity);
+            }
+        } else {
+            _scene.fog = null;
+        }
+    }
+
     var _sunLight = null;
     var _hemiLight = null;
     var _ambientLight = null;
@@ -674,8 +864,17 @@ const ThreePost = (function () {
         _cinematicPass.enabled = _cinematicEnabled;
         _composer.addPass(_cinematicPass);
 
+        // Retro / Haunted-PS1 pass — LAST, so grade + dither are the final thing
+        // the eye sees (per the aesthetic guide's recommended pass order).
+        _retroPass = new THREE.ShaderPass(_RetroShader);
+        _retroPass.material.uniforms['uResolution'].value.set(w, h);
+        _retroPass.enabled = _retro.enabled;
+        _applyRetroUniforms();
+        _composer.addPass(_retroPass);
+        _applySceneFog();
+
         _ready = true;
-        console.log('[ThreePost] initialized — bloom + FXAA + cinematic filter + directional/hemi lighting');
+        console.log('[ThreePost] initialized — bloom + FXAA + cinematic filter + retro filter + directional/hemi lighting');
     }
 
     function render(cam) {
@@ -688,6 +887,10 @@ const ThreePost = (function () {
 
         if (_cinematicPass && _cinematicPass.enabled) {
             _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
+        }
+
+        if (_retroPass && _retroPass.enabled) {
+            _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
         }
 
         if (!_ready || !_composer || !cam) {
@@ -711,6 +914,9 @@ const ThreePost = (function () {
         }
         if (_cinematicPass) {
             _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
+        }
+        if (_retroPass) {
+            _retroPass.material.uniforms['uResolution'].value.set(w, h);
         }
     }
 
@@ -826,6 +1032,8 @@ const ThreePost = (function () {
             _streetLampGroup = null;
         }
 
+        if (_scene && _scene.fog) _scene.fog = null;
+
         if (_sunLight && _scene) _scene.remove(_sunLight);
         if (_hemiLight && _scene) _scene.remove(_hemiLight);
         if (_ambientLight && _scene) _scene.remove(_ambientLight);
@@ -860,6 +1068,63 @@ const ThreePost = (function () {
         if (u[key]) u[key].value = value;
     }
 
+    // ── Retro / Haunted-PS1 filter API ──────────────────────────────────
+    function setRetroFilter(enabled) {
+        _retro.enabled = !!enabled;
+        if (_retroPass) _retroPass.enabled = _retro.enabled;
+        _saveRetro();
+    }
+    function isRetroFilterEnabled() { return _retro.enabled; }
+
+    function setRetroPreset(name) {
+        if (!RETRO_PRESETS[name]) return;
+        _retro.preset = name;
+        // re-seed the preset-driven sliders so they reflect the new mood
+        var p = RETRO_PRESETS[name];
+        _retro.levels = p.levels;
+        _retro.tintAmount = p.tintAmount;
+        _applyRetroUniforms();
+        _applySceneFog();
+        _saveRetro();
+    }
+    function getRetroPreset() { return _retro.preset; }
+    function getRetroPresets() {
+        return Object.keys(RETRO_PRESETS).map(function (k) {
+            return { key: k, label: RETRO_PRESETS[k].label };
+        });
+    }
+
+    // Tunable keys: pixelSize, ditherStrength, ditherScale, grain, levels, tintAmount
+    function setRetroParam(key, value) {
+        var v = parseFloat(value);
+        if (isNaN(v)) return;
+        if (!(key in _retro)) return;
+        _retro[key] = v;
+        _applyRetroUniforms();
+        _saveRetro();
+    }
+    function getRetroParam(key) { return _retro[key]; }
+    function getRetroState() {
+        var out = {};
+        for (var k in _retro) out[k] = _retro[k];
+        return out;
+    }
+
+    function setRetroFog(enabled) {
+        _retro.fogEnabled = !!enabled;
+        _applySceneFog();
+        _saveRetro();
+    }
+    function isRetroFogEnabled() { return _retro.fogEnabled; }
+    function setRetroFogDensity(value) {
+        var v = parseFloat(value);
+        if (isNaN(v)) return;
+        _retro.fogDensity = Math.max(0, v);
+        _applySceneFog();
+        _saveRetro();
+    }
+    function getRetroFogDensity() { return _retro.fogDensity; }
+
     return {
         init: init,
         render: render,
@@ -885,6 +1150,18 @@ const ThreePost = (function () {
         setCinematicFilter: setCinematicFilter,
         isCinematicFilterEnabled: isCinematicFilterEnabled,
         setCinematicParam: setCinematicParam,
+        setRetroFilter: setRetroFilter,
+        isRetroFilterEnabled: isRetroFilterEnabled,
+        setRetroPreset: setRetroPreset,
+        getRetroPreset: getRetroPreset,
+        getRetroPresets: getRetroPresets,
+        setRetroParam: setRetroParam,
+        getRetroParam: getRetroParam,
+        getRetroState: getRetroState,
+        setRetroFog: setRetroFog,
+        isRetroFogEnabled: isRetroFogEnabled,
+        setRetroFogDensity: setRetroFogDensity,
+        getRetroFogDensity: getRetroFogDensity,
         isReady: isReady,
         dispose: dispose
     };

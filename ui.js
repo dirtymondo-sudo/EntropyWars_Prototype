@@ -6212,6 +6212,20 @@
             const expMinPct = Math.round(expRange.min*100);
             const expMaxPct = Math.round(expRange.max*100);
 
+            // Retro / Haunted-PS1 filter state
+            const _TP = (typeof ThreePost!=='undefined') ? ThreePost : null;
+            const retroOn = !!(_TP && _TP.isRetroFilterEnabled && _TP.isRetroFilterEnabled());
+            const retroState = (_TP && _TP.getRetroState) ? _TP.getRetroState() : {pixelSize:1,ditherStrength:0.6,ditherScale:1,grain:0.04,levels:24,tintAmount:0.55};
+            const retroPreset = (_TP && _TP.getRetroPreset) ? _TP.getRetroPreset() : 'teal';
+            const retroPresets = (_TP && _TP.getRetroPresets) ? _TP.getRetroPresets() : [];
+            const retroFogOn = !!(_TP && _TP.isRetroFogEnabled && _TP.isRetroFogEnabled());
+            const retroFogDensity = (_TP && _TP.getRetroFogDensity) ? _TP.getRetroFogDensity() : 0.00035;
+            const grainPct = Math.max(0, Math.min(100, Math.round((retroState.grain/0.12)*100)));
+            const fogPct = Math.max(0, Math.min(100, Math.round((retroFogDensity/0.0008)*100)));
+            const ditherPct = Math.round(retroState.ditherStrength*100);
+            const tintPct = Math.round(retroState.tintAmount*100);
+            const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');_renderPauseMenu();">${p.label}</button>`).join('');
+
             const ps = state.particleSettings || {};
             const pKeys = ['projectiles','aoe','movement','healing','buffs','status','levelUp','death','combos'];
             const pOn = pKeys.filter(k => ps[k]).length;
@@ -6258,6 +6272,56 @@
                             <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();_renderPauseMenu();">Race</button>
                             <button class="pm-seg-btn${nametagMode==='job'?' active':''}" onclick="state.nametagMode='job';markDirty('board');renderIfDirty();_renderPauseMenu();">Job</button>
                             <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();_renderPauseMenu();">Lv</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pm-set-group pm-collapsible">
+                    <button class="pm-collapse-header" onclick="var b=this.nextElementSibling;var c=this.querySelector('.pm-collapse-chev');if(b.style.display==='none'){b.style.display='block';c.style.transform='rotate(180deg)';}else{b.style.display='none';c.style.transform='rotate(0)';}">
+                        <span class="pm-set-group-title" style="margin-bottom:0">Retro / Haunted</span>
+                        <span class="pm-collapse-summary">${retroOn ? 'on' : 'off'}</span>
+                        <span class="pm-collapse-chev"${retroOn?' style="transform:rotate(180deg)"':''}>▾</span>
+                    </button>
+                    <div class="pm-collapse-body" style="display:${retroOn?'block':'none'}">
+                        <div class="pm-set-toggles" style="margin-top:10px">
+                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">Retro Filter</span><span class="pm-toggle-hint">dither + grade</span></label>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Mood</span>
+                            <div class="pm-seg-group">${retroPresetBtns}</div>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Pixelate</span>
+                            <input type="range" min="1" max="6" step="1" value="${Math.round(retroState.pixelSize)}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('pixelSize',this.value);this.nextElementSibling.textContent=(this.value=='1'?'off':this.value+'x');">
+                            <span class="pm-vol-val">${Math.round(retroState.pixelSize)==1?'off':Math.round(retroState.pixelSize)+'x'}</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Dither</span>
+                            <input type="range" min="0" max="100" step="5" value="${ditherPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('ditherStrength',this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                            <span class="pm-vol-val">${retroState.ditherStrength.toFixed(2)}</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Color Depth</span>
+                            <input type="range" min="4" max="48" step="2" value="${Math.round(retroState.levels)}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('levels',this.value);this.nextElementSibling.textContent=this.value;">
+                            <span class="pm-vol-val">${Math.round(retroState.levels)}</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Tint</span>
+                            <input type="range" min="0" max="100" step="5" value="${tintPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('tintAmount',this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                            <span class="pm-vol-val">${retroState.tintAmount.toFixed(2)}</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Grain</span>
+                            <input type="range" min="0" max="100" step="5" value="${grainPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('grain',(this.value/100)*0.12);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
+                            <span class="pm-vol-val">${(grainPct/100).toFixed(2)}</span>
+                        </div>
+                        <div class="pm-set-toggles" style="margin-top:10px">
+                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze (affects board)</span></label>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                            <span class="pm-setting-label">Fog Density</span>
+                            <input type="range" min="0" max="100" step="5" value="${fogPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFogDensity)ThreePost.setRetroFogDensity((this.value/100)*0.0008);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${fogPct}%</span>
                         </div>
                     </div>
                 </div>
