@@ -8737,34 +8737,88 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // Lunar roving vehicle — gold-foil chassis, dish antenna, twin seats, 4 wheels.
+    // Apollo Lunar Roving Vehicle — an open tubular chassis that is LONGER than
+    // it is wide (≈3.1 m × 1.8 m in life), four wire-mesh wheels under flared
+    // fenders, twin mesh bucket seats, a central control console, a gold-foil
+    // equipment/battery bay at the back and the big umbrella high-gain antenna
+    // on a forward mast. Forward is +Z (where the dish + console live).
     function _hzRover(rng) {
         var ts = CONFIG.tileSize || 128;
         var g = new THREE.Group();
-        var foil = function () { return _hzGeoMat(_hzTex('gold'), 0xd9b24a); };
-        var dark = function () { return _hzGeoMat(_hzTex('metal'), 0x3a3d44); };
-        var bodyW = ts * 1.9, bodyH = ts * 0.3, bodyD = ts * 1.0, wheelR = ts * 0.26;
-        var chassis = _hzBox(bodyW, bodyH, bodyD, ts, foil());
-        chassis.position.y = wheelR + bodyH * 0.5; g.add(chassis);
+        var foil  = function () { return _hzGeoMat(_hzTex('gold'), 0xcaa23f); };                          // kapton gold foil
+        var alum  = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc6cad1); };  // bare aluminium
+        var frame = function () { return _hzGeoMat(_hzTex('metal'), 0x44474e); };                         // dark structural tube
+        var seatM = function () { return _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x2b2d33); };    // dark mesh seat
+
+        // length runs along Z, width along X — longer than wide, the right way round
+        var L = ts * 2.3, W = ts * 1.25, deckH = ts * 0.14, wheelR = ts * 0.30;
+        var deckY = wheelR + ts * 0.16;                 // open deck sits just above the axles
+        var deckTop = deckY + deckH * 0.5;
+
+        // ── open chassis: thin aluminium floor pan + tubular frame rails ────
+        var deck = _hzBox(W, deckH, L, ts, alum());
+        deck.position.y = deckY; g.add(deck);
+        [-1, 1].forEach(function (sx) {
+            var rail = _hzBox(ts * 0.10, ts * 0.10, L * 0.98, ts, frame());
+            rail.position.set(sx * W * 0.5, deckTop, 0); g.add(rail);
+        });
+        [-1, 1].forEach(function (sz) {
+            var xm = _hzBox(W * 1.02, ts * 0.10, ts * 0.10, ts, frame());
+            xm.position.set(0, deckTop, sz * L * 0.46); g.add(xm);
+        });
+
+        // ── twin bucket seats, side by side across the width, mid-deck ──────
         for (var s = 0; s < 2; s++) {
-            var seat = _hzBox(ts * 0.5, ts * 0.4, ts * 0.55, ts, dark());
-            seat.position.set(-bodyW * 0.16 + s * ts * 0.6, wheelR + bodyH + ts * 0.2, 0); g.add(seat);
-            var back = _hzBox(ts * 0.5, ts * 0.45, ts * 0.08, ts, dark());
-            back.position.set(-bodyW * 0.16 + s * ts * 0.6, wheelR + bodyH + ts * 0.42, -bodyD * 0.22); g.add(back);
+            var sx2 = (s === 0 ? -1 : 1) * W * 0.24;
+            var seatZ = L * 0.04;
+            var pan = _hzBox(W * 0.42, ts * 0.10, ts * 0.52, ts, seatM());
+            pan.position.set(sx2, deckTop + ts * 0.17, seatZ); g.add(pan);
+            var back = _hzBox(W * 0.42, ts * 0.52, ts * 0.10, ts, seatM());
+            back.position.set(sx2, deckTop + ts * 0.42, seatZ - ts * 0.27); g.add(back);
+            var rest = _hzBox(W * 0.40, ts * 0.13, ts * 0.11, ts, foil());     // gold head-rest pad
+            rest.position.set(sx2, deckTop + ts * 0.67, seatZ - ts * 0.27); g.add(rest);
         }
-        var wx = bodyW * 0.42, wz = bodyD * 0.42;
-        [[-wx, -wz], [wx, -wz], [-wx, wz], [wx, wz]].forEach(function (p) {
-            var wheel = _hzCyl(wheelR, wheelR, ts * 0.28, 12, ts, dark());
+
+        // ── central control console + hand-controller stalk, toward the front ─
+        var con = _hzBox(ts * 0.30, ts * 0.24, ts * 0.20, ts, frame());
+        con.position.set(0, deckTop + ts * 0.18, L * 0.30); g.add(con);
+        var tstem = _hzCyl(ts * 0.025, ts * 0.025, ts * 0.26, 6, ts, frame());
+        tstem.position.set(0, deckTop + ts * 0.34, L * 0.30); g.add(tstem);
+
+        // ── rear equipment / battery bay clad in gold foil + aluminium lid ──
+        var bay = _hzBox(W * 0.86, ts * 0.32, ts * 0.5, ts, foil());
+        bay.position.set(0, deckTop + ts * 0.19, -L * 0.34); g.add(bay);
+        var bayTop = _hzBox(W * 0.88, ts * 0.05, ts * 0.52, ts, alum());
+        bayTop.position.set(0, deckTop + ts * 0.37, -L * 0.34); g.add(bayTop);
+
+        // ── four wire-mesh wheels, bright hubs, flared fenders ──────────────
+        var wx = W * 0.56, wz = L * 0.34;
+        [[-wx, wz], [wx, wz], [-wx, -wz], [wx, -wz]].forEach(function (p) {
+            var side = p[0] < 0 ? -1 : 1;
+            var wheel = _hzCyl(wheelR, wheelR, ts * 0.26, 16, ts, frame());
             wheel.rotation.z = Math.PI / 2;
             wheel.position.set(p[0], wheelR, p[1]); g.add(wheel);
+            var hub = _hzCyl(wheelR * 0.36, wheelR * 0.36, ts * 0.30, 10, ts, alum());
+            hub.rotation.z = Math.PI / 2;
+            hub.position.set(p[0] + side * ts * 0.01, wheelR, p[1]); g.add(hub);
+            var fender = _hzBox(ts * 0.34, ts * 0.05, wheelR * 2.4, ts, alum());
+            fender.position.set(p[0], wheelR * 1.95, p[1]); g.add(fender);
         });
-        var mast = _hzCyl(ts * 0.03, ts * 0.03, ts * 1.1, 6, ts, dark());
-        mast.position.set(-bodyW * 0.4, wheelR + bodyH + ts * 0.55, bodyD * 0.3); g.add(mast);
-        var dishGeo = new THREE.SphereGeometry(ts * 0.45, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('metal'), 0xe8e8ee));
-        dish.scale.set(1, 0.35, 1);
-        dish.position.set(-bodyW * 0.4, wheelR + bodyH + ts * 1.05, bodyD * 0.3);
-        dish.rotation.x = -0.5; g.add(dish);
+
+        // ── umbrella high-gain antenna on a forward mast ────────────────────
+        var mast = _hzCyl(ts * 0.03, ts * 0.035, ts * 1.15, 6, ts, alum());
+        mast.position.set(W * 0.30, deckTop + ts * 0.58, L * 0.40); g.add(mast);
+        var dishGeo = new THREE.SphereGeometry(ts * 0.5, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.5);
+        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xe6e8ee));
+        dish.scale.set(1, 0.3, 1);
+        dish.position.set(W * 0.30, deckTop + ts * 1.16, L * 0.40);
+        dish.rotation.x = -0.6; g.add(dish);
+
+        // ── low-gain whip antenna at the rear ───────────────────────────────
+        var whip = _hzCyl(ts * 0.012, ts * 0.012, ts * 0.9, 5, ts, frame());
+        whip.position.set(-W * 0.34, deckTop + ts * 0.5, -L * 0.28);
+        whip.rotation.z = 0.18; g.add(whip);
+
         return g;
     }
 
