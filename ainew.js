@@ -50,7 +50,16 @@
     const DMG_KINDS = new Set(['damage', 'ricochet', 'multiHit', 'aoe', 'barrage',
         'lifeDrain', 'line', 'linePush', 'cross', 'aoePull', 'splitBeam',
         'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike']);
+    // Used for TARGET prioritization (kill enemy support first) and focus selection.
     const HEALERS = new Set(['White Mage', 'Psychic', 'Harvester']);
+    // Classes we let the stock AI fully drive (genuine back-line support: it weighs
+    // heal vs. revive vs. attack better than a hard focus-fire override would).
+    // NOTE: Harvester is intentionally NOT here — it's a 145-ATK bruiser with big
+    // damage spells; treating it as a healer made it camp and barely act (it was
+    // the single biggest reason the CPU got shut out). Harvesters now fight, but
+    // still drop into the stock heal path when an ally is actually dying (below).
+    const PURE_SUPPORT = new Set(['White Mage', 'Psychic']);
+    const HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive']);
 
     // A unit the AI must NOT target: invisible/cloaked, or hidden by an enemy
     // smoke screen (unless one of our units is adjacent, which reveals them).
@@ -271,6 +280,132 @@
         }
     }
 
+    // ---- Support gating: should this unit drop to the stock heal/support path?
+    function hasHealSpell(unit) {
+        return (unit.spells || []).some(s => HEAL_KINDS.has(s.kind));
+    }
+    function anAllyIsDying(g, unit) {
+        const st = g.state;
+        return st.units.some(u => !u.dead && u.hp > 0 && u.player === unit.player &&
+            (u.hp / (u.maxHp || 1)) < 0.5 &&
+            (u.id === unit.id || (Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y)) <= 8));
+    }
+
+    // ---- 3) Move-to-engage. The original focus path only acted when a shot
+    // already existed from where the unit stood; otherwise it delegated to the
+    // (very timid) stock movement, which kites/retreats under pressure. That left
+    // melee units stranded out of range doing nothing — the Warrior in the 8-0
+    // match moved 3 tiles and never attacked all game. This delivers the unit INTO
+    // range (or closes the gap when no tile reaches), so the focus shot fires next
+    // loop. Forward pressure beats backpedaling.
+    function tileH(g, t) {
+        if (t.z != null) return t.z;
+        try { return g.getHeightAt ? g.getHeightAt(t.x, t.y) : 0; } catch (e) { return 0; }
+    }
+    function combatDist(g, ax, ay, az, b) {
+        try { if (g.combatDist) return g.combatDist(ax, ay, az ?? 0, b.x, b.y, b.z ?? 0); } catch (e) {}
+        return Math.abs(ax - b.x) + Math.abs(ay - b.y);
+    }
+    // Best effective reach this unit could fire with from a new tile (basic attack
+    // plus any affordable damage spell) — what "in range" means for engaging.
+    function reachOf(g, unit) {
+        let r = 1;
+        try { r = g.getEffectiveRange(unit) || 1; } catch (e) { r = unit.range || 1; }
+        if (!g.unitHasStatus(unit, 'silence')) {
+            for (const sp of (unit.spells || [])) {
+                if (!DMG_KINDS.has(sp.kind)) continue;
+                if (!g.canAffordSpell(unit, sp)) continue;
+                if ((unit.mp || 0) < (sp.cost || 0)) continue;
+                let er = sp.range || 0;
+                try { if (g.getEffectiveSpellRange) er = g.getEffectiveSpellRange(unit, sp); } catch (e) {}
+                if (er > r) r = er;
+            }
+        }
+        return r;
+    }
+    function liveEnemies(g, unit) {
+        return g.state.units.filter(u => u.player !== unit.player && !u.dead && u.hp > 0 &&
+            (typeof g.isEnemyUnit !== 'function' || g.isEnemyUnit(u, unit)) &&
+            !isConcealed(g, u, unit.player));
+    }
+    function pickEngageMove(g, unit, focus) {
+        if (!g.canUnitMove || !g.canUnitMove(unit)) return null;
+        let tiles; try { tiles = g.getMoveTiles(unit) || []; } catch (e) { return null; }
+        if (!tiles.length) return null;
+        const enemies = liveEnemies(g, unit);
+        if (!enemies.length) return null;
+        const reach = reachOf(g, unit);
+        const recent = new Set(unit._aiRecentTiles || []);
+        const blocked = (tx, ty, e) => {
+            try { return g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(tx, ty, e.x, e.y); } catch (q) { return false; }
+        };
+
+        // 1) Prefer a reachable tile that opens a shot — on the shared focus if we
+        //    can, else any enemy; bias toward high ground and the wounded.
+        let best = null;
+        for (const t of tiles) {
+            if (t.x === unit.x && t.y === unit.y) continue;
+            const th = tileH(g, t);
+            for (const e of enemies) {
+                const d = combatDist(g, t.x, t.y, t.z, e);
+                if (d < 1 || d > reach) continue;
+                if (blocked(t.x, t.y, e)) continue;
+                let s = 1000 - d * 6;
+                if (focus && e.id === focus.id) s += 4000;          // converge the team
+                if (HEALERS.has(e.cls)) s += 1500;                  // collapse on support
+                s += (e.maxHp - e.hp) * 0.5;                        // finish the wounded
+                const eH = standH(g, e);
+                if (th > eH) s += (th - eH) * 30;                   // downhill shot
+                if (recent.has(g.posKey(t.x, t.y))) s -= 50;        // anti-oscillation
+                if (!best || s > best.score) best = { x: t.x, y: t.y, z: t.z, score: s };
+            }
+        }
+        if (best) return best;
+
+        // 2) No tile reaches — march at the focus (or nearest enemy) to close the
+        //    gap. Only commit if the step actually gets us closer.
+        let tgt = focus;
+        if (!tgt) {
+            tgt = enemies.slice().sort((a, b) =>
+                combatDist(g, unit.x, unit.y, unit.z, a) - combatDist(g, unit.x, unit.y, unit.z, b))[0];
+        }
+        const curD = combatDist(g, unit.x, unit.y, unit.z, tgt);
+        let approach = null;
+        for (const t of tiles) {
+            if (t.x === unit.x && t.y === unit.y) continue;
+            const d = combatDist(g, t.x, t.y, t.z, tgt);
+            let s = (curD - d) * 100;
+            s += tileH(g, t) * 5;                                   // take the high road
+            if (recent.has(g.posKey(t.x, t.y))) s -= 60;
+            if (!approach || s > approach.score) approach = { x: t.x, y: t.y, z: t.z, score: s };
+        }
+        if (approach && approach.score > 0) return approach;
+        return null;
+    }
+    // Execute a move following the engine contract, mirroring stock executeAction's
+    // 'move' case (inline doMove → schedule finish on the returned anim delay).
+    function executeEngageMove(g, unit, mv) {
+        const st = g.state;
+        st.actionMode = 'move';
+        if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
+        unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
+        if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+        const px = unit.x, py = unit.y;
+        let res; try { res = g.doMove(unit, mv.x, mv.y, mv.z); } catch (e) { res = false; }
+        const moved = (unit.x !== px || unit.y !== py);
+        if (!moved) {
+            // Blocked — hand to the stock AI rather than re-pick the same tile and spin.
+            st._claudeDelegateOnce = unit.id;
+            st.actionMode = null;
+            st.aiThinking = false;
+            g.maybeTriggerComputerTurn();
+            return;
+        }
+        const delay = (typeof res === 'number' && res > 1) ? res : 0;
+        if (delay > 0) window.setTimeout(() => g.finishComputerAction(), delay);
+        else g.finishComputerAction();
+    }
+
     // ---- Override: hard focus-fire first, else delegate everything to stock AI.
     window.aiTakeTurn = function (unit) {
         const g = G();
@@ -288,17 +423,45 @@
         try {
             if (unit && !unit.dead && (unit.ap || 0) > 0 &&
                 g.state && g.state.phase === 'battle' &&
-                !HEALERS.has(unit.cls) &&                 // healers: let stock AI weigh heal vs dmg
                 !g.unitHasStatus(unit, 'stun')) {
+
+                // Genuine back-line support stays on the stock heal/revive logic.
+                // Harvesters (and any heal-capable bruiser) only defer when an ally
+                // is actually dying; otherwise they fight.
+                if (PURE_SUPPORT.has(unit.cls)) return _baseAiTakeTurn(unit);
+                if (hasHealSpell(unit) && anAllyIsDying(g, unit)) return _baseAiTakeTurn(unit);
+
+                // Per-activation loop guard. We bypass the stock loop counter on the
+                // aggressive path, so cap our own action chain; the engine grants AP
+                // at activation start, so a rise in AP marks a fresh turn → reset.
+                const ap = unit.ap || 0;
+                if (unit._claudeLastAp == null || ap > unit._claudeLastAp) unit._claudeActs = 0;
+                unit._claudeLastAp = ap;
+                if ((unit._claudeActs || 0) >= 12) return _baseAiTakeTurn(unit);
 
                 const focus = pickTeamFocus(g, unit);
                 if (focus) {
                     const act = findFocusDamageAction(g, unit, focus);
-                    // Only seize control when we have a real shot. Movement,
-                    // positioning (now height-boosted), healing, tower, nexus,
-                    // retreat, etc. all stay with the stock AI.
+                    const lethal = act && act.target && act.est >= act.target.hp;
+
+                    // Self-preservation: a badly-hurt unit hands off to the stock AI
+                    // (retreat / potion / self-heal) UNLESS it can secure a kill —
+                    // never walk away from lethal.
+                    const lowHp = unit.maxHp > 0 && (unit.hp / unit.maxHp) < 0.28;
+                    if (lowHp && !lethal) return _baseAiTakeTurn(unit);
+
+                    // a) Shot from here → take the focus-weighted shot.
                     if (act && act.est > 0) {
+                        unit._claudeActs = (unit._claudeActs || 0) + 1;
                         executeFocusAction(g, unit, act);
+                        return;
+                    }
+                    // b) No shot → move to engage (step into range, else close the
+                    //    gap). The shot then fires on the re-triggered loop.
+                    const mv = pickEngageMove(g, unit, focus);
+                    if (mv) {
+                        unit._claudeActs = (unit._claudeActs || 0) + 1;
+                        executeEngageMove(g, unit, mv);
                         return;
                     }
                 }
