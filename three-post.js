@@ -306,14 +306,17 @@ const ThreePost = (function () {
                 _scene.fog = null;
             }
         }
-        // Also reach the background scenery: its landmark materials are built
-        // fog:false, so without this the mood fog would haze the board but leave
-        // the far esoteric bodies floating crisp in front of it. The renderer
-        // flips fog on the solid scenery materials (camera-distance fade) so the
-        // deepest landmarks dissolve into the haze and the nearer ones poke out.
+        // Also reach the background: the landmark materials are built fog:false
+        // and the sky dome is its own shader, so without this the mood fog would
+        // haze the board but leave the far bodies floating crisp against a clear
+        // sky. The renderer flips distance-fog on the solid scenery materials AND
+        // banks a matching haze along the dome's horizon (thinning toward the
+        // zenith, so the stars / sun / moon stay visible overhead). Thickness is
+        // derived from the density slider so one control drives the whole effect.
         if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setHorizonFog) {
             var _fp = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
-            ThreeRenderer.setHorizonFog(_retro.fogEnabled, _fp.fogColor);
+            var _thick = Math.max(0, Math.min(1, _retro.fogDensity / 0.0005));
+            ThreeRenderer.setHorizonFog(_retro.fogEnabled, _fp.fogColor, _thick);
         }
     }
 

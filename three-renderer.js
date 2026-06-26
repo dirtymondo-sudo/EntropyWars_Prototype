@@ -7303,6 +7303,7 @@ const ThreeRenderer = (function () {
         'uniform float uTime; uniform float uDayNight; uniform float uSkyEvent; uniform float uSkyAmt;',
         'uniform float uZodiac; uniform vec4 uWeather; uniform float uOccult;',
         'uniform vec3 uCenter; uniform float uDiscR; uniform float uWallH; uniform float uTile;',
+        'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop;',
         '#define PI 3.14159265359',
         '#define TAU 6.28318530718',
         'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
@@ -7536,6 +7537,14 @@ const ThreeRenderer = (function () {
         '  col=mix(col,col*vec3(1.18,1.00,0.74)+vec3(0.05,0.03,0.0),wSand*0.35);\n' +
         '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),wBlood*0.45);\n' +
         '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.92));\n' +
+        // ── retro mood fog: a haze bank hugging the horizon that thins toward the
+        //    zenith, so the lower sky drowns in fog while the stars / sun / moon
+        //    overhead stay clear. el (rd.y) is the view-ray altitude: <=0 horizon
+        //    & below → full fog, fading to 0 by uFogTop. Applied to the final
+        //    display colour so the horizon band matches the colour the distance
+        //    fog fades the scenery into. uFogAmount is 0 when the filter is off.
+        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(0.0,uFogTop,max(el,0.0)); fb=pow(fb,1.3);\n' +
+        '    col=mix(col,uFogColor,clamp(fb*uFogAmount,0.0,1.0)); }\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
     }
@@ -7554,7 +7563,11 @@ const ThreeRenderer = (function () {
                 uCenter: { value: new THREE.Vector3(0, 0, 0) },
                 uDiscR: { value: 9000 },
                 uWallH: { value: _ENV_WALL_H },
-                uTile: { value: 128 }
+                uTile: { value: 128 },
+                // retro mood fog banked along the horizon (0 amount = off)
+                uFogColor: { value: new THREE.Vector3(0.17, 0.29, 0.32) },
+                uFogAmount: { value: 0.0 },
+                uFogTop: { value: 0.48 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -7648,10 +7661,10 @@ const ThreeRenderer = (function () {
             var camo = ThreeCamera.getCamera();
             if (camo) _envDome.position.copy(camo.position);
             _envDome.scale.setScalar(_ENV_DOME_R);
-            // retro fog replaces the cosmic dome with a flat haze backdrop; enforce
-            // here too so the dome stays hidden if it inits after the fog toggle.
-            _envDome.visible = !_retroFogHorizon;
         }
+        // keep the dome's horizon haze band in sync with the retro-fog state
+        // (cheap; also covers the dome initialising after the fog was toggled on)
+        _applyDomeFog();
 
         var s = _envReadState(), S = _envSmooth, k = 0.05;
         S.night += ((s.night ? 1 : 0) - S.night) * k;
@@ -7732,30 +7745,40 @@ const ThreeRenderer = (function () {
         });
     }
 
-    // The single most important part of "actual fog": the backdrop must BE the
-    // fog colour. The cosmic dome (_envDome) is a fog:false shader, so distant
-    // objects were fading toward the fog colour against a differently-coloured
-    // sky — which reads as "things turning green," not fog. When retro fog is on
-    // we hide the dome and paint scene.background with the mood fog colour, so
-    // the void fills with haze and the far scenery dissolves seamlessly into it
-    // (exactly what the reference King's-Field shots do).
-    var _retroBgColor = null;
-    function setHorizonFog(enabled, colorHex) {
+    // "Actual fog" that keeps the sky: the cosmic dome (_envDome) stays visible,
+    // but its lower band is blended toward the mood fog colour (see the dome FS),
+    // banked along the horizon and thinning toward the zenith — so the far
+    // scenery dissolves into a fog-coloured horizon while the stars / sun / moon
+    // overhead stay clear. The same colour drives scene.fog (object distance
+    // fade), so landmarks melt seamlessly into the dome's haze band. State is
+    // cached and pushed to the uniforms every frame (_applyDomeFog) so it holds
+    // regardless of whether the dome inits before or after the fog toggle.
+    var _retroFogColorHex = 0x2b4a52;
+    var _retroFogThickness = 0.4;
+    var _retroFogScratch = null;
+
+    function _applyDomeFog() {
+        if (!_envUni) return;
+        if (_retroFogHorizon) {
+            if (!_retroFogScratch) _retroFogScratch = new THREE.Color();
+            _retroFogScratch.setHex(_retroFogColorHex);
+            _envUni.uFogColor.value.set(_retroFogScratch.r, _retroFogScratch.g, _retroFogScratch.b);
+            _envUni.uFogAmount.value = 0.80 + 0.20 * _retroFogThickness;   // near-opaque horizon band
+            _envUni.uFogTop.value    = 0.30 + 0.45 * _retroFogThickness;   // how high up the sky the haze climbs
+        } else {
+            _envUni.uFogAmount.value = 0.0;
+        }
+    }
+
+    function setHorizonFog(enabled, colorHex, thickness) {
         _retroFogHorizon = !!enabled;
+        if (colorHex != null) _retroFogColorHex = colorHex;
+        if (typeof thickness === 'number' && !isNaN(thickness)) {
+            _retroFogThickness = Math.max(0, Math.min(1, thickness));
+        }
         _horizonFogDirty = true;
         _applyHorizonFog();
-        if (!scene) return;
-        if (_retroFogHorizon) {
-            if (colorHex != null) {
-                if (!_retroBgColor) _retroBgColor = new THREE.Color();
-                _retroBgColor.setHex(colorHex);
-                scene.background = _retroBgColor;
-            }
-            if (_envDome) _envDome.visible = false;   // dome would draw over the fog backdrop (depthTest:false)
-        } else {
-            scene.background = null;
-            if (_envDome) _envDome.visible = true;
-        }
+        _applyDomeFog();
     }
     var _hzGlowPulse = [];              // self-lit accents that breathe: { mat, mesh, baseOp, opAmp, baseScl, sclAmp, spd, phase }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;
