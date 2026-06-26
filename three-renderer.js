@@ -2886,7 +2886,9 @@ const ThreeRenderer = (function () {
         var g;
         try { g = fn(_monRng(mon.seed || 1)); } catch (e) { return null; }
         if (!g) return null;
-        g.rotation.set(0, 0, 0);                 // force upright (drop baked ruin tilt)
+        /* Force upright (drop any baked ruin tilt), then apply the editor-authored
+           Y rotation so monuments can be spun to face any direction. */
+        g.rotation.set(0, (mon.rot ? -mon.rot * Math.PI / 180 : 0), 0);
         g.position.set(0, 0, 0);
         g.updateMatrixWorld(true);
         var box = new THREE.Box3().setFromObject(g);

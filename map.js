@@ -5923,6 +5923,8 @@
         let _meSelectedLeaf = 'leaves';           // per-tree leaf sprite the brush stamps
         const ME_LEAF_OPTIONS = ['leaves','leaves_2','leaves_3','leaves_4','leaves_5'];
         let _meSelectedObjRef = null;             // {x,y,idx} of the object picked for rotate-after-place
+        let _meSelectedMonRef = null;             // index into _meMonuments of the monument picked for rotate
+        let _meDialDragging = false;              // true while the user drags the rotation dial
 
         let _meVoxels = null;
         let _meActiveZ = 0;
@@ -5953,6 +5955,9 @@
             };
         }
         function _meRestoreSnapshot(snap) {
+            /* Indices into the old arrays are meaningless after a restore. */
+            _meSelectedObjRef = null;
+            _meSelectedMonRef = null;
             _meMonuments = snap.monuments ? snap.monuments.map(m => ({ ...m })) : [];
             if (snap.terrainTints) { _meTerrainTints = Object.assign({}, snap.terrainTints); _meApplyTintsLive(); }
             _meW = snap.w; _meH = snap.h;
@@ -6429,40 +6434,65 @@
                 }
             }
 
-            /* ── Selected-object highlight: a gold ring + translucent disc + a
-               floating "🎯 Selected" tag on the tile of the object picked with the
-               Select tool (or just placed). Gives the clear visual feedback that
-               the picked object actually registered. ── */
-            if (_meSelectedObjRef &&
-                Array.isArray(_meObjects[_meSelectedObjRef.y]?.[_meSelectedObjRef.x]) &&
-                _meObjects[_meSelectedObjRef.y][_meSelectedObjRef.x].length > 0) {
-                const sx = _meSelectedObjRef.x, sy = _meSelectedObjRef.y;
+            /* ── Selection highlight: a gold ring + translucent disc + a big
+               FACING ARROW that points the way the picked object/monument is
+               turned, plus a floating tag. The arrow is the key bit — it makes
+               rotation legible at a glance ("yes, it's facing east now"). ── */
+            const _meDrawSelHighlight = (sx, sy, rotDeg, ringScale, labelText) => {
                 const sh = state.boardHeights?.[sy]?.[sx] ?? 0;
                 const sTopY = Math.max(ts * 0.25, sh * ts * 0.5) + 0.5;
                 const cxw = sx * ts + ts / 2, czw = sy * ts + ts / 2;
+                const rs = ringScale || 1;
 
                 const discMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
-                const disc = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), discMat);
+                const disc = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9 * rs, ts * 0.9 * rs), discMat);
                 disc.rotation.x = -Math.PI / 2;
                 disc.position.set(cxw, sTopY + 0.5, czw);
                 _editorOverlay3DGroup.add(disc);
 
                 const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
-                const ring = new THREE.Mesh(new THREE.RingGeometry(ts * 0.36, ts * 0.48, 48), ringMat);
+                const ring = new THREE.Mesh(new THREE.RingGeometry(ts * 0.36 * rs, ts * 0.48 * rs, 48), ringMat);
                 ring.rotation.x = -Math.PI / 2;
                 ring.position.set(cxw, sTopY + 0.8, czw);
                 ring.renderOrder = 9999;
                 _editorOverlay3DGroup.add(ring);
 
+                /* Facing arrow: a flat arrowhead lying on the ground, spun to the
+                   object's heading (0°=North/away, +90°=East …) — matching the 3D
+                   object/monument Y rotation convention. */
+                const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.98, depthTest: false, side: THREE.DoubleSide });
+                const arrowGroup = new THREE.Group();
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.13 * rs, ts * 0.5 * rs, 16), arrowMat);
+                cone.rotation.x = -Math.PI / 2;          // lay flat, tip → North (-Z)
+                cone.position.z = -ts * 0.42 * rs;       // push tip toward the facing edge
+                cone.renderOrder = 10000;
+                arrowGroup.add(cone);
+                arrowGroup.rotation.y = -(rotDeg || 0) * Math.PI / 180;
+                arrowGroup.position.set(cxw, sTopY + 1.1, czw);
+                _editorOverlay3DGroup.add(arrowGroup);
+
                 const tagEl = document.createElement('div');
                 tagEl.className = 'me-3d-label me-3d-sel-label';
-                tagEl.textContent = '🎯 Selected';
+                tagEl.textContent = labelText || '🎯 Selected';
                 tagEl.style.cssText = 'font-size:12px;font-weight:700;padding:2px 7px;border-radius:4px;pointer-events:none;' +
                     'background:rgba(255,210,74,0.95);color:#3a2a00;font-family:DotGothic16,monospace;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.5);';
                 const tag2d = new THREE.CSS2DObject(tagEl);
-                tag2d.position.set(cxw, sTopY + 26, czw);
+                tag2d.position.set(cxw, sTopY + 26 + ts * 0.5 * (rs - 1), czw);
                 _editorOverlay3DGroup.add(tag2d);
                 _editorOverlay3DLabels.push(tag2d);
+            };
+
+            const _selMon = _meSelectedMonEntry();
+            if (_selMon) {
+                const rr = Math.max(1, Math.floor((_selMon.foot || 3) / 2));
+                _meDrawSelHighlight(_selMon.x, _selMon.y, _selMon.rot || 0, 1 + rr * 0.6, `🎯 ${_selMon.rot || 0}° facing`);
+            } else if (_meSelectedObjRef &&
+                Array.isArray(_meObjects[_meSelectedObjRef.y]?.[_meSelectedObjRef.x]) &&
+                _meObjects[_meSelectedObjRef.y][_meSelectedObjRef.x].length > 0) {
+                const sx = _meSelectedObjRef.x, sy = _meSelectedObjRef.y;
+                const stk = _meObjects[sy][sx];
+                const rotDeg = (stk[_meSelectedObjRef.idx] && stk[_meSelectedObjRef.idx].rot) || 0;
+                _meDrawSelHighlight(sx, sy, rotDeg, 1, `🎯 ${rotDeg}° facing`);
             }
 
             if (scene) {
@@ -6788,6 +6818,51 @@
                     border: 1px solid rgba(255,255,255,0.14); background: rgba(46,40,66,0.9); color: #eee;
                 }
                 .me-editor-hud .me-hud-back:hover { background: rgba(86,72,130,0.95); }
+
+                /* ── Rotation dial (Select tool): the big, obvious "spin it" UI ── */
+                .me-editor-hud .me-rot-howto {
+                    font-size: 9.5px; line-height: 1.4; color: rgba(220,220,255,0.7);
+                    padding: 4px 8px 6px;
+                }
+                .me-editor-hud .me-rot-howto b { color: var(--gold, #ffd24a); }
+                .me-editor-hud .me-rot-wrap {
+                    display: flex; gap: 12px; align-items: center; padding: 4px 8px 8px;
+                }
+                .me-editor-hud .me-rot-dial {
+                    position: relative; width: 108px; height: 108px; flex: 0 0 auto;
+                    border-radius: 50%; cursor: grab; touch-action: none; user-select: none;
+                    background: radial-gradient(circle at 50% 42%, rgba(60,46,96,0.95), rgba(20,14,32,0.98));
+                    border: 2px solid rgba(124,77,255,0.6);
+                    box-shadow: inset 0 0 18px rgba(0,0,0,0.6), 0 0 0 4px rgba(124,77,255,0.08);
+                }
+                .me-editor-hud .me-rot-dial:active { cursor: grabbing; }
+                .me-editor-hud .me-rot-cardinal {
+                    position: absolute; font-size: 10px; font-weight: 800; line-height: 1;
+                    color: rgba(220,220,255,0.65); transform: translate(-50%,-50%); pointer-events: none;
+                }
+                .me-editor-hud .me-rc-n { left: 50%; top: 11px; color: var(--gold,#ffd24a); }
+                .me-editor-hud .me-rc-s { left: 50%; top: calc(100% - 11px); }
+                .me-editor-hud .me-rc-e { left: calc(100% - 10px); top: 50%; }
+                .me-editor-hud .me-rc-w { left: 10px; top: 50%; }
+                .me-editor-hud .me-rot-arrow {
+                    position: absolute; left: 50%; bottom: 50%;
+                    width: 0; height: 0;
+                    border-left: 10px solid transparent; border-right: 10px solid transparent;
+                    border-bottom: 44px solid #ffd24a;
+                    transform-origin: 50% 100%; transform: translate(-50%,0) rotate(0deg);
+                    filter: drop-shadow(0 0 5px rgba(255,210,74,0.7)); pointer-events: none;
+                }
+                .me-editor-hud .me-rot-hub {
+                    position: absolute; left: 50%; top: 50%; width: 12px; height: 12px;
+                    border-radius: 50%; background: #ffd24a; transform: translate(-50%,-50%);
+                    box-shadow: 0 0 7px rgba(255,210,74,0.9); pointer-events: none;
+                }
+                .me-editor-hud .me-rot-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+                .me-editor-hud .me-rot-degbig {
+                    font-family: DotGothic16, monospace; font-weight: 800; font-size: 26px;
+                    color: var(--gold,#ffd24a); line-height: 1; text-align: center;
+                }
+                .me-editor-hud .me-rot-slider { width: 100%; accent-color: #ffd24a; }
             `;
             document.head.appendChild(s);
         }
@@ -7036,9 +7111,9 @@
                     else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); _meRedo(); }
                     /* R / Shift+R spins the selected object 15° (place first, then
                        rotate — no pre-orienting). */
-                    else if ((e.key === 'r' || e.key === 'R') && _meSelectedObjEntry()) {
-                        e.preventDefault();
-                        window._meRotateSelectedBy(e.shiftKey ? -15 : 15);
+                    else if (e.key === 'r' || e.key === 'R') {
+                        const kind = _meSelectedMonEntry() ? 'mon' : (_meSelectedObjEntry() ? 'obj' : null);
+                        if (kind) { e.preventDefault(); window._meRotateSelBy(kind, e.shiftKey ? -15 : 15); }
                     }
                 };
                 document.addEventListener('keydown', window._meKeyHandler);
@@ -7116,6 +7191,29 @@
             return stk[r.idx];
         }
 
+        /* The monument picked with the Select tool (or just placed), or null. */
+        function _meSelectedMonEntry() {
+            if (_meSelectedMonRef == null) return null;
+            return (Array.isArray(_meMonuments) && _meMonuments[_meSelectedMonRef]) || null;
+        }
+
+        /* Find the monument whose (centered) footprint covers, or is nearest to,
+           a clicked tile — so clicking anywhere on a big monument selects it. */
+        function _meFindMonumentNear(cx, cy) {
+            if (!Array.isArray(_meMonuments) || !_meMonuments.length) return null;
+            let best = null, bestD = Infinity;
+            for (let i = 0; i < _meMonuments.length; i++) {
+                const m = _meMonuments[i];
+                const rr = Math.max(1, Math.floor((m.foot || 3) / 2));
+                const dx = Math.abs(cx - m.x), dy = Math.abs(cy - m.y);
+                if (dx <= rr && dy <= rr) {           // click is inside the footprint
+                    const d = dx * dx + dy * dy;
+                    if (d < bestD) { bestD = d; best = i; }
+                }
+            }
+            return best;
+        }
+
         function _meScrollPaletteToTop() {
             const p = document.getElementById('mePalette');
             if (p) p.scrollTop = 0;
@@ -7164,35 +7262,73 @@
                Shown above the palette whenever an object is picked with the
                Select tool, so the user never has to pre-orient a brush. ──────── */
             const selEntry = _meSelectedObjEntry();
-            if (selEntry) {
-                const selKey = ME_OBJECT_IDS[selEntry.oid] || '?';
-                const selLabel = (typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[selKey]) ? OBJECT_RULES[selKey].label : selKey;
-                const rotVal = selEntry.rot || 0;
-                html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 ${selLabel} @ (${_meSelectedObjRef.x},${_meSelectedObjRef.y})</div>`;
-                html += `<div class="me-placement-grid">`;
-                html += `<span class="me-plbl">Angle</span><div class="me-pbtn-row" style="align-items:center;gap:6px">`;
-                html += `<input type="range" min="0" max="359" step="1" value="${rotVal}" oninput="window._meRotateSelected(this.value)" style="flex:1">`;
-                html += `<span style="min-width:34px;text-align:right;font-size:10px">${rotVal}°</span></div>`;
-                html += `<span class="me-plbl">Nudge</span><div class="me-pbtn-row">`;
-                for (const d of [-45,-15,15,45]) html += `<div class="me-pbtn" onclick="window._meRotateSelectedBy(${d})">${d>0?'+':''}${d}°</div>`;
-                html += `<div class="me-pbtn" onclick="window._meRotateSelected(0)">0°</div></div>`;
-                html += `<span class="me-plbl">Mirror</span><div class="me-pbtn-row">`;
-                html += `<div class="me-pbtn${selEntry.flipX?' active':''}" onclick="window._meFlipSelected('x')">↔ H</div>`;
-                html += `<div class="me-pbtn${selEntry.flipY?' active':''}" onclick="window._meFlipSelected('y')">↕ V</div>`;
-                html += `<div class="me-pbtn" style="color:#f99" onclick="window._meDeleteSelectedObj()">✖ Del</div></div>`;
+            const selMon = _meSelectedMonEntry();
+            if (selEntry || selMon) {
+                let kind, label, coord, rotVal, isStair = false, isTree = false;
+                if (selMon) {
+                    kind = 'mon';
+                    const md = ME_MON_BY_KIND[selMon.kind];
+                    label = `🗿 ${md ? md.label : selMon.kind}`;
+                    coord = `(${selMon.x},${selMon.y})`;
+                    rotVal = selMon.rot || 0;
+                } else {
+                    kind = 'obj';
+                    const selKey = ME_OBJECT_IDS[selEntry.oid] || '?';
+                    label = (typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[selKey]) ? OBJECT_RULES[selKey].label : selKey;
+                    coord = `(${_meSelectedObjRef.x},${_meSelectedObjRef.y})`;
+                    rotVal = selEntry.rot || 0;
+                    isStair = (selKey === 'stairs' || selKey === 'stairs_2');
+                    isTree = _meIsTreeKey(selKey);
+                }
+
+                html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 Rotate: ${label} <span style="opacity:0.6;font-weight:400">${coord}</span></div>`;
+                html += `<div class="me-rot-howto">Drag the dial to aim it, tap N/E/S/W, or press <b>R</b> / <b>Shift+R</b>. The gold arrow on the board shows which way it faces.</div>`;
+
+                /* The dial: a big draggable compass that points the way the
+                   object/monument faces — the single clearest "is it working" signal. */
+                html += `<div class="me-rot-wrap">`;
+                html += `<div class="me-rot-dial" onpointerdown="window._meDialDown(event,'${kind}')" onpointermove="window._meDialMove(event,'${kind}')" onpointerup="window._meDialUp(event)" onpointercancel="window._meDialUp(event)" title="Drag to aim">`;
+                html += `<div class="me-rot-cardinal me-rc-n">N</div><div class="me-rot-cardinal me-rc-e">E</div><div class="me-rot-cardinal me-rc-s">S</div><div class="me-rot-cardinal me-rc-w">W</div>`;
+                html += `<div class="me-rot-arrow" id="meDialArrow" style="transform:translate(-50%,0) rotate(${rotVal}deg)"></div>`;
+                html += `<div class="me-rot-hub"></div>`;
                 html += `</div>`;
-                if (_meIsTreeKey(selKey)) {
-                    html += `<div class="me-pal-cat me-placement-header">🍃 Leaves</div>`;
-                    html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
-                    for (const lf of ME_LEAF_OPTIONS) {
-                        const la = (selEntry.leaf || 'leaves') === lf ? ' active' : '';
-                        html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:32px;height:32px" title="${lf}" onclick="window._meSetSelectedLeaf('${lf}')"></div>`;
-                    }
+                html += `<div class="me-rot-side">`;
+                html += `<div class="me-rot-degbig"><span id="meDialDeg">${rotVal}</span><span style="font-size:14px">°</span></div>`;
+                html += `<input type="range" class="me-rot-slider" min="0" max="359" step="1" value="${rotVal}" oninput="window._meRotateSel('${kind}', this.value)">`;
+                html += `<div class="me-pbtn-row">`;
+                html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',0)" title="Face North">↑ N</div>`;
+                html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',90)" title="Face East">→ E</div>`;
+                html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',180)" title="Face South">↓ S</div>`;
+                html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',270)" title="Face West">← W</div>`;
+                html += `</div>`;
+                html += `<div class="me-pbtn-row">`;
+                for (const d of [-45,-15,15,45]) html += `<div class="me-pbtn" onclick="window._meRotateSelBy('${kind}',${d})">${d>0?'+':''}${d}°</div>`;
+                html += `</div></div></div>`;
+
+                /* Object-only extras: mirror, leaves. */
+                if (kind === 'obj') {
+                    html += `<div class="me-placement-grid">`;
+                    html += `<span class="me-plbl">Mirror</span><div class="me-pbtn-row">`;
+                    html += `<div class="me-pbtn${selEntry.flipX?' active':''}" onclick="window._meFlipSelected('x')">↔ H</div>`;
+                    html += `<div class="me-pbtn${selEntry.flipY?' active':''}" onclick="window._meFlipSelected('y')">↕ V</div>`;
+                    html += `<div class="me-pbtn" style="color:#f99" onclick="window._meDeleteSelectedObj()">✖ Delete</div></div>`;
                     html += `</div>`;
+                    if (isTree) {
+                        html += `<div class="me-pal-cat me-placement-header">🍃 Leaves</div>`;
+                        html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
+                        for (const lf of ME_LEAF_OPTIONS) {
+                            const la = (selEntry.leaf || 'leaves') === lf ? ' active' : '';
+                            html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:32px;height:32px" title="${lf}" onclick="window._meSetSelectedLeaf('${lf}')"></div>`;
+                        }
+                        html += `</div>`;
+                    }
+                } else {
+                    html += `<div class="me-pbtn-row" style="padding:0 6px 4px">`;
+                    html += `<div class="me-pbtn" style="color:#f99;flex:1" onclick="window._meDeleteSelectedMon()">✖ Delete monument</div></div>`;
                 }
                 html += `<div style="border-top:1px solid rgba(255,255,255,0.12);margin:6px 0"></div>`;
             } else if (_meTool === 'select') {
-                html += `<div class="me-inspector-empty" style="font-size:10px;opacity:0.7;padding:8px">🎯 Click an object on the board to select it, then rotate it any direction.</div>`;
+                html += `<div class="me-inspector-empty" style="font-size:10px;opacity:0.7;padding:8px">🎯 Click any object <b>or monument</b> on the board to select it, then use the big dial to rotate it any direction.</div>`;
             }
 
             /* ── Global search: when the user types in the search box, ignore the
@@ -7278,7 +7414,7 @@
                 html += `<span class="me-plbl">Max H</span><div class="me-pbtn-row">`;
                 for (const hh of [1,2,3,4,5,6]) html += `<div class="me-pbtn${curMaxH===hh?' active':''}" onclick="window._meSetMonMaxH(${hh})">${hh}</div>`;
                 html += `</div></div>`;
-                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place; click an existing monument to remove it. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, colossus) stamp climb voxels.</div>`;
+                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place. Click a placed monument (or use the 🎯 Select tool) to pick it — a big rotation dial appears so you can spin it any direction; Delete is in that panel. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, colossus) stamp climb voxels.</div>`;
                 pal.innerHTML = html || `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
                 return;
             }
@@ -7379,6 +7515,7 @@
             _meTool = 'object';
             _mePaletteTab = 'objects';
             _meSelectedObjRef = null;
+            _meSelectedMonRef = null;
             _meUpdateTabButtons();
             _meRenderPalette();
             _meUpdateToolButtons();
@@ -7391,6 +7528,7 @@
             _meTool = 'monument';
             _mePaletteTab = 'monuments';
             _meSelectedObjRef = null;
+            _meSelectedMonRef = null;
             _meUpdateTabButtons();
             _meRenderPalette();
             _meUpdateToolButtons();
@@ -7615,6 +7753,71 @@
             if (Array.isArray(stk) && stk[r.idx]) { _mePushUndo(); stk.splice(r.idx, 1); }
             _meSelectedObjRef = null;
             _meRenderGrid(); _meRefreshObjects3D(); _meRebuildEditorOverlays3D(); _meRenderPalette();
+        };
+        window._meDeleteSelectedMon = function() {
+            if (_meSelectedMonRef == null || !Array.isArray(_meMonuments)) return;
+            _mePushUndo();
+            _meMonuments.splice(_meSelectedMonRef, 1);
+            _meSelectedMonRef = null;
+            _meRenderGrid(); _meRefreshObjects3D(); _meRebuildEditorOverlays3D(); _meRenderPalette();
+        };
+
+        /* ── Unified rotation: drives whichever thing is selected ('obj' | 'mon').
+           One set of handlers powers the dial, slider, cardinal buttons, nudge
+           buttons and the R keyboard shortcut, so objects and monuments rotate
+           through exactly the same intuitive controls. ──────────────────────── */
+        function _meSetRotValue(kind, deg, live) {
+            deg = ((Math.round(+deg) % 360) + 360) % 360;
+            if (kind === 'mon') {
+                const m = _meSelectedMonEntry(); if (!m) return;
+                m.rot = deg;
+            } else {
+                const e = _meSelectedObjEntry(); if (!e) return;
+                e.rot = deg;
+                _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+            }
+            /* During a drag we update the dial DOM in place (rebuilding the whole
+               palette would destroy the element mid-drag and drop pointer capture). */
+            const ar = document.getElementById('meDialArrow');
+            if (ar) ar.style.transform = `translate(-50%,0) rotate(${deg}deg)`;
+            const dl = document.getElementById('meDialDeg');
+            if (dl) dl.textContent = deg;
+            const sl = document.querySelector('.me-rot-slider');
+            if (sl) sl.value = deg;
+            _meRenderGrid(); _meRefreshObjects3D(); _meRebuildEditorOverlays3D();
+            if (!live) _meRenderPalette();
+        }
+        window._meRotateSel = function(kind, deg) { _meSetRotValue(kind, deg, false); };
+        window._meRotateSelBy = function(kind, delta) {
+            const cur = kind === 'mon' ? (_meSelectedMonEntry()?.rot || 0) : (_meSelectedObjEntry()?.rot || 0);
+            _meSetRotValue(kind, cur + delta, false);
+        };
+
+        /* Drag-to-aim on the dial: the object turns to point at the cursor. */
+        function _meDialApply(ev, kind) {
+            const el = ev.currentTarget; if (!el) return;
+            const r = el.getBoundingClientRect();
+            const dx = ev.clientX - (r.left + r.width / 2);
+            const dy = ev.clientY - (r.top + r.height / 2);
+            if (dx === 0 && dy === 0) return;
+            /* Screen up = North = 0°, clockwise positive. */
+            const deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+            _meSetRotValue(kind, deg, true);
+        }
+        window._meDialDown = function(ev, kind) {
+            ev.preventDefault();
+            _meDialDragging = true;
+            try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
+            _meDialApply(ev, kind);
+        };
+        window._meDialMove = function(ev, kind) {
+            if (_meDialDragging) { ev.preventDefault(); _meDialApply(ev, kind); }
+        };
+        window._meDialUp = function(ev) {
+            if (!_meDialDragging) return;
+            _meDialDragging = false;
+            try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch (e) {}
+            _meRenderPalette();   // settle: rebuild palette so all controls re-sync
         };
 
         function _meUpdateToolButtons() {
@@ -8241,33 +8444,58 @@
                    rapid stamping doesn't thrash the panel. */
                 if (!_meEditorDragging) {
                     _meSelectedObjRef = { x, y, idx: _meObjects[y][x].length - 1 };
+                    _meSelectedMonRef = null;
                     _meRenderPalette();
                     _meScrollPaletteToTop();
                 }
             } else if (_meTool === 'select') {
-                /* Pick the nearest object to the click (forgiving of the offset
+                /* Pick whatever is under the click — a monument footprint wins
+                   first, otherwise the nearest object (forgiving of the offset
                    between a tall sprite and its base tile). Clicking an empty
-                   patch clears the selection. */
-                _meSelectedObjRef = _meFindObjectNear(x, y);
+                   patch clears the selection. Either way the big rotation dial
+                   appears for the picked thing. */
+                const monHit = _meFindMonumentNear(x, y);
+                if (monHit != null) {
+                    _meSelectedMonRef = monHit;
+                    _meSelectedObjRef = null;
+                } else {
+                    _meSelectedObjRef = _meFindObjectNear(x, y);
+                    _meSelectedMonRef = null;
+                }
                 _meRenderPalette();
                 _meScrollPaletteToTop();
             } else if (_meTool === 'monument') {
                 if (!Array.isArray(_meMonuments)) _meMonuments = [];
                 const existingIdx = _meMonuments.findIndex(m => m.x === x && m.y === y);
                 if (existingIdx >= 0) {
-                    /* Clicking an existing monument removes it (toggle); skip on drag
-                       so a sweep doesn't flicker it back and forth. */
-                    if (!_meEditorDragging) _meMonuments.splice(existingIdx, 1);
+                    /* Clicking the exact anchor of an existing monument selects it
+                       (so you can rotate it), rather than deleting it — deletion is
+                       on the Delete button / eraser, which is far less surprising. */
+                    if (!_meEditorDragging) {
+                        _meSelectedMonRef = existingIdx;
+                        _meSelectedObjRef = null;
+                        _meRenderPalette();
+                        _meScrollPaletteToTop();
+                    }
                 } else {
                     const md = ME_MON_BY_KIND[_meSelectedMonument] || { foot: 2, maxH: 3 };
                     _meMonuments.push({
                         kind: _meSelectedMonument,
                         x, y,
+                        rot: 0,
                         foot: _meMonFoot != null ? _meMonFoot : md.foot,
                         maxH: _meMonMaxH != null ? _meMonMaxH : md.maxH,
                         seed: ((((x * 73856093) ^ (y * 19349663)) >>> 0) % 100000) + 1
                     });
                     if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;
+                    /* Auto-select the monument you just placed so its rotation dial
+                       appears immediately — same flow as placing an object. */
+                    if (!_meEditorDragging) {
+                        _meSelectedMonRef = _meMonuments.length - 1;
+                        _meSelectedObjRef = null;
+                        _meRenderPalette();
+                        _meScrollPaletteToTop();
+                    }
                 }
             } else if (_meTool === 'erase') {
 
@@ -8521,6 +8749,7 @@
             _meObjects = _meEmptyObjGrid(_meH, _meW);
             _meMonuments = [];
             _meSelectedObjRef = null;
+            _meSelectedMonRef = null;
             _meSpawns = { 1: [], 2: [] };
             _meSanctuaryZones = _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = _meEmptyHeightGrid(_meH, _meW);
@@ -8626,6 +8855,7 @@
             _meTerrainTints = m.terrainTints ? Object.assign({}, m.terrainTints) : {};
             _meApplyTintsLive();
             _meSelectedObjRef = null;
+            _meSelectedMonRef = null;
             _meSanctuaryZones = m.sanctuaryZones ? m.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = m.heights ? m.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
 
@@ -8689,6 +8919,7 @@
                 _meTerrainTints = data.terrainTints ? Object.assign({}, data.terrainTints) : {};
                 _meApplyTintsLive();
                 _meSelectedObjRef = null;
+                _meSelectedMonRef = null;
                 _meSanctuaryZones = data.sanctuaryZones ? data.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
                 _meHeights = data.heights ? data.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
 
