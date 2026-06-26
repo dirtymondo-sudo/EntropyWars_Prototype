@@ -2964,6 +2964,9 @@
                     }
                     delete window._customEditorObjects;
                 }
+                /* Esoteric monuments authored in the editor. */
+                state.monuments = Array.isArray(window._customEditorMonuments) ? window._customEditorMonuments : null;
+                delete window._customEditorMonuments;
                 _initTowersFromObjects();
                 _initNexusFromObjects();
                 _autoPlaceNexusIfNeeded();
@@ -2978,6 +2981,11 @@
                 state.sanctuaries = {};
 
                 MAP_HAS_FLOORS = false;
+
+                /* Stamp climb voxels for climbable monuments BEFORE building
+                   columns so the climb cubes end up in boardColumns (mirrors the
+                   prebuilt path). */
+                if (typeof _stampMonumentCollision === 'function') _stampMonumentCollision();
 
                 if (state.boardVoxels?.length) {
                     buildColumnsFromVoxels();
@@ -5742,6 +5750,28 @@
             'leaves',
             'wallpaper',
             'cloud_2',
+            // 2026-06 R2 batch — append-only (indices are saved-map grid ids)
+            'moon_2',
+            'moon_3',
+            'carpet_2',
+            'carpet_3',
+            'carpet_4',
+            'gold_2',
+            'gold_3',
+            'metal_2',
+            'grass_3',
+            'grass_4',
+            'dirt_2',
+            'dirt_3',
+            'dirt_4',
+            'marble',
+            'marble_2',
+            'cobblestone',
+            'cobblestone_2',
+            'leaves_2',
+            'leaves_3',
+            'leaves_4',
+            'leaves_5',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -5801,15 +5831,17 @@
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
 
         const ME_PALETTE_CATS = [
-            { label: 'Ground', keys: ['grass','grass_2','grass_rocky','purple_grass','purple_bog','dirt','road','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
+            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rubble_1','rubble_2','rubble_3','rubble_4'] },
-            { label: 'Urban', keys: ['bricks_1','bricks_2','wood_planks','wood','urban_street','urban_wall'] },
+            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','wood_planks','wood','urban_street','urban_wall','metal','metal_2','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper'] },
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
             { label: 'Water', keys: ['water','deep_water','bridge','ice'] },
             { label: 'Lava', keys: ['lava'] },
             { label: 'Mountain', keys: ['mountain','mountain_2','cliff'] },
             { label: 'Cave', keys: ['cave_floor','cave_wall','cave_entrance'] },
-            { label: 'Sky', keys: ['cloud','cloud_thick','sky_open','storm','cloud_gap','sky_ruin','tree_top'] },
+            { label: 'Foliage', keys: ['forest','forest_2','leaves','leaves_2','leaves_3','leaves_4','leaves_5','ruins'] },
+            { label: 'Lunar', keys: ['moon','moon_2','moon_3'] },
+            { label: 'Sky', keys: ['cloud','cloud_2','cloud_thick','sky_open','storm','cloud_gap','sky_ruin','tree_top'] },
             { label: 'Special', keys: ['void','chasm','fog_wall','barrier','barrier_passage'] },
             { label: '⚙ Structures', keys: ['sanctuary','descent_point'], isGameMode: true },
         ];
@@ -5844,6 +5876,42 @@
         let _mePaletteTab = 'terrain';
         let _me3DPreview = false;
 
+        /* ── Esoteric monuments (reused _hz* background geometry as on-board
+           landmarks). Stored as {kind,x,y,foot,maxH,seed}. Climbable kinds stamp
+           voxels at play time (see _stampMonumentCollision). ───────────────── */
+        const ME_MONUMENT_KINDS = [
+            { kind: 'monolith',    label: 'Monolith',        emoji: '🗿', foot: 1, maxH: 3 },
+            { kind: 'obelisk',     label: 'Obelisk',         emoji: '🗼', foot: 1, maxH: 4 },
+            { kind: 'pyramid',     label: 'Great Pyramid',   emoji: '🔺', foot: 5, maxH: 3 },
+            { kind: 'pyramid_cone',label: 'Cone Pyramid',    emoji: '⛰️', foot: 3, maxH: 3 },
+            { kind: 'ziggurat',    label: 'Ziggurat',        emoji: '🏛️', foot: 5, maxH: 3 },
+            { kind: 'colossus',    label: 'Colossus',        emoji: '🗽', foot: 2, maxH: 4 },
+            { kind: 'stairway',    label: 'Stairway',        emoji: '🪜', foot: 2, maxH: 3 },
+            { kind: 'arch',        label: 'Arch',            emoji: '🌉', foot: 3, maxH: 3 },
+            { kind: 'gateway',     label: 'Gateway',         emoji: '⛩️', foot: 3, maxH: 3 },
+            { kind: 'greek',       label: 'Greek Ruin',      emoji: '🏛️', foot: 3, maxH: 2 },
+            { kind: 'crystal',     label: 'Crystal Shards',  emoji: '💎', foot: 2, maxH: 3 },
+            { kind: 'rings',       label: 'Sacred Rings',    emoji: '🌀', foot: 2, maxH: 3 },
+            { kind: 'island',      label: 'Floating Island', emoji: '🏝️', foot: 3, maxH: 3 },
+            { kind: 'mountain',    label: 'Mountain',        emoji: '🏔️', foot: 4, maxH: 4 },
+            { kind: 'flag',        label: 'Flag',            emoji: '🚩', foot: 1, maxH: 2 },
+            { kind: 'rover',       label: 'Rover',           emoji: '🛻', foot: 1, maxH: 1 },
+            { kind: 'goldgate',    label: 'Golden Gate',     emoji: '🌁', foot: 3, maxH: 3 },
+            { kind: 'lightpillar', label: 'Light Pillar',    emoji: '🔆', foot: 1, maxH: 4 },
+            { kind: 'fluorescent', label: 'Fluorescent',     emoji: '💡', foot: 1, maxH: 2 },
+            { kind: 'exitsign',    label: 'Exit Sign',       emoji: '🚪', foot: 1, maxH: 1 },
+        ];
+        const ME_MON_BY_KIND = {};
+        ME_MONUMENT_KINDS.forEach(m => { ME_MON_BY_KIND[m.kind] = m; });
+
+        let _meMonuments = [];
+        let _meSelectedMonument = 'monolith';
+        let _meMonFoot = null;   // null → use the kind's default footprint
+        let _meMonMaxH = null;   // null → use the kind's default max height
+        let _meSelectedLeaf = 'leaves';           // per-tree leaf sprite the brush stamps
+        const ME_LEAF_OPTIONS = ['leaves','leaves_2','leaves_3','leaves_4','leaves_5'];
+        let _meSelectedObjRef = null;             // {x,y,idx} of the object picked for rotate-after-place
+
         let _meVoxels = null;
         let _meActiveZ = 0;
         const ME_MAX_Z = 20;
@@ -5867,10 +5935,12 @@
                     2: (_meSpawns[2] || []).map(s => ({ x: s.x, y: s.y }))
                 },
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
+                monuments: _meMonuments ? _meMonuments.map(m => ({ ...m })) : [],
                 w: _meW, h: _meH
             };
         }
         function _meRestoreSnapshot(snap) {
+            _meMonuments = snap.monuments ? snap.monuments.map(m => ({ ...m })) : [];
             _meW = snap.w; _meH = snap.h;
             _meVoxels = snap.voxels ? snap.voxels.map(row => row.map(col => col.map(b => {
                 var e = { z: b.z, tid: b.tid };
@@ -5987,13 +6057,14 @@
         }
 
         function _meEmptyObjGrid(h,w){ return Array.from({length:h},()=>Array.from({length:w},()=>[])); }
-        function _meObjEntry(oid,ax,ay,rot,fx,fy){ return {oid:oid||0,alignX:ax||'center',alignY:ay||'bottom',rot:rot||0,flipX:!!fx,flipY:!!fy}; }
+        function _meObjEntry(oid,ax,ay,rot,fx,fy,leaf){ const e={oid:oid||0,alignX:ax||'center',alignY:ay||'bottom',rot:rot||0,flipX:!!fx,flipY:!!fy}; if(leaf)e.leaf=leaf; return e; }
+        function _meIsTreeKey(key){ return key==='tree'||key==='tree_2'||key==='tree_3'||key==='tree_4'||key==='tree_5'||key==='tree_6'; }
         function _meDeserializeObjects(data,h,w){
             if(!data.objects) return _meEmptyObjGrid(h,w);
             const g=[];
             for(let y=0;y<h;y++){ const r=[];
                 for(let x=0;x<w;x++){ const c=data.objects[y]?.[x];
-                    if(Array.isArray(c)) r.push(c.map(e=>_meObjEntry(e.oid,e.alignX,e.alignY,e.rot,e.flipX,e.flipY)));
+                    if(Array.isArray(c)) r.push(c.map(e=>_meObjEntry(e.oid,e.alignX,e.alignY,e.rot,e.flipX,e.flipY,e.leaf)));
                     else if(typeof c==='number'&&c>0){ const al=data.objAlign?.[y]?.[x]||'center,bottom'; const[ax,ay]=al.split(','); r.push([_meObjEntry(c,ax,ay)]); }
                     else r.push([]);
                 } g.push(r);
@@ -6028,6 +6099,7 @@
                 _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(0));
             }
             if (!_meObjects) { _meObjects = _meEmptyObjGrid(_meH, _meW); }
+            if (!_meMonuments) { _meMonuments = []; }
             if (!_meSanctuaryZones) { _meSanctuaryZones = _meEmptySanctuaryGrid(_meH, _meW); }
             if (!_meHeights) { _meHeights = _meEmptyHeightGrid(_meH, _meW); }
             if (!_meVoxels) {
@@ -6067,10 +6139,11 @@
                     for (let vx = 0; vx < w; vx++) {
                         const col = _meVoxels[vy]?.[vx] || [];
                         if (col.length > 0) {
-                            vRow.push(col.map(b => ({
-                                z: b.z,
-                                terrain: ME_TERRAIN_IDS[b.tid] || 'grass'
-                            })));
+                            vRow.push(col.map(b => {
+                                const e = { z: b.z, terrain: ME_TERRAIN_IDS[b.tid] || 'grass' };
+                                if (b.sd) e.stairDir = b.sd;
+                                return e;
+                            }));
                         } else {
 
                             const tid = _meGrid[vy]?.[vx] || 0;
@@ -6095,14 +6168,18 @@
                         oRow.push(null);
                         aRow.push('center,bottom');
                     } else {
-                        oRow.push(stk.map(e => ({
-                            key: ME_OBJECT_IDS[e.oid] || null,
-                            alignX: e.alignX || 'center',
-                            alignY: e.alignY || 'bottom',
-                            rot: e.rot || 0,
-                            flipX: !!e.flipX,
-                            flipY: !!e.flipY
-                        })).filter(e => e.key));
+                        oRow.push(stk.map(e => {
+                            const o = {
+                                key: ME_OBJECT_IDS[e.oid] || null,
+                                alignX: e.alignX || 'center',
+                                alignY: e.alignY || 'bottom',
+                                rot: e.rot || 0,
+                                flipX: !!e.flipX,
+                                flipY: !!e.flipY
+                            };
+                            if (e.leaf) o.leaf = e.leaf;
+                            return o;
+                        }).filter(e => e.key));
                         const f = stk[0];
                         aRow.push((f.alignX || 'center') + ',' + (f.alignY || 'bottom'));
                     }
@@ -6129,6 +6206,13 @@
 
             state._editorSpawns = _meSpawns;
             state._editorSanctuaryZones = _meSanctuaryZones;
+
+            /* Esoteric monuments — render (and climb-stamp) live in the editor.
+               Stamp BEFORE building columns so climb cubes land in boardColumns. */
+            state.monuments = (_meMonuments && _meMonuments.length)
+                ? _meMonuments.map(m => ({ ...m })) : null;
+
+            if (typeof _stampMonumentCollision === 'function') _stampMonumentCollision();
 
             if (state.boardVoxels) {
                 buildColumnsFromVoxels();
@@ -6356,6 +6440,7 @@
                 <div class="me-tool-row">
                     <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')">🖌️ Paint</button>
                     <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')">🏠 Object</button>
+                    <button class="me-tool" id="meTool-select" onclick="window._meSetTool('select')">🎯 Select/Rotate</button>
                     <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')">🧹 Erase</button>
                     <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')">✖ Erase Obj</button>
                 </div>
@@ -6384,6 +6469,7 @@
                 <div class="me-tab-row">
                     <button class="me-tab active" id="meTab-terrain" onclick="window._meSetTab('terrain')">Terrain</button>
                     <button class="me-tab" id="meTab-objects" onclick="window._meSetTab('objects')">Objects</button>
+                    <button class="me-tab" id="meTab-monuments" onclick="window._meSetTab('monuments')">Monuments</button>
                 </div>
                 <div class="me-palette" id="mePalette"></div>
                 <div class="me-hud-actions">
@@ -6527,6 +6613,12 @@
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
                     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); _meUndo(); }
                     else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); _meRedo(); }
+                    /* R / Shift+R spins the selected object 15° (place first, then
+                       rotate — no pre-orienting). */
+                    else if ((e.key === 'r' || e.key === 'R') && _meSelectedObjEntry()) {
+                        e.preventDefault();
+                        window._meRotateSelectedBy(e.shiftKey ? -15 : 15);
+                    }
                 };
                 document.addEventListener('keydown', window._meKeyHandler);
             }
@@ -6595,11 +6687,81 @@
             return '';
         }
 
+        function _meSelectedObjEntry() {
+            const r = _meSelectedObjRef;
+            if (!r) return null;
+            const stk = _meObjects[r.y] && _meObjects[r.y][r.x];
+            if (!Array.isArray(stk) || !stk[r.idx]) return null;
+            return stk[r.idx];
+        }
+
         function _meRenderPalette() {
             const pal = document.getElementById('mePalette');
             if (!pal) return;
             const searchVal = (document.getElementById('meSearch')?.value || '').toLowerCase().trim();
             let html = '';
+
+            /* ── Selected-object panel (rotate / mirror / leaves AFTER placement).
+               Shown above the palette whenever an object is picked with the
+               Select tool, so the user never has to pre-orient a brush. ──────── */
+            const selEntry = _meSelectedObjEntry();
+            if (selEntry) {
+                const selKey = ME_OBJECT_IDS[selEntry.oid] || '?';
+                const selLabel = (typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[selKey]) ? OBJECT_RULES[selKey].label : selKey;
+                const rotVal = selEntry.rot || 0;
+                html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 ${selLabel} @ (${_meSelectedObjRef.x},${_meSelectedObjRef.y})</div>`;
+                html += `<div class="me-placement-grid">`;
+                html += `<span class="me-plbl">Angle</span><div class="me-pbtn-row" style="align-items:center;gap:6px">`;
+                html += `<input type="range" min="0" max="359" step="1" value="${rotVal}" oninput="window._meRotateSelected(this.value)" style="flex:1">`;
+                html += `<span style="min-width:34px;text-align:right;font-size:10px">${rotVal}°</span></div>`;
+                html += `<span class="me-plbl">Nudge</span><div class="me-pbtn-row">`;
+                for (const d of [-45,-15,15,45]) html += `<div class="me-pbtn" onclick="window._meRotateSelectedBy(${d})">${d>0?'+':''}${d}°</div>`;
+                html += `<div class="me-pbtn" onclick="window._meRotateSelected(0)">0°</div></div>`;
+                html += `<span class="me-plbl">Mirror</span><div class="me-pbtn-row">`;
+                html += `<div class="me-pbtn${selEntry.flipX?' active':''}" onclick="window._meFlipSelected('x')">↔ H</div>`;
+                html += `<div class="me-pbtn${selEntry.flipY?' active':''}" onclick="window._meFlipSelected('y')">↕ V</div>`;
+                html += `<div class="me-pbtn" style="color:#f99" onclick="window._meDeleteSelectedObj()">✖ Del</div></div>`;
+                html += `</div>`;
+                if (_meIsTreeKey(selKey)) {
+                    html += `<div class="me-pal-cat me-placement-header">🍃 Leaves</div>`;
+                    html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
+                    for (const lf of ME_LEAF_OPTIONS) {
+                        const la = (selEntry.leaf || 'leaves') === lf ? ' active' : '';
+                        html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:32px;height:32px" title="${lf}" onclick="window._meSetSelectedLeaf('${lf}')"></div>`;
+                    }
+                    html += `</div>`;
+                }
+                html += `<div style="border-top:1px solid rgba(255,255,255,0.12);margin:6px 0"></div>`;
+            } else if (_meTool === 'select') {
+                html += `<div class="me-inspector-empty" style="font-size:10px;opacity:0.7;padding:8px">🎯 Click an object on the board to select it, then rotate it any direction.</div>`;
+            }
+
+            if (_mePaletteTab === 'monuments') {
+                html += `<div class="me-pal-cat me-pal-cat-gamemode">🗿 Esoteric Monuments</div>`;
+                const monFiltered = ME_MONUMENT_KINDS.filter(m => !searchVal || m.kind.includes(searchVal) || m.label.toLowerCase().includes(searchVal));
+                for (const m of monFiltered) {
+                    const active = (_meTool === 'monument' && _meSelectedMonument === m.kind) ? ' active' : '';
+                    html += `<div class="me-pal-item${active}" onclick="window._mePickMonument('${m.kind}')">
+                        <div class="me-pal-swatch" style="display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(40,30,60,0.4)">${m.emoji}</div>
+                        <div class="me-pal-label">${m.label}</div>
+                    </div>`;
+                }
+                const md = ME_MON_BY_KIND[_meSelectedMonument] || { foot: 2, maxH: 3 };
+                const curFoot = _meMonFoot != null ? _meMonFoot : md.foot;
+                const curMaxH = _meMonMaxH != null ? _meMonMaxH : md.maxH;
+                html += `<div class="me-pal-cat me-placement-header">Size</div>`;
+                html += `<div class="me-placement-grid">`;
+                html += `<span class="me-plbl">Footprint</span><div class="me-pbtn-row">`;
+                for (const f of [1,2,3,4,5,6,7]) html += `<div class="me-pbtn${curFoot===f?' active':''}" onclick="window._meSetMonFoot(${f})">${f}</div>`;
+                html += `</div>`;
+                html += `<span class="me-plbl">Max H</span><div class="me-pbtn-row">`;
+                for (const hh of [1,2,3,4,5,6]) html += `<div class="me-pbtn${curMaxH===hh?' active':''}" onclick="window._meSetMonMaxH(${hh})">${hh}</div>`;
+                html += `</div></div>`;
+                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place; click an existing monument to remove it. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, colossus) stamp climb voxels.</div>`;
+                pal.innerHTML = html || `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
+                return;
+            }
+
             if (_mePaletteTab === 'terrain') {
 
                 for (const cat of ME_PALETTE_CATS) {
@@ -6645,6 +6807,16 @@
                     }
                 }
 
+                if (_meIsTreeKey(_meSelectedObject)) {
+                    html += `<div class="me-pal-cat me-placement-header">🍃 Leaves (new trees)</div>`;
+                    html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
+                    for (const lf of ME_LEAF_OPTIONS) {
+                        const la = _meSelectedLeaf === lf ? ' active' : '';
+                        html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:34px;height:34px" title="${lf}" onclick="window._meSetLeaf('${lf}')"></div>`;
+                    }
+                    html += `</div>`;
+                }
+
                 html += `<div class="me-pal-cat me-placement-header">Placement</div>`;
                 html += `<div class="me-placement-grid">`;
                 html += `<span class="me-plbl">H-Align</span><div class="me-pbtn-row">`;
@@ -6660,6 +6832,7 @@
                 html += `<div class="me-pbtn${_meSelectedFlipX?' active':''}" onclick="window._meToggleFlipX()">↔ H</div>`;
                 html += `<div class="me-pbtn${_meSelectedFlipY?' active':''}" onclick="window._meToggleFlipY()">↕ V</div>`;
                 html += `</div></div>`;
+                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px">Tip: just place objects, then use the 🎯 Select/Rotate tool to spin any of them to any angle afterwards.</div>`;
             }
             if (!html) html = `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
             pal.innerHTML = html;
@@ -6678,14 +6851,34 @@
             _meSelectedObject = key;
             _meTool = 'object';
             _mePaletteTab = 'objects';
+            _meSelectedObjRef = null;
             _meUpdateTabButtons();
             _meRenderPalette();
             _meUpdateToolButtons();
         };
 
+        window._mePickMonument = function(kind) {
+            _meSelectedMonument = kind;
+            _meMonFoot = null;
+            _meMonMaxH = null;
+            _meTool = 'monument';
+            _mePaletteTab = 'monuments';
+            _meSelectedObjRef = null;
+            _meUpdateTabButtons();
+            _meRenderPalette();
+            _meUpdateToolButtons();
+        };
+        window._meSetMonFoot = function(f) { _meMonFoot = f; _meRenderPalette(); };
+        window._meSetMonMaxH = function(h) { _meMonMaxH = h; _meRenderPalette(); };
+        window._meSetLeaf = function(lf) { _meSelectedLeaf = lf; _meRenderPalette(); };
+
         window._meSetTab = function(tab) {
             _mePaletteTab = tab;
+            if (tab === 'monuments') _meTool = 'monument';
+            else if (tab === 'objects' && _meTool !== 'object' && _meTool !== 'select') _meTool = 'object';
+            else if (tab === 'terrain' && _meTool === 'monument') _meTool = 'paint';
             _meUpdateTabButtons();
+            _meUpdateToolButtons();
             _meRenderPalette();
         };
 
@@ -6694,7 +6887,7 @@
         };
 
         function _meUpdateTabButtons() {
-            ['terrain','objects'].forEach(t => {
+            ['terrain','objects','monuments'].forEach(t => {
                 const btn = document.getElementById('meTab-' + t);
                 if (btn) btn.classList.toggle('active', _mePaletteTab === t);
             });
@@ -6716,11 +6909,55 @@
         window._meToggleFlipX = function() { _meSelectedFlipX = !_meSelectedFlipX; _meRenderPalette(); };
         window._meToggleFlipY = function() { _meSelectedFlipY = !_meSelectedFlipY; _meRenderPalette(); };
 
+        /* ── Operate on the object picked with the Select tool ─────────────── */
+        function _meApplyStairDirFromRot(x, y, entry) {
+            const key = ME_OBJECT_IDS[entry.oid];
+            if (key !== 'stairs' && key !== 'stairs_2') return;
+            /* Map the placed rotation to a cardinal stair direction so the 3D
+               staircase faces the way the user spun it. 0°=up(N high) … */
+            const dirs = ['N','E','S','W'];
+            const d = dirs[(Math.round(((entry.rot || 0) % 360) / 90) % 4 + 4) % 4];
+            const col = _meGetColumn(x, y);
+            if (col.length) { const top = col[col.length - 1]; top.sd = d; }
+            _meSyncVoxelsToLegacy();
+        }
+        window._meRotateSelected = function(deg) {
+            const e = _meSelectedObjEntry(); if (!e) return;
+            e.rot = ((+deg % 360) + 360) % 360;
+            _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+            _meRenderGrid(); _meRenderPalette();
+        };
+        window._meRotateSelectedBy = function(delta) {
+            const e = _meSelectedObjEntry(); if (!e) return;
+            e.rot = ((((e.rot || 0) + delta) % 360) + 360) % 360;
+            _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+            _meRenderGrid(); _meRenderPalette();
+        };
+        window._meFlipSelected = function(axis) {
+            const e = _meSelectedObjEntry(); if (!e) return;
+            if (axis === 'x') e.flipX = !e.flipX; else e.flipY = !e.flipY;
+            _meRenderGrid(); _meRenderPalette();
+        };
+        window._meSetSelectedLeaf = function(lf) {
+            const e = _meSelectedObjEntry(); if (!e) return;
+            e.leaf = lf;
+            _meRenderGrid(); _meRenderPalette();
+        };
+        window._meDeleteSelectedObj = function() {
+            const r = _meSelectedObjRef; if (!r) return;
+            const stk = _meObjects[r.y] && _meObjects[r.y][r.x];
+            if (Array.isArray(stk) && stk[r.idx]) { _mePushUndo(); stk.splice(r.idx, 1); }
+            _meSelectedObjRef = null;
+            _meRenderGrid(); _meRenderPalette();
+        };
+
         function _meUpdateToolButtons() {
-            ['paint','object','erase','eraseObj','spawn1','spawn2','elevUp','elevDown','elevSet'].forEach(t => {
+            ['paint','object','select','erase','eraseObj','spawn1','spawn2','elevUp','elevDown','elevSet'].forEach(t => {
                 const btn = document.getElementById('meTool-' + t);
                 if (btn) btn.classList.toggle('active', _meTool === t);
             });
+            const monBtn = document.getElementById('meTool-monument');
+            if (monBtn) monBtn.classList.toggle('active', _meTool === 'monument');
         }
 
         window._meSetTool = function(t) {
@@ -6750,7 +6987,7 @@
             html += `<p style="margin:0 0 6px"><b style="color:var(--gold)">⬇ Lower</b> — Remove the topmost block</p>`;
             html += `<p style="margin:0 0 6px"><b style="color:var(--gold)">📐 Set Height</b> — Fill solid column from Z0 to selected height</p>`;
             html += `<p style="margin:0 0 6px"><b style="color:rgba(0,255,160,0.9)">🧱 Stacking</b> — Set Z Layer, pick a terrain, and paint to place blocks at different heights with different terrain types. Right-click to inspect the full column.</p>`;
-            html += `<p style="margin:0 0 6px"><b style="color:rgba(180,140,255,0.9)">🪜 Stairs</b> — Use the Objects tab to place stairs between different heights. They auto-set barrier_passage terrain.</p>`;
+            html += `<p style="margin:0 0 6px"><b style="color:rgba(180,140,255,0.9)">🪜 Stairs</b> — Objects tab → place a staircase (fixed 1×1×1, climbs exactly one level, never stretches). Use the 🎯 Select/Rotate tool to spin it to face any direction.</p>`;
             html += `<p style="margin:0 0 6px"><b style="color:rgba(90,200,152,0.9)">🏠 Buildings</b> — Buildings with roofWalkable auto-calculate their roof height. Units stand on top.</p>`;
             html += `<p style="margin:0"><b>Fill</b> with an elev tool active fills all tiles to the selected height.</p>`;
             html += `</div>`;
@@ -7306,12 +7543,51 @@
             } else if (_meTool === 'object') {
                 const oid = ME_OBJECT_TO_ID[_meSelectedObject] || 1;
                 if (!Array.isArray(_meObjects[y][x])) _meObjects[y][x] = [];
-                _meObjects[y][x].push(_meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY));
+                const leaf = _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf : null;
+                const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
+                _meObjects[y][x].push(entry);
                 if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;
 
                 if (_meSelectedObject === 'stairs' || _meSelectedObject === 'stairs_2') {
                     const bpTid = ME_TERRAIN_TO_ID['barrier_passage'];
-                    if (bpTid) _meGrid[y][x] = bpTid;
+                    if (bpTid) {
+                        _meGrid[y][x] = bpTid;
+                        /* Stamp barrier_passage into the VOXEL column too so the
+                           tile carries the stair terrain + its stairDir (the live
+                           board reads voxels first; a synthesized column loses sd). */
+                        const _scol = _meGetColumn(x, y);
+                        const _sz = _scol.length ? _scol[_scol.length - 1].z : 0;
+                        _meSetVoxel(x, y, _sz, bpTid);
+                    }
+                    _meApplyStairDirFromRot(x, y, entry);
+                }
+            } else if (_meTool === 'select') {
+                /* Pick the topmost object on this tile so it can be rotated /
+                   mirrored / re-leafed afterwards (no pre-orienting required). */
+                const stk = Array.isArray(_meObjects[y]?.[x]) ? _meObjects[y][x] : [];
+                if (stk.length > 0) {
+                    _meSelectedObjRef = { x, y, idx: stk.length - 1 };
+                } else {
+                    _meSelectedObjRef = null;
+                }
+                _meRenderPalette();
+            } else if (_meTool === 'monument') {
+                if (!Array.isArray(_meMonuments)) _meMonuments = [];
+                const existingIdx = _meMonuments.findIndex(m => m.x === x && m.y === y);
+                if (existingIdx >= 0) {
+                    /* Clicking an existing monument removes it (toggle); skip on drag
+                       so a sweep doesn't flicker it back and forth. */
+                    if (!_meEditorDragging) _meMonuments.splice(existingIdx, 1);
+                } else {
+                    const md = ME_MON_BY_KIND[_meSelectedMonument] || { foot: 2, maxH: 3 };
+                    _meMonuments.push({
+                        kind: _meSelectedMonument,
+                        x, y,
+                        foot: _meMonFoot != null ? _meMonFoot : md.foot,
+                        maxH: _meMonMaxH != null ? _meMonMaxH : md.maxH,
+                        seed: ((((x * 73856093) ^ (y * 19349663)) >>> 0) % 100000) + 1
+                    });
+                    if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;
                 }
             } else if (_meTool === 'erase') {
 
@@ -7320,12 +7596,15 @@
                 const col = _meGetColumn(x, y);
                 if (col.length === 0) {
                     _meObjects[y][x] = [];
+                    if (_meSelectedObjRef && _meSelectedObjRef.x === x && _meSelectedObjRef.y === y) _meSelectedObjRef = null;
                     _meSpawns[1] = _meSpawns[1].filter(s => !(s.x === x && s.y === y));
                     _meSpawns[2] = _meSpawns[2].filter(s => !(s.x === x && s.y === y));
                 }
             } else if (_meTool === 'eraseObj') {
                 if (Array.isArray(_meObjects[y][x]) && _meObjects[y][x].length > 0) {
                     _meObjects[y][x].pop();
+                    if (_meSelectedObjRef && _meSelectedObjRef.x === x && _meSelectedObjRef.y === y &&
+                        _meSelectedObjRef.idx >= _meObjects[y][x].length) _meSelectedObjRef = null;
                 }
             } else if (_meTool === 'spawn1' || _meTool === 'spawn2') {
                 const p = _meTool === 'spawn1' ? 1 : 2;
@@ -7421,7 +7700,7 @@
                     break;
                 }
                 if (oKey === 'stairs' || oKey === 'stairs_2') {
-                    html += `<div class="me-inspector-terrain"><div class="me-inspector-label" style="color:rgba(180,140,255,0.9);font-size:9px">🪜 Ramp — connects adjacent height levels</div></div>`;
+                    html += `<div class="me-inspector-terrain"><div class="me-inspector-label" style="color:rgba(180,140,255,0.9);font-size:9px">🪜 Staircase — fixed 1×1×1, climbs one level (use 🎯 Select to rotate)</div></div>`;
                     break;
                 }
             }
@@ -7560,6 +7839,8 @@
             _mePushUndo();
             _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(0));
             _meObjects = _meEmptyObjGrid(_meH, _meW);
+            _meMonuments = [];
+            _meSelectedObjRef = null;
             _meSpawns = { 1: [], 2: [] };
             _meSanctuaryZones = _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = _meEmptyHeightGrid(_meH, _meW);
@@ -7625,6 +7906,7 @@
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
                 heights: _meHeights ? _meHeights.map(row => [...row]) : null,
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
+                monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 ts: Date.now()
             };
             const maps = _meGetSavedMaps();
@@ -7656,6 +7938,8 @@
             _meGrid = m.grid.map(row => [...row]);
             _meObjects = _meDeserializeObjects(m, _meH, _meW);
             _meSpawns = { 1: (m.spawns?.[1] || []).map(s => ({...s})), 2: (m.spawns?.[2] || []).map(s => ({...s})) };
+            _meMonuments = Array.isArray(m.monuments) ? m.monuments.map(mm => ({...mm})) : [];
+            _meSelectedObjRef = null;
             _meSanctuaryZones = m.sanctuaryZones ? m.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = m.heights ? m.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
 
@@ -7693,7 +7977,8 @@
                 spawns: _meSpawns,
                 sanctuaryZones: _meSanctuaryZones,
                 heights: _meHeights,
-                voxels: _meVoxels
+                voxels: _meVoxels,
+                monuments: _meMonuments || []
             };
             const json = JSON.stringify(data);
             navigator.clipboard.writeText(json).then(() => {
@@ -7713,6 +7998,8 @@
                 _meGrid = data.grid;
                 _meObjects = _meDeserializeObjects(data, _meH, _meW);
                 _meSpawns = data.spawns || { 1: [], 2: [] };
+                _meMonuments = Array.isArray(data.monuments) ? data.monuments.map(m => ({...m})) : [];
+                _meSelectedObjRef = null;
                 _meSanctuaryZones = data.sanctuaryZones ? data.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
                 _meHeights = data.heights ? data.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
 
@@ -8291,7 +8578,7 @@
             for (let y = 0; y < _meH; y++) { const row = [];
                 for (let x = 0; x < _meW; x++) { const stk = Array.isArray(_meObjects[y]?.[x]) ? _meObjects[y][x] : [];
                     if (!stk.length) { row.push(null); continue; }
-                    row.push(stk.map(e=>({key:ME_OBJECT_IDS[e.oid]||null,alignX:e.alignX||'center',alignY:e.alignY||'bottom',rot:e.rot||0,flipX:!!e.flipX,flipY:!!e.flipY})).filter(e=>e.key));
+                    row.push(stk.map(e=>{const o={key:ME_OBJECT_IDS[e.oid]||null,alignX:e.alignX||'center',alignY:e.alignY||'bottom',rot:e.rot||0,flipX:!!e.flipX,flipY:!!e.flipY};if(e.leaf)o.leaf=e.leaf;return o;}).filter(e=>e.key));
                 } objBoard.push(row); }
 
             const teamSize = Math.max(1, Math.min(_meSpawns[1].length, _meSpawns[2].length));
@@ -8322,6 +8609,7 @@
 
             window._customEditorBoard = board;
             window._customEditorObjects = objBoard;
+            window._customEditorMonuments = (_meMonuments && _meMonuments.length) ? _meMonuments.map(m => ({ ...m })) : null;
             window._customEditorSanctuaryZones = _meSanctuaryZones ? _meSanctuaryZones.map(r => [...r]) : null;
 
             window._customEditorHeights = walkHeights;

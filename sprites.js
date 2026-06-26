@@ -663,6 +663,29 @@ const TERRAIN_SPRITES = {
     leaves:           [`${_T}/leaves.png`],
     wallpaper:        [`${_T}/wallpaper.png`],
     cloud_2:          [`${_T}/cloud_2.png`],
+
+    // New terrain sprites (2026-06 R2 batch — variants + masonry)
+    moon_2:           [`${_T}/moon_2.png`],
+    moon_3:           [`${_T}/moon_3.png`],
+    carpet_2:         [`${_T}/carpet_2.png`],
+    carpet_3:         [`${_T}/carpet_3.png`],
+    carpet_4:         [`${_T}/carpet_4.png`],
+    gold_2:           [`${_T}/gold_2.png`],
+    gold_3:           [`${_T}/gold_3.png`],
+    metal_2:          [`${_T}/metal_2.png`],
+    grass_3:          [`${_T}/grass_3.png`],
+    grass_4:          [`${_T}/grass_4.png`],
+    dirt_2:           [`${_T}/dirt_2.png`],
+    dirt_3:           [`${_T}/dirt_3.png`],
+    dirt_4:           [`${_T}/dirt_4.png`],
+    marble:           [`${_T}/marble.png`],
+    marble_2:         [`${_T}/marble_2.png`],
+    cobblestone:      [`${_T}/cobblestone.png`],
+    cobblestone_2:    [`${_T}/cobblestone_2.png`],
+    leaves_2:         [`${_T}/leaves_2.png`],
+    leaves_3:         [`${_T}/leaves_3.png`],
+    leaves_4:         [`${_T}/leaves_4.png`],
+    leaves_5:         [`${_T}/leaves_5.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {

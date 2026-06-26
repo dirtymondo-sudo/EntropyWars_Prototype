@@ -1288,7 +1288,7 @@ const ThreeRenderer = (function () {
         var h = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
               : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
 
-        return h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y);
+        return h * ts * ELEV_STEP_RATIO + _tileSurfaceLift(x, y) + _stairStandLift(x, y);
     }
 
     function unitSurfaceY(unit) {
@@ -1320,7 +1320,7 @@ const ThreeRenderer = (function () {
 
         var baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
                   : (state.boardHeights && state.boardHeights[uy]) ? (state.boardHeights[uy][ux] || 0) : 0;
-        var elevPx = baseH * ts * ELEV_STEP_RATIO + _tileSurfaceLift(ux, uy);
+        var elevPx = baseH * ts * ELEV_STEP_RATIO + _tileSurfaceLift(ux, uy) + _stairStandLift(ux, uy);
         return elevPx;
     }
 
@@ -1356,17 +1356,25 @@ const ThreeRenderer = (function () {
         var maxNbr = Math.max(hN, hS, hW, hE);
         var minNbr = Math.min(hN, hS, hW, hE);
 
-        /* A barrier_passage tile is a ramp as long as a neighbour is higher than
-           it. (Stairs now bridge a 1-level difference, so the tile sits flush
-           with the low side instead of at an intermediate height.) */
+        /* A staircase is ALWAYS a fixed 1×1×1 prop: it bridges exactly ONE
+           elevation level and never stretches to match a taller neighbour.
+           (User: "they should not stretch depending on their surrounding height,
+           always 1×1×1.") The unit standing surface is lifted +0.5 level so a
+           climber reads mid-slope (see _stairStandLift). */
+
+        /* Explicitly-placed stairs (the editor stamps stairDir from the object's
+           rotation) render wherever they sit, even on flat ground, facing the way
+           the user spun them. */
+        if (explicitDir) {
+            var opposite = { N: 'S', S: 'N', E: 'W', W: 'E' };
+            return { highDir: opposite[explicitDir] || 'N', lowH: ht, highH: ht + 1 };
+        }
+
+        /* Legacy auto barrier_passage: only ramp where a neighbour is actually
+           higher — but clamp the rise to a single level so it never stretches. */
         if (maxNbr <= ht) return null;
         var lowH = Math.min(ht, minNbr);
-
-        if (explicitDir) {
-
-            var opposite = { N: 'S', S: 'N', E: 'W', W: 'E' };
-            return { highDir: opposite[explicitDir] || 'N', lowH: lowH, highH: maxNbr };
-        }
+        var highH = lowH + 1;
 
         var highDir = 'N';
         if (hS === minNbr && hN >= maxNbr) highDir = 'N';
@@ -1378,7 +1386,20 @@ const ThreeRenderer = (function () {
         else if (hW >= maxNbr) highDir = 'W';
         else highDir = 'E';
 
-        return { highDir: highDir, lowH: lowH, highH: maxNbr };
+        return { highDir: highDir, lowH: lowH, highH: highH };
+    }
+
+    /* Standing-surface lift for a unit/tile that is a staircase: +0.5 of the
+       (one-level) rise so a climber stands mid-slope rather than at the foot. */
+    function _stairStandLift(x, y) {
+        try {
+            var _bw = (typeof bw === 'function') ? bw() : 0;
+            var _bh = (typeof bh === 'function') ? bh() : 0;
+            var ht = (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
+            var si = _isStairTile(x, y, ht, _bw, _bh);
+            if (si) { var ts = CONFIG.tileSize || 128; return (si.highH - si.lowH) * 0.5 * ts * ELEV_STEP_RATIO; }
+        } catch (e) {}
+        return 0;
     }
 
     function _buildStairMesh(x, y, ts, elevStep, tKey, sKey, stairInfo) {
@@ -1593,6 +1614,14 @@ const ThreeRenderer = (function () {
                           + _hLevelAt(x, y + 1) + ',' + _hLevelAt(x - 1, y - 1) + ',' + _hLevelAt(x + 1, y + 1) + ','
                           + _hLevelAt(x + 1, y - 1) + ',' + _hLevelAt(x - 1, y + 1);
                 }
+                /* Stairs depend on their orientation (stairDir) and — for legacy
+                   auto-ramps — neighbour heights, so fold those into the cache
+                   fingerprint or a rotated/edited staircase keeps the stale mesh. */
+                if (tKey === 'barrier_passage') {
+                    var _topSd = (col && col.length) ? (col[col.length - 1].stairDir || '') : '';
+                    colFp += '|st:' + _topSd + ',' + _hLevelAt(x, y - 1) + ',' + _hLevelAt(x, y + 1) + ','
+                          + _hLevelAt(x - 1, y) + ',' + _hLevelAt(x + 1, y);
+                }
                 var k = x + ',' + y;
                 var ex = tileMeshes.get(k);
                 if (ex && ex._ew_terrain === tKey && ex._ew_height === ht && ex._ew_colFp === colFp && !full) {
@@ -1783,9 +1812,19 @@ const ThreeRenderer = (function () {
                             if (_e0.rot) s += _e0.rot;
                             if (_e0.alignX === 'left') s += 1; else if (_e0.alignX === 'right') s += 2;
                             if (_e0.alignY === 'top') s += 4;
+                            /* leaf choice changes the canopy texture → bust the cache */
+                            for (var _ei = 0; _ei < _rkRaw.length; _ei++) {
+                                var _le = _rkRaw[_ei]; if (_le && _le.leaf) { for (var _ci = 0; _ci < _le.leaf.length; _ci++) s += _le.leaf.charCodeAt(_ci) * (_ei + 1); } }
                         }
                     }
                 }
+            }
+        }
+        if (state.monuments) {
+            for (var mi = 0; mi < state.monuments.length; mi++) {
+                var mo = state.monuments[mi];
+                s += (mo.x + 1) * 131 + (mo.y + 1) * 197 + (mo.foot || 0) * 7 + (mo.maxH || 0) * 13;
+                if (mo.kind) { for (var mc = 0; mc < mo.kind.length; mc++) s += mo.kind.charCodeAt(mc); }
             }
         }
         return s;
@@ -2310,6 +2349,16 @@ const ThreeRenderer = (function () {
 
         var barkTex = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT);
         var leafFile = _FOLIAGE_LEAF_TEX_FOR_KEY[objKey] || 'forest_2.png';
+        /* Per-tree leaf override authored in the map editor (entry.leaf = 'leaves_3'…). */
+        try {
+            var _lstk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (_lstk) {
+                for (var _li = 0; _li < _lstk.length; _li++) {
+                    var _lk = _lstk[_li].key || _lstk[_li];
+                    if (_lk === objKey && _lstk[_li].leaf) { leafFile = _lstk[_li].leaf + '.png'; break; }
+                }
+            }
+        } catch (e) {}
         var leafTex = _getFoliagePixelTex(leafFile, _FOLIAGE_LEAF_REPEAT);
 
         /* OBJLoader gives a mesh that uses several materials an ARRAY of
@@ -2344,7 +2393,14 @@ const ThreeRenderer = (function () {
         model.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
         model.position.z = -((bb.min.z + bb.max.z) * 0.5) * s;
         model.position.y = -bb.min.y * s;
-        model.rotation.y = (rnd % 360) * Math.PI / 180;
+        /* Honor an editor-authored rotation (entry.rot); else the deterministic
+           per-tile yaw so a forest doesn't look stamped. */
+        var _frot = null;
+        try {
+            var _rstk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (_rstk) { for (var _ri = 0; _ri < _rstk.length; _ri++) { var _rk2 = _rstk[_ri].key || _rstk[_ri]; if (_rk2 === objKey && _rstk[_ri].rot) { _frot = _rstk[_ri].rot; break; } } }
+        } catch (e) {}
+        model.rotation.y = (_frot != null ? -_frot : (rnd % 360)) * Math.PI / 180;
 
         var g = new THREE.Group();
         g.add(model);
