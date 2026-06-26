@@ -1903,14 +1903,17 @@ const ThreeRenderer = (function () {
         }
         var wallH = fullWallH || roofZ;
 
-        /* Footprint was widened to 2×2 — scale the height by the same factor so
-           the building keeps its proportions and grows taller, not just wider.
+        /* Footprint was widened to 2×2 — scale the height to match, but CAP the
+           vertical growth at 2×. Narrow sprites produce a large houseFactor
+           ((ts*2)/side), which used to stretch buildings far too tall; clamp it
+           so a building is only ever scaled up to 2× in height.
            gameH (below) is derived from the scaled roofZ, so LOS and the
            roof-standing height rise to match the taller building, and the roof
            tile-highlight (which rides tileTopY + _roofZPx) follows automatically. */
         if (isHouse) {
-            roofZ = Math.round(roofZ * houseFactor);
-            wallH = wallH * houseFactor;
+            var heightFactor = Math.min(2, houseFactor);
+            roofZ = Math.round(roofZ * heightFactor);
+            wallH = wallH * heightFactor;
         }
 
         /* Game height is pinned to the legacy half-tile basis so the 1:1 visual
@@ -2851,6 +2854,12 @@ const ThreeRenderer = (function () {
             var m;
             if (ok === 'tower_cube') {
                 /* Tower cubes are built from live tower state, not the static object */
+                continue;
+            }
+            else if (ok === 'stairs' || ok === 'stairs_2') {
+                /* Stairs are drawn as the 3D staircase by the barrier_passage
+                   terrain mesh (_buildStairMesh) — don't also draw the flat
+                   billboard sprite for the object. */
                 continue;
             }
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
