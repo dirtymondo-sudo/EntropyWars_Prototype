@@ -10639,8 +10639,23 @@ const ThreeRenderer = (function () {
 
     function invalidateUnits() { _lastUnitSerial = ''; _lastStructuralSerial = ''; }
 
+    // Called when a new match begins (the renderer stays active across matches and
+    // is never disposed). Drops the previous match's leftover animation tweens and
+    // invalidates the terrain/unit caches so the next render frame rebuilds the
+    // board, heights and units from scratch for the new map — preventing stale
+    // geometry (e.g. units left floating over the old terrain) and forcing the
+    // camera to snap cleanly to the new framing instead of drifting from the last.
+    function resetForNewMatch() {
+        _clearAnimations();
+        _lastBoardW = 0; _lastBoardH = 0;
+        _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
+        _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
+        invalidateUnits();
+        if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+    }
+
     return {
-        init, activate, deactivate, isActive, dispose, hookCamera,
+        init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
         rebuildFog, invalidateUnits,
 

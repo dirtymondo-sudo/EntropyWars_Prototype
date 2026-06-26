@@ -10694,6 +10694,24 @@
                 state.userZoomScale = 0;
             }
 
+            // New-match cleanup: the 3D renderer is created once and reused for
+            // every match (it is never disposed between matches), so a second
+            // match could otherwise load with the previous match's stale state —
+            // leftover terrain/unit meshes (units appearing to float) and the
+            // prior match's cinematic camera framing (map too small / far away).
+            // Reframe the camera to the default overhead view and force the
+            // renderer to rebuild terrain + units from scratch for the new board.
+            state.dioramaTiltDeg = 50;
+            state.dioramaYawDeg = 0;
+            if (typeof camera !== 'undefined' && camera) {
+                camera.tilt = 50; camera.yaw = 0;
+                camera._smoothTilt = 50; camera._smoothYaw = 0;
+            }
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive &&
+                ThreeRenderer.isActive() && ThreeRenderer.resetForNewMatch) {
+                ThreeRenderer.resetForNewMatch();
+            }
+
             if (boardStageEl && !(state.devAutoSim && state.cameraDisabled)) {
 
                 const _initCamZ = Math.max(state.dioramaCamZ ?? 900, 2400);
@@ -10927,6 +10945,14 @@
         async function continueToNextMatch() {
             playSfx('uiButtonConfirm');
             state.matchNumber += 1;
+
+            // Fresh scoreboard for the new match — without this the previous
+            // match's kills/scores carry over (startMatch() resets these; this
+            // "Find Next Match" path must too).
+            state.matchKills = { 1: 0, 2: 0 };
+            state.matchScores = { 1: 0, 2: 0 };
+            state._arenaNexusControl = { 1: 0, 2: 0 };
+            state.suddenDeathActive = false;
 
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
                 const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
