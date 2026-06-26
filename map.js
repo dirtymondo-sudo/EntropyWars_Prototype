@@ -6414,6 +6414,42 @@
                 }
             }
 
+            /* ── Selected-object highlight: a gold ring + translucent disc + a
+               floating "🎯 Selected" tag on the tile of the object picked with the
+               Select tool (or just placed). Gives the clear visual feedback that
+               the picked object actually registered. ── */
+            if (_meSelectedObjRef &&
+                Array.isArray(_meObjects[_meSelectedObjRef.y]?.[_meSelectedObjRef.x]) &&
+                _meObjects[_meSelectedObjRef.y][_meSelectedObjRef.x].length > 0) {
+                const sx = _meSelectedObjRef.x, sy = _meSelectedObjRef.y;
+                const sh = state.boardHeights?.[sy]?.[sx] ?? 0;
+                const sTopY = Math.max(ts * 0.25, sh * ts * 0.5) + 0.5;
+                const cxw = sx * ts + ts / 2, czw = sy * ts + ts / 2;
+
+                const discMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+                const disc = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), discMat);
+                disc.rotation.x = -Math.PI / 2;
+                disc.position.set(cxw, sTopY + 0.5, czw);
+                _editorOverlay3DGroup.add(disc);
+
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
+                const ring = new THREE.Mesh(new THREE.RingGeometry(ts * 0.36, ts * 0.48, 48), ringMat);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(cxw, sTopY + 0.8, czw);
+                ring.renderOrder = 9999;
+                _editorOverlay3DGroup.add(ring);
+
+                const tagEl = document.createElement('div');
+                tagEl.className = 'me-3d-label me-3d-sel-label';
+                tagEl.textContent = '🎯 Selected';
+                tagEl.style.cssText = 'font-size:12px;font-weight:700;padding:2px 7px;border-radius:4px;pointer-events:none;' +
+                    'background:rgba(255,210,74,0.95);color:#3a2a00;font-family:DotGothic16,monospace;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.5);';
+                const tag2d = new THREE.CSS2DObject(tagEl);
+                tag2d.position.set(cxw, sTopY + 26, czw);
+                _editorOverlay3DGroup.add(tag2d);
+                _editorOverlay3DLabels.push(tag2d);
+            }
+
             if (scene) {
                 scene.add(_editorOverlay3DGroup);
             }
@@ -7065,6 +7101,44 @@
             return stk[r.idx];
         }
 
+        function _meScrollPaletteToTop() {
+            const p = document.getElementById('mePalette');
+            if (p) p.scrollTop = 0;
+        }
+        /* Force the 3D object layer to rebuild right now (used after rotate /
+           mirror / leaf so the change is visible immediately, not on the next
+           incidental redraw). */
+        function _meRefreshObjects3D() {
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive() && ThreeRenderer.rebuildObjects) {
+                ThreeRenderer.rebuildObjects();
+            }
+        }
+        /* Find the object nearest to a clicked tile, searching the tile itself
+           first and then rings of increasing radius. Tall sprites (trees,
+           buildings) render offset from their base tile, so an exact-tile match
+           alone makes selection feel broken — this makes clicking forgiving.
+           Returns a {x,y,idx} ref to the topmost object on the closest occupied
+           tile, or null when nothing is within range. */
+        function _meFindObjectNear(cx, cy, maxR = 2) {
+            const has = (x, y) => x >= 0 && y >= 0 && x < _meW && y < _meH &&
+                Array.isArray(_meObjects[y]?.[x]) && _meObjects[y][x].length > 0;
+            if (has(cx, cy)) return { x: cx, y: cy, idx: _meObjects[cy][cx].length - 1 };
+            for (let r = 1; r <= maxR; r++) {
+                let best = null, bestD = Infinity;
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; /* ring only */
+                        const x = cx + dx, y = cy + dy;
+                        if (!has(x, y)) continue;
+                        const d = dx * dx + dy * dy;
+                        if (d < bestD) { bestD = d; best = { x, y, idx: _meObjects[y][x].length - 1 }; }
+                    }
+                }
+                if (best) return best;
+            }
+            return null;
+        }
+
         function _meRenderPalette() {
             const pal = document.getElementById('mePalette');
             if (!pal) return;
@@ -7502,30 +7576,30 @@
             const e = _meSelectedObjEntry(); if (!e) return;
             e.rot = ((+deg % 360) + 360) % 360;
             _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
-            _meRenderGrid(); _meRenderPalette();
+            _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meRotateSelectedBy = function(delta) {
             const e = _meSelectedObjEntry(); if (!e) return;
             e.rot = ((((e.rot || 0) + delta) % 360) + 360) % 360;
             _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
-            _meRenderGrid(); _meRenderPalette();
+            _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meFlipSelected = function(axis) {
             const e = _meSelectedObjEntry(); if (!e) return;
             if (axis === 'x') e.flipX = !e.flipX; else e.flipY = !e.flipY;
-            _meRenderGrid(); _meRenderPalette();
+            _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meSetSelectedLeaf = function(lf) {
             const e = _meSelectedObjEntry(); if (!e) return;
             e.leaf = lf;
-            _meRenderGrid(); _meRenderPalette();
+            _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meDeleteSelectedObj = function() {
             const r = _meSelectedObjRef; if (!r) return;
             const stk = _meObjects[r.y] && _meObjects[r.y][r.x];
             if (Array.isArray(stk) && stk[r.idx]) { _mePushUndo(); stk.splice(r.idx, 1); }
             _meSelectedObjRef = null;
-            _meRenderGrid(); _meRenderPalette();
+            _meRenderGrid(); _meRefreshObjects3D(); _meRebuildEditorOverlays3D(); _meRenderPalette();
         };
 
         function _meUpdateToolButtons() {
@@ -8145,16 +8219,23 @@
                     }
                     _meApplyStairDirFromRot(x, y, entry);
                 }
-            } else if (_meTool === 'select') {
-                /* Pick the topmost object on this tile so it can be rotated /
-                   mirrored / re-leafed afterwards (no pre-orienting required). */
-                const stk = Array.isArray(_meObjects[y]?.[x]) ? _meObjects[y][x] : [];
-                if (stk.length > 0) {
-                    _meSelectedObjRef = { x, y, idx: stk.length - 1 };
-                } else {
-                    _meSelectedObjRef = null;
+
+                /* Auto-select the object you just placed so its rotate / mirror
+                   controls appear immediately and the board shows a selection
+                   ring — no separate "Select" step needed. Skipped mid-drag so
+                   rapid stamping doesn't thrash the panel. */
+                if (!_meEditorDragging) {
+                    _meSelectedObjRef = { x, y, idx: _meObjects[y][x].length - 1 };
+                    _meRenderPalette();
+                    _meScrollPaletteToTop();
                 }
+            } else if (_meTool === 'select') {
+                /* Pick the nearest object to the click (forgiving of the offset
+                   between a tall sprite and its base tile). Clicking an empty
+                   patch clears the selection. */
+                _meSelectedObjRef = _meFindObjectNear(x, y);
                 _meRenderPalette();
+                _meScrollPaletteToTop();
             } else if (_meTool === 'monument') {
                 if (!Array.isArray(_meMonuments)) _meMonuments = [];
                 const existingIdx = _meMonuments.findIndex(m => m.x === x && m.y === y);
