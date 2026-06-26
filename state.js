@@ -1154,6 +1154,11 @@
                (three-renderer reads state.naturalTerrain). All other maps stay
                classic flat-cube voxels. */
             state.naturalTerrain = !!layout.naturalTerrain;
+            /* Per-terrain tints only exist for the map-editor's Play Test map; every
+               other mode clears them so a custom map's colours never leak onto a
+               normal match. (three-renderer reads state.terrainTints in _evTintMat.) */
+            state.terrainTints = (modeId === '_custom_editor' && window._customEditorTints)
+                ? Object.assign({}, window._customEditorTints) : null;
             /* Opt this map into cosmetic 3D street lamps beside its built
                environment (three-renderer reads state.streetLamps). Natural
                terrain (Entropy Vale) already gets lamps via its own gate. */

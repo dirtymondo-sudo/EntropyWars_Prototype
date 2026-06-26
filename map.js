@@ -5879,6 +5879,13 @@
         let _meSelectedHeight = 1;
         let _meMouseDown = false;
         let _mePaletteTab = 'terrain';
+        /* Per-terrain colour tints chosen with the editor's colour wheel:
+           { terrainKey: '#rrggbb' }. Multiplied onto that terrain's sprites by
+           three-renderer (_evTintMat reads state.terrainTints). */
+        let _meTerrainTints = {};
+        let _meTintKey = null;          // terrain key the wheel is currently editing
+        let _meTintH = 0, _meTintS = 0, _meTintV = 100;   // wheel state (HSV)
+        let _meTintRebuildRAF = 0;
         let _me3DPreview = false;
 
         /* ── Esoteric monuments (reused _hz* background geometry as on-board
@@ -5941,11 +5948,13 @@
                 },
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({ ...m })) : [],
+                terrainTints: Object.assign({}, _meTerrainTints),
                 w: _meW, h: _meH
             };
         }
         function _meRestoreSnapshot(snap) {
             _meMonuments = snap.monuments ? snap.monuments.map(m => ({ ...m })) : [];
+            if (snap.terrainTints) { _meTerrainTints = Object.assign({}, snap.terrainTints); _meApplyTintsLive(); }
             _meW = snap.w; _meH = snap.h;
             _meVoxels = snap.voxels ? snap.voxels.map(row => row.map(col => col.map(b => {
                 var e = { z: b.z, tid: b.tid };
@@ -6129,6 +6138,8 @@
             const w = _meW, h = _meH;
             CONFIG.boardWidth = w;
             CONFIG.boardHeight = h;
+            state.terrainTints = Object.assign({}, _meTerrainTints);
+            window._customEditorTints = Object.assign({}, _meTerrainTints);
             CONFIG.tileSize = typeof computeBattleTileSize === 'function' ? computeBattleTileSize() : 58;
 
             state.boardTerrain = [];
@@ -6425,10 +6436,16 @@
                     display: flex !important;
                     flex-direction: column;
                     gap: 8px;
+                    /* Give the sidebar a real, readable width instead of letting it
+                       collapse to its content's minimum (the old "too thin" bug). */
+                    flex: 0 0 auto;
+                    width: clamp(340px, 28vw, 480px);
+                    align-self: stretch;
                     max-height: 100vh;
+                    height: 100vh;
                     overflow-y: auto;
                     overflow-x: hidden;
-                    padding: 10px 10px 14px;
+                    padding: 10px 12px 14px;
                     scrollbar-width: thin;
                     scrollbar-color: rgba(124,77,255,0.6) transparent;
                 }
@@ -6456,16 +6473,44 @@
                     flex-direction: column;
                     gap: 7px;
                 }
-                .me-section-palette { flex: 1 1 auto; min-height: 220px; }
+                .me-section-palette { flex: 1 1 auto; min-height: 300px; }
 
-                .me-section-label {
+                /* Clickable collapsible header for each panel. */
+                .me-editor-hud .me-section-label {
                     font-size: 9.5px;
                     font-weight: 700;
                     letter-spacing: 0.12em;
                     text-transform: uppercase;
                     color: rgba(180,160,255,0.85);
-                    margin-bottom: 1px;
+                    margin: 0;
+                    padding: 2px 0;
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    gap: 7px;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    text-align: left;
+                    user-select: none;
                 }
+                .me-editor-hud .me-section-label:hover { color: #fff; }
+                .me-editor-hud .me-sec-caret {
+                    font-size: 9px;
+                    line-height: 1;
+                    color: rgba(180,160,255,0.7);
+                    transition: transform 0.15s ease;
+                }
+                .me-editor-hud .me-section.collapsed .me-sec-caret { transform: rotate(-90deg); }
+                .me-editor-hud .me-section.collapsed .me-section-body { display: none; }
+                .me-editor-hud .me-section.collapsed { padding-bottom: 9px; }
+                .me-editor-hud .me-section.collapsed.me-section-palette { flex: 0 0 auto; min-height: 0; }
+                .me-editor-hud .me-section-body {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 7px;
+                }
+                .me-editor-hud .me-section-palette .me-section-body { flex: 1 1 auto; min-height: 0; }
 
                 .me-editor-hud .me-tool-row { display: flex; flex-wrap: wrap; gap: 6px; }
                 .me-editor-hud .me-tool {
@@ -6529,7 +6574,7 @@
 
                 .me-editor-hud .me-tab-row { display: flex; gap: 4px; }
                 .me-editor-hud .me-tab {
-                    flex: 1; padding: 7px 4px; font-size: 11.5px; cursor: pointer;
+                    flex: 1; padding: 8px 4px; font-size: 12px; cursor: pointer; white-space: nowrap;
                     border-radius: 7px 7px 0 0; border: 1px solid rgba(255,255,255,0.08); border-bottom: none;
                     background: rgba(30,26,44,0.8); color: rgba(220,216,240,0.7);
                 }
@@ -6539,10 +6584,11 @@
                 .me-editor-hud .me-palette {
                     flex: 1 1 auto;
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+                    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
                     gap: 6px;
                     align-content: start;
-                    max-height: 42vh;
+                    min-height: 240px;
+                    max-height: calc(100vh - 210px);
                     overflow-y: auto;
                     padding: 8px;
                     background: rgba(10,8,18,0.6);
@@ -6575,6 +6621,62 @@
                     border: 1px solid rgba(0,0,0,0.4); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
                 }
                 .me-editor-hud .me-pal-label { font-size: 9px; line-height: 1.1; text-align: center; color: rgba(225,222,245,0.9); word-break: break-word; }
+                .me-editor-hud .me-pal-swatch { position: relative; }
+                .me-editor-hud .me-pal-tintdot {
+                    position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; border-radius: 50%;
+                    border: 1px solid rgba(0,0,0,0.55); box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
+                }
+
+                /* ── Colour-wheel tint panel (top of the Terrain palette) ── */
+                .me-editor-hud .me-tint-panel {
+                    grid-column: 1 / -1;
+                    background: rgba(20,16,32,0.7);
+                    border: 1px solid rgba(160,140,255,0.25);
+                    border-radius: 9px; padding: 9px; margin-bottom: 6px;
+                    display: flex; flex-direction: column; gap: 8px;
+                }
+                .me-editor-hud .me-tint-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: rgba(225,222,245,0.9); }
+                .me-editor-hud .me-tint-head b { color: #fff; }
+                .me-editor-hud .me-tint-reset {
+                    font-size: 10px; padding: 3px 9px; border-radius: 6px; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(46,40,66,0.9); color: #ddd;
+                }
+                .me-editor-hud .me-tint-reset:hover { background: rgba(86,72,130,0.95); }
+                .me-editor-hud .me-tint-body { display: flex; gap: 10px; align-items: center; }
+                .me-editor-hud .me-tint-wheel {
+                    position: relative; width: 118px; height: 118px; flex: 0 0 118px;
+                    border-radius: 50%; cursor: crosshair; touch-action: none;
+                    background:
+                        radial-gradient(circle at center, #fff 0%, rgba(255,255,255,0) 72%),
+                        conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+                    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.4);
+                }
+                .me-editor-hud .me-tint-marker {
+                    position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+                    border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.65);
+                    transform: translate(-50%,-50%); pointer-events: none;
+                }
+                .me-editor-hud .me-tint-controls { flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+                .me-editor-hud .me-tint-preview { width: 100%; height: 26px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); }
+                .me-editor-hud .me-tint-vlabel { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(180,160,255,0.85); }
+                .me-editor-hud .me-tint-vslider { width: 100%; }
+                .me-editor-hud .me-tint-hexrow { display: flex; gap: 6px; align-items: center; }
+                .me-editor-hud .me-tint-hexrow input[type=color] {
+                    width: 34px; height: 30px; padding: 0; border-radius: 6px; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.18); background: none;
+                }
+                .me-editor-hud .me-tint-hexinput {
+                    flex: 1 1 auto; min-width: 0; padding: 6px 8px; border-radius: 6px;
+                    border: 1px solid rgba(255,255,255,0.14); background: rgba(12,10,20,0.8);
+                    color: #fff; font-size: 12px; font-family: monospace;
+                }
+                .me-editor-hud .me-tint-hexinput:focus { outline: none; border-color: rgba(160,140,255,0.8); }
+                .me-editor-hud .me-tint-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+                .me-editor-hud .me-tint-swatch {
+                    width: 20px; height: 20px; border-radius: 5px; padding: 0; cursor: pointer;
+                    border: 1px solid rgba(255,255,255,0.2); transition: transform 0.08s, border-color 0.08s;
+                }
+                .me-editor-hud .me-tint-swatch:hover { transform: scale(1.12); border-color: #fff; }
 
                 .me-editor-hud .me-hud-actions { display: flex; flex-wrap: wrap; gap: 5px; }
                 .me-editor-hud .me-hud-actions .me-btn { flex: 1 1 auto; }
@@ -6633,8 +6735,9 @@
 
                 <div class="me-help-bar">Click to place · drag to paint · right-click a tile for options · Ctrl+Z / Ctrl+Y</div>
 
-                <div class="me-section">
-                    <div class="me-section-label">Canvas Size</div>
+                <div class="me-section" id="meSec-size">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-size')"><span class="me-sec-caret">▾</span> Canvas Size</button>
+                    <div class="me-section-body">
                     <div class="me-hud-size-row">
                         <span class="me-label">W</span>
                         <button onclick="window._meResizeW(-1)">−</button>
@@ -6645,10 +6748,12 @@
                         <span class="me-size-val" id="meHeightVal">${_meH}</span>
                         <button onclick="window._meResizeH(1)">+</button>
                     </div>
+                    </div>
                 </div>
 
-                <div class="me-section">
-                    <div class="me-section-label">Tools</div>
+                <div class="me-section" id="meSec-tools">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-tools')"><span class="me-sec-caret">▾</span> Tools</button>
+                    <div class="me-section-body">
                     <div class="me-tool-row">
                         <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')" title="Paint terrain">🖌️ Paint</button>
                         <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')" title="Place objects">🏠 Object</button>
@@ -6662,10 +6767,12 @@
                         <button class="me-tool me-tool-p1" id="meTool-spawn1" onclick="window._meSetTool('spawn1')" title="Place a Player 1 spawn">🔵 P1 Spawn</button>
                         <button class="me-tool me-tool-p2" id="meTool-spawn2" onclick="window._meSetTool('spawn2')" title="Place a Player 2 spawn">🔴 P2 Spawn</button>
                     </div>
+                    </div>
                 </div>
 
-                <div class="me-section">
-                    <div class="me-section-label">Elevation</div>
+                <div class="me-section" id="meSec-elev">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-elev')"><span class="me-sec-caret">▾</span> Elevation</button>
+                    <div class="me-section-body">
                     <div class="me-tool-row me-elev-row">
                         <button class="me-tool" id="meTool-elevUp" onclick="window._meSetTool('elevUp')" title="Raise a tile by one level">⬆ Raise</button>
                         <button class="me-tool" id="meTool-elevDown" onclick="window._meSetTool('elevDown')" title="Lower a tile by one level">⬇ Lower</button>
@@ -6682,17 +6789,20 @@
                         <span class="me-elev-label">Height</span>
                         <div class="me-elev-picker" id="meElevPicker"></div>
                     </div>
+                    </div>
                 </div>
 
-                <div class="me-section me-section-palette">
-                    <div class="me-section-label">Palette</div>
-                    <input type="text" class="me-search" id="meSearch" placeholder="🔍 Search tiles…" oninput="window._meOnSearch()" />
+                <div class="me-section me-section-palette" id="meSec-palette">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-palette')"><span class="me-sec-caret">▾</span> Tiles, Objects &amp; Monuments</button>
+                    <div class="me-section-body">
+                    <input type="text" class="me-search" id="meSearch" placeholder="🔍 Search all tiles, objects & monuments…" oninput="window._meOnSearch()" />
                     <div class="me-tab-row">
                         <button class="me-tab active" id="meTab-terrain" onclick="window._meSetTab('terrain')">Terrain</button>
                         <button class="me-tab" id="meTab-objects" onclick="window._meSetTab('objects')">Objects</button>
                         <button class="me-tab" id="meTab-monuments" onclick="window._meSetTab('monuments')">Monuments</button>
                     </div>
                     <div class="me-palette" id="mePalette"></div>
+                    </div>
                 </div>
 
                 <div class="me-hud-actions">
@@ -6966,6 +7076,68 @@
                 html += `<div class="me-inspector-empty" style="font-size:10px;opacity:0.7;padding:8px">🎯 Click an object on the board to select it, then rotate it any direction.</div>`;
             }
 
+            /* ── Global search: when the user types in the search box, ignore the
+               active tab and surface matches from ALL three palettes (terrain,
+               objects, monuments) at once. This is what makes the search box feel
+               functional — picking a result still switches to the right tool. ── */
+            if (searchVal) {
+                let any = false;
+
+                let terrHtml = '';
+                for (const cat of ME_PALETTE_CATS) {
+                    const filtered = cat.keys.filter(key => {
+                        const rule = TERRAIN_RULES[key];
+                        const label = rule ? rule.label : key;
+                        return key.toLowerCase().includes(searchVal) || label.toLowerCase().includes(searchVal) || cat.label.toLowerCase().includes(searchVal);
+                    });
+                    for (const key of filtered) {
+                        const rule = TERRAIN_RULES[key];
+                        const label = rule ? rule.label : key;
+                        const active = (_meTool === 'paint' && _meSelectedTerrain === key) ? ' active' : '';
+                        terrHtml += `<div class="me-pal-item${active}" data-terrain="${key}" onclick="window._mePickTerrain('${key}')">
+                            <div class="me-pal-swatch" style="background-image:${_meTerrainBg(key)}"></div>
+                            <div class="me-pal-label">${label}</div>
+                        </div>`;
+                    }
+                }
+                if (terrHtml) { html += `<div class="me-pal-cat">🗺️ Terrain</div>` + terrHtml; any = true; }
+
+                let objHtml = '';
+                for (const cat of ME_OBJECT_CATS) {
+                    const filtered = cat.keys.filter(key => {
+                        const oRule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[key] : null;
+                        const label = oRule ? oRule.label : key;
+                        return key.toLowerCase().includes(searchVal) || label.toLowerCase().includes(searchVal) || cat.label.toLowerCase().includes(searchVal);
+                    });
+                    for (const key of filtered) {
+                        const oRule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[key] : null;
+                        const label = oRule ? oRule.label : key;
+                        const active = (_meTool === 'object' && _meSelectedObject === key) ? ' active' : '';
+                        const bgImg = _meObjectBg(key) || _meTerrainBg(key);
+                        objHtml += `<div class="me-pal-item${active}" data-object="${key}" onclick="window._mePickObject('${key}')">
+                            <div class="me-pal-swatch" style="background-image:${bgImg};background-size:contain;background-position:center bottom"></div>
+                            <div class="me-pal-label">${label}</div>
+                        </div>`;
+                    }
+                }
+                if (objHtml) { html += `<div class="me-pal-cat">🏠 Objects</div>` + objHtml; any = true; }
+
+                let monHtml = '';
+                for (const m of ME_MONUMENT_KINDS) {
+                    if (!(m.kind.includes(searchVal) || m.label.toLowerCase().includes(searchVal))) continue;
+                    const active = (_meTool === 'monument' && _meSelectedMonument === m.kind) ? ' active' : '';
+                    monHtml += `<div class="me-pal-item${active}" onclick="window._mePickMonument('${m.kind}')">
+                        <div class="me-pal-swatch" style="display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(40,30,60,0.4)">${m.emoji}</div>
+                        <div class="me-pal-label">${m.label}</div>
+                    </div>`;
+                }
+                if (monHtml) { html += `<div class="me-pal-cat me-pal-cat-gamemode">🗿 Monuments</div>` + monHtml; any = true; }
+
+                if (!any) html += `<div class="me-inspector-empty">No matches for "${searchVal}"</div>`;
+                pal.innerHTML = html;
+                return;
+            }
+
             if (_mePaletteTab === 'monuments') {
                 html += `<div class="me-pal-cat me-pal-cat-gamemode">🗿 Esoteric Monuments</div>`;
                 const monFiltered = ME_MONUMENT_KINDS.filter(m => !searchVal || m.kind.includes(searchVal) || m.label.toLowerCase().includes(searchVal));
@@ -6994,6 +7166,9 @@
 
             if (_mePaletteTab === 'terrain') {
 
+                _meTintSyncFromKey();
+                html += _meTintPanelHtml();
+
                 for (const cat of ME_PALETTE_CATS) {
                     const filtered = cat.keys.filter(key => {
                         if (!searchVal) return true;
@@ -7007,8 +7182,10 @@
                         const rule = TERRAIN_RULES[key];
                         const label = rule ? rule.label : key;
                         const active = (_meTool === 'paint' && _meSelectedTerrain === key) ? ' active' : '';
+                        const tintHex = _meTerrainTints[key];
+                        const tintDot = tintHex ? `<span class="me-pal-tintdot" style="background:${tintHex}" title="Tinted ${tintHex}"></span>` : '';
                         html += `<div class="me-pal-item${active}" data-terrain="${key}" onclick="window._mePickTerrain('${key}')">
-                            <div class="me-pal-swatch" style="background-image:${_meTerrainBg(key)}"></div>
+                            <div class="me-pal-swatch" style="background-image:${_meTerrainBg(key)}">${tintDot}</div>
                             <div class="me-pal-label">${label}</div>
                         </div>`;
                     }
@@ -7066,6 +7243,7 @@
             }
             if (!html) html = `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
             pal.innerHTML = html;
+            if (document.getElementById('meTintWheel')) requestAnimationFrame(_meTintUpdateMarker);
         }
 
         window._mePickTerrain = function(key) {
@@ -7115,6 +7293,145 @@
         window._meOnSearch = function() {
             _meRenderPalette();
         };
+
+        /* Collapse / expand a sidebar section so the user can free up vertical
+           room (e.g. fold Size/Tools/Elevation to give the Palette the whole
+           sidebar). Palette stays usable because the whole HUD also scrolls. */
+        window._meToggleSection = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('collapsed');
+        };
+
+        /* ─────────────── Colour-wheel tint for the selected terrain ───────────
+           HSV ↔ hex helpers, an interactive hue/saturation wheel + value slider,
+           a live hex field, and a live multiply-tint applied to the 3D terrain. */
+        function _meHsvToHex(h, s, v) {
+            h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(100, s)) / 100; v = Math.max(0, Math.min(100, v)) / 100;
+            const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+            let r = 0, g = 0, b = 0;
+            if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; }
+            else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; }
+            else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+            const to = n => ('0' + Math.round((n + m) * 255).toString(16)).slice(-2);
+            return '#' + to(r) + to(g) + to(b);
+        }
+        function _meHexToHsv(hex) {
+            hex = (hex || '').replace('#', '').trim();
+            if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+            const r = parseInt(hex.slice(0, 2), 16) / 255, g = parseInt(hex.slice(2, 4), 16) / 255, b = parseInt(hex.slice(4, 6), 16) / 255;
+            if ([r, g, b].some(n => isNaN(n))) return { h: 0, s: 0, v: 100 };
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+            let h = 0;
+            if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+            return { h, s: mx ? (d / mx) * 100 : 0, v: mx * 100 };
+        }
+        function _meTintSyncFromKey() {
+            _meTintKey = _meSelectedTerrain;
+            const hex = _meTerrainTints[_meTintKey];
+            if (hex) { const hsv = _meHexToHsv(hex); _meTintH = hsv.h; _meTintS = hsv.s; _meTintV = hsv.v; }
+            else { _meTintH = 0; _meTintS = 0; _meTintV = 100; }   /* white = no tint */
+        }
+        function _meTintUpdateMarker() {
+            const wheel = document.getElementById('meTintWheel'), marker = document.getElementById('meTintMarker');
+            if (!wheel || !marker) return;
+            const rect = wheel.getBoundingClientRect();
+            const cx = rect.width / 2, cy = rect.height / 2, maxR = Math.min(cx, cy);
+            const rad = _meTintH * Math.PI / 180, r = (_meTintS / 100) * maxR;
+            marker.style.left = (cx + r * Math.sin(rad)) + 'px';
+            marker.style.top = (cy - r * Math.cos(rad)) + 'px';
+        }
+        function _meApplyTintsLive() {
+            if (typeof state !== 'undefined' && state) state.terrainTints = Object.assign({}, _meTerrainTints);
+            window._customEditorTints = Object.assign({}, _meTerrainTints);
+            if (_meTintRebuildRAF) return;
+            _meTintRebuildRAF = requestAnimationFrame(() => {
+                _meTintRebuildRAF = 0;
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) {
+                    if (ThreeRenderer.rebuildTerrain) ThreeRenderer.rebuildTerrain();
+                    if (ThreeRenderer.rebuildObjects) ThreeRenderer.rebuildObjects();
+                }
+            });
+        }
+        function _meTintCommit(applyLive, hexOverride) {
+            const hex = hexOverride || _meHsvToHex(_meTintH, _meTintS, _meTintV);
+            if (_meTintKey) {
+                /* Treat pure white as "no tint" so swatches don't show a bogus badge. */
+                if (hex.toLowerCase() === '#ffffff') delete _meTerrainTints[_meTintKey];
+                else _meTerrainTints[_meTintKey] = hex;
+            }
+            const hexEl = document.getElementById('meTintHex');
+            if (hexEl && document.activeElement !== hexEl) hexEl.value = hex;
+            const natEl = document.getElementById('meTintColorInput');
+            if (natEl) natEl.value = hex;
+            const prev = document.getElementById('meTintPreview');
+            if (prev) prev.style.background = hex;
+            _meTintUpdateMarker();
+            if (applyLive) _meApplyTintsLive();
+        }
+        function _meTintPickFromEvent(ev) {
+            const wheel = document.getElementById('meTintWheel');
+            if (!wheel) return;
+            const rect = wheel.getBoundingClientRect();
+            const cx = rect.width / 2, cy = rect.height / 2, maxR = Math.min(cx, cy) || 1;
+            const dx = ev.clientX - rect.left - cx, dy = ev.clientY - rect.top - cy;
+            let r = Math.sqrt(dx * dx + dy * dy) / maxR; if (r > 1) r = 1;
+            let h = Math.atan2(dx, -dy) * 180 / Math.PI; if (h < 0) h += 360;
+            _meTintH = h; _meTintS = r * 100;
+            _meTintCommit(true);
+        }
+        window._meTintWheelDrag = function(ev) {
+            ev.preventDefault();
+            _meTintPickFromEvent(ev);
+            const move = e => _meTintPickFromEvent(e);
+            const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+        };
+        window._meTintSetV = function(v) { _meTintV = +v; _meTintCommit(true); };
+        window._meTintFromHex = function() {
+            const el = document.getElementById('meTintHex'); if (!el) return;
+            let v = el.value.trim(); if (v && v[0] !== '#') v = '#' + v;
+            if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) return;
+            const hsv = _meHexToHsv(v); _meTintH = hsv.h; _meTintS = hsv.s; _meTintV = hsv.v;
+            _meTintCommit(true, _meHsvToHex(_meTintH, _meTintS, _meTintV));
+        };
+        window._meTintFromNative = function() {
+            const el = document.getElementById('meTintColorInput'); if (!el) return;
+            const hsv = _meHexToHsv(el.value); _meTintH = hsv.h; _meTintS = hsv.s; _meTintV = hsv.v;
+            _meTintCommit(true, el.value);
+        };
+        window._meTintPreset = function(hex) {
+            const hsv = _meHexToHsv(hex); _meTintH = hsv.h; _meTintS = hsv.s; _meTintV = hsv.v;
+            const vEl = document.getElementById('meTintVal'); if (vEl) vEl.value = _meTintV;
+            _meTintCommit(true, hex);
+        };
+        window._meTintReset = function() {
+            if (_meTintKey) delete _meTerrainTints[_meTintKey];
+            _meTintH = 0; _meTintS = 0; _meTintV = 100;
+            const vEl = document.getElementById('meTintVal'); if (vEl) vEl.value = 100;
+            _meApplyTintsLive();
+            _meRenderPalette();
+        };
+        const ME_TINT_PRESETS = ['#ffffff','#ff5555','#ff9a4a','#ffe14a','#5bd16a','#4ecbe2','#5b9bff','#a36bff','#ff6bd0','#7a4a2e','#9aa6b8','#22202e'];
+        function _meTintPanelHtml() {
+            const key = _meSelectedTerrain;
+            const rule = TERRAIN_RULES[key];
+            const label = rule ? rule.label : key;
+            const curHex = _meTerrainTints[key] || _meHsvToHex(_meTintH, _meTintS, _meTintV);
+            let ph = `<div class="me-tint-panel">`;
+            ph += `<div class="me-tint-head"><span>🎨 Tint <b>${label}</b></span><button class="me-tint-reset" onclick="window._meTintReset()">Reset</button></div>`;
+            ph += `<div class="me-tint-body">`;
+            ph += `<div class="me-tint-wheel" id="meTintWheel" onpointerdown="window._meTintWheelDrag(event)"><div class="me-tint-marker" id="meTintMarker"></div></div>`;
+            ph += `<div class="me-tint-controls">`;
+            ph += `<div class="me-tint-preview" id="meTintPreview" style="background:${curHex}"></div>`;
+            ph += `<label class="me-tint-vlabel">Brightness</label>`;
+            ph += `<input type="range" id="meTintVal" class="me-tint-vslider" min="0" max="100" value="${Math.round(_meTintV)}" oninput="window._meTintSetV(this.value)">`;
+            ph += `<div class="me-tint-hexrow"><input type="color" id="meTintColorInput" value="${curHex}" oninput="window._meTintFromNative()" title="System colour picker"><input type="text" id="meTintHex" class="me-tint-hexinput" value="${curHex}" maxlength="7" spellcheck="false" oninput="window._meTintFromHex()" onchange="window._meTintFromHex()"></div>`;
+            ph += `</div></div>`;
+            ph += `<div class="me-tint-presets">` + ME_TINT_PRESETS.map(p => `<button class="me-tint-swatch" style="background:${p}" title="${p}" onclick="window._meTintPreset('${p}')"></button>`).join('') + `</div>`;
+            ph += `</div>`;
+            return ph;
+        }
 
         function _meUpdateTabButtons() {
             ['terrain','objects','monuments'].forEach(t => {
@@ -8142,6 +8459,7 @@
                 heights: _meHeights ? _meHeights.map(row => [...row]) : null,
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
+                terrainTints: Object.assign({}, _meTerrainTints),
                 ts: Date.now()
             };
             const maps = _meGetSavedMaps();
@@ -8174,6 +8492,8 @@
             _meObjects = _meDeserializeObjects(m, _meH, _meW);
             _meSpawns = { 1: (m.spawns?.[1] || []).map(s => ({...s})), 2: (m.spawns?.[2] || []).map(s => ({...s})) };
             _meMonuments = Array.isArray(m.monuments) ? m.monuments.map(mm => ({...mm})) : [];
+            _meTerrainTints = m.terrainTints ? Object.assign({}, m.terrainTints) : {};
+            _meApplyTintsLive();
             _meSelectedObjRef = null;
             _meSanctuaryZones = m.sanctuaryZones ? m.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = m.heights ? m.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
@@ -8213,7 +8533,8 @@
                 sanctuaryZones: _meSanctuaryZones,
                 heights: _meHeights,
                 voxels: _meVoxels,
-                monuments: _meMonuments || []
+                monuments: _meMonuments || [],
+                terrainTints: _meTerrainTints
             };
             const json = JSON.stringify(data);
             navigator.clipboard.writeText(json).then(() => {
@@ -8234,6 +8555,8 @@
                 _meObjects = _meDeserializeObjects(data, _meH, _meW);
                 _meSpawns = data.spawns || { 1: [], 2: [] };
                 _meMonuments = Array.isArray(data.monuments) ? data.monuments.map(m => ({...m})) : [];
+                _meTerrainTints = data.terrainTints ? Object.assign({}, data.terrainTints) : {};
+                _meApplyTintsLive();
                 _meSelectedObjRef = null;
                 _meSanctuaryZones = data.sanctuaryZones ? data.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
                 _meHeights = data.heights ? data.heights.map(row => row.map(h => Math.max(0, Math.min(20, h)))) : _meEmptyHeightGrid(_meH, _meW);
@@ -8848,6 +9171,7 @@
             window._customEditorSanctuaryZones = _meSanctuaryZones ? _meSanctuaryZones.map(r => [...r]) : null;
 
             window._customEditorHeights = walkHeights;
+            window._customEditorTints = Object.assign({}, _meTerrainTints);
 
             if (_meVoxels) {
                 window._customEditorVoxels = [];

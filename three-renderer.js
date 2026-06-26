@@ -270,8 +270,22 @@ const ThreeRenderer = (function () {
        keep their original untinted textures. The natural rolling-heightfield
        landform (see _naturalTerrainActive) is unaffected. */
     function _evTintMat(mat, key) {
+        /* Map-editor per-terrain tint: the editor stores a {terrainKey: '#hex'}
+           map on state.terrainTints (and only the custom editor map ever sets it,
+           so normal maps are untouched). Multiply the chosen colour onto the
+           material — this tints the sprite while preserving its detail, exactly
+           like the old Entropy-Vale palette did. */
+        try {
+            var tints = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
+            if (tints && key && tints[key] && mat && mat.color) {
+                var hex = tints[key];
+                if (!_userTintCache[hex]) _userTintCache[hex] = new THREE.Color(hex);
+                mat.color.multiply(_userTintCache[hex]);
+            }
+        } catch (e) {}
         return mat;
     }
+    var _userTintCache = {};
 
     function _lerp(a, b, t) { return a + (b - a) * t; }
     function _hLevelAt(x, y) {
