@@ -7648,6 +7648,9 @@ const ThreeRenderer = (function () {
             var camo = ThreeCamera.getCamera();
             if (camo) _envDome.position.copy(camo.position);
             _envDome.scale.setScalar(_ENV_DOME_R);
+            // retro fog replaces the cosmic dome with a flat haze backdrop; enforce
+            // here too so the dome stays hidden if it inits after the fog toggle.
+            _envDome.visible = !_retroFogHorizon;
         }
 
         var s = _envReadState(), S = _envSmooth, k = 0.05;
@@ -7729,10 +7732,30 @@ const ThreeRenderer = (function () {
         });
     }
 
-    function setHorizonFog(enabled) {
+    // The single most important part of "actual fog": the backdrop must BE the
+    // fog colour. The cosmic dome (_envDome) is a fog:false shader, so distant
+    // objects were fading toward the fog colour against a differently-coloured
+    // sky — which reads as "things turning green," not fog. When retro fog is on
+    // we hide the dome and paint scene.background with the mood fog colour, so
+    // the void fills with haze and the far scenery dissolves seamlessly into it
+    // (exactly what the reference King's-Field shots do).
+    var _retroBgColor = null;
+    function setHorizonFog(enabled, colorHex) {
         _retroFogHorizon = !!enabled;
         _horizonFogDirty = true;
         _applyHorizonFog();
+        if (!scene) return;
+        if (_retroFogHorizon) {
+            if (colorHex != null) {
+                if (!_retroBgColor) _retroBgColor = new THREE.Color();
+                _retroBgColor.setHex(colorHex);
+                scene.background = _retroBgColor;
+            }
+            if (_envDome) _envDome.visible = false;   // dome would draw over the fog backdrop (depthTest:false)
+        } else {
+            scene.background = null;
+            if (_envDome) _envDome.visible = true;
+        }
     }
     var _hzGlowPulse = [];              // self-lit accents that breathe: { mat, mesh, baseOp, opAmp, baseScl, sclAmp, spd, phase }
     var _HZ_DAY = null, _HZ_NIGHT = null, _hzScratch = null;

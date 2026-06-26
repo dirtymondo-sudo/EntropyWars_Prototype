@@ -129,11 +129,11 @@ const ThreePost = (function () {
     // faded nostalgia). Selecting one re-seeds the Tint and Colour-Depth sliders.
     // fogColor: the mood haze colour used when the optional scene-fog toggle is on.
     var RETRO_PRESETS = {
-        teal:  { label: 'Eerie Teal',   tint: [0.80, 1.05, 1.04], tintAmount: 0.55, saturation: 0.82, loIn: 0.03, hiIn: 0.95, levels: 24, fogColor: 0x14323a },
-        green: { label: 'Haunted Green', tint: [0.78, 1.08, 0.84], tintAmount: 0.60, saturation: 0.80, loIn: 0.04, hiIn: 0.94, levels: 20, fogColor: 0x1b3a2e },
-        amber: { label: 'Apocalypse',    tint: [1.12, 0.92, 0.68], tintAmount: 0.55, saturation: 0.86, loIn: 0.04, hiIn: 0.96, levels: 22, fogColor: 0x3a2412 },
-        dream: { label: 'Dreamy',        tint: [1.08, 0.94, 1.05], tintAmount: 0.45, saturation: 0.98, loIn: 0.02, hiIn: 0.97, levels: 28, fogColor: 0x3a2433 },
-        faded: { label: 'Faded',         tint: [1.02, 0.99, 0.92], tintAmount: 0.30, saturation: 0.62, loIn: 0.05, hiIn: 0.93, levels: 16, fogColor: 0x2a2a26 }
+        teal:  { label: 'Eerie Teal',   tint: [0.80, 1.05, 1.04], tintAmount: 0.55, saturation: 0.82, loIn: 0.03, hiIn: 0.95, levels: 24, fogColor: 0x2b4a52 },
+        green: { label: 'Haunted Green', tint: [0.78, 1.08, 0.84], tintAmount: 0.60, saturation: 0.80, loIn: 0.04, hiIn: 0.94, levels: 20, fogColor: 0x2f4d3f },
+        amber: { label: 'Apocalypse',    tint: [1.12, 0.92, 0.68], tintAmount: 0.55, saturation: 0.86, loIn: 0.04, hiIn: 0.96, levels: 22, fogColor: 0x4a3420 },
+        dream: { label: 'Dreamy',        tint: [1.08, 0.94, 1.05], tintAmount: 0.45, saturation: 0.98, loIn: 0.02, hiIn: 0.97, levels: 28, fogColor: 0x3f2f47 },
+        faded: { label: 'Faded',         tint: [1.02, 0.99, 0.92], tintAmount: 0.30, saturation: 0.62, loIn: 0.05, hiIn: 0.93, levels: 16, fogColor: 0x3a3a33 }
     };
 
     // Live state (persisted as one JSON blob). pixelSize/dither*/grain are
@@ -312,7 +312,8 @@ const ThreePost = (function () {
         // flips fog on the solid scenery materials (camera-distance fade) so the
         // deepest landmarks dissolve into the haze and the nearer ones poke out.
         if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setHorizonFog) {
-            ThreeRenderer.setHorizonFog(_retro.fogEnabled);
+            var _fp = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
+            ThreeRenderer.setHorizonFog(_retro.fogEnabled, _fp.fogColor);
         }
     }
 
