@@ -121,6 +121,29 @@
     }
 
     function standH(g, u) { try { return g.getUnitStandingHeight(u); } catch (e) { return u.z ?? 0; } }
+
+    // Mirror the engine's cast-time preconditions for the special "positional"
+    // damage kinds, so the focus path never picks an action that doSpell() will
+    // immediately reject. A rejected action returns delay 0, which bounces back
+    // into maybeTriggerComputerTurn(); since nothing on the board changed, the
+    // AI re-picks the very same action and spins forever — that is the
+    // "Must be above the target" loop the Valkyrie (Divine Swoop / leapStrike)
+    // got stuck in. Pre-filtering here is what actually breaks the loop. The
+    // checks below intentionally match battle.js's doSpell gates exactly.
+    function spellPreconditionOk(g, unit, sp, tg) {
+        // leapStrike (Divine Swoop, Feral Dive, Predator Leap, avalanche leaps,
+        // …): the caster MUST stand strictly above the target. battle.js fails
+        // the cast with "Must be above the target" when casterZ <= targetZ.
+        if (sp.kind === 'leapStrike') {
+            return standH(g, unit) > standH(g, tg);
+        }
+        // sky* throws/drops flagged requiresFlight can only be cast by a flyer.
+        if (sp.requiresFlight &&
+            (sp.kind === 'skyDrop' || sp.kind === 'skyThrow' || sp.kind === 'skySlam')) {
+            try { return typeof g.canFly !== 'function' || g.canFly(unit); } catch (e) { return true; }
+        }
+        return true;
+    }
     function typeMult(unit, tg, spellType) {
         try { return window.getTypeDamageMultiplier(unit, tg, spellType || null) || 1; } catch (e) { return 1; }
     }
@@ -185,6 +208,7 @@
                 for (const t of tiles) {
                     const tg = g.unitAt(t.x, t.y, t.z);
                     if (!isEnemyTgt(tg)) continue;
+                    if (!spellPreconditionOk(g, unit, sp, tg)) continue;
                     const est = baseDmg(sp) * typeMult(unit, tg, sp.spellType) * (sp.guaranteedCrit ? 1.5 : 1) * elevMult(tg);
                     const sc = scoreDmg(tg, est, { spellType: sp.spellType || null, canMiss: false });
                     if (!best || sc > best.score) best = { kind: 'spell', spell: sp, target: tg, x: t.x, y: t.y, z: t.z, est, score: sc };
@@ -219,7 +243,12 @@
                 if (delay > 0) {
                     window.setTimeout(() => g.finishComputerAction(), delay);
                 } else {
-                    // spell didn't fire (blocked/out of range/fog) → let stock AI retry.
+                    // Spell didn't fire (blocked precondition/out of range/fog).
+                    // Flag this unit so the immediate re-trigger delegates to the
+                    // stock AI instead of re-running the focus path and picking
+                    // the SAME doomed action again — that bounce was the infinite
+                    // "Must be above the target" loop.
+                    st._claudeDelegateOnce = unit.id;
                     st.actionMode = null;
                     st.aiThinking = false;
                     g.maybeTriggerComputerTurn();
@@ -233,6 +262,7 @@
                 if (delay > 0) {
                     window.setTimeout(() => g.finishComputerAction(), delay);
                 } else {
+                    st._claudeDelegateOnce = unit.id;   // see note in spell branch
                     st.actionMode = null;
                     st.aiThinking = false;
                     g.maybeTriggerComputerTurn();
@@ -246,6 +276,14 @@
         const g = G();
         if (!g) return _baseAiTakeTurn(unit);
         ensureHeightWeights(g);
+
+        // One-shot bail-out: a focus action just got rejected for this unit, so
+        // hand this turn to the stock AI (whose leapStrike scorer height-checks
+        // and won't re-pick it). Consume the flag immediately so it never sticks.
+        if (g.state && g.state._claudeDelegateOnce && unit && g.state._claudeDelegateOnce === unit.id) {
+            g.state._claudeDelegateOnce = null;
+            return _baseAiTakeTurn(unit);
+        }
 
         try {
             if (unit && !unit.dead && (unit.ap || 0) > 0 &&
