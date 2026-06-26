@@ -7543,7 +7543,7 @@ const ThreeRenderer = (function () {
         //    & below → full fog, fading to 0 by uFogTop. Applied to the final
         //    display colour so the horizon band matches the colour the distance
         //    fog fades the scenery into. uFogAmount is 0 when the filter is off.
-        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(0.0,uFogTop,max(el,0.0)); fb=pow(fb,1.3);\n' +
+        '  if(uFogAmount>0.001){ float fb=1.0-smoothstep(0.0,uFogTop,max(el,0.0)); fb=pow(fb,1.6);\n' +
         '    col=mix(col,uFogColor,clamp(fb*uFogAmount,0.0,1.0)); }\n' +
         '  gl_FragColor=vec4(col,1.0);\n' +
         '}';
@@ -7764,7 +7764,11 @@ const ThreeRenderer = (function () {
             _retroFogScratch.setHex(_retroFogColorHex);
             _envUni.uFogColor.value.set(_retroFogScratch.r, _retroFogScratch.g, _retroFogScratch.b);
             _envUni.uFogAmount.value = 0.80 + 0.20 * _retroFogThickness;   // near-opaque horizon band
-            _envUni.uFogTop.value    = 0.30 + 0.45 * _retroFogThickness;   // how high up the sky the haze climbs
+            // How high up the sky the haze climbs, as view-ray altitude (el = sin
+            // of the angle above the horizon). Kept low so it reads as a horizon
+            // bank, not a wall: 0.10..0.30 ≈ only ~6°–17° above the horizon, so the
+            // sky opens up almost immediately as you tilt off the horizon line.
+            _envUni.uFogTop.value    = 0.10 + 0.20 * _retroFogThickness;
         } else {
             _envUni.uFogAmount.value = 0.0;
         }
