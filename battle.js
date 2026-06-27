@@ -18849,6 +18849,21 @@
                     }
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`);
                 }
+
+                // Unified team support for healAll: cleanse debuffs + apply a stat
+                // buff to the whole crew. The aura VFX branch already cleanses, so
+                // skip cleanse there to avoid double-dipping; stat buffs apply in all.
+                if (spell.statStageBoost || (spell.cleanse && !_useVfx3dHealAllAura)) {
+                    for (const ally of allies) {
+                        if (ally.dead) continue;
+                        if (spell.cleanse && !_useVfx3dHealAllAura) {
+                            const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                            const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
+                            for (const k of debuffs.slice(0, cleanseCount)) clearStatus(ally, k);
+                        }
+                        if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
+                    }
+                }
             } else if (spell.kind === 'manaRestoreAll') {
                 playSfx('manaRegen');
                 _vfxMana(unit.x, unit.y);
@@ -19877,6 +19892,21 @@
                             setTerrainAt(tile.x, tile.y, terrainType);
                             convertedTiles.push({ x: tile.x, y: tile.y });
                         }
+                    } else if (spell.squareFlood) {
+
+                        // Flood a clean square block (e.g. a 3×3 with aoeRadius 1)
+                        // rather than the default diamond/plus BFS shape.
+                        const sq = getSquareArea(x, y, spell.aoeRadius || 1);
+                        for (const tile of sq) {
+                            if (!isInside(tile.x, tile.y)) continue;
+                            const current = getTerrainAt(tile.x, tile.y);
+                            if (current === 'wall') continue;
+                            affectedTiles.push({ x: tile.x, y: tile.y });
+                            if (current !== terrainType) {
+                                setTerrainAt(tile.x, tile.y, terrainType);
+                                convertedTiles.push({ x: tile.x, y: tile.y });
+                            }
+                        }
                     } else {
 
                         const visited = new Set();
@@ -19918,7 +19948,12 @@
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
                             if (hit && hit.player !== unit.player && !hit.dead) {
-                                const dmg = baseDmg + Math.floor(Math.random() * 20) - 10;
+                                let dmg = baseDmg + Math.floor(Math.random() * 20) - 10;
+                                if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
+                                    dmg = Math.max(dmg, hit.hp);
+                                    showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
+                                    addLog(`${unitDisplayName(hit)} is dragged under by the flood — executed!`);
+                                }
                                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
@@ -19973,7 +20008,19 @@
                         const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                         completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
                         unit.mp -= effectiveSpellCost;
+
+                        // Hook tip flies out ahead of the rope and bites in on arrival.
+                        const _grHookFly = Math.max(0, impactDelay - actionMs(260));
                         window.setTimeout(() => {
+                            playProjectile(unit.x, unit.y, target.x, target.y, 'attack', actionMs(240), spell.spellType, null, spell);
+                        }, _grHookFly);
+
+                        window.setTimeout(() => {
+
+                            // Hook connects: splash ring, spark and a meatier impact sfx.
+                            playAoeRing(target.x, target.y, 0, 'physical', actionMs(420));
+                            playSfx('spellDamage');
+                            showFloatingTextForUnit(target, '🪝 HOOKED!', 'status', { durationMs: 800 });
 
                             const dx = Math.sign(unit.x - target.x);
                             const dy = Math.sign(unit.y - target.y);
@@ -20107,6 +20154,17 @@
                     playSfx('uiConfirm');
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
+
+                    if (spell.dmg) {
+                        const _plDmg = spell.dmg + spellPower;
+                        applyDamageToUnit(target, _plDmg, `${unitDisplayName(unit)} plunders: `, {
+                            sourceUnit: unit,
+                            allowMarkBonus: false,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null
+                        });
+                        if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
+                    }
 
                     let stolen = false;
                     if ((target.hourglasses || 0) > 0) {
