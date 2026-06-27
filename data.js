@@ -6690,6 +6690,197 @@ const SIM_DEFAULTS = {
     console.log(`[SimTurn] Applied sim-turn defaults: ${applied} spells, ${skippedNoKind} without kind, ${skippedShared} shared refs`);
 })();
 
+// ===========================================================================
+// MANA ECONOMY — unified spell-cost formula
+// ---------------------------------------------------------------------------
+// Every spell's mana `cost` is DERIVED from what the spell actually does, so a
+// devastating area nuke costs well over half a caster's pool while a cheap
+// utility stays affordable. This makes mana a real resource: you can't spam
+// your best spell, and restoring mana (potions, end-of-round regen, recalling
+// to your spawn zone) becomes a genuine strategic decision.
+//
+// The cost is the sum of weighted "power" contributions — damage, healing,
+// shields, mana restored, status effects, buffs/debuffs, displacement, range,
+// zone control — scaled by how many units the spell can realistically hit.
+// Tune the constants below to reshape the whole economy from one place. Any
+// spell may opt out by setting an explicit numeric `manaCostOverride`.
+// ===========================================================================
+const MANA_FORMULA = {
+    BASE: 8,            // floor a spell starts from before its power is added
+    MIN: 10, MAX: 120,  // hard clamps (rounded to nearest 5)
+    DMG_PER_PT: 0.11,   // mana per point of (target-scaled) damage
+    HEAL_PER_PT: 0.09,  // mana per point of healing/shield-equivalent
+    SHIELD_PER_PT: 0.075,
+    MANA_GIVEN_PER_PT: 0.18,
+    AVG_HP: 520,        // reference max-HP for converting % heals/revives
+    MAX_TARGETS: 4.0,   // a spell never realistically hits more than ~4 of 6 enemies
+};
+
+const _MF_HARD_CC = { stun:13, freeze:13, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, glare:9, guardBreak:8 };
+const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6 };
+const _MF_DOT     = { burn:7, poison:7, bleed:7, lava_burn:7 };
+const _MF_DEBUFF  = { marked:5, discord:6, inspiredWeak:5, vulnerable:5, weak:5 };
+const _MF_BUFF    = { protect:14, invulnerable:15, invisible:9, untargetable:9, regen:6, inspired:7,
+                      guarding:6, guard:6, steadyAim:6, overclock:8, encore:9, warpRune:5, scanner:3,
+                      remoteView:3, warCry:7 };
+
+function _mfSumArr(a){ return Array.isArray(a) ? a.reduce((x, y) => x + (+y || 0), 0) : 0; }
+
+function _mfStatusPoints(list, isAlly, areaMult){
+    if (!Array.isArray(list)) return 0;
+    let p = 0;
+    for (const st of list){
+        const id = st && st.id; if (!id) continue;
+        const dur = Math.max(1, st.duration || 1);
+        const durScale = 1 + 0.55 * (dur - 1);
+        let base;
+        if (isAlly) base = _MF_BUFF[id] != null ? _MF_BUFF[id] : 6;
+        else if (_MF_HARD_CC[id] != null) base = _MF_HARD_CC[id];
+        else if (_MF_SOFT_CC[id] != null) base = _MF_SOFT_CC[id];
+        else if (_MF_DOT[id] != null) base = _MF_DOT[id];
+        else if (_MF_DEBUFF[id] != null) base = _MF_DEBUFF[id];
+        else if (_MF_BUFF[id] != null) base = _MF_BUFF[id];
+        else base = 5;
+        if (st.bonusDamage) base += st.bonusDamage * 0.05;
+        p += base * durScale;
+    }
+    return p * areaMult;
+}
+
+function _mfEffectiveTargets(s){
+    let E = 1;
+    if (s.aoeRadius)   E = s.aoeRadius >= 2 ? 3.6 : 2.6;
+    if (s.tileCount)   E = Math.max(E, 1 + (s.tileCount - 1) * 0.6);
+    if (s.blastRadius) E = Math.max(E, s.blastRadius >= 2 ? 3.2 : 2.5);
+    if (s.splitCount)  E = Math.max(E, s.splitCount);
+    if (s.kind === 'healAll' || s.healAll || s.manaRestoreAll || s.auraHeal) E = Math.max(E, 3.5);
+    if (s.kind === 'summonWeather') E = Math.max(E, 2.6);
+    if (s.cross) E = Math.max(E, 2.8);
+    return Math.min(E, MANA_FORMULA.MAX_TARGETS);
+}
+
+function computeSpellManaCost(s){
+    if (!s || typeof s !== 'object') return 0;
+    if (typeof s.manaCostOverride === 'number') return s.manaCostOverride;
+    const MF = MANA_FORMULA;
+    const E = _mfEffectiveTargets(s);
+    const k = s.kind;
+    const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || k === 'summonWeather');
+    const areaMult = areaDmg ? 1.3 : 1;
+
+    // --- Damage (every form, target-scaled for area effects) ---
+    let dmg = (s.dmg || 0) * (areaDmg ? E : 1);
+    dmg += _mfSumArr(s.hitDamages);
+    dmg += _mfSumArr(s.chainProfile);
+    dmg += (s.bounceDamage || 0) + (s.dashDamage || 0) + (s.collisionBonus || 0) * 0.5;
+    if (s.dmgPerLevel) dmg += s.dmgPerLevel * (s.carryHeight || 2) * 0.5;
+    if (s.dot) dmg += s.dot * 2;
+    let dmgMod = 1;
+    if (s.ignoreArmor || s.piercing || s.bounceShieldIgnore) dmgMod *= 1.25;
+    if (s.guaranteedCrit) dmgMod *= 1.25;
+    if (s.consumeMarked || s.markedSecondHitBonus) dmgMod *= 1.08;
+    let P = dmg * MF.DMG_PER_PT * dmgMod;
+
+    // --- Healing / revives ---
+    let heal = (s.heal || 0) + (s.healAmt || 0) + (s.auraHeal || 0) + (s.comboHeal || 0) + (s.seedHeal || 0) + (s.selfHeal || 0);
+    if (s.selfHealPct) heal += s.selfHealPct * MF.AVG_HP;
+    if (s.lowHpBonus)  heal += s.lowHpBonus * 0.6;
+    if (s.healPerTurn) heal += s.healPerTurn * (s.zoneDuration || s.regenTurns || 2);
+    if (s.regen)       heal += (typeof s.regen === 'number' ? s.regen : 40);
+    if (k === 'healAll' || s.healAll) heal *= 3.5;
+    else if (k === 'zoneHeal' || k === 'auraHeal') heal *= 2.4;
+    if (s.drainPct) heal += (s.dmg || 0) * s.drainPct;
+    P += heal * MF.HEAL_PER_PT;
+    const revPct = s.revivePct || s.reviveHpPct;
+    if (revPct) P += (revPct * MF.AVG_HP) * MF.HEAL_PER_PT * 1.4;
+
+    // --- Shields ---
+    let shield = (s.shield || 0) + (s.shieldHp || 0) + (s.comboShield || 0);
+    if (k === 'aoeShield' && (s.aoeRadius || 0) > 0) shield *= E;
+    P += shield * MF.SHIELD_PER_PT;
+
+    // --- Mana restoration (refunding a resource has value) ---
+    let manaGiven = (s.mpRestore || 0) + (s.mana || 0);
+    if (s.manaRestoreAll || k === 'manaRestoreAll') manaGiven *= 3.5;
+    P += manaGiven * MF.MANA_GIVEN_PER_PT;
+
+    // --- Status effects & stat modifiers ---
+    P += _mfStatusPoints(s.statusEffects, false, areaMult);
+    P += _mfStatusPoints(s.allyStatusEffects, true, areaMult);
+    if (s.statStageBoost){ let st = 0; for (const kk in s.statStageBoost) st += Math.abs(s.statStageBoost[kk] || 0); P += st * 5; }
+    for (const f of ['atkDelta', 'armorDelta', 'rangeDelta']) if (s[f]) P += Math.abs(s[f]) * 0.22;
+    if (s.auraDefReduction) P += Math.abs(s.auraDefReduction) * 0.3;
+    if (s.auraDebuff || s.auraRadius) P += 6;
+
+    // --- Movement / displacement / control ---
+    P += (s.pushDistance || 0) * 3;
+    P += (s.pullDistance || 0) * 3;
+    P += (s.displaceDistance || 0) * 3;
+    P += (s.teleportDistance || 0) * 2;
+    if (s.chargeToTarget || k === 'leapStrike' || k === 'dash' || k === 'teleport' || k === 'skyThrow' || k === 'skySlam') P += 5;
+    if (k === 'swap' || s.swap) P += 5;
+    if (s.moveDelta) P += Math.abs(s.moveDelta) * 4;
+    if ((s.pull || k === 'aoePull') && !s.pullDistance) P += 5;
+
+    // --- Zone control / terrain / summons / deploys ---
+    if (k === 'terrainCreate') P += 8;
+    if (s.leaveTerrain) P += 4;
+    if (s.terrainDeform) P += 4;
+    if (k === 'summonWeather') P += 14;
+    if (k === 'deployTurret') P += 11 + (s.turretDmg || 0) * 0.06 + (s.turretRange || 0) * 1.4 + (s.turretHp || 0) * 0.03;
+    if (k === 'deployObject' || k === 'deployPair' || s.objectHp) P += 8;
+    if (s.detonateOnStep || k === 'bomb') P += 6;
+    if (k === 'zoneDebuff') P += 6;
+    if (k === 'seedPoison' || k === 'leechSeed') P += 6;
+    if (k === 'seedHeal') P += 5;
+    if (k === 'cleanse' || s.cleanse || s.comboCleanse) P += 6;
+    if (k === 'escape' || s.escape) P += 5;
+    if (k === 'guard') P += 5;
+    if (k === 'warpRune') P += 8;
+    if (k === 'encore') P += 20;          // grants an extra action — premium tempo
+    if (k === 'trickRoom') P += 12;       // global speed inversion
+    if (s.stealSpell) P += 10;            // strip a buff/spell off the target
+    if (s.apDrain) P += 8;
+    if (k === 'scan' || s.scanner || k === 'remoteView' || s.untargetable) P += 4;
+
+    // --- Range = safety (no penalty for short-range support; small melee discount) ---
+    const r = Math.min(s.range != null ? s.range : 3, 8);
+    P += Math.max(0, r - 3) * 2.5;
+    if (s.type === 'damage' && s.range != null && s.range <= 1) P -= 3;
+
+    // --- Whole-spell modifiers (downsides discount, free actions cost more) ---
+    if (s.delayTurns || k === 'delayed') P *= 0.9;   // telegraphed
+    if (s.friendlyFire) P *= 0.92;                   // can catch your own team
+    if (s.requiresFlight) P *= 0.95;                 // conditional
+    if (s.recoilPct) P *= (1 - Math.min(0.15, s.recoilPct));
+    if (s.selfStun) P *= 0.9;
+    if (s.apCost >= 2) P *= 0.92;                    // already eats your whole turn
+    if (s.apCost === 0) P *= 1.12;                   // free-action premium
+
+    let mana = Math.max(MF.MIN, Math.min(MF.MAX, MF.BASE + P));
+    return Math.round(mana / 5) * 5;
+}
+
+// Apply the formula to every defined spell (library + race abilities, which
+// include the shared SHARED_* spells by reference). Runs at load, before any
+// unit/match is created, so every cast and every HUD readout uses the new cost.
+(function _applyManaCostFormula(){
+    const all = [];
+    const seen = new Set();
+    for (const sp of SPELL_LIBRARY) if (!seen.has(sp)) { seen.add(sp); all.push(sp); }
+    for (const abilities of Object.values(RACE_ABILITIES)) {
+        for (const ab of abilities) if (!seen.has(ab)) { seen.add(ab); all.push(ab); }
+    }
+    let changed = 0, maxCost = 0, maxName = '';
+    for (const spell of all){
+        const newCost = computeSpellManaCost(spell);
+        if (newCost !== spell.cost) changed++;
+        spell.cost = newCost;
+        if (newCost > maxCost) { maxCost = newCost; maxName = spell.name; }
+    }
+    console.log(`[ManaEconomy] Derived mana costs for ${all.length} spells (${changed} changed); priciest: ${maxName} @ ${maxCost} MP`);
+})();
+
 const WEAPON_CATEGORIES = {};
 function getUnitDominantWeapon(unit) { return null; }
 

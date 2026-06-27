@@ -2798,7 +2798,10 @@
         }
 
         const REGEN_PERCENT = 0.05;
-        const MP_REGEN_PERCENT = 0.05;
+        // Mana regenerates slower than HP on the open field (3%/round) so spells
+        // are a resource you can deplete. Refuel fast by recalling to your spawn
+        // zone (15%/round, SPAWN_ZONE_HEAL_PCT) or by spending a Mana Potion.
+        const MP_REGEN_PERCENT = 0.03;
 
         function processEndOfRoundRegen(onDone) {
             const viewer = getViewerPlayer();
