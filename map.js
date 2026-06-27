@@ -1057,6 +1057,7 @@
             { modeId: 'prebuilt_moon', name: 'Moon', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
             { modeId: 'prebuilt_heaven', name: 'Heaven', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
             { modeId: 'prebuilt_backrooms', name: 'Backrooms', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
+            { modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
         ];
 
         let _msSelectedGM = 0;
@@ -4774,6 +4775,38 @@
          * P1 → bottom row (h-1), P2 → top row (0) for vertical maps.
          * Stores result in state.spawnZones[player] as [{x,y}, ...].
          */
+        /* Ground level a spawn zone should be flattened TO. Older logic always
+           flattened spawn tiles to z=0, which carves a deep pit ("hole") on maps
+           whose natural ground sits above 0 (e.g. a fully elevated city built at
+           height 3). Instead, flatten to the LOWEST existing surface height across
+           the zone's tiles so the spawn stays flush with the surrounding map. On a
+           normal ground-at-0 map this returns 0 → identical to the old behaviour. */
+        function _spawnZoneGroundHeight(zoneTiles) {
+            const w = bw(), h = bh();
+            let minH = Infinity;
+            for (const t of zoneTiles) {
+                if (!t || t.y < 0 || t.y >= h || t.x < 0 || t.x >= w) continue;
+                const hh = state.boardHeights?.[t.y]?.[t.x] ?? 0;
+                if (hh < minH) minH = hh;
+            }
+            return (minH === Infinity) ? 0 : Math.max(0, minH);
+        }
+
+        /* Build a SOLID voxel column from z=0 up to topZ (inclusive) so a flattened
+           tile renders as filled ground instead of a single floating voxel over a
+           hole. Sub-surface layers keep their original terrain (so exposed cliff
+           sides still look right); the top gets topTerrain. */
+        function _buildSolidVoxelColumn(x, y, topZ, topTerrain) {
+            const orig = state.boardVoxels?.[y]?.[x];
+            const subById = {};
+            if (Array.isArray(orig)) for (const b of orig) subById[b.z] = b.terrain;
+            const col = [];
+            for (let z = 0; z <= topZ; z++) {
+                col.push({ z, terrain: (z === topZ) ? topTerrain : (subById[z] || topTerrain) });
+            }
+            return col;
+        }
+
         function autoGenerateSpawnZones() {
             const w = bw(), h = bh();
             // Gauntlet keeps an 8-unit roster but only deploys 4 — size the spawn
@@ -4824,15 +4857,18 @@
                     state.spawnZones[2].push({ x: col, y: p2Row });
                 }
 
-                /* Clear & flatten zone tiles */
-                _clearSpawnZoneTiles(state.spawnZones[1]);
-                _clearSpawnZoneTiles(state.spawnZones[2]);
+                /* Clear & flatten zone tiles — flatten to each zone's own ground
+                   height (not hardcoded 0) so elevated maps don't get pit holes. */
+                const z1 = _spawnZoneGroundHeight(state.spawnZones[1]);
+                const z2 = _spawnZoneGroundHeight(state.spawnZones[2]);
+                _clearSpawnZoneTiles(state.spawnZones[1], z1);
+                _clearSpawnZoneTiles(state.spawnZones[2], z2);
 
                 /* Verify egress — row inward from zone must be passable */
                 const p1EgressRow = p1Row === h - 1 ? h - 2 : 1;
                 const p2EgressRow = p2Row === 0 ? 1 : h - 2;
-                _ensureEgressRow(p1EgressRow, startCol, teamSize);
-                _ensureEgressRow(p2EgressRow, startCol, teamSize);
+                _ensureEgressRow(p1EgressRow, startCol, teamSize, z1);
+                _ensureEgressRow(p2EgressRow, startCol, teamSize, z2);
 
             } else {
                 /* Horizontal: P1 left col, P2 right col */
@@ -4856,13 +4892,15 @@
                     state.spawnZones[2].push({ x: p2Col, y: row });
                 }
 
-                _clearSpawnZoneTiles(state.spawnZones[1]);
-                _clearSpawnZoneTiles(state.spawnZones[2]);
+                const z1 = _spawnZoneGroundHeight(state.spawnZones[1]);
+                const z2 = _spawnZoneGroundHeight(state.spawnZones[2]);
+                _clearSpawnZoneTiles(state.spawnZones[1], z1);
+                _clearSpawnZoneTiles(state.spawnZones[2], z2);
 
                 const p1EgressCol = p1Col === 0 ? 1 : w - 2;
                 const p2EgressCol = p2Col === w - 1 ? w - 2 : 1;
-                _ensureEgressCol(p1EgressCol, startRow, teamSize);
-                _ensureEgressCol(p2EgressCol, startRow, teamSize);
+                _ensureEgressCol(p1EgressCol, startRow, teamSize, z1);
+                _ensureEgressCol(p2EgressCol, startRow, teamSize, z2);
             }
 
             /* Assign _spawnIndex on units */
@@ -4897,7 +4935,7 @@
                         'P2:', JSON.stringify(state.spawnZones[2]));
         }
 
-        function _clearSpawnZoneTiles(zoneTiles) {
+        function _clearSpawnZoneTiles(zoneTiles, targetH = 0) {
             const w = bw(), h = bh();
             const zoneSet = new Set();
             for (const tile of zoneTiles) {
@@ -4911,15 +4949,16 @@
                     state.boardTerrain[y][x] = 'grass';
                 }
 
-                /* Flatten height to 0 */
-                if (state.boardHeights?.[y]) state.boardHeights[y][x] = 0;
+                /* Flatten height to the zone's ground level (not hardcoded 0) */
+                if (state.boardHeights?.[y]) state.boardHeights[y][x] = targetH;
 
                 /* Remove objects */
                 if (state.boardObjects?.[y]) state.boardObjects[y][x] = null;
 
-                /* Flatten voxels */
+                /* Flatten voxels — keep the column SOLID up to targetH so the tile
+                   stays flush with the map instead of collapsing into a hole. */
                 if (state.boardVoxels?.[y]?.[x]) {
-                    state.boardVoxels[y][x] = [{ z: 0, terrain: state.boardTerrain[y][x] || 'grass' }];
+                    state.boardVoxels[y][x] = _buildSolidVoxelColumn(x, y, targetH, state.boardTerrain[y][x] || 'grass');
                 }
 
                 zoneSet.add(y * w + x);
@@ -4952,7 +4991,7 @@
                         if (state.boardHeights?.[ny]) state.boardHeights[ny][nx] = maxNeighborH;
                         if (state.boardVoxels?.[ny]?.[nx]) {
                             const nTerrain = state.boardTerrain?.[ny]?.[nx] || 'grass';
-                            state.boardVoxels[ny][nx] = [{ z: maxNeighborH, terrain: nTerrain }];
+                            state.boardVoxels[ny][nx] = _buildSolidVoxelColumn(nx, ny, maxNeighborH, nTerrain);
                         }
                         /* Force passable so egress isn't blocked by impassable terrain */
                         const nt = state.boardTerrain?.[ny]?.[nx];
@@ -4983,9 +5022,10 @@
             if (state._voxelVersion !== undefined) state._voxelVersion++;
         }
 
-        function _ensureEgressRow(row, startCol, count) {
+        function _ensureEgressRow(row, startCol, count, targetH = 0) {
             const w = bw(), h = bh();
             if (row < 0 || row >= h) return;
+            const maxH = targetH + 1; // reachable from the zone (one climb step)
             for (let i = 0; i < count; i++) {
                 const x = Math.min(startCol + i, w - 1);
                 const t = state.boardTerrain?.[row]?.[x];
@@ -4994,20 +5034,21 @@
                     state.boardTerrain[row][x] = 'grass';
                     if (state.boardObjects?.[row]) state.boardObjects[row][x] = null;
                 }
-                /* Ensure egress tile height is reachable from zone (height 0) */
-                if (state.boardHeights?.[row] && state.boardHeights[row][x] > 1) {
-                    state.boardHeights[row][x] = 1;
+                /* Ensure egress tile height is reachable from the zone's ground level */
+                if (state.boardHeights?.[row] && state.boardHeights[row][x] > maxH) {
+                    state.boardHeights[row][x] = maxH;
                     if (state.boardVoxels?.[row]?.[x]) {
                         const eTerrain = state.boardTerrain?.[row]?.[x] || 'grass';
-                        state.boardVoxels[row][x] = [{ z: 1, terrain: eTerrain }];
+                        state.boardVoxels[row][x] = _buildSolidVoxelColumn(x, row, maxH, eTerrain);
                     }
                 }
             }
         }
 
-        function _ensureEgressCol(col, startRow, count) {
+        function _ensureEgressCol(col, startRow, count, targetH = 0) {
             const w = bw(), h = bh();
             if (col < 0 || col >= w) return;
+            const maxH = targetH + 1; // reachable from the zone (one climb step)
             for (let i = 0; i < count; i++) {
                 const y = Math.min(startRow + i, h - 1);
                 const t = state.boardTerrain?.[y]?.[col];
@@ -5016,12 +5057,12 @@
                     state.boardTerrain[y][col] = 'grass';
                     if (state.boardObjects?.[y]) state.boardObjects[y][col] = null;
                 }
-                /* Ensure egress tile height is reachable from zone (height 0) */
-                if (state.boardHeights?.[y] && state.boardHeights[y][col] > 1) {
-                    state.boardHeights[y][col] = 1;
+                /* Ensure egress tile height is reachable from the zone's ground level */
+                if (state.boardHeights?.[y] && state.boardHeights[y][col] > maxH) {
+                    state.boardHeights[y][col] = maxH;
                     if (state.boardVoxels?.[y]?.[col]) {
                         const eTerrain = state.boardTerrain?.[y]?.[col] || 'grass';
-                        state.boardVoxels[y][col] = [{ z: 1, terrain: eTerrain }];
+                        state.boardVoxels[y][col] = _buildSolidVoxelColumn(col, y, maxH, eTerrain);
                     }
                 }
             }
