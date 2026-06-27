@@ -3567,13 +3567,20 @@
             if (state.animationsDisabled || !boardStageEl) return;
             if (_skipVisuals()) return;
 
-            const shakeTarget = boardEl || boardStageEl;
+            // Shake the whole battlefield wrapper (.map-center) so the rumble is
+            // visible in 3D mode — it holds the WebGL canvas + nameplate overlay
+            // AND the diorama, so all of them shake together as a screen kick.
+            // The camera continuously rewrites #boardStage's transform every
+            // frame, which would clobber a class-based shake on that element; the
+            // parent wrapper is never transformed by the camera, so the keyframe
+            // animation survives.
+            const shakeTarget = document.querySelector('.map-center') || boardStageEl;
             shakeTarget.classList.remove('board-shake', 'board-shake-hard');
 
             requestAnimationFrame(() => {
                 shakeTarget.classList.add(intensity === 'hard' ? 'board-shake-hard' : 'board-shake');
             });
-            const dur = intensity === 'hard' ? 400 : 300;
+            const dur = intensity === 'hard' ? 480 : 320;
             window.setTimeout(() => shakeTarget.classList.remove('board-shake', 'board-shake-hard'), dur);
         }
 
@@ -6132,11 +6139,17 @@
         // before the next round; the per-event cameras (DoT pans, storm
         // follow) then drop in from this framing. Called once at the start of
         // the end-of-round sequence.
+        const EOR_OVERVIEW_TILT = 32;
+        // getFullMapZoom() fits the FLAT board to the viewport, but at the tilted
+        // overview angle the board projects taller/wider, so a flat fit crops the
+        // near edge (units fall off the bottom). Pull back by a margin so the
+        // WHOLE battlefield + nameplates sit inside the frame on any map size.
+        const EOR_OVERVIEW_MARGIN = 0.78;
         function showEndOfRoundOverview() {
             if (_skipVisuals() || state.cameraDisabled) return;
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
-                zoom: getFullMapZoom(), tilt: 32,
+                zoom: getFullMapZoom() * EOR_OVERVIEW_MARGIN, tilt: EOR_OVERVIEW_TILT,
                 duration: 520, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
@@ -6187,8 +6200,30 @@
         // selectUnit; for auto-controlled sides the camera simply keeps
         // following the next action from the cinematic framing.
         // ═══════════════════════════════════════════════════════════════════
-        const CINE_CAM_TILT = 72;
+        // A consistent, slightly-downward third-person pitch (Fortnite/Skyrim
+        // style). LOW tilt = looking down, HIGH = level / looking up.
+        const CINE_CAM_TILT = 60;
         const CINE_CAM_YAW_OFFSET = 16;
+        // The cinematic shot anchors to the CASTER: a fixed number of tiles fill
+        // the view so the caster is the SAME apparent size regardless of board
+        // size (8×8 or 36×30), and the focal sits on the caster nudged a fixed
+        // amount toward the target so it reads as an over-the-shoulder shot.
+        const CINE_VISIBLE_TILES = 4.6;   // caster framing size (map-independent)
+        const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
+        const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
+
+        // Zoom that frames a FIXED number of tiles tall, corrected for the shot's
+        // tilt. Independent of the board's total size — the key to a consistent
+        // third-person POV on any map. (computeZoomForVisibleTiles keys off the
+        // CURRENT state tilt; this takes the cinematic's target tilt directly.)
+        function _cineZoomForTiles(tiles, tiltDeg) {
+            const ts = CONFIG.tileSize || 58, gap = CONFIG.tileGap ?? 0;
+            const parentH = _layoutCache.valid ? _layoutCache.parentH
+                : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+            const tiltFactor = Math.max(0.35, Math.cos((tiltDeg ?? 60) * Math.PI / 180));
+            return Math.max(0.15, Math.min(10.0,
+                (parentH * tiltFactor) / (Math.max(1, tiles) * (ts + gap))));
+        }
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
             if (!camera._preCineView) {
@@ -6201,69 +6236,60 @@
             const dx = target.x - sx;
             const dy = target.y - sy;
             const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
+            const len = Math.max(1, Math.hypot(dx, dy));
+            const dirx = dx / len, diry = dy / len;
 
-            // Yaw that places the camera behind the caster looking toward the
-            // target (matches ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)),
-            // swung a few degrees off-axis so the caster reads bottom-corner
-            // foreground and the target sits across the frame — over-the-
-            // shoulder, not dead-centered.
+            // Camera sits BEHIND the caster looking toward the target (matches
+            // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
+            // degrees off-axis so the caster reads as an over-the-shoulder
+            // foreground subject rather than dead-centered.
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            // Focal point biased TOWARD the target so the target sits framed
-            // with headroom (its nameplate stays on-screen) while the caster
-            // hangs in the near foreground. (Was biased toward the caster,
-            // which pushed the target high and clipped its nameplate off the
-            // top of the screen.)
-            const f = Math.min(0.72, 0.5 + 0.5 / (dist + 1));
-            const fx = sx + dx * f;
-            const fy = sy + dy * f;
+            // Focal ANCHORED on the caster, nudged a FIXED (distance-
+            // independent) amount toward the target so the caster always sits in
+            // the same spot in the lower foreground. This is the "anchor the
+            // camera to the unit" the third-person look needs — the framing no
+            // longer swings around with how far away the target happens to be.
+            const fx = sx + dirx * CINE_FOCAL_LEAD;
+            const fy = sy + diry * CINE_FOCAL_LEAD;
 
-            // Elevation of both ends of the shot (flying units use their
-            // airborne z): the focal height follows the line of fire, and the
-            // camera pitches with the slope — tilting up at an airborne
-            // target, down when a flyer strikes a grounded one.
             const ts = CONFIG.tileSize || 128;
-            let srcPx = 0, tgtPx = 0;
+            // Anchor the shot to the CASTER's own elevation (flyers use their
+            // airborne z) so the framing is identical whether the caster stands
+            // on the ground or hovers in the sky.
+            let casterPx = 0, tgtPx = 0;
             if (typeof window._getElevationPx === 'function') {
-                const srcZ = _unitElevZ(sourceUnit);
-                const tgtZ = _unitElevZ(target);
-                srcPx = srcZ > 0 ? window._getElevationPx(srcZ) : 0;
-                tgtPx = tgtZ > 0 ? window._getElevationPx(tgtZ) : 0;
+                const cz = _unitElevZ(sourceUnit);
+                const tz = _unitElevZ(target);
+                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
+                tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
-            const slopeDeg = Math.atan2(tgtPx - srcPx, dist * ts) * (180 / Math.PI);
-            // Pitch with the slope of the shot. tilt LOW = looking down,
-            // HIGH = level. Firing DOWN from the air now pitches the camera
-            // hard toward the ground (a true 3rd-person look-down at a grounded
-            // target); firing UP at an airborne target eases toward level but
-            // is capped below the horizon so the target's nameplate keeps its
-            // headroom instead of climbing off the top edge.
-            const tilt = Math.max(40, Math.min(80, CINE_CAM_TILT + slopeDeg * 1.15));
-            // Focal height tracks the line of fire toward the target, plus
-            // headroom so the target's body + nameplate sit comfortably below
-            // the top edge (extra headroom on shots that crane upward).
-            const headroom = ts * (0.7 + Math.max(0, slopeDeg) * 0.012);
-            const elevZ = srcPx + (tgtPx - srcPx) * f + headroom;
+            const elevZ = casterPx + ts * 0.55 + ts * CINE_HEADROOM;
 
-            // Frame the shot relative to the battle overview zoom (which by
-            // definition fits the whole board): tighter for melee, easing off
-            // with range so the target stays in frame down-range. Pulled back
-            // from the old framing (up to ~4.1×, which cropped the caster) so
-            // the caster reads clearly in the foreground.
-            const zoom = Math.min(2.8,
-                getDefaultZoom() * Math.max(1.35, 2.7 - 0.18 * Math.min(dist, 8)));
+            // Tilt: a near-constant slightly-downward third-person pitch, only
+            // GENTLY nudged by the line-of-fire slope (firing up at a flyer eases
+            // toward level, firing down from height eases lower) and held in a
+            // tight band so the point of view stays consistent shot to shot.
+            const slopeDeg = Math.atan2(tgtPx - casterPx, dist * ts) * (180 / Math.PI);
+            const tilt = Math.max(52, Math.min(70, CINE_CAM_TILT + slopeDeg * 0.35));
+
+            // Map-size-independent zoom: a fixed number of tiles fill the view,
+            // so the caster is the SAME apparent size on an 8×8 or a 36×30 board.
+            const zoom = _cineZoomForTiles(CINE_VISIBLE_TILES, tilt);
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt, yaw, elevZ,
-                duration: actionMs(640), easing: 'easeInOut',
+                duration: actionMs(560), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true,
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // Dolly down-range as the attack fires, arriving with the hit.
+            // Gentle dolly down-range as the attack fires so the shot has life,
+            // while keeping the caster anchored (focal slides only ~1 tile and
+            // the zoom barely tightens — the POV doesn't lurch).
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
-            const f2 = Math.min(0.82, f + 0.12);
-            const elevZ2 = srcPx + (tgtPx - srcPx) * f2 + headroom;
+            const lead2 = CINE_FOCAL_LEAD + 0.9;
             window.setTimeout(() => {
 
                 // Only dolly if this shot still owns the camera — a restore,
@@ -6272,8 +6298,8 @@
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
-                    x: sx + dx * f2, y: sy + dy * f2,
-                    zoom: Math.min(3.0, zoom * 1.06), tilt, yaw, elevZ: elevZ2,
+                    x: sx + dirx * lead2, y: sy + diry * lead2,
+                    zoom: zoom * 1.05, tilt, yaw, elevZ,
                     duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
@@ -6311,72 +6337,71 @@
             const ts = CONFIG.tileSize || 128;
             const dx = tx - sx, dy = ty - sy;
             const dist = Math.abs(dx) + Math.abs(dy);
+            const len = Math.max(1, Math.hypot(dx, dy));
+            const dirx = dx / len, diry = dy / len;
 
-            // Ground elevation (px) of the impact tile — the focal point the
-            // meteor falls toward.
-            let groundPx = 0;
-            if (typeof window._getElevationPx === 'function' && typeof getHeightAt === 'function') {
-                const h = getHeightAt(Math.round(tx), Math.round(ty));
-                if (h > 0) groundPx = window._getElevationPx(h);
+            // Caster + impact-tile elevations (px). The shot is anchored on the
+            // CASTER (a 3rd-person of them looking up at the falling body), then
+            // resolves down onto the impact tile.
+            let casterPx = 0, groundPx = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const cz = _unitElevZ(sourceUnit);
+                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
+                if (typeof getHeightAt === 'function') {
+                    const h = getHeightAt(Math.round(tx), Math.round(ty));
+                    if (h > 0) groundPx = window._getElevationPx(h);
+                }
             }
 
-            // Keep the focal point ANCHORED at ground level for the crane/drop.
-            // The camera sits low and TILTS UP to watch the body fall in from
-            // the sky — it does NOT crane up to the body's altitude.
-            const groundElevZ = groundPx + ts * 0.4;
-
-            // Heading: open over-the-shoulder, behind the caster looking toward
-            // the impact, so the establishing beat reads as a 3rd-person shot.
-            // Self-cast / zero-range meteors keep the player's heading so the
-            // crane-up doesn't spin.
+            // Heading: behind the caster looking toward the impact, so it reads
+            // as a third-person over-the-shoulder shot. Self-cast / zero-range
+            // meteors keep the player's heading so the look-up doesn't spin.
             let yaw = camera._tyaw;
             if (dist >= 1) {
                 yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
                 if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
             }
 
-            const baseZoom   = getDefaultZoom();
-            const estabZoom  = Math.min(2.2, baseZoom * 1.4);   // opening 3rd-person
-            const skyZoom    = Math.min(1.9, baseZoom * 1.1);   // wide while craning up
-            const groundZoom = Math.min(2.7, baseZoom * 1.6);   // tight on the impact
+            // tilt: LOW = looking down, HIGH = near-horizontal / looking up.
+            const ESTAB_TILT  = CINE_CAM_TILT;  // over-the-shoulder on the caster
+            const SKY_TILT    = 84;             // tilt up to watch the body fall in
+            const GROUND_TILT = 54;             // tilt back down onto the impact
 
-            // tilt: LOW = top-down, HIGH = near-horizontal (looks up at the sky).
-            const ESTAB_TILT  = 64;   // 3rd-person, looking down-range at the impact
-            const SKY_TILT    = 86;   // tilt nearly horizontal to look UP at the falling body
-            const GROUND_TILT = 58;   // tilt back down onto the impact
-
-            // Opening shot frames the line caster → impact; the crane and the
-            // drop anchor on the impact tile itself.
-            const estabF = dist >= 1 ? 0.62 : 0;
-            const ex = sx + dx * estabF;
-            const ey = sy + dy * estabF;
-            const estabElevZ = groundElevZ + ts * 0.5;
+            // Establishing beat anchors on the CASTER (same map-size-independent
+            // third-person framing as the action cam), nudged toward the impact.
+            const estabF = Math.min(1.3, CINE_FOCAL_LEAD);
+            const ex = sx + dirx * estabF;
+            const ey = sy + diry * estabF;
+            const casterElevZ = casterPx + ts * 0.55 + ts * CINE_HEADROOM;
 
             const sourceHold  = Math.max(actionMs(200), timings.sourceHold);
             const telegraphMs = Math.max(120, descentCam.telegraphMs || 800);
             const descentMs   = Math.max(180, descentCam.descentMs || 700);
 
-            // 1) Swoop to an over-the-shoulder 3rd-person view of the impact
-            //    zone while the telegraph ring forms.
+            // 1) Swoop to an over-the-shoulder third-person view of the CASTER
+            //    while the telegraph ring forms on the impact tile down-range.
             camera.moveTo({
-                x: ex, y: ey, zoom: estabZoom, tilt: ESTAB_TILT, yaw,
-                elevZ: estabElevZ,
-                duration: actionMs(460), easing: 'easeInOut',
+                x: ex, y: ey, zoom: _cineZoomForTiles(5.0, ESTAB_TILT), tilt: ESTAB_TILT, yaw,
+                elevZ: casterElevZ,
+                duration: actionMs(440), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true,
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // 2) Stay LOW at ground level and tilt up toward the sky so the
-            //    incoming body falls into frame from above. The focal point
-            //    stays on the ground (groundElevZ) — only the tilt changes, so
-            //    the camera does NOT rise up to the body's altitude.
+            // 2) Stay LOW at the caster's height and tilt UP toward the sky so
+            //    the incoming body falls into frame from above — a third-person
+            //    of the caster looking up at the meteor. Bias the focal a little
+            //    toward the impact so the caster and the falling body share the
+            //    frame; the focal stays low (no crane up to the body's altitude).
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
+                const upF = Math.min(dist || 1, CINE_FOCAL_LEAD + 1.2);
                 camera.moveTo({
-                    x: tx, y: ty, zoom: skyZoom, tilt: SKY_TILT, yaw,
-                    elevZ: groundElevZ,
+                    x: sx + dirx * upF, y: sy + diry * upF,
+                    zoom: _cineZoomForTiles(6.5, SKY_TILT), tilt: SKY_TILT, yaw,
+                    elevZ: casterPx + ts * 0.55,
                     duration: Math.max(actionMs(260), telegraphMs * 0.9),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
@@ -6384,14 +6409,15 @@
                 });
             }, sourceHold);
 
-            // 3) Follow the body DOWN to the ground, accelerating like its fall.
+            // 3) Follow the body DOWN onto the impact tile — tilt back down,
+            //    zoom in, accelerating like its fall.
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
-                    x: tx, y: ty, zoom: groundZoom, tilt: GROUND_TILT, yaw,
-                    elevZ: groundElevZ,
+                    x: tx, y: ty, zoom: _cineZoomForTiles(4.0, GROUND_TILT), tilt: GROUND_TILT, yaw,
+                    elevZ: groundPx + ts * 0.4,
                     duration: Math.max(actionMs(240), descentMs),
                     easing: 'easeIn',
                     _allowZoomChange: true, _bypassCap: true,
