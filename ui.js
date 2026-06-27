@@ -7190,16 +7190,17 @@
         };
 
         // ── DEV TOGGLE: view-layer unlock-all + local gold grant ───────────
-        // Floating corner panel — visible only with ?dev=1 in the URL or
-        // localStorage 'ew-dev' === '1'. The user-facing Unlock All toggle now
-        // lives in the main-menu Settings → Developer section (see map.js).
-        // _DEV_UNLOCK_ALL never writes to the profile or D1 — it cannot corrupt
-        // a real account and cannot ship enabled.
+        // Floating corner panel is DISABLED. The Unlock All toggle now lives in
+        // the main-menu Settings → Developer section (see map.js), so this
+        // never renders regardless of ?dev=1 or the old localStorage 'ew-dev'
+        // flag. To bring the corner panel back, restore the gated body below.
         function _devEnabled() {
-            try {
-                if (localStorage.getItem('ew-dev') === '1') return true;
-                return new URLSearchParams(location.search).has('dev');
-            } catch (e) { return false; }
+            return false;
+            // --- old gated behavior (kept for restore) ---
+            // try {
+            //     if (localStorage.getItem('ew-dev') === '1') return true;
+            //     return new URLSearchParams(location.search).has('dev');
+            // } catch (e) { return false; }
         }
 
         function _ensureDevPanel() {
