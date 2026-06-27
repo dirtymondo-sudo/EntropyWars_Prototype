@@ -7190,19 +7190,16 @@
         };
 
         // ── DEV TOGGLE: view-layer unlock-all + local gold grant ───────────
-        // The DEV TOOLS panel is always visible (prototype/dev build) so the
-        // Unlock All toggle is reachable without any ?dev=1 URL or localStorage
-        // setup. To hide it again, return false here (or restore the old
-        // ?dev=1 / localStorage('ew-dev') gating shown below).
+        // Floating corner panel — visible only with ?dev=1 in the URL or
+        // localStorage 'ew-dev' === '1'. The user-facing Unlock All toggle now
+        // lives in the main-menu Settings → Developer section (see map.js).
         // _DEV_UNLOCK_ALL never writes to the profile or D1 — it cannot corrupt
-        // a real account; it only changes what shows as owned/selectable.
+        // a real account and cannot ship enabled.
         function _devEnabled() {
-            return true; // prototype: always show DEV TOOLS panel
-            // --- previous gated behavior (kept for easy restore) ---
-            // try {
-            //     if (localStorage.getItem('ew-dev') === '1') return true;
-            //     return new URLSearchParams(location.search).has('dev');
-            // } catch (e) { return false; }
+            try {
+                if (localStorage.getItem('ew-dev') === '1') return true;
+                return new URLSearchParams(location.search).has('dev');
+            } catch (e) { return false; }
         }
 
         function _ensureDevPanel() {

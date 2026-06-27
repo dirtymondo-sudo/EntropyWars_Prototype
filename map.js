@@ -947,6 +947,10 @@
                     </div>
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Developer</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Run AI vs AI matches to tune decision weights. Champion weights compete against randomized challengers — winners shape the next generation.</div>
                         <div class="pm-set-row" style="margin-bottom:6px;align-items:center;gap:8px">
                             <span class="pm-vol-label">Mode</span>
@@ -984,6 +988,25 @@
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
         let _trainModeSetting = 'arena';
+
+        // Settings → Developer: flip the view-layer unlock-all flag. Never
+        // writes to the profile/server — isUnitUnlocked() just reads true while
+        // it's on. Re-render any open unlock-aware screen so it updates live.
+        window._toggleUnlockAll = function() {
+            window._DEV_UNLOCK_ALL = !window._DEV_UNLOCK_ALL;
+            const btn = document.getElementById('mmUnlockAllBtn');
+            if (btn) {
+                btn.textContent = 'Unlock All Vessels: ' + (window._DEV_UNLOCK_ALL ? 'ON' : 'OFF');
+                btn.classList.toggle('active', !!window._DEV_UNLOCK_ALL);
+            }
+            try { window._refreshWallets && window._refreshWallets(); } catch (e) {}
+            try {
+                const shop = document.getElementById('shopPage');
+                if (typeof window._renderShop === 'function' && shop && shop.classList.contains('active')) window._renderShop();
+                const codex = document.getElementById('codexPage');
+                if (typeof window._renderCodex === 'function' && codex && codex.classList.contains('active')) window._renderCodex();
+            } catch (e) {}
+        };
 
         window._launchAITraining = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
