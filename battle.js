@@ -20467,6 +20467,12 @@
                             window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                         }
                     }
+                    // Seeds root into grass — lay a fresh grass tile underneath so
+                    // the seed always has fertile ground (and won't wither next turn).
+                    if (getTerrainAt(x, y) !== 'grass') {
+                        setTerrainAt(x, y, 'grass');
+                        _invalidateBoardGrid();
+                    }
                     state.plantedSeeds.push({
                         x,
                         y,
@@ -20523,6 +20529,12 @@
                     showFloatingTextAtTile(x, y, '☠️', 'damage', {
                         durationMs: 900
                     });
+                    // Seeds root into grass — lay a fresh grass tile underneath so
+                    // the seed always has fertile ground.
+                    if (getTerrainAt(x, y) !== 'grass') {
+                        setTerrainAt(x, y, 'grass');
+                        _invalidateBoardGrid();
+                    }
                     state.plantedSeeds.push({
                         x,
                         y,
@@ -20629,6 +20641,12 @@
                     showFloatingTextAtTile(x, y, '🌿', 'status', {
                         durationMs: 900
                     });
+                    // Seeds root into grass — lay a fresh grass tile underneath so
+                    // the seed always has fertile ground (and won't wither next turn).
+                    if (getTerrainAt(x, y) !== 'grass') {
+                        setTerrainAt(x, y, 'grass');
+                        _invalidateBoardGrid();
+                    }
                     state.plantedSeeds.push({
                         x,
                         y,

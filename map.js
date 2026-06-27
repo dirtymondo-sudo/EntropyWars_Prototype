@@ -4599,6 +4599,21 @@
                     ignoreArmor: true
                 });
                 addLog(result.text || `${unitDisplayName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
+            } else if (result.type === 'heal') {
+                const healed = applyHealingToUnit(unit, result.amount, null);
+                if (healed > 0) {
+                    addLog(result.text ? `${result.text} ${healed} HP.` : `${unitDisplayName(unit)} recovers ${healed} HP from ${rule.label}.`);
+                }
+            } else if (result.type === 'mana') {
+                const before = unit.mp || 0;
+                unit.mp = Math.min(unit.maxMp, before + result.amount);
+                const restored = unit.mp - before;
+                if (restored > 0) {
+                    addLog(result.text ? `${result.text} ${restored} MP.` : `${unitDisplayName(unit)} restores ${restored} MP from ${rule.label}.`);
+                    if (typeof showFloatingTextForUnit === 'function') {
+                        showFloatingTextForUnit(unit, `+${restored} MP`, 'heal');
+                    }
+                }
             }
         }
 

@@ -859,7 +859,11 @@ const TERRAIN_RULES = {
         blocksRanged: false,
         healMultiplier: 1,
         visionBonus: 1,
-        endTurn(unit) { return null; }
+        endTurn(unit) {
+            if (!unit.maxMp || unit.mp >= unit.maxMp) return null;
+            const restore = Math.max(1, Math.floor(unit.maxMp * 0.15));
+            return { type: 'mana', amount: restore, text: `${unitDisplayName(unit)} draws power from the crystal formation:` };
+        }
     },
     mushroom: {
         label: 'Giant Mushroom',
@@ -887,12 +891,9 @@ const TERRAIN_RULES = {
         blocksRanged: false,
         healMultiplier: 2.0,
         endTurn(unit) {
-            if (!unit._usedSpring) {
-                const heal = Math.floor(unit.maxHp * 0.15);
-                unit.hp = Math.min(unit.maxHp, unit.hp + heal);
-                unit._usedSpring = true;
-            }
-            return null;
+            if (unit.hp >= unit.maxHp) return null;
+            const heal = Math.max(1, Math.floor(unit.maxHp * 0.15));
+            return { type: 'heal', amount: heal, text: `${unitDisplayName(unit)} is soothed by the healing spring for` };
         }
     },
 
@@ -3373,7 +3374,7 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a restorative seed on a grass tile. Heals allies standing on it each turn. Blooms instantly in rain. Persists until destroyed by enemy attack, drought, or terrain change.'
+        desc: 'Plant a restorative seed; it grows its own grass tile underneath. Heals allies standing on it each turn. Blooms instantly in rain. Persists until destroyed by enemy attack or drought.'
     },
 
     {
@@ -3390,7 +3391,7 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a toxic seed on a grass tile. Damages enemies standing on it each turn. Persists until destroyed by enemy attack, drought, or terrain change.'
+        desc: 'Plant a toxic seed; it grows its own grass tile underneath. Damages enemies standing on it each turn. Persists until destroyed by enemy attack or drought.'
     },
 
     {
@@ -3473,7 +3474,7 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Harvester',
         classRestriction: 'Harvester',
-        desc: 'Infest a tile with parasitic roots. Enemies crossing it take damage; allies crossing it are healed. Persists until destroyed by enemy attack, drought, or terrain change.'
+        desc: 'Infest a tile with parasitic roots; it grows its own grass tile underneath. Enemies crossing it take damage; allies crossing it are healed. Persists until destroyed by enemy attack or drought.'
     },
     {
         id: 'wildGrowth',
@@ -3491,7 +3492,7 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Harvester',
         classRestriction: 'Harvester',
-        desc: 'Conjure a 3-tile healing spring in a line (horizontal or vertical). Allies standing on it recover HP each turn. Deals no damage to enemies.'
+        desc: 'Convert terrain into a 3-tile healing spring in a line (horizontal or vertical). Any unit standing on the spring recovers HP each turn.'
     },
 
     {
