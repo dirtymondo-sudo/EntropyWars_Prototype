@@ -6025,6 +6025,14 @@
         function _meSetVoxel(x, y, z, tid) {
             if (!_meVoxels) _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
             const col = _meVoxels[y][x];
+            /* The flat ground shown on a fresh tile is a render-time "for show"
+               base (see _meSyncToState): the voxel column is actually empty. Lay
+               that ground down for REAL (z0) before stacking a block above it, so
+               the base layer doesn't vanish the moment you build on top of it. */
+            if (z > 0 && !col.some(b => b.z === 0)) {
+                const baseTid = (_meGrid?.[y]?.[x]) || ((typeof ME_TERRAIN_TO_ID !== 'undefined' && ME_TERRAIN_TO_ID['grass']) || 1);
+                col.push({ z: 0, tid: baseTid });
+            }
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) {
                 col[idx].tid = tid;

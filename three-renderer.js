@@ -1747,9 +1747,20 @@ const ThreeRenderer = (function () {
                             m.add(gMesh);
                         }
 
+                        /* The surface (top face) terrain belongs to the column's
+                           TOP block. When that block sits on a different terrain,
+                           it forms its own zero-thickness run (toZ < fromZ) that is
+                           skipped below — so the highest run actually DRAWN must
+                           carry the surface terrain, otherwise the cap renders with
+                           the layer beneath and the top block "disappears". */
+                        var _topDrawnRun = -1;
+                        for (var _rj = 0; _rj < runs.length; _rj++) {
+                            if (runs[_rj].toZ >= runs[_rj].fromZ) _topDrawnRun = _rj;
+                        }
+
                         for (var ri = 0; ri < runs.length; ri++) {
                             var run = runs[ri];
-                            var rIsTopRun = (ri === runs.length - 1);
+                            var rIsTopRun = (ri === _topDrawnRun);
                             var rBottomY = run.fromZ * elevStep;
                             var rTopY = (run.toZ + 1) * elevStep;
                             var rH = rTopY - rBottomY;
