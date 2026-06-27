@@ -2037,35 +2037,30 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const tx = targetUnit.x, ty = targetUnit.y;
   const unitAP = actingUnit.ap || 0;
-  const dist = (() => {
-    let d = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
-    if (targetUnit._isBoss && targetUnit._bossSize === 2) {
-      d = Math.min(d,
-        Math.abs(targetUnit.x + 1 - actingUnit.x) + Math.abs(targetUnit.y - actingUnit.y),
-        Math.abs(targetUnit.x - actingUnit.x) + Math.abs(targetUnit.y + 1 - actingUnit.y),
-        Math.abs(targetUnit.x + 1 - actingUnit.x) + Math.abs(targetUnit.y + 1 - actingUnit.y)
-      );
-    }
-    // Same tile but different altitude = combat distance 1 (matches combatDist)
-    if (d === 0 && (actingUnit.z ?? 0) !== (targetUnit.z ?? 0)) d = 1;
-    return d;
-  })();
-
   const targetZ = targetUnit.z ?? 0;
 
-  const distFrom = (fx, fy, fz) => {
-    let d = Math.abs(fx - tx) + Math.abs(fy - ty);
+  // 3D combat distance: elevation difference to the target counts toward range
+  // (matches the engine's combatDist), so the action menu grays out attacks /
+  // spells aimed at a target that's out of reach vertically — e.g. a flyer far
+  // overhead or an enemy atop a tall cliff — even when it's adjacent on the grid.
+  const _cd = (fx, fy, fz, gx, gy, gz) => (typeof G.combatDist === 'function')
+    ? G.combatDist(fx, fy, fz ?? 0, gx, gy, gz ?? 0)
+    : Math.abs(fx - gx) + Math.abs(fy - gy);
+  const _distFromTo = (fx, fy, fz) => {
+    let d = _cd(fx, fy, fz, tx, ty, targetZ);
     if (targetUnit._isBoss && targetUnit._bossSize === 2) {
       d = Math.min(d,
-        Math.abs(targetUnit.x + 1 - fx) + Math.abs(targetUnit.y - fy),
-        Math.abs(targetUnit.x - fx) + Math.abs(targetUnit.y + 1 - fy),
-        Math.abs(targetUnit.x + 1 - fx) + Math.abs(targetUnit.y + 1 - fy)
+        _cd(fx, fy, fz, targetUnit.x + 1, targetUnit.y, targetZ),
+        _cd(fx, fy, fz, targetUnit.x, targetUnit.y + 1, targetZ),
+        _cd(fx, fy, fz, targetUnit.x + 1, targetUnit.y + 1, targetZ)
       );
     }
-    // Same tile but different altitude = combat distance 1 (matches combatDist)
-    if (d === 0 && (fz ?? 0) !== targetZ) d = 1;
     return d;
   };
+
+  const dist = _distFromTo(actingUnit.x, actingUnit.y, actingUnit.z ?? 0);
+
+  const distFrom = (fx, fy, fz) => _distFromTo(fx, fy, fz);
 
   const findMoveIntoRange = (requiredRange, actionApCost) => {
     if (typeof getMoveTiles !== 'function' || typeof canUnitMove !== 'function') return null;
@@ -2852,8 +2847,14 @@ function _computeTileActions(actingUnit, tx, ty) {
   if (!G) return actions;
 
   const unitAP = actingUnit.ap || 0;
-  const dist = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
-  const onSelf = dist === 0;
+  const onSelf = tx === actingUnit.x && ty === actingUnit.y;
+  // 3D distance to the targeted tile: elevation gap to the tile's ground/roof
+  // counts toward range (matches combatDist), so tile-targeted spell cards gray
+  // out when the destination is too far above/below to reach.
+  const _tileZ = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
+  const dist = (typeof G.combatDist === 'function')
+    ? G.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, _tileZ)
+    : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
 
   if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit) && !onSelf) {
     const moveTiles = getMoveTiles(actingUnit);

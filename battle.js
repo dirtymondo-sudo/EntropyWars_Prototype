@@ -2085,6 +2085,18 @@
             return range;
         }
 
+        // Standing Z of whatever occupies a tile, for 3D range highlighting: an
+        // airborne / elevated unit's own altitude if one is there, otherwise the
+        // terrain (or roof) height of the tile. Range highlights must match what
+        // doAttack/doSpell (which use combatDist with the real target Z) will
+        // accept, so a flyer high overhead reads as far away and a unit on a
+        // cliff reads at the cliff's height.
+        function _tileStandZ(x, y) {
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (u && u.z != null) return u.z;
+            return (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+        }
+
         function getSpellRangeTiles(unit, spell) {
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
@@ -2106,14 +2118,18 @@
             for (let cy = 0; cy < sizeH; cy++) {
                 for (let cx = 0; cx < size; cx++) {
                     const dxy = Math.abs(unit.x - cx) + Math.abs(unit.y - cy);
-                    let effectiveD = dxy;
-
+                    // 3D range: the elevation gap between caster and the tile's
+                    // target counts toward range (handled by combatDist), so a
+                    // spell can't reach a target far above even if it's "close"
+                    // on the grid.
+                    let tz = _tileStandZ(cx, cy);
                     if (dxy === 0 && minR >= 1) {
                         const colEnemy = (typeof unitsAtColumn === 'function')
                             ? unitsAtColumn(cx, cy).find(u => u.id !== unit.id && u.player !== unit.player && (u.z ?? 0) !== (unit.z ?? 0))
                             : null;
-                        if (colEnemy) effectiveD = 1;
+                        if (colEnemy) tz = colEnemy.z ?? 0;
                     }
+                    let effectiveD = combatDist(unit.x, unit.y, unitZ, cx, cy, tz);
                     if (effectiveD < minR || effectiveD > effRange) continue;
 
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
@@ -22118,7 +22134,12 @@
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             for (let y = 0; y < bh(); y++) {
                 for (let x = 0; x < bw(); x++) {
-                    const d = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+                    // 3D range: elevation difference to the tile's target counts
+                    // toward range (combatDist), so a flyer high overhead or a
+                    // unit atop a tall cliff falls outside basic-attack reach even
+                    // when adjacent on the grid.
+                    const tz = _tileStandZ(x, y);
+                    const d = combatDist(unit.x, unit.y, unitZ, x, y, tz);
                     if (d >= 1 && d <= getEffectiveRange(unit) && !isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
 
                         if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, x, y)) continue;

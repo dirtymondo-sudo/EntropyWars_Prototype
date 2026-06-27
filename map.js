@@ -1978,10 +1978,26 @@
             return Math.abs(x1 - x2) + Math.abs(y1 - y2);
         }
 
+        // Vertical distance counts toward range — ranges are 3D radii, not flat
+        // discs. Reaching a target ABOVE you costs a full tile of range per
+        // elevation level (you can't melee a flyer five levels overhead, even
+        // if you're "adjacent" on the grid). Striking DOWNHILL is discounted
+        // (high-ground advantage): every two levels of drop cost one tile, so
+        // holding the high ground extends your reach instead of shrinking it.
+        function verticalRangeCost(z1, z2) {
+            const dz = (z2 || 0) - (z1 || 0);
+            if (dz > 0) return dz;                  // target above: full cost
+            return Math.floor(-dz / 2);             // target below: half cost
+        }
+
         function combatDist(x1, y1, z1, x2, y2, z2) {
             const dxy = Math.abs(x1 - x2) + Math.abs(y1 - y2);
-            if (dxy === 0 && (z1 || 0) !== (z2 || 0)) return 1;
-            return dxy;
+            const vz = verticalRangeCost(z1, z2);
+            // Same column, different height (e.g. a flyer directly overhead):
+            // the grid distance is 0 but it's still a real, separate target —
+            // never collapse to 0, cost at least 1 plus any steep climb.
+            if (dxy === 0 && (z1 || 0) !== (z2 || 0)) return Math.max(1, vz);
+            return dxy + vz;
         }
 
         function randInt(n) {

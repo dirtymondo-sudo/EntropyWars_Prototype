@@ -2778,14 +2778,19 @@
               const isOff = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
               const comboRange = combo.range || 3;
               if (isOff) {
+                const _comboSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
                 for (let cy = 0; cy < bh(); cy++) {
                   for (let cx = 0; cx < bw(); cx++) {
-                    const d = Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy);
+                    const target = _liveUnitMap.get(posKey(cx, cy));
+                    if (!target || !isEnemyUnit(target, _selectedForHl)) continue;
+                    // 3D combat distance to the enemy (matches the engine's combo
+                    // range gate), so a partner can't combo a target out of reach
+                    // vertically even if adjacent on the grid.
+                    const d = (typeof combatDist === 'function')
+                      ? combatDist(_selectedForHl.x, _selectedForHl.y, _comboSrcZ, cx, cy, target.z ?? 0)
+                      : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
                     if (d >= 1 && d <= comboRange && !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy)) {
-                      const target = _liveUnitMap.get(posKey(cx, cy));
-                      if (target && isEnemyUnit(target, _selectedForHl)) {
-                        _hlCache.set(posKey(cx, cy), 'attack enemy');
-                      }
+                      _hlCache.set(posKey(cx, cy), 'attack enemy');
                     }
                   }
                 }
@@ -2870,6 +2875,19 @@
           const spell = (_selectedForHl.spells || []).find(s => s.name === state.selectedTool) || (_selectedForHl._raceAbilities || []).find(s => s.name === state.selectedTool);
           if (spell) {
             const minRange = (['heal', 'shield', 'buff', 'scan', 'summonWeather', 'bomb', 'healAll', 'aoe', 'barrage', 'seedHeal', 'seedPoison', 'leechSeed', 'warpRune', 'teleport', 'deployTurret', 'buildBridge', 'warCry', 'encore', 'remoteView'].includes(spell.kind)) ? 0 : 1;
+            // 3D range for spell highlights: elevation difference between caster
+            // and target counts toward range (combatDist), so these overlays match
+            // what doSpell will actually allow — a target far above/below falls out
+            // of range even when close on the grid.
+            const _spellSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
+            const _tgtZAt = (cx, cy) => {
+              const u = _liveUnitMap.get(posKey(cx, cy));
+              if (u && u.z != null) return u.z;
+              return (typeof getHeightAt === 'function') ? getHeightAt(cx, cy) : 0;
+            };
+            const _rangeD = (cx, cy) => (typeof combatDist === 'function')
+              ? combatDist(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy))
+              : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
             if (_selectedForHl._skyThrowGrab && state._skyThrowHighlight) {
               // Sky-throw "phase 2": a target is grabbed — highlight where it can be
               // hurled (throwRange tiles around the grabbed unit), NOT the caster's
@@ -2899,7 +2917,7 @@
               const _tpEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               for (const u of state.units) {
                 if (u.dead) continue;
-                const d = Math.abs(_selectedForHl.x - u.x) + Math.abs(_selectedForHl.y - u.y);
+                const d = _rangeD(u.x, u.y);
                 if (d > _tpEffRange) continue;
                 const pk = posKey(u.x, u.y);
                 if (isEnemyUnit(u, _selectedForHl) && !unitHasStatus(u, 'invisible')) {
@@ -2953,7 +2971,7 @@
               const _crossSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
-                  const d = Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy);
+                  const d = _rangeD(cx, cy);
                   if (d >= 1 && d <= _crossEffRange && (_crossSkipLOS || !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy, _crossSrcZ))) {
                     if (_fogLimitCross && !isInVision(_selectedForHl, cx, cy)) continue;
                     _hlCache.set(posKey(cx, cy), 'spell-range');
@@ -2988,7 +3006,7 @@
               const _utilSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
-                  const d = Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy);
+                  const d = _rangeD(cx, cy);
                   if (d >= 1 && d <= _utilEffRange && (_utilSkipLOS || !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy, _utilSrcZ))) {
                     if (_fogLimitUtil && !isInVision(_selectedForHl, cx, cy)) continue;
                     const pk = posKey(cx, cy);
@@ -3009,7 +3027,7 @@
               const _genSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
-                  const d = Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy);
+                  const d = _rangeD(cx, cy);
                   if (d >= minRange && d <= _genEffRange && (_genSkipLOS || !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy, _genSrcZ))) {
                     if (_fogLimitSpells && d > 0 && !['heal', 'shield', 'buff', 'scan', 'remoteView'].includes(spell.kind) && !isInVision(_selectedForHl, cx, cy)) continue;
                     if (spell.kind === 'barrage') {
