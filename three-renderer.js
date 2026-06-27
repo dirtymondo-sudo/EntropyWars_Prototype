@@ -483,12 +483,24 @@ const ThreeRenderer = (function () {
     };
 
     const HL_COLORS = {
-        'move':            0x2288ff,
-        'move-jump':       0x00ccdd,
-        'move-takeoff':    0x44aaff,
-        'move-2ap':        0xcc8800,
-        'move-3ap':        0xcc4400,
+        /* Move-destination BASE colours are now neutral — AP cost is conveyed by
+           the pip dots (uDots), not the colour. Colour is repurposed to encode
+           the TACTICAL consequence of standing on the tile (strike/hazard/etc,
+           see the tactical entries below; resolved in _getSharedHlMat). Walk tiles read as a
+           calm slate; jump/takeoff keep a faint teal so the move-TYPE cue (which
+           is non-redundant) survives when a tile has no tactical meaning. */
+        'move':            0x6f8296,
+        'move-jump':       0x33a8bb,
+        'move-takeoff':    0x33a8bb,
+        'move-2ap':        0x6f8296,
+        'move-3ap':        0x6f8296,
         'move-edge':       0x991111,
+        /* Tactical move-tile overlays (appended as tokens by ui.js): */
+        'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
+        'hazard':          0xff3a3a,   /* crimson— ending here damages you / bad status */
+        'slow':            0x4a78c8,   /* steel  — terrain costs extra movement to enter */
+        'benefit':         0x33dd77,   /* green  — healing terrain / cover */
+        'exposed':         0xff7722,   /* orange — drawn as a hatched warning border (shader) */
         'attack':          0x3366ee,
         'attack enemy':    0xff2222,
         'spell-range':     0x8844ee,
@@ -553,6 +565,7 @@ const ThreeRenderer = (function () {
         'uniform float uTime;',
         'uniform float uEdgeGlow;',
         'uniform int uDots;',
+        'uniform float uExposed;',
         'varying vec2 vUv;',
         '',
         'void main() {',
@@ -613,16 +626,31 @@ const ThreeRenderer = (function () {
         '  float fill = 0.55 * pulse;',
         '  float border = (borderHard * 1.0 + borderSoft * 0.5) * uEdgeGlow * pulse;',
         '  float glow = innerGlow * uEdgeGlow * 0.35;',
+        '',
+        '  // EXPOSED warning: animated diagonal hazard-tape stripes hugging the',
+        '  // tile border, drawn in orange OVER whatever base colour the tile has,',
+        '  // so a tile can read "I can strike from here" (gold fill) AND "I would',
+        '  // be in an enemy\'s reach here" (orange border) at the same time.',
+        '  float exposedFx = 0.0;',
+        '  if (uExposed > 0.5) {',
+        '    float hatch = abs(fract((uv.x - uv.y) * 7.0 + uTime * 0.55) - 0.5) * 2.0;',
+        '    float stripe = smoothstep(0.45, 0.85, hatch);',
+        '    float band = 1.0 - smoothstep(0.0, 0.17, edge);',
+        '    exposedFx = stripe * band * (0.78 + 0.22 * sin(uTime * 3.0));',
+        '  }',
+        '',
         '  float alpha = (fill + border + glow + grid + brackets + dots) * uOpacity;',
+        '  alpha = max(alpha, exposedFx * 0.85);',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
         '  float bright = border * 0.5 + brackets * 0.65 + dots * 0.85;',
         '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.75));',
+        '  col = mix(col, vec3(1.0, 0.46, 0.12), clamp(exposedFx, 0.0, 0.85));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
     ].join('\n');
 
-    function _makeHlMaterial(color, opacity, edgeGlow, dotCount) {
+    function _makeHlMaterial(color, opacity, edgeGlow, dotCount, exposed) {
         var c = new THREE.Color(color);
         return new THREE.ShaderMaterial({
             uniforms: {
@@ -630,7 +658,8 @@ const ThreeRenderer = (function () {
                 uOpacity:  { value: opacity },
                 uTime:     _hlGlobalTime,
                 uEdgeGlow: { value: edgeGlow },
-                uDots:     { value: dotCount || 0 }
+                uDots:     { value: dotCount || 0 },
+                uExposed:  { value: exposed ? 1.0 : 0.0 }
             },
             vertexShader: _hlVertexShader,
             fragmentShader: _hlFragmentShader,
@@ -4909,12 +4938,32 @@ const ThreeRenderer = (function () {
         var matKey = hlType;
         if (hlType.indexOf('attack enemy') === 0) matKey = 'attack enemy';
         if (_hlMatCache.has(matKey)) return _hlMatCache.get(matKey);
-        var color = _getHlColor(matKey);
-        var opacity = _getHlOpacity(matKey);
-        var edgeGlow = HL_EDGE_GLOW[matKey] || 0.6;
-        if (edgeGlow === 0.6 && matKey.indexOf('attack enemy') === 0) edgeGlow = HL_EDGE_GLOW['attack enemy'];
-        var dotCount = HL_DOT_COUNT[matKey] || 0;
-        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount);
+
+        var color, opacity, edgeGlow, dotCount, exposed = 0;
+        var baseTok = hlType.split(' ')[0];
+
+        /* Tactical move highlight: base token (move / move-2ap / move-jump …)
+           still drives the AP-cost pip dots; the appended tactical token drives
+           the COLOUR; an appended ' exposed' token drives the warning border.
+           Priority for the (mutually-exclusive) base fill: strike > hazard >
+           benefit > slow > neutral — offence opportunities pop loudest. */
+        if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
+            dotCount = HL_DOT_COUNT[baseTok] || 0;
+            exposed = (hlType.indexOf(' exposed') !== -1) ? 1 : 0;
+            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 0.95; }
+            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.85; }
+            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.80; }
+            else if (hlType.indexOf(' slow') !== -1)    { color = HL_COLORS['slow'];    opacity = 0.55; edgeGlow = 0.70; }
+            else { color = HL_COLORS[baseTok] || HL_COLORS['move']; opacity = 0.44; edgeGlow = 0.55; } /* plain — recede */
+        } else {
+            color = _getHlColor(matKey);
+            opacity = _getHlOpacity(matKey);
+            edgeGlow = HL_EDGE_GLOW[matKey] || 0.6;
+            if (edgeGlow === 0.6 && matKey.indexOf('attack enemy') === 0) edgeGlow = HL_EDGE_GLOW['attack enemy'];
+            dotCount = HL_DOT_COUNT[matKey] || 0;
+        }
+
+        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount, exposed);
         mat._ew_shared = true;
         _hlMatCache.set(matKey, mat);
         return mat;

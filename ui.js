@@ -2593,6 +2593,113 @@
               }
             }
           }
+
+          /* ─────────────────────────────────────────────────────────────────
+             TACTICAL TILE COLOURING
+             Move-tile COLOUR no longer re-encodes AP cost (the pip dots already
+             do that). Instead we append modifier tokens that tell the renderer
+             to tint each reachable tile by the CONSEQUENCE of standing on it:
+               strike  → from here you can attack/cast a visible enemy   (gold)
+               hazard  → ending here damages you / applies a bad status  (crimson)
+               benefit → healing terrain                                  (green)
+               slow    → terrain costs extra movement to enter            (steel)
+               exposed → standing here you'd be inside a visible enemy's
+                         reach — drawn as an orange warning border that
+                         layers ON TOP of the base colour.
+             Base-fill priority is strike > hazard > benefit > slow > neutral.
+             ───────────────────────────────────────────────────────────────── */
+          {
+            const _self = _selectedForHl;
+
+            // Visible, non-cloaked enemy units (respect fog-of-war for P1).
+            const _visEnemies = [];
+            for (const _u of (state.units || [])) {
+              if (_u.dead || !isEnemyUnit(_u, _self)) continue;
+              if (typeof unitHasStatus === 'function' && unitHasStatus(_u, 'invisible')) continue;
+              if (state.fogOfWar && !state.autoPlayers?.[_self.player]
+                  && typeof isInVision === 'function' && !isInVision(_self, _u.x, _u.y)) continue;
+              _visEnemies.push(_u);
+            }
+
+            // Our strike reach = basic attack range ∪ every castable, affordable
+            // OFFENSIVE spell's range. (Movement/utility/heal/buff kinds excluded.)
+            let _strikeReach = (typeof getEffectiveRange === 'function') ? (getEffectiveRange(_self) || 1) : 1;
+            const _OFF_KINDS = { damage:1, aoe:1, barrage:1, lifeDrain:1, line:1, zoneDebuff:1,
+                                 debuff:1, multiHit:1, cross:1, ricochet:1, splitBeam:1, pull:1,
+                                 aoePull:1, linePush:1, delayed:1, seedPoison:1 };
+            const _silenced = typeof unitHasStatus === 'function' && unitHasStatus(_self, 'silence');
+            if (!_silenced) {
+              const _allSpells = [].concat(_self.spells || [], _self._raceAbilities || []);
+              for (const _sp of _allSpells) {
+                if (!_sp || !_OFF_KINDS[_sp.kind]) continue;
+                if (typeof canAffordSpell === 'function' && !canAffordSpell(_self, _sp)) continue;
+                const _r = (typeof getEffectiveSpellRange === 'function')
+                  ? getEffectiveSpellRange(_self, _sp) : (_sp.range || 0);
+                if (_r > _strikeReach) _strikeReach = _r;
+              }
+            }
+
+            // Threat field: tiles within (move + range) of any visible enemy.
+            const _threatKeys = new Set();
+            for (const _e of _visEnemies) {
+              const _eMove = (typeof getEffectiveMove === 'function') ? getEffectiveMove(_e) : (_e.move || 3);
+              const _eRange = (typeof getEffectiveRange === 'function') ? getEffectiveRange(_e) : 1;
+              const _reach = _eMove + _eRange;
+              for (let _dy = -_reach; _dy <= _reach; _dy++) {
+                for (let _dx = -_reach; _dx <= _reach; _dx++) {
+                  if (Math.abs(_dx) + Math.abs(_dy) > _reach) continue;
+                  _threatKeys.add(posKey(_e.x + _dx, _e.y + _dy));
+                }
+              }
+            }
+
+            const _terrAt = (tx, ty, tz) =>
+              (typeof getTerrainAt3D === 'function' && tz != null && state.boardColumns?.length > 0)
+                ? getTerrainAt3D(tx, ty, tz) : getTerrainAt(tx, ty);
+
+            const _flies = typeof canFly === 'function' && canFly(_self);
+            const _hazardTile = (tx, ty, tz) => {
+              const _t = _terrAt(tx, ty, tz);
+              if (_t === 'lava')
+                return !_flies && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(_self));
+              if (_t === 'poison' || _t === 'poison_bog')
+                return !(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(_self));
+              if (_t === 'deep_water')
+                return !_flies && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(_self));
+              return false;
+            };
+
+            const _strikeFrom = (tx, ty, tz) => {
+              for (const _e of _visEnemies) {
+                const _d = Math.abs(tx - _e.x) + Math.abs(ty - _e.y);
+                if (_d < 1 || _d > _strikeReach) continue;
+                if (typeof isRangeBlockedByTerrain === 'function'
+                    && isRangeBlockedByTerrain(tx, ty, _e.x, _e.y, tz)) continue;
+                return true;
+              }
+              return false;
+            };
+
+            const _MOVE_BASE = { 'move':1, 'move-2ap':1, 'move-3ap':1, 'move-jump':1, 'move-takeoff':1 };
+            for (const [_pk, _cls] of _hlCache) {
+              if (!_MOVE_BASE[_cls]) continue; // skip move-edge & any non-move classes
+              const _c = _pk.indexOf(',');
+              const _tx = parseInt(_pk.slice(0, _c), 10);
+              const _ty = parseInt(_pk.slice(_c + 1), 10);
+              const _tz = _hlZCache.has(_pk) ? _hlZCache.get(_pk) : undefined;
+              let _tok = _cls;
+              if (_strikeFrom(_tx, _ty, _tz)) _tok += ' strike';
+              else if (_hazardTile(_tx, _ty, _tz)) _tok += ' hazard';
+              else {
+                const _rule = getTerrainRule(_terrAt(_tx, _ty, _tz));
+                if (_rule && _rule.healMultiplier > 1) _tok += ' benefit';
+                else if (typeof getTerrainMoveCost === 'function'
+                         && getTerrainMoveCost(_self, _tx, _ty, _tz) > 1) _tok += ' slow';
+              }
+              if (_threatKeys.has(_pk)) _tok += ' exposed';
+              if (_tok !== _cls) _hlCache.set(_pk, _tok);
+            }
+          }
         } else if (state.actionMode === 'attack' && canUnitAct(_selectedForHl)) {
           _cachedAttackTiles = getAttackTiles(_selectedForHl);
           const _telescopeSkyMap = unitHasTelescope(_selectedForHl) && getSectionForUnit(_selectedForHl) === 'earth'
