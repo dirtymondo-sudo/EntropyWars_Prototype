@@ -8785,10 +8785,13 @@
                 if (!_meVoxels) _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
                 for (let y = 0; y < _meH; y++) {
                     for (let x = 0; x < _meW; x++) {
-                        /* Recolour the visible surface of each column (not a buried
-                           layer) so "Fill" changes the terrain you actually see and
-                           the chosen tint applies to every tile. */
-                        _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
+                        /* Fill targets the ACTIVE Z layer exactly — not the
+                           surface-clamped paint Z. Writing straight to _meActiveZ
+                           means re-filling an already-filled layer replaces it with
+                           the selected terrain, and stepping up one layer fills that
+                           layer (never the one beneath it). _meSetVoxel replaces a
+                           block already at that Z and creates one otherwise. */
+                        _meSetVoxel(x, y, _meActiveZ, tid);
                     }
                 }
             }
