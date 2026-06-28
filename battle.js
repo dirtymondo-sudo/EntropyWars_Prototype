@@ -6333,34 +6333,32 @@
             // same fixed amount along the line, so a tall elevation gap never parks
             // screen-centre up in the empty sky.
             const dirx = dx / len, diry = dy / len;
-            const leadFrac = Math.min(1, CINE_FOCAL_LEAD_TILES / len);
             const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
             const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
-            // FOCAL HEIGHT: the height blend may only ever pull screen-centre DOWN
-            // toward a below-caster target — never UP toward an above-caster one.
-            // A higher target would otherwise lift screen-centre above the caster's
-            // head and sink the caster (our 3rd-person subject) off the bottom of
-            // the frame. Clamping the blend to ≤ 0 keeps the caster pinned at the
-            // SAME screen height whether the target is above, level, or below.
-            // (No-op when the target is level/below — those cases already had a
-            // ≤ 0 blend — so only the caster-below-target case changes.)
-            const elevBlend = Math.min(0, (tgtPx - casterPx) * leadFrac);
-            const elevZ = casterPx + elevBlend + ts * CINE_FOCAL_RISE;
+            // FOCAL HEIGHT — anchored to the CASTER, never blended toward the
+            // target. This (x,y,elevZ) point is the camera's ORBIT PIVOT and the
+            // screen centre (ThreeCamera positions the eye at pivot − dist·dir and
+            // looks back at the pivot). Pinning it a fixed CINE_FOCAL_RISE above
+            // the caster — independent of how high or low the target is — is what
+            // makes this behave like a real 3rd-person camera: the caster sits at
+            // the SAME screen height on every cast, and the target's elevation only
+            // changes where the camera POINTS (the pitch below), never where the
+            // caster sits. That is the whole reason a high target can no longer
+            // shove the caster out of frame: the caster IS the thing we orbit.
+            const elevZ = casterPx + ts * CINE_FOCAL_RISE;
 
-            // PITCH: the camera rides CINE_SHOULDER_ANGLE degrees above the
-            // caster→target line and looks down across it (tilt = 90 + lineSlope −
-            // shoulder) — so a target BELOW the caster cranes the camera DOWN. But
-            // we NEVER let it crane UP past the even-elevation pitch (90 − shoulder):
-            // craning up to chase a target ABOVE the caster drops the foreground
-            // caster off the bottom of the frame and destroys the 3rd-person view.
-            // Capping the up-pitch at the even-elevation value makes the
-            // caster-below-target shot frame the caster exactly like the even and
-            // caster-above shots. (Floor guard still blocks a degenerate flip.)
-            const _evenTilt = 90 - CINE_SHOULDER_ANGLE;
+            // PITCH — the camera rides CINE_SHOULDER_ANGLE above the caster→target
+            // line and looks along it, at FULL strength and uncapped: a target far
+            // below cranes the gaze DOWN, a target high in the sky cranes it UP.
+            // No clamp is needed to protect the caster anymore — because the orbit
+            // pivot is the caster (above), craning the gaze up to a sky target just
+            // tilts the camera around the caster, leaving it framed in the lower
+            // third with the sky filling the top, exactly like looking up in any
+            // 3rd-person game. The guards only block a degenerate straight flip.
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(_evenTilt, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
+                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
 
             // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
             // so the caster is the same big size on any board / viewport), eased
