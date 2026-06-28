@@ -1104,11 +1104,40 @@ function ActionMenu({ st }) {
   const hasSpells = typeof canCastAnySpellWithTargets === 'function' ? canCastAnySpellWithTargets(unit) : false;
   const hasAnySpells = (unit.spells || []).some(Boolean) || (unit._raceAbilities || []).some(Boolean);
   let abilSub = null;
-  if (!hasSpells && hasAnySpells) {
-    abilSub = (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence')) ? 'Silenced'
-      : (unit.mp || 0) <= 0 ? 'No MP' : 'No target';
-  } else if (!hasAnySpells) {
+  if (!hasAnySpells) {
     abilSub = 'None';
+  } else if (!hasSpells) {
+    // Nothing castable from here — work out the most actionable single reason
+    // instead of defaulting to "No target". A unit can have MP > 0 yet still be
+    // unable to afford any spell, and a spell with no target in range may be
+    // castable by stepping into range (move-then-cast) — both used to read
+    // "No target" misleadingly.
+    if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence')) {
+      abilSub = 'Silenced';
+    } else {
+      const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+      let anyCastable = false, mpBlocked = false, apBlocked = false, targetBlocked = false, mpShort = false;
+      for (const sp of _abilList) {
+        const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
+        if (!tierOk) continue; // locked by level — never the headline reason
+        const apOk = (unit.ap || 0) >= (typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1);
+        const mpOk = (unit.mp || 0) >= (sp.cost || 0);
+        const tgt = (typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true)
+                 || (typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp));
+        if (apOk && mpOk && tgt) { anyCastable = true; break; }
+        if (!mpOk) mpShort = true;
+        if (apOk && tgt && !mpOk) mpBlocked = true;        // would cast if it had MP
+        else if (mpOk && tgt && !apOk) apBlocked = true;   // would cast if it had AP
+        else if (apOk && mpOk && !tgt) targetBlocked = true; // would cast if a target were reachable
+      }
+      if (!anyCastable) {
+        abilSub = mpBlocked ? 'No MP'
+                : apBlocked ? 'No AP'
+                : targetBlocked ? 'No target'
+                : mpShort ? 'No MP'
+                : 'No target';
+      }
+    }
   }
   const abilAction = {
     id: 'abil', label: 'Abilities', icon: '✦', cost: '—',
