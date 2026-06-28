@@ -6267,7 +6267,7 @@
         // Its HEIGHT is blended the same fixed amount along the line so a tall
         // elevation gap never parks screen-centre up in the empty sky.
         const CINE_FOCAL_LEAD_TILES = 0.35; // tiles in front of the caster (fixed)
-        const CINE_FOCAL_RISE       = 0.85; // focal height above the line (× tile) — lifted so the target's floating HP bar clears the top of frame (trims a little off the sprites' feet)
+        const CINE_FOCAL_RISE       = 0.6;  // focal height above the line (× tile) — small lift so the target's floating HP bar clears the top of frame
         // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
         const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
