@@ -712,6 +712,68 @@ const ThreeRenderer = (function () {
         });
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // OCCLUDED-UNIT X-RAY SILHOUETTE
+    // A holographic ghost of each unit's sprite, drawn ONLY where the unit is
+    // hidden behind terrain/props, so the player can still read positions while
+    // rotating the camera. Blue for the viewer's own units, red for enemies.
+    //
+    // No raycasting: the material is rendered with depthFunc = GreaterDepth, so
+    // the GPU only paints fragments that lie BEHIND something already in the
+    // depth buffer (terrain blocks, trees, rocks, props — all depthWrite:true).
+    // Where the unit is in the open its fragments fail the test and nothing
+    // draws, so the silhouette appears exactly when the real sprite is occluded.
+    // It lives as a child of the sprite mesh, inheriting billboard facing, bob,
+    // flip and hit-shake for free, and is hidden along with the group when fog
+    // of war / concealment hides the unit — so fogged units stay hidden.
+    // ════════════════════════════════════════════════════════════════════
+    var SILHOUETTE_OWN_COLOR  = 0x4db8ff;   // friendly  → blue hologram
+    var SILHOUETTE_ENEMY_COLOR = 0xff4242;  // enemy     → red hologram
+    var SILHOUETTE_OPACITY = 0.6;
+
+    var _silVertexShader = [
+        'varying vec2 vUv;',
+        'void main() {',
+        '  vUv = uv;',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}'
+    ].join('\n');
+
+    var _silFragmentShader = [
+        'uniform sampler2D uMap;',
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'uniform float uTime;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '  float a = texture2D(uMap, vUv).a;',
+        '  if (a < 0.35) discard;',                       // follow the sprite's silhouette
+        '  float scan = 0.78 + 0.22 * sin(vUv.y * 90.0 - uTime * 6.0);', // holo scanlines
+        '  float pulse = 0.85 + 0.15 * sin(uTime * 3.0);',
+        '  vec3 col = mix(uColor * scan, vec3(1.0), 0.22);',             // lift toward white for glow
+        '  gl_FragColor = vec4(col, uOpacity * pulse);',
+        '}'
+    ].join('\n');
+
+    function _makeSilhouetteMaterial(color, tex) {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uMap:     { value: tex || null },
+                uColor:   { value: new THREE.Color(color) },
+                uOpacity: { value: SILHOUETTE_OPACITY },
+                uTime:    _hlGlobalTime
+            },
+            vertexShader: _silVertexShader,
+            fragmentShader: _silFragmentShader,
+            transparent: true,
+            depthTest: true,
+            depthFunc: THREE.GreaterDepth,   // paint only where occluded
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            fog: false
+        });
+    }
+
     var renderer = null, scene = null, canvas = null;
     var active = false, initialized = false;
 
@@ -4110,6 +4172,7 @@ const ThreeRenderer = (function () {
         group.name = 'unit_' + unit.id;
 
         var spriteMesh = null;
+        var silhouetteMesh = null;
 
         if (_isVampireBatForm(unit)) {
             var swarm = _buildBatSwarmGroup(unit, ts);
@@ -4162,6 +4225,23 @@ const ThreeRenderer = (function () {
                 spriteMesh.scale.x = -1;
             }
             group.add(spriteMesh);
+
+            // Holographic x-ray ghost shown when this unit is hidden behind
+            // terrain/props. Parented to the sprite so it inherits the same
+            // billboard facing, position, flip and shake automatically.
+            if (spriteTex) {
+                var _silColor = (unit.player === _viewerPlayerNum())
+                    ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR;
+                var silMesh = new THREE.Mesh(
+                    spriteMesh.geometry,
+                    _makeSilhouetteMaterial(_silColor, spriteTex)
+                );
+                silMesh.renderOrder = 9999;   // draw after terrain/props so the depth buffer is populated
+                silMesh._ew_silhouette = true;
+                spriteMesh.add(silMesh);
+                silMesh._ew_unitId = unit.id;
+                silhouetteMesh = silMesh;
+            }
         }
 
         var ringCol = _viewerPlayerColor(unit.player);
@@ -4230,7 +4310,7 @@ const ThreeRenderer = (function () {
             group._ew_spriteTopY = surfY + _effectiveSprH - bottomShift2 - topShift + 4;
         }
 
-        return { group: group, sprite: spriteMesh };
+        return { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
     }
 
     function rebuildUnits() {
@@ -5869,6 +5949,14 @@ const ThreeRenderer = (function () {
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
+            /* Keep the x-ray silhouette tinted from the CURRENT viewer's side
+               (blue = own, red = enemy), so a perspective swap recolours it
+               without a full rebuild. */
+            if (entry.silhouette && entry.silhouette.material && entry.silhouette.material.uniforms) {
+                entry.silhouette.material.uniforms.uColor.value.set(
+                    unit.player === vp ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR
+                );
+            }
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */
