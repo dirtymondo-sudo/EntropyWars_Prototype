@@ -6121,6 +6121,9 @@ const ThreeRenderer = (function () {
     var _occLastTime = 0;
     var OCC_FADE_TARGET = 0.10;  // how see-through an occluder becomes (0 = invisible)
     var OCC_FADE_RATE   = 9.0;   // smoothing rate for the fade in/out (per second)
+    var _occWant = null;         // cached blocking set (throttled during normal play)
+    var _occWantTime = 0;
+    var OCC_RECOMPUTE_DT = 0.06; // seconds between blocker raycasts when not in a shot
 
     function _occInit() {
         if (_occRaycaster) return;
@@ -6202,7 +6205,7 @@ const ThreeRenderer = (function () {
     }
 
     /* Roots that block the line of sight to the caster or target this frame. */
-    function _occComputeBlockers(cam) {
+    function _occComputeBlockers(cam, cineActive, selUnit) {
         var roots = new Set();
         var groups = [];
         if (terrainGroup) groups.push(terrainGroup);
@@ -6210,13 +6213,18 @@ const ThreeRenderer = (function () {
         if (!groups.length) return roots;
 
         var subs = [];
-        var caster = _unitById.get(camera._cineShotUnitId);
-        if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); }
-        var tgt = camera._cineShotTarget;
-        if (tgt) {
-            var tUnit = (tgt.id != null) ? _unitById.get(tgt.id) : null;
-            var tp = (tUnit && !tUnit.dead) ? _occUnitPoint(tUnit) : _occTilePoint(tgt.x, tgt.y);
-            if (tp) subs.push(tp);
+        if (cineActive) {
+            var caster = _unitById.get(camera._cineShotUnitId);
+            if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); }
+            var tgt = camera._cineShotTarget;
+            if (tgt) {
+                var tUnit = (tgt.id != null) ? _unitById.get(tgt.id) : null;
+                var tp = (tUnit && !tUnit.dead) ? _occUnitPoint(tUnit) : _occTilePoint(tgt.x, tgt.y);
+                if (tp) subs.push(tp);
+            }
+        } else if (selUnit) {
+            // Normal play: keep just the selected/active unit clear.
+            var sp = _occUnitPoint(selUnit); if (sp) subs.push(sp);
         }
         if (!subs.length) return roots;
 
@@ -6257,9 +6265,25 @@ const ThreeRenderer = (function () {
 
     function _updateActionCamOcclusion() {
         var cam = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
-        var active = !!(cam && typeof state !== 'undefined' && state.phase === 'battle'
-            && typeof camera !== 'undefined' && camera && camera._cineShotId != null
-            && state.cinematicActionCam && typeof THREE !== 'undefined');
+        var inBattle = !!(cam && typeof state !== 'undefined' && state.phase === 'battle'
+            && typeof THREE !== 'undefined');
+        var cineActive = !!(inBattle && typeof camera !== 'undefined' && camera
+            && camera._cineShotId != null && state.cinematicActionCam);
+
+        // Outside of a cinematic shot, keep the currently-selected unit (the one
+        // whose turn it is) visible while the player drags the camera around by
+        // hand — fading whatever terrain / props sit between the camera and that
+        // unit, exactly the way the action-cam does for the caster and target.
+        var selUnit = null;
+        if (inBattle && !cineActive) {
+            var selId = state.selectedUnitId || state._blitzActiveUnitId;
+            if (selId != null) {
+                var su = _unitById.get(selId);
+                if (su && !su.dead) selUnit = su;
+            }
+        }
+
+        var active = cineActive || !!selUnit;
 
         if (!active && _occFaded.size === 0) return;   // nothing to do
         _occInit();
@@ -6268,7 +6292,22 @@ const ThreeRenderer = (function () {
         var dt = _occLastTime > 0 ? Math.min(now - _occLastTime, 0.05) : 0.016;
         _occLastTime = now;
 
-        var want = active ? _occComputeBlockers(cam) : null;
+        // Recompute the blocking set every frame during a fast-moving cinematic
+        // shot; throttle it during normal play (the opacity lerp below still runs
+        // every frame, so fades stay smooth either way).
+        var want;
+        if (active) {
+            if (cineActive || _occWant === null || (now - _occWantTime) >= OCC_RECOMPUTE_DT) {
+                want = _occComputeBlockers(cam, cineActive, selUnit);
+                _occWant = want;
+                _occWantTime = now;
+            } else {
+                want = _occWant;
+            }
+        } else {
+            want = null;
+            _occWant = null;
+        }
 
         // Begin fading any newly-blocking root.
         if (want) {
