@@ -5713,7 +5713,7 @@
                 if (opts.zoom !== undefined) this.zoom = opts.zoom;
                 if (opts.tilt !== undefined || opts.yaw !== undefined) {
                     this._preCineView = null;
-                    this._cineShotId = null;
+                    this._cineShotId = null; this._cineKeepSubject = false;
                 }
                 if (opts.tilt !== undefined) this.tilt = opts.tilt;
                 if (opts.yaw  !== undefined) this.yaw  = opts.yaw;
@@ -5801,7 +5801,7 @@
                 // orientation — prefer it.
                 const pre = this._preCineView;
                 this._preCineView = null;
-                this._cineShotId = null;
+                this._cineShotId = null; this._cineKeepSubject = false;
                 const dur = opts.duration ?? actionMs(700);
                 this._busy = true;
                 const seq = ++this._seqId;
@@ -5841,7 +5841,7 @@
                 // player's overhead tilt/yaw/zoom.
                 const pre = this._preCineView;
                 this._preCineView = null;
-                this._cineShotId = null;
+                this._cineShotId = null; this._cineKeepSubject = false;
                 if (immediate) {
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
                     this.snap({ x: target.x, y: target.y, zoom,
@@ -5865,7 +5865,7 @@
                 // bounce when a unit attacks several times in a row.
                 if (_cameraActingSideIsAuto()) {
                     this._savedState = null;
-                    this._cineShotId = null;
+                    this._cineShotId = null; this._cineKeepSubject = false;
 
                     // The action is over and we're deliberately holding the
                     // framing — release busy NOW. Leaving it to the action
@@ -5882,7 +5882,7 @@
                 const focusUnit = targetUnit && !targetUnit.dead ? targetUnit : getSelectedUnit();
                 const saved = this._savedState;
                 this._savedState = null;
-                this._cineShotId = null;
+                this._cineShotId = null; this._cineKeepSubject = false;
 
                 if (saved && focusUnit) {
 
@@ -6268,6 +6268,13 @@
         // elevation gap never parks screen-centre up in the empty sky.
         const CINE_FOCAL_LEAD_TILES = 0.35; // tiles in front of the caster (fixed)
         const CINE_FOCAL_RISE       = 0.6;  // focal height above the line (× tile) — small lift so the target's floating HP bar clears the top of frame
+        // ABOVE-target framing: instead of craning the camera up at a sky target
+        // (which a hard floor turns into the caster dropping off-frame), lift the
+        // focal HALFWAY toward the target (BIAS) so both straddle screen-centre,
+        // and widen the zoom to fit the vertical gap plus this much headroom (in
+        // tiles) for the two sprites and the target's floating HP bar.
+        const CINE_UP_FRAME_BIAS    = 0.5;  // fraction of the up-gap to raise the focal (0.5 = midpoint)
+        const CINE_VERT_FIT_MARGIN  = 3.0;  // extra tiles of vertical room when fitting an above-target
         // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
         const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
@@ -6335,35 +6342,49 @@
             const dirx = dx / len, diry = dy / len;
             const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
             const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
-            // FOCAL HEIGHT — anchored to the CASTER, never blended toward the
-            // target. This (x,y,elevZ) point is the camera's ORBIT PIVOT and the
-            // screen centre (ThreeCamera positions the eye at pivot − dist·dir and
-            // looks back at the pivot). Pinning it a fixed CINE_FOCAL_RISE above
-            // the caster — independent of how high or low the target is — is what
-            // makes this behave like a real 3rd-person camera: the caster sits at
-            // the SAME screen height on every cast, and the target's elevation only
-            // changes where the camera POINTS (the pitch below), never where the
-            // caster sits. That is the whole reason a high target can no longer
-            // shove the caster out of frame: the caster IS the thing we orbit.
-            const elevZ = casterPx + ts * CINE_FOCAL_RISE;
 
-            // PITCH — the camera rides CINE_SHOULDER_ANGLE above the caster→target
-            // line and looks along it, at FULL strength and uncapped: a target far
-            // below cranes the gaze DOWN, a target high in the sky cranes it UP.
-            // No clamp is needed to protect the caster anymore — because the orbit
-            // pivot is the caster (above), craning the gaze up to a sky target just
-            // tilts the camera around the caster, leaving it framed in the lower
-            // third with the sky filling the top, exactly like looking up in any
-            // 3rd-person game. The guards only block a degenerate straight flip.
+            // How far the target sits ABOVE the caster (px; 0 if level or below).
+            // _getElevationPx == level × tileSize, so elevation and horizontal
+            // distance share one scale (1 tile = 1 level = `ts` px) and combine
+            // directly below.
+            const upGapPx = Math.max(0, tgtPx - casterPx);
+
+            // FOCAL (orbit pivot / screen centre): the caster + a fixed rise, lifted
+            // toward an ABOVE-target so the caster and target straddle screen-centre.
+            // (For a level/below target upGapPx == 0, so this is just caster + rise.)
+            const elevZ = casterPx + ts * CINE_FOCAL_RISE + upGapPx * CINE_UP_FRAME_BIAS;
+
+            // PITCH: ride CINE_SHOULDER_ANGLE above the caster→target line and look
+            // along it AT FULL STRENGTH — a target below cranes the gaze DOWN, a
+            // target high in the sky cranes it UP, with no cap. Looking up at a sky
+            // target used to swing the ground-standing caster off the bottom of the
+            // frame, because the camera's eye can't drop below the board to look up
+            // FROM under the caster. That is fixed in the rig: ThreeCamera now does a
+            // real 3rd-person floor response for this shot (cam._cineKeepSubject) —
+            // when the eye would go underground it DOLLIES IN toward the caster along
+            // the view ray instead of flinging the gaze past it, so the caster stays
+            // framed while the camera genuinely tilts up. Guards block only a flip.
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
                 Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
 
-            // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
-            // so the caster is the same big size on any board / viewport), eased
-            // back only as the gap grows so a distant target still fits.
-            const zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+            // SUBJECT SIZE: tight signature framing for a level/below target; for an
+            // ABOVE target, ease back so the high target (plus its HP bar) clears the
+            // top while the caster holds the foreground — sized from the REAL gap so
+            // it is right at any altitude. (When the up-tilt is steep enough that the
+            // rig dollies the eye in, that closer distance wins; this just keeps a
+            // sane bound for the in-between angles.)
+            let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+            if (upGapPx > 0) {
+                const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
+                zoom = Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt));
+            }
+
+            // Tell the rig to keep the caster framed (dolly-in floor response) while
+            // this shot may crane up at a sky target. Cleared when the shot ends
+            // (restore/snap/reset), so free-look keeps its sky-revealing floor pan.
+            camera._cineKeepSubject = true;
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt, yaw, elevZ,
@@ -6572,6 +6593,11 @@
 
             const _descentEligible = opts.descentCam && state.cinematicActionCam && !_skipVisuals()
                 && !(typeof isCinematicPresent === 'function' && isCinematicPresent());
+
+            // Default OFF; only the over-the-shoulder action shot below turns on the
+            // rig's keep-subject (dolly-in) floor response. Descent/plain shots and
+            // free-look keep the standard sky-revealing floor pan.
+            camera._cineKeepSubject = false;
 
             if (_descentEligible) {
                 _playDescentCam(sourceUnit, target, opts.descentCam, timings, _fogPassthrough, sequenceId);

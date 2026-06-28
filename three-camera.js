@@ -91,28 +91,54 @@ const ThreeCamera = (function () {
 
         /* Ideal orbit eye: the focal point pushed back along -dir by `dist`.
            (Algebraically identical to the old focal + dist·sin/cos rig.) */
-        const targetPosX = focalX - dist * dirX;
-        let   targetPosY = focalY - dist * dirY;
-        const targetPosZ = focalZ - dist * dirZ;
+        let targetPosX = focalX - dist * dirX;
+        let targetPosY = focalY - dist * dirY;
+        let targetPosZ = focalZ - dist * dirZ;
+        let targetLookX, targetLookY, targetLookZ;
 
-        /* ── AAA floor collision ──
-           As the pitch cranes up toward (and past) the horizon the orbit eye
-           drops to ground level and would sink THROUGH the board ("below the
-           map"). Clamp ONLY the eye so it rides just above the ground it is
-           orbiting. The look target below is rebuilt from the preserved view
-           direction — so a floored camera keeps tilting its gaze up at the sky
-           instead of being yanked back down to stare at the board. */
         const groundClearance = ts * 0.35;
-        const floorY = Math.max(0, focalY) + groundClearance;
-        if (targetPosY < floorY) targetPosY = floorY;
 
-        /* Look target = eye + viewDir · dist. When the eye is unclamped this is
-           exactly the ground focal point (classic orbit framing); when the eye
-           has been floored, the gaze still rides the original up-pitched
-           direction, craning toward the sky. */
-        const targetLookX = targetPosX + dist * dirX;
-        const targetLookY = targetPosY + dist * dirY;
-        const targetLookZ = targetPosZ + dist * dirZ;
+        /* True ground height under the focal tile — used by the 3rd-person floor
+           response below. (The focal HEIGHT itself can be lifted well above the
+           board by a cinematic shot, so it is not a valid ground reference.) */
+        let groundY = 0;
+        if (typeof getHeightAt === 'function') {
+            const gh = getHeightAt(Math.round(cam.x), Math.round(cam.y));
+            if (gh > 0) groundY = gh * elevStep;
+        }
+        const camFloorY = groundY + groundClearance;
+
+        if (cam._cineKeepSubject && dirY > 1e-4 && focalY > camFloorY && targetPosY < camFloorY) {
+            /* ── 3RD-PERSON floor collision (cinematic shots only) ──
+               A ground-standing subject has NO eye position below it, so craning
+               the gaze straight up at a sky target would put the eye underground.
+               The default response (raise the eye, keep the up-pitched gaze) flings
+               the look-point past the subject into the sky and drops the subject
+               off the bottom of frame — the classic "my character vanished when I
+               looked up" bug. Instead we PULL THE EYE IN along the view ray until
+               it rides just above the ground, and keep looking straight AT the
+               focal. The subject stays screen-centred while the camera genuinely
+               cranes up — exactly how a real 3rd-person camera handles looking up
+               (it dollies in toward the player rather than losing them). */
+            const dPull = (focalY - camFloorY) / dirY;   // eye.Y == camFloorY along -dir
+            targetPosX = focalX - dPull * dirX;
+            targetPosY = camFloorY;
+            targetPosZ = focalZ - dPull * dirZ;
+            targetLookX = focalX;
+            targetLookY = focalY;
+            targetLookZ = focalZ;
+        } else {
+            /* ── default floor collision (free-look, board view) ──
+               Clamp ONLY the eye so it rides just above the ground it is orbiting;
+               the look target is rebuilt from the preserved view direction, so a
+               floored free-look camera keeps craning its gaze up to reveal the sky
+               dome instead of being yanked back down to stare at the board. */
+            const floorY = Math.max(0, focalY) + groundClearance;
+            if (targetPosY < floorY) targetPosY = floorY;
+            targetLookX = targetPosX + dist * dirX;
+            targetLookY = targetPosY + dist * dirY;
+            targetLookZ = targetPosZ + dist * dirZ;
+        }
 
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
