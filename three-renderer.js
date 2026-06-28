@@ -1847,6 +1847,20 @@ const ThreeRenderer = (function () {
                             runs.push({ fromZ: segStart, toZ: topZ - 1, terrain: segTerrain });
                         }
 
+                        /* Top voxel as a REAL cube for stacked-terrain columns.
+                           Normally the top voxel is a flat "surface skin" (toZ = topZ-1)
+                           so a uniform raised tile is N cubes tall and a unit stands on
+                           top. But when the column stacks DIFFERENT terrains, the top
+                           layer must be a full cube so its OWN terrain shows on its
+                           sides — not collapse into a cap on the band beneath it. So
+                           whenever there is more than one terrain band, draw the top
+                           voxel as a full cube. Uniform columns (one band) are left
+                           exactly as before, and hollow/arch columns keep the skin so
+                           their walk-under surface stays open. */
+                        if (!state._hollowVoxels && runs.length > 1) {
+                            runs[runs.length - 1].toZ = topZ;
+                        }
+
                         /* Exposed ground floor: if z0 exists but z1 is a gap (open
                            space above ground — e.g. the walkable area UNDER a hollow
                            arch), draw a flat ground slab (top at y=0) like a normal
@@ -1860,38 +1874,23 @@ const ThreeRenderer = (function () {
                             m.add(gMesh);
                         }
 
-                        /* The surface (top face) terrain belongs to the column's
-                           TOP block. When that block sits on a different terrain,
-                           it forms its own zero-thickness run (toZ < fromZ) that is
-                           skipped below — so the highest run actually DRAWN must
-                           carry the surface terrain, otherwise the cap renders with
-                           the layer beneath and the top block "disappears". */
-                        var _topDrawnRun = -1;
-                        for (var _rj = 0; _rj < runs.length; _rj++) {
-                            if (runs[_rj].toZ >= runs[_rj].fromZ) _topDrawnRun = _rj;
-                        }
-
                         for (var ri = 0; ri < runs.length; ri++) {
                             var run = runs[ri];
-                            var rIsTopRun = (ri === _topDrawnRun);
                             var rBottomY = run.fromZ * elevStep;
                             var rTopY = (run.toZ + 1) * elevStep;
                             var rH = rTopY - rBottomY;
                             if (rH < 0.5) continue;
 
-                            /* The column's surface terrain belongs to the top block;
-                               when that block differs from the run beneath it, it
-                               forms a zero-thickness run that's skipped, so the top
-                               DRAWN run carries the surface terrain on its cap. Its
-                               sides must match that surface terrain too — otherwise
-                               the painted top tile shows the layer underneath on its
-                               vertical faces (grass keeps its dirt sides via the
-                               TERRAIN_SIDE_SPRITES lookup below). */
-                            var rTopTerrain = rIsTopRun ? surfaceTerrain : run.terrain;
-                            var rSideTerrain = rIsTopRun ? rTopTerrain : run.terrain;
+                            /* Every band renders as a solid cube of its OWN terrain on
+                               every face (top AND sides). A genuine stacked-terrain
+                               column therefore shows each layer as its own cube — no
+                               band is recoloured by the surface terrain or by the layer
+                               beneath it. */
+                            var rTopTerrain = run.terrain;
+                            var rSideTerrain = run.terrain;
                             var rSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[rSideTerrain] ?? null) : null;
                             var rIsFluid = !!_FLUID_TERRAIN_SET[rTopTerrain];
-                            var rIsLava = (rTopTerrain === 'lava' || rSideTerrain === 'lava');
+                            var rIsLava = (rTopTerrain === 'lava');
 
                             var rTopTex = getTerrainTexture(rTopTerrain);
                             var rSideTex = getTerrainTexture(rSKey || rSideTerrain);
