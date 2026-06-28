@@ -415,6 +415,206 @@ function _getModeInfo(st) {
   };
 }
 
+/* ── Unified scoreboard turn-order data ──────────────────────────────────────
+   Build one entry per ALIVE unit, tagged with where it sits in the blitz turn
+   queue (`sortKey`: active first, then pending by queue index, then units that
+   already acted this round — they go to the outer edge of each flank). This is
+   what folds the old right-side TURN ORDER clock and the bottom-right roster
+   into the scoreboard. */
+function _scoreboardTurnData(st) {
+  const units = (st.units || []).filter(u => !u.dead);
+  const activeId = st._blitzActiveUnitId;
+  const G = window.GAME;
+  const orderIds = (G && G.blitzTurnOrderIds) ? G.blitzTurnOrderIds : null;
+  const idx = {};
+  if (orderIds && orderIds.length) {
+    orderIds.forEach((id, i) => { if (idx[id] == null) idx[id] = i; });
+  }
+  const BIG = 9999;
+  return units.map(u => {
+    const acted = typeof unitFinished === 'function' ? unitFinished(u) : ((u.ap || 0) <= 0);
+    const active = u.id === activeId;
+    const finished = acted && !active;
+    let ti = idx[u.id]; if (ti == null) ti = BIG;
+    const sortKey = active ? -1 : (finished ? BIG * 2 + ti : ti);
+    return { id: u.id, unit: u, active, finished, sortKey };
+  });
+}
+
+/* One unit in a flank: sprite + tiny HP/MP bars. The unit acting soonest on
+   each side sits closest to centre and is drawn biggest; the active unit also
+   gets the glowing NOW frame. `size` is decided by the flank so a team of 8
+   packs tighter than a team of 2. Friendly chips are clickable to select
+   (replaces the old roster click target). */
+function TurnChip({ entry, size }) {
+  const u = entry.unit;
+  const ac = getAllianceColor(u);
+  const active = entry.active;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const friendly = u.player === viewer;
+  const hpPct = u.maxHp > 0 ? Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100)) : 0;
+  const mpPct = u.maxMp > 0 ? Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) : 0;
+  const hpColor = hpPct <= 30 ? EW.bad : (hpPct <= 55 ? EW.warn : EW.good);
+  const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
+
+  return h('div', {
+    className: active ? 'ew-turn-chip ew-turn-chip-active' : 'ew-turn-chip',
+    title: name + '  ' + Math.max(0, Math.round(u.hp || 0)) + '/' + (u.maxHp || 0) +
+      (u.maxMp > 0 ? '  ·  MP ' + Math.max(0, Math.round(u.mp || 0)) + '/' + u.maxMp : ''),
+    onClick: () => { if (friendly && typeof selectUnit === 'function') selectUnit(u.id); },
+    style: {
+      position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+      cursor: friendly ? 'pointer' : 'default',
+      opacity: entry.finished ? 0.42 : 1,
+      filter: entry.finished ? 'saturate(0.45)' : 'none',
+      padding: '0 1px',
+    },
+  },
+
+    h('div', { style: {
+      width: size, height: 2, background: ac, opacity: active ? 1 : 0.6,
+      boxShadow: active ? '0 0 7px ' + ac : 'none',
+    }}),
+
+    h('div', { style: { position: 'relative' }},
+      h(UnitSprite, { unit: u, size, glow: active }),
+      active && h('div', { style: {
+        position: 'absolute', inset: -2, border: '1px solid ' + ac,
+        boxShadow: '0 0 10px ' + ac + ', inset 0 0 7px ' + ac + '55', pointerEvents: 'none',
+      }}),
+    ),
+
+    h('div', { style: { width: size, display: 'flex', flexDirection: 'column', gap: 1, marginTop: 1 }},
+      h('div', { style: {
+        height: 3, background: 'rgba(255,255,255,0.07)', position: 'relative', overflow: 'hidden',
+      }},
+        h('div', { style: {
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: hpPct + '%',
+          background: 'linear-gradient(90deg, ' + hpColor + ', ' + hpColor + 'aa)',
+          boxShadow: '0 0 4px ' + hpColor + '66', transition: 'width 0.35s ease-out',
+        }}),
+      ),
+      u.maxMp > 0 && h('div', { style: {
+        height: 2, background: 'rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden',
+      }},
+        h('div', { style: {
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: mpPct + '%',
+          background: EW.space, opacity: 0.75, transition: 'width 0.35s ease-out',
+        }}),
+      ),
+    ),
+
+    h('div', { style: { height: 9, display: 'flex', alignItems: 'center' }},
+      active && h('span', { style: {
+        fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
+        color: ac, letterSpacing: '0.04em', textShadow: '0 0 6px ' + ac + '88',
+      }}, 'NOW'),
+    ),
+  );
+}
+
+function TurnFlank({ st, player, side }) {
+  const data = _scoreboardTurnData(st).filter(e => e.unit.player === player);
+  data.sort((a, b) => (a.sortKey - b.sortKey) || ((b.unit.spd || 0) - (a.unit.spd || 0)));
+  if (data.length === 0) return null;
+
+  // Show every unit up to a hard cap; beyond that, summarise the tail (acting
+  // last) as a "+N" tile so the bar never grows unbounded.
+  const CAP = 10;
+  let visible = data, overflow = 0;
+  if (data.length > CAP) { overflow = data.length - (CAP - 1); visible = data.slice(0, CAP - 1); }
+
+  // Scale sizes down as the team grows so the flank stays a sane width.
+  const n = visible.length;
+  const small = n >= 7 ? 18 : (n >= 5 ? 21 : 24);
+  const inner = small + 6;
+  const active = small + 10;
+
+  // `visible` runs inner→outer (soonest first). chips carry their size.
+  const chips = visible.map((e, i) => ({
+    e, size: e.active ? active : (i === 0 ? inner : small),
+  }));
+
+  let nodes = chips.map(({ e, size }) => h(TurnChip, { key: e.id, entry: e, size }));
+  if (overflow > 0) {
+    nodes.push(h('div', {
+      key: 'overflow',
+      title: overflow + ' more',
+      style: {
+        alignSelf: 'center', fontFamily: '"DotGothic16", monospace', fontSize: 9,
+        color: EW.inkMute, letterSpacing: '0.04em', padding: '0 3px',
+        border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)',
+        minWidth: small, height: small, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      },
+    }, '+' + overflow));
+  }
+
+  // Left flank mirrors so "soonest" stays adjacent to the centre score.
+  const display = side === 'left' ? nodes.slice().reverse() : nodes;
+  return h('div', { style: {
+    display: 'flex', alignItems: 'flex-start', gap: 3,
+    justifyContent: side === 'left' ? 'flex-end' : 'flex-start',
+  }}, display);
+}
+
+/* One team's column: name + live status on top, the turn-ordered portrait
+   flank below (soonest-to-act nearest the centre score). */
+function ScoreSideColumn({ st, mode, player, side, color }) {
+  const isRight = side === 'right';
+  const mono = '"DotGothic16", monospace';
+  const name = (st._teamNames && st._teamNames[player]) || ('P' + player);
+  const sub = player === 1 ? mode.p1Sub : mode.p2Sub;
+  const showTower = mode.showTowerHp;
+  const towerHp = player === 1 ? mode.p1TowerHp : mode.p2TowerHp;
+  const towerMax = player === 1 ? mode.p1TowerMax : mode.p2TowerMax;
+  const towerPct = towerMax > 0 ? (towerHp / towerMax) * 100 : 0;
+  const towerColor = towerPct > 50 ? EW.good : towerPct > 25 ? EW.warn : EW.bad;
+
+  return h('div', { style: {
+    display: 'flex', flexDirection: 'column', gap: 5,
+    padding: '7px 11px 6px', minWidth: 92,
+    justifyContent: 'center',
+    alignItems: isRight ? 'flex-start' : 'flex-end',
+  }},
+
+    h('div', { style: {
+      display: 'flex', alignItems: 'center', gap: 6,
+      flexDirection: isRight ? 'row' : 'row-reverse',
+    }},
+      h('span', { style: {
+        width: 5, height: 5, background: color, borderRadius: '50%',
+        boxShadow: '0 0 7px ' + color, flexShrink: 0,
+      }}),
+      h('span', { style: {
+        fontFamily: mono, fontSize: 10, letterSpacing: '0.14em',
+        color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
+      }}, name),
+      sub != null && !showTower && h('span', { style: {
+        fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.06em', whiteSpace: 'nowrap',
+      }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
+    ),
+
+    showTower && towerMax > 0 && h('div', { style: {
+      width: '100%', display: 'flex', flexDirection: 'column', gap: 2,
+      alignItems: isRight ? 'flex-start' : 'flex-end',
+    }},
+      h('div', { style: { width: '100%', height: 3, background: 'rgba(255,255,255,0.06)', position: 'relative' }},
+        h('div', { style: {
+          position: 'absolute', top: 0, bottom: 0, [isRight ? 'left' : 'right']: 0,
+          width: towerPct + '%',
+          background: 'linear-gradient(90deg, ' + towerColor + ', ' + towerColor + '88)',
+          boxShadow: '0 0 6px ' + towerColor + '55',
+        }}),
+      ),
+      h('span', { style: {
+        fontFamily: mono, fontSize: 7, color: EW.inkDim, letterSpacing: '0.08em',
+      }}, '🏰 ' + towerHp + '/' + towerMax),
+    ),
+
+    h(TurnFlank, { st, player, side }),
+  );
+}
+
 function Scoreboard({ st }) {
   if (!st) return null;
 
@@ -427,141 +627,96 @@ function Scoreboard({ st }) {
   const round = st.round || 1;
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
 
-  const p1Name = (st._teamNames && st._teamNames[1]) || 'P1';
-  const p2Name = (st._teamNames && st._teamNames[2]) || 'P2';
-
   const isSuddenDeath = !!st.suddenDeathActive;
+
+  // Caption under the score = what the number counts. Avoid echoing the mode
+  // name (e.g. Arena's score label is literally "ARENA") — fall back to SCORE.
+  let scoreCaption = mode.scoreLabel || '';
+  if (scoreCaption && mode.label && scoreCaption.toUpperCase() === mode.label.toUpperCase()) {
+    scoreCaption = 'SCORE';
+  }
 
   const mono = '"DotGothic16", monospace';
   const serif = '"Cinzel", serif';
 
-  return h('div', { style: {
-    position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
-    display: 'flex', alignItems: 'center',
-    background: EW.panel, border: '1px solid ' + EW.panelEdge, zIndex: 10,
-    clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px)',
-  }},
+  return h('div', {
+    className: 'ew-scoreboard',
+    style: {
+      position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+      display: 'flex', alignItems: 'stretch', zIndex: 10,
+      background: EW.panel, border: '1px solid ' + EW.panelEdge,
+      boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
+      clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+    },
+  },
 
-    h(PlayerScoreSide, { name: p1Name, mode, player: 1, side: 'left', color: EW.space }),
+    h('div', { className: 'ew-scoreboard-sheen', style: {
+      position: 'absolute', top: 0, left: 12, right: 12, height: 1, pointerEvents: 'none',
+      background: 'linear-gradient(90deg, transparent, ' + EW.space + '66, ' + EW.chaos + '66, transparent)',
+    }}),
+
+    h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space }),
 
     h('div', { style: {
-      padding: '6px 14px', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', gap: 2, minWidth: 80,
+      padding: '6px 16px 7px', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 134,
       borderLeft: '1px solid ' + EW.panelEdge, borderRight: '1px solid ' + EW.panelEdge,
-      background: 'rgba(0,0,0,0.3)',
+      background: 'linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.16))',
     }},
 
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 6 }},
+      h('span', { style: {
+        fontFamily: mono, fontSize: 7, letterSpacing: '0.26em', color: EW.inkMute,
+        textTransform: 'uppercase', lineHeight: 1,
+      }}, mode.label || ''),
+
+      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
         h('span', { style: {
-          fontFamily: serif, fontSize: 28, fontWeight: 300, lineHeight: 1,
-          color: EW.ink, textShadow: '0 0 12px ' + EW.space + '44',
-          minWidth: 20, textAlign: 'right',
+          fontFamily: serif, fontSize: 30, fontWeight: 400, lineHeight: 1,
+          color: EW.ink, textShadow: '0 0 14px ' + EW.space + '66',
+          minWidth: 22, textAlign: 'right',
         }}, mode.p1Score),
         h('span', { style: {
-          fontFamily: mono, fontSize: 10, color: EW.inkDim, letterSpacing: '0.06em',
+          fontFamily: serif, fontSize: 16, color: EW.inkDim, fontStyle: 'italic', lineHeight: 1,
         }}, '–'),
         h('span', { style: {
-          fontFamily: serif, fontSize: 28, fontWeight: 300, lineHeight: 1,
-          color: EW.ink, textShadow: '0 0 12px ' + EW.chaos + '44',
-          minWidth: 20, textAlign: 'left',
+          fontFamily: serif, fontSize: 30, fontWeight: 400, lineHeight: 1,
+          color: EW.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
+          minWidth: 22, textAlign: 'left',
         }}, mode.p2Score),
       ),
 
-      h('span', { style: {
-        fontFamily: mono, fontSize: 7, letterSpacing: '0.2em',
-        color: isSuddenDeath ? EW.bad : EW.inkDim, lineHeight: 1,
-      }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : mode.scoreLabel),
+      h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
+        fontFamily: mono, fontSize: 7, letterSpacing: '0.24em', lineHeight: 1,
+        color: isSuddenDeath ? EW.bad : EW.inkDim,
+        textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none',
+      }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : scoreCaption),
 
       h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 6, marginTop: 2,
+        display: 'flex', alignItems: 'center', gap: 12, marginTop: 3,
+        paddingTop: 4, borderTop: '1px solid ' + EW.panelEdge,
+        width: '100%', justifyContent: 'center',
       }},
-        h('span', { style: {
-          fontFamily: mono, fontSize: 11, fontWeight: 600,
-          color: EW.ink, lineHeight: 1,
-        }}, mins + ':' + secs),
-        h('span', { style: {
-          width: 1, height: 8, background: EW.panelEdge,
-        }}),
-        h('span', { style: {
-          fontFamily: mono, fontSize: 8, color: EW.inkMute,
-          letterSpacing: '0.1em', lineHeight: 1,
-        }}, 'R' + round + (roundLimit > 0 ? '/' + roundLimit : '')),
+        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, lineHeight: 1 }},
+          h('span', { style: { fontFamily: mono, fontSize: 6, letterSpacing: '0.2em', color: EW.inkDim }}, 'TIME'),
+          h('span', { style: { fontFamily: mono, fontSize: 13, fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
+        ),
+        h('span', { style: { width: 1, height: 22, background: EW.panelEdge }}),
+        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, lineHeight: 1 }},
+          h('span', { style: { fontFamily: mono, fontSize: 6, letterSpacing: '0.2em', color: EW.inkDim }}, 'ROUND'),
+          h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 1 }},
+            h('span', { style: {
+              fontFamily: serif, fontSize: 19, fontWeight: 600, color: EW.time, lineHeight: 1,
+              textShadow: '0 0 10px ' + EW.time + '55',
+            }}, round),
+            roundLimit > 0 && h('span', { style: {
+              fontFamily: mono, fontSize: 9, color: EW.inkMute,
+            }}, '/' + roundLimit),
+          ),
+        ),
       ),
     ),
 
-    h(PlayerScoreSide, { name: p2Name, mode, player: 2, side: 'right', color: EW.chaos }),
-  );
-}
-
-function PlayerScoreSide({ name, mode, player, side, color }) {
-  const isRight = side === 'right';
-  const mono = '"DotGothic16", monospace';
-
-  const sub = player === 1 ? mode.p1Sub : mode.p2Sub;
-
-  const showTower = mode.showTowerHp;
-  const towerHp = player === 1 ? mode.p1TowerHp : mode.p2TowerHp;
-  const towerMax = player === 1 ? mode.p1TowerMax : mode.p2TowerMax;
-  const towerPct = towerMax > 0 ? (towerHp / towerMax) * 100 : 0;
-
-  const towerColor = towerPct > 50 ? EW.good : towerPct > 25 ? EW.warn : EW.bad;
-
-  return h('div', { style: {
-    width: 140, padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 3,
-  }},
-
-    h('div', { style: {
-      display: 'flex', alignItems: 'center', gap: 5,
-      justifyContent: isRight ? 'flex-end' : 'flex-start',
-    }},
-      !isRight && h('span', { style: {
-        width: 4, height: 4, background: color, borderRadius: '50%',
-        boxShadow: '0 0 6px ' + color, flexShrink: 0,
-      }}),
-      h('span', { style: {
-        fontFamily: mono, fontSize: 9, letterSpacing: '0.14em',
-        color: EW.ink, fontWeight: 600,
-      }}, name),
-      isRight && h('span', { style: {
-        width: 4, height: 4, background: color, borderRadius: '50%',
-        boxShadow: '0 0 6px ' + color, flexShrink: 0,
-      }}),
-    ),
-
-    showTower && towerMax > 0
-
-      ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 }},
-          h('div', { style: {
-            height: 3, background: 'rgba(255,255,255,0.06)', position: 'relative',
-          }},
-            h('div', { style: {
-              position: 'absolute', top: 0, bottom: 0,
-              [isRight ? 'right' : 'left']: 0,
-              width: towerPct + '%',
-              background: 'linear-gradient(' + (isRight ? '-90deg' : '90deg') + ', ' + towerColor + ', ' + towerColor + '88)',
-              boxShadow: '0 0 6px ' + towerColor + '55',
-            }}),
-          ),
-          h('div', { style: {
-            fontFamily: mono, fontSize: 7, color: EW.inkDim,
-            letterSpacing: '0.1em',
-            textAlign: isRight ? 'right' : 'left',
-          }}, '🏰 ' + towerHp + '/' + towerMax),
-        )
-
-      : sub != null && h('div', { style: {
-          display: 'flex', alignItems: 'center', gap: 4,
-          justifyContent: isRight ? 'flex-end' : 'flex-start',
-        }},
-          h('span', { style: {
-            fontFamily: mono, fontSize: 8, color: EW.inkMute,
-            letterSpacing: '0.1em',
-          }}, sub),
-          h('span', { style: {
-            fontFamily: mono, fontSize: 6, color: EW.inkDim,
-            letterSpacing: '0.16em',
-          }}, mode.subLabel),
-        ),
+    h(ScoreSideColumn, { st, mode, player: 2, side: 'right', color: EW.chaos }),
   );
 }
 
@@ -618,119 +773,8 @@ function MatchMeta({ st }) {
   );
 }
 
-function TurnOrder({ st }) {
-  if (!st || !st.phase || st.phase !== 'battle') return null;
-
-  const units = st.units || [];
-  const activeId = st._blitzActiveUnitId;
-  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const alive = units.filter(u => !u.dead);
-
-  const G = window.GAME;
-  const orderIds = (G && G.blitzTurnOrderIds) ? G.blitzTurnOrderIds : null;
-  let sorted;
-  if (orderIds && orderIds.length) {
-
-    const aliveMap = {};
-    for (const u of alive) aliveMap[u.id] = u;
-    sorted = orderIds.map(id => aliveMap[id]).filter(Boolean);
-  } else {
-    sorted = [...alive].sort((a, b) => {
-      if (a.id === activeId) return -1;
-      if (b.id === activeId) return 1;
-      return (b.spd || 0) - (a.spd || 0);
-    });
-  }
-
-  const queue = sorted.map(u => ({
-    id: u.id,
-    name: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
-    unit: u,
-    active: u.id === activeId,
-    enemy: u.player !== viewer,
-    finished: typeof unitFinished === 'function' ? unitFinished(u) : false,
-  }));
-
-  const pending = queue.filter(e => !e.finished || e.active);
-  const totalAlive = queue.length;
-  const remaining = pending.length;
-
-  if (queue.length === 0) return null;
-
-  return h('div', { style: {
-    position: 'absolute', top: 70, right: 12, width: 68,
-    display: 'flex', flexDirection: 'column', gap: 4,
-    alignItems: 'stretch', zIndex: 10,
-  }},
-
-    h('div', { style: {
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      padding: '5px 6px', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', gap: 3,
-    }},
-      h('div', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 7,
-        letterSpacing: '0.2em', color: EW.inkMute,
-      }}, 'TURN ORDER'),
-      h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 3,
-        fontFamily: '"DotGothic16", monospace', fontSize: 10,
-        color: EW.time, fontWeight: 600,
-      }},
-        h('span', { style: {
-          width: 5, height: 5, background: EW.time, borderRadius: '50%',
-          boxShadow: '0 0 6px ' + EW.time,
-          animation: 'pulse 1.4s infinite',
-        }}),
-        h('span', null, remaining + '/' + totalAlive),
-      ),
-    ),
-
-    h('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 }},
-      pending.slice(0, 8).map(entry => {
-        const u = entry.unit;
-        const ac = getAllianceColor(u);
-        const isEnemy = entry.enemy;
-        const playerTag = 'P' + (u.player || 1);
-        return h('div', {
-          key: entry.id,
-          style: {
-            position: 'relative',
-            background: entry.active
-              ? 'linear-gradient(180deg, ' + ac + '33, rgba(0,0,0,0.4))'
-              : 'rgba(8,10,18,0.62)',
-            border: '1px solid ' + (entry.active ? ac : (isEnemy ? ENEMY_COLOR + '30' : ALLY_COLOR + '30')),
-            padding: '3px 3px 4px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            transition: 'all 0.3s ease',
-          },
-        },
-          entry.active && h('div', { style: {
-            position: 'absolute', top: 0, bottom: 0, left: 0, width: 2,
-            background: ac, boxShadow: '0 0 8px ' + ac,
-          }}),
-
-          h('div', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 7,
-            color: '#000', fontWeight: 700, letterSpacing: '0.06em',
-            background: ac, padding: '0px 4px', lineHeight: '11px',
-            alignSelf: 'stretch', textAlign: 'center',
-          }}, playerTag),
-          h(UnitSprite, { unit: u, size: 46, glow: entry.active }),
-          entry.active
-            ? h('span', { style: {
-                fontFamily: '"Cinzel", serif', fontStyle: 'italic',
-                fontSize: 10, color: ac, letterSpacing: '0.04em', lineHeight: 1,
-              }}, 'NOW')
-            : h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 7,
-                color: EW.inkMute, letterSpacing: '0.06em',
-              }}, 'SPD ' + (u.spd || 0)),
-        );
-      }),
-    ),
-  );
-}
+/* The old right-side TURN ORDER clock is gone — its turn-queue is now folded
+   into the scoreboard flanks (see ScoreSideColumn / TurnFlank above). */
 
 function CombatLog({ st }) {
   if (!st) return null;
@@ -875,112 +919,28 @@ function CombatLog({ st }) {
   );
 }
 
+/* The viewer's party is now shown in the scoreboard turn-order flank, so the
+   old bottom-right roster is gone. This panel survives only to surface Gauntlet
+   RESERVES (units not yet deployed), which the scoreboard can't represent. */
 function PartyRoster({ st }) {
   if (!st) return null;
 
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const party = (st.units || []).filter(u => u.player === viewer && !u.dead);
 
-  const activeId = st._blitzActiveUnitId;
-
-  if (party.length === 0) return null;
+  const isGaunt = typeof _isGauntlet === 'function' && _isGauntlet();
+  if (!isGaunt) return null;
+  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(viewer) : [];
 
   return h('div', { style: {
-    position: 'absolute', bottom: 12, right: 12, width: 400,
+    position: 'absolute', bottom: 12, right: 12,
     display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10,
   }},
 
-    h('div', { style: {
-      display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end',
-      fontFamily: '"DotGothic16", monospace', fontSize: 8, color: EW.inkMute,
-      letterSpacing: '0.14em',
-    }},
-      h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px',
-        background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      }},
-        h('span', null, 'ZOOM'),
-        h('span', { style: { color: EW.ink, fontWeight: 600 }},
-          typeof getUserZoomScale === 'function'
-            ? (getUserZoomScale() || 1).toFixed(1) + '×'
-            : '1.0×'
-        ),
-      ),
-    ),
-
-    h('div', { style: {
-      display: 'grid', gridTemplateColumns: 'repeat(' + Math.min(party.length, 4) + ', 1fr)',
-      gap: 5, background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      padding: '8px',
-      clipPath: 'polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px)',
-    }},
-      party.map(p => {
-        const fc = getFactionColor(p);
-        const tc = getTypeColor(p);
-        const isActive = p.id === activeId;
-        const hpPct = p.maxHp > 0 ? (p.hp / p.maxHp) * 100 : 0;
-        const mpPct = p.maxMp > 0 ? (p.mp / p.maxMp) * 100 : 0;
-        const slot = p._partySlot || 1;
-        const roman = ['I','II','III','IV','V','VI','VII','VIII'][slot - 1] || slot;
-
-        return h('div', {
-          key: p.id,
-          style: {
-            position: 'relative', padding: '6px 6px 5px',
-            background: isActive
-              ? 'linear-gradient(180deg, ' + fc + '26, rgba(0,0,0,0.4))'
-              : 'rgba(0,0,0,0.35)',
-            border: '1px solid ' + (isActive ? fc : EW.panelEdge),
-            display: 'flex', flexDirection: 'column', gap: 4,
-            cursor: 'pointer',
-          },
-          onClick: () => {
-            if (typeof selectUnit === 'function') selectUnit(p.id);
-          },
-        },
-          isActive && h('div', { style: {
-            position: 'absolute', top: 0, bottom: 0, left: 0, width: 2,
-            background: fc, boxShadow: '0 0 8px ' + fc,
-          }}),
-          h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 6 }},
-            h(UnitSprite, { unit: p, size: 26 }),
-            h('div', { style: { flex: 1, minWidth: 0 }},
-              h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3 }},
-                h('span', { style: {
-                  fontFamily: '"Cinzel", serif', fontSize: 10,
-                  color: isActive ? fc : EW.inkDim, fontStyle: 'italic', lineHeight: 1,
-                }}, roman),
-                h('span', { style: {
-                  fontFamily: '"Cinzel", serif', fontSize: 12,
-                  color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}, typeof unitDisplayName === 'function' ? unitDisplayName(p) : (p.name || p.cls)),
-              ),
-              h('div', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 7,
-                color: EW.inkMute, letterSpacing: '0.08em', marginTop: 1,
-              }}, (p.cls || '').toUpperCase()),
-              h('div', { style: { display: 'flex', gap: 2, marginTop: 1 }},
-                h('span', { style: { width: 4, height: 4, background: fc, borderRadius: '50%' }}),
-                h('span', { style: { width: 4, height: 4, background: tc, borderRadius: '50%' }}),
-              ),
-            ),
-          ),
-          h('div', { style: { display: 'flex', flexDirection: 'column', gap: 1 }},
-            h(HudBar, { label: 'HP', val: p.hp, max: p.maxHp, color: p.hp <= (p.maxHp * 0.3) ? EW.bad : EW.good, small: true }),
-            h(HudBar, { label: 'MP', val: p.mp, max: p.maxMp, color: EW.space, small: true }),
-          ),
-        );
-      }),
-    ),
-
     (() => {
-      const isGaunt = typeof _isGauntlet === 'function' && _isGauntlet();
-      const reserves = isGaunt && typeof _gauntletReserves === 'function' ? _gauntletReserves(viewer) : [];
-      if (!isGaunt) return null;
       return h('div', { style: {
         display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end',
         background: EW.panel, border: '1px solid ' + EW.panelEdge, padding: '5px 8px',
+        clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)',
       }},
         h('span', { style: {
           fontFamily: '"DotGothic16", monospace', fontSize: 7, color: EW.inkMute,
@@ -3603,9 +3563,6 @@ function ReactHUD() {
     h('div', { style: { pointerEvents: 'auto' }},
       h(MatchMeta, { st }),
     ),
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(TurnOrder, { st }),
-    ),
     h(CombatLog, { st }),
     h('div', { style: { pointerEvents: 'auto' }},
       h(ActionMenu, { st }),
@@ -3971,6 +3928,21 @@ function _injectHudHideStyles() {
     .hud-juice-flash { animation: hudJuiceFlash 0.3s ease-out forwards; }
     .hud-juice-ripple { animation: hudJuiceRipple 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
     .hud-juice-ring { animation: hudJuiceRing 0.32s ease-out forwards; }
+
+    /* ── Unified scoreboard: turn-order flank chips + polish ── */
+    .ew-turn-chip {
+      transition: opacity .3s ease, filter .3s ease, transform .18s cubic-bezier(.22,1,.36,1);
+    }
+    .ew-turn-chip:hover { transform: translateY(-2px); filter: brightness(1.18) !important; }
+    .ew-turn-chip-active { animation: ewTurnActive 1.7s ease-in-out infinite; }
+    @keyframes ewTurnActive {
+      0%, 100% { filter: brightness(1.0); }
+      50%      { filter: brightness(1.15); }
+    }
+    .ew-sudden-death { animation: ewSuddenBlink 1s steps(1, end) infinite; }
+    @keyframes ewSuddenBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .ew-scoreboard-sheen { animation: ewSheen 5s ease-in-out infinite; }
+    @keyframes ewSheen { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
     /* Hide Sky Shader debug GUI */
     .lil-gui.root { display: none !important; }
