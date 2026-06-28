@@ -6336,18 +6336,31 @@
             const leadFrac = Math.min(1, CINE_FOCAL_LEAD_TILES / len);
             const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
             const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
-            const elevZ = casterPx + (tgtPx - casterPx) * leadFrac + ts * CINE_FOCAL_RISE;
+            // FOCAL HEIGHT: the height blend may only ever pull screen-centre DOWN
+            // toward a below-caster target — never UP toward an above-caster one.
+            // A higher target would otherwise lift screen-centre above the caster's
+            // head and sink the caster (our 3rd-person subject) off the bottom of
+            // the frame. Clamping the blend to ≤ 0 keeps the caster pinned at the
+            // SAME screen height whether the target is above, level, or below.
+            // (No-op when the target is level/below — those cases already had a
+            // ≤ 0 blend — so only the caster-below-target case changes.)
+            const elevBlend = Math.min(0, (tgtPx - casterPx) * leadFrac);
+            const elevZ = casterPx + elevBlend + ts * CINE_FOCAL_RISE;
 
-            // PITCH: the camera always rides CINE_SHOULDER_ANGLE degrees above the
+            // PITCH: the camera rides CINE_SHOULDER_ANGLE degrees above the
             // caster→target line and looks down across it (tilt = 90 + lineSlope −
-            // shoulder), at FULL strength and UNCLAMPED — so a target BELOW the
-            // caster (slope < 0) cranes the camera DOWN to look at it, and a target
-            // ABOVE cranes it UP. The angle relative to the line never changes, so
-            // the perspective is the same every cast. Wide guard vs degenerate flip.
+            // shoulder) — so a target BELOW the caster cranes the camera DOWN. But
+            // we NEVER let it crane UP past the even-elevation pitch (90 − shoulder):
+            // craning up to chase a target ABOVE the caster drops the foreground
+            // caster off the bottom of the frame and destroys the 3rd-person view.
+            // Capping the up-pitch at the even-elevation value makes the
+            // caster-below-target shot frame the caster exactly like the even and
+            // caster-above shots. (Floor guard still blocks a degenerate flip.)
+            const _evenTilt = 90 - CINE_SHOULDER_ANGLE;
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
+                Math.min(_evenTilt, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
 
             // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
             // so the caster is the same big size on any board / viewport), eased
