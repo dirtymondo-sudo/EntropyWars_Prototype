@@ -287,6 +287,19 @@ const ThreeRenderer = (function () {
     }
     var _userTintCache = {};
 
+    /* Material cache key fragment for the active per-terrain editor tints.
+       buildBoxMaterials/_buildBeveledMaterials cache materials by terrain key,
+       but the tint is multiplied on at build time (_evTintMat). Without folding
+       the tint into the cache key, changing a tint returned the stale (untinted)
+       cached material and the map never updated. Include the top/side tint hex so
+       a tint change yields a fresh cache entry — and rebuilds tinted materials. */
+    function _tintKeyPart(topKey, sideKey) {
+        var t = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
+        if (!t) return '';
+        var a = t[topKey] || '', b = t[sideKey || topKey] || '';
+        return (a || b) ? '|t:' + a + ':' + b : '';
+    }
+
     function _lerp(a, b, t) { return a + (b - a) * t; }
     function _hLevelAt(x, y) {
         if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) || 0;
@@ -410,7 +423,7 @@ const ThreeRenderer = (function () {
     var _bevelMatCache = new Map();
     function _buildBeveledMaterials(topKey, sideKey) {
         var evp = _evPaletteActive();
-        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
+        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_') + _tintKeyPart(topKey, sideKey);
         if (_bevelMatCache.has(ck)) return _bevelMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
         var sideTex = getTerrainTexture(sideKey || topKey);
@@ -1164,7 +1177,7 @@ const ThreeRenderer = (function () {
 
     function buildBoxMaterials(topKey, sideKey) {
         var evp = _evPaletteActive();
-        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_');
+        var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_') + _tintKeyPart(topKey, sideKey);
         if (_terrainMatCache.has(ck)) return _terrainMatCache.get(ck);
         var topTex = getTerrainTexture(topKey);
         var sideTex = getTerrainTexture(sideKey || topKey);
