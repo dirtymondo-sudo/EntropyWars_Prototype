@@ -6219,8 +6219,12 @@
         // selectUnit; for auto-controlled sides the camera simply keeps
         // following the next action from the cinematic framing.
         // ═══════════════════════════════════════════════════════════════════
-        // A consistent, slightly-downward third-person pitch (Fortnite/Skyrim
-        // style). LOW tilt = looking down, HIGH = level / looking up.
+        // Baseline third-person pitch on FLAT ground (caster and target at the
+        // same height). The live tilt rides a CONSTANT angle above the
+        // caster→target sightline, so 90 − CINE_CAM_TILT (= 30°) is the fixed
+        // "relative-to-the-caster" angle the camera keeps on every cast; the
+        // absolute tilt then bends with the elevation difference.
+        // LOW tilt = looking down, HIGH = level / looking up.
         const CINE_CAM_TILT = 60;
         const CINE_CAM_YAW_OFFSET = 16;
         // The cinematic shot anchors to the CASTER: a fixed number of tiles fill
@@ -6252,11 +6256,10 @@
             camera._cineShotUnitId = sourceUnit.id;
 
             const sx = sourceUnit.x, sy = sourceUnit.y;
-            const dx = target.x - sx;
-            const dy = target.y - sy;
-            const dist = Math.max(1, Math.abs(dx) + Math.abs(dy));
+            const tx = target.x, ty = target.y;
+            const dx = tx - sx;
+            const dy = ty - sy;
             const len = Math.max(1, Math.hypot(dx, dy));
-            const dirx = dx / len, diry = dy / len;
 
             // Camera sits BEHIND the caster looking toward the target (matches
             // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
@@ -6265,18 +6268,12 @@
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            // Focal ANCHORED on the caster, nudged a FIXED (distance-
-            // independent) amount toward the target so the caster always sits in
-            // the same spot in the lower foreground. This is the "anchor the
-            // camera to the unit" the third-person look needs — the framing no
-            // longer swings around with how far away the target happens to be.
-            const fx = sx + dirx * CINE_FOCAL_LEAD;
-            const fy = sy + diry * CINE_FOCAL_LEAD;
-
             const ts = CONFIG.tileSize || 128;
-            // Anchor the shot to the CASTER's own elevation (flyers use their
-            // airborne z) so the framing is identical whether the caster stands
-            // on the ground or hovers in the sky.
+
+            // Caster + target world elevations (px). A flyer reports its airborne
+            // z; a plain {x,y} TILE target falls back to that tile's ground height
+            // (via _unitElevZ), so tile-targeted spells focus the tile exactly
+            // like a unit target.
             let casterPx = 0, tgtPx = 0;
             if (typeof window._getElevationPx === 'function') {
                 const cz = _unitElevZ(sourceUnit);
@@ -6284,17 +6281,30 @@
                 casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
-            const elevZ = casterPx + ts * 0.55 + ts * CINE_HEADROOM;
 
-            // Tilt: a near-constant slightly-downward third-person pitch, only
-            // GENTLY nudged by the line-of-fire slope (firing up at a flyer eases
-            // toward level, firing down from height eases lower) and held in a
-            // tight band so the point of view stays consistent shot to shot.
-            const slopeDeg = Math.atan2(tgtPx - casterPx, dist * ts) * (180 / Math.PI);
-            const tilt = Math.max(52, Math.min(70, CINE_CAM_TILT + slopeDeg * 0.35));
+            // FOCUS = the target/tile itself, at its OWN elevation. The renderer
+            // aims the camera dead at this focal point, so the target lands in the
+            // SAME screen spot on every cast no matter how high the caster or the
+            // target is. (The old rig anchored the focal on the caster + a forward
+            // and upward "lead", which shoved the target — and the whole impact —
+            // off the bottom of the frame.)
+            const fx = tx, fy = ty;
+            const elevZ = tgtPx + ts * 0.40;
+
+            // DYNAMIC pitch. The camera holds a CONSTANT angle (90 − CINE_CAM_TILT
+            // = 30°) above the real caster→target sightline, so the look is
+            // identical RELATIVE to the caster every time while the absolute tilt
+            // bends with the elevation gap: it cranes DOWN when a flyer casts onto
+            // the ground and UP when a grounded unit strikes something overhead.
+            // No tight band — the tilt goes wherever the geometry demands so the
+            // target can never slide out of frame; the only guard is a wide one to
+            // stop a degenerate flip straight through the nadir/zenith.
+            const horiz = Math.max(ts * 0.5, len * ts);
+            const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
+            const tilt = Math.max(5, Math.min(130, CINE_CAM_TILT + slopeDeg));
 
             // Map-size-independent zoom: a fixed number of tiles fill the view,
-            // so the caster is the SAME apparent size on an 8×8 or a 36×30 board.
+            // so the framing is the SAME on an 8×8 or a 36×30 board.
             const zoom = _cineZoomForTiles(CINE_VISIBLE_TILES, tilt);
 
             camera.moveTo({
@@ -6304,21 +6314,20 @@
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // Gentle dolly down-range as the attack fires so the shot has life,
-            // while keeping the caster anchored (focal slides only ~1 tile and
-            // the zoom barely tightens — the POV doesn't lurch).
+            // Gentle push-IN as the attack fires so the shot breathes — tighten
+            // the zoom a touch while keeping the focal LOCKED on the target (no
+            // focal slide that could drag the impact out of frame).
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
-            const lead2 = CINE_FOCAL_LEAD + 0.9;
             window.setTimeout(() => {
 
-                // Only dolly if this shot still owns the camera — a restore,
+                // Only push in if this shot still owns the camera — a restore,
                 // reset, or unit-selection pan may have taken over meanwhile.
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
-                    x: sx + dirx * lead2, y: sy + diry * lead2,
-                    zoom: zoom * 1.05, tilt, yaw, elevZ,
+                    x: fx, y: fy,
+                    zoom: zoom * 1.08, tilt, yaw, elevZ,
                     duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
                     easing: 'easeOut',
                     _allowZoomChange: true, _bypassCap: true,
@@ -6384,7 +6393,13 @@
             // tilt: LOW = looking down, HIGH = near-horizontal / looking up.
             const ESTAB_TILT  = CINE_CAM_TILT;  // over-the-shoulder on the caster
             const SKY_TILT    = 84;             // tilt up to watch the body fall in
-            const GROUND_TILT = 54;             // tilt back down onto the impact
+            // GROUND beat resolves onto the impact TILE at the SAME dynamic,
+            // caster-relative angle the action cam uses (constant 30° above the
+            // caster→impact sightline), so the impact lands in the same screen
+            // spot whether the caster is on the floor or hovering in the sky.
+            const groundSlopeDeg = Math.atan2(groundPx - casterPx,
+                Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
+            const GROUND_TILT = Math.max(5, Math.min(130, CINE_CAM_TILT + groundSlopeDeg));
 
             // Establishing beat anchors on the CASTER (same map-size-independent
             // third-person framing as the action cam), nudged toward the impact.
