@@ -3450,7 +3450,19 @@ function SubMenuPanel({ title, fc, count, wide, children }) {
       }}, count),
     ),
 
-    h('div', { style: { padding: '4px 0', maxHeight: wide ? 440 : 340, overflowY: 'auto' }}, children),
+    h('div', { style: {
+      padding: '4px 0', maxHeight: wide ? 440 : 340,
+      // overflowY:'auto' alone makes the browser compute overflow-x to 'auto'
+      // too. The hover "pop" (transform: scale(1.02) on .rhud-target/.rhud-row)
+      // makes a row a few px wider than the panel, which would then spawn a
+      // horizontal scrollbar → the scrollbar steals layout space → the row
+      // reflows out from under the cursor → :hover drops → scale reverts →
+      // scrollbar vanishes → re-hover … an infinite flicker loop that made
+      // targets nearly impossible to click. Pin overflow-x hidden and reserve
+      // the vertical scrollbar gutter so a hover-scale can never toggle either
+      // scrollbar and reflow the list.
+      overflowY: 'auto', overflowX: 'hidden', scrollbarGutter: 'stable',
+    }}, children),
 
     h('div', { style: {
       padding: '4px 12px 8px', borderTop: '1px solid ' + EW.panelEdge,
