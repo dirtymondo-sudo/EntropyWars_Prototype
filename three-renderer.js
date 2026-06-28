@@ -5887,6 +5887,207 @@ const ThreeRenderer = (function () {
     }
     function _applyConcealment(vp) { _updateEnemyConcealment(); }
 
+    // ════════════════════════════════════════════════════════════════════
+    // ACTION-CAM OCCLUSION FADE
+    // While a cinematic over-the-shoulder / sky-strike shot is live (the camera
+    // drops in low behind the caster and aims at the target), terrain tiles and
+    // map props that sit BETWEEN the camera and the caster (or the target) are
+    // faded toward near-invisible — so a dirt block or a tree can't swallow the
+    // screen and hide what's actually going on. The moment the shot ends, or an
+    // occluder is no longer in the line of sight, it smoothly fades back to full.
+    //
+    // The shot publishes its caster (camera._cineShotUnitId) and target
+    // (camera._cineShotTarget) from battle.js; we cast a small bundle of rays
+    // from the camera eye to each subject and fade whatever the rays hit short
+    // of the subject. Fading uses a per-mesh cloned material (the originals are
+    // shared across many tiles, so we must never mutate them) restored on exit.
+    // ════════════════════════════════════════════════════════════════════
+    var _occFaded = new Map();   // occluder root Object3D -> { meshes:[mesh], op:Number }
+    var _occRaycaster = null;
+    var _occVecA = null, _occVecB = null, _occRight = null, _occUp = null, _occDir = null;
+    var _occLastTime = 0;
+    var OCC_FADE_TARGET = 0.10;  // how see-through an occluder becomes (0 = invisible)
+    var OCC_FADE_RATE   = 9.0;   // smoothing rate for the fade in/out (per second)
+
+    function _occInit() {
+        if (_occRaycaster) return;
+        _occRaycaster = new THREE.Raycaster();
+        _occVecA = new THREE.Vector3();
+        _occVecB = new THREE.Vector3();
+        _occRight = new THREE.Vector3();
+        _occUp = new THREE.Vector3();
+        _occDir = new THREE.Vector3();
+    }
+
+    /* A direct child of one of these containers is treated as a single occluder
+       (so a whole tree fades together, but only the ONE blocking decoration
+       fades — not every grass tuft on the board). */
+    function _occIsContainer(o) {
+        return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup;
+    }
+    function _occRootOf(obj) {
+        var o = obj;
+        while (o && o.parent && !_occIsContainer(o.parent)) o = o.parent;
+        return (o && o.parent && _occIsContainer(o.parent)) ? o : null;
+    }
+
+    /* World point we want kept clear for a unit: roughly its torso (midway
+       between the ground and the top of the sprite). */
+    function _occUnitPoint(unit) {
+        if (!unit) return null;
+        var ue = unitEntries.get(unit.id);
+        if (ue && ue.group) {
+            ue.group.getWorldPosition(_occVecA);
+            var ts = CONFIG.tileSize || 128;
+            var topY = (ue.group._ew_spriteTopY != null) ? ue.group._ew_spriteTopY : (_occVecA.y + ts * 0.85);
+            return _occVecB.set(_occVecA.x, (_occVecA.y + topY) * 0.5, _occVecA.z).clone();
+        }
+        return _occTilePoint(unit.x, unit.y);
+    }
+    function _occTilePoint(tx, ty) {
+        var ts = CONFIG.tileSize || 128;
+        var y = ts * 0.6;
+        if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
+            var h = getHeightAt(Math.round(tx), Math.round(ty));
+            if (h > 0) y = window._getElevationPx(h) + ts * 0.6;
+        }
+        return new THREE.Vector3(tx * ts + ts / 2, y, ty * ts + ts / 2);
+    }
+
+    function _occCloneMat(m) {
+        var c = m.clone();
+        c.transparent = true;
+        c.depthWrite = false;
+        c.opacity = (m.opacity != null ? m.opacity : 1);
+        c._ew_occClone = true;
+        return c;
+    }
+    function _occApplyFade(mesh) {
+        if (mesh._ew_occOrig) return;          // already swapped
+        mesh._ew_occOrig = mesh.material;
+        mesh.material = Array.isArray(mesh.material)
+            ? mesh.material.map(_occCloneMat)
+            : _occCloneMat(mesh.material);
+    }
+    function _occSetOpacity(mesh, op) {
+        var m = mesh.material;
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) m[i].opacity = op; }
+        else if (m) m.opacity = op;
+    }
+    function _occRestore(mesh) {
+        if (!mesh._ew_occOrig) return;
+        var cur = mesh.material;
+        mesh.material = mesh._ew_occOrig;
+        mesh._ew_occOrig = null;
+        if (Array.isArray(cur)) { for (var i = 0; i < cur.length; i++) if (cur[i] && cur[i]._ew_occClone) cur[i].dispose(); }
+        else if (cur && cur._ew_occClone) cur.dispose();
+    }
+    function _occCollect(root) {
+        var arr = [];
+        root.traverse(function (o) { if (o.isMesh && o.material) arr.push(o); });
+        return arr;
+    }
+
+    /* Roots that block the line of sight to the caster or target this frame. */
+    function _occComputeBlockers(cam) {
+        var roots = new Set();
+        var groups = [];
+        if (terrainGroup) groups.push(terrainGroup);
+        if (objectGroup) groups.push(objectGroup);
+        if (!groups.length) return roots;
+
+        var subs = [];
+        var caster = _unitById.get(camera._cineShotUnitId);
+        if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); }
+        var tgt = camera._cineShotTarget;
+        if (tgt) {
+            var tUnit = (tgt.id != null) ? _unitById.get(tgt.id) : null;
+            var tp = (tUnit && !tUnit.dead) ? _occUnitPoint(tUnit) : _occTilePoint(tgt.x, tgt.y);
+            if (tp) subs.push(tp);
+        }
+        if (!subs.length) return roots;
+
+        cam.updateMatrixWorld();
+        var eye = cam.position;
+        _occRight.setFromMatrixColumn(cam.matrixWorld, 0).normalize();
+        _occUp.setFromMatrixColumn(cam.matrixWorld, 1).normalize();
+        var ts = CONFIG.tileSize || 128;
+        var jit = ts * 0.45;           // spread to catch a big block just off the centre line
+        var nearClear = ts * 0.5;      // stop short of the subject so its own tile isn't faded
+
+        for (var s = 0; s < subs.length; s++) {
+            var P = subs[s];
+            for (var q = 0; q < 5; q++) {
+                // centre ray + four spread around the subject in screen space
+                _occVecA.copy(P);
+                if (q === 1) _occVecA.addScaledVector(_occRight, jit);
+                else if (q === 2) _occVecA.addScaledVector(_occRight, -jit);
+                else if (q === 3) _occVecA.addScaledVector(_occUp, jit);
+                else if (q === 4) _occVecA.addScaledVector(_occUp, -jit);
+
+                _occDir.subVectors(_occVecA, eye);
+                var dist = _occDir.length();
+                if (dist <= nearClear + 1) continue;
+                _occDir.multiplyScalar(1 / dist);
+                _occRaycaster.set(eye, _occDir);
+                _occRaycaster.near = 0;
+                _occRaycaster.far = dist - nearClear;
+                var hits = _occRaycaster.intersectObjects(groups, true);
+                for (var hi = 0; hi < hits.length; hi++) {
+                    var r = _occRootOf(hits[hi].object);
+                    if (r) roots.add(r);
+                }
+            }
+        }
+        return roots;
+    }
+
+    function _updateActionCamOcclusion() {
+        var cam = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
+        var active = !!(cam && typeof state !== 'undefined' && state.phase === 'battle'
+            && typeof camera !== 'undefined' && camera && camera._cineShotId != null
+            && state.cinematicActionCam && typeof THREE !== 'undefined');
+
+        if (!active && _occFaded.size === 0) return;   // nothing to do
+        _occInit();
+
+        var now = performance.now() / 1000;
+        var dt = _occLastTime > 0 ? Math.min(now - _occLastTime, 0.05) : 0.016;
+        _occLastTime = now;
+
+        var want = active ? _occComputeBlockers(cam) : null;
+
+        // Begin fading any newly-blocking root.
+        if (want) {
+            want.forEach(function (root) {
+                if (_occFaded.has(root)) return;
+                var meshes = _occCollect(root);
+                for (var i = 0; i < meshes.length; i++) _occApplyFade(meshes[i]);
+                _occFaded.set(root, { meshes: meshes, op: 1.0 });
+            });
+        }
+
+        // Step every tracked root toward its target opacity; restore finished ones.
+        var k = Math.min(1, OCC_FADE_RATE * dt);
+        var done = [];
+        _occFaded.forEach(function (rec, root) {
+            if (!root.parent) {            // rebuilt/removed out from under us
+                for (var j = 0; j < rec.meshes.length; j++) _occRestore(rec.meshes[j]);
+                done.push(root); return;
+            }
+            var blocking = want && want.has(root);
+            var tgt = blocking ? OCC_FADE_TARGET : 1.0;
+            rec.op += (tgt - rec.op) * k;
+            if (Math.abs(rec.op - tgt) < 0.012) rec.op = tgt;
+            for (var i = 0; i < rec.meshes.length; i++) _occSetOpacity(rec.meshes[i], rec.op);
+            if (!blocking && rec.op >= 0.999) {
+                for (var j2 = 0; j2 < rec.meshes.length; j2++) _occRestore(rec.meshes[j2]);
+                done.push(root);
+            }
+        });
+        for (var d = 0; d < done.length; d++) _occFaded.delete(done[d]);
+    }
+
     function _applyFogVisibility(visible) {
         if (!state.fogOfWar) {
 
@@ -10535,6 +10736,7 @@ const ThreeRenderer = (function () {
         }
 
         _updateEnemyConcealment();
+        _updateActionCamOcclusion();
 
         if (typeof renderIfDirty === 'function') renderIfDirty();
         var hlKey = _computeHlKey();

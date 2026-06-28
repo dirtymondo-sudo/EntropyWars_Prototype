@@ -6298,6 +6298,9 @@
             }
             camera._cineShotId = sequenceId;
             camera._cineShotUnitId = sourceUnit.id;
+            // Published for the renderer's occlusion fade — terrain/props between
+            // the camera and these two subjects go see-through during the shot.
+            camera._cineShotTarget = { x: target.x, y: target.y, id: (target && target.id != null ? target.id : null) };
 
             const sx = sourceUnit.x, sy = sourceUnit.y;
             const tx = target.x, ty = target.y;
@@ -6417,6 +6420,8 @@
             }
             camera._cineShotId = sequenceId;
             camera._cineShotUnitId = sourceUnit.id;
+            // Published for the renderer's occlusion fade (see _playCineActionShot).
+            camera._cineShotTarget = { x: target.x, y: target.y, id: (target && target.id != null ? target.id : null) };
 
             const sx = sourceUnit.x, sy = sourceUnit.y;
             const tx = target.x, ty = target.y;
