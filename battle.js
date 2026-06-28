@@ -6220,18 +6220,32 @@
         // following the next action from the cinematic framing.
         // ═══════════════════════════════════════════════════════════════════
         // Baseline third-person pitch on FLAT ground (caster and target at the
-        // same height). The live tilt rides a CONSTANT angle above the
-        // caster→target sightline, so 90 − CINE_CAM_TILT (= 30°) is the fixed
-        // "relative-to-the-caster" angle the camera keeps on every cast; the
-        // absolute tilt then bends with the elevation difference.
-        // LOW tilt = looking down, HIGH = level / looking up.
-        const CINE_CAM_TILT = 60;
-        const CINE_CAM_YAW_OFFSET = 16;
-        // The cinematic shot anchors to the CASTER: a fixed number of tiles fill
-        // the view so the caster is the SAME apparent size regardless of board
-        // size (8×8 or 36×30), and the focal sits on the caster nudged a fixed
-        // amount toward the target so it reads as an over-the-shoulder shot.
-        const CINE_VISIBLE_TILES = 4.6;   // caster framing size (map-independent)
+        // same height). In this engine LOW tilt ≈ top-down and HIGH tilt swings
+        // to a near-horizontal over-the-shoulder view — a real third-person shot
+        // lives up around ~108 (matches the hand-framed reference: tilt 109,
+        // zoom 2.5), NOT the old top-down 60. The live tilt then bends a little
+        // off this baseline with the caster→target elevation slope: DOWN toward
+        // top-down when a flyer casts onto the ground, UP when a grounded unit
+        // strikes something overhead — held in a band that always stays a good
+        // shot (never craning into 90 %-sky).
+        const CINE_CAM_TILT      = 108;   // flat-ground over-the-shoulder pitch
+        const CINE_TILT_MIN      = 78;    // most top-down (flyer firing straight down)
+        const CINE_TILT_MAX      = 122;   // most upward (striking a high target)
+        const CINE_TILT_GAIN     = 0.8;   // how hard the pitch tracks the slope
+        const CINE_CAM_YAW_OFFSET = 16;   // swing off-axis → caster sits to one side
+        // Subject SIZE is set by an absolute zoom (tiles are a fixed pixel size,
+        // so this is the same on any board / viewport — the caster always reads
+        // the same big, close size). It eases back a touch as the caster and
+        // target get farther apart so a long-range target stays in frame.
+        const CINE_BASE_ZOOM     = 2.5;   // close third-person framing (reference)
+        const CINE_MIN_ZOOM      = 1.5;   // pulled-back cap for long-range casts
+        const CINE_ZOOM_FALLOFF  = 0.13;  // zoom lost per tile of caster→target gap
+        // The focal (screen centre) sits just ahead of the CASTER toward the
+        // target, so the caster fills the lower-foreground and the target reads
+        // up-ahead — the Skyrim/Fortnite "character anchored, world beyond" look.
+        const CINE_FOCAL_FRAC    = 0.30;  // 0 = on caster, 1 = on target
+        const CINE_FOCAL_RISE    = 0.35;  // focal height above the feet (× tile)
+        // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
         const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
 
@@ -6282,36 +6296,36 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            // Third-person framing (Skyrim / Fortnite): the CASTER is the
-            // anchored foreground subject — held slightly off to one side by the
-            // yaw offset — while the camera looks down-range at the target. The
-            // focal (screen centre) sits between the two, leaning toward the
-            // target, so the caster reads in the lower foreground and the target
-            // sits up-ahead near centre. Blending the focal ELEVATION the same way
-            // keeps BOTH on screen when their heights differ.
-            const FOCAL_FRAC = 0.55;           // 0 = on caster, 1 = on target
-            const fx = sx + dx * FOCAL_FRAC;
-            const fy = sy + dy * FOCAL_FRAC;
-            const elevZ = casterPx + (tgtPx - casterPx) * FOCAL_FRAC + ts * 0.30;
+            // ── Everything below is RELATIVE to the caster→target geometry, so
+            // the SHOT looks identical every cast no matter where on the board the
+            // two units stand or which way they face. (Absolute tilt/yaw/focal
+            // numbers move with them; the relationship between camera, caster and
+            // target does not.)
 
-            // DYNAMIC pitch. The camera holds a CONSTANT angle (90 − CINE_CAM_TILT
-            // = 30°) above the real caster→target sightline, so the POV is
-            // identical RELATIVE to the caster every time while the absolute tilt
-            // bends with the elevation gap: it cranes DOWN when a flyer casts onto
-            // the ground and UP when a grounded unit strikes something overhead.
-            // Wide guard only, to stop a degenerate flip through nadir/zenith.
+            // FOCAL (screen centre): just ahead of the caster toward the target,
+            // so the caster fills the lower-foreground and the target reads up-
+            // ahead — anchored to the CASTER, not floating between them. Height
+            // leans the same fraction toward the target and rises a touch off the
+            // feet to frame the bodies, not the dirt.
+            const fx = sx + dx * CINE_FOCAL_FRAC;
+            const fy = sy + dy * CINE_FOCAL_FRAC;
+            const elevZ = casterPx + (tgtPx - casterPx) * CINE_FOCAL_FRAC + ts * CINE_FOCAL_RISE;
+
+            // PITCH relative to the line between the two units: on flat ground the
+            // shot is the reference over-the-shoulder pitch (CINE_CAM_TILT); the
+            // elevation slope then bends it the SAME way every time — toward top-
+            // down as the caster rises above the target, upward as the target
+            // rises above the caster — clamped to a band that always stays a good
+            // third-person shot (no 90 %-sky, no through-the-floor flip).
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
-            const tilt = Math.max(5, Math.min(130, CINE_CAM_TILT + slopeDeg));
+            const tilt = Math.max(CINE_TILT_MIN,
+                Math.min(CINE_TILT_MAX, CINE_CAM_TILT + slopeDeg * CINE_TILT_GAIN));
 
-            // Zoom frames the WHOLE caster→target span (3-D, so a big height gap
-            // counts too) plus margin, so NEITHER the caster nor the target is ever
-            // cropped — not a fixed tight box. This is the fix for "too zoomed in,
-            // can't see the caster". Map-size independent.
-            const elevDeltaTiles = Math.abs(tgtPx - casterPx) / ts;
-            const span3D = Math.hypot(len, elevDeltaTiles);
-            const visibleTiles = Math.max(6.5, Math.min(16.0, span3D + 3.5));
-            const zoom = _cineZoomForTiles(visibleTiles, tilt);
+            // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
+            // so the caster is the same big size on any board / viewport), eased
+            // back only as the gap grows so a distant target still fits.
+            const zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt, yaw, elevZ,
@@ -6397,15 +6411,11 @@
             }
 
             // tilt: LOW = looking down, HIGH = near-horizontal / looking up.
-            const ESTAB_TILT  = CINE_CAM_TILT;  // over-the-shoulder on the caster
-            const SKY_TILT    = 84;             // tilt up to watch the body fall in
-            // GROUND beat resolves onto the impact TILE at the SAME dynamic,
-            // caster-relative angle the action cam uses (constant 30° above the
-            // caster→impact sightline), so the impact lands in the same screen
-            // spot whether the caster is on the floor or hovering in the sky.
-            const groundSlopeDeg = Math.atan2(groundPx - casterPx,
-                Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
-            const GROUND_TILT = Math.max(5, Math.min(130, CINE_CAM_TILT + groundSlopeDeg));
+            // (The sky-strike cam keeps its own tuned beat tilts, independent of
+            // the action-cam baseline, so meteors behave exactly as before.)
+            const ESTAB_TILT  = 60;  // over-the-shoulder on the caster
+            const SKY_TILT    = 84;  // tilt up to watch the body fall in
+            const GROUND_TILT = 54;  // tilt back down onto the impact
 
             // Establishing beat anchors on the CASTER (same map-size-independent
             // third-person framing as the action cam), nudged toward the impact.
