@@ -6245,6 +6245,11 @@ const ThreeRenderer = (function () {
         if (!subs.length) return roots;
 
         cam.updateMatrixWorld();
+        // THREE.Sprite.raycast() needs raycaster.camera set, otherwise it throws
+        // "Raycaster.camera needs to be set in order to raycast against sprites."
+        // The terrain/object groups can contain sprites (props, markers), so give
+        // the occlusion raycaster a camera before intersecting against them.
+        _occRaycaster.camera = cam;
         var eye = cam.position;
         _occRight.setFromMatrixColumn(cam.matrixWorld, 0).normalize();
         _occUp.setFromMatrixColumn(cam.matrixWorld, 1).normalize();
