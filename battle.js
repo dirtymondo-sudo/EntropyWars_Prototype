@@ -3151,19 +3151,25 @@
             return true;
         }
 
-        /* ── Can ANY living enemy currently see `unit`? Mirrors the renderer's
-           vision rules (fog-of-war awareness, vision wards, smoke + Invisible
-           concealment). One enemy spotting you is enough. Drives the nameplate
-           eye icon (open = seen, closed = hidden) and gates Recall. */
+        /* ── Can ANY living enemy currently see `unit`? Uses the SAME vision the
+           fog renderer uses — isInVision(): per-unit vision range, line-of-sight
+           (LOS_ONLY / terrain + height blocking), team vision, wards and towers —
+           rather than a flat Manhattan approximation. That matters because a unit
+           exposed on high ground is seen across the map by line-of-sight even
+           when it's beyond an enemy's raw awareness radius. Invisibility / smoke
+           concealment hides the unit first (isUnitConcealedFrom). One enemy
+           spotting you is enough. Drives the nameplate eye icon (open = seen,
+           closed = hidden) and gates Recall. */
         function isUnitSeenByAnyEnemy(unit) {
             if (!unit || unit.dead) return false;
-            const enemyPlayers = new Set();
-            for (const u of state.units) {
-                if (u.dead || u.player === unit.player) continue;
-                enemyPlayers.add(u.player);
-            }
-            for (const p of enemyPlayers) {
-                if (_isUnitVisibleToViewer(unit, p)) return true;
+            for (const f of state.units) {
+                if (f.dead || f.player === unit.player) continue;   // enemies only
+                if (isUnitConcealedFrom(unit, f.player)) continue;  // cloaked/smoked → this enemy can't see us
+                if (typeof isInVision === 'function') {
+                    if (isInVision(f, unit.x, unit.y)) return true;
+                } else if (!state.fogOfWar) {
+                    return true;
+                }
             }
             return false;
         }
