@@ -711,6 +711,20 @@ const TERRAIN_SPRITES = {
     // New terrain sprites (aluminium + checkerboard floor)
     aluminium:        [`${_T}/aluminium.png`],
     checkerboard:     [`${_T}/checkerboard.png`],
+
+    // New terrain sprites (2026-06 R2 batch — dungeon / flesh / drywall + metal_3)
+    dungeon:          [`${_T}/dungeon.png`],
+    dungeon_2:        [`${_T}/dungeon_2.png`],
+    dungeon_3:        [`${_T}/dungeon_3.png`],
+    dungeon_4:        [`${_T}/dungeon_4.png`],
+    flesh:            [`${_T}/flesh.png`],
+    flesh_2:          [`${_T}/flesh_2.png`],
+    flesh_3:          [`${_T}/flesh_3.png`],
+    drywall:          [`${_T}/drywall.png`],
+    drywall_2:        [`${_T}/drywall_2.png`],
+    drywall_3:        [`${_T}/drywall_3.png`],
+    drywall_4:        [`${_T}/drywall_4.png`],
+    metal_3:          [`${_T}/metal_3.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {

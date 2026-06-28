@@ -5872,6 +5872,19 @@
             'leaves_5',
             'aluminium',
             'checkerboard',
+            // 2026-06 R2 batch — append-only (indices are saved-map grid ids)
+            'dungeon',
+            'dungeon_2',
+            'dungeon_3',
+            'dungeon_4',
+            'flesh',
+            'flesh_2',
+            'flesh_3',
+            'drywall',
+            'drywall_2',
+            'drywall_3',
+            'drywall_4',
+            'metal_3',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -5935,7 +5948,9 @@
         const ME_PALETTE_CATS = [
             { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rubble_1','rubble_2','rubble_3','rubble_4'] },
-            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper'] },
+            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4'] },
+            { label: 'Dungeon', keys: ['dungeon','dungeon_2','dungeon_3','dungeon_4'] },
+            { label: 'Flesh', keys: ['flesh','flesh_2','flesh_3'] },
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
             { label: 'Water', keys: ['water','deep_water','bridge','ice'] },
             { label: 'Lava', keys: ['lava'] },
@@ -6126,10 +6141,12 @@
             /* The flat ground shown on a fresh tile is a render-time "for show"
                base (see _meSyncToState): the voxel column is actually empty. Lay
                that ground down for REAL (z0) before stacking a block above it, so
-               the base layer doesn't vanish the moment you build on top of it. */
+               the base layer doesn't vanish the moment you build on top of it.
+               Use the terrain being PAINTED (not the old ground) so a raised tile
+               is a solid pillar of its own texture top-to-bottom — otherwise its
+               sides render with whatever terrain was underneath. */
             if (z > 0 && !col.some(b => b.z === 0)) {
-                const baseTid = (_meGrid?.[y]?.[x]) || ((typeof ME_TERRAIN_TO_ID !== 'undefined' && ME_TERRAIN_TO_ID['grass']) || 1);
-                col.push({ z: 0, tid: baseTid });
+                col.push({ z: 0, tid });
             }
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) {
