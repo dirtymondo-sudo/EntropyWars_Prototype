@@ -1881,6 +1881,11 @@ const ThreeRenderer = (function () {
                             var rH = rTopY - rBottomY;
                             if (rH < 0.5) continue;
 
+                            /* 'void' bands are empty space (the editor fills the gap
+                               between authored voxels with void) — render nothing so the
+                               gap is actually open. */
+                            if (run.terrain && run.terrain.indexOf('void') === 0) continue;
+
                             /* Every band renders as a solid cube of its OWN terrain on
                                every face (top AND sides). A genuine stacked-terrain
                                column therefore shows each layer as its own cube — no

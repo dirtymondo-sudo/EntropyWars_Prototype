@@ -1836,7 +1836,10 @@
                         const topZ = sorted[sorted.length - 1].z;
                         const existingZ = new Set(sorted.map(b => b.z));
                         const filled = [];
-                        const baseTerrain = sorted[0].terrain;
+                        /* Editor: fill gaps with 'void' (air) so a block painted
+                           several levels above leaves a real gap; real maps solidify
+                           with the base terrain. (Matches fillVoxelsDown.) */
+                        const baseTerrain = (state.phase === 'editor') ? 'void' : sorted[0].terrain;
                         for (let z = 0; z <= topZ; z++) {
                             if (existingZ.has(z)) {
                                 filled.push(sorted.find(b => b.z === z));
@@ -1884,10 +1887,15 @@
                     const topZ = col[col.length - 1].z;
                     if (topZ <= 0) continue;
                     const existingZ = new Set(col.map(b => b.z));
-                    const baseTerrain = col[0].terrain || 'grass';
+                    /* In the editor, fill the gap between authored voxels with 'void'
+                       (air) instead of the base terrain, so painting a block several
+                       levels up leaves an actual empty gap rather than a solid tower of
+                       the z0 terrain. The renderer skips void bands. Real (non-editor)
+                       maps still solidify with the base terrain as before. */
+                    const fillTerrain = (state.phase === 'editor') ? 'void' : (col[0].terrain || 'grass');
                     for (let z = 0; z <= topZ; z++) {
                         if (!existingZ.has(z)) {
-                            col.push({ z, terrain: baseTerrain });
+                            col.push({ z, terrain: fillTerrain });
                         }
                     }
                     col.sort((a, b) => a.z - b.z);
