@@ -8922,8 +8922,14 @@
                            layer (never the one beneath it). _meSetVoxel replaces a
                            block already at that Z and creates one otherwise. */
                         _meSetVoxel(x, y, _meActiveZ, tid);
+                        /* Like the paint tool: make each tile's WHOLE column the
+                           selected terrain so every block is one solid texture on
+                           all sides, not just the active-Z cap over older layers. */
+                        const _fcol = _meVoxels[y][x];
+                        for (let _bi = 0; _bi < _fcol.length; _bi++) _fcol[_bi].tid = tid;
                     }
                 }
+                _meSyncVoxelsToLegacy();
             }
             _meRenderGrid();
         };
