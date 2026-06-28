@@ -3586,7 +3586,7 @@ const SPELL_LIBRARY = [
             duration: 1
         }],
         sneakBonus: true,
-        desc: 'A devastating close-range slash from the shadows. Deals +50% damage if attacking from behind (adjacent + target already acted this round).'
+        desc: 'A devastating close-range slash from the shadows. Deals +50% damage when cast while invisible.'
     },
 
     {

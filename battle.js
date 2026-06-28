@@ -1517,6 +1517,12 @@
                 if (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') {
                     damage = Math.floor(damage * 1.5);
                 }
+                /* Sneak Slash cast from invisibility (flag stamped in doSpell before
+                   the cast broke the cloak) lands an extra 50% ambush damage. */
+                if (spell.sneakBonus && unit._sneakStrikeBonus) {
+                    damage = Math.floor(damage * 1.5);
+                    addLog(`🗡️ ${unitDisplayName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
+                }
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -1532,6 +1538,9 @@
 
             // Post-effects (chargeToTarget, swap, selfStun)
             _runPostEffects(unit, spell, target);
+
+            // Ambush bonus is one-shot — consume it after the hit resolves.
+            delete unit._sneakStrikeBonus;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -3127,12 +3136,36 @@
 
             if (!invisible && !smokeHidden) return false;
 
-            /* Adjacency reveal — any living viewer unit within 1 tile spots them. */
-            for (const f of state.units) {
-                if (f.dead || f.player !== viewer) continue;
-                if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) return false;
+            /* Adjacency reveal applies to SMOKE concealment only: a viewer's unit
+               within 1 tile spots a smoke-hidden enemy. The Invisible *status* is
+               NOT broken merely by the invisible unit stepping next to an enemy — it
+               only breaks when an ENEMY moves adjacent (handled permanently by
+               checkStealthReveals) or when the invisible unit attacks/casts. So an
+               invisible unit can walk right up to a foe and stay hidden. */
+            if (smokeHidden && !invisible) {
+                for (const f of state.units) {
+                    if (f.dead || f.player !== viewer) continue;
+                    if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) return false;
+                }
             }
             return true;
+        }
+
+        /* ── Can ANY living enemy currently see `unit`? Mirrors the renderer's
+           vision rules (fog-of-war awareness, vision wards, smoke + Invisible
+           concealment). One enemy spotting you is enough. Drives the nameplate
+           eye icon (open = seen, closed = hidden) and gates Recall. */
+        function isUnitSeenByAnyEnemy(unit) {
+            if (!unit || unit.dead) return false;
+            const enemyPlayers = new Set();
+            for (const u of state.units) {
+                if (u.dead || u.player === unit.player) continue;
+                enemyPlayers.add(u.player);
+            }
+            for (const p of enemyPlayers) {
+                if (_isUnitVisibleToViewer(unit, p)) return true;
+            }
+            return false;
         }
 
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
@@ -3140,13 +3173,20 @@
            big on-screen banner once. Smoke concealment is NOT consumed here — it
            lifts only while an enemy is adjacent or when the smoke expires — so we
            only clear the Invisible *status*. Call this after any movement. */
-        function checkStealthReveals() {
+        function checkStealthReveals(movedUnit) {
             if (!state.units || !state.units.length) return;
             const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             for (const u of state.units) {
                 if (u.dead || !unitHasStatus(u, 'invisible')) continue;
+                /* An invisible unit is revealed only when an ENEMY moves adjacent to
+                   it — walking yourself up next to a foe does NOT blow your cover
+                   (only attacking/casting does). So when a specific unit just moved,
+                   only that mover can trigger a reveal, and never against itself.
+                   Legacy callers that pass no mover fall back to scanning everyone. */
+                if (movedUnit && u === movedUnit) continue;
+                const candidates = movedUnit ? [movedUnit] : state.units;
                 let revealer = null;
-                for (const f of state.units) {
+                for (const f of candidates) {
                     if (f.dead || f.player === u.player) continue;
                     if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= 1) { revealer = f; break; }
                 }
@@ -13975,7 +14015,7 @@
             getJumpTiles, canJump,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
-            isUnitConcealedFrom, checkStealthReveals,
+            isUnitConcealedFrom, isUnitSeenByAnyEnemy, checkStealthReveals,
             unitHasTelescope, getTelescopeSkyTargets,
 
             getTerrainAt, getTerrainRule, getEntranceAt, getHeightAt, getBaseHeightAt, getUnitStandingHeight,
@@ -15664,7 +15704,7 @@
                 destinationLabel: coordLabel(stopX, stopY)
             });
 
-            checkStealthReveals();
+            checkStealthReveals(unit);
 
             if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
 
@@ -16802,7 +16842,7 @@
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
             playSfx('moveStep');
-            checkStealthReveals();
+            checkStealthReveals(unit);
             const hDiff = z - fromZ;
 
             if (hDiff < 0 && typeof applyFallDamage === 'function') {
@@ -18675,6 +18715,14 @@
                 && !(window.ThreeVFXEffects && window.ThreeVFXEffects.hasBoulderProjectile
                      && window.ThreeVFXEffects.hasBoulderProjectile(spell.id))
                 && !_kindMeta(spell).noStrikeLeap;
+
+            /* Sneak Slash strikes far harder from concealment. Capture the cloak
+               state NOW, before casting breaks it below, so the bonus still lands. */
+            if (spell.sneakBonus && unitHasStatus(unit, 'invisible')) {
+                unit._sneakStrikeBonus = true;
+            } else {
+                delete unit._sneakStrikeBonus;
+            }
 
             if (unitHasStatus(unit, 'invisible') && _kindMeta(spell).breaksStealth) {
                 clearStatus(unit, 'invisible');

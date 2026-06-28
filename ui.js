@@ -4612,6 +4612,14 @@
                 return;
             }
 
+            /* Recall only works while hidden — you can't slip back to spawn while
+               an enemy has eyes on you (the nameplate eye icon shows this). */
+            if (typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit)) {
+                addLog(`${unitDisplayName(unit)} can't recall while spotted by the enemy.`);
+                playErrorSfx();
+                return;
+            }
+
             const zone = state.spawnZones?.[unit.player];
             const spawnIdx = unit._spawnIndex ?? 0;
             const tile = zone?.[spawnIdx];

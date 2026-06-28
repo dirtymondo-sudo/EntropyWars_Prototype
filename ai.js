@@ -3228,6 +3228,10 @@
         /* Don't recall if already in own spawn zone */
         if (typeof isInSpawnZone === 'function' && isInSpawnZone(unit.x, unit.y, unit.player)) return;
 
+        /* Recall only works while hidden from the enemy — don't even consider it
+           while spotted (doRecall would refuse anyway). */
+        if (typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit)) return;
+
         let score = g.getAIWeight('recallBonus_v1') + (1 - hpPct) * 25;
         if (mpPct < 0.2) score += 10;
 

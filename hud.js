@@ -1833,9 +1833,10 @@ function SubMenu({ st }) {
 
     /* Recall: teleport back to spawn zone */
     if (typeof RECALL_AP_COST !== 'undefined' && typeof RECALL_COOLDOWN_ROUNDS !== 'undefined') {
-      const canRecall = (unit.ap || 0) >= RECALL_AP_COST && (unit._recallCooldown || 0) <= 0;
+      const spotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit);
+      const canRecall = (unit.ap || 0) >= RECALL_AP_COST && (unit._recallCooldown || 0) <= 0 && !spotted;
       const cdLeft = unit._recallCooldown || 0;
-      const sub = cdLeft > 0 ? `CD: ${cdLeft}` : `${RECALL_AP_COST} AP`;
+      const sub = cdLeft > 0 ? `CD: ${cdLeft}` : (spotted ? 'Spotted' : `${RECALL_AP_COST} AP`);
       moreItems.push({
         label: '🔵 Recall',
         sub,

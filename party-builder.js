@@ -472,7 +472,7 @@ function pbSpellEffects(sp) {
   if (sp.damageType) m.push(sp.damageType === 'magic' ? 'Magic damage' : 'Physical damage');
   if (sp.ignoreArmor || sp.ignoresArmor || sp.bounceShieldIgnore) m.push('Ignores armor');
   if (sp.actedTargetBonus) m.push('+' + sp.actedTargetBonus + ' vs units that acted');
-  if (sp.sneakBonus) m.push('+' + sp.sneakBonus + ' from stealth');
+  if (sp.sneakBonus) m.push('+50% damage while invisible');
   if (sp.collisionBonus) m.push('+' + sp.collisionBonus + ' on collision');
   if (sp.lowHpBonus) m.push('+' + sp.lowHpBonus + ' heal on low-HP allies');
   if (sp.shieldCapPct) m.push('Shield capped at ' + Math.round(sp.shieldCapPct * 100) + '% max HP');

@@ -4202,6 +4202,15 @@ const ThreeRenderer = (function () {
             var mpBar = po.el.querySelector('.tp-bar-mp');
             var mpNum = mpBar ? mpBar.querySelector('.tp-bar-num') : null;
             if (mpNum) mpNum.textContent = u.mp + '/' + u.maxMp;
+
+            // Vision eye: open when any enemy can see this unit, closed/slashed
+            // when hidden. Recomputed each frame so it tracks movement/fog live.
+            var eyeEl = po.el.querySelector('[data-eye]');
+            if (eyeEl) {
+                var eyeSeen = (typeof isUnitSeenByAnyEnemy === 'function') ? isUnitSeenByAnyEnemy(u) : true;
+                eyeEl.classList.toggle('tp-eye-hidden', !eyeSeen);
+                eyeEl.title = eyeSeen ? 'Spotted — an enemy can see this unit' : 'Hidden — out of all enemy vision';
+            }
         }
         _lastUnitSerial = _computeUnitSerial();
     }
@@ -4517,6 +4526,22 @@ const ThreeRenderer = (function () {
                 '.tp-wrap .tp-lvl {',
                 '  color: #ffd866; margin-right: 5px; font-size: 11px; flex-shrink: 0;',
                 '}',
+                /* Vision eye: open = an enemy can see you; slashed/dim = hidden. */
+                '.tp-wrap .tp-eye {',
+                '  margin-left: 5px; font-size: 12px; line-height: 1; flex-shrink: 0;',
+                '  position: relative; color: #ffe08a;',
+                '  text-shadow: 0 0 4px rgba(255,180,80,0.7), 0 1px 2px #000;',
+                '}',
+                '.tp-wrap .tp-eye.tp-eye-hidden {',
+                '  color: #7fd8a0; opacity: 0.85;',
+                '  text-shadow: 0 0 4px rgba(60,160,100,0.6), 0 1px 2px #000;',
+                '}',
+                /* Diagonal slash across the eye when hidden. */
+                '.tp-wrap .tp-eye.tp-eye-hidden::after {',
+                '  content: ""; position: absolute; left: -2px; right: -2px; top: 50%;',
+                '  height: 2px; background: currentColor; border-radius: 1px;',
+                '  transform: rotate(-30deg); box-shadow: 0 0 3px rgba(0,0,0,0.9);',
+                '}',
 
                 /* Body = the single black panel holding the type badge column
                    (left) and the HP/MP bars (right) as one cohesive unit. */
@@ -4806,10 +4831,23 @@ const ThreeRenderer = (function () {
             if (badges.length) statusHtml = '<div class="tp-status-row">' + badges.join('') + '</div>';
         }
 
+        /* Vision eye — only on the viewer's own units: open when at least one
+           enemy can see this unit, closed/slashed when out of all enemy vision.
+           (Enemy plates only render when already visible, so an eye there would
+           be meaningless.) */
+        var eyeHtml = '';
+        if (_isAllyPlayer(unit.player)) {
+            var _seen = (typeof isUnitSeenByAnyEnemy === 'function') ? isUnitSeenByAnyEnemy(unit) : true;
+            eyeHtml = '<span class="tp-eye' + (_seen ? '' : ' tp-eye-hidden') + '" data-eye title="'
+                + (_seen ? 'Spotted — an enemy can see this unit' : 'Hidden — out of all enemy vision')
+                + '">👁</span>';
+        }
+
         wrap.innerHTML =
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
+                eyeHtml +
             '</div>' +
             '<div class="tp-body">' +
                 typeHtml +
