@@ -8533,6 +8533,13 @@
                 const tid = ME_TERRAIN_TO_ID[_meSelectedTerrain] || 1;
 
                 _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
+                /* Painting a tile makes the WHOLE vertical column that terrain, not
+                   just the visible top cap — a placed block is a solid pillar of one
+                   texture on every face, top to bottom. Height is controlled by the
+                   elevation tools (Raise / Lower / Set); paint only sets terrain. */
+                const _pcol = _meGetColumn(x, y);
+                for (let _bi = 0; _bi < _pcol.length; _bi++) _pcol[_bi].tid = tid;
+                _meSyncVoxelsToLegacy();
                 const rule = TERRAIN_RULES[_meSelectedTerrain];
                 if (rule && !rule.passable) {
                     _meSpawns[1] = _meSpawns[1].filter(s => !(s.x === x && s.y === y));
