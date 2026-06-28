@@ -788,6 +788,15 @@ const ThreeRenderer = (function () {
     var tileMeshes = new Map();
     var _lastTerrainVersion = -1, _lastHeightVersion = -1, _lastVoxelVersion = -1;
     var _lastBoardW = 0, _lastBoardH = 0;
+    // Tile size the terrain mesh was last built at. CONFIG.tileSize is the menu
+    // value (MENU_TILE) while a menu is open and the battle value (BASE_TILE)
+    // during a match. Because the renderer runs a continuous animation loop, a
+    // match started from a menu can flip the terrain version and rebuild while
+    // tileSize is still the menu value — baking a mis-scaled board that never
+    // rebuilds (units/camera use the battle size, so the board looks tiny and
+    // floats far away). Tracking the build-time size lets renderFrame force a
+    // full rebuild the instant the size changes. -1 = nothing built yet.
+    var _lastBuiltTileSize = -1;
 
     var _FLUID_TERRAIN_SET = { water: true, deep_water: true, lava: true };
     var _fluidTimeSec = 0;
@@ -1926,6 +1935,7 @@ const ThreeRenderer = (function () {
             }
         }
         _lastBoardW = _bw; _lastBoardH = _bh;
+        _lastBuiltTileSize = ts;
         _lastTerrainVersion = state._terrainVersion || 0;
         _lastHeightVersion = state._heightVersion || 0;
         _lastVoxelVersion = state._voxelVersion || 0;
@@ -10899,6 +10909,25 @@ const ThreeRenderer = (function () {
 
         _updateEnvironment();
 
+        // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
+        // entire board. The renderer's animation loop can otherwise rebuild the
+        // terrain at the menu size when a new match is started from a menu (the
+        // version flips before renderBoard switches CONFIG.tileSize to the battle
+        // size), leaving a tiny board that floats under the units and never
+        // rebuilds. Force a full rebuild of everything scale-dependent whenever
+        // the size changes. tileSize is constant within a battle, so on a normal
+        // frame this costs only the comparison below.
+        var _curTileSize = CONFIG.tileSize || BASE_TILE;
+        if (_lastBuiltTileSize !== -1 && _curTileSize !== _lastBuiltTileSize) {
+            _lastBoardW = 0; _lastBoardH = 0;
+            _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
+            _lastTerrainDecoSerial = '';
+            _lastObjectSerial = ''; _objectsDirty = true;
+            _lastTurretSerial = ''; _lastDeployableSerial = ''; _lastNexusSerial = '';
+            invalidateUnits();
+            _lastBuiltTileSize = _curTileSize;
+        }
+
         var tv = state._terrainVersion || 0, hv = state._heightVersion || 0, vv = state._voxelVersion || 0;
         if (tv !== _lastTerrainVersion || hv !== _lastHeightVersion || vv !== _lastVoxelVersion) rebuildTerrain();
         var tdSer = _computeTerrainDecoSerial();
@@ -11250,6 +11279,7 @@ const ThreeRenderer = (function () {
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
         _clearAnimations();
+        _lastBoardW = 0; _lastBoardH = 0; _lastBuiltTileSize = -1;
         initialized = false;
     }
 

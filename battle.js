@@ -11128,6 +11128,15 @@
                 camera.tilt = 50; camera.yaw = 0;
                 camera._smoothTilt = 50; camera._smoothYaw = 0;
             }
+            // When the match is started from a menu, CONFIG.tileSize is still the
+            // menu value (MENU_TILE). The 3D renderer runs continuously, so the
+            // terrain rebuild triggered by resetForNewMatch() below would bake the
+            // board at the menu scale before renderBoard() switches to the battle
+            // size — leaving a tiny board floating under full-size units. Switch to
+            // the battle tile size first so the rebuild uses the correct scale.
+            if (typeof computeBattleTileSize === 'function') {
+                CONFIG.tileSize = computeBattleTileSize();
+            }
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive &&
                 ThreeRenderer.isActive() && ThreeRenderer.resetForNewMatch) {
                 ThreeRenderer.resetForNewMatch();
