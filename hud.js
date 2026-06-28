@@ -1495,12 +1495,23 @@ function SubMenu({ st }) {
     const _isAvail = (sp) => {
       const cost = sp.cost || 0;
       const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
+      if (!canAfford) return false;
       const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
-      return canAfford && hasTarget;
+      // No target where it stands, but it could step into range and still cast
+      // this turn → keep it usable (move-then-cast), don't grey it out.
+      const canReach = !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+      return hasTarget || canReach;
+    };
+    // Memoize availability — _isAvail can run a move-into-range probe, and a
+    // sort comparator would otherwise call it O(n log n) times per spell.
+    const _availCache = new Map();
+    const _availOf = (sp) => {
+      if (!_availCache.has(sp)) _availCache.set(sp, _isAvail(sp));
+      return _availCache.get(sp);
     };
     allAbilities.sort((a, b) => {
-      const aAvail = _isAvail(a) ? 0 : 1;
-      const bAvail = _isAvail(b) ? 0 : 1;
+      const aAvail = _availOf(a) ? 0 : 1;
+      const bAvail = _availOf(b) ? 0 : 1;
       if (aAvail !== bAvail) return aAvail - bAvail;
       return (tierOrder[a.tier] || 0) - (tierOrder[b.tier] || 0);
     });
@@ -1522,7 +1533,11 @@ function SubMenu({ st }) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
         const canAfford = !isSilenced && tierOk && unit.mp >= cost && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
         const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
-        const canCast = canAfford && hasTarget;
+        // No target in range from here, but reachable by stepping into range and
+        // still casting this turn → castable via move-then-cast (not greyed).
+        const canReach = canAfford && !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+        const canCast = canAfford && (hasTarget || canReach);
+        const needsMove = canCast && !hasTarget && canReach;
         const active = am === 'spell' && st.selectedTool === sp.name;
 
         let spellReason = '';
@@ -1641,6 +1656,13 @@ function SubMenu({ st }) {
                   fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
                   color: EW.bad, flexShrink: 0,
                 }}, spellReason)
+              : needsMove
+              ? h('span', { style: {
+                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.1em',
+                  color: '#1a1206', background: '#ffcc44', border: '1px solid #ffcc44',
+                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
+                  boxShadow: '0 0 7px #ffcc4470',
+                }}, 'MOVE → CAST')
               : h('span', { style: {
                   fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
                   color: '#fff', background: delivery.color, border: '1px solid ' + delivery.color,

@@ -9397,6 +9397,301 @@
             );
         }
 
+        // ───────────────────────────────────────────────────────────────────
+        // Move-then-cast: ability-menu parity with the quick-action menu.
+        //
+        // A spell with no target in range FROM WHERE THE UNIT STANDS isn't
+        // necessarily unusable this turn — the unit may be able to step into
+        // range and still have the AP/MP to cast. These helpers compute that
+        // "reachable cast" so the ability menu keeps such spells enabled
+        // (instead of greying them) and a board click on an out-of-range enemy
+        // walks the unit into range and then casts. They deliberately mirror
+        // the quick-action menu's findMoveIntoRange (hud.js): up to the unit's
+        // remaining move budget (1–2 steps), requiring enough AP left AFTER
+        // moving to pay the spell's AP cost. Probing temporarily relocates the
+        // unit so we reuse the REAL range/LOS logic (getSpellRangeTiles /
+        // hasSpellTargetInRange), restoring its position in a finally block.
+
+        // Max move steps the unit can take this turn and still afford the cast.
+        function _spellMoveBudget(unit, spell) {
+            if (!unit || !spell) return 0;
+            if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
+            const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
+            if (movesLeft <= 0) return 0;
+            const apCost = getSpellApCost(spell);
+            // Each move step spends 1 AP (spendAP(unit, AP_COST_ACTION) in finishMove);
+            // we must keep apCost AP for the spell itself.
+            const apSteps = (unit.ap || 0) - apCost;
+            return Math.max(0, Math.min(movesLeft, apSteps));
+        }
+
+        // True when the unit could step into range this turn and cast `spell`
+        // on SOME valid target (used to keep the ability-menu entry enabled).
+        function spellHasReachableTarget(unit, spell) {
+            const steps = _spellMoveBudget(unit, spell);
+            if (steps <= 0) return false;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            try {
+                const ring1 = getMoveTiles(unit);
+                for (const t of ring1) {
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    if (hasSpellTargetInRange(unit, spell)) return true;
+                }
+                unit.x = sx; unit.y = sy; unit.z = sz;
+                if (steps >= 2) {
+                    for (const t1 of ring1) {
+                        if (unitAt(t1.x, t1.y, t1.z)) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                        const r2 = getMoveTiles(unit);
+                        for (const t2 of r2) {
+                            if (unitAt(t2.x, t2.y, t2.z)) continue;
+                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
+                            if (hasSpellTargetInRange(unit, spell)) return true;
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return false;
+        }
+
+        // Best tile the unit can reach this turn from which `spell` can hit the
+        // target at (tx,ty); null if none. Prefers 1 step over 2, then the tile
+        // FARTHEST from the target that still has it in range (kite/safety) —
+        // matching the quick-action menu's findMoveIntoRange.
+        function findSpellApproachTile(unit, spell, tx, ty, tz) {
+            const steps = _spellMoveBudget(unit, spell);
+            if (steps <= 0) return null;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const _hitsTarget = () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
+            let best = null, bestScore = -1;
+            try {
+                const ring1 = getMoveTiles(unit);
+                for (const t of ring1) {
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    if (_hitsTarget()) {
+                        const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = d; }
+                    }
+                }
+                unit.x = sx; unit.y = sy; unit.z = sz;
+                if (best) return best;
+                if (steps >= 2) {
+                    for (const t1 of ring1) {
+                        if (unitAt(t1.x, t1.y, t1.z)) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                        const r2 = getMoveTiles(unit);
+                        for (const t2 of r2) {
+                            if (unitAt(t2.x, t2.y, t2.z)) continue;
+                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
+                            if (_hitsTarget()) {
+                                const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
+                                if (d > bestScore) {
+                                    best = { x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2, via: { x: t1.x, y: t1.y, z: t1.z ?? sz } };
+                                    bestScore = d;
+                                }
+                            }
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return best;
+        }
+
+        // Walk `unit` to `approach` (1 or 2 steps) then cast the selected spell
+        // on (tx,ty). Sequencing mirrors the quick-action menu's executor: each
+        // doMove animates, we wait its walk delay, then issue the next step /
+        // the cast. doSpell reads state.selectedTool, and a move resets
+        // actionMode/selectedTool (resolveMovePath), so we re-assert them right
+        // before casting.
+        function _moveThenCast(unit, approach, spellName, tx, ty, tz) {
+            _clearSpellApproachPreview();
+            state._enemyActionTargetId = null;
+            state._actionExecuting = true;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+
+            const _bail = () => {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                markDirty('board', 'hud', 'selectedUnit');
+                renderIfDirty();
+            };
+            const _cast = () => {
+                // doSpell reads state.selectedTool, and the move above reset
+                // actionMode/selectedTool — re-assert before casting.
+                state.selectedTool = spellName;
+                state.actionMode = 'spell';
+                state._actionExecuting = true;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                clearSpellRangePreview();
+                // Inline of clickTile's _execAction (which is local to clickTile):
+                // run the cast, clear the executing flag on no-op, else arm the
+                // shared watchdog so a stuck flag can't freeze the turn.
+                let result;
+                try {
+                    result = doSpell(unit, tx, ty, tz);
+                } catch (e) {
+                    console.error('[_moveThenCast] cast threw:', e);
+                    state._actionExecuting = false;
+                    state.actionMode = null;
+                    scheduleBoardRender();
+                    return;
+                }
+                if (result === 0 || result === false) {
+                    state._actionExecuting = false;
+                    scheduleBoardRender();
+                } else {
+                    clearTimeout(state._actionExecutingWatchdog);
+                    state._actionExecutingWatchdog = setTimeout(() => {
+                        if (state._actionExecuting) {
+                            state._actionExecuting = false;
+                            if (state.phase === 'battle' && !state.winner) {
+                                markDirty('board', 'hud', 'selectedUnit');
+                                renderIfDirty();
+                            }
+                        }
+                    }, 8000);
+                }
+            };
+            const _step = (mx, my, mz, next) => {
+                const r = doMove(unit, mx, my, mz);
+                if (r === false) { _bail(); return; }
+                const delay = typeof r === 'number' ? r : 450;
+                setTimeout(next, delay);
+            };
+            if (approach.via) {
+                _step(approach.via.x, approach.via.y, approach.via.z, () => {
+                    _step(approach.x, approach.y, approach.z, _cast);
+                });
+            } else {
+                _step(approach.x, approach.y, approach.z, _cast);
+            }
+        }
+
+        // Called from clickTile when a spell is selected and the player clicks an
+        // out-of-range enemy: if the unit can step into range and afford the
+        // cast, do the move-then-cast and return true (caller stops). Restricted
+        // to clicking an enemy unit, matching the quick-action menu's offensive
+        // move-then-cast (heals/self-casts/empty far tiles are left untouched).
+        function _tryMoveThenCast(actingUnit, x, y, z, clickedUnit) {
+            if (!actingUnit || state.actionMode !== 'spell') return false;
+            if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
+            const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!spell || isSpellSelfCast(spell)) return false;
+            if (unitHasStatus(actingUnit, 'silence')) return false;
+            if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
+            const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
+            if ((actingUnit.mp || 0) < (spell.cost || 0) + mpPenalty) return false;
+            const approach = findSpellApproachTile(actingUnit, spell, x, y, z != null ? z : clickedUnit.z);
+            if (!approach) return false;
+            _moveThenCast(actingUnit, approach, spell.name, x, y, z != null ? z : clickedUnit.z);
+            return true;
+        }
+
+        // ── Hover preview for the move-then-cast (the "arrow to a tile in range
+        // then onto the target" the player sees when hovering an out-of-range
+        // enemy with a spell selected). Imperative, reusing the same ThreeRenderer
+        // primitives as the quick-action menu's _showMoveArrowPreview; fully
+        // guarded so a missing renderer just means "no arrow", never a crash.
+        function _clearSpellApproachPreview() {
+            state._spellApproachKey = null;
+            state._spellApproachTile = null;
+            if (!state._spellApproachActive) return; // nothing drawn → skip renderer churn
+            state._spellApproachActive = false;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit();
+                ThreeRenderer.clearOverlay('spellApproachMove');
+                ThreeRenderer.clearOverlay('spellApproachTarget');
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        function _drawSpellApproachPreview(unit, approach, tx, ty) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit();
+                const actingY = ThreeRenderer.unitSurfaceY(unit);
+                const targetY = ThreeRenderer.tileTopY(tx, ty);
+
+                let destY;
+                if (typeof canFly === 'function' && canFly(unit)
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                    const ts = CONFIG.tileSize || BASE_TILE;
+                    const curGnd = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
+                    const clearance = (unit.z || 0) - curGnd;
+                    const destGnd = typeof getHeightAt === 'function' ? getHeightAt(approach.x, approach.y) : 0;
+                    const destZ = destGnd + clearance;
+                    const destElev = (typeof window._getElevationPx === 'function') ? window._getElevationPx(destZ) : destZ * ts;
+                    destY = Math.max(ts * 0.04, destElev);
+                } else {
+                    destY = ThreeRenderer.tileTopY(approach.x, approach.y);
+                }
+
+                if (approach.via) {
+                    const viaY = ThreeRenderer.tileTopY(approach.via.x, approach.via.y);
+                    ThreeRenderer.drawArrow3D(unit.x, unit.y, approach.via.x, approach.via.y, 0xffcc44, true, actingY, viaY);
+                    ThreeRenderer.drawArrow3D(approach.via.x, approach.via.y, approach.x, approach.y, 0xffcc44, true, viaY, destY);
+                    ThreeRenderer.setOverlay('spellApproachMove', [
+                        { x: approach.via.x, y: approach.via.y, color: 0xffcc44, opacity: 0.3 },
+                        { x: approach.x, y: approach.y, color: 0xffcc44, opacity: 0.45 },
+                    ], 0xffcc44, 0.45);
+                } else {
+                    ThreeRenderer.drawArrow3D(unit.x, unit.y, approach.x, approach.y, 0xffcc44, true, actingY, destY);
+                    ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: 0xffcc44, opacity: 0.45 }], 0xffcc44, 0.45);
+                }
+                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY);
+                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff4444, false, destY, targetY);
+                ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                state._spellApproachActive = true;
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        // Returns true while showing an approach preview for hovering (x,y) with a
+        // spell selected. Dedups on the hovered tile + selected tool so the 1–2
+        // move probe only recomputes when the cursor changes tiles.
+        function _spellApproachHoverPreview(unit, x, y) {
+            if (!unit || state.actionMode !== 'spell') { _clearSpellApproachPreview(); return false; }
+            const enemy = unitAt(x, y);
+            if (!enemy || enemy.dead || enemy.player === unit.player) { _clearSpellApproachPreview(); return false; }
+            const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
+                || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!spell || isSpellSelfCast(spell)) { _clearSpellApproachPreview(); return false; }
+            const k = x + ',' + y + '|' + state.selectedTool;
+            if (state._spellApproachKey === k) return !!state._spellApproachTile;
+            state._spellApproachKey = k;
+            state._spellApproachTile = null;
+            const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(unit) : 0;
+            if (unitHasStatus(unit, 'silence')
+                || (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell))
+                || (unit.mp || 0) < (spell.cost || 0) + mpPenalty) {
+                _clearSpellApproachPreview(); state._spellApproachKey = k; return false;
+            }
+            const approach = findSpellApproachTile(unit, spell, x, y, enemy.z);
+            if (!approach) { _clearSpellApproachPreview(); state._spellApproachKey = k; return false; }
+            state._spellApproachTile = approach;
+            _drawSpellApproachPreview(unit, approach, x, y);
+            scheduleBoardRender();
+            return true;
+        }
+
         function getViewerPlayer() {
 
             if (window._NET && window._NET.online && window._NET.myPlayer) return window._NET.myPlayer;
@@ -14496,7 +14791,12 @@
                         validTargets = spell ? _getSpellValidTargets(unit, spell) : [];
                     }
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
-                    if (!isValidTarget) return false;
+                    if (!isValidTarget) {
+                        // Out of range → show the "move into range then cast" arrow
+                        // (the preview helper no-ops for non-spell modes / non-enemy tiles).
+                        _spellApproachHoverPreview(unit, x, y);
+                        return false;
+                    }
                 }
             }
 
@@ -14513,12 +14813,16 @@
                             if (!inRange) {
 
                                 clearAoePreview();
+                                _spellApproachHoverPreview(unit, x, y);
                                 return false;
                             }
                         }
                     }
                 }
             }
+
+            // Hovering a castable tile → drop any stale move-then-cast arrow.
+            if (state._spellApproachKey || state._spellApproachTile) _clearSpellApproachPreview();
 
             const next = {
                 x,
@@ -14551,6 +14855,7 @@
                 }
             }
             if (!_isSelfCast) clearAoePreview();
+            _clearSpellApproachPreview();
             return true;
         }
 
@@ -14808,6 +15113,10 @@
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
                     if (!isValidTarget) {
 
+                        // Out of cast range, but the unit may be able to step into
+                        // range and still cast this turn → walk there, then cast.
+                        if (_tryMoveThenCast(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
+
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                         addLog('Target is no longer valid.', actingUnit.player);
@@ -14836,6 +15145,10 @@
                     const rangeTiles = getSpellRangeTiles(actingUnit, spell);
                     const inRange = rangeTiles.some(t => t.x === x && t.y === y);
                     if (!inRange) {
+
+                        // Out of cast range, but the unit may be able to step into
+                        // range and still cast this turn → walk there, then cast.
+                        if (_tryMoveThenCast(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
 
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
