@@ -6226,16 +6226,19 @@
         // tilt/yaw numbers move, because they are derived from the live
         // caster→target geometry.
         //
-        // PITCH rides a CONSTANT angle relative to the caster→target LINE, so the
-        // shot looks the same whether the target is level, up on a ledge, or a
-        // flyer is raining down onto the ground. It is CINE_FLAT_TILT + the
-        // line's elevation slope, at FULL strength and UNCLAMPED: when the target
-        // is below the caster the slope is negative and the camera cranes DOWN;
-        // when above, it cranes UP. The hand-framed reference (target ~2 levels
-        // up) landed at tilt ≈ 109 — this reproduces that, while a flat-ground
-        // shot sits at a gentle, slightly-downward ~77. (In this engine LOW tilt
-        // ≈ looking down, HIGH ≈ level / looking up.)
-        const CINE_FLAT_TILT      = 77;   // pitch when the line is level; + slope per cast
+        // PITCH is defined purely by the RIG, never by a screenshot number: the
+        // camera always rides CINE_SHOULDER_ANGLE degrees ABOVE the caster→target
+        // line and looks down across it (a standard over-the-shoulder TPS). That
+        // single angle is the ONLY constant; the actual tilt is then whatever the
+        // live geometry makes it —
+        //     tilt = 90 + lineSlope − CINE_SHOULDER_ANGLE
+        // — at FULL strength and UNCLAMPED. Flyer above the target → the line
+        // slopes down → the camera cranes DOWN to follow it; target up on a ledge
+        // → the line slopes up → the camera cranes UP. The angle BETWEEN camera
+        // and line never changes, so the perspective is identical every cast no
+        // matter the heights. (In this engine LOW tilt ≈ looking down, HIGH ≈
+        // level / looking up.)
+        const CINE_SHOULDER_ANGLE = 14;   // degrees the camera rides above the line
         const CINE_TILT_GUARD_MIN = 10;   // wide guard — only blocks a degenerate flip
         const CINE_TILT_GUARD_MAX = 160;
         const CINE_CAM_YAW_OFFSET = 16;   // swing off-axis → caster sits to one side
@@ -6245,12 +6248,15 @@
         const CINE_BASE_ZOOM     = 2.5;
         const CINE_MIN_ZOOM      = 1.5;
         const CINE_ZOOM_FALLOFF  = 0.12;
-        // Focal (screen centre) rides the caster→target LINE, leaning toward the
-        // target so the target reads centre and the caster fills the foreground.
-        // Crucially its HEIGHT is blended along that same line, so a tall
+        // Focal (screen centre) sits a FIXED short distance in front of the
+        // caster, down the line toward the target. Because the lead is a fixed
+        // number of TILES — not a fraction of the gap — the caster holds the SAME
+        // foreground position whether the target is 2 tiles away or 12, so it can
+        // never slide off-screen the way a "% of the way to the target" focal did.
+        // Its HEIGHT is blended the same fixed amount along the line so a tall
         // elevation gap never parks screen-centre up in the empty sky.
-        const CINE_FOCAL_FRAC    = 0.58;  // 0 = on caster, 1 = on target
-        const CINE_FOCAL_RISE    = 0.40;  // focal height above the line (× tile)
+        const CINE_FOCAL_LEAD_TILES = 1.4;  // tiles in front of the caster (fixed)
+        const CINE_FOCAL_RISE       = 0.5;  // focal height above the line (× tile)
         // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
         const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
@@ -6308,26 +6314,29 @@
             // numbers move with them; the relationship between camera, caster and
             // target does not.)
 
-            // FOCAL (screen centre): rides the caster→target LINE, leaning toward
-            // the target so the target reads at CENTRE (the TPS "crosshair") and
-            // the caster fills the foreground off to one side. Its HEIGHT is
-            // blended along the SAME line — so when the caster is high above the
-            // target the focal drops with it instead of parking screen-centre up
-            // in the empty sky (the bug in the Succubus shot).
-            const fx = sx + dx * CINE_FOCAL_FRAC;
-            const fy = sy + dy * CINE_FOCAL_FRAC;
-            const elevZ = casterPx + (tgtPx - casterPx) * CINE_FOCAL_FRAC + ts * CINE_FOCAL_RISE;
+            // FOCAL (screen centre): a FIXED short distance IN FRONT of the caster
+            // down the line to the target — NOT a fraction of the gap. This is the
+            // fix for the caster flying off-screen: a fixed lead keeps the caster
+            // pinned to the same foreground spot no matter how far away the target
+            // is, so the camera can never sail past it. Its HEIGHT is blended the
+            // same fixed amount along the line, so a tall elevation gap never parks
+            // screen-centre up in the empty sky.
+            const dirx = dx / len, diry = dy / len;
+            const leadFrac = Math.min(1, CINE_FOCAL_LEAD_TILES / len);
+            const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
+            const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
+            const elevZ = casterPx + (tgtPx - casterPx) * leadFrac + ts * CINE_FOCAL_RISE;
 
-            // PITCH: a CONSTANT angle relative to the caster→target line. On level
-            // ground that is CINE_FLAT_TILT; the line's elevation slope then bends
-            // it the SAME amount every time, at FULL strength and UNCLAMPED — so
-            // a target BELOW the caster (slope < 0) cranes the camera DOWN to look
-            // at it, and a target ABOVE cranes it UP, keeping the target centred
-            // either way. The only guard is a wide one against a degenerate flip.
+            // PITCH: the camera always rides CINE_SHOULDER_ANGLE degrees above the
+            // caster→target line and looks down across it (tilt = 90 + lineSlope −
+            // shoulder), at FULL strength and UNCLAMPED — so a target BELOW the
+            // caster (slope < 0) cranes the camera DOWN to look at it, and a target
+            // ABOVE cranes it UP. The angle relative to the line never changes, so
+            // the perspective is the same every cast. Wide guard vs degenerate flip.
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, CINE_FLAT_TILT + slopeDeg));
+                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
 
             // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
             // so the caster is the same big size on any board / viewport), eased
