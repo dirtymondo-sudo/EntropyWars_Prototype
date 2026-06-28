@@ -7165,7 +7165,8 @@ const STATUS_DEFS = {
             applyDamageToUnit(unit, 24, `Burn sears ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,
                 damageType: 'dot',
-                consumeMarked: false
+                consumeMarked: false,
+                flashColor: 'burn'
             });
         }
     },
@@ -7186,7 +7187,8 @@ const STATUS_DEFS = {
             applyDamageToUnit(unit, 32, `Poison harms ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,
                 damageType: 'dot',
-                consumeMarked: false
+                consumeMarked: false,
+                flashColor: 'poison'
             });
         }
     },
@@ -7279,12 +7281,22 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('🌊', '#0a2540', '#c8e8ff', '#4a9eff'),
         onRoundEnd(unit) {
             if (unitIsDeepWaterAdapted(unit)) return;
+            // A unit only keeps drowning while it is actually standing in deep
+            // water. If the ground beneath it changed (e.g. Rampart raised the
+            // tile out of the water), the drowning ends instead of ticking.
+            const _terr = typeof getTerrainAt === 'function' ? getTerrainAt(unit.x, unit.y) : 'deep_water';
+            if (_terr !== 'deep_water') {
+                unit._drowningStacks = 0;
+                if (typeof clearStatus === 'function') clearStatus(unit, 'drowning');
+                return;
+            }
             const stacks = unit._drowningStacks || 1;
             const dmg = Math.min(160, 24 + stacks * 24);
             applyDamageToUnit(unit, dmg, `${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'Unit'} is drowning (×${stacks}): `, {
                 ignoreArmor: true,
                 damageType: 'dot',
-                consumeMarked: false
+                consumeMarked: false,
+                flashColor: 'drowning'
             });
         }
     },
@@ -7308,7 +7320,8 @@ const STATUS_DEFS = {
             applyDamageToUnit(unit, dmg, `${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'Unit'} is burning in lava (×${stacks}): `, {
                 ignoreArmor: true,
                 damageType: 'dot',
-                consumeMarked: false
+                consumeMarked: false,
+                flashColor: 'burn'
             });
         }
     },

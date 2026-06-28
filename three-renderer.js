@@ -7279,7 +7279,8 @@ const ThreeRenderer = (function () {
         if (state.hitFlashIds) {
             for (var uid of state.hitFlashIds) {
                 if (!_prevHitFlashIds.has(uid) && !_flashTweens.has(uid)) {
-                    _flashTweens.set(uid, { startTime: performance.now(), durationMs: FLASH_MS, kind: 'hit' });
+                    var _hk = (state.hitFlashKindById && state.hitFlashKindById[uid]) || 'hit';
+                    _flashTweens.set(uid, { startTime: performance.now(), durationMs: FLASH_MS, kind: _hk });
                 }
             }
             _prevHitFlashIds = new Set(state.hitFlashIds);
@@ -7415,9 +7416,27 @@ const ThreeRenderer = (function () {
             var ue = _getUnitEntry(uid);
             if (ue && ue.sprite && ue.sprite.material) {
                 var flash = Math.sin(t * Math.PI);
-                if (tw.kind === 'hit') {
+                if (tw.kind === 'heal') {
 
-                    ue.sprite.material.color.setRGB(1 + flash * 1.5, 1 - flash * 0.6, 1 - flash * 0.6);
+                    ue.sprite.material.color.setRGB(1 - flash * 0.2, 1 + flash * 0.8, 1 - flash * 0.2);
+                } else {
+                    // Damage flash — colour depends on the source:
+                    //   hit/default = white, burn = red, drowning = blue,
+                    //   poison = purple, paralysis (stun) = yellow.
+                    var fr, fg, fb;
+                    if (tw.kind === 'burn') {
+                        fr = 1 + flash * 1.5; fg = 1 - flash * 0.6; fb = 1 - flash * 0.6;
+                    } else if (tw.kind === 'drowning') {
+                        fr = 1 - flash * 0.6; fg = 1 - flash * 0.2; fb = 1 + flash * 1.5;
+                    } else if (tw.kind === 'poison') {
+                        fr = 1 + flash * 0.9; fg = 1 - flash * 0.5; fb = 1 + flash * 1.1;
+                    } else if (tw.kind === 'paralysis') {
+                        fr = 1 + flash * 1.4; fg = 1 + flash * 1.1; fb = 1 - flash * 0.7;
+                    } else {
+                        // 'hit' / 'damage' — plain white flash.
+                        fr = 1 + flash * 1.5; fg = 1 + flash * 1.5; fb = 1 + flash * 1.5;
+                    }
+                    ue.sprite.material.color.setRGB(fr, fg, fb);
                     var baseY = ue.sprite._ew_baseY || 0;
 
                     if (t < 0.6) {
@@ -7430,9 +7449,6 @@ const ThreeRenderer = (function () {
                         ue.sprite.position.x = 0;
                         ue.sprite.position.y = baseY;
                     }
-                } else {
-
-                    ue.sprite.material.color.setRGB(1 - flash * 0.2, 1 + flash * 0.8, 1 - flash * 0.2);
                 }
             }
             if (t >= 1) {

@@ -2402,6 +2402,8 @@
             if (!_skipVisuals()) {
                 const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1 };
                 if (vfxStatusMap[payload.id]) _vfxStatus(payload.id, target.x, target.y);
+                // Paralysis (stun) flashes the unit yellow the moment it lands.
+                if (payload.id === 'stun') flashUnit(target.id, 'paralysis');
             }
             if (isEnemyDebuff && !meta.onRoundEnd) playSfx('debuff');
 
@@ -3275,8 +3277,16 @@
                 focusUnitPanel(unitId, kind === 'heal' ? 'heal' : 'damage');
                 return;
             }
-            const setRef = kind === 'heal' ? state.healFlashIds : state.hitFlashIds;
+            const isHeal = kind === 'heal';
+            const setRef = isHeal ? state.healFlashIds : state.hitFlashIds;
             setRef.add(unitId);
+            // Remember WHICH kind of damage flash this is so the renderer can pick
+            // the right colour (white=hit, red=burn, blue=drowning, purple=poison,
+            // yellow=paralysis). Heal keeps its own dedicated set/colour.
+            if (!isHeal) {
+                state.hitFlashKindById = state.hitFlashKindById || {};
+                state.hitFlashKindById[unitId] = kind;
+            }
             focusUnitPanel(unitId, kind === 'heal' ? 'heal' : 'damage');
             const _flashUnit = state.units.find(u => u.id === unitId);
             const _v2 = window._v2UnitSystemActive?.();
@@ -3284,6 +3294,7 @@
             if (!_v2) scheduleBoardRender();
             window.setTimeout(() => {
                 setRef.delete(unitId);
+                if (!isHeal && state.hitFlashKindById) delete state.hitFlashKindById[unitId];
                 if (_flashUnit && window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit: _flashUnit });
                 if (!_v2) scheduleBoardRender();
                 renderSelectedUnitPanel();
@@ -6777,7 +6788,7 @@
                         }
                     }
                 }
-                flashUnit(target.id, 'hit');
+                flashUnit(target.id, opts.flashColor || 'hit');
                 showFloatingTextForUnit(target, `-${finalDamage}`, 'damage');
 
                 if (window.RenderBus) window.RenderBus.emit('unit:damaged', { unit: target, damage: finalDamage });
@@ -12518,6 +12529,8 @@
                         .map(([k]) => k);
                     if (debuffKeys.length > 0) {
                         triggerStatusWiggle(nextUnit);
+                        // Paralysis (stun) flashes yellow at the start of the turn as a reminder.
+                        if (debuffKeys.includes('stun')) flashUnit(nextUnit.id, 'paralysis');
                         const dlgMsgs = debuffKeys.map(k => {
                             const def = STATUS_DEFS[k];
                             const icon = def?.icon || def?.glyph || '⚠';
