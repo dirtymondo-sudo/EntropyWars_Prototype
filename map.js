@@ -1991,7 +1991,15 @@
         }
 
         function combatDist(x1, y1, z1, x2, y2, z2) {
-            const dxy = Math.abs(x1 - x2) + Math.abs(y1 - y2);
+            // Horizontal distance: the 8 immediate neighbours (diagonals
+            // included) are ALL 1 tile away — you can strike/cast anyone
+            // directly adjacent, diagonal or cardinal, at range 1. Beyond that
+            // first ring it's Manhattan (diamond), so longer ranges keep their
+            // original reach and shape. This only collapses the diagonal corner
+            // of the first ring from 2 down to 1; everything farther is
+            // unchanged.
+            const adx = Math.abs(x1 - x2), ady = Math.abs(y1 - y2);
+            const dxy = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
             const vz = verticalRangeCost(z1, z2);
             // Same column, different height (e.g. a flyer directly overhead):
             // the grid distance is 0 but it's still a real, separate target —
@@ -3432,7 +3440,10 @@
         }
 
         function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ) {
-            const d = Math.abs(x1 - x2) + Math.abs(y1 - y2);
+            // Diagonal neighbours are point-blank too (CHEBYSHEV) — you can always
+            // see the tile right beside you, diagonal or cardinal, so neither is
+            // ever vision-blocked by terrain.
+            const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
             if (d <= 1) return false;
 
             if (sourceZ != null && state.boardColumns?.length > 0) {
@@ -4409,7 +4420,13 @@
 
         function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {
 
-            const d = Math.abs(x1 - x2) + Math.abs(y1 - y2);
+            // All 8 neighbours (cardinal AND diagonal) are point-blank and are
+            // never blocked by terrain line-of-sight. A diagonal neighbour is
+            // 1 tile away just like a cardinal one (CHEBYSHEV), so it must be
+            // exempt too — otherwise a diagonal target one step up runs the
+            // corner raycast and gets falsely blocked while the cardinal tile
+            // right next to it is allowed.
+            const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
             if (d <= 1) return false;
 
             const _srcUnit = state.units?.find(u => !u.dead && u.x === x1 && u.y === y1 && u.wallVision);
