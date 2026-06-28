@@ -2204,7 +2204,111 @@ const ThreeRenderer = (function () {
         g.position.set(x * ts + ts / 2 + posOffX, topY, y * ts + ts / 2 + posOffZ);
         return g;
     }
+    // A per-instance metal/aluminium terrain texture: cloned so each structure
+    // can set its own tiling without disturbing the shared terrain copy, yet it
+    // still shares the source <img> so it appears once the async load finishes.
+    function _turretMetalTex(key, repX, repY) {
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) ? TERRAIN_SPRITES[key][0] : null;
+        if (!url) return null;
+        var base = getTexture(url);
+        if (!base) return null;
+        var tex = base.clone();
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repX, repY);
+        tex.needsUpdate = true;
+        if (base.image && !base.image.complete && base.image.addEventListener) {
+            base.image.addEventListener('load', function() {
+                tex.needsUpdate = true; _objectsDirty = true;
+            }, { once: true });
+        }
+        return tex;
+    }
+
+    // A box-shaped strut connecting two points in space — the building block of
+    // the lattice radio-mast (legs, belts and diagonal cross-braces).
+    function _turretStrut(p0, p1, thick, mat) {
+        var dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
+        var len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.0001;
+        var m = new THREE.Mesh(new THREE.BoxGeometry(thick, len, thick), mat);
+        m.position.set((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0),
+            new THREE.Vector3(dx, dy, dz).normalize());
+        return m;
+    }
+
+    // The 5G Tower — a tapered four-leg lattice radio mast clad in aluminium,
+    // topped with an antenna array and dotted with red aviation warning lights.
+    function _buildFiveGTower(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+
+        var metalTex = _turretMetalTex('aluminium', 1, 3) || _turretMetalTex('metal', 1, 3);
+        var latticeMat = metalTex
+            ? new THREE.MeshLambertMaterial({ map: metalTex, color: 0xc8ccd4 })
+            : new THREE.MeshLambertMaterial({ color: 0xc8ccd4 });
+
+        var H = ts * 2.2;                       // tall radio mast
+        var wBot = ts * 0.34, wTop = ts * 0.12; // half-width at base / top
+        var SECTIONS = 5;
+        var legT = ts * 0.035, braceT = ts * 0.02;
+        var signs = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+        function corner(s, t) {
+            var w = wBot + (wTop - wBot) * t;
+            return new THREE.Vector3(s[0] * w, H * t, s[1] * w);
+        }
+
+        // four tapering legs, bottom belt, then per-section belts + X-bracing
+        for (var c = 0; c < 4; c++) g.add(_turretStrut(corner(signs[c], 0), corner(signs[c], 1), legT, latticeMat));
+        for (var fb = 0; fb < 4; fb++) g.add(_turretStrut(corner(signs[fb], 0), corner(signs[(fb + 1) % 4], 0), braceT, latticeMat));
+        for (var s = 0; s < SECTIONS; s++) {
+            var t0 = s / SECTIONS, t1 = (s + 1) / SECTIONS;
+            for (var f = 0; f < 4; f++) {
+                var a = signs[f], b = signs[(f + 1) % 4];
+                var aB = corner(a, t0), bB = corner(b, t0), aT = corner(a, t1), bT = corner(b, t1);
+                g.add(_turretStrut(aT, bT, braceT, latticeMat));   // belt
+                g.add(_turretStrut(aB, bT, braceT, latticeMat));   // X brace
+                g.add(_turretStrut(bB, aT, braceT, latticeMat));   // X brace
+            }
+        }
+
+        // top platform + slim antenna mast
+        var plat = new THREE.Mesh(new THREE.BoxGeometry(wTop * 2.6, ts * 0.04, wTop * 2.6), latticeMat);
+        plat.position.y = H; g.add(plat);
+        var mastH = ts * 0.55;
+        var mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, mastH, 6), latticeMat);
+        mast.position.y = H + mastH / 2; g.add(mast);
+
+        // the "5G" antenna panels — three flat radios around the upper section
+        var panelMat = new THREE.MeshLambertMaterial({ color: 0x9aa0a8 });
+        for (var p = 0; p < 3; p++) {
+            var ang = p * (Math.PI * 2 / 3), pr = wTop * 1.5;
+            var panel = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.30, ts * 0.12), panelMat);
+            panel.position.set(Math.cos(ang) * pr, H * 0.82, Math.sin(ang) * pr);
+            panel.rotation.y = -ang; g.add(panel);
+        }
+
+        // red warning lights — self-lit so the bloom pass makes them glow
+        var redMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, fog: false });
+        function redLight(x, y, z, rad) {
+            var b = new THREE.Mesh(new THREE.SphereGeometry(rad, 8, 6), redMat);
+            b.position.set(x, y, z); return b;
+        }
+        g.add(redLight(0, H + mastH, 0, ts * 0.05));                 // top beacon
+        g.add(redLight(wTop * 0.95, H * 0.62, wTop * 0.95, ts * 0.04));
+        g.add(redLight(-wTop * 0.95, H * 0.62, -wTop * 0.95, ts * 0.04));
+
+        // dark base pad
+        var pad = new THREE.Mesh(new THREE.CircleGeometry(wBot * 1.25, 12),
+            new THREE.MeshBasicMaterial({ color: 0x0a0806 }));
+        pad.rotation.x = Math.PI / 2; pad.position.y = 0.5; g.add(pad);
+
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id; return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
+
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
         var isSiege = turret.spellId === 'siegeTurret';
         var r = ts * (isSiege ? 0.42 : TURRET_RADIUS_RATIO);
@@ -2212,26 +2316,18 @@ const ThreeRenderer = (function () {
         var col = turret.owner ? _viewerPlayerColor(turret.owner) : 0x888888;
         var g = new THREE.Group();
 
-        var brickTex = getTerrainTexture('bricks_2');
-        var bodyMat;
-        if (brickTex) {
-            brickTex.wrapS = THREE.RepeatWrapping; brickTex.wrapT = THREE.RepeatWrapping;
-            brickTex.repeat.set(3, 1);
-            bodyMat = new THREE.MeshLambertMaterial({ map: brickTex });
+        // brushed-metal hull replaces the old brick cladding
+        var metalTex = _turretMetalTex('metal', 3, 1) || _turretMetalTex('aluminium', 3, 1);
+        var bodyMat, domeMat;
+        if (metalTex) {
+            bodyMat = new THREE.MeshLambertMaterial({ map: metalTex, color: 0xb8bcc4 });
+            domeMat = new THREE.MeshLambertMaterial({ map: metalTex, color: 0xb8bcc4 });
         } else {
             bodyMat = new THREE.MeshLambertMaterial({ color: col });
+            domeMat = new THREE.MeshLambertMaterial({ color: col });
         }
         var body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 8, 1, true), bodyMat);
         body.position.y = h / 2; g.add(body);
-
-        var domeMat;
-        if (brickTex) {
-            domeMat = new THREE.MeshLambertMaterial({ map: brickTex });
-        } else {
-            domeMat = new THREE.MeshLambertMaterial({ color: col });
-        }
-        var dome = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
-        dome.position.y = h; g.add(dome);
 
         var floorMat = new THREE.MeshBasicMaterial({ color: 0x0a0806 });
         var floor = new THREE.Mesh(new THREE.CircleGeometry(r, 8), floorMat);
@@ -2246,13 +2342,24 @@ const ThreeRenderer = (function () {
         ring.position.y = h;
         g.add(ring);
 
+        // ── rotating arm: the dome head + cannon swivel to track the target ──
+        // (the cylindrical base stays put; battle.js keeps turret.facingAngle
+        // pointed at the closest / currently-targeted enemy).
+        var arm = new THREE.Group();
+        arm.position.y = h;
+
+        var dome = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+        arm.add(dome);
+
         var cL = ts * CANNON_LENGTH_RATIO;
         var cannon = new THREE.Mesh(new THREE.BoxGeometry(CANNON_THICKNESS, CANNON_THICKNESS, cL),
             new THREE.MeshLambertMaterial({ color: 0x333333 }));
-        cannon.position.y = h + CANNON_THICKNESS; cannon.position.z = cL / 2;
-        g.add(cannon);
+        cannon.position.y = CANNON_THICKNESS; cannon.position.z = cL / 2;
+        arm.add(cannon);
 
-        if (turret.facingAngle != null) g.rotation.y = -turret.facingAngle;
+        if (turret.facingAngle != null) arm.rotation.y = -turret.facingAngle;
+        g.add(arm);
+
         g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
         g._ew_turretId = turret.id; return g;
     }
