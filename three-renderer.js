@@ -1843,22 +1843,17 @@ const ThreeRenderer = (function () {
                             }
                         }
                         if (segStart !== -1) {
-                            /* topmost run: its top block (topZ) is the open surface */
-                            runs.push({ fromZ: segStart, toZ: topZ - 1, terrain: segTerrain });
-                        }
-
-                        /* Top voxel as a REAL cube for stacked-terrain columns.
-                           Normally the top voxel is a flat "surface skin" (toZ = topZ-1)
-                           so a uniform raised tile is N cubes tall and a unit stands on
-                           top. But when the column stacks DIFFERENT terrains, the top
-                           layer must be a full cube so its OWN terrain shows on its
-                           sides — not collapse into a cap on the band beneath it. So
-                           whenever there is more than one terrain band, draw the top
-                           voxel as a full cube. Uniform columns (one band) are left
-                           exactly as before, and hollow/arch columns keep the skin so
-                           their walk-under surface stays open. */
-                        if (!state._hollowVoxels && runs.length > 1) {
-                            runs[runs.length - 1].toZ = topZ;
+                            /* Topmost run. On SOLID columns draw the top voxel as a REAL
+                               cube (toZ = topZ) so every filled layer is a full cube of
+                               its own terrain. Combined with the elevStep shift on
+                               m.position below, this makes voxel z occupy world-y
+                               [(z-1)*elevStep, z*elevStep] — so a column's z0 cube lines
+                               up exactly with a flat tile's cube ([-elevStep, 0]) and the
+                               walkable surface stays at topZ*elevStep (unit heights
+                               unchanged). Hollow / arch columns keep the top voxel as an
+                               undrawn "surface skin" (toZ = topZ-1) so their walk-under
+                               span stays open. */
+                            runs.push({ fromZ: segStart, toZ: (state._hollowVoxels ? topZ - 1 : topZ), terrain: segTerrain });
                         }
 
                         /* Exposed ground floor: if z0 exists but z1 is a gap (open
@@ -1928,7 +1923,11 @@ const ThreeRenderer = (function () {
                             if (rIsLava) m._ew_hasLava = true;
                         }
                     }
-                    m.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
+                    /* Solid columns are shifted down one elevStep so voxel z0 sits at
+                       the flat-tile floor level ([-elevStep, 0]) instead of one level
+                       above it; the surface (top of the topZ cube) still lands at
+                       topZ*elevStep. Hollow columns keep their original y=0 origin. */
+                    m.position.set(x * ts + ts / 2, (state._hollowVoxels ? 0 : -elevStep), y * ts + ts / 2);
                 } else {
 
                     var boxH = Math.max(elevStep, ht * elevStep);
