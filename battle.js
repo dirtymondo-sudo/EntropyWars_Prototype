@@ -6219,32 +6219,38 @@
         // selectUnit; for auto-controlled sides the camera simply keeps
         // following the next action from the cinematic framing.
         // ═══════════════════════════════════════════════════════════════════
-        // Baseline third-person pitch on FLAT ground (caster and target at the
-        // same height). In this engine LOW tilt ≈ top-down and HIGH tilt swings
-        // to a near-horizontal over-the-shoulder view — a real third-person shot
-        // lives up around ~108 (matches the hand-framed reference: tilt 109,
-        // zoom 2.5), NOT the old top-down 60. The live tilt then bends a little
-        // off this baseline with the caster→target elevation slope: DOWN toward
-        // top-down when a flyer casts onto the ground, UP when a grounded unit
-        // strikes something overhead — held in a band that always stays a good
-        // shot (never craning into 90 %-sky).
-        const CINE_CAM_TILT      = 108;   // flat-ground over-the-shoulder pitch
-        const CINE_TILT_MIN      = 78;    // most top-down (flyer firing straight down)
-        const CINE_TILT_MAX      = 122;   // most upward (striking a high target)
-        const CINE_TILT_GAIN     = 0.8;   // how hard the pitch tracks the slope
+        // Cinematic THIRD-PERSON-SHOOTER framing. The camera drops in behind the
+        // CASTER and AIMS at the target, so the target sits in the MIDDLE of the
+        // screen (the "crosshair") while the caster fills the foreground off to
+        // one side. The PERSPECTIVE is identical on every cast — only the raw
+        // tilt/yaw numbers move, because they are derived from the live
+        // caster→target geometry.
+        //
+        // PITCH rides a CONSTANT angle relative to the caster→target LINE, so the
+        // shot looks the same whether the target is level, up on a ledge, or a
+        // flyer is raining down onto the ground. It is CINE_FLAT_TILT + the
+        // line's elevation slope, at FULL strength and UNCLAMPED: when the target
+        // is below the caster the slope is negative and the camera cranes DOWN;
+        // when above, it cranes UP. The hand-framed reference (target ~2 levels
+        // up) landed at tilt ≈ 109 — this reproduces that, while a flat-ground
+        // shot sits at a gentle, slightly-downward ~77. (In this engine LOW tilt
+        // ≈ looking down, HIGH ≈ level / looking up.)
+        const CINE_FLAT_TILT      = 77;   // pitch when the line is level; + slope per cast
+        const CINE_TILT_GUARD_MIN = 10;   // wide guard — only blocks a degenerate flip
+        const CINE_TILT_GUARD_MAX = 160;
         const CINE_CAM_YAW_OFFSET = 16;   // swing off-axis → caster sits to one side
-        // Subject SIZE is set by an absolute zoom (tiles are a fixed pixel size,
-        // so this is the same on any board / viewport — the caster always reads
-        // the same big, close size). It eases back a touch as the caster and
-        // target get farther apart so a long-range target stays in frame.
-        const CINE_BASE_ZOOM     = 2.5;   // close third-person framing (reference)
-        const CINE_MIN_ZOOM      = 1.5;   // pulled-back cap for long-range casts
-        const CINE_ZOOM_FALLOFF  = 0.13;  // zoom lost per tile of caster→target gap
-        // The focal (screen centre) sits just ahead of the CASTER toward the
-        // target, so the caster fills the lower-foreground and the target reads
-        // up-ahead — the Skyrim/Fortnite "character anchored, world beyond" look.
-        const CINE_FOCAL_FRAC    = 0.30;  // 0 = on caster, 1 = on target
-        const CINE_FOCAL_RISE    = 0.35;  // focal height above the feet (× tile)
+        // Subject SIZE: a fixed close zoom (the caster is the same size every
+        // cast — tiles are a constant pixel size), easing back only as the gap
+        // grows so a distant target still fits.
+        const CINE_BASE_ZOOM     = 2.5;
+        const CINE_MIN_ZOOM      = 1.5;
+        const CINE_ZOOM_FALLOFF  = 0.12;
+        // Focal (screen centre) rides the caster→target LINE, leaning toward the
+        // target so the target reads centre and the caster fills the foreground.
+        // Crucially its HEIGHT is blended along that same line, so a tall
+        // elevation gap never parks screen-centre up in the empty sky.
+        const CINE_FOCAL_FRAC    = 0.58;  // 0 = on caster, 1 = on target
+        const CINE_FOCAL_RISE    = 0.40;  // focal height above the line (× tile)
         // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
         const CINE_HEADROOM      = 0.45;  // extra focal-height headroom (× tile)
@@ -6302,25 +6308,26 @@
             // numbers move with them; the relationship between camera, caster and
             // target does not.)
 
-            // FOCAL (screen centre): just ahead of the caster toward the target,
-            // so the caster fills the lower-foreground and the target reads up-
-            // ahead — anchored to the CASTER, not floating between them. Height
-            // leans the same fraction toward the target and rises a touch off the
-            // feet to frame the bodies, not the dirt.
+            // FOCAL (screen centre): rides the caster→target LINE, leaning toward
+            // the target so the target reads at CENTRE (the TPS "crosshair") and
+            // the caster fills the foreground off to one side. Its HEIGHT is
+            // blended along the SAME line — so when the caster is high above the
+            // target the focal drops with it instead of parking screen-centre up
+            // in the empty sky (the bug in the Succubus shot).
             const fx = sx + dx * CINE_FOCAL_FRAC;
             const fy = sy + dy * CINE_FOCAL_FRAC;
             const elevZ = casterPx + (tgtPx - casterPx) * CINE_FOCAL_FRAC + ts * CINE_FOCAL_RISE;
 
-            // PITCH relative to the line between the two units: on flat ground the
-            // shot is the reference over-the-shoulder pitch (CINE_CAM_TILT); the
-            // elevation slope then bends it the SAME way every time — toward top-
-            // down as the caster rises above the target, upward as the target
-            // rises above the caster — clamped to a band that always stays a good
-            // third-person shot (no 90 %-sky, no through-the-floor flip).
+            // PITCH: a CONSTANT angle relative to the caster→target line. On level
+            // ground that is CINE_FLAT_TILT; the line's elevation slope then bends
+            // it the SAME amount every time, at FULL strength and UNCLAMPED — so
+            // a target BELOW the caster (slope < 0) cranes the camera DOWN to look
+            // at it, and a target ABOVE cranes it UP, keeping the target centred
+            // either way. The only guard is a wide one against a degenerate flip.
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
-            const tilt = Math.max(CINE_TILT_MIN,
-                Math.min(CINE_TILT_MAX, CINE_CAM_TILT + slopeDeg * CINE_TILT_GAIN));
+            const tilt = Math.max(CINE_TILT_GUARD_MIN,
+                Math.min(CINE_TILT_GUARD_MAX, CINE_FLAT_TILT + slopeDeg));
 
             // SUBJECT SIZE: a fixed, close zoom (tiles are a constant pixel size,
             // so the caster is the same big size on any board / viewport), eased
