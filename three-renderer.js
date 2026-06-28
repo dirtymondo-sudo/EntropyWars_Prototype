@@ -1857,8 +1857,16 @@ const ThreeRenderer = (function () {
                             var rH = rTopY - rBottomY;
                             if (rH < 0.5) continue;
 
+                            /* The column's surface terrain belongs to the top block;
+                               when that block differs from the run beneath it, it
+                               forms a zero-thickness run that's skipped, so the top
+                               DRAWN run carries the surface terrain on its cap. Its
+                               sides must match that surface terrain too — otherwise
+                               the painted top tile shows the layer underneath on its
+                               vertical faces (grass keeps its dirt sides via the
+                               TERRAIN_SIDE_SPRITES lookup below). */
                             var rTopTerrain = rIsTopRun ? surfaceTerrain : run.terrain;
-                            var rSideTerrain = run.terrain;
+                            var rSideTerrain = rIsTopRun ? rTopTerrain : run.terrain;
                             var rSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[rSideTerrain] ?? null) : null;
                             var rIsFluid = !!_FLUID_TERRAIN_SET[rTopTerrain];
                             var rIsLava = (rTopTerrain === 'lava' || rSideTerrain === 'lava');

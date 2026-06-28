@@ -6141,12 +6141,10 @@
             /* The flat ground shown on a fresh tile is a render-time "for show"
                base (see _meSyncToState): the voxel column is actually empty. Lay
                that ground down for REAL (z0) before stacking a block above it, so
-               the base layer doesn't vanish the moment you build on top of it.
-               Use the terrain being PAINTED (not the old ground) so a raised tile
-               is a solid pillar of its own texture top-to-bottom — otherwise its
-               sides render with whatever terrain was underneath. */
+               the base layer doesn't vanish the moment you build on top of it. */
             if (z > 0 && !col.some(b => b.z === 0)) {
-                col.push({ z: 0, tid });
+                const baseTid = (_meGrid?.[y]?.[x]) || ((typeof ME_TERRAIN_TO_ID !== 'undefined' && ME_TERRAIN_TO_ID['grass']) || 1);
+                col.push({ z: 0, tid: baseTid });
             }
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) {
@@ -8533,13 +8531,6 @@
                 const tid = ME_TERRAIN_TO_ID[_meSelectedTerrain] || 1;
 
                 _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
-                /* Painting a tile makes the WHOLE vertical column that terrain, not
-                   just the visible top cap — a placed block is a solid pillar of one
-                   texture on every face, top to bottom. Height is controlled by the
-                   elevation tools (Raise / Lower / Set); paint only sets terrain. */
-                const _pcol = _meGetColumn(x, y);
-                for (let _bi = 0; _bi < _pcol.length; _bi++) _pcol[_bi].tid = tid;
-                _meSyncVoxelsToLegacy();
                 const rule = TERRAIN_RULES[_meSelectedTerrain];
                 if (rule && !rule.passable) {
                     _meSpawns[1] = _meSpawns[1].filter(s => !(s.x === x && s.y === y));
@@ -8922,14 +8913,8 @@
                            layer (never the one beneath it). _meSetVoxel replaces a
                            block already at that Z and creates one otherwise. */
                         _meSetVoxel(x, y, _meActiveZ, tid);
-                        /* Like the paint tool: make each tile's WHOLE column the
-                           selected terrain so every block is one solid texture on
-                           all sides, not just the active-Z cap over older layers. */
-                        const _fcol = _meVoxels[y][x];
-                        for (let _bi = 0; _bi < _fcol.length; _bi++) _fcol[_bi].tid = tid;
                     }
                 }
-                _meSyncVoxelsToLegacy();
             }
             _meRenderGrid();
         };
