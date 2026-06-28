@@ -6282,30 +6282,36 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            // FOCUS = the target/tile itself, at its OWN elevation. The renderer
-            // aims the camera dead at this focal point, so the target lands in the
-            // SAME screen spot on every cast no matter how high the caster or the
-            // target is. (The old rig anchored the focal on the caster + a forward
-            // and upward "lead", which shoved the target — and the whole impact —
-            // off the bottom of the frame.)
-            const fx = tx, fy = ty;
-            const elevZ = tgtPx + ts * 0.40;
+            // Third-person framing (Skyrim / Fortnite): the CASTER is the
+            // anchored foreground subject — held slightly off to one side by the
+            // yaw offset — while the camera looks down-range at the target. The
+            // focal (screen centre) sits between the two, leaning toward the
+            // target, so the caster reads in the lower foreground and the target
+            // sits up-ahead near centre. Blending the focal ELEVATION the same way
+            // keeps BOTH on screen when their heights differ.
+            const FOCAL_FRAC = 0.55;           // 0 = on caster, 1 = on target
+            const fx = sx + dx * FOCAL_FRAC;
+            const fy = sy + dy * FOCAL_FRAC;
+            const elevZ = casterPx + (tgtPx - casterPx) * FOCAL_FRAC + ts * 0.30;
 
             // DYNAMIC pitch. The camera holds a CONSTANT angle (90 − CINE_CAM_TILT
-            // = 30°) above the real caster→target sightline, so the look is
+            // = 30°) above the real caster→target sightline, so the POV is
             // identical RELATIVE to the caster every time while the absolute tilt
             // bends with the elevation gap: it cranes DOWN when a flyer casts onto
             // the ground and UP when a grounded unit strikes something overhead.
-            // No tight band — the tilt goes wherever the geometry demands so the
-            // target can never slide out of frame; the only guard is a wide one to
-            // stop a degenerate flip straight through the nadir/zenith.
+            // Wide guard only, to stop a degenerate flip through nadir/zenith.
             const horiz = Math.max(ts * 0.5, len * ts);
             const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
             const tilt = Math.max(5, Math.min(130, CINE_CAM_TILT + slopeDeg));
 
-            // Map-size-independent zoom: a fixed number of tiles fill the view,
-            // so the framing is the SAME on an 8×8 or a 36×30 board.
-            const zoom = _cineZoomForTiles(CINE_VISIBLE_TILES, tilt);
+            // Zoom frames the WHOLE caster→target span (3-D, so a big height gap
+            // counts too) plus margin, so NEITHER the caster nor the target is ever
+            // cropped — not a fixed tight box. This is the fix for "too zoomed in,
+            // can't see the caster". Map-size independent.
+            const elevDeltaTiles = Math.abs(tgtPx - casterPx) / ts;
+            const span3D = Math.hypot(len, elevDeltaTiles);
+            const visibleTiles = Math.max(6.5, Math.min(16.0, span3D + 3.5));
+            const zoom = _cineZoomForTiles(visibleTiles, tilt);
 
             camera.moveTo({
                 x: fx, y: fy, zoom, tilt, yaw, elevZ,
@@ -6315,8 +6321,8 @@
             });
 
             // Gentle push-IN as the attack fires so the shot breathes — tighten
-            // the zoom a touch while keeping the focal LOCKED on the target (no
-            // focal slide that could drag the impact out of frame).
+            // the zoom a touch while keeping the focal LOCKED in place (no focal
+            // slide that could drag the caster or impact out of frame).
             const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
             window.setTimeout(() => {
 
