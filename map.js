@@ -1978,18 +1978,6 @@
             return Math.abs(x1 - x2) + Math.abs(y1 - y2);
         }
 
-        // Vertical distance counts toward range — ranges are 3D radii, not flat
-        // discs. Reaching a target ABOVE you costs a full tile of range per
-        // elevation level (you can't melee a flyer five levels overhead, even
-        // if you're "adjacent" on the grid). Striking DOWNHILL is discounted
-        // (high-ground advantage): every two levels of drop cost one tile, so
-        // holding the high ground extends your reach instead of shrinking it.
-        function verticalRangeCost(z1, z2) {
-            const dz = (z2 || 0) - (z1 || 0);
-            if (dz > 0) return dz;                  // target above: full cost
-            return Math.floor(-dz / 2);             // target below: half cost
-        }
-
         function combatDist(x1, y1, z1, x2, y2, z2) {
             // Horizontal distance: the 8 immediate neighbours (diagonals
             // included) are ALL 1 tile away — you can strike/cast anyone
@@ -2000,12 +1988,21 @@
             // unchanged.
             const adx = Math.abs(x1 - x2), ady = Math.abs(y1 - y2);
             const dxy = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
-            const vz = verticalRangeCost(z1, z2);
-            // Same column, different height (e.g. a flyer directly overhead):
-            // the grid distance is 0 but it's still a real, separate target —
-            // never collapse to 0, cost at least 1 plus any steep climb.
-            if (dxy === 0 && (z1 || 0) !== (z2 || 0)) return Math.max(1, vz);
-            return dxy + vz;
+            // 3D reach. Height is an INDEPENDENT axis, never added on top of the
+            // horizontal distance. Range is a radius: you can reach any target
+            // within `range` tiles horizontally AND within `range` levels up or
+            // down — so the limiting distance is whichever axis is larger, not
+            // their sum. A range-3 spell hits a target 3 tiles out and 2 (or 3)
+            // levels up because both axes are within 3; a flyer parked far
+            // overhead (or a target deep below) is out of reach only once the
+            // vertical gap itself exceeds the range.
+            const vz = Math.abs((z2 || 0) - (z1 || 0));   // elevation gap, up or down
+            const d = Math.max(dxy, vz);
+            // Same column, different height (e.g. a flyer directly overhead or a
+            // unit directly below): the grid distance is 0 but it's still a real,
+            // separate target — never collapse to 0.
+            if (dxy === 0 && (z1 || 0) !== (z2 || 0)) return Math.max(1, d);
+            return d;
         }
 
         function randInt(n) {
