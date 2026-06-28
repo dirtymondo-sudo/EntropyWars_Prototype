@@ -6350,27 +6350,6 @@
                 _fogAllowed: fogAllowed || undefined
             });
 
-            // Gentle push-IN as the attack fires so the shot breathes — tighten
-            // the zoom a touch while keeping the focal LOCKED in place (no focal
-            // slide that could drag the caster or impact out of frame).
-            const dollyDelay = Math.max(actionMs(200), timings.sourceHold);
-            window.setTimeout(() => {
-
-                // Only push in if this shot still owns the camera — a restore,
-                // reset, or unit-selection pan may have taken over meanwhile.
-                if (camera._cineShotId !== sequenceId) return;
-                if (sequenceId !== boardCameraSequenceId) return;
-                if (state.phase !== 'battle' || state.cameraDisabled) return;
-                camera.moveTo({
-                    x: fx, y: fy,
-                    zoom: zoom * 1.08, tilt, yaw, elevZ,
-                    duration: Math.max(actionMs(300), timings.travelMs + actionMs(220)),
-                    easing: 'easeOut',
-                    _allowZoomChange: true, _bypassCap: true,
-                    _fogAllowed: fogAllowed || undefined
-                });
-            }, dollyDelay);
-
             // Impact kick.
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
