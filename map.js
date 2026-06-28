@@ -6281,7 +6281,7 @@
             CONFIG.boardHeight = h;
             state.terrainTints = Object.assign({}, _meTerrainTints);
             window._customEditorTints = Object.assign({}, _meTerrainTints);
-            CONFIG.tileSize = typeof computeBattleTileSize === 'function' ? computeBattleTileSize() : 58;
+            CONFIG.tileSize = typeof computeBattleTileSize === 'function' ? computeBattleTileSize() : BASE_TILE;
 
             state.boardTerrain = [];
             for (let y = 0; y < h; y++) {
@@ -6496,7 +6496,7 @@
             _meClearEditorOverlays3D();
             if (typeof THREE === 'undefined' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
 
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
             const bw = _meW, bh = _meH;
 
             _editorOverlay3DGroup = new THREE.Group();
@@ -7184,7 +7184,7 @@
                 _mcEl.style.flex = '1';
             }
 
-            CONFIG.tileSize = 128;
+            CONFIG.tileSize = BASE_TILE;
 
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateLayoutCache === 'function') invalidateLayoutCache();

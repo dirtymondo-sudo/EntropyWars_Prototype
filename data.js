@@ -1,10 +1,20 @@
+// Canonical tile size, in pixels. The terrain sprites are 128×128, so the
+// in-play board renders one sprite per tile 1:1 with no stretching. Every
+// runtime `CONFIG.tileSize || BASE_TILE` fallback resolves here, so this is
+// the single source of truth for tile size.
+const BASE_TILE = 128;
+// The non-battle menu / party-preview board uses a smaller tile so the whole
+// grid fits on screen. It is the only place that intentionally differs from
+// BASE_TILE.
+const MENU_TILE = 58;
+
 const CONFIG = {
     boardSize: 8,
     boardWidth: 16,
     boardHeight: 8,
     winHourglasses: 2,
     hiddenItemSpawns: 7,
-    tileSize: 58,
+    tileSize: MENU_TILE,
     tileGap: 0,
     boardPadding: 2,
     teamSize: 4,

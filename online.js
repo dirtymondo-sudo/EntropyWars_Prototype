@@ -2438,7 +2438,7 @@
                     if (st.phase === 'battle' && (prevPhase !== 'battle' || !st._guestBoardBuilt)) {
                         st._guestBoardBuilt = true;
 
-                        CONFIG.tileSize = 128;
+                        CONFIG.tileSize = BASE_TILE;
                         if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
                     }
 
@@ -2457,7 +2457,7 @@
                         if (_splashFn) {
                             _splashFn(function _afterGuestVSSplash() {
 
-                                CONFIG.tileSize = 128;
+                                CONFIG.tileSize = BASE_TILE;
                                 if (typeof invalidateLayoutCache === 'function') invalidateLayoutCache();
 
                                 if (typeof _clearZoomMemo === 'function') _clearZoomMemo();

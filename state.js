@@ -4551,7 +4551,7 @@
                     _panStartX = e.clientX;
                     _panStartY = e.clientY;
                     if (typeof camera !== 'undefined') {
-                        const ts = CONFIG.tileSize || 58;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         const gap = CONFIG.tileGap ?? 0;
                         const pad = CONFIG.boardPadding ?? 2;
                         _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;
@@ -4582,7 +4582,7 @@
                         && typeof ThreeCamera !== 'undefined' && ThreeCamera.screenDeltaToWorldXZ) {
                         const delta = ThreeCamera.screenDeltaToWorldXZ(dx, dy);
                         if (delta) {
-                            const ts = CONFIG.tileSize || 58;
+                            const ts = CONFIG.tileSize || BASE_TILE;
 
                             const tileX = _panStartCamX - delta.wx / ts;
                             const tileY = _panStartCamY - delta.wz / ts;
@@ -4592,7 +4592,7 @@
                         }
                     }
 
-                    const ts = CONFIG.tileSize || 58;
+                    const ts = CONFIG.tileSize || BASE_TILE;
                     const gap = CONFIG.tileGap ?? 0;
                     const pad = CONFIG.boardPadding ?? 2;
                     const tiltCos = Math.max(0.15, Math.cos((state.dioramaTiltDeg ?? 50) * Math.PI / 180));
@@ -4753,7 +4753,7 @@
                 _panStartX = midX;
                 _panStartY = midY;
                 if (typeof camera !== 'undefined') {
-                    const ts = CONFIG.tileSize || 58;
+                    const ts = CONFIG.tileSize || BASE_TILE;
                     const gap = CONFIG.tileGap ?? 0;
                     const pad = CONFIG.boardPadding ?? 2;
                     _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;
@@ -4812,7 +4812,7 @@
                     _touch1StartX = e.touches[0].clientX;
                     _touch1StartY = e.touches[0].clientY;
                     if (typeof camera !== 'undefined') {
-                        const ts = CONFIG.tileSize || 58;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         const gap = CONFIG.tileGap ?? 0;
                         const pad = CONFIG.boardPadding ?? 2;
                         _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;
@@ -4879,7 +4879,7 @@
                             && typeof ThreeCamera !== 'undefined' && ThreeCamera.screenDeltaToWorldXZ) {
                             const delta = ThreeCamera.screenDeltaToWorldXZ(dx, dy);
                             if (delta) {
-                                const ts = CONFIG.tileSize || 58;
+                                const ts = CONFIG.tileSize || BASE_TILE;
                                 snapOpts.x = _panStartCamX - delta.wx / ts;
                                 snapOpts.y = _panStartCamY - delta.wz / ts;
                                 camera.snap(snapOpts);
@@ -4888,7 +4888,7 @@
                             }
                         }
 
-                        const ts = CONFIG.tileSize || 58;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         const gap = CONFIG.tileGap ?? 0;
                         const pad = CONFIG.boardPadding ?? 2;
                         const tiltCos = Math.cos((state.dioramaTiltDeg ?? 50) * Math.PI / 180);
@@ -4937,7 +4937,7 @@
                             && typeof ThreeCamera !== 'undefined' && ThreeCamera.screenDeltaToWorldXZ) {
                             const delta = ThreeCamera.screenDeltaToWorldXZ(dx, dy);
                             if (delta) {
-                                const ts = CONFIG.tileSize || 58;
+                                const ts = CONFIG.tileSize || BASE_TILE;
                                 const tileX = _panStartCamX - delta.wx / ts;
                                 const tileY = _panStartCamY - delta.wz / ts;
                                 camera.snap({ _force: true, x: tileX, y: tileY });
@@ -4946,7 +4946,7 @@
                             }
                         }
 
-                        const ts = CONFIG.tileSize || 58;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         const gap = CONFIG.tileGap ?? 0;
                         const pad = CONFIG.boardPadding ?? 2;
                         const tiltCos = Math.max(0.15, Math.cos((state.dioramaTiltDeg ?? 50) * Math.PI / 180));
@@ -5013,7 +5013,7 @@
                         _touch1StartX = e.touches[0].clientX;
                         _touch1StartY = e.touches[0].clientY;
                         if (typeof camera !== 'undefined') {
-                            const ts = CONFIG.tileSize || 58;
+                            const ts = CONFIG.tileSize || BASE_TILE;
                             const gap = CONFIG.tileGap ?? 0;
                             const pad = CONFIG.boardPadding ?? 2;
                             _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;

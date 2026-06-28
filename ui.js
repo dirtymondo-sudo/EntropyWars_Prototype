@@ -714,7 +714,7 @@
 
     function computeBattleTileSize() {
 
-      return 128;
+      return BASE_TILE;
     }
 
     window.addEventListener('resize', () => {
@@ -1651,7 +1651,7 @@
           mapCenterEl.style.width = '';
           mapCenterEl.style.height = '';
         }
-        CONFIG.tileSize = 58;
+        CONFIG.tileSize = MENU_TILE;
       }
       const _gridSizeChanged = CONFIG.tileSize !== _prevTileSize;
       if (_gridSizeChanged) {
@@ -3599,7 +3599,7 @@
             const idStr = String(unit.id || '0');
             for (let c = 0; c < idStr.length; c++) seed = (seed * 31 + idStr.charCodeAt(c)) | 0;
             seed = Math.abs(seed);
-            const tileSize = CONFIG.tileSize || 128;
+            const tileSize = CONFIG.tileSize || BASE_TILE;
             const spread = tileSize * 0.35;
             let bats = '';
             for (let i = 0; i < batCount; i++) {
@@ -7916,7 +7916,7 @@
                 const idx = tileY * _bw + tileX;
                 const tileEl = boardEl.children?.[idx];
                 if (!tileEl) return;
-                const ts = CONFIG.tileSize || 128;
+                const ts = CONFIG.tileSize || BASE_TILE;
 
                 for (let i = 0; i < badgeStack.length; i++) {
                     const b = badgeStack[i];
@@ -7932,7 +7932,7 @@
         function _renderDisplacementArrows(caster, spell, tx, ty) {
             const kind = spell.kind;
             if (!projectileLayerEl) return;
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
 
             if (kind === 'pull') {
                 const target = unitAt(tx, ty);
@@ -8037,7 +8037,7 @@
             if (!projectileLayerEl) return;
             const from = tilePixelCenter(fromX, fromY);
             const to = tilePixelCenter(toX, toY);
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
 
             const el = document.createElement('div');
             el.className = 'intent-arrow-overlay';

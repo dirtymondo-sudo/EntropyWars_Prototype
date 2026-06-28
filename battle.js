@@ -3422,7 +3422,7 @@
             const _hitUnit = unitAt(x, y);
             const tileZ = _hitUnit ? unitElevationZ(_hitUnit) : tileElevationZ(x, y);
             if (tileZ > 0) el.style.setProperty('--tile-elev-z', `${tileZ}px`);
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
             const liftY = ts * 0.45 + 30;
             el.style.setProperty('--hit-lift-y', `-${liftY}px`);
             el.style.setProperty('--hit-fx-ms', `${durationMs}ms`);
@@ -3509,7 +3509,7 @@
         function dioramaUnitZBoost() {
             const tiltDeg = state.dioramaTiltDeg ?? 50;
 
-            return (CONFIG.tileSize || 128) * 0.4 * Math.max(0, (tiltDeg - 10) / 70);
+            return (CONFIG.tileSize || BASE_TILE) * 0.4 * Math.max(0, (tiltDeg - 10) / 70);
         }
 
         function showFloatingTextAtTile(x, y, textValue, kind = 'damage', opts = {}) {
@@ -3547,7 +3547,7 @@
             el.style.setProperty('--jx', `${jitterX}px`);
             el.style.setProperty('--jy', `${jitterY}px`);
             el.style.setProperty('--float-ms', `${durationMs}ms`);
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
             const floatY = ts * 1.2;
             el.style.setProperty('--dio-float-y', `-${floatY}px`);
 
@@ -4415,7 +4415,7 @@
             else if (dx === 1 && dy === -1) angleDeg = -90;
             else if (dx === -1 && dy === 1) angleDeg = 90;
             const flyMs = Math.max(200, Number(durationMs) || 600);
-            const tileSize = CONFIG.tileSize || 128;
+            const tileSize = CONFIG.tileSize || BASE_TILE;
 
             const segSize = isDiagonal ? 64 : 32;
             const segsPerTile = Math.round(tileSize / segSize);
@@ -5480,7 +5480,7 @@
 
             _apply() {
                 if (!boardStageEl) return;
-                const ts = CONFIG.tileSize || 58;
+                const ts = CONFIG.tileSize || BASE_TILE;
                 const gap = CONFIG.tileGap ?? 0;
                 const pad = CONFIG.boardPadding ?? 2;
                 const _bw = bw(), _bh = bh();
@@ -5953,7 +5953,7 @@
                         }
                     }
                     if (maxZ > 0) {
-                        const ts = CONFIG.tileSize || 128;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         const baseElevPx = window._getElevationPx(maxZ);
 
                         const spriteOffset = hasUnit ? (ts * 0.55) : 0;
@@ -6063,7 +6063,7 @@
 
         window._clearZoomMemo = function() { _zoomMemo.clear(); _zoomMemoKey = ''; };
         function _zoomMemoRefreshKey() {
-            const ts = CONFIG.tileSize || 58;
+            const ts = CONFIG.tileSize || BASE_TILE;
             const gap = CONFIG.tileGap ?? 0;
             const parentH = _layoutCache.valid ? _layoutCache.parentH
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
@@ -6113,7 +6113,7 @@
         function getWideZoom()       { return _getBattleZoom(); }
         function getCinematicZoom()  { return _getBattleZoom(); }
         function getFullMapZoom() {
-            const ts = CONFIG.tileSize || 58, gap = CONFIG.tileGap ?? 0, pad = CONFIG.boardPadding ?? 2;
+            const ts = CONFIG.tileSize || BASE_TILE, gap = CONFIG.tileGap ?? 0, pad = CONFIG.boardPadding ?? 2;
             const rows = bh() || 10, cols = bw() || 10;
             const bpH = pad * 2 + rows * ts + (rows - 1) * gap;
             const bpW = pad * 2 + cols * ts + (cols - 1) * gap;
@@ -6284,7 +6284,7 @@
         // third-person POV on any map. (computeZoomForVisibleTiles keys off the
         // CURRENT state tilt; this takes the cinematic's target tilt directly.)
         function _cineZoomForTiles(tiles, tiltDeg) {
-            const ts = CONFIG.tileSize || 58, gap = CONFIG.tileGap ?? 0;
+            const ts = CONFIG.tileSize || BASE_TILE, gap = CONFIG.tileGap ?? 0;
             const parentH = _layoutCache.valid ? _layoutCache.parentH
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
             const tiltFactor = Math.max(0.35, Math.cos((tiltDeg ?? 60) * Math.PI / 180));
@@ -6315,7 +6315,7 @@
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
 
             // Caster + target world elevations (px). A flyer reports its airborne
             // z; a plain {x,y} TILE target falls back to that tile's ground height
@@ -6425,7 +6425,7 @@
 
             const sx = sourceUnit.x, sy = sourceUnit.y;
             const tx = target.x, ty = target.y;
-            const ts = CONFIG.tileSize || 128;
+            const ts = CONFIG.tileSize || BASE_TILE;
             const dx = tx - sx, dy = ty - sy;
             const dist = Math.abs(dx) + Math.abs(dy);
             const len = Math.max(1, Math.hypot(dx, dy));
@@ -6619,7 +6619,7 @@
                     const tgtZ = _unitElevZ(target);
                     const maxZ = Math.max(srcZ, tgtZ);
                     if (maxZ > 0) {
-                        const ts = CONFIG.tileSize || 128;
+                        const ts = CONFIG.tileSize || BASE_TILE;
                         actionElevZ = window._getElevationPx(maxZ) + ts * 0.55;
                     }
                 }

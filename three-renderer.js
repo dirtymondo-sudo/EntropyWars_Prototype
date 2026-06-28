@@ -53,7 +53,7 @@ const ThreeRenderer = (function () {
      * highlight draping so units, ranges and ground all ride the same surface. */
     function _surfaceLift(wx, wz) {
         if (!BEVEL.enabled || BEVEL.amp <= 0) return 0;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var f = BEVEL.freq / ts;
         var n = _ewSmoothNoise(wx * f, wz * f) * 0.65
               + _ewSmoothNoise(wx * f * 2.3 + 11.5, wz * f * 2.3 + 7.1) * 0.35;
@@ -307,7 +307,7 @@ const ThreeRenderer = (function () {
     /* smooth surface height at local (lu,lv) in [0..1] across tile (x,y):
        bilinear blend of the 4 corner heights + a small organic swell. */
     function _naturalSurfaceYLocal(x, y, lu, lv, _bw, _bh, elevStep) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var Y00 = _cornerHeightY(x,     y,     elevStep, _bw, _bh);
         var Y10 = _cornerHeightY(x + 1, y,     elevStep, _bw, _bh);
         var Y01 = _cornerHeightY(x,     y + 1, elevStep, _bw, _bh);
@@ -316,7 +316,7 @@ const ThreeRenderer = (function () {
         return top + _surfaceLift(x * ts + lu * ts, y * ts + lv * ts);
     }
     function _naturalSurfaceY(x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
@@ -1363,12 +1363,12 @@ const ThreeRenderer = (function () {
     }
     function _tileSurfaceLift(x, y) {
         if (BEVEL.amp <= 0 || !_tileIsBeveled(x, y)) return 0;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         return _surfaceLift(x * ts + ts / 2, y * ts + ts / 2);
     }
 
     function tileTopY(x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         /* Roof-walkable buildings are anchored to the VOXEL ground (baseH*ts) and
            their roof plane sits at baseH*ts + _roofZPx, INDEPENDENT of the natural
@@ -1397,7 +1397,7 @@ const ThreeRenderer = (function () {
     }
 
     function unitSurfaceY(unit) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var ux = unit.x, uy = unit.y;
 
         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
@@ -1502,7 +1502,7 @@ const ThreeRenderer = (function () {
             var _bh = (typeof bh === 'function') ? bh() : 0;
             var ht = (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
             var si = _isStairTile(x, y, ht, _bw, _bh);
-            if (si) { var ts = CONFIG.tileSize || 128; return (si.highH - si.lowH) * 0.5 * ts * ELEV_STEP_RATIO; }
+            if (si) { var ts = CONFIG.tileSize || BASE_TILE; return (si.highH - si.lowH) * 0.5 * ts * ELEV_STEP_RATIO; }
         } catch (e) {}
         return 0;
     }
@@ -1676,7 +1676,7 @@ const ThreeRenderer = (function () {
 
     function rebuildTerrain() {
         if (!terrainGroup) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         ThreeCamera.setTileSize(ts);
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
@@ -1982,7 +1982,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildBuildingPrism(objKey, x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0;
         var topY = baseH * ts * ELEV_STEP_RATIO;
@@ -2205,7 +2205,7 @@ const ThreeRenderer = (function () {
         return g;
     }
     function _buildTurret(turret) {
-        var ts = CONFIG.tileSize || 128, topY = tileTopY(turret.x, turret.y);
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
         var isSiege = turret.spellId === 'siegeTurret';
         var r = ts * (isSiege ? 0.42 : TURRET_RADIUS_RATIO);
         var h = ts * (isSiege ? 0.85 : TURRET_HEIGHT_RATIO);
@@ -2318,7 +2318,7 @@ const ThreeRenderer = (function () {
     };
 
     function _buildTree3D(objKey, x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var v = _TREE_VARIANTS[objKey] || _TREE_VARIANTS.tree;
 
@@ -2491,7 +2491,7 @@ const ThreeRenderer = (function () {
         var src = _loadFoliageModel(name);
         if (!src || !src._ew_bbox) return null;
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var bb = src._ew_bbox;
         var modelH = (bb.max.y - bb.min.y) || 1;
@@ -2558,7 +2558,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildCrossBillboard(objKey, x, y) {
-        var ts = CONFIG.tileSize || 128, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
         var w = ts, h = ts * BILLBOARD_DEFAULT_H;
         if (spr && spr.width && spr.height) { h = ts * BILLBOARD_DEFAULT_H; w = h * (spr.width / spr.height); }
@@ -2581,7 +2581,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildBarrierSlab(objKey, x, y) {
-        var ts = CONFIG.tileSize || 128, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
 
         var sprW = (spr && spr.width) ? spr.width : 128;
@@ -2632,7 +2632,7 @@ const ThreeRenderer = (function () {
        soft glow head. Honors an editor-authored rotation (entry.rot). */
     function _buildLampPostObj(objKey, x, y) {
         if (typeof _miscModelInstance !== 'function') return null;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var lampH = ts * 2.0;             // ~2 tiles tall (matches the auto lamps)
         var headY = lampH * 0.86;         // lantern sits near the top
@@ -2670,7 +2670,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildBillboard(objKey, x, y) {
-        var ts = CONFIG.tileSize || 128, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
         var w = ts, h = ts * BILLBOARD_DEFAULT_H;
         if (spr && spr.width && spr.height) { h = ts * BILLBOARD_DEFAULT_H; w = h * (spr.width / spr.height); }
@@ -2693,7 +2693,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildTowerCube(x, y, owner) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var cubeSize = ts * 0.55;
         var floatH = ts * 1.0;
@@ -2774,7 +2774,7 @@ const ThreeRenderer = (function () {
             tc._ew_cubeGlow.rotation.y = -now * 0.3 + i;
             tc._ew_cubeGlow.rotation.z = now * 0.2;
             /* Gentle float bob */
-            var bob = Math.sin(now * 1.2 + i * 3.14) * (CONFIG.tileSize || 128) * 0.06;
+            var bob = Math.sin(now * 1.2 + i * 3.14) * (CONFIG.tileSize || BASE_TILE) * 0.06;
             tc.position.y = tc._ew_baseY + bob;
 
             /* ── Patch tower HP bar smoothly ── */
@@ -2798,7 +2798,7 @@ const ThreeRenderer = (function () {
 
     /* ── Rock Cluster: 2-4 noisy icosahedrons with rock texture ── */
     function _buildRockCluster3D(x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var rockTex = _getBoulderTexture();
         var g = new THREE.Group();
@@ -2845,7 +2845,7 @@ const ThreeRenderer = (function () {
 
     /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */
     function _buildCrystalCluster3D(x, y) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
 
@@ -2992,7 +2992,7 @@ const ThreeRenderer = (function () {
         if (!mon || typeof THREE === 'undefined') return null;
         var fn = _monBuilders()[mon.kind];
         if (!fn) return null;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g;
         try { g = fn(_monRng(mon.seed || 1)); } catch (e) { return null; }
         if (!g) return null;
@@ -3156,7 +3156,7 @@ const ThreeRenderer = (function () {
         if (!url) return null;
         var tex = getTexture(url);
         if (!tex) return null;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
 
         var h = ts * 0.6;
@@ -3254,7 +3254,7 @@ const ThreeRenderer = (function () {
             SEED_TILE_SPRITES.warp && SEED_TILE_SPRITES.warp.length) {
             var _runeVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
             var _runeUrl = SEED_TILE_SPRITES.warp[0];
-            var _runeTs = CONFIG.tileSize || 128;
+            var _runeTs = CONFIG.tileSize || BASE_TILE;
             for (var i = 0; i < state.warpRunes.length; i++) {
                 var rr = state.warpRunes[i];
                 if (rr.owner !== _runeVp) continue;
@@ -3281,7 +3281,7 @@ const ThreeRenderer = (function () {
 
         /* ── Render state._deployedObjects (traps, decoys, walls, totems) ── */
         if (state._deployedObjects) {
-            var ts = CONFIG.tileSize || 128;
+            var ts = CONFIG.tileSize || BASE_TILE;
             for (var i = 0; i < state._deployedObjects.length; i++) {
                 var dObj = state._deployedObjects[i];
                 if (dObj.hp <= 0) continue;
@@ -3363,7 +3363,7 @@ const ThreeRenderer = (function () {
         }
 
         if (ThreePost && ThreePost.rebuildWardLights) {
-            ThreePost.rebuildWardLights(state.wards || [], tileTopY, CONFIG.tileSize || 128);
+            ThreePost.rebuildWardLights(state.wards || [], tileTopY, CONFIG.tileSize || BASE_TILE);
         }
     }
 
@@ -3408,7 +3408,7 @@ const ThreeRenderer = (function () {
         if (state.roamingNexus) zones.push(state.roamingNexus);
         if (zones.length === 0) { _lastNexusSerial = _computeNexusSerial(); return; }
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
         var wallHeight = 2 * elevStep;
 
@@ -3527,7 +3527,7 @@ const ThreeRenderer = (function () {
         _spawnZoneMats.length = 0;
         if (!state.spawnZones) { _lastSpawnZoneSerial = ser; return; }
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
@@ -3606,7 +3606,7 @@ const ThreeRenderer = (function () {
 
         if (!state.spawnZones) { _lastSanctuaryWallSerial = ser; return; }
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
         var wallHeight = 1.3 * elevStep; /* shorter than nexus (2×elevStep) */
 
@@ -3862,7 +3862,7 @@ const ThreeRenderer = (function () {
 
     function _buildNexusBar(key, nex) {
         _ensureNexusBarStyles();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
 
         var wrap = document.createElement('div');
@@ -4169,7 +4169,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildUnitEntry(unit) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
 
         var _nativeScale = ts / 128;
@@ -4348,7 +4348,7 @@ const ThreeRenderer = (function () {
         _bbLastCamX = NaN;
 
         if (ThreePost && ThreePost.rebuildUnitLights) {
-            ThreePost.rebuildUnitLights(state.units, unitSurfaceY, CONFIG.tileSize || 128);
+            ThreePost.rebuildUnitLights(state.units, unitSurfaceY, CONFIG.tileSize || BASE_TILE);
         }
     }
 
@@ -4813,7 +4813,7 @@ const ThreeRenderer = (function () {
             if (!ue || !ue.group) return;
             /* Always scale relative to tile size, not sprite width —
                narrow sprites (64×128) must not shrink the plate */
-            var refW = CONFIG.tileSize || 128;
+            var refW = CONFIG.tileSize || BASE_TILE;
 
             ue.group.getWorldPosition(_scalePlateVec);
             var dist = _scalePlateVec.distanceTo(cam.position);
@@ -4833,7 +4833,7 @@ const ThreeRenderer = (function () {
         for (var _dsi = 0; _dsi < _decoyPlates.length; _dsi++) {
             var _dse = _decoyPlates[_dsi];
             if (!_dse.css2d.visible || !_dse.mesh) continue;
-            var _drefW = CONFIG.tileSize || 128;
+            var _drefW = CONFIG.tileSize || BASE_TILE;
             _dse.mesh.getWorldPosition(_scalePlateVec);
             var _ddist = _scalePlateVec.distanceTo(cam.position);
             if (_ddist < 1) _ddist = 1;
@@ -5003,7 +5003,7 @@ const ThreeRenderer = (function () {
         return geo;
     }
     function _makeHlTile(hx, hy, mat, frac, yOff) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
         /* On a walkable roof, tileTopY is the roof-standing height but the roof
            mesh itself is drawn a hair above it, so lift the highlight clear of
@@ -5075,7 +5075,7 @@ const ThreeRenderer = (function () {
 
         if (!state.selectedUnitId || !state.actionMode || state.phase !== 'battle' || state._actionExecuting) { _lastHlKey = ''; return; }
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var cache = window._ewHlCache;
 
@@ -5144,7 +5144,7 @@ const ThreeRenderer = (function () {
     function setOverlay(name, tiles, color, opacity) {
         clearOverlay(name);
         if (!highlightGroup || !tiles || !tiles.length) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var meshes = [];
         var isPreview = !!_PREVIEW_OVERLAYS[name];
         if (isPreview) _previewBaseOpacity[name] = opacity;
@@ -5217,7 +5217,7 @@ const ThreeRenderer = (function () {
     function showGhostUnit(unit, tileX, tileY, surfaceYOverride) {
         clearGhostUnit();
         if (!highlightGroup || !unit) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = (surfaceYOverride !== undefined && surfaceYOverride !== null)
             ? surfaceYOverride + 1.0
             : tileTopY(tileX, tileY) + 1.0;
@@ -5312,7 +5312,7 @@ const ThreeRenderer = (function () {
 
     function drawArrow3D(fromX, fromY, toX, toY, hexColor, dashed, fromYOverride, toYOverride) {
         if (!highlightGroup) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var inset = ts * 0.22;
 
         var torsoOff = ts * UNIT_SPRITE_SIZE_RATIO * 0.5;
@@ -5446,7 +5446,7 @@ const ThreeRenderer = (function () {
     function worldToScreen(tileX, tileY, yOffset) {
         var cam = ThreeCamera.getCamera();
         if (!cam || !canvas) return null;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var wx = tileX * ts + ts / 2;
         var wy = tileTopY(tileX, tileY) + (yOffset || 0);
         var wz = tileY * ts + ts / 2;
@@ -5466,7 +5466,7 @@ const ThreeRenderer = (function () {
         _ensureIntentBadgeContainer();
         var cam = ThreeCamera.getCamera();
         if (!cam || !canvas) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var ue = null;
         var unitOnTile = state.units ? state.units.find(function(u) { return !u.dead && u.x === tileX && u.y === tileY; }) : null;
@@ -5517,7 +5517,7 @@ const ThreeRenderer = (function () {
         if (!highlightGroup) return;
         if (hoverMesh) { highlightGroup.remove(hoverMesh); hoverMesh.geometry.dispose(); hoverMesh.material.dispose(); hoverMesh = null; }
         if (tx < 0 || ty < 0) return;
-        var ts = CONFIG.tileSize || 128, topY = tileTopY(tx, ty) + 0.5;
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
         var hMat = _makeHlMaterial(0xffffff, 0.25, 0.3, 0);
         hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
         hoverMesh.rotation.x = -Math.PI / 2;
@@ -5541,7 +5541,7 @@ const ThreeRenderer = (function () {
 
         var entry = unitEntries.get(unitId);
         if (!entry || !entry.group) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         _hoverGlowMesh = new THREE.Mesh(
             new THREE.RingGeometry(ts * 0.42, ts * 0.56, 32),
             _makeRingMaterial(0xffffff, 0.9, 0.0)
@@ -5613,7 +5613,7 @@ const ThreeRenderer = (function () {
         if (!ue || selId == null) return;
 
         if (!_selChevronMesh) {
-            var ts = CONFIG.tileSize || 128;
+            var ts = CONFIG.tileSize || BASE_TILE;
             _selChevronMesh = _buildSelectionChevron(ts);
             _selChevronUnitId = selId;
             ue.group.add(_selChevronMesh);
@@ -5624,7 +5624,7 @@ const ThreeRenderer = (function () {
             ue.group.add(_selChevronMesh);
         }
 
-        var topY = ue.group._ew_spriteTopY ? (ue.group._ew_spriteTopY - ue.group.position.y) : ((CONFIG.tileSize || 128) * 0.85);
+        var topY = ue.group._ew_spriteTopY ? (ue.group._ew_spriteTopY - ue.group.position.y) : ((CONFIG.tileSize || BASE_TILE) * 0.85);
         var bobOffset = Math.sin(performance.now() * 0.003) * 4;
 
         /* Plate anchor is at topY + 12 in local coords; plate grows upward ~75px
@@ -5884,7 +5884,7 @@ const ThreeRenderer = (function () {
             return;
         }
 
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
 
@@ -6034,14 +6034,14 @@ const ThreeRenderer = (function () {
         var ue = unitEntries.get(unit.id);
         if (ue && ue.group) {
             ue.group.getWorldPosition(_occVecA);
-            var ts = CONFIG.tileSize || 128;
+            var ts = CONFIG.tileSize || BASE_TILE;
             var topY = (ue.group._ew_spriteTopY != null) ? ue.group._ew_spriteTopY : (_occVecA.y + ts * 0.85);
             return _occVecB.set(_occVecA.x, (_occVecA.y + topY) * 0.5, _occVecA.z).clone();
         }
         return _occTilePoint(unit.x, unit.y);
     }
     function _occTilePoint(tx, ty) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var y = ts * 0.6;
         if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
             var h = getHeightAt(Math.round(tx), Math.round(ty));
@@ -6107,7 +6107,7 @@ const ThreeRenderer = (function () {
         var eye = cam.position;
         _occRight.setFromMatrixColumn(cam.matrixWorld, 0).normalize();
         _occUp.setFromMatrixColumn(cam.matrixWorld, 1).normalize();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var jit = ts * 0.45;           // spread to catch a big block just off the centre line
         var nearClear = ts * 0.5;      // stop short of the subject so its own tile isn't faded
 
@@ -6343,9 +6343,9 @@ const ThreeRenderer = (function () {
             if (!canFly(unit) || !isUnitAirborne(unit)) {
 
                 if (g._ew_bobActive) {
-                    var sinkG = _getSubmersionDepth(unit) * ((CONFIG.tileSize || 128) * UNIT_SPRITE_SIZE_RATIO);
+                    var sinkG = _getSubmersionDepth(unit) * ((CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO);
                     g.position.y = unitSurfaceY(unit) - sinkG;
-                    g._ew_spriteTopY = unitSurfaceY(unit) + (CONFIG.tileSize || 128) * UNIT_SPRITE_SIZE_RATIO + 4;
+                    g._ew_spriteTopY = unitSurfaceY(unit) + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
                     g._ew_bobActive = false;
                 }
                 continue;
@@ -6358,7 +6358,7 @@ const ThreeRenderer = (function () {
             var bob = Math.sin(now * FLY_BOB_SPEED * Math.PI * 2 + phase) * FLY_BOB_AMP;
             var baseY = unitSurfaceY(unit);
             g.position.y = baseY + bob;
-            g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || 128) * UNIT_SPRITE_SIZE_RATIO + 4;
+            g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
             g._ew_bobActive = true;
         }
     }
@@ -6395,7 +6395,7 @@ const ThreeRenderer = (function () {
     }
 
     function _unitRestPos(unit) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var sy = unitSurfaceY(unit);
         var sink = _getSubmersionDepth(unit) * (ts * UNIT_SPRITE_SIZE_RATIO);
         return { x: unit.x * ts + ts / 2, y: sy - sink, z: unit.y * ts + ts / 2 };
@@ -6429,7 +6429,7 @@ const ThreeRenderer = (function () {
 
     function _updateWalkTweens() {
         var now = performance.now();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
 
         var _wkVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
@@ -6491,7 +6491,7 @@ const ThreeRenderer = (function () {
     }
 
     function _tileSurfaceY(tx, ty, tz) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var z = tz;
         if (z === undefined || z === null) {
             z = (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0;
@@ -6521,7 +6521,7 @@ const ThreeRenderer = (function () {
 
     function _updateDisplaceTweens() {
         var now = performance.now();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         var _dpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _displaceTweens) {
@@ -6556,7 +6556,7 @@ const ThreeRenderer = (function () {
     }
 
     function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
         var hDelta = Math.abs((toZ || 0) - (fromZ || 0));
         var arcPeak = Math.max(ts * 0.6, ts * 0.35 * dist + hDelta * 12);
@@ -6573,7 +6573,7 @@ const ThreeRenderer = (function () {
 
     function _updateJumpTweens() {
         var now = performance.now();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         var _jpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _jumpTweens) {
@@ -6631,7 +6631,7 @@ const ThreeRenderer = (function () {
 
     function startStrikeLeapTween(unit, tx, ty, opts) {
         if (!unit) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         opts = opts || {};
         var leapMs   = opts.leapMs   || 260;
         var holdMs   = opts.holdMs   || 70;
@@ -6659,7 +6659,7 @@ const ThreeRenderer = (function () {
 
     function _updateStrikeTweens() {
         var now = performance.now();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         for (var entry of _strikeTweens) {
             var uid = entry[0], tw = entry[1];
@@ -6810,7 +6810,7 @@ const ThreeRenderer = (function () {
 
     function startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {
         if (!projectileGroup || !scene) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var info = _getProjSpriteInfo(projClass);
 
         var tex = getTexture(info.url);
@@ -6940,7 +6940,7 @@ const ThreeRenderer = (function () {
     };
 
     function _tetherWorldPos(tileX, tileY, zLevel) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var z = (zLevel !== undefined && zLevel !== null) ? zLevel
             : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(tileX), Math.round(tileY)) : 0);
         var surfY = _tileSurfaceY(Math.round(tileX), Math.round(tileY), z);
@@ -6979,7 +6979,7 @@ const ThreeRenderer = (function () {
 
     function _setTetherVerts(geo, from, to) {
         var halfH = 8;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var dx = to.x - from.x;
         var dz = to.z - from.z;
@@ -7273,7 +7273,7 @@ const ThreeRenderer = (function () {
         _ensureFloatOverlay();
         if (!_floatDomOverlay) return;
         opts = opts || {};
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var el = _buildFloatTextCanvas(text, kind);
         el.style.position = 'absolute';
@@ -7418,7 +7418,7 @@ const ThreeRenderer = (function () {
 
     function startHitEffect(tileX, tileY, variant, isCrit, durationMs) {
         if (!hitFxGroup || !scene) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var sheet = _HIT_FX_SHEETS[variant] || _HIT_FX_SHEETS['hit04'];
 
         var tex = getTexture(sheet.url);
@@ -7525,7 +7525,7 @@ const ThreeRenderer = (function () {
     }
 
     function _syncCombatAnims() {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         if (state.attackAnimIds) {
             for (var uid of state.attackAnimIds) {
@@ -8200,7 +8200,7 @@ const ThreeRenderer = (function () {
 
     function _updateEnvironment() {
         if (!_envInited || !_envUni) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
@@ -8447,7 +8447,7 @@ const ThreeRenderer = (function () {
 
     // Distant mountain peak, textured with the nexus terrain sprite.
     function _hzMountain(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('nexus');
         var h = ts * (9 + rng() * 10);
@@ -8716,7 +8716,7 @@ const ThreeRenderer = (function () {
     // the diffuse), so we override its material with the real BakedPyramid.png
     // bake as an unlit map — that way it never renders flat/dark.
     function _hzModelPyramid(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var h = ts * (8 + rng() * 7);
         // glTF UVs assume flipY:false — the default TextureLoader flips, which
         // would render the bake upside-down, so build this one with flipY off.
@@ -8742,7 +8742,7 @@ const ThreeRenderer = (function () {
     // greys out the iris/pupil underneath, so that group is kept see-through
     // while the sclera/iris/pupil show the painted Eye_D diffuse.
     function _hzModelEyeball(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var h = ts * (3.5 + rng() * 3.5);
         var tex = _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
         var g = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, h, {
@@ -8779,7 +8779,7 @@ const ThreeRenderer = (function () {
 
     // A surreal floating stairway climbing up and ending in mid-air.
     function _hzStairway(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var topTex = _hzTex('bricks_3');
         var sideTex = _hzTex('ruins') || topTex;
@@ -8805,7 +8805,7 @@ const ThreeRenderer = (function () {
     // Abandoned greek temple — a stylobate, a colonnade of (some broken)
     // columns and a partial entablature beam.
     function _hzGreekRuin(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var stoneTex = _hzTex('bricks_2');
         var beamTex = _hzTex('ruins') || stoneTex;
@@ -8858,7 +8858,7 @@ const ThreeRenderer = (function () {
     // A great pyramid. Some are pristine; others are tilted and half-swallowed
     // by the ground — monuments of a civilisation the apocalypse came for.
     function _hzPyramid(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex(rng() < 0.5 ? 'desert' : 'wasteland') || _hzTex('scorched');
         var base = rng() < 0.5 ? 0xd6c39a : 0xb6a78c;
@@ -8884,7 +8884,7 @@ const ThreeRenderer = (function () {
 
     // Mesopotamian stepped ziggurat — diminishing terraces crowned by a shrine.
     function _hzZiggurat(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('bricks_1') || _hzTex('ruins');
         var tiers = 4 + (rng() * 3 | 0);
@@ -8907,7 +8907,7 @@ const ThreeRenderer = (function () {
 
     // A solitary leaning monolith — a black obsidian slab, sentinel and omen.
     function _hzMonolith(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('rocks_1');
         var h = ts * (8 + rng() * 9);
@@ -8930,7 +8930,7 @@ const ThreeRenderer = (function () {
     // A free-standing gateway to nowhere — two piers and a lintel framing only
     // sky. Sometimes a pier has crumbled and the lintel hangs broken.
     function _hzGateway(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('bricks_2') || _hzTex('ruins');
         var base = 0xcabfa2;
@@ -8962,7 +8962,7 @@ const ThreeRenderer = (function () {
 
     // A tapered obelisk capped by a pyramidion — fingers of dead empires.
     function _hzObelisk(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('scorched') || _hzTex('wasteland');
         var h = ts * (7 + rng() * 6);
@@ -8985,7 +8985,7 @@ const ThreeRenderer = (function () {
     // A toppled colossus: a felled giant column lying in the dust with its
     // drums scattered around it — the Ozymandias beat of the skyline.
     function _hzColossus(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('bricks_2') || _hzTex('ruins');
         var len = ts * (8 + rng() * 6), r = ts * (0.8 + rng() * 0.4);
@@ -9008,7 +9008,7 @@ const ThreeRenderer = (function () {
     // A cluster of crystalline shards thrusting from the ground — alien, lit
     // from within. Reused on the ground and floating in the air.
     function _hzCrystalShards(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('crystal') || _hzTex('obsidian');
         var n = 3 + (rng() * 4 | 0);
@@ -9039,7 +9039,7 @@ const ThreeRenderer = (function () {
     // A broken-off island of land hovering in the air: a slab top (with a small
     // ruin or crystals) over a tapered rocky underside, debris trailing below.
     function _hzFloatingIsland(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var topTex = _hzTex(rng() < 0.5 ? 'wasteland' : 'scorched') || _hzTex('dirt');
         var rockTex = _hzTex('cliff') || _hzTex('rock');
@@ -9071,7 +9071,7 @@ const ThreeRenderer = (function () {
     // Sacred-geometry orbital halo — tilted obsidian rings spinning around a
     // glowing crystal core, like a derelict armillary sphere adrift in the sky.
     function _hzSacredRings(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var ringTex = _hzTex('obsidian');
         var R = ts * (2.6 + rng() * 2.6);
@@ -9100,7 +9100,7 @@ const ThreeRenderer = (function () {
     // they read as distant stars, spirits or stray sparks of imagination, the
     // soul of the "time, space & reality collided" backdrop.
     function _hzAstralOrbs(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var palette = [0x9fd8ff, 0xb38cff, 0xff9fd0, 0xfff0a0, 0x8fffd0, 0xff8f8f];
         var n = 2 + (rng() * 4 | 0);
@@ -9123,7 +9123,7 @@ const ThreeRenderer = (function () {
 
     // Planted Stars-and-Stripes — a rigid (airless-moon) flag on a metal pole.
     function _hzFlag(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var poleH = ts * 4.2, poleR = ts * 0.07;
         var pole = _hzCyl(poleR, poleR, poleH, 8, ts, _hzGeoMat(_hzTex('metal'), 0xc9cdd6));
@@ -9154,7 +9154,7 @@ const ThreeRenderer = (function () {
     // equipment/battery bay at the back and the big umbrella high-gain antenna
     // on a forward mast. Forward is +Z (where the dish + console live).
     function _hzRover(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var foil  = function () { return _hzGeoMat(_hzTex('gold'), 0xcaa23f); };                          // kapton gold foil
         var alum  = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc6cad1); };  // bare aluminium
@@ -9236,7 +9236,7 @@ const ThreeRenderer = (function () {
     // The Golden Gates — two fluted gold pillars under an ornate lintel, a
     // luminous veil filling the threshold and a crowning glow.
     function _hzGoldGate(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var goldTex = _hzTex('gold');
         var base = 0xe9c25a;
@@ -9264,7 +9264,7 @@ const ThreeRenderer = (function () {
     // A glowing EXIT sign on a slim post — a freestanding wayfinder in the maze
     // (stands on the floor since the backrooms has no ceiling to hang from).
     function _hzExitSign(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var postH = ts * 1.7;
         var post = _hzCyl(ts * 0.05, ts * 0.05, postH, 6, ts, _hzGeoMat(_hzTex('metal'), 0x52555c));
@@ -9286,7 +9286,7 @@ const ThreeRenderer = (function () {
 
     // A pillar of holy light rising into the sky from a dais.
     function _hzLightPillar(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var h = ts * (16 + rng() * 8), r = ts * (0.7 + rng() * 0.4);
         var beamMat = _hzGlowMat(0xfff6d6, 0.16);
@@ -9304,7 +9304,7 @@ const ThreeRenderer = (function () {
 
     // Backrooms hanging fluorescent — a buzzing light panel on a ceiling conduit.
     function _hzFluorescent(rng) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var conduitH = ts * 2.6;
         var stem = _hzCyl(ts * 0.04, ts * 0.04, conduitH, 6, ts, _hzGeoMat(_hzTex('metal'), 0x6a6d74));
@@ -9322,7 +9322,7 @@ const ThreeRenderer = (function () {
 
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
@@ -9455,7 +9455,7 @@ const ThreeRenderer = (function () {
             if (_arenaRuinsGroup) { scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); _arenaRuinsGroup = null; _arenaRuinsKey = ''; }
             return;
         }
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
@@ -9566,7 +9566,7 @@ const ThreeRenderer = (function () {
     }
     function _buildStreetLamps() {
         if (!scene || typeof THREE === 'undefined') return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         if (!_streetLampsEnabled()) {
             if (_streetLampGroup) { scene.remove(_streetLampGroup); _disposeR(_streetLampGroup); _streetLampGroup = null; _streetLampKey = ''; }
             if (typeof ThreePost !== 'undefined' && ThreePost && ThreePost.rebuildStreetLampLights) ThreePost.rebuildStreetLampLights([], ts);
@@ -9776,7 +9776,7 @@ const ThreeRenderer = (function () {
 
     function _buildLightRays() {
         if (!scene || typeof THREE === 'undefined') return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var key = _bw + 'x' + _bh + '@' + ts;
@@ -10133,7 +10133,7 @@ const ThreeRenderer = (function () {
     }
 
     function _renderZoneBorderGroup(info, color) {
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         for (var fi = 0; fi < info.tiles.length; fi++) {
             var ft = info.tiles[fi];
@@ -10243,7 +10243,7 @@ const ThreeRenderer = (function () {
     var _spiderwebZoneTex = null;
     function _renderSpiderwebZoneOverlay(tiles) {
         if (!highlightGroup || !tiles || !tiles.length) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         if (!_spiderwebZoneTex) {
             var webUrl = (typeof SPIDERWEB_SPRITE !== 'undefined')
@@ -10449,7 +10449,7 @@ const ThreeRenderer = (function () {
 
     function _syncTornadoBillboards(zones) {
         if (!weatherGroup) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var needed = {};
         for (var i = 0; i < zones.length; i++) {
@@ -10517,7 +10517,7 @@ const ThreeRenderer = (function () {
         var now = performance.now();
         var frameCount = (typeof TORNADO_FRAME_COUNT !== 'undefined') ? TORNADO_FRAME_COUNT : 99;
         var cam = ThreeCamera.getCamera();
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
         for (var i = 0; i < _tornadoBillboards.length; i++) {
             var tb = _tornadoBillboards[i];
 
@@ -10591,7 +10591,7 @@ const ThreeRenderer = (function () {
     function _syncHurricaneVortices(zones) {
         var Effects = window.ThreeVFXEffects;
         if (!Effects || !Effects.buildHurricaneVortex3D) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var needed = {};
         for (var i = 0; i < zones.length; i++) {
@@ -10655,7 +10655,7 @@ const ThreeRenderer = (function () {
     function _syncBlizzardVortices(zones) {
         var Effects = window.ThreeVFXEffects;
         if (!Effects || !Effects.buildBlizzardVortex3D) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var needed = {};
         for (var i = 0; i < zones.length; i++) {
@@ -10719,7 +10719,7 @@ const ThreeRenderer = (function () {
     function _syncSandstormVortices(zones) {
         var Effects = window.ThreeVFXEffects;
         if (!Effects || !Effects.buildSandstormVortex3D) return;
-        var ts = CONFIG.tileSize || 128;
+        var ts = CONFIG.tileSize || BASE_TILE;
 
         var needed = {};
         for (var i = 0; i < zones.length; i++) {
@@ -10782,7 +10782,7 @@ const ThreeRenderer = (function () {
         if (!active || !renderer || !scene) return;
 
         if (typeof camera !== 'undefined') {
-            ThreeCamera.setTileSize(CONFIG.tileSize || 128);
+            ThreeCamera.setTileSize(CONFIG.tileSize || BASE_TILE);
 
             if (!camera._appliedThisFrame) {
                 ThreeCamera.sync(camera);
@@ -11103,7 +11103,7 @@ const ThreeRenderer = (function () {
         var poll = setInterval(function() {
             if (typeof camera !== 'undefined' && camera._apply) {
                 var orig = camera._apply.bind(camera);
-                camera._apply = function() { orig(); this._appliedThisFrame = true; if (active && ThreeCamera.getCamera()) { ThreeCamera.setTileSize(CONFIG.tileSize||58); ThreeCamera.sync(this); } };
+                camera._apply = function() { orig(); this._appliedThisFrame = true; if (active && ThreeCamera.getCamera()) { ThreeCamera.setTileSize(CONFIG.tileSize||BASE_TILE); ThreeCamera.sync(this); } };
                 clearInterval(poll);
                 console.log('[ThreeRenderer] camera._apply() hooked');
             }
@@ -11231,7 +11231,7 @@ ThreeRenderer.hookCamera();
         if (!state.boardTerrain || !state.boardTerrain.length || !state.boardTerrain[0]) return;
         if (ThreeRenderer.isActive()) return;
 
-        CONFIG.tileSize = 128;
+        CONFIG.tileSize = BASE_TILE;
 
         ThreeRenderer.activate();
         _armed = false;

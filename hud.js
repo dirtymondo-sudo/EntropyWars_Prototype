@@ -2381,7 +2381,7 @@ function EnemyActionMenu({ st }) {
       if (typeof canFly === 'function' && canFly(actingUnit) &&
           typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)) {
 
-        const ts = CONFIG.tileSize || 128;
+        const ts = CONFIG.tileSize || BASE_TILE;
         const curGnd = typeof getHeightAt === 'function' ? getHeightAt(actingUnit.x, actingUnit.y) : 0;
         const clearance = (actingUnit.z || 0) - curGnd;
         const destGnd = typeof getHeightAt === 'function' ? getHeightAt(mt.x, mt.y) : 0;
