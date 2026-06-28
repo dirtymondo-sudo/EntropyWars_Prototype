@@ -194,9 +194,9 @@ const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
-const STAT_KEYS = ['HP','MP','ATK','DEF','INT','SPD','RNG','MOV'];
-const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, INT:100, SPD:11, RNG:6, MOV:6 };
-const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', INT:'int', SPD:'spd', RNG:'range', MOV:'move' };
+const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','RNG','MOV'];
+const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, RNG:6, MOV:6 };
+const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', RNG:'range', MOV:'move' };
 const CODEX_CLASS_LABELS = { tank:'HEAVY ARMOR', bruiser:'ASSAULT', healer:'MEDICAL', support:'SUPPORT OPS', assassin:'BLACK OPS', caster:'PSI-OPS', ranged:'LONG RANGE', specialist:'SPECIALIST', hybrid:'MULTI-ROLE' };
 
 const ACC_ICONS = {
@@ -321,11 +321,11 @@ function computeStats(race, cls) {
 }
 function computeFullStats(race, cls, secJob, equipment) {
   const base = computeStats(race, cls);
-  const secB = (secJob && typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(secJob) : { hp:0,mp:0,atk:0,def:0,move:0,awr:0,int:0,spd:0 };
-  const eqB = (equipment && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,move:0,awr:0,int:0,spd:0 };
+  const secB = (secJob && typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(secJob) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
+  const eqB = (equipment && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
   const delta = {};
   const final = {};
-  for (const k of ['hp','mp','atk','def','move','awr','int','spd']) {
+  for (const k of ['hp','mp','atk','def','mdef','move','awr','int','spd']) {
     const b = base[k] || 0;
     const d = (secB[k]||0) + (eqB[k]||0);
     delta[k] = d;

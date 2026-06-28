@@ -3271,7 +3271,8 @@
                     if (_dist > baneRange) return null;
                     const isEffective = (target.types || []).includes(_baneRule.baneType);
                     let dmg = _baneRule.baseDmg + (isEffective ? _baneRule.baneDmg : 0);
-                    dmg = Math.max(1, dmg - Math.floor((target.def || 0) * 0.3));
+                    // Banes deal magic damage → mitigated by magic defense (MDEF).
+                    dmg = Math.max(1, dmg - getEffectiveArmor(target, 'magic'));
                     return {
                         type: 'damage',
                         amount: dmg,
@@ -3292,7 +3293,7 @@
                 if (spell.kind === 'damage') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
                     let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (!spell.ignoreArmor && getEffectiveArmor(target)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target));
+                    if (!spell.ignoreArmor && getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
@@ -3307,7 +3308,7 @@
                 if (spell.kind === 'ricochet') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
                     let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (getEffectiveArmor(target)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target));
+                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
@@ -3380,7 +3381,7 @@
                 if (spell.kind === 'lifeDrain') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
                     let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (getEffectiveArmor(target)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target));
+                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
@@ -3716,7 +3717,10 @@
             const skyBonus = getSkyEventBonus(unit);
 
             const effAtk = unit.atk + getEffectiveAttackBonus(unit);
-            const effDef = (unit.def || 0) + getEffectiveArmor(unit);
+            // 'none' → gear/status/faction armor only, without folding the DEF
+            // stat in again (we add unit.def explicitly here for the display).
+            const effDef = (unit.def || 0) + getEffectiveArmor(unit, 'none');
+            const effMDef = (unit.mdef || 0);
             const effMov = getEffectiveMove(unit);
             const effRng = getEffectiveRange(unit);
             const effAwr = getEffectiveAwr(unit);
@@ -3789,7 +3793,7 @@
                 return `<span class="hover-stat-chip ${cls}${weatherMark}">${label} ${val}</span>`;
             }
 
-            const statsLine = `<div class="hover-stat-row">${statChip('ATK', effAtk, unit.atk, weatherMods.atk)}${statChip('DEF', effDef, unit.def || 0, weatherMods.def)}${statChip('MOV', effMov, unit.move, weatherMods.move)}${statChip('RNG', effRng, unit.range, weatherMods.rng)}${statChip('AWR', effAwr, unit.awr, weatherMods.awr)}${statChip('INT', effInt, unit.intStat || 0, weatherMods.int)}<span class="hover-stat-chip" title="Critical hit chance">CRIT ${Math.round(getCritChance(unit)*100)}%</span><span class="hover-stat-chip" title="Evasion chance">EVA ${Math.round(getEvasionChance(unit)*100)}%</span></div>`;
+            const statsLine = `<div class="hover-stat-row">${statChip('ATK', effAtk, unit.atk, weatherMods.atk)}${statChip('DEF', effDef, unit.def || 0, weatherMods.def)}${statChip('MDEF', effMDef, unit.mdef || 0, 0)}${statChip('MOV', effMov, unit.move, weatherMods.move)}${statChip('RNG', effRng, unit.range, weatherMods.rng)}${statChip('AWR', effAwr, unit.awr, weatherMods.awr)}${statChip('INT', effInt, unit.intStat || 0, weatherMods.int)}<span class="hover-stat-chip" title="Critical hit chance">CRIT ${Math.round(getCritChance(unit)*100)}%</span><span class="hover-stat-chip" title="Evasion chance">EVA ${Math.round(getEvasionChance(unit)*100)}%</span></div>`;
 
             const _activeSpellForMatchup = (state.pendingTarget?.mode === 'spell') ? getSelectedSpell(actingUnit) : null;
             const matchupLine = actingUnit && actingUnit.id !== unit.id && isEnemyUnit(actingUnit, unit) ?
@@ -6756,7 +6760,7 @@
             const docNum = 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
             const dateStr = '██/██/199█';
 
-            const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxInt = 80, maxSpd = 12;
+            const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
 
             return `
             <div class="cdx-dossier">
@@ -6814,12 +6818,13 @@
                         ${_codexBuildStatBar(stats.mp, maxMp, 'MP', '#5a8898')}
                         ${_codexBuildStatBar(stats.atk, maxAtk, 'ATK', '#c05050')}
                         ${_codexBuildStatBar(stats.def, maxDef, 'DEF', '#b8a060')}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'MDEF', '#6f8fc0')}
                         ${_codexBuildStatBar(stats.int, maxInt, 'INT', '#9080b8')}
                         ${_codexBuildStatBar(stats.spd, maxSpd, 'SPD', '#d09050')}
                         ${_codexBuildStatBar(stats.move, 5, 'MOV', '#60b8d0')}
                         ${_codexBuildStatBar(stats.awr, 8, 'AWR', '#b0b070')}
                     </div>
-                    <div class="cdx-stat-total">TOTAL STAT POINTS: ${stats.hp + stats.mp + stats.atk + stats.def + stats.int + stats.spd + stats.move + stats.awr}</div>
+                    <div class="cdx-stat-total">TOTAL STAT POINTS: ${stats.hp + stats.mp + stats.atk + stats.def + (stats.mdef || 0) + stats.int + stats.spd + stats.move + stats.awr}</div>
                 </div>
 
                 <div class="cdx-section">
@@ -7748,7 +7753,7 @@
 
             const ignoreArmor = spell.ignoreArmor || false;
             if (!ignoreArmor) {
-                const armor = getEffectiveArmor(target);
+                const armor = getEffectiveArmor(target, spell.damageType);
                 if (armor > 0) baseDmg = Math.max(1, baseDmg - armor);
                 const hgRed = getHourglassDamageReduction(target);
                 if (hgRed > 0) baseDmg = Math.max(1, baseDmg - hgRed);

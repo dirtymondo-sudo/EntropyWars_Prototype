@@ -6689,7 +6689,7 @@
             }
 
             const hourglassReduction = opts.ignoreArmor ? 0 : getHourglassDamageReduction(target);
-            const effectiveArmor = opts.ignoreArmor ? 0 : getEffectiveArmor(target);
+            const effectiveArmor = opts.ignoreArmor ? 0 : getEffectiveArmor(target, damageType);
             if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
             if (hourglassReduction > 0) finalDamage = Math.max(1, finalDamage - hourglassReduction);
             if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
@@ -8582,6 +8582,7 @@
                 unit.mp = Math.min((unit.mp || 0) + gains.mp, unit.maxMp);
                 unit.atk = (unit.atk || 0) + gains.atk;
                 unit.def = (unit.def || 0) + gains.def;
+                unit.mdef = (unit.mdef || 0) + (gains.mdef || 0);
                 unit.intStat = (unit.intStat || 0) + gains.int;
             }
 
@@ -8604,7 +8605,7 @@
             }
 
             let milestoneMsg = '';
-            const gainStr = gains ? `+${gains.hp} HP, +${gains.atk} ATK, +${gains.def} DEF, +${gains.int} INT` : '';
+            const gainStr = gains ? `+${gains.hp} HP, +${gains.atk} ATK, +${gains.def} DEF, +${gains.mdef || 0} MDEF, +${gains.int} INT` : '';
             const _inBattle = state.phase === 'battle';
             if (level === 2) {
                 milestoneMsg = gainStr;
@@ -8687,6 +8688,7 @@
                 unit.maxHp += b.hp; unit.hp = Math.min(unit.hp + Math.max(0, b.hp), unit.maxHp);
                 unit.maxMp += b.mp; unit.mp = Math.min(unit.mp + Math.max(0, b.mp), unit.maxMp);
                 unit.atk += b.atk; unit.def += b.def;
+                unit.mdef = (unit.mdef || 0) + (b.mdef || 0);
                 unit.intStat += b.int; unit.spd += b.spd;
                 unit.move = Math.max(1, unit.move + b.move);
                 unit.awr = Math.max(1, unit.awr + b.awr);
@@ -17944,8 +17946,9 @@
                 pushUndoSnapshot(true);
                 unit.items[baneKey] -= 1;
                 const isBaneEffective = (target.types || []).includes(baneRule.baneType);
+                // Banes deal magic damage, so magic defense (MDEF) is applied
+                // centrally in applyDamageToUnit — don't pre-subtract here.
                 let damage = baneRule.baseDmg + (isBaneEffective ? baneRule.baneDmg : 0);
-                damage = Math.max(1, damage - Math.floor((target.def || 0) * 0.3));
                 const _throwDelay = Math.max(0, _baneCam?.sourceHold ?? actionMs(900));
                 const _throwTravelMs = _baneCam?.travelMs ?? actionMs(520);
 

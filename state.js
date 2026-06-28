@@ -2768,7 +2768,14 @@
             return cost;
         }
 
-        function getEffectiveArmor(unit) {
+        // Flat damage soaked per point of the relevant defense stat. Physical
+        // attacks are mitigated by DEF, magical attacks by MDEF.
+        const DEFENSE_DAMAGE_REDUCTION = 0.25;
+
+        // damageType: 'physical' (default) folds DEF into armor, 'magic' folds
+        // MDEF in, anything else (e.g. 'dot', 'none') adds no defense-stat soak
+        // so callers that only want gear/status armor can pass 'none'.
+        function getEffectiveArmor(unit, damageType) {
             const baseArmor = unit?.armor || 0;
             const sleepMod = getSleepAffinityModifier(unit).armor || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).armor || 0;
@@ -2793,7 +2800,15 @@
             const sky = getSkyEventBonus(unit);
             if (sky.defMult !== 1) armor = Math.max(0, Math.round(armor * sky.defMult));
             armor = Math.max(0, Math.round(armor * getZodiacBonus(unit).mult));
-            return armor;
+
+            // Fold the relevant defense stat into the flat damage soak.
+            const dt = damageType || 'physical';
+            if (dt === 'physical') {
+                armor += Math.floor((unit?.def || 0) * DEFENSE_DAMAGE_REDUCTION);
+            } else if (dt === 'magic') {
+                armor += Math.floor((unit?.mdef || 0) * DEFENSE_DAMAGE_REDUCTION);
+            }
+            return Math.max(0, armor);
         }
 
         function getEffectiveHealBonus(unit, baseAmount = 0, target = null) {

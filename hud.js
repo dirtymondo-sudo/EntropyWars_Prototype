@@ -2325,7 +2325,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
       const isBaneEffective = (targetUnit.types || []).includes(bRule.baneType);
       let baneDmg = (bRule.baseDmg || 48) + (isBaneEffective ? (bRule.baneDmg || 120) : 0);
-      baneDmg = Math.max(1, baneDmg - Math.floor((targetUnit.def || 0) * 0.3));
+      baneDmg = Math.max(1, baneDmg - (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit, 'magic') : 0));
 
       let bMoveTile = null;
       if (!canThrow && unitAP >= itemApCost) {

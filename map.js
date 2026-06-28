@@ -5524,6 +5524,7 @@
                 maxMp: stats.mp,
                 atk: stats.atk,
                 def: stats.def,
+                mdef: stats.mdef || 0,
                 range: stats.range + (template.cls === 'Sniper' ? 1 : 0),
                 move: stats.move,
                 inspect: stats.inspect,
@@ -5599,6 +5600,7 @@
                             newUnit.maxHp += gains.hp; newUnit.hp = newUnit.maxHp;
                             newUnit.maxMp += gains.mp; newUnit.mp = newUnit.maxMp;
                             newUnit.atk += gains.atk; newUnit.def += gains.def;
+                            newUnit.mdef = (newUnit.mdef || 0) + (gains.mdef || 0);
                             newUnit.intStat += gains.int;
                         }
                     } else {
@@ -5662,6 +5664,7 @@
                             newUnit.maxHp += gains.hp; newUnit.hp = newUnit.maxHp;
                             newUnit.maxMp += gains.mp; newUnit.mp = newUnit.maxMp;
                             newUnit.atk += gains.atk; newUnit.def += gains.def;
+                            newUnit.mdef = (newUnit.mdef || 0) + (gains.mdef || 0);
                             newUnit.intStat += gains.int;
                         }
                     } else {

@@ -3066,6 +3066,7 @@
 
         if (unit.cls === 'Warrior') score += 10;
         if ((unit.def || 0) >= 10) score += 5;
+        if ((unit.mdef || 0) >= 10) score += 3;
 
         if (ap === 1 && v.closestEnemyDist <= 3 && v.closestEnemyDist < Infinity) {
             score += 15;
