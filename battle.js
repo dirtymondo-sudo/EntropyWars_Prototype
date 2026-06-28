@@ -6241,7 +6241,7 @@
         const CINE_SHOULDER_ANGLE = 14;   // degrees the camera rides above the line
         const CINE_TILT_GUARD_MIN = 10;   // wide guard — only blocks a degenerate flip
         const CINE_TILT_GUARD_MAX = 160;
-        const CINE_CAM_YAW_OFFSET = 16;   // swing off-axis → caster sits to one side
+        const CINE_CAM_YAW_OFFSET = 10;   // small swing → caster sits just off-centre
         // Subject SIZE: a fixed close zoom (the caster is the same size every
         // cast — tiles are a constant pixel size), easing back only as the gap
         // grows so a distant target still fits.
@@ -6255,7 +6255,7 @@
         // never slide off-screen the way a "% of the way to the target" focal did.
         // Its HEIGHT is blended the same fixed amount along the line so a tall
         // elevation gap never parks screen-centre up in the empty sky.
-        const CINE_FOCAL_LEAD_TILES = 1.4;  // tiles in front of the caster (fixed)
+        const CINE_FOCAL_LEAD_TILES = 0.35; // tiles in front of the caster (fixed)
         const CINE_FOCAL_RISE       = 0.5;  // focal height above the line (× tile)
         // Used only by the separate sky-strike/descent cam below (unchanged).
         const CINE_FOCAL_LEAD    = 1.15;  // tiles from caster toward target
