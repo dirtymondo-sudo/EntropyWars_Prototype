@@ -782,6 +782,15 @@ const ThreeRenderer = (function () {
             depthTest: true,
             depthFunc: THREE.GreaterDepth,   // paint only where occluded
             depthWrite: false,
+            // The billboard's lower edge sits right on the ground line, so the
+            // hairline sliver at the unit's feet lands exactly on the GreaterDepth
+            // boundary and shimmers every frame. A negative polygonOffset pulls the
+            // ghost slightly toward the camera so those near-coplanar fragments FAIL
+            // the test (no flicker), while a real occluder — wall, tree, hill — still
+            // puts the ghost far enough behind to draw the x-ray as intended.
+            polygonOffset: true,
+            polygonOffsetFactor: -4,
+            polygonOffsetUnits: -4,
             side: THREE.DoubleSide,
             fog: false
         });
@@ -3683,18 +3692,31 @@ const ThreeRenderer = (function () {
                     transparent: true,
                     opacity: 0.18,
                     depthWrite: false,
+                    // Floor decal sits all but coplanar with the terrain top, so a
+                    // tiny lift alone z-fights (flickers) as the camera moves. A
+                    // negative polygonOffset biases the plane toward the camera in
+                    // the depth buffer so it reliably renders ON the ground without
+                    // shimmering, while depthTest still lets units/props occlude it.
+                    polygonOffset: true,
+                    polygonOffsetFactor: -2,
+                    polygonOffsetUnits: -2,
                     side: THREE.DoubleSide
                 });
                 _spawnZoneMats.push(mat);
                 var mesh = new THREE.Mesh(geo, mat);
 
-                var ht = (state.boardHeights && state.boardHeights[tile.y])
-                    ? (state.boardHeights[tile.y][tile.x] || 0) : 0;
+                // Anchor to the REAL terrain top (tileTopY adds surface smoothing /
+                // stand-lift) rather than raw boardHeights*elevStep — the latter can
+                // place the plane below the rendered surface and bury/flicker it.
+                var topY = (typeof tileTopY === 'function')
+                    ? tileTopY(tile.x, tile.y)
+                    : (((state.boardHeights && state.boardHeights[tile.y])
+                        ? (state.boardHeights[tile.y][tile.x] || 0) : 0) * elevStep);
 
                 mesh.rotation.x = -Math.PI / 2;
                 mesh.position.set(
                     tile.x * ts + ts / 2,
-                    ht * elevStep + 0.5,
+                    topY + ts * 0.012,
                     tile.y * ts + ts / 2
                 );
                 _spawnZoneGroup.add(mesh);
