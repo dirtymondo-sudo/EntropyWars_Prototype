@@ -201,7 +201,24 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   the deferred `selectUnit` activation pan from fighting each other.
   `camera._preCineView` remembers the player's overhead tilt/yaw/zoom;
   restored by softResetToUnit/reset/selectUnit for MANUAL local units, while
-  auto/AI units keep streaming from the cinematic framing. Bane-vial item
+  auto/AI units keep streaming from the cinematic framing.
+  - **Cine-RETURN consistency pass (2026-06-29):** the return-to-gameplay was
+    "wonky / inconsistent — zooms out, stays tilted at the spell-cast angle." It
+    was split across `restore`/`reset`/`softResetToUnit`(×2)/`focusOnTiles` that
+    each handled the return DIFFERENTLY: `reset` returned to the recomputed
+    DEFAULT zoom while `restore`/soft-reset returned to the exact `pre.zoom`, and
+    the no-saved soft-reset + the focus-cam pan (`_spellFocusCamera`→`focusOnTiles`)
+    left `tilt` as `undefined` → frozen at the cinematic angle while x/y/zoom
+    moved. Fixes: (1) every cine-return now restores tilt+yaw+ZOOM **together** to
+    `_preCineView` in ONE move (reset uses `pre.zoom`, not the default); (2) a
+    `cineWasActive` safety net un-tilts to the canonical board angle
+    (`DEFAULT_BOARD_TILT=50`/`YAW=0`) if the remembered framing is ever missing —
+    the camera can NEVER be stranded tilted; (3) `focusOnTiles` folds the
+    un-tilt+zoom-restore into its pan when a `_preCineView` is pending for a
+    MANUAL side (auto/AI still stream); (4) `_preCineView` is only captured from a
+    true gameplay state (`_cineShotId == null`) so a shot can't record a cinematic
+    tilt as the "overhead" to return to. All in battle.js `camera` object.
+  Bane-vial item
   throws (`doItem` baneType branch) route through `playOffensiveActionCamera`
   like attacks (throw anim/projectile delayed by `cam.sourceHold`). The shot
   is elevation-aware: focal height lerps caster→target elevation + a headroom

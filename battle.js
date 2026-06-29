@@ -5638,6 +5638,15 @@
         let boardCameraResetTimer = null;
         let boardCameraSequenceId = 0;
 
+        // Canonical resting orientation of the gameplay camera (matches the
+        // `camera` init below). Used ONLY as a safety net when a cinematic shot
+        // ends but its remembered pre-shot framing was somehow lost — so the
+        // return can always un-tilt to a sane board angle instead of freezing at
+        // a cinematic tilt. The common path restores the player's exact
+        // pre-cine view (`_preCineView`); this is the floor under it.
+        const DEFAULT_BOARD_TILT = 50;
+        const DEFAULT_BOARD_YAW  = 0;
+
         const camera = {
 
             x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
@@ -6042,21 +6051,30 @@
                 const userZoom = getUserZoomScale();
                 const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
 
-                // Coming back from a cinematic action shot: also restore the
-                // player's overhead tilt/yaw/zoom.
+                // Coming back from a cinematic action shot: restore the player's
+                // pre-cine framing as ONE motion — tilt + yaw + ZOOM together — so
+                // every return lands identically instead of un-tilting and zooming
+                // out on separate, mismatched timelines. `cineWasActive` is the
+                // safety net: if the shot's remembered framing was lost we still
+                // un-tilt to the canonical board angle rather than freezing tilted.
+                const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 const pre = this._preCineView;
                 this._preCineView = null;
                 this._cineShotId = null; this._cineKeepSubject = false;
+                const retTilt = pre ? pre.tilt : (cineWasActive ? DEFAULT_BOARD_TILT : undefined);
+                const retYaw  = pre ? pre.yaw  : (cineWasActive ? DEFAULT_BOARD_YAW  : undefined);
+                const retZoom = pre ? pre.zoom : zoom;
                 if (immediate) {
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
-                    this.snap({ x: target.x, y: target.y, zoom,
-                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined });
+                    this.snap({ x: target.x, y: target.y, zoom: cineWasActive ? retZoom : zoom,
+                        tilt: retTilt, yaw: retYaw });
                 } else {
-                    this.moveTo({ x: target.x, y: target.y, zoom, duration: actionMs(600),
+                    this.moveTo({ x: target.x, y: target.y,
+                        zoom: cineWasActive ? retZoom : zoom, duration: actionMs(600),
                         _fogAllowed: true, easing: 'easeInOut',
-                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined,
-                        _allowZoomChange: pre ? true : undefined,
-                        _bypassCap: pre ? true : undefined });
+                        tilt: retTilt, yaw: retYaw,
+                        _allowZoomChange: cineWasActive ? true : undefined,
+                        _bypassCap: cineWasActive ? true : undefined });
                 }
             },
 
@@ -6087,6 +6105,9 @@
                 const focusUnit = targetUnit && !targetUnit.dead ? targetUnit : getSelectedUnit();
                 const saved = this._savedState;
                 this._savedState = null;
+                // Capture BEFORE clearing the shot id so the no-saved branch below
+                // can still tell it is returning from a cinematic shot.
+                const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 this._cineShotId = null; this._cineKeepSubject = false;
 
                 if (saved && focusUnit) {
@@ -6110,17 +6131,25 @@
                     }, dur);
                 } else if (focusUnit) {
 
+                    // No saved pre-action state (e.g. a focus-cam spell or move).
+                    // If we ARE returning from a cinematic shot, restore the
+                    // player's pre-cine framing as one motion (tilt+yaw+zoom),
+                    // with the canonical-angle safety net so we never freeze
+                    // tilted. A plain non-cine soft-reset keeps its old behavior:
+                    // pan to the unit, leaving tilt/zoom untouched.
                     const pre = this._preCineView;
                     this._preCineView = null;
                     const userZoom = getUserZoomScale();
-                    const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                    const retTilt = pre ? pre.tilt : (cineWasActive ? DEFAULT_BOARD_TILT : undefined);
+                    const retYaw  = pre ? pre.yaw  : (cineWasActive ? DEFAULT_BOARD_YAW  : undefined);
+                    const zoom = pre ? pre.zoom : (userZoom > 1.05 ? userZoom : getDefaultZoom());
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
                     this.moveTo({ x: focusUnit.x, y: focusUnit.y, zoom, duration: dur, easing: 'easeInOut',
-                        tilt: pre ? pre.tilt : undefined, yaw: pre ? pre.yaw : undefined,
-                        _allowZoomChange: pre ? true : undefined,
-                        _bypassCap: pre ? true : undefined });
+                        tilt: retTilt, yaw: retYaw,
+                        _allowZoomChange: cineWasActive ? true : undefined,
+                        _bypassCap: cineWasActive ? true : undefined });
                     if (this._busyTimer) clearTimeout(this._busyTimer);
                     this._busyTimer = setTimeout(() => {
                         if (this._seqId === seq) this._busy = false;
@@ -6136,6 +6165,22 @@
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+
+                // If the player's pre-cine framing is still pending (a cinematic
+                // action shot tilted the camera and a gameplay focus pan — e.g. a
+                // focus-cam spell — is now taking over), fold the return-to-overhead
+                // into THIS move so the camera never pans/zooms while still pitched
+                // at the angle the last spell was cast. Auto/AI sides intentionally
+                // keep streaming from the cinematic framing, so they are left alone.
+                let _cineRetTilt, _cineRetYaw, _cineRetZoom, _cineRet = false;
+                if (this._preCineView && !_cameraActingSideIsAuto()) {
+                    _cineRetTilt = this._preCineView.tilt;
+                    _cineRetYaw  = this._preCineView.yaw;
+                    _cineRetZoom = this._preCineView.zoom;
+                    this._preCineView = null;
+                    this._cineShotId = null; this._cineKeepSubject = false;
+                    _cineRet = true;
+                }
 
                 const avgX = points.reduce((s, p) => s + p.x, 0) / points.length;
                 const avgY = points.reduce((s, p) => s + p.y, 0) / points.length;
@@ -6172,6 +6217,12 @@
                     // keep the user's zoom); opt-in callers (turn activation)
                     // pass _applyZoom to actually re-frame.
                     ...(opts._applyZoom ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
+                    // Un-tilt as part of the pan when returning from a cinematic
+                    // shot — and bring the zoom back to the player's pre-cine
+                    // framing in the SAME move (unless the caller is setting its
+                    // own zoom), so tilt and zoom never restore on split timelines.
+                    ...(_cineRet ? { tilt: _cineRetTilt, yaw: _cineRetYaw,
+                        ...(opts._applyZoom ? {} : { zoom: _cineRetZoom, _allowZoomChange: true, _bypassCap: true }) } : {}),
                     duration: opts.transitionMs ?? 600,
                     easing: 'easeInOut',
                     elevZ: focusElevZ,
@@ -6498,7 +6549,14 @@
         }
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
-            if (!camera._preCineView) {
+            // Remember the player's framing to return to — but ONLY capture it
+            // from a genuine gameplay state (no shot currently owns the camera).
+            // Capturing while a previous cinematic shot is still live would record
+            // a TILTED angle as the "overhead" view, and every later restore would
+            // then return to that tilt — the root of the "stays tilted up / at the
+            // angle the spell was cast" drift. If a shot is already active we keep
+            // the framing it remembered.
+            if (!camera._preCineView && camera._cineShotId == null) {
                 camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
             }
             camera._cineShotId = sequenceId;
@@ -6620,7 +6678,10 @@
         // spawns telegraphMs later, impact lands descentMs after that.
         // ═══════════════════════════════════════════════════════════════════
         function _playDescentCam(sourceUnit, target, descentCam, timings, fogAllowed, sequenceId) {
-            if (!camera._preCineView) {
+            // Capture the return framing only from a true gameplay state — see
+            // the note in _playCineActionShot. Prevents a sky-strike shot from
+            // recording a cinematic tilt as the player's "overhead" view.
+            if (!camera._preCineView && camera._cineShotId == null) {
                 camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
             }
             camera._cineShotId = sequenceId;
