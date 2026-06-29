@@ -76,16 +76,31 @@
         const DOWNHILL_DAMAGE_BONUS = 0.1;
 
         // ── Jump stat ──────────────────────────────────────────────────────────
-        // Horizontal jump reach (in tiles), derived from agility (spd) so we don't
-        // have to hand-author every race. 1 = adjacent-only (the 8 surrounding
-        // tiles), 2 = clear a 1-wide gap, 3 = clear a 2-wide chasm / reach distant
-        // high ground. Flyers don't jump (they fly). An explicit unit.jump overrides
-        // the derivation if a designer ever sets one.
+        // Horizontal jump reach (in tiles). For most units it's derived from agility
+        // (spd) so we don't have to hand-author every race. 1 = adjacent-only (the 8
+        // surrounding tiles), 2 = clear a 1-wide gap, 3 = clear a 2-wide chasm / reach
+        // distant high ground. Flyers don't jump (they fly).
+        //
+        // HUGE races are the exception: a giant or a kaiju isn't "agile" (low spd), but
+        // sheer size means one stride covers ground and clears rooftops a nimble unit
+        // would have to scramble up. So size overrides the spd derivation for them.
+        // Resolution order: explicit unit.jump → race size override → spd derivation.
+        const RACE_JUMP_OVERRIDE = {
+            // Colossal — a single bound crosses chasms and clears tall roofs.
+            'kaiju': 3, 'king kong': 3, 'kraken': 3, 'dragon': 3,
+            'loch ness monster': 3, 'juggernaut': 3, 'giant': 3, 'titan': 3,
+            // Large, long-limbed bruisers — they vault where heavies plod.
+            'cyclops': 2, 'bigfoot': 2, 'yeti': 2, 'dinosaur': 2,
+            'minotaur': 2, 'nephilim': 2, 'golem': 2, 'mech': 2,
+            'goatman': 2, 'symbiote': 2,
+        };
         function getUnitJumpStat(unit) {
             if (!unit) return 1;
-            if (unit.jump != null) return unit.jump;
+            if (unit.jump != null) return unit.jump;        // explicit designer override
+            const sizeJump = RACE_JUMP_OVERRIDE[unit.race]; // huge bodies out-leap their spd
+            if (sizeJump != null) return sizeJump;
             const spd = unit.spd ?? 6;
-            if (spd <= 5) return 1;   // heavies: giants, mechs, knights…
+            if (spd <= 5) return 1;   // heavies: mechs, knights, zombies…
             if (spd <= 8) return 2;   // the broad middle
             return 3;                 // nimble: beasts, rogues, assassins
         }
@@ -2231,6 +2246,14 @@
             return (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
         }
 
+        // Leap-strike style spells can only strike a target the caster currently
+        // stands ABOVE ("leap from high ground onto an enemy below"). The caster can
+        // satisfy this by JUMPING up first — the jump-aware approach finder below
+        // offers the leap as a jump-then-cast combo once a jump would clear the target.
+        function spellRequiresAboveTarget(spell) {
+            return !!spell && (spell.kind === 'leapStrike' || spell.requiresAboveTarget === true);
+        }
+
         function getSpellRangeTiles(unit, spell) {
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
@@ -2242,6 +2265,13 @@
             const longRange = isLongRangeSpell(spell);
             const size = bw(), sizeH = bh();
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            // For above-target spells, the caster's CURRENT standing height is the bar
+            // the target tile must sit below. Computed once; from a jump landing this
+            // reflects the post-jump height (the finder mutates unit before calling us).
+            const _needsAbove = spellRequiresAboveTarget(spell);
+            const _casterStandH = _needsAbove
+                ? ((typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : unitZ)
+                : 0;
 
             const minR = (_kindMeta(spell).minRange ?? 1);
 
@@ -2270,6 +2300,9 @@
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
 
                     if (fogLimit && dxy > 0 && !_km.fogExempt && !isInVision(unit, cx, cy)) continue;
+                    // Above-target gate: a leap can only land on a target below the
+                    // caster's current standing height. (Jumping up first raises the bar.)
+                    if (_needsAbove && _casterStandH <= tz) continue;
                     tiles.push({ x: cx, y: cy });
                 }
             }
@@ -9598,31 +9631,54 @@
             return Math.max(0, Math.min(movesLeft, apSteps));
         }
 
+        // Jump destinations the unit could leap to and still afford the cast. A jump is
+        // one decisive action: 1 AP, doesn't consume a move slot, capped once per turn —
+        // so this is independent of _spellMoveBudget. getJumpTiles already returns [] for
+        // flyers and units that have already jumped. This is what lets the UI offer
+        // "jump onto high ground, then cast" for elevation-gated spells.
+        function _spellJumpApproachTiles(unit, spell) {
+            if (!unit || !spell || typeof getJumpTiles !== 'function') return [];
+            const apCost = getSpellApCost(spell);
+            if ((unit.ap || 0) < 1 + apCost) return [];   // jump (1 AP) + the cast
+            return getJumpTiles(unit);
+        }
+
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
         function spellHasReachableTarget(unit, spell) {
-            const steps = _spellMoveBudget(unit, spell);
-            if (steps <= 0) return false;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             try {
-                const ring1 = getMoveTiles(unit);
-                for (const t of ring1) {
-                    if (unitAt(t.x, t.y, t.z)) continue;
-                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                // Jump approach first: leap to a tile (often high ground) from which the
+                // spell becomes castable. Independent of the walk move budget — this is
+                // what unlocks elevation-gated spells the unit can't cast from the floor.
+                for (const jt of _spellJumpApproachTiles(unit, spell)) {
+                    if (unitAt(jt.x, jt.y, jt.z)) continue;
+                    unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
                     if (hasSpellTargetInRange(unit, spell)) return true;
+                    unit.x = sx; unit.y = sy; unit.z = sz;
                 }
-                unit.x = sx; unit.y = sy; unit.z = sz;
-                if (steps >= 2) {
-                    for (const t1 of ring1) {
-                        if (unitAt(t1.x, t1.y, t1.z)) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                        const r2 = getMoveTiles(unit);
-                        for (const t2 of r2) {
-                            if (unitAt(t2.x, t2.y, t2.z)) continue;
-                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                            if (hasSpellTargetInRange(unit, spell)) return true;
+                // Walk approach (1–2 steps).
+                const steps = _spellMoveBudget(unit, spell);
+                if (steps > 0) {
+                    const ring1 = getMoveTiles(unit);
+                    for (const t of ring1) {
+                        if (unitAt(t.x, t.y, t.z)) continue;
+                        unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                        if (hasSpellTargetInRange(unit, spell)) return true;
+                    }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                    if (steps >= 2) {
+                        for (const t1 of ring1) {
+                            if (unitAt(t1.x, t1.y, t1.z)) continue;
+                            unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                            const r2 = getMoveTiles(unit);
+                            for (const t2 of r2) {
+                                if (unitAt(t2.x, t2.y, t2.z)) continue;
+                                unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
+                                if (hasSpellTargetInRange(unit, spell)) return true;
+                            }
+                            unit.x = sx; unit.y = sy; unit.z = sz;
                         }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
                     }
                 }
             } finally {
@@ -9668,6 +9724,20 @@
                                     bestScore = d;
                                 }
                             }
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+                // Jump approach — only if walking can't reach a cast position (e.g. an
+                // elevation-gated spell that needs high ground a walk can't climb to).
+                // A single deliberate leap, so no via chaining.
+                if (!best) {
+                    for (const jt of _spellJumpApproachTiles(unit, spell)) {
+                        if (unitAt(jt.x, jt.y, jt.z)) continue;
+                        unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
+                        if (_hitsTarget()) {
+                            const d = Math.abs(jt.x - tx) + Math.abs(jt.y - ty);
+                            if (d > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = d; }
                         }
                         unit.x = sx; unit.y = sy; unit.z = sz;
                     }
@@ -9747,7 +9817,16 @@
                 const delay = typeof r === 'number' ? r : 450;
                 setTimeout(next, delay);
             };
-            if (approach.via) {
+            const _jumpStep = (jx, jy, jz, next) => {
+                const r = doJump(unit, jx, jy, jz);
+                if (r === false) { _bail(); return; }
+                // doJump returns true (not a duration); wait long enough for the jump
+                // arc (~650ms) to land before the cast fires.
+                setTimeout(next, 680);
+            };
+            if (approach._jump) {
+                _jumpStep(approach.x, approach.y, approach.z, _cast);
+            } else if (approach.via) {
                 _step(approach.via.x, approach.via.y, approach.via.z, () => {
                     _step(approach.x, approach.y, approach.z, _cast);
                 });
@@ -14608,8 +14687,19 @@
             const effRange = getEffectiveSpellRange(unit, spell);
             const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport';
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            const _needsAbove = spellRequiresAboveTarget(spell);
+            const _casterStandH = _needsAbove
+                ? ((typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : unitZ)
+                : 0;
             for (const u of state.units) {
                 if (u.dead) continue;
+                // Above-target spells: an enemy not below the caster isn't a valid
+                // target from here. Clicking it instead routes to the jump-then-cast
+                // approach, which leaps up to clear the target first.
+                if (_needsAbove) {
+                    const _uH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(u) : (u.z ?? 0);
+                    if (_casterStandH <= _uH) continue;
+                }
 
                 let d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
                 if (u._isBoss && u._bossSize === 2) {

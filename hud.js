@@ -2274,8 +2274,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       const onAxis = (actingUnit.x === tx || actingUnit.y === ty) && dist >= 1;
       inSpellRange = onAxis && dist <= spRange;
     } else if (isLeap) {
-
-      inSpellRange = dist >= 1 && dist <= spRange && !spLos;
+      // Leap-strikes can only hit a target the caster stands ABOVE. From here that
+      // needs an in-range enemy standing lower than us; if we're level/below it's not
+      // castable from this tile — but a jump up can fix it (offered via spMoveTile).
+      const _csh = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(actingUnit) : (actingUnit.z ?? 0);
+      const _tsh = targetUnit ? (typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(targetUnit) : (targetUnit.z ?? 0)) : 0;
+      inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
     } else {
 
       const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
@@ -2293,6 +2297,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       } else if (isLine || isDash) {
 
         spMoveTile = null;
+      } else if (isLeap) {
+        // A leap onto a level/higher enemy needs the caster to JUMP up first so the
+        // target ends up below them. findMoveIntoRange only walks; the engine's
+        // jump-aware finder returns a {_jump:true} approach when a leap-up enables it.
+        spMoveTile = (targetUnit && typeof findSpellApproachTile === 'function')
+          ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z) : null;
       } else {
         spMoveTile = findMoveIntoRange(spRange, spellApCost);
       }
@@ -2687,7 +2697,23 @@ function EnemyActionMenu({ st }) {
             const _pendingSpell = a.spell || null;
             const _targetX = targetUnit.x, _targetY = targetUnit.y, _targetZ = targetUnit.z;
 
-            if (mt.via) {
+            if (mt._jump) {
+              // Jump-then-cast (e.g. leap up to get above the target, then leap-strike).
+              const jumpResult = typeof doJump === 'function' ? doJump(actingUnit, mt.x, mt.y, mt.z) : false;
+              if (jumpResult === false) {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.selectedTool = null;
+                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+                if (typeof renderIfDirty === 'function') renderIfDirty();
+                return;
+              }
+              // doJump returns true (not a duration); wait for the jump arc (~650ms) to land.
+              setTimeout(() => {
+                _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+              }, 680);
+            } else if (mt.via) {
 
               const moveResult1 = typeof doMove === 'function' ? doMove(actingUnit, mt.via.x, mt.via.y, mt.via.z) : false;
               if (moveResult1 === false) {

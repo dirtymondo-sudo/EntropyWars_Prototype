@@ -295,10 +295,14 @@ a full tile under flyers) and the camera focused below airborne units. Now:
 ## Jump mechanic — Phase 1 redesign (2026-06-29)
 Jump was reworked from a 1-AP, 4-cardinal, single-tile shuffle into a deliberate
 traversal verb. All logic in `battle.js`.
-- **`getUnitJumpStat(unit)`** = horizontal reach in tiles, derived from agility:
-  `spd<=5 → 1`, `spd<=8 → 2`, else `3` (explicit `unit.jump` overrides). Exported
-  on `GAME`. **`getUnitJumpClimb(unit)`** = `max(2, jump)` (baseline 2 so existing
-  roofs stay reachable; jump-3 units climb 3). Drops unlimited (fall damage applies).
+- **`getUnitJumpStat(unit)`** = horizontal reach in tiles. Resolution order:
+  explicit `unit.jump` → `RACE_JUMP_OVERRIDE[race]` → agility (`spd<=5 →1`,
+  `spd<=8 →2`, else `3`). `RACE_JUMP_OVERRIDE` gives HUGE races size-based reach
+  regardless of low spd: colossal (kaiju/giant/king kong/kraken/dragon/loch ness/
+  juggernaut/titan) = 3; large bruisers (cyclops/bigfoot/yeti/dinosaur/minotaur/
+  nephilim/golem/mech/goatman/symbiote) = 2. Exported on `GAME`.
+  **`getUnitJumpClimb(unit)`** = `max(2, jump)` (baseline 2 so existing roofs stay
+  reachable; jump-3 units climb 3). Drops unlimited (fall damage applies).
 - **`getJumpTiles`** now: flyers return `[]` (they fly, never jump);
   `unit._jumpedThisTurn` returns `[]` (ONE leap per turn, reset alongside
   `_altitudeChangesThisTurn` at every turn boundary). Reach uses the engine's own
@@ -316,9 +320,33 @@ traversal verb. All logic in `battle.js`.
   the abrupt "snap to a 3-AP jump tile". Jump is deliberate now: walk first, then
   pick a jump (jump tiles show in the move overlay AND the dedicated jump-mode
   highlight at ui.js ~2759). Each leg animates cleanly on its own.
-- **Phase 2 (not yet built):** elevation-gated spell casting + "jump-here-then-cast"
-  previews in the quick-action menu / move arrows (jump-aware target reachability).
-  AI already has the half: weights `jumpAttackEnable_v1`, `jumpHighGround*_v1`.
+## Jump mechanic — Phase 2: jump-to-enable above-target spells (2026-06-29)
+The EXISTING elevation-gated spells (kind `leapStrike` — "leap from high ground onto
+an enemy below", requires `casterStandingHeight > targetStandingHeight`; ~9 spells like
+Feral Dive) can now be used by JUMPING UP FIRST so the target ends up below you, then
+casting — a jump-then-cast combo. NO new spell property was invented; this works off
+the existing leapStrike gate. `spellRequiresAboveTarget(spell)` = `kind==='leapStrike'
+|| spell.requiresAboveTarget` is the generalized hook.
+- **Gating (so a level/below target routes to the jump-approach instead of a failing
+  cast):** `getSpellRangeTiles` and `_getSpellValidTargets` now skip target tiles that
+  aren't below the caster's current standing height for above-target spells. (`doSpell`
+  + `hasSpellTargetInRange` already had the leapStrike gate; now all four agree.)
+- **Jump-aware reachability:** `_spellJumpApproachTiles(unit,spell)` returns
+  `getJumpTiles` candidates if `ap >= 1 + spellApCost`. `spellHasReachableTarget`
+  (keeps the spell selectable in the ability menu) and `findSpellApproachTile` (drives
+  the hover move-arrow + click-enemy auto-approach) both try these jump tiles; from a
+  jump landing the gate re-evaluates at the post-jump height, so a leap-up that clears
+  the target qualifies. `findSpellApproachTile` returns `{_jump:true, moveCost:1}`.
+- **Execution:** `_moveThenCast` (engine) and the HUD quick-action executor both got a
+  jump branch: `doJump(...)` then wait ~680ms for the arc to land, then cast. HUD
+  `isLeap` now also gates inSpellRange on `casterStandH > targetStandH` and uses
+  `findSpellApproachTile` (not the walk-only `findMoveIntoRange`) for the approach.
+- **Net effect:** on flat ground at even elevation, a leap is correctly unavailable
+  (no higher tile to jump to). With any higher tile within jump reach, hovering/clicking
+  the enemy jumps you up onto it and leaps. Needs `1 + leapApCost` AP (usually 3).
+- **Not done / possible Phase 3:** spells gated on the caster being AIRBORNE (flying),
+  and jump-aware approach for non-leap spells (currently only above-target spells get
+  the jump fallback; walk approach still covers the rest).
 
 ## Action camera framing — REVERTED 2026-06-13 (DO NOT REDO)
 The two "framing fixes" below were REVERTED: in practice they ruined the good
