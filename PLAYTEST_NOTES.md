@@ -218,6 +218,19 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
     MANUAL side (auto/AI still stream); (4) `_preCineView` is only captured from a
     true gameplay state (`_cineShotId == null`) so a shot can't record a cinematic
     tilt as the "overhead" to return to. All in battle.js `camera` object.
+  - **"Zooms out SUPER far for no reason" — the deeper one (2026-06-29):** the
+    auto-zoom framing math was coupled to the LIVE tilt.
+    `computeZoomForVisibleTiles` = `parentH · tiltFactor / (tiles · tileSize)`
+    with `tiltFactor = max(0.35, cos(dioramaTiltDeg))`. A cinematic shot pitches
+    the camera to ~76–86° where cos floors at **0.35** (vs ~0.64 at the resting
+    50°), so any `getDefaultZoom()` / `getTurnFramingZoom()` / `clampAutoZoom`
+    floor computed WHILE still at the cine angle resolves ~half as tight → the
+    board snaps way out. Intermittent because it depended on whether the tilt had
+    settled when the zoom was recomputed. Fix: `_zoomRefTilt()` — while a shot
+    owns the camera (`_preCineView` pending) the zoom frames for the player's
+    remembered pre-cine tilt, not the transient cinematic one. A sustained manual
+    tilt (no shot) still drives the auto-zoom. This is the real "zoom is all over
+    the place" root cause; the return-path consistency fixes above are the rest.
   Bane-vial item
   throws (`doItem` baneType branch) route through `playOffensiveActionCamera`
   like attacks (throw anim/projectile delayed by `cam.sourceHold`). The shot

@@ -6318,6 +6318,20 @@
         let _zoomMemoKey = '';
 
         window._clearZoomMemo = function() { _zoomMemo.clear(); _zoomMemoKey = ''; };
+        // The tilt the AUTO-ZOOM should frame for. A cinematic action shot swings
+        // the LIVE diorama tilt to a dramatic angle whose tiltFactor floors at
+        // 0.35 (vs ~0.64 at the resting 50°). Computing getDefaultZoom() /
+        // turn-framing / the auto-zoom clamp floor from THAT live tilt resolves
+        // the gameplay zoom roughly HALF as tight — the camera "zooms out super
+        // far for no reason" whenever a zoom is recomputed mid-shot or before the
+        // tilt has settled back. While a shot owns the camera (`_preCineView`
+        // pending), frame for the player's remembered pre-cine tilt instead, so
+        // the gameplay zoom never swings with the cinematic. A SUSTAINED manual
+        // tilt (no shot active) still drives the auto-zoom normally.
+        function _zoomRefTilt() {
+            if (camera._preCineView) return camera._preCineView.tilt;
+            return state.dioramaTiltDeg ?? DEFAULT_BOARD_TILT;
+        }
         function _zoomMemoRefreshKey() {
             const ts = CONFIG.tileSize || BASE_TILE;
             const gap = CONFIG.tileGap ?? 0;
@@ -6325,7 +6339,7 @@
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
             const parentW = _layoutCache.valid ? _layoutCache.parentW
                 : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
-            const tiltRound = Math.round(state.dioramaTiltDeg ?? 50);
+            const tiltRound = Math.round(_zoomRefTilt());
             const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound;
             if (key !== _zoomMemoKey) { _zoomMemoKey = key; _zoomMemo.clear(); }
             return { ts, gap, parentH, parentW };
@@ -6335,7 +6349,7 @@
             const cached = _zoomMemo.get(targetRows);
             if (cached !== undefined) return cached;
 
-            const tiltDeg = state.dioramaTiltDeg ?? 50;
+            const tiltDeg = _zoomRefTilt();
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
             const zoom = Math.max(0.15, Math.min(10.0, (parentH * tiltFactor) / (targetRows * (ts + gap))));
             _zoomMemo.set(targetRows, zoom);
