@@ -1455,6 +1455,26 @@ function spellDeliveryBadge(sp, cat) {
   return { label: 'MAGIC', color: '#b56ce0' };
 }
 
+// Long-range (gravity-assisted) vs close-range delivery class. A RANGED ability
+// (projectile / beam / bolt / blast / psychic / thrown) drops onto targets that
+// sit BELOW the caster for free; a MELEE/close ability is capped to its
+// elevation band. Mirrors isLongRangeSpell() in battle.js; falls back to a light
+// heuristic only if that engine helper hasn't loaded yet.
+function spellRangeClass(sp) {
+  if (typeof isLongRangeSpell === 'function') return isLongRangeSpell(sp) ? 'ranged' : 'melee';
+  if (sp.delivery === 'ranged' || sp.longRange === true) return 'ranged';
+  if (sp.delivery === 'melee' || sp.longRange === false) return 'melee';
+  if (sp.projectileOverride || sp.damageType === 'magic') return 'ranged';
+  return (sp.range || 0) >= 2 ? 'ranged' : 'melee';
+}
+// Small footer chip describing that delivery class. Cyan ⤢ = long range / falls
+// on targets below; amber ⚔ = close range / same-band only.
+function spellRangeBadge(sp) {
+  return spellRangeClass(sp) === 'ranged'
+    ? { label: 'RANGED', glyph: '⤢', color: '#5fd6ff', title: 'Long range — projectile/beam/thrown; drops onto targets below for free (ignores downward height limit)' }
+    : { label: 'MELEE',  glyph: '⚔', color: '#d99a55', title: 'Close range — capped to its elevation band; cannot reach far below' };
+}
+
 // Primary power stat for the header (red PWR / green HP / cyan SHLD …).
 function spellPowerStat(sp) {
   if (sp.dmg) return { value: sp.dmg, unit: 'PWR', color: '#ee6655' };
@@ -1499,6 +1519,7 @@ function SubMenu({ st }) {
       const selAoe = selSp ? (selSp.aoeRadius || 0) : 0;
       let selRangeStr = selRng > 0 ? selRng + ' range' : 'self';
       if (selAoe > 0) selRangeStr += ' · ' + selAoe + ' aoe';
+      const selRangeBadge = selSp ? spellRangeBadge(selSp) : null;
       return h(SubMenuPanel, { title: st.selectedTool + ' · Click target', fc: fc },
         selDesc && h('div', { style: {
           padding: '4px 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
@@ -1506,10 +1527,19 @@ function SubMenu({ st }) {
         }}, selDesc),
         (selVal || selRng) && h('div', { style: {
           padding: '0 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkDim, letterSpacing: '0.08em', display: 'flex', gap: 8,
+          color: EW.inkDim, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8,
         }},
           selVal && h('span', { style: { color: '#ee6655', fontWeight: 700 }}, selVal),
           h('span', null, selRangeStr),
+          selRangeBadge && h('span', {
+            title: selRangeBadge.title,
+            style: {
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              color: selRangeBadge.color, fontWeight: 700, letterSpacing: '0.08em',
+              border: '1px solid ' + selRangeBadge.color + '66', borderRadius: '9px',
+              padding: '0 6px', background: selRangeBadge.color + '14',
+            },
+          }, selRangeBadge.glyph + ' ' + selRangeBadge.label),
         ),
         h(SubMenuRow, { label: '← Cancel', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
       );
@@ -1606,6 +1636,7 @@ function SubMenu({ st }) {
         const powerStat = spellPowerStat(sp);
         const targetMode = spellTargetMode(sp);
         const delivery = spellDeliveryBadge(sp, cat);
+        const rangeBadge = spellRangeBadge(sp);
         const desc = sp.desc || spellTagline(sp);
         const accent = active ? cc.color : tc;
 
@@ -1679,6 +1710,15 @@ function SubMenu({ st }) {
             rangeStr && h('span', { style: {
               fontFamily: '"DotGothic16", monospace', fontSize: 8, letterSpacing: '0.06em', color: EW.inkDim,
             }}, '· ' + rangeStr),
+            h('span', {
+              title: rangeBadge.title,
+              style: {
+                display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
+                fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+                color: rangeBadge.color, border: '1px solid ' + rangeBadge.color + '66',
+                borderRadius: '9px', padding: '0 6px', background: rangeBadge.color + '14',
+              },
+            }, rangeBadge.glyph + ' ' + rangeBadge.label),
             h('span', { style: { flex: 1 }}),
             spellReason
               ? h('span', { style: {

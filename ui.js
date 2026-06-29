@@ -2880,14 +2880,19 @@
             // what doSpell will actually allow — a target far above/below falls out
             // of range even when close on the grid.
             const _spellSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
+            // Long-ranged spells (projectiles/beams/thrown) drop onto targets
+            // below for free — the highlight must match doSpell's reach gate.
+            const _spellLong = (typeof isLongRangeSpell === 'function') && isLongRangeSpell(spell);
             const _tgtZAt = (cx, cy) => {
               const u = _liveUnitMap.get(posKey(cx, cy));
               if (u && u.z != null) return u.z;
               return (typeof getHeightAt === 'function') ? getHeightAt(cx, cy) : 0;
             };
-            const _rangeD = (cx, cy) => (typeof combatDist === 'function')
-              ? combatDist(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy))
-              : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
+            const _rangeD = (cx, cy) => (typeof combatReach === 'function')
+              ? combatReach(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy), _spellLong)
+              : (typeof combatDist === 'function')
+                ? combatDist(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy))
+                : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
             if (_selectedForHl._skyThrowGrab && state._skyThrowHighlight) {
               // Sky-throw "phase 2": a target is grabbed — highlight where it can be
               // hurled (throwRange tiles around the grabbed unit), NOT the caster's

@@ -2013,6 +2013,25 @@
             return d;
         }
 
+        // Range distance with the LONG-RANGE gravity rule applied. A long-ranged
+        // delivery (projectile / beam / bolt / blast / psychic hit / thrown item)
+        // falls DOWNWARD for free: a target sitting BELOW the caster ignores the
+        // downward elevation gap, so only horizontal distance limits the reach.
+        // Upward and horizontal still cost range normally. When `longRange` is
+        // false this is exactly combatDist — close-range spells and basic attacks
+        // keep the full 3D limit and can't reach far below. See isLongRangeSpell().
+        function combatReach(x1, y1, z1, x2, y2, z2, longRange) {
+            if (longRange && (z2 || 0) < (z1 || 0)) {
+                // Collapse the downward drop to the caster's level: gravity carries
+                // the shot/throw the rest of the way down.
+                const d = combatDist(x1, y1, z1, x2, y2, z1);
+                // A target directly below in the same column is still a real target
+                // one drop away — keep it at range 1 rather than 0 (a self-cast).
+                return d === 0 ? 1 : d;
+            }
+            return combatDist(x1, y1, z1, x2, y2, z2);
+        }
+
         function randInt(n) {
             return Math.floor(Math.random() * n);
         }

@@ -351,6 +351,110 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // LONG-RANGE vs CLOSE-RANGE delivery — the VERTICAL reach rule.
+        //
+        // A long-ranged attack (a projectile, beam, bolt, blast, psychic hit,
+        // or a thrown item) is pulled DOWNWARD by gravity: it can always fall
+        // onto a target that sits BELOW the caster, so the downward elevation
+        // gap stops counting against range — only horizontal distance (and any
+        // UPWARD gap) still limits it. A close-range / melee spell or a basic
+        // attack gets no such help: it keeps the full 3D combatDist limit and
+        // can't reach a target more than `range` levels below.
+        //
+        // This is deliberately NOT keyed off the range stat — a knife-fighter's
+        // flurry can have range 3 yet still be melee, and a lobbed bomb can have
+        // range 2 yet still arc. We classify by what the ability actually IS:
+        //   1. an explicit `delivery: 'ranged'|'melee'` (or `longRange:bool`) wins
+        //   2. then the spell KIND (beams/areas vs body-strike kinds)
+        //   3. then a projectile graphic / magic damage / name+desc keywords
+        //   4. range is only a last-ditch tiebreak.
+        // To correct a single spell, add `delivery:'ranged'` / `'melee'` to it
+        // in data.js — no code change needed.
+        // ═══════════════════════════════════════════════════════════════════
+        // Kinds that are unambiguously a flying projectile / beam / lobbed shot.
+        // (aoe/cross are deliberately NOT here — they can be a lobbed meteor OR a
+        // self/adjacent slam, so we let the name/damage signals decide those.)
+        const _LONG_RANGE_KINDS = new Set([
+            'line', 'linePush', 'splitBeam', 'ricochet', 'barrage', 'bomb', 'delayed',
+        ]);
+        // Kinds that are inherently a body strike / lunge / grab and run their own
+        // bespoke vertical handling (sky combat, dives, grapples) — never treated
+        // as gravity-assisted long range.
+        const _MELEE_KINDS = new Set([
+            'leapStrike', 'skyDrop', 'skySlam', 'skyThrow', 'pull', 'swap',
+            'displacement',
+        ]);
+        // Concrete body-strike words only — metaphor-prone words (tear/rend/rip/
+        // gut/maul…) are left out because abilities say things like "tear apart
+        // an enemy's MIND" about a ranged psychic blast.
+        const _MELEE_WORDS = /\b(melee|punch|slash|bite|claw|scratch|stab|sword|blade|kick|fist|cleave|smash|bash|slam|swing|slice|hack|headbutt|grapple|pummel|uppercut|jab|knuckle|tusk|fang|talon|tackle|bludgeon|impale|skewer|stomp|trample|flurry|combo|lunge|charge|charging|rush)\b/i;
+        const _RANGED_WORDS = /\b(beam|bolt|ray|blast|shoot|shot|throw|thrown|hurl|toss|lob|launch|arrow|cannon|cannonball|missile|rocket|bullet|projectile|psychic|telekines|gun|laser|plasma|spark|lightning|thunder|flame|fireball|frost|shard|orb|sphere|wave|pulse|nova|meteor|comet|spit|breath|spray|gust|gale|dart|javelin|boulder|grenade|barrage|volley|snipe|conjure|smite|radiant)\b/i;
+        // Multi-word distance phrases a writer uses to pin down the delivery.
+        const _MELEE_PHRASES = ['close-range', 'close range', 'point-blank', 'point blank', 'melee range', 'hand-to-hand', 'hand to hand', 'up close', 'landing adjacent'];
+        const _RANGED_PHRASES = ['long-range', 'long range', 'from afar', 'from a distance', 'at a distance'];
+
+        // True if `spell` is a long-ranged (gravity-assisted) delivery. See header.
+        function isLongRangeSpell(spell) {
+            if (!spell) return false;
+            // 1. Explicit per-spell override (set in data.js) always wins.
+            if (spell.delivery === 'ranged' || spell.longRange === true) return true;
+            if (spell.delivery === 'melee'  || spell.longRange === false) return false;
+
+            const kind = spell.kind || '';
+            // 2. Structurally unambiguous projectile / beam / barrage kinds.
+            if (_LONG_RANGE_KINDS.has(kind)) return true;
+            // 3. Body-strike / dive / grab kinds with their own vertical handling.
+            if (_MELEE_KINDS.has(kind)) return false;
+
+            // 4. Self-centered bursts / auras / self-casts originate ON the caster —
+            // no remote target to "drop" onto, so never gravity-assisted.
+            if (spell.aoeOriginSelf || _kindMeta(spell).selfCast) return false;
+
+            const text = ((spell.name || '') + ' ' + (spell.desc || '')).toLowerCase();
+            // 5. Explicit distance phrases the writer used.
+            if (_MELEE_PHRASES.some(p => text.includes(p))) return false;
+            if (_RANGED_PHRASES.some(p => text.includes(p))) return true;
+
+            // 6. Single-word weapon / attack cues (author intent — outranks the
+            // projectile graphic, since melee strikes often reuse a projectile
+            // sprite, e.g. a "close-range slash" drawn with a knife).
+            const melee  = _MELEE_WORDS.test(text);
+            const ranged = _RANGED_WORDS.test(text);
+            if (melee && !ranged) return false;
+            if (ranged && !melee) return true;
+
+            // 7. A flying projectile graphic implies it leaves the caster's hand.
+            if (spell.projectileOverride) return true;
+
+            // 8. Magic with no melee cue reads as a cast bolt/beam.
+            if (spell.damageType === 'magic') return true;
+            // 9. A physical hit with no ranged signal at all is a close strike —
+            // genuine ranged physical attacks carry a projectile or a shot/throw
+            // cue and were caught above. Unknown types lean on the range stat.
+            if (spell.damageType === 'physical') return false;
+            return (spell.range || 0) >= 2;
+        }
+        window.isLongRangeSpell = isLongRangeSpell;
+
+        // combatDist to a target with the long-range vertical rule applied for the
+        // given spell, including big-boss multi-tile footprints (mirrors
+        // distToTarget). Use this wherever a spell's reach to a unit is gated.
+        function spellReachToTarget(unit, spell, target) {
+            const longRange = isLongRangeSpell(spell);
+            const _fz = unit.z ?? 0;
+            const _tz = target.z ?? 0;
+            let d = combatReach(unit.x, unit.y, _fz, target.x, target.y, _tz, longRange);
+            if (target._isBoss && target._bossSize === 2) {
+                d = Math.min(d,
+                    combatReach(unit.x, unit.y, _fz, target.x + 1, target.y, _tz, longRange),
+                    combatReach(unit.x, unit.y, _fz, target.x, target.y + 1, _tz, longRange),
+                    combatReach(unit.x, unit.y, _fz, target.x + 1, target.y + 1, _tz, longRange)
+                );
+            }
+            return d;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // SPELL_ANIM_PROFILES — per-kind animation descriptors.
         // Describes WHICH animation phases fire and in what configuration.
         // Phase 4 will wire these into executeSpellAnimation(); for now they
@@ -2114,6 +2218,7 @@
             if (!unit || !spell || !spell.range) return [];
             const tiles = [];
             const effRange = getEffectiveSpellRange(unit, spell);
+            const longRange = isLongRangeSpell(spell);
             const size = bw(), sizeH = bh();
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
 
@@ -2138,7 +2243,7 @@
                             : null;
                         if (colEnemy) tz = colEnemy.z ?? 0;
                     }
-                    let effectiveD = combatDist(unit.x, unit.y, unitZ, cx, cy, tz);
+                    let effectiveD = combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
                     if (effectiveD < minR || effectiveD > effRange) continue;
 
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
@@ -9373,16 +9478,17 @@
 
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam'].includes(kind)) {
                 const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
+                const _longRange = isLongRangeSpell(spell);
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
                 const hasEnemy = enemies.some(e => {
-                    const d = distToTarget(unit.x, unit.y, e, unit.z);
+                    const d = spellReachToTarget(unit, spell, e);
                     return d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z));
                 });
                 if (hasEnemy) return true;
                 if (['damage', 'multiHit', 'ricochet'].includes(kind) && state.towers) {
                     const tw = state.towers[enemyOf(unit.player)];
                     if (tw && tw.hp > 0) {
-                        const d = combatDist(unit.x, unit.y, unit.z ?? 0, tw.x, tw.y, tw.z ?? 0);
+                        const d = combatReach(unit.x, unit.y, unit.z ?? 0, tw.x, tw.y, tw.z ?? 0, _longRange);
                         if (d >= 1 && d <= range && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unit.z))) return true;
                     }
                 }
@@ -18622,12 +18728,13 @@
 
             const _spellClickTarget = unitAt(x, y, z);
 
+            const _spellLongRange = isLongRangeSpell(spell);
             let d;
             if (_spellClickTarget && _spellClickTarget._isBoss && _spellClickTarget._bossSize === 2) {
-                d = distToTarget(unit.x, unit.y, _spellClickTarget, unit.z);
+                d = spellReachToTarget(unit, spell, _spellClickTarget);
             } else {
                 const _tz = _spellClickTarget ? (_spellClickTarget.z ?? 0) : (z ?? 0);
-                d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
+                d = combatReach(unit.x, unit.y, unit.z ?? 0, x, y, _tz, _spellLongRange);
             }
             const dEff = d;
             const minRange = _kindMeta(spell).minRange ?? 1;
