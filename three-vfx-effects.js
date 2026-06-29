@@ -707,6 +707,45 @@ EFFECTS['raceCropCircle_impact_center'] = {
 
 SPELL_MAP['raceCropCircle'] = { descent: 'raceCropCircle_descent' };
 
+/* ─── BULLET RAIN (shootout) — tile-targeted suppressing fire ────────────
+   Mapped as a "descent" so it routes through the ground-view sky-strike
+   camera (tilt up to watch the rounds fall in, then resolve down onto the
+   marked tile). The descending body — the actual stream of bullets pouring
+   down on the 3×3 — is drawn by _spell3DGeometry.shootout; here we just supply
+   the telegraph ring + per-tile spark/dust impacts and the timing the camera
+   reads via getDescentTelegraphMs / getDescentDescentMs. */
+EFFECTS['shootout_descent'] = {
+    telegraphMs: 520,
+    descentMs: 680,
+    aoeRadius: 1,
+    telegraphSprite: 'target-ring',
+    impactTileEffect: 'shootout_impact_tile',
+    impactCenterEffect: 'shootout_impact_center',
+    shape: 'square',
+    layers: [],
+};
+
+EFFECTS['shootout_impact_tile'] = {
+    layers: [
+        { count: 5, anchor: 'floor', sprite: 'steel-spark', ml: [200, 340], z: 4, offsetXY: 18,
+          vxRange: 80, vyRange: 80, vzRange: [40, 120], gravity: 160, drag: 0.6,
+          size0: [6, 12], size1: [1, 3], opacity0: 0.95, opacity1: 0 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [300, 520], z: 2, offsetXY: 14,
+          vxRange: 50, vyRange: 50, vzRange: [10, 35], gravity: 90, drag: 0.9,
+          size0: [8, 14], size1: [20, 32], opacity0: 0.5, opacity1: 0 },
+    ]
+};
+
+EFFECTS['shootout_impact_center'] = {
+    shake: 'soft',
+    layers: [
+        { sprite: 'muzzle-flash', ml: 240, z: 12, size0: 90, size1: 30, opacity0: 0.9, opacity1: 0 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 700, z: 2, size0: 70, size1: 180, opacity0: 0.6, opacity1: 0 },
+    ]
+};
+
+SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
+
     /* ─── BOLT EFFECT DEFINITIONS ────────────────────────────────────
        These are config objects read by _fireBoltMapped(), NOT layer-based
        effects. They define the core/trail/burst sprites for each bolt type.
@@ -4434,6 +4473,84 @@ SPELL_MAP['raceCropCircle'] = { descent: 'raceCropCircle_descent' };
         }
     }
 
+    /* Bullet Rain (shootout) — tile-targeted AoE. Bullets pour straight DOWN
+       from the sky onto every tile of the target area, landing in time with the
+       descent camera's tilt-up-then-down beat. Replaces the old self-cast
+       barrage where bullets arced off-screen from the caster. */
+    function _spawnBulletRainArea3D(tx, ty, aoeRadius, landMs) {
+        if (_suppressed()) return;
+        var scene = _getVFXScene();
+        if (!scene) return;
+
+        var tex = _getBulletTexture();
+        var rad = (aoeRadius == null) ? 1 : aoeRadius;
+        var dur = landMs || 650;
+
+        var ts = _worldPos(tx, ty).ts;
+        var skyH = ts * 4.2;                 // start height above the ground
+        var fallMs = Math.max(220, dur * 0.62);
+        var bulletsPerTile = 5;
+
+        for (var ddx = -rad; ddx <= rad; ddx++) {
+            for (var ddy = -rad; ddy <= rad; ddy++) {
+                var wp = _worldPos(tx + ddx, ty + ddy);
+                for (var b = 0; b < bulletsPerTile; b++) {
+                    (function(wpx, wpy, wpz) {
+                        // Stagger each bullet so the volley reads as a sustained
+                        // burst rather than a single instant.
+                        var stagger = rn(0, dur * 0.5);
+                        window.setTimeout(function() {
+                            if (_suppressed()) return;
+                            var sc = _getVFXScene();
+                            if (!sc) return;
+
+                            var mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+                            var spr = new THREE.Sprite(mat);
+                            // Tall, thin streak so it reads as a falling tracer.
+                            var w = ts * 0.085, h = ts * 0.34;
+                            spr.scale.set(w, h, 1);
+
+                            var landX = wpx + rn(-ts * 0.34, ts * 0.34);
+                            var landZ = wpz + rn(-ts * 0.34, ts * 0.34);
+                            var landY = wpy + ts * 0.06;
+                            var startY = landY + skyH;
+                            // Slight near-vertical lean as they come in.
+                            var lean = rn(-ts * 0.10, ts * 0.10);
+                            var leanZ = rn(-ts * 0.10, ts * 0.10);
+
+                            spr.position.set(landX - lean, startY, landZ - leanZ);
+                            spr.renderOrder = 168;
+                            sc.add(spr);
+
+                            var entry = { meshes: [spr], done: false };
+                            _animate3D(entry, fallMs, function(elapsed) {
+                                var t = Math.min(elapsed / fallMs, 1);
+                                var te = t * t;          // accelerate like gravity
+                                var cy = startY + (landY - startY) * te;
+                                var cx = (landX - lean) + lean * te;
+                                var cz = (landZ - leanZ) + leanZ * te;
+                                spr.position.set(cx, cy, cz);
+                                mat.opacity = t < 0.82 ? 1 : Math.max(0, 1 - (t - 0.82) / 0.18);
+                            });
+
+                            // Muzzle spark + dust kick where the bullet lands.
+                            window.setTimeout(function() {
+                                if (_suppressed()) return;
+                                _spawn({
+                                    x: landX, y: landY + 2, z: landZ,
+                                    mode: 'world', sprite: 'steel-spark',
+                                    ml: 240, size0: ts * 0.16, size1: ts * 0.02,
+                                    opacity0: 0.95, opacity1: 0,
+                                    vz: rn(20, 60), gravity: 120, drag: 0.5,
+                                });
+                            }, fallMs * 0.92);
+                        }, stagger);
+                    })(wp.x, wp.y, wp.z);
+                }
+            }
+        }
+    }
+
     function _spawnExplosionRing3D(tx, ty, aoeRadius, opts) {
         var scene = _getVFXScene();
         if (!scene) return;
@@ -4803,6 +4920,8 @@ SPELL_MAP['raceCropCircle'] = { descent: 'raceCropCircle_descent' };
 
         sentaiGreenArrow:    function(tx, ty) { _spawnGreenArrow3D(tx, ty); },
         sharedGlacialTomb:   function(tx, ty) { _spawnGlacialTombShard3D(tx, ty); },
+
+        shootout:            function(tx, ty, r) { _spawnBulletRainArea3D(tx, ty, r != null ? r : 1, 680); },
     };
 
     function _fireAura(spellId, params) {

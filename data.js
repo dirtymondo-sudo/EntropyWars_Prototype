@@ -3323,13 +3323,14 @@ const SPELL_LIBRARY = [
         equipCost: 20,
         dmg: 80,
         range: 3,
-        kind: 'barrage',
+        kind: 'aoe',
+        aoeRadius: 1,
         damageType: 'physical',
         projectileOverride: 'proj-bullet',
         tier: 'II',
         school: 'Gunslinger',
         classRestriction: 'Gunslinger',
-        desc: 'Unload on all enemies within range. Hits each for moderate damage.'
+        desc: 'Mark a tile and rain bullets onto it. Hits every enemy in the 3×3 area for moderate damage.'
     },
     {
         id: 'pistolWhip',
