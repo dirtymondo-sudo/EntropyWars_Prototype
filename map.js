@@ -5996,6 +5996,7 @@
             'stairs_2',
             'lamp_post',
             'lamp_post_2',
+            'grass_tuft',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -6020,7 +6021,7 @@
 
         const ME_OBJECT_CATS = [
             { label: '⚙ Game Mode', keys: ['tower_cube','church','shop','nexus','nexus_cave','nexus_sky'], isGameMode: true },
-            { label: 'Nature', keys: ['tree','ruins','mountain_top','beanstalk','well','cave_entrance','poison_seed'] },
+            { label: 'Nature', keys: ['tree','grass_tuft','ruins','mountain_top','beanstalk','well','cave_entrance','poison_seed'] },
             { label: 'Trees', keys: ['tree','tree_2','tree_3','tree_4','tree_5','tree_6'] },
             { label: 'Barriers', keys: ['barrier_1','barrier_2','barrier_3','barrier_4','barrier_5'] },
             { label: 'Columns', keys: ['column_1','column_2','column_3','column_4'] },

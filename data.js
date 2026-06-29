@@ -1011,6 +1011,20 @@ const TERRAIN_RULES = {
 };
 
 const OBJECT_RULES = {
+    /* Cosmetic grass tuft — purely decorative billboard grass blades (rendered
+       by _buildGrassTuft3D in three-renderer). Fully passable, no collision,
+       no height, no effect on ranged/landing/pathing. */
+    grass_tuft: {
+        label: 'Grass Tuft',
+        short: 'GRS',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 0,
+        cosmetic: true,
+    },
     church: {
         label: 'Church',
         short: 'CHR',

@@ -33,22 +33,25 @@ const ThreeRenderer = (function () {
         ruins: true,   // mid-ground esoteric ruins ring around the arena
         scatter: true  // light natural boulder scatter on open ground
     };
-    /* ── COSMETIC GRASS (EXPERIMENTAL — Entropy Vale only) ──────────────────
-       Little blocky billboard grass blades scattered on open grassy ground.
-       Purely visual: no collision, no gameplay, no pathing effect. Gated by
-       _naturalTerrainActive() so it only ever shows on the Entropy Vale map.
-       Tweak freely — flip enabled:false to remove. */
+    /* ── COSMETIC GRASS ────────────────────────────────────────────────────
+       Little blocky billboard grass blades, textured with grass_2.png, scattered
+       on open grassy ground across EVERY map (autoScatter), plus available as the
+       editor-placeable 'grass_tuft' object. Purely visual: no collision, no
+       gameplay, no pathing effect. Tweak freely — flip enabled:false to remove,
+       or autoScatter:false to keep only the editor-placed tufts. */
     var GRASS = {
         enabled: true,
-        coverage: 168,   // 0-255 hash cutoff — ~ (this/255) of grass tiles get a tuft (~66%)
+        autoScatter: true, // auto-sprinkle on grassy tiles of every map (false = editor-placed only)
+        texture: 'grass_2.png', // R2 /Assets/Sprites/terrain sprite wrapped on each blade
+        coverage: 150,   // 0-255 hash cutoff — ~ (this/255) of grass tiles get an auto tuft (~59%)
         bladesMin: 9,    // blades per tuft (lower bound)
         bladesMax: 16,   // blades per tuft (upper bound)
         heightMin: 0.13, // blade height as × tile (128px tile → ~17px)
         heightMax: 0.20, // (~26px)
         width:     0.022,// blade base half-width × tile (~3px) — blocky/billboard
         spread:    0.40, // how far across the tile blades scatter (× tile)
-        rootCol:  [0.18, 0.32, 0.10], // dark green at the base
-        tipCol:   [0.55, 0.78, 0.28]  // bright yellow-green at the tip
+        rootShade: 0.55, // texture brightness multiplier at the blade base (darker)
+        tipShade:  1.0   // texture brightness multiplier at the blade tip (full)
     };
     /* terrains that STAY hard cubes (man-made / structured) */
     var _CUBE_TERRAIN_SET = { bricks_1: 1, bricks_2: 1, bricks_3: 1, bricks: 1, road: 1, road_2: 1, metal: 1, metal_floor: 1 };
@@ -2968,16 +2971,22 @@ const ThreeRenderer = (function () {
     /* ── Rock Cluster: 2-4 noisy icosahedrons with rock texture ── */
     /* ── Grass Tuft: a cluster of thin tapered billboard blades ───────────
        Each blade is a single double-sided tapered quad (wide-ish at the root,
-       pinched at the tip) with a vertex-colour gradient — dark green base to a
-       brighter yellow-green tip. Blades scatter across the tile at random yaw
-       with a slight lean so the tuft reads as grassy from any camera angle.
-       One MeshBasicMaterial (vertexColors) shared per tuft → cheap. Entropy
-       Vale only (gated by the caller). Cosmetic: no collision. */
+       pinched at the tip) wrapped with the grass_2.png terrain sprite (so the
+       blades read in the same pixel style as the board) and shaded by a vertex
+       brightness ramp — darker at the root, full-bright at the tip. Each blade
+       samples a random sub-region of the texture for variety. Blades scatter
+       across the tile at random yaw with a slight lean so the tuft reads as
+       grassy from any camera angle. One shared MeshBasicMaterial per tuft →
+       cheap. Used by the all-map cosmetic scatter AND the editor-placed
+       'grass_tuft' object. Cosmetic only: no collision. */
     var _grassBladeMat = null;
     function _getGrassMat() {
         if (!_grassBladeMat) {
+            /* grass_2.png from the R2 /Assets/Sprites/terrain folder, pixel-filtered
+               and repeat-wrapped (so per-blade UV offsets can roam the texture). */
+            var tex = _getFoliagePixelTex(GRASS.texture, 1);
             _grassBladeMat = new THREE.MeshBasicMaterial({
-                vertexColors: true, side: THREE.DoubleSide, depthWrite: true
+                map: tex, vertexColors: true, side: THREE.DoubleSide, depthWrite: true
             });
             /* shared across every tuft — keep it alive across deco rebuilds */
             _grassBladeMat._ew_shared = true;
@@ -2993,12 +3002,13 @@ const ThreeRenderer = (function () {
         var seed = (x * 911 + y * 1607 + 53) & 0xFFFF;
         var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
 
-        var rootC = GRASS.rootCol, tipC = GRASS.tipCol;
+        var rootS = GRASS.rootShade, tipS = GRASS.tipShade;
         var n = GRASS.bladesMin + Math.floor(_sr() * (GRASS.bladesMax - GRASS.bladesMin + 1));
 
         /* Build one merged BufferGeometry for the whole tuft (2 triangles/blade). */
         var verts = [];   // x,y,z per vertex
-        var cols  = [];   // r,g,b per vertex
+        var cols  = [];   // r,g,b per vertex (brightness ramp, multiplies the texture)
+        var uvs   = [];   // u,v per vertex (random sub-region of grass_2.png per blade)
         for (var bi = 0; bi < n; bi++) {
             var h  = ts * (GRASS.heightMin + _sr() * (GRASS.heightMax - GRASS.heightMin));
             var hw = ts * GRASS.width * (0.7 + _sr() * 0.6);  // base half-width
@@ -3009,28 +3019,33 @@ const ThreeRenderer = (function () {
             /* slight lean so blades aren't all bolt-upright */
             var leanX = (_sr() - 0.5) * hw * 1.6;
             var leanZ = (_sr() - 0.5) * hw * 1.6;
-            /* per-blade green jitter for a non-flat field */
-            var j = 0.82 + _sr() * 0.36;
+            /* per-blade brightness jitter so the field isn't flat */
+            var j = 0.85 + _sr() * 0.3;
+            /* random sub-rectangle of the texture for this blade */
+            var uMin = _sr() * 0.62, vMin = _sr() * 0.62, span = 0.34;
 
             /* local blade points (before yaw): base-left, base-right, tip */
-            function _push(lx, ly, lz, top) {
+            function _push(lx, ly, lz, top, u, v) {
                 var wx = ox + (lx * cy - lz * sy) + (top ? leanX : 0);
                 var wz = oz + (lx * sy + lz * cy) + (top ? leanZ : 0);
                 verts.push(wx, ly, wz);
-                var t = top ? tipC : rootC;
-                cols.push(t[0] * j, t[1] * j, t[2] * j);
+                var s = (top ? tipS : rootS) * j;
+                cols.push(s, s, s);
+                uvs.push(u, v);
             }
             /* quad as two triangles: (bl, br, tr) + (bl, tr, tl), tip pinched */
             var tipHw = hw * 0.18;
-            // tri 1
-            _push(-hw, 0, 0, false); _push(hw, 0, 0, false); _push(tipHw, h, 0, true);
-            // tri 2
-            _push(-hw, 0, 0, false); _push(tipHw, h, 0, true); _push(-tipHw, h, 0, true);
+            var uMax = uMin + span, vMax = vMin + span;
+            // tri 1: base-left, base-right, tip-right
+            _push(-hw, 0, 0, false, uMin, vMin); _push(hw, 0, 0, false, uMax, vMin); _push(tipHw, h, 0, true, uMax, vMax);
+            // tri 2: base-left, tip-right, tip-left
+            _push(-hw, 0, 0, false, uMin, vMin); _push(tipHw, h, 0, true, uMax, vMax); _push(-tipHw, h, 0, true, uMin, vMax);
         }
 
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
         geo.setAttribute('color',    new THREE.Float32BufferAttribute(cols, 3));
+        geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs, 2));
         /* MeshBasicMaterial is unlit — no normals needed. */
 
         var mesh = new THREE.Mesh(geo, _getGrassMat());
@@ -3180,11 +3195,10 @@ const ThreeRenderer = (function () {
                 var existingObj = (typeof getObjectAt === 'function') ? getObjectAt(dx, dy) : null;
                 if (existingObj) continue;
 
-                /* COSMETIC GRASS (Entropy Vale only) — its own dense pass, run
-                   before the sparse rock-decoration gate so most grassy tiles get
-                   a tuft. Coexists fine with the boulder scatter below. */
-                if (GRASS.enabled && _naturalTerrainActive() && _isBeveledTerrain(terrain) &&
-                    _GRASS_TERRAIN_SET[terrain]) {
+                /* COSMETIC GRASS (all maps) — its own dense pass, run before the
+                   sparse rock-decoration gate so most grassy tiles get a tuft.
+                   Coexists fine with the boulder scatter below. */
+                if (GRASS.enabled && GRASS.autoScatter && _GRASS_TERRAIN_SET[terrain]) {
                     var gHash = (dx * 263 + dy * 521 + 91) & 0xFF;
                     if (gHash < GRASS.coverage) {
                         var gt = _buildGrassTuft3D(dx, dy);
@@ -3312,6 +3326,7 @@ const ThreeRenderer = (function () {
                 continue;
             }
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
+            else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the

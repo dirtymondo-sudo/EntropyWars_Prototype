@@ -606,6 +606,10 @@ const OBJECT_SPRITES = {
     tree_5:       { url: `${_O}/tree_5.png` },
     tree_6:       { url: `${_O}/tree_6.png` },
     tower_cube: { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/dragon-green.png' },
+    /* Cosmetic grass tuft — rendered in-game as 3D billboard blades by
+       _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
+       thumbnail; we reuse the grass_2 terrain sprite the blades are textured with. */
+    grass_tuft:   { url: `${_T}/grass_2.png`, model3d: true },
 };
 
 const TERRAIN_SPRITES = {
