@@ -2315,7 +2315,7 @@
             return noBuff;
         }
 
-        const TOWER_MAX_HP = 5000;
+        const TOWER_MAX_HP = 2500;
         const TOWER_DEF = 15;
         const TOWER_VISION_RANGE = 4;
 
