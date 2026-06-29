@@ -1088,7 +1088,7 @@ const ThreeVFX = (function () {
     }
 
     function _rainTileTopY(tx, ty) {
-        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 58;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
         var h = (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0;
         var hPx = (typeof window._getElevationPx === 'function') ? window._getElevationPx(h) : h * ts;
         return Math.max(2, hPx);
@@ -1157,7 +1157,7 @@ const ThreeVFX = (function () {
 
     function _rainBuildIndex(zones) {
         _rainTileIndex = new Map();
-        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 58;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
         var minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
         for (var zi = 0; zi < zones.length; zi++) {
             var tiles = zones[zi].tiles;
@@ -1179,7 +1179,7 @@ const ThreeVFX = (function () {
     }
 
     function _rainGroundY(wx, wz) {
-        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 58;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
         var tx = Math.round(wx / ts);
         var tz = Math.round(wz / ts);
         var key = tx + ',' + tz;

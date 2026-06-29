@@ -4047,6 +4047,13 @@
                     if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y)) { hasAttack = true; break; }
                 }
             }
+            // Nothing attackable from where the unit stands, but it may be able to
+            // step into range and still afford the swing (move-then-attack). Keep
+            // the Attack button enabled in that case so it matches the quick-action
+            // (click-an-enemy) menu, which already offers the move-then-attack.
+            if (!hasAttack && typeof attackHasReachableTarget === 'function') {
+                hasAttack = attackHasReachableTarget(unit);
+            }
             _actionPanelCache = {
                 key: key,
                 canMove: canMove,

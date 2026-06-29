@@ -1993,7 +1993,9 @@ function SubMenu({ st }) {
       targets.length === 0 && h('div', { style: {
         padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
         color: EW.inkDim, letterSpacing: '0.1em',
-      }}, 'No targets in range'),
+      }}, (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit))
+            ? 'Click an enemy to move into range, then attack'
+            : 'No targets in range'),
       h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
     );
   }

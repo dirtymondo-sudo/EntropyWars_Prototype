@@ -9856,6 +9856,222 @@
             return true;
         }
 
+        // ───────────────────────────────────────────────────────────────────
+        // Move-then-attack: action-menu parity with the quick-action menu (and
+        // the move-then-cast path above). A basic attack with no target in range
+        // FROM WHERE THE UNIT STANDS isn't necessarily unusable this turn — the
+        // unit may be able to step into range and still have the AP to swing.
+        // Previously the action-menu Attack button greyed out in exactly this
+        // case while the quick-action (click-an-enemy) menu still offered the
+        // attack — the inconsistency this fixes. These mirror the spell helpers
+        // (_spellMoveBudget / spellHasReachableTarget / findSpellApproachTile /
+        // _moveThenCast / _tryMoveThenCast) but reuse _getAttackValidTargets so
+        // what the button promises is exactly what the click executes. Walk-only
+        // (no jump), matching the quick-action menu's findMoveIntoRange.
+
+        // Max walk steps the unit can take this turn and still afford the attack.
+        function _attackMoveBudget(unit) {
+            if (!unit) return 0;
+            if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
+            const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
+            if (movesLeft <= 0) return 0;
+            // Each move step spends 1 AP (AP_COST_ACTION in finishMove); keep
+            // AP_COST_ACTION AP for the attack swing itself.
+            const apSteps = (unit.ap || 0) - AP_COST_ACTION;
+            return Math.max(0, Math.min(movesLeft, apSteps));
+        }
+
+        // True when the unit could step into range this turn and attack SOME
+        // valid target (used to keep the action-menu Attack button enabled
+        // instead of greying it). Probing temporarily relocates the unit so we
+        // reuse the REAL attack-range/LOS logic (_getAttackValidTargets),
+        // restoring its position in a finally block.
+        function attackHasReachableTarget(unit) {
+            if (!unit) return false;
+            if (_getAttackValidTargets(unit).length > 0) return true; // in range now
+            const steps = _attackMoveBudget(unit);
+            if (steps <= 0) return false;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            try {
+                const ring1 = getMoveTiles(unit);
+                for (const t of ring1) {
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    if (_getAttackValidTargets(unit).length > 0) return true;
+                }
+                unit.x = sx; unit.y = sy; unit.z = sz;
+                if (steps >= 2) {
+                    for (const t1 of ring1) {
+                        if (unitAt(t1.x, t1.y, t1.z)) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                        const r2 = getMoveTiles(unit);
+                        for (const t2 of r2) {
+                            if (unitAt(t2.x, t2.y, t2.z)) continue;
+                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
+                            if (_getAttackValidTargets(unit).length > 0) return true;
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return false;
+        }
+
+        // Best tile the unit can reach this turn from which it can attack the
+        // target at (tx,ty); null if none. Prefers 1 step over 2, then the tile
+        // FARTHEST from the target that still has it in range (kite/safety) —
+        // matching findSpellApproachTile and the quick-action menu.
+        function findAttackApproachTile(unit, tx, ty) {
+            const steps = _attackMoveBudget(unit);
+            if (steps <= 0) return null;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const _hitsTarget = () => _getAttackValidTargets(unit).some(t => t.x === tx && t.y === ty);
+            let best = null, bestScore = -1;
+            try {
+                const ring1 = getMoveTiles(unit);
+                for (const t of ring1) {
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    if (_hitsTarget()) {
+                        const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                        if (d > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = d; }
+                    }
+                }
+                unit.x = sx; unit.y = sy; unit.z = sz;
+                if (best) return best;
+                if (steps >= 2) {
+                    for (const t1 of ring1) {
+                        if (unitAt(t1.x, t1.y, t1.z)) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                        const r2 = getMoveTiles(unit);
+                        for (const t2 of r2) {
+                            if (unitAt(t2.x, t2.y, t2.z)) continue;
+                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
+                            if (_hitsTarget()) {
+                                const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
+                                if (d > bestScore) {
+                                    best = { x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2, via: { x: t1.x, y: t1.y, z: t1.z ?? sz } };
+                                    bestScore = d;
+                                }
+                            }
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return best;
+        }
+
+        // Walk `unit` to `approach` (1 or 2 steps) then attack (tx,ty). Mirrors
+        // _moveThenCast: each doMove animates, we wait its walk delay, then issue
+        // the next step / the swing. A move resets actionMode/selectedTool
+        // (resolveMovePath), so we re-assert attack mode right before swinging.
+        function _moveThenAttack(unit, approach, tx, ty, tz) {
+            _clearSpellApproachPreview();
+            state._enemyActionTargetId = null;
+            state._actionExecuting = true;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+
+            const _bail = () => {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                markDirty('board', 'hud', 'selectedUnit');
+                renderIfDirty();
+            };
+            const _strike = () => {
+                state.selectedTool = null;
+                state.actionMode = 'attack';
+                state._actionExecuting = true;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                clearAttackRangePreview();
+                let result;
+                try {
+                    result = doAttack(unit, tx, ty, tz);
+                } catch (e) {
+                    console.error('[_moveThenAttack] attack threw:', e);
+                    state._actionExecuting = false;
+                    state.actionMode = null;
+                    scheduleBoardRender();
+                    return;
+                }
+                if (result === 0 || result === false) {
+                    state._actionExecuting = false;
+                    scheduleBoardRender();
+                } else {
+                    clearTimeout(state._actionExecutingWatchdog);
+                    state._actionExecutingWatchdog = setTimeout(() => {
+                        if (state._actionExecuting) {
+                            state._actionExecuting = false;
+                            if (state.phase === 'battle' && !state.winner) {
+                                markDirty('board', 'hud', 'selectedUnit');
+                                renderIfDirty();
+                            }
+                        }
+                    }, 8000);
+                }
+            };
+            const _step = (mx, my, mz, next) => {
+                const r = doMove(unit, mx, my, mz);
+                if (r === false) { _bail(); return; }
+                const delay = typeof r === 'number' ? r : 450;
+                setTimeout(next, delay);
+            };
+            if (approach.via) {
+                _step(approach.via.x, approach.via.y, approach.via.z, () => {
+                    _step(approach.x, approach.y, approach.z, _strike);
+                });
+            } else {
+                _step(approach.x, approach.y, approach.z, _strike);
+            }
+        }
+
+        // Called from clickTile when Attack is selected and the player clicks an
+        // out-of-range enemy/structure: if the unit can step into range and still
+        // afford the swing, do the move-then-attack and return true (caller
+        // stops). findAttackApproachTile validates (x,y) is a real attack target
+        // from the approach tile, so no separate enemy check is needed.
+        function _tryMoveThenAttack(actingUnit, x, y, z) {
+            if (!actingUnit || state.actionMode !== 'attack') return false;
+            if (typeof canUnitAct === 'function' && !canUnitAct(actingUnit)) return false;
+            if ((actingUnit.ap || 0) < AP_COST_ACTION) return false;
+            const approach = findAttackApproachTile(actingUnit, x, y);
+            if (!approach) return false;
+            _moveThenAttack(actingUnit, approach, x, y, z);
+            return true;
+        }
+
+        // Hover preview for the move-then-attack — reuses the spell approach
+        // visuals (move arrow + ghost + target highlight). Dedups on the hovered
+        // tile so the 1–2 step probe only recomputes when the cursor changes.
+        function _attackApproachHoverPreview(unit, x, y) {
+            if (!unit || state.actionMode !== 'attack') { _clearSpellApproachPreview(); return false; }
+            const k = 'atk|' + x + ',' + y;
+            if (state._spellApproachKey === k) return !!state._spellApproachTile;
+            state._spellApproachKey = k;
+            state._spellApproachTile = null;
+            if ((typeof canUnitAct === 'function' && !canUnitAct(unit)) || (unit.ap || 0) < AP_COST_ACTION) {
+                _clearSpellApproachPreview(); state._spellApproachKey = k; return false;
+            }
+            const approach = findAttackApproachTile(unit, x, y);
+            if (!approach) { _clearSpellApproachPreview(); state._spellApproachKey = k; return false; }
+            state._spellApproachTile = approach;
+            _drawSpellApproachPreview(unit, approach, x, y);
+            scheduleBoardRender();
+            return true;
+        }
+
         // ── Hover preview for the move-then-cast (the "arrow to a tile in range
         // then onto the target" the player sees when hovering an out-of-range
         // enemy with a spell selected). Imperative, reusing the same ThreeRenderer
@@ -15064,9 +15280,10 @@
                     }
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
                     if (!isValidTarget) {
-                        // Out of range → show the "move into range then cast" arrow
-                        // (the preview helper no-ops for non-spell modes / non-enemy tiles).
-                        _spellApproachHoverPreview(unit, x, y);
+                        // Out of range → show the "move into range then act" arrow.
+                        // (Each preview helper no-ops outside its own action mode.)
+                        if (state.actionMode === 'attack') _attackApproachHoverPreview(unit, x, y);
+                        else _spellApproachHoverPreview(unit, x, y);
                         return false;
                     }
                 }
@@ -15385,8 +15602,9 @@
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
                     if (!isValidTarget) {
 
-                        // Out of cast range, but the unit may be able to step into
-                        // range and still cast this turn → walk there, then cast.
+                        // Out of range, but the unit may be able to step into range
+                        // and still act this turn → walk there, then attack/cast.
+                        if (_tryMoveThenAttack(actingUnit, x, y, state._clickedZ)) return;
                         if (_tryMoveThenCast(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
 
                         // ── Stale highlight fix: clear + re-render + notify ──
