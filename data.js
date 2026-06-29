@@ -2604,7 +2604,7 @@ const JOB_MODIFIERS = {
         awr: +3,
         int: 0,
         spd: +1,
-        range: 3,
+        range: 4,
         inspect: 2
     }
 };
@@ -2822,7 +2822,7 @@ const CLASS_TEMPLATES = {
         atk: 72,
         def: 25,
         mdef: 27,
-        range: 4,
+        range: 5,
         move: 2,
         inspect: 2,
         awr: 6,
@@ -3845,7 +3845,7 @@ const SPELL_LIBRARY = [
         cost: 25,
         equipCost: 15,
         dmg: 128,
-        range: 4,
+        range: 5,
         kind: 'damage',
         damageType: 'physical',
         projectileOverride: 'proj-bullet',
@@ -3854,7 +3854,7 @@ const SPELL_LIBRARY = [
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        desc: 'A carefully aimed long-range shot. Deals +4 bonus damage to targets that already acted. Range 4.'
+        desc: 'A carefully aimed long-range shot. Deals +4 bonus damage to targets that already acted. Range 5.'
     },
     {
         id: 'headshot',
@@ -3864,7 +3864,7 @@ const SPELL_LIBRARY = [
         cost: 50,
         equipCost: 25,
         dmg: 180,
-        range: 4,
+        range: 5,
         kind: 'damage',
         damageType: 'physical',
         projectileOverride: 'proj-bullet',
@@ -3884,7 +3884,7 @@ const SPELL_LIBRARY = [
         cost: 15,
         equipCost: 10,
         apCost: 1,
-        range: 4,
+        range: 5,
         kind: 'debuff',
         tier: 'I',
         school: 'Sniper',
@@ -4328,7 +4328,7 @@ const SPELL_LIBRARY = [
         cost: 25,
         equipCost: 15,
         dmg: 96,
-        range: 5,
+        range: 6,
         kind: 'damage',
         damageType: 'physical',
         projectileOverride: 'proj-bullet',

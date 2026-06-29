@@ -18487,7 +18487,7 @@
                     playErrorSfx();
                     return;
                 }
-                const baneRange = getEffectiveRange(unit) + 1;
+                const baneRange = getEffectiveRange(unit) + 2;
                 if (chebyshev > baneRange) {
                     addLog(`Target is out of range for ${baneRule.name}.`);
                     playErrorSfx();

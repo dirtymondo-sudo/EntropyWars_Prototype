@@ -1042,7 +1042,7 @@
                 if ((unit.items?.[baneKey] || 0) <= 0) continue;
                 if (_failedItems.has(baneKey)) continue;
                 const baneRule = g.ITEM_RULES[baneKey];
-                const baneRange = g.getEffectiveRange(unit) + 1;
+                const baneRange = g.getEffectiveRange(unit) + 2;
                 for (const enemy of v.visibleEnemies) {
                     const dist = Math.max(Math.abs(unit.x - enemy.x), Math.abs(unit.y - enemy.y));
                     if (dist > baneRange) continue;
