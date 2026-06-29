@@ -3472,9 +3472,9 @@
 
             if (sourceZ != null && state.boardColumns?.length > 0) {
                 const tz = _inferStandingZ(x2, y2);
-                return _isRayBlocked3D(x1, y1, sourceZ, x2, y2, tz);
+                return _isRayBlocked3D(x1, y1, sourceZ, x2, y2, tz, true);
             }
-            return isRangeBlockedByTerrain(x1, y1, x2, y2);
+            return isRangeBlockedByTerrain(x1, y1, x2, y2, null, null, true);
         }
 
         function isInVision(unit, tx, ty) {
@@ -4442,7 +4442,7 @@
             return points;
         }
 
-        function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {
+        function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ, forVision) {
 
             // All 8 neighbours (cardinal AND diagonal) are point-blank and are
             // never blocked by terrain line-of-sight. A diagonal neighbour is
@@ -4460,7 +4460,7 @@
 
                 const sz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1);
                 const tz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2);
-                return _isRayBlocked3D(x1, y1, sz, x2, y2, tz);
+                return _isRayBlocked3D(x1, y1, sz, x2, y2, tz, forVision);
             }
 
             const points = getLinePoints(x1, y1, x2, y2);
@@ -4473,6 +4473,10 @@
                 if (obj) {
                     const oRule = getObjectRule(obj);
                     if (oRule && oRule.blocksRanged) return true;
+                    /* Buildings (roofWalkable) block line-of-sight through their
+                       solid body for vision, even though they don't block ranged
+                       attacks. No height data on the 2D fallback path, so block flat. */
+                    if (forVision && oRule && oRule.roofWalkable) return true;
                 }
                 return false;
             });
@@ -4519,7 +4523,7 @@
             return false;
         }
 
-        function _isRayBlocked3D(x1, y1, z1, x2, y2, z2) {
+        function _isRayBlocked3D(x1, y1, z1, x2, y2, z2, forVision) {
 
             const ox = x1 + 0.5, oy = y1 + 0.5, oz = z1 + 1.5;
             const ex = x2 + 0.5, ey = y2 + 0.5, ez = z2 + 1.5;
@@ -4587,6 +4591,16 @@
                         if (oRule && oRule.blocksRanged) {
                             const objBaseZ = _inferStandingZ(ix, iy);
                             const objTopZ = objBaseZ + (oRule.gameHeight || 1);
+                            if (iz >= objBaseZ && iz < objTopZ) return true;
+                        } else if (forVision && oRule && oRule.roofWalkable) {
+                            /* Buildings block line-of-sight through their solid body
+                               (vision only — they stay shootable-past). Height-aware:
+                               the roof sits at objTopZ, so a unit standing ON the roof
+                               (ray at iz === objTopZ) still sees over the building. */
+                            const objBaseZ = _inferStandingZ(ix, iy);
+                            const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
+                            const bldgH = (oSpr && oSpr._gameHeight > 0) ? oSpr._gameHeight : 2;
+                            const objTopZ = objBaseZ + bldgH;
                             if (iz >= objBaseZ && iz < objTopZ) return true;
                         }
                     }
