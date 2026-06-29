@@ -892,6 +892,16 @@ const ThreeRenderer = (function () {
     var _fogLastTime = 0;
     var _fogLastCheckTime = 0;
 
+    /* Smooth fog-of-war reveal/hide. Terrain tiles + props + decorations no longer
+       pop on/off the instant a tile enters or leaves vision — instead each tile
+       carries a reveal opacity (0 = fully fogged, 1 = fully seen) that lerps toward
+       its target, and the holographic fog box over a hidden tile fades in/out in
+       lock-step with it. _fogTiles tracks the per-tile fade for the terrain side;
+       each entry in _fogMeshes carries its own (.fade/.fadeTarget) for the box. */
+    var _fogTiles = new Map();          // pk -> { op, swapped, meshes, tileRef }
+    var _fogBuiltBw = 0, _fogBuiltBh = 0;
+    var FOG_FADE_RATE = 5.5;            // per-second smoothing for reveal/hide fades
+
     var FOG_COLOR_CORE    = 0x22ccff;
     var FOG_COLOR_EDGE    = 0x1188aa;
     var FOG_COLOR_SCANLINE = 0x33eeff;
@@ -5958,6 +5968,18 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* A per-box clone of the shared fog material so each holographic cell can hold
+       its own fade opacity (the shared templates only drive the global pulse). The
+       clone is NOT marked _ew_shared, so _disposeR cleans it up when the box is
+       removed. _ew_fogBoxBase records the box's resting opacity for the pulse. */
+    function _newFogBoxMat(isEdge) {
+        _ensureFogMats();
+        var m = (isEdge ? _fogEdgeMat : _fogCoreMat).clone();
+        m.transparent = true;
+        m._ew_fogBoxBase = isEdge ? FOG_EDGE_LINE_OPACITY : FOG_LINE_OPACITY;
+        return m;
+    }
+
     function _buildFogCube(x, y, ts, isEdge, topY) {
 
         var elevStep = ts * ELEV_STEP_RATIO;
@@ -5968,8 +5990,7 @@ const ThreeRenderer = (function () {
         var totalLevels = Math.max(1, Math.round(totalH / elevStep));
 
         var group = new THREE.Group();
-        _ensureFogMats();
-        var lineMat = isEdge ? _fogEdgeMat : _fogCoreMat;
+        var lineMat = _newFogBoxMat(isEdge);
 
         var curY = 0;
         if (totalLevels <= 1) {
@@ -6016,7 +6037,9 @@ const ThreeRenderer = (function () {
             isEdge: isEdge,
             tileX: x,
             tileY: y,
-            lineMat: lineMat
+            lineMat: lineMat,
+            fade: 1,
+            fadeTarget: 1
         };
     }
 
@@ -6059,8 +6082,7 @@ const ThreeRenderer = (function () {
         }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-        _ensureFogMats();
-        var lineMat = isEdge ? _fogEdgeMat : _fogCoreMat;
+        var lineMat = _newFogBoxMat(isEdge);
         var group = new THREE.Group();
         group.add(new THREE.LineSegments(geo, lineMat));
         group.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
@@ -6070,8 +6092,103 @@ const ThreeRenderer = (function () {
             isEdge: isEdge,
             tileX: x,
             tileY: y,
-            lineMat: lineMat
+            lineMat: lineMat,
+            fade: 1,
+            fadeTarget: 1
         };
+    }
+
+    // ── Terrain-side fog fade ─────────────────────────────────────────────
+    // Terrain materials are cached + shared across tiles of the same type, so
+    // (exactly like the action-cam occlusion fade) we swap in a transparent clone
+    // before ramping a tile's opacity and restore the shared original once the
+    // fade settles. _ew_fogOrig holds the saved material; _ew_fogClone marks the
+    // throwaway so _disposeR / _fogRestore know what to clean up.
+    function _fogCloneMat(m) {
+        var c = m.clone();
+        c.transparent = true;
+        c.depthWrite = false;
+        c.opacity = (m.opacity != null ? m.opacity : 1);
+        c._ew_fogClone = true;
+        return c;
+    }
+    function _fogApplyFade(mesh) {
+        if (mesh._ew_fogOrig || mesh._ew_occOrig) return;   // already swapped (fog or occlusion)
+        mesh._ew_fogOrig = mesh.material;
+        mesh.material = Array.isArray(mesh.material)
+            ? mesh.material.map(_fogCloneMat)
+            : _fogCloneMat(mesh.material);
+    }
+    function _fogSetMatOpacity(mesh, op) {
+        var m = mesh.material;
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (m[i]) m[i].opacity = op; }
+        else if (m) m.opacity = op;
+    }
+    function _fogRestoreMesh(mesh) {
+        if (!mesh._ew_fogOrig) return;
+        var cur = mesh.material;
+        mesh.material = mesh._ew_fogOrig;
+        mesh._ew_fogOrig = null;
+        if (Array.isArray(cur)) { for (var i = 0; i < cur.length; i++) if (cur[i] && cur[i]._ew_fogClone) cur[i].dispose(); }
+        else if (cur && cur._ew_fogClone) cur.dispose();
+    }
+
+    /* The top-level scene objects that make up one board tile — the terrain cube
+       (a single mesh for a flat tile, a Group of band meshes for voxel/natural
+       columns), any prop sitting on it, and its scatter decorations. Their .visible
+       is what _applyFogVisibility normally toggles, so the fade must drive the SAME
+       objects (toggling a band-mesh leaf does nothing while its parent Group is
+       hidden). */
+    function _fogTileContainers(pk) {
+        var arr = [];
+        var tm = tileMeshes.get(pk); if (tm) arr.push(tm);
+        var om = objectMeshes.get(pk); if (om) arr.push(om);
+        if (_terrainDecoGroup) {
+            var parts = pk.split(','); var tx = +parts[0], ty = +parts[1];
+            for (var i = 0; i < _terrainDecoGroup.children.length; i++) {
+                var d = _terrainDecoGroup.children[i];
+                if (d._ew_decoX === tx && d._ew_decoY === ty) arr.push(d);
+            }
+        }
+        return arr;
+    }
+    function _fogBeginTileFade(pk, rec) {
+        rec.containers = _fogTileContainers(pk);
+        rec.meshes = [];
+        var meshes = rec.meshes;
+        for (var c = 0; c < rec.containers.length; c++) {
+            rec.containers[c].visible = true;          // keep the tile on screen for the whole fade
+            rec.containers[c].traverse(function (o) {
+                if ((o.isMesh || o.isSprite) && o.material) { meshes.push(o); _fogApplyFade(o); }
+            });
+        }
+        rec.swapped = true;
+    }
+    function _fogEndTileFade(rec, tgt) {
+        if (rec.meshes) {
+            for (var i = 0; i < rec.meshes.length; i++) _fogRestoreMesh(rec.meshes[i]);
+        }
+        if (rec.containers) {
+            for (var c = 0; c < rec.containers.length; c++) rec.containers[c].visible = (tgt > 0);
+        }
+        rec.meshes = null;
+        rec.containers = null;
+        rec.swapped = false;
+        rec.op = tgt;
+    }
+    function _fogResetTileFades() {
+        _fogTiles.forEach(function (rec) {
+            if (rec.swapped && rec.meshes) {
+                for (var i = 0; i < rec.meshes.length; i++) _fogRestoreMesh(rec.meshes[i]);
+            }
+        });
+        _fogTiles.clear();
+    }
+
+    function _makeFogEntry(x, y, ts, isEdge) {
+        return _isNaturalRenderTile(x, y)
+            ? _buildFogSlopedCube(x, y, ts, isEdge)
+            : _buildFogCube(x, y, ts, isEdge, tileTopY(x, y));
     }
 
     function rebuildFog() {
@@ -6079,6 +6196,7 @@ const ThreeRenderer = (function () {
         _clearGroup(fogGroup);
         _fogMeshes.clear();
         _clearFogEdgesCache();
+        _fogResetTileFades();
 
         if (!state.fogOfWar) {
             _fogVisibleKey = 'off';
@@ -6101,18 +6219,23 @@ const ThreeRenderer = (function () {
                 if (visible.has(pk)) continue;
 
                 var isEdge = _fogIsEdgeTile(x, y, visible);
-                var entry = _isNaturalRenderTile(x, y)
-                    ? _buildFogSlopedCube(x, y, ts, isEdge)
-                    : _buildFogCube(x, y, ts, isEdge, tileTopY(x, y));
+                var entry = _makeFogEntry(x, y, ts, isEdge);   // fresh build → fade already 1 (instant)
 
                 fogGroup.add(entry.group);
                 _fogMeshes.set(pk, entry);
             }
         }
 
+        // Hard reset (map load / fog toggle): snap terrain to the current vision so
+        // the board doesn't fade up from nothing, and prime each tile's fade record
+        // at its resting target so no spurious transition fires on the next frame.
         _applyFogVisibility(visible);
+        tileMeshes.forEach(function (m, pk) {
+            _fogTiles.set(pk, { op: visible.has(pk) ? 1 : 0, swapped: false, meshes: null, tileRef: m });
+        });
+        _fogBuiltBw = _bw; _fogBuiltBh = _bh;
 
-        _fogVisibleKey = _computeFogVisibleKey();
+        _fogVisibleKey = 'on';
     }
 
     /* Hide enemy units that are concealed from the viewer (Invisible status or
@@ -6265,7 +6388,7 @@ const ThreeRenderer = (function () {
         return c;
     }
     function _occApplyFade(mesh) {
-        if (mesh._ew_occOrig) return;          // already swapped
+        if (mesh._ew_occOrig || mesh._ew_fogOrig) return;   // already swapped (occlusion or fog fade)
         mesh._ew_occOrig = mesh.material;
         mesh.material = Array.isArray(mesh.material)
             ? mesh.material.map(_occCloneMat)
@@ -6450,11 +6573,20 @@ const ThreeRenderer = (function () {
             return;
         }
 
+        /* Terrain tiles, props and decorations are handled by the per-tile reveal
+           fade (_updateFogReveal) so they ease in/out instead of popping. We still
+           set their resting visibility here for tiles that AREN'T mid-fade, so a
+           freshly rebuilt mesh (object/turret/deploy rebuild) lands in the right
+           state immediately; a swapped (actively fading) tile is left to the fade. */
         tileMeshes.forEach(function(mesh, pk) {
+            var rec = _fogTiles.get(pk);
+            if (rec && rec.swapped) return;
             mesh.visible = visible.has(pk);
         });
 
         objectMeshes.forEach(function(mesh, pk) {
+            var rec = _fogTiles.get(pk);
+            if (rec && rec.swapped) return;
             mesh.visible = visible.has(pk);
         });
 
@@ -6463,6 +6595,8 @@ const ThreeRenderer = (function () {
             for (var di = 0; di < _terrainDecoGroup.children.length; di++) {
                 var deco = _terrainDecoGroup.children[di];
                 if (deco._ew_decoX !== undefined && deco._ew_decoY !== undefined) {
+                    var dRec = _fogTiles.get(deco._ew_decoX + ',' + deco._ew_decoY);
+                    if (dRec && dRec.swapped) continue;
                     deco.visible = visible.has(deco._ew_decoX + ',' + deco._ew_decoY);
                 }
             }
@@ -6514,13 +6648,120 @@ const ThreeRenderer = (function () {
         _applyConcealment(vp);
     }
 
-    function _updateFogPulse() {
-        if (!state.fogOfWar || !fogGroup || _fogMeshes.size === 0) {
-
-            if (state.fogOfWar === false && _fogVisibleKey !== 'off') {
-                _fogVisibleKey = 'off';
-                rebuildFog();
+    /* Re-evaluate vision (throttled) and reconcile the fog boxes against it: spawn
+       a box (fading in) over a newly hidden tile, target the box for fade-out over a
+       newly revealed one, and rebuild a box in place when the frontier moving past
+       it flips its edge/core shape. Terrain visibility itself is eased separately. */
+    function _fogRecomputeVisibility(_bw, _bh) {
+        var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+        var visible = (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
+        _fogVisibleSet = visible;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        for (var y = 0; y < _bh; y++) {
+            for (var x = 0; x < _bw; x++) {
+                var pk = x + ',' + y;
+                var entry = _fogMeshes.get(pk);
+                if (visible.has(pk)) {
+                    if (entry) entry.fadeTarget = 0;        // revealed → dissolve the box
+                    continue;
+                }
+                var isEdge = _fogIsEdgeTile(x, y, visible);
+                if (!entry) {
+                    entry = _makeFogEntry(x, y, ts, isEdge);
+                    entry.fade = 0;                         // hidden → materialise the box
+                    fogGroup.add(entry.group);
+                    _fogMeshes.set(pk, entry);
+                } else if (entry.isEdge !== isEdge) {
+                    var carry = entry.fade;                 // frontier moved → reshape, keep fade
+                    fogGroup.remove(entry.group);
+                    _disposeR(entry.group);
+                    entry = _makeFogEntry(x, y, ts, isEdge);
+                    entry.fade = carry;
+                    fogGroup.add(entry.group);
+                    _fogMeshes.set(pk, entry);
+                }
+                entry.fadeTarget = 1;
             }
+        }
+    }
+
+    /* Ease each tile's terrain/props/decorations toward seen (1) or fogged (0). */
+    function _updateFogTerrainReveal(visible, k) {
+        tileMeshes.forEach(function (tmesh, pk) {
+            var rec = _fogTiles.get(pk);
+            var tgt = visible.has(pk) ? 1 : 0;
+            if (!rec || rec.tileRef !== tmesh) {
+                /* First sighting, or the tile mesh was rebuilt under us — snap to the
+                   resting state (no fade) and make sure the fresh meshes are shown
+                   or hidden correctly. */
+                if (rec && rec.swapped && rec.meshes) {
+                    for (var r = 0; r < rec.meshes.length; r++) _fogRestoreMesh(rec.meshes[r]);
+                }
+                rec = { op: tgt, swapped: false, meshes: null, containers: null, tileRef: tmesh };
+                _fogTiles.set(pk, rec);
+                var cs = _fogTileContainers(pk);
+                for (var s = 0; s < cs.length; s++) cs[s].visible = (tgt > 0);
+                return;
+            }
+            if (rec.op === tgt && !rec.swapped) return;
+            if (rec.op !== tgt) {
+                if (!rec.swapped) _fogBeginTileFade(pk, rec);
+                rec.op += (tgt - rec.op) * k;
+                if (Math.abs(rec.op - tgt) < 0.02) rec.op = tgt;
+                if (rec.meshes) {
+                    for (var j = 0; j < rec.meshes.length; j++) {
+                        if (rec.meshes[j].parent) _fogSetMatOpacity(rec.meshes[j], rec.op);
+                    }
+                }
+                if (rec.op === tgt) _fogEndTileFade(rec, tgt);
+            } else {
+                _fogEndTileFade(rec, tgt);
+            }
+        });
+    }
+
+    /* Ease each fog box toward its target, modulated by the global hologram pulse,
+       and retire boxes that have fully faded out over a now-visible tile. */
+    function _updateFogBoxFade(k) {
+        var pulseVal = Math.sin(_fogPulseTime * FOG_PULSE_SPEED * Math.PI * 2) * FOG_PULSE_AMP;
+        var remove = null;
+        _fogMeshes.forEach(function (entry, pk) {
+            var tgt = (entry.fadeTarget != null) ? entry.fadeTarget : 1;
+            entry.fade += (tgt - entry.fade) * k;
+            if (Math.abs(entry.fade - tgt) < 0.02) entry.fade = tgt;
+            if (tgt === 0 && entry.fade <= 0.02) {
+                (remove || (remove = [])).push(pk);
+                return;
+            }
+            entry.group.visible = entry.fade > 0.01;
+            if (entry.lineMat) {
+                var base = (entry.lineMat._ew_fogBoxBase != null) ? entry.lineMat._ew_fogBoxBase : FOG_LINE_OPACITY;
+                entry.lineMat.opacity = Math.max(0, base + pulseVal) * entry.fade;
+            }
+        });
+        if (remove) {
+            for (var i = 0; i < remove.length; i++) {
+                var e = _fogMeshes.get(remove[i]);
+                if (e) { fogGroup.remove(e.group); _disposeR(e.group); }
+                _fogMeshes.delete(remove[i]);
+            }
+        }
+    }
+
+    function _updateFogPulse() {
+        if (!state.fogOfWar) {
+            if (_fogVisibleKey !== 'off') { _fogVisibleKey = 'off'; rebuildFog(); }
+            return;
+        }
+        if (!fogGroup) return;
+
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
+
+        /* Fog just turned on, first build of this match, or the board was resized:
+           do a hard (instant) rebuild so nothing fades up out of nothing. */
+        if (_fogVisibleKey !== 'on' || _bw !== _fogBuiltBw || _bh !== _fogBuiltBh) {
+            rebuildFog();
             return;
         }
 
@@ -6531,19 +6772,12 @@ const ThreeRenderer = (function () {
 
         if (!_fogLastCheckTime || (now - _fogLastCheckTime) > 0.2) {
             _fogLastCheckTime = now;
-            var newKey = _computeFogVisibleKey();
-            if (newKey !== _fogVisibleKey) {
-                _fogVisibleKey = newKey;
-                rebuildFog();
-                return;
-            }
+            _fogRecomputeVisibility(_bw, _bh);
         }
 
-        var pulse = Math.sin(_fogPulseTime * FOG_PULSE_SPEED * Math.PI * 2);
-        var pulseVal = pulse * FOG_PULSE_AMP;
-
-        if (_fogCoreMat) _fogCoreMat.opacity = Math.max(0.05, FOG_LINE_OPACITY + pulseVal);
-        if (_fogEdgeMat) _fogEdgeMat.opacity = Math.max(0.05, FOG_EDGE_LINE_OPACITY + pulseVal);
+        var k = Math.min(1, FOG_FADE_RATE * dt);
+        _updateFogTerrainReveal(_fogVisibleSet || new Set(), k);
+        _updateFogBoxFade(k);
     }
 
     function _updateBatSwarms() {
@@ -10263,9 +10497,11 @@ const ThreeRenderer = (function () {
 
         if (fogGroup) _clearGroup(fogGroup);
         _fogMeshes.clear();
+        _fogResetTileFades();
         _fogVisibleKey = '';
         _fogVisibleSet = null;
         _fogLastCheckTime = 0;
+        _fogBuiltBw = 0; _fogBuiltBh = 0;
 
         tileMeshes.forEach(function(mesh) { mesh.visible = true; });
         console.log('[ThreeRenderer] deactivated');
@@ -11408,6 +11644,8 @@ const ThreeRenderer = (function () {
         turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
+        _fogTiles.clear();
+        _fogBuiltBw = 0; _fogBuiltBh = 0;
         _clearAnimations();
         _lastBoardW = 0; _lastBoardH = 0; _lastBuiltTileSize = -1;
         initialized = false;
