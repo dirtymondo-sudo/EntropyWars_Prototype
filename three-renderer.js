@@ -3817,6 +3817,16 @@ const ThreeRenderer = (function () {
                     map: tex,
                     transparent: true,
                     depthWrite: false,
+                    // The wall plane sits exactly on the perimeter tile edge, so when
+                    // a taller neighbouring tile's cliff face lands on that same plane
+                    // the two are coplanar and z-fight (the light flickers on/off as
+                    // the camera moves). A negative polygonOffset biases the wall
+                    // toward the camera so it wins the depth test cleanly. (Maps are
+                    // *supposed* to keep higher terrain off the spawn perimeter, but
+                    // this makes the effect robust regardless of map authoring.)
+                    polygonOffset: true,
+                    polygonOffsetFactor: -2,
+                    polygonOffsetUnits: -2,
                     side: THREE.DoubleSide,
                     blending: THREE.AdditiveBlending
                 });
