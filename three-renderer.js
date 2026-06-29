@@ -3021,8 +3021,20 @@ const ThreeRenderer = (function () {
             var leanZ = (_sr() - 0.5) * hw * 1.6;
             /* per-blade brightness jitter so the field isn't flat */
             var j = 0.85 + _sr() * 0.3;
-            /* random sub-rectangle of the texture for this blade */
-            var uMin = _sr() * 0.62, vMin = _sr() * 0.62, span = 0.34;
+            /* MASK a blade-sized window out of the 128² grass_2 texture (the tile
+               texture maps 0..1 over ts world-px, so texels are ~1:1 with world-px).
+               Sizing the UV window to the blade's own footprint keeps that 1:1
+               density — no stretching — like a small masked cutout in Photoshop.
+               The window is positioned randomly per blade for variety. NearestFilter
+               on the texture keeps the few sampled texels crisp/blocky. */
+            var tipHw = hw * 0.18;
+            var uSpan = Math.min(0.95, (2 * hw) / ts);   // base width as a tex fraction
+            var vSpan = Math.min(0.95, h / ts);          // blade height as a tex fraction
+            var uMin = _sr() * (1 - uSpan), vMin = _sr() * (1 - vSpan);
+            var uC = uMin + uSpan / 2;
+            var vBase = vMin, vTip = vMin + vSpan;
+            var uBL = uMin, uBR = uMin + uSpan;                  // base edges
+            var uTL = uC - tipHw / ts, uTR = uC + tipHw / ts;    // pinched tip edges (narrower slice)
 
             /* local blade points (before yaw): base-left, base-right, tip */
             function _push(lx, ly, lz, top, u, v) {
@@ -3034,12 +3046,10 @@ const ThreeRenderer = (function () {
                 uvs.push(u, v);
             }
             /* quad as two triangles: (bl, br, tr) + (bl, tr, tl), tip pinched */
-            var tipHw = hw * 0.18;
-            var uMax = uMin + span, vMax = vMin + span;
             // tri 1: base-left, base-right, tip-right
-            _push(-hw, 0, 0, false, uMin, vMin); _push(hw, 0, 0, false, uMax, vMin); _push(tipHw, h, 0, true, uMax, vMax);
+            _push(-hw, 0, 0, false, uBL, vBase); _push(hw, 0, 0, false, uBR, vBase); _push(tipHw, h, 0, true, uTR, vTip);
             // tri 2: base-left, tip-right, tip-left
-            _push(-hw, 0, 0, false, uMin, vMin); _push(tipHw, h, 0, true, uMax, vMax); _push(-tipHw, h, 0, true, uMin, vMax);
+            _push(-hw, 0, 0, false, uBL, vBase); _push(tipHw, h, 0, true, uTR, vTip); _push(-tipHw, h, 0, true, uTL, vTip);
         }
 
         var geo = new THREE.BufferGeometry();
