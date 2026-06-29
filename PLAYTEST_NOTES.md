@@ -292,6 +292,34 @@ a full tile under flyers) and the camera focused below airborne units. Now:
   use `unit.z` levels for airborne, terrain+roof otherwise. Parties roll
   jetpacks/sky races often — airborne units appear in normal matches.
 
+## Jump mechanic — Phase 1 redesign (2026-06-29)
+Jump was reworked from a 1-AP, 4-cardinal, single-tile shuffle into a deliberate
+traversal verb. All logic in `battle.js`.
+- **`getUnitJumpStat(unit)`** = horizontal reach in tiles, derived from agility:
+  `spd<=5 → 1`, `spd<=8 → 2`, else `3` (explicit `unit.jump` overrides). Exported
+  on `GAME`. **`getUnitJumpClimb(unit)`** = `max(2, jump)` (baseline 2 so existing
+  roofs stay reachable; jump-3 units climb 3). Drops unlimited (fall damage applies).
+- **`getJumpTiles`** now: flyers return `[]` (they fly, never jump);
+  `unit._jumpedThisTurn` returns `[]` (ONE leap per turn, reset alongside
+  `_altitudeChangesThisTurn` at every turn boundary). Reach uses the engine's own
+  "8-then-diamond" metric (Chebyshev first ring, Manhattan beyond) — same shape as
+  `combatDist`. **Only the LANDING tile is validated** (traversable, unoccupied,
+  within climb) — intermediate tiles are NOT path-checked, so a jump ARCS OVER
+  gaps/chasms/low obstacles to land on solid ground beyond (gap width gated by the
+  stat: reach 2 clears a 1-wide gap, reach 3 a 2-wide chasm).
+- **`doJump`** sets `unit._jumpedThisTurn = true`; still 1 AP; does NOT increment
+  `movesThisTurn` (so jump + up-to-2 moves all-deliberate is still possible). Keeps
+  the `animateJumpArc` (cubic ease + parabola + squash/stretch).
+- **Removed the one-click walk+jump combos** (`move+jump`, `move+move+jump`,
+  `jump+move+move`) in the click handler + their Ring2/Ring3 highlights in `ui.js`.
+  Those fired `doJump()` synchronously while `animateWalkPath` was mid-flight →
+  the abrupt "snap to a 3-AP jump tile". Jump is deliberate now: walk first, then
+  pick a jump (jump tiles show in the move overlay AND the dedicated jump-mode
+  highlight at ui.js ~2759). Each leg animates cleanly on its own.
+- **Phase 2 (not yet built):** elevation-gated spell casting + "jump-here-then-cast"
+  previews in the quick-action menu / move arrows (jump-aware target reachability).
+  AI already has the half: weights `jumpAttackEnable_v1`, `jumpHighGround*_v1`.
+
 ## Action camera framing — REVERTED 2026-06-13 (DO NOT REDO)
 The two "framing fixes" below were REVERTED: in practice they ruined the good
 closeup over-the-shoulder action cam and made matches start zoomed way out.

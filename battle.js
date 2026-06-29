@@ -75,6 +75,27 @@
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
 
+        // ── Jump stat ──────────────────────────────────────────────────────────
+        // Horizontal jump reach (in tiles), derived from agility (spd) so we don't
+        // have to hand-author every race. 1 = adjacent-only (the 8 surrounding
+        // tiles), 2 = clear a 1-wide gap, 3 = clear a 2-wide chasm / reach distant
+        // high ground. Flyers don't jump (they fly). An explicit unit.jump overrides
+        // the derivation if a designer ever sets one.
+        function getUnitJumpStat(unit) {
+            if (!unit) return 1;
+            if (unit.jump != null) return unit.jump;
+            const spd = unit.spd ?? 6;
+            if (spd <= 5) return 1;   // heavies: giants, mechs, knights…
+            if (spd <= 8) return 2;   // the broad middle
+            return 3;                 // nimble: beasts, rogues, assassins
+        }
+        // Max height a unit can hop UP in a single jump. Baseline stays at 2 so every
+        // existing height-2 roof/ledge remains reachable; a jump-3 unit can mount a
+        // 3-high ledge. Drops are unlimited (fall damage still applies on landing).
+        function getUnitJumpClimb(unit) {
+            return Math.max(JUMP_HEIGHT, getUnitJumpStat(unit));
+        }
+
         function rollStatusApply(sourceUnit, targetUnit, baseChance = 1) {
             const chance = Math.max(0.05, Math.min(0.95, baseChance + getDebuffIntModifier(sourceUnit, targetUnit)));
             return Math.random() <= chance;
@@ -9239,7 +9260,7 @@
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
             u._reshapeThisTurn = 0;
-            u._altitudeChangesThisTurn = 0;
+            u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
             u._turnKills = 0;
             u._aiFailedSpells = null;
             u._aiFailedCombos = null;
@@ -11474,7 +11495,7 @@
                 u._encoreThisRound = false;
                 u.movesThisTurn = 0;
                 u._reshapeThisTurn = 0;
-                u._altitudeChangesThisTurn = 0;
+                u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
 
@@ -11578,7 +11599,7 @@
                     u.ap = getUnitMaxAP(u);
                     u.movesThisTurn = 0;
                     u._reshapeThisTurn = 0;
-                    u._altitudeChangesThisTurn = 0;
+                    u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
                     u._skippedTurn = false;
                 }
@@ -12733,7 +12754,7 @@
                             u.ap = getUnitMaxAP(u);
                             u.movesThisTurn = 0;
                             u._reshapeThisTurn = 0;
-                            u._altitudeChangesThisTurn = 0;
+                            u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
                             u._aiFailedSpells = null;
@@ -14124,7 +14145,7 @@
             canAffordSpell, getSpellApCost,
             getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
-            getJumpTiles, canJump,
+            getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
             isUnitConcealedFrom, isUnitSeenByAnyEnemy, checkStealthReveals,
@@ -15531,167 +15552,13 @@
                         return doJump(actingUnit, x, y, state._clickedZ);
                     }
 
-                    if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES) {
-                        const _mjSavedX = actingUnit.x, _mjSavedY = actingUnit.y, _mjSavedZ = actingUnit.z;
-                        let _mjBestInterm = null;
-                        let _mjBestCost = Infinity;
-                        for (const t1 of _r1Tiles) {
-                            if (t1._jump) continue;
-                            actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? _mjSavedZ;
-                            const _jt2 = getJumpTiles(actingUnit);
-                            if (_jt2.some(jt => jt.x === x && jt.y === y) && (t1.cost || 0) < _mjBestCost) {
-                                _mjBestCost = t1.cost || 0;
-                                _mjBestInterm = t1;
-                            }
-                        }
-                        actingUnit.x = _mjSavedX; actingUnit.y = _mjSavedY; actingUnit.z = _mjSavedZ;
-                        if (_mjBestInterm) {
-
-                            const moveResult = doMove(actingUnit, _mjBestInterm.x, _mjBestInterm.y, _mjBestInterm.z);
-                            if (moveResult) {
-
-                                return doJump(actingUnit, x, y, state._clickedZ);
-                            }
-                        }
-                    }
-
-                    // ── 3-AP: move+move+jump (find best 2-move path to intermediate, then jump) ──
-                    if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES && (actingUnit.ap || 0) >= 3) {
-                        const _3apSavedX = actingUnit.x, _3apSavedY = actingUnit.y, _3apSavedZ = actingUnit.z;
-                        let _3apBestR1 = null;
-                        let _3apBestR2 = null;
-                        let _3apBestCost = Infinity;
-
-                        for (const t1 of _r1Tiles) {
-                            if (t1._jump || t1._takeoff) continue;
-                            actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? _3apSavedZ;
-                            const r2Tiles = getMoveTiles(actingUnit);
-                            for (const t2 of r2Tiles) {
-                                if (t2._jump || t2._takeoff) continue;
-                                actingUnit.x = t2.x; actingUnit.y = t2.y; actingUnit.z = t2.z ?? t1.z ?? _3apSavedZ;
-                                const _jt3 = getJumpTiles(actingUnit);
-                                if (_jt3.some(jt => jt.x === x && jt.y === y)) {
-                                    const totalCost = (t1.cost || 0) + (t2.cost || 0);
-                                    if (totalCost < _3apBestCost) {
-                                        _3apBestCost = totalCost;
-                                        _3apBestR1 = t1;
-                                        _3apBestR2 = t2;
-                                    }
-                                }
-                            }
-                        }
-
-                        actingUnit.x = _3apSavedX; actingUnit.y = _3apSavedY; actingUnit.z = _3apSavedZ;
-                        if (_3apBestR1 && _3apBestR2) {
-                            // Execute: move to R1, move to R2, jump to target
-                            const _3apPath1 = findMovePath(actingUnit, _3apBestR1.x, _3apBestR1.y, _3apBestR1.z ?? _3apSavedZ);
-                            actingUnit.x = _3apBestR1.x; actingUnit.y = _3apBestR1.y; actingUnit.z = _3apBestR1.z ?? _3apSavedZ;
-                            const _3apPath2 = findMovePath(actingUnit, _3apBestR2.x, _3apBestR2.y, _3apBestR2.z ?? actingUnit.z);
-                            actingUnit.x = _3apSavedX; actingUnit.y = _3apSavedY; actingUnit.z = _3apSavedZ;
-
-                            const _3apCombinedPath = [..._3apPath1, ..._3apPath2];
-                            if (_3apCombinedPath.length > 0) {
-                                const isHuman = !state.autoPlayers?.[actingUnit.player];
-                                if (isHuman && !state.cameraDisabled) {
-                                    animateWalkPath(actingUnit, _3apCombinedPath);
-                                    const stepMs = Math.max(80, Math.min(160, 140 - _3apCombinedPath.length * 8));
-                                    const walkDurationMs = _3apCombinedPath.length * stepMs;
-                                    animateBoardCameraPath(
-                                        { x: _3apSavedX, y: _3apSavedY },
-                                        { x: _3apBestR2.x, y: _3apBestR2.y },
-                                        { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
-                                    );
-                                }
-                                pushUndoSnapshot(false);
-
-                                const _r2Z = _3apBestR2.z ?? _3apBestR1.z ?? _3apSavedZ;
-                                actingUnit.x = _3apBestR2.x; actingUnit.y = _3apBestR2.y;
-                                actingUnit.z = _r2Z;
-                                actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 2;
-                                actingUnit._trackTilesMoved = (actingUnit._trackTilesMoved || 0) + _3apCombinedPath.length;
-                                spendAP(actingUnit, AP_COST_ACTION);
-                                spendAP(actingUnit, AP_COST_ACTION);
-                                playSfx('moveStep');
-                                addLog(`${unitDisplayName(actingUnit)} moves to ${coordLabel(_3apBestR2.x, _3apBestR2.y)}.`, actingUnit.player);
-
-                                checkOpportunityAttack(actingUnit, _3apSavedX, _3apSavedY);
-                                updateTerrainStay(actingUnit);
-
-                                const _3apAirborne = typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
-                                if (!_3apAirborne && state.bombs) {
-                                    const bombIdx = state.bombs.findIndex(b => b.x === _3apBestR2.x && b.y === _3apBestR2.y && b.owner !== actingUnit.player);
-                                    if (bombIdx >= 0) {
-                                        const bomb = state.bombs.splice(bombIdx, 1)[0];
-                                        detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(_3apBestR2.x, _3apBestR2.y)}.`);
-                                    }
-                                }
-                                if (!_3apAirborne) checkWarpRuneTrigger(actingUnit);
-
-                                if (!_3apAirborne && _r2Z < _3apSavedZ && typeof applyFallDamage === 'function') {
-                                    applyFallDamage(actingUnit, _3apSavedZ, _r2Z, 'Fall: ');
-                                }
-
-                                state._actionExecuting = false;
-                                // Now execute the jump (3rd AP)
-                                return doJump(actingUnit, x, y, state._clickedZ);
-                            }
-                        }
-                    }
-
-                    // ── 3-AP: jump+move+move (jump first, then 2-move to target) ──
-                    if ((actingUnit.ap || 0) >= 3 && (actingUnit.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES) {
-                        const _jmmSavedX = actingUnit.x, _jmmSavedY = actingUnit.y, _jmmSavedZ = actingUnit.z;
-                        const _jmmR1Jumps = getJumpTiles(actingUnit);
-                        let _jmmBestJump = null;
-                        let _jmmBestR2 = null;
-                        let _jmmBestCost = Infinity;
-
-                        for (const j1 of _jmmR1Jumps) {
-                            actingUnit.x = j1.x; actingUnit.y = j1.y; actingUnit.z = j1.z ?? _jmmSavedZ;
-                            const _postJumpR1 = getMoveTiles(actingUnit);
-                            // Direct 2-move from jump tile
-                            if (_postJumpR1.some(t => t.x === x && t.y === y && !t._jump)) {
-                                const match = _postJumpR1.find(t => t.x === x && t.y === y && !t._jump);
-                                if ((match.cost || 0) < _jmmBestCost) {
-                                    _jmmBestCost = match.cost || 0;
-                                    _jmmBestJump = j1;
-                                    _jmmBestR2 = null; // direct move from jump position
-                                }
-                            }
-                            // 2-move via intermediate
-                            for (const pm of _postJumpR1) {
-                                if (pm._jump || pm._takeoff) continue;
-                                actingUnit.x = pm.x; actingUnit.y = pm.y; actingUnit.z = pm.z ?? j1.z ?? _jmmSavedZ;
-                                const _postR2 = getMoveTiles(actingUnit);
-                                if (_postR2.some(t => t.x === x && t.y === y && !t._jump)) {
-                                    const totalCost = (pm.cost || 0);
-                                    if (totalCost < _jmmBestCost) {
-                                        _jmmBestCost = totalCost;
-                                        _jmmBestJump = j1;
-                                        _jmmBestR2 = pm;
-                                    }
-                                }
-                            }
-                        }
-
-                        actingUnit.x = _jmmSavedX; actingUnit.y = _jmmSavedY; actingUnit.z = _jmmSavedZ;
-                        if (_jmmBestJump) {
-                            // Execute: jump to j1, then move (1 or 2 moves) to target
-                            const jumpResult = doJump(actingUnit, _jmmBestJump.x, _jmmBestJump.y, _jmmBestJump.z);
-                            if (jumpResult) {
-                                if (_jmmBestR2) {
-                                    // 2 moves after jump
-                                    const moveR1 = doMove(actingUnit, _jmmBestR2.x, _jmmBestR2.y, _jmmBestR2.z);
-                                    if (moveR1) {
-                                        return doMove(actingUnit, x, y, state._clickedZ);
-                                    }
-                                } else {
-                                    // 1 move after jump
-                                    return doMove(actingUnit, x, y, state._clickedZ);
-                                }
-                            }
-                        }
-                    }
+                    // Jump is now a deliberate, first-class action — not a one-click
+                    // walk+jump combo. The old move+jump / move+move+jump / jump+move+move
+                    // auto-bundles were removed: they fired doJump() synchronously while the
+                    // walk animation was still mid-flight, which is what made units snap
+                    // abruptly to a 3-AP jump tile. To move-then-jump now, walk first, then
+                    // pick the jump (jump tiles are shown in the move overlay and the Jump
+                    // action), so each leg animates cleanly on its own.
                 }
 
                 state._actionExecuting = false;
@@ -16870,25 +16737,35 @@
 
         function getJumpTiles(unit) {
             if (!unit || unit.dead) return [];
-            if (canFly(unit) && isUnitAirborne(unit)) return [];
+            if (canFly(unit)) return [];          // flyers take to the air, they don't jump
+            if (unit._jumpedThisTurn) return [];  // one decisive leap per turn
             const unitZ = unit.z ?? 0;
             const tiles = [];
             const tileSet = new Set();
-            const jumpRange = 1;
+            const reach = getUnitJumpStat(unit);   // horizontal reach in tiles (1/2/3)
+            const climb = getUnitJumpClimb(unit);  // max height we can hop up
             const has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
-            for (let dy = -jumpRange; dy <= jumpRange; dy++) {
-                for (let dx = -jumpRange; dx <= jumpRange; dx++) {
+            for (let dy = -reach; dy <= reach; dy++) {
+                for (let dx = -reach; dx <= reach; dx++) {
                     if (dx === 0 && dy === 0) continue;
-                    if (Math.abs(dx) + Math.abs(dy) > jumpRange) continue;
+                    // "8 tiles, then diamond": the 8 surrounding tiles are all reach 1
+                    // (Chebyshev first ring), tiles beyond use Manhattan distance — the
+                    // exact metric combatDist() uses everywhere else in the engine.
+                    const adx = Math.abs(dx), ady = Math.abs(dy);
+                    const hd = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
+                    if (hd > reach) continue;
                     const nx = unit.x + dx;
                     const ny = unit.y + dy;
                     if (!isInside(nx, ny)) continue;
+                    // NOTE: we validate the LANDING tile only — intermediate tiles are
+                    // deliberately NOT path-checked, so a jump arcs OVER gaps, chasms,
+                    // and low obstacles to land on solid ground beyond.
                     const surfaces = has3D ? getWalkableSurfaces(nx, ny) : [0];
                     for (const nz of surfaces) {
                         if (!unitCanTraverse(unit, nx, ny, nz)) continue;
                         const hDiff = nz - unitZ;
 
-                        if (hDiff > JUMP_HEIGHT) {
+                        if (hDiff > climb) {
                             const _jObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
                             if (!(_jRule && _jRule.roofWalkable)) continue;
@@ -16926,8 +16803,12 @@
                 addLog('That unit already acted this round.');
                 return false;
             }
-            if (canFly(unit) && isUnitAirborne(unit)) {
-                addLog('Airborne units don\'t need to jump.');
+            if (canFly(unit)) {
+                addLog('Flyers take to the air instead of jumping.');
+                return false;
+            }
+            if (unit._jumpedThisTurn) {
+                addLog('That unit has already jumped this turn.');
                 return false;
             }
             const jumpTiles = getJumpTiles(unit);
@@ -16950,6 +16831,7 @@
             unit.y = y;
             unit.z = z;
             spendAP(unit, AP_COST_ACTION);
+            unit._jumpedThisTurn = true;
 
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);

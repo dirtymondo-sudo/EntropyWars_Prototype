@@ -2450,17 +2450,10 @@
               const _savedX2 = _selectedForHl.x, _savedY2 = _selectedForHl.y, _savedZ2 = _selectedForHl.z;
               const _originPk = posKey(_savedX2, _savedY2);
 
-              // Track HOW each 2-AP tile is reached so Ring 3 only extends combos the
-              // click handler in clickTile() can actually execute. The executor supports
-              // exactly two 3-AP combos: move+move+jump and jump+move+move. Anything else
-              // (move+move+move is impossible with UNIT_MAX_MOVES=2; move+jump+* and
-              // jump+move+jump have no executor branch) must NOT be highlighted, or the
-              // tile lights up but clicking it does nothing.
-              const _r2WalkTiles = [];   // reached via move+move (no jump) → can still jump in R3
-              const _r2WalkSeen = new Set();
-              const _postJumpR1Tiles = []; // post-jump R1 walk tiles → can move again in R3
-
-              // From each R1 non-jump tile, compute R2 move (move+move) and R2 jump (move+jump)
+              // Ring 2 = the two-walk (move+move) destinations, which the 2-AP move
+              // executor in clickTile() can reach in a single click. (3-AP walk+jump
+              // combos were retired — jump is a deliberate action now — so we no longer
+              // track per-tile reach paths for a Ring 3.)
               for (const t of _cachedMoveTiles) {
 
                 if (t._jump || t._takeoff) continue;
@@ -2472,78 +2465,21 @@
                   const pk = posKey(t2.x, t2.y);
                   if (!_r1Set.has(pk) && pk !== _originPk) {
                     _ring2Set.add(pk);
-                    if (!_r2WalkSeen.has(pk)) {
-                      _r2WalkSeen.add(pk);
-                      _r2WalkTiles.push({ x: t2.x, y: t2.y, z: t2.z ?? t.z ?? _savedZ2 });
-                    }
-                  }
-                }
-
-                if (_canJumpFromHere) {
-                  const _r2Jumps = getJumpTiles(_selectedForHl);
-                  for (const jt of _r2Jumps) {
-                    const jpk = posKey(jt.x, jt.y);
-                    if (!_r1Set.has(jpk) && jpk !== _originPk) _ring2Set.add(jpk);
                   }
                 }
               }
 
-              // From each R1 jump tile, compute what's reachable by moving after the jump (2 AP: jump+move)
-              if (_canJumpFromHere) {
-                for (const jt of _r1JumpTiles) {
-                  const jpk = posKey(jt.x, jt.y);
-                  if (!_r1Set.has(jpk) && jpk !== _originPk) continue; // only process jump tiles that are in R1
-                  _selectedForHl.x = jt.x; _selectedForHl.y = jt.y; _selectedForHl.z = jt.z ?? _savedZ2;
-                  const _postJumpMoves = getMoveTiles(_selectedForHl);
-                  for (const pm of _postJumpMoves) {
-                    if (pm._jump) continue;
-                    const pmk = posKey(pm.x, pm.y);
-                    if (!_r1Set.has(pmk) && pmk !== _originPk) _ring2Set.add(pmk);
-                    _postJumpR1Tiles.push({ x: pm.x, y: pm.y, z: pm.z ?? jt.z ?? _savedZ2 });
-                  }
-                }
-              }
-
+              // Jump is a deliberate action now (no auto walk+jump combo executor), so we
+              // no longer highlight move+jump / jump+move 2-AP destinations here — doing so
+              // would light up tiles a single click can't actually reach. Standalone jump
+              // tiles from the current position are still shown (added to _cachedMoveTiles
+              // above); to jump after moving, walk first then pick the jump.
               _selectedForHl.x = _savedX2; _selectedForHl.y = _savedY2; _selectedForHl.z = _savedZ2;
 
-              // ── Ring 3: 3-AP destinations the click handler can ACTUALLY execute ──
-              //   • move+move+jump : jump from a move+move (walked) R2 tile
-              //   • jump+move+move : a second move from a jump+move R2 tile
-              const _apAvail = _selectedForHl.ap || 0;
-              if (_apAvail >= 3 && _ring2Set.size > 0) {
-                _ring3Set = new Set();
-                const _r12Set = new Set();
-                for (const pk of _r1Set) _r12Set.add(pk);
-                for (const pk of _ring2Set) _r12Set.add(pk);
-                _r12Set.add(_originPk);
-
-                // move+move+jump — only from tiles reached by two walks (no jump used yet)
-                if (_canJumpFromHere) {
-                  for (const r2t of _r2WalkTiles) {
-                    _selectedForHl.x = r2t.x; _selectedForHl.y = r2t.y; _selectedForHl.z = r2t.z;
-                    const _r3Jumps = getJumpTiles(_selectedForHl);
-                    for (const jt of _r3Jumps) {
-                      const jpk = posKey(jt.x, jt.y);
-                      if (!_r12Set.has(jpk) && jpk !== _originPk) _ring3Set.add(jpk);
-                    }
-                  }
-                }
-
-                // jump+move+move — a second walk from a jump+move tile (needs 2 walk moves free)
-                if ((_selectedForHl.movesThisTurn || 0) + 2 <= UNIT_MAX_MOVES) {
-                  for (const pm of _postJumpR1Tiles) {
-                    _selectedForHl.x = pm.x; _selectedForHl.y = pm.y; _selectedForHl.z = pm.z;
-                    const _r3Moves = getMoveTiles(_selectedForHl);
-                    for (const t3 of _r3Moves) {
-                      if (t3._jump) continue;
-                      const pk = posKey(t3.x, t3.y);
-                      if (!_r12Set.has(pk) && pk !== _originPk) _ring3Set.add(pk);
-                    }
-                  }
-                }
-
-                _selectedForHl.x = _savedX2; _selectedForHl.y = _savedY2; _selectedForHl.z = _savedZ2;
-              }
+              // Ring 3 (3-AP move+move+jump / jump+move+move) highlighting was removed
+              // alongside the one-click combo executors. Those destinations are now reached
+              // as separate deliberate actions (walk, then jump), so there is no single-click
+              // 3-AP jump tile to highlight. _ring3Set stays null and is skipped downstream.
             }
           }
           if (_wasdOrigin) {
