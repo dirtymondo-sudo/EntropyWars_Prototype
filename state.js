@@ -3134,9 +3134,25 @@
                     const defaultRace = (player === 1 ? ownedRaceForJobSlot(cls) : null) || archetype.race || 'homosapien';
                     const race = priorMeta.race || defaultRace;
 
-                    const hasAnySpell = repairedLo.spells.some(s => s);
+                    // The builder keeps a unit's spells in partyMeta.customSpells
+                    // (that's what actually arms the unit — see createUnit), NOT in
+                    // loadout.spells. So a fully-built party normally has an empty
+                    // repairedLo.spells. Treat the unit as "blank" only when it has
+                    // neither loadout spells nor customSpells — otherwise this would
+                    // re-roll a chosen party every lock-in / match start.
+                    const hasCustomSpells = Array.isArray(priorMeta.customSpells) && priorMeta.customSpells.some(s => s);
+                    const hasAnySpell = repairedLo.spells.some(s => s) || hasCustomSpells;
                     if (!hasAnySpell && typeof randomSpellLoadoutForClass === 'function') {
-                        repairedLo = randomSpellLoadoutForClass(cls, race);
+                        // Borrow ONLY the rolled spells for a truly empty slot; keep
+                        // the player's chosen items/accessories intact (don't wipe or
+                        // randomize them). Items/equipment are only filled from the
+                        // fresh roll when the player hasn't set any of their own.
+                        const freshLo = randomSpellLoadoutForClass(cls, race);
+                        repairedLo.spells = freshLo.spells;
+                        const hasItems = Object.values(repairedLo.items || {}).some(v => v > 0);
+                        if (!hasItems) repairedLo.items = freshLo.items;
+                        const hasEquip = repairedLo.equipment && Object.values(repairedLo.equipment).some(v => v);
+                        if (!hasEquip) repairedLo.equipment = freshLo.equipment;
                     }
 
                     repairedLoadouts.push(repairedLo);
