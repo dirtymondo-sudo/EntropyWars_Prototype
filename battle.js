@@ -18968,7 +18968,7 @@
                 applyStatusEffects(_buffResult.target, spell.statusEffects, `${spell.name}: `, unit);
                 if (spell.statStageBoost) applyStatStageBoost(_buffResult.target, spell.statStageBoost, `${spell.name}: `, unit);
             } else if (spell.kind === 'debuff') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Choose an enemy target for that spell.');
                     playErrorSfx();
@@ -19102,7 +19102,7 @@
                 showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
                 addLog(`${unitDisplayName(unit)} revives ${unitDisplayName(target)} with ${target.hp} HP.`);
             } else if (spell.kind === 'bomb') {
-                const _bombOccupant = unitAt(x, y);
+                const _bombOccupant = (unitAt(x, y, z) || unitAt(x, y));
                 if (_bombOccupant && _bombOccupant.player === unit.player) {
                     addLog('Cannot place a bomb on a friendly unit.');
                     playErrorSfx();
@@ -19255,7 +19255,7 @@
                     unit, spell, x, y, effectiveSpellCost, spellPower, finishAction);
                 if (_mhTowerResult.handled) return _mhTowerResult.returnVal;
 
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Choose an enemy target for that spell.');
                     playErrorSfx();
@@ -19552,7 +19552,7 @@
             }
 
             else if (spell.kind === 'displacement') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target.');
                     playErrorSfx();
@@ -19748,7 +19748,7 @@
             }
 
             else if (spell.kind === 'pull') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target for pull.');
                     playErrorSfx();
@@ -19935,7 +19935,7 @@
             }
 
             else if (spell.kind === 'swap') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target for swap.');
                     playErrorSfx();
@@ -20144,7 +20144,7 @@
             }
 
             else if (spell.kind === 'splitBeam') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target.');
                     playErrorSfx();
@@ -20554,7 +20554,7 @@
             else if (spell.kind === 'utility') {
                 if (spell.id === 'grapple' || spell.id === 'raceGrapple') {
 
-                    const target = unitAt(x, y);
+                    const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (target && isEnemyUnit(target, unit)) {
 
                         panelFocusTarget = target;
@@ -20701,7 +20701,7 @@
                     }
                 } else if (spell.id === 'plunder' || spell.id === 'racePlunder') {
 
-                    const target = unitAt(x, y);
+                    const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (!target || isAllyUnit(target, unit)) {
                         addLog('Choose an adjacent enemy to plunder.');
                         playErrorSfx();
@@ -20768,7 +20768,7 @@
                     unit.mp -= effectiveSpellCost;
                     addLog(`${unitDisplayName(unit)} mimics ${mimicSpell.name} at full power!`);
 
-                    const target = unitAt(x, y);
+                    const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (mimicSpell.kind === 'damage' && target && isEnemyUnit(target, unit)) {
                         const dmg = Math.max(24, Math.floor((mimicSpell.dmg || 80) + spellPower));
                         applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} mimics ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
@@ -20827,7 +20827,7 @@
 
             else if (spell.kind === 'teleport') {
 
-                const teleTarget = unitAt(x, y);
+                const teleTarget = (unitAt(x, y, z) || unitAt(x, y));
                 if (!state._teleportingUnit) {
                     if (spell.teleportAnyUnit) {
 
@@ -21089,7 +21089,7 @@
             }
 
             else if (spell.kind === 'lifeDrain') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Choose an enemy target for Life Drain.');
                     playErrorSfx();
@@ -21343,7 +21343,7 @@
             }
 
             else if (spell.kind === 'guard') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
                     addLog('Choose a living ally to protect with Chivalry.');
                     playErrorSfx();
@@ -21373,7 +21373,7 @@
             }
 
             else if (spell.kind === 'encore') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
                     addLog('Choose a living ally for Encore.');
                     playErrorSfx();
@@ -21478,7 +21478,7 @@
                     }
                 }
 
-                const destOccupant = unitAt(x, y);
+                const destOccupant = (unitAt(x, y, z) || unitAt(x, y));
                 if (destOccupant && !destOccupant.dead) {
 
                     const pushAdj = [
@@ -21542,7 +21542,7 @@
             }
 
             else if (spell.kind === 'skyDrop') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target for Sky Drop.');
                     playErrorSfx();
@@ -21636,7 +21636,7 @@
                     let totalDmg = Math.max(16, (spell.dmg || 0) + spellPower + (elevDelta * perLevel));
 
                     const fromX = throwTarget.x, fromY = throwTarget.y;
-                    const collisionTarget = unitAt(x, y);
+                    const collisionTarget = (unitAt(x, y, z) || unitAt(x, y));
 
                     _spellFocusCamera(unit, x, y);
 
@@ -21693,7 +21693,7 @@
                     completionDelay = actionMs(800);
                 } else {
 
-                    const target = unitAt(x, y);
+                    const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (!target || isAllyUnit(target, unit)) {
                         addLog('Invalid grab target.');
                         playErrorSfx();
@@ -21731,7 +21731,7 @@
             }
 
             else if (spell.kind === 'skySlam') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target for Sky Slam.');
                     playErrorSfx();
@@ -21824,7 +21824,7 @@
             }
 
             else if (spell.kind === 'leapStrike') {
-                const target = unitAt(x, y);
+                const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
                     addLog('Invalid target for Leap Strike.');
                     playErrorSfx();
