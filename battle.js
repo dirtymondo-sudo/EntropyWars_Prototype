@@ -3785,14 +3785,23 @@
             }, 350);
         }
 
-        function triggerCastAnim(unit) {
+        function triggerCastAnim(unit, spell) {
             if (!unit || unit.dead || _skipVisuals()) return;
             const _v2 = window._v2UnitSystemActive?.();
             state.castAnimIds.add(unit.id);
+            // Tag whether this cast deals damage so the renderer can pick the
+            // right animated sprite sheet for races that have them: damaging
+            // spells use the attack animation, non-damaging ones (e.g. Catgirl
+            // "Meow") use the secondary animation.
+            const _damaging = !!(spell && (spell.type === 'damage' || spell.dmg ||
+                (Array.isArray(spell.hitDamages) && spell.hitDamages.length) || spell.damageType));
+            if (!state._castAnimDamaging) state._castAnimDamaging = {};
+            state._castAnimDamaging[unit.id] = _damaging;
             if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
             if (!_v2) scheduleBoardRender();
             window.setTimeout(() => {
                 state.castAnimIds.delete(unit.id);
+                if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
             }, 500);
@@ -19762,7 +19771,7 @@
 
             pushUndoSnapshot(true);
 
-            triggerCastAnim(unit);
+            triggerCastAnim(unit, spell);
 
             /* Unit animation override: race-specific cast sprite */
             if (_applySpriteOverride(unit, spell, 'castSprite')) {

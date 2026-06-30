@@ -968,6 +968,12 @@ const ThreeRenderer = (function () {
 
     var _wiggleTweens = new Map();
 
+    // Frame-by-frame sprite-sheet animations (e.g. Catgirl attack/meow). Keyed
+    // by unit id while an action plays the strip on the unit's billboard.
+    var _spriteAnimTweens = new Map();
+    var SPRITE_ANIM_ATTACK_MS = 350;
+    var SPRITE_ANIM_SPELL_MS = 500;
+
     var _prevAttackIds = new Set();
     var _prevCastIds = new Set();
     var _prevDodgeIds = new Set();
@@ -4596,6 +4602,17 @@ const ThreeRenderer = (function () {
                           : ((typeof getR2RaceSpriteUrl === 'function')
                              ? getR2RaceSpriteUrl(unit.race, unit.gender, unit.cls) : null);
             var spriteTex = spriteUrl ? getTexture(spriteUrl) : null;
+
+            // Warm up animated sprite-sheet textures (if this race has any) so
+            // they're decoded and GPU-ready by the time the unit attacks/casts.
+            if (typeof getRaceSpriteAnimations === 'function') {
+                var _anims = getRaceSpriteAnimations(unit.race, unit.gender);
+                if (_anims) {
+                    if (_anims.attack) getTexture(_anims.attack);
+                    if (_anims.spell) getTexture(_anims.spell);
+                }
+            }
+
             var spriteMat = new THREE.MeshBasicMaterial({
                 map: spriteTex, transparent: true, alphaTest: 0.1,
                 side: THREE.DoubleSide, depthWrite: true
@@ -8236,6 +8253,8 @@ const ThreeRenderer = (function () {
                             durationMs: LUNGE_MS
                         });
                     }
+                    // Play the attack sprite sheet (if any) on top of the lunge.
+                    _maybeStartSpriteAnim(uid, 'attack');
                 }
             }
             _prevAttackIds = new Set(state.attackAnimIds);
@@ -8243,11 +8262,18 @@ const ThreeRenderer = (function () {
 
         if (state.castAnimIds) {
             for (var uid of state.castAnimIds) {
-                if (!_prevCastIds.has(uid) && !_castTweens.has(uid)) {
-                    _castTweens.set(uid, {
-                        startTime: performance.now(),
-                        durationMs: CAST_MS
-                    });
+                if (!_prevCastIds.has(uid) && !_castTweens.has(uid) && !_spriteAnimTweens.has(uid)) {
+                    // Damaging spells use the attack animation; non-damaging
+                    // ones (e.g. Catgirl "Meow") use the secondary sheet. If the
+                    // race has a sheet we own the sprite for the cast and skip
+                    // the default glow/pulse tween (which would tint it).
+                    var _dmg = state._castAnimDamaging && state._castAnimDamaging[uid];
+                    if (!_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
+                        _castTweens.set(uid, {
+                            startTime: performance.now(),
+                            durationMs: CAST_MS
+                        });
+                    }
                 }
             }
             _prevCastIds = new Set(state.castAnimIds);
@@ -8297,6 +8323,91 @@ const ThreeRenderer = (function () {
             }
             _prevWiggleIds = new Set(state.statusWiggleIds);
         }
+    }
+
+    // ── Animated sprite sheets ───────────────────────────────────────────
+    // Swap a unit's billboard texture to a horizontal frame strip and step the
+    // UV window across it for the duration of an action, then restore the idle
+    // texture. Used by races registered in RACE_SPRITE_ANIMATIONS (sprites.js).
+
+    function _maybeStartSpriteAnim(uid, kind) {
+        if (typeof getRaceSpriteAnimations !== 'function') return false;
+        if (_spriteAnimTweens.has(uid)) return true;
+        var unit = _findUnit(uid);
+        if (!unit) return false;
+        var anims = getRaceSpriteAnimations(unit.race, unit.gender);
+        if (!anims) return false;
+        var url = (kind === 'spell') ? anims.spell : anims.attack;
+        if (!url) return false;
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.sprite || !ue.sprite.material) return false;
+
+        var baseTex = getTexture(url);
+        // Only animate once the strip is decoded — otherwise fall back to the
+        // default lunge/cast tween for this action (textures are pre-warmed at
+        // unit build, so this only skips the rare cold first use).
+        if (!baseTex || !baseTex.image || !baseTex.image.complete) return false;
+
+        var frames = anims.frames || 8;
+        // Clone so the per-frame UV offset/repeat never mutate the shared
+        // cached texture (other units may share the same idle/sheet image).
+        var sheetTex = baseTex.clone();
+        sheetTex.magFilter = THREE.NearestFilter;
+        sheetTex.minFilter = THREE.NearestFilter;
+        sheetTex.wrapS = THREE.ClampToEdgeWrapping;
+        sheetTex.wrapT = THREE.ClampToEdgeWrapping;
+        sheetTex.repeat.set(1 / frames, 1);
+        sheetTex.offset.set(0, 0);
+        sheetTex.needsUpdate = true;
+
+        var mat = ue.sprite.material;
+        _spriteAnimTweens.set(uid, {
+            startTime: performance.now(),
+            durationMs: (kind === 'spell') ? SPRITE_ANIM_SPELL_MS : SPRITE_ANIM_ATTACK_MS,
+            frames: frames,
+            tex: sheetTex,
+            mat: mat,
+            idleMap: mat.map
+        });
+        mat.map = sheetTex;
+        mat.color.setRGB(1, 1, 1);   // show the strip's true colours
+        mat.needsUpdate = true;
+        return true;
+    }
+
+    function _endSpriteAnim(uid) {
+        var tw = _spriteAnimTweens.get(uid);
+        if (!tw) return;
+        if (tw.mat) {
+            tw.mat.map = tw.idleMap;
+            var unit = _findUnit(uid);
+            if (unit && unit.ap <= 0) tw.mat.color.setRGB(0.5, 0.5, 0.5);
+            else tw.mat.color.setRGB(1, 1, 1);
+            tw.mat.needsUpdate = true;
+        }
+        if (tw.tex) tw.tex.dispose();
+    }
+
+    function _updateSpriteAnimTweens() {
+        if (_spriteAnimTweens.size === 0) return;
+        var now = performance.now();
+        var toRemove = [];
+        for (var entry of _spriteAnimTweens) {
+            var uid = entry[0], tw = entry[1];
+            var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
+            var frame = Math.min(tw.frames - 1, Math.floor(t * tw.frames));
+            if (tw.tex) tw.tex.offset.x = frame / tw.frames;
+            if (t >= 1) toRemove.push(uid);
+        }
+        for (var r = 0; r < toRemove.length; r++) {
+            _endSpriteAnim(toRemove[r]);
+            _spriteAnimTweens.delete(toRemove[r]);
+        }
+    }
+
+    function _clearSpriteAnims() {
+        for (var entry of _spriteAnimTweens) _endSpriteAnim(entry[0]);
+        _spriteAnimTweens.clear();
     }
 
     function _updateLungeTweens() {
@@ -8511,6 +8622,7 @@ const ThreeRenderer = (function () {
         _updateCastTweens();
         _updateFlashTweens();
         _updateWiggleTweens();
+        _updateSpriteAnimTweens();
     }
 
     function _clearAnimations() {
@@ -8534,6 +8646,7 @@ const ThreeRenderer = (function () {
         _prevHealFlashIds.clear();
         _wiggleTweens.clear();
         _prevWiggleIds.clear();
+        _clearSpriteAnims();
         clearAllOverlays();
     }
 
