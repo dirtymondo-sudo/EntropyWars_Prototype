@@ -1754,6 +1754,10 @@ function SubMenu({ st }) {
     }
     const heldKeys = typeof ITEM_RULES !== 'undefined'
       ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
+    // Greyed-out (currently unusable) items sink to the bottom so usable ones lead.
+    if (typeof canUseItemNow === 'function') {
+      heldKeys.sort((a, b) => (canUseItemNow(unit, a) ? 0 : 1) - (canUseItemNow(unit, b) ? 0 : 1));
+    }
     return h(SubMenuPanel, { title: 'Items', fc: fc },
       heldKeys.map(itemKey => {
         const count = unit.items?.[itemKey] || 0;
@@ -2413,6 +2417,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   }
 
   actions.sort((a, b) => {
+    // Greyed-out (unavailable) actions sink to the bottom so the player never
+    // has to scroll past things they can't do to reach something they can.
+    const availA = a.available ? 0 : 1;
+    const availB = b.available ? 0 : 1;
+    if (availA !== availB) return availA - availB;
+
     const dmgA = _actionSortDamage(a);
     const dmgB = _actionSortDamage(b);
     if (dmgB !== dmgA) return dmgB - dmgA;
@@ -3260,10 +3270,14 @@ function TileActionMenu({ st }) {
     if (typeof renderIfDirty === 'function') { renderIfDirty(); }
   };
 
-  const movementActions = actions.filter(a => a.category === 'movement');
-  const spellActions = actions.filter(a => a.category === 'spells');
-  const attackActions = actions.filter(a => a.category === 'attack');
-  const otherActions = actions.filter(a => a.category === 'actions' || a.category === 'utility');
+  // Within each group, float greyed-out (unavailable) actions to the bottom so
+  // the player doesn't have to scan past things they can't do. Stable sort keeps
+  // the existing relative order among entries with the same availability.
+  const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
+  const movementActions = actions.filter(a => a.category === 'movement').sort(_availFirst);
+  const spellActions = actions.filter(a => a.category === 'spells').sort(_availFirst);
+  const attackActions = actions.filter(a => a.category === 'attack').sort(_availFirst);
+  const otherActions = actions.filter(a => a.category === 'actions' || a.category === 'utility').sort(_availFirst);
 
   const renderRow = (a) => {
     const isAvail = a.available;
