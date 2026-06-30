@@ -15167,7 +15167,7 @@
 
             getColumn, getBlockAt, setBlockAt, removeBlockAt,
             getWalkableSurfaces, nearestWalkableZ, canOccupy3D,
-            unitAt3D, unitsAtColumn, getTerrainAt3D, dist3D, distXY, combatDist,
+            unitAt3D, unitsAtColumn, getTerrainAt3D, dist3D, distXY, combatDist, combatReach,
             buildColumnsFromLegacy, buildColumnsFromVoxels, ensureUnitZCoords,
 
             aliveUnitsFor, aliveUnitsOnFloor, enemyOf, unitDisplayName,

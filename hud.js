@@ -2118,6 +2118,28 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const dist = _distFromTo(actingUnit.x, actingUnit.y, actingUnit.z ?? 0);
 
+  // Spell-aware reach: a long-range (gravity-assisted) delivery drops DOWNWARD
+  // for free, so a target sitting BELOW the caster ignores the downward
+  // elevation gap — only horizontal distance (and any UPWARD gap) limits it.
+  // This mirrors combatReach() in the engine (used by doSpell + the board
+  // range highlight); without it the spell cards would gray out a cast that
+  // the engine would actually allow (e.g. a mage atop a building casting down
+  // onto an enemy one tile away on the ground).
+  const _reach = (fx, fy, fz, gx, gy, gz, longRange) => (typeof G.combatReach === 'function')
+    ? G.combatReach(fx, fy, fz ?? 0, gx, gy, gz ?? 0, longRange)
+    : _cd(fx, fy, fz, gx, gy, gz);
+  const _spellDistFromTo = (fx, fy, fz, longRange) => {
+    let d = _reach(fx, fy, fz, tx, ty, targetZ, longRange);
+    if (targetUnit._isBoss && targetUnit._bossSize === 2) {
+      d = Math.min(d,
+        _reach(fx, fy, fz, targetUnit.x + 1, targetUnit.y, targetZ, longRange),
+        _reach(fx, fy, fz, targetUnit.x, targetUnit.y + 1, targetZ, longRange),
+        _reach(fx, fy, fz, targetUnit.x + 1, targetUnit.y + 1, targetZ, longRange)
+      );
+    }
+    return d;
+  };
+
   const distFrom = (fx, fy, fz) => _distFromTo(fx, fy, fz);
 
   const findMoveIntoRange = (requiredRange, actionApCost) => {
@@ -2255,6 +2277,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     const spRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 1);
     const spLos = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+
+    // Distance with the long-range downward-gravity rule applied for THIS spell,
+    // so casting down onto a lower target isn't blocked by the vertical gap.
+    const spLongRange = (typeof isLongRangeSpell === 'function') && isLongRangeSpell(sp);
+    const dist = _spellDistFromTo(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, spLongRange);
 
     let inSpellRange = false;
     const isBarrage = sp.kind === 'barrage';
@@ -2945,6 +2972,16 @@ function _computeTileActions(actingUnit, tx, ty) {
   const dist = (typeof G.combatDist === 'function')
     ? G.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, _tileZ)
     : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+  // Spell-aware distance to this tile: a long-range (gravity-assisted) spell
+  // drops DOWNWARD for free, so aiming at a lower tile ignores the downward
+  // elevation gap (matches combatReach() / doSpell in the engine). Without this
+  // a tile-targeted spell card grays out a cast the engine would allow.
+  const _spellTileDist = (sp) => {
+    const lr = (typeof isLongRangeSpell === 'function') && isLongRangeSpell(sp);
+    return (typeof G.combatReach === 'function')
+      ? G.combatReach(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, _tileZ, lr)
+      : dist;
+  };
 
   if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit) && !onSelf) {
     const moveTiles = getMoveTiles(actingUnit);
@@ -3053,8 +3090,9 @@ function _computeTileActions(actingUnit, tx, ty) {
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     const spRange = sp.range || 3;
-    const inRange = dist <= spRange;
-    const losBlocked = typeof isRangeBlockedByTerrain === 'function' && dist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    const spDist = _spellTileDist(sp);
+    const inRange = spDist <= spRange;
+    const losBlocked = typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
 
     let reason = '';
     if (!canAfford) reason = isSilenced ? 'Silenced' : actingUnit.mp < mpCost ? 'No MP' : 'No AP';
