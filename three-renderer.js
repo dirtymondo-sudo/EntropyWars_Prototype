@@ -8326,8 +8326,8 @@ const ThreeRenderer = (function () {
     }
 
     // ── Animated sprite sheets ───────────────────────────────────────────
-    // Swap a unit's billboard texture to a horizontal frame strip and step the
-    // UV window across it for the duration of an action, then restore the idle
+    // Swap a unit's billboard texture to a grid frame sheet and step the UV
+    // window cell-by-cell for the duration of an action, then restore the idle
     // texture. Used by races registered in RACE_SPRITE_ANIMATIONS (sprites.js).
 
     function _maybeStartSpriteAnim(uid, kind) {
@@ -8348,7 +8348,9 @@ const ThreeRenderer = (function () {
         // unit build, so this only skips the rare cold first use).
         if (!baseTex || !baseTex.image || !baseTex.image.complete) return false;
 
-        var frames = anims.frames || 8;
+        var cols = anims.cols || anims.frames || 8;
+        var rows = anims.rows || 1;
+        var frames = anims.frames || (cols * rows);
         // Clone so the per-frame UV offset/repeat never mutate the shared
         // cached texture (other units may share the same idle/sheet image).
         var sheetTex = baseTex.clone();
@@ -8356,21 +8358,43 @@ const ThreeRenderer = (function () {
         sheetTex.minFilter = THREE.NearestFilter;
         sheetTex.wrapS = THREE.ClampToEdgeWrapping;
         sheetTex.wrapT = THREE.ClampToEdgeWrapping;
-        sheetTex.repeat.set(1 / frames, 1);
-        sheetTex.offset.set(0, 0);
+        // One grid cell = the visible UV window. Square cells on a square sheet
+        // match the square idle billboard, so no distortion.
+        sheetTex.repeat.set(1 / cols, 1 / rows);
+        sheetTex.offset.set(0, (rows - 1) / rows);   // start on the top-left cell
         sheetTex.needsUpdate = true;
 
-        var mat = ue.sprite.material;
+        var spr = ue.sprite;
+        var mat = spr.material;
+
+        // Correct the billboard's on-screen aspect so a (square) sheet cell is
+        // never stretched by a non-square idle plane. Display width is forced
+        // to cellAspect * height; sign of scale.x preserves any sprite flip.
+        var baseScaleX = spr.scale.x;
+        var gp = (spr.geometry && spr.geometry.parameters) ? spr.geometry.parameters : null;
+        var pw = gp ? gp.width : 0, ph = gp ? gp.height : 0;
+        var img = baseTex.image;
+        var cellAspect = (img.naturalWidth && img.naturalHeight)
+            ? ((img.naturalWidth / cols) / (img.naturalHeight / rows)) : 1;
+        if (pw > 0 && ph > 0) {
+            var sign = baseScaleX < 0 ? -1 : 1;
+            spr.scale.x = sign * cellAspect * (ph / pw);
+        }
+
         _spriteAnimTweens.set(uid, {
             startTime: performance.now(),
             durationMs: (kind === 'spell') ? SPRITE_ANIM_SPELL_MS : SPRITE_ANIM_ATTACK_MS,
+            cols: cols,
+            rows: rows,
             frames: frames,
             tex: sheetTex,
             mat: mat,
+            sprite: spr,
+            baseScaleX: baseScaleX,
             idleMap: mat.map
         });
         mat.map = sheetTex;
-        mat.color.setRGB(1, 1, 1);   // show the strip's true colours
+        mat.color.setRGB(1, 1, 1);   // show the sheet's true colours
         mat.needsUpdate = true;
         return true;
     }
@@ -8378,6 +8402,9 @@ const ThreeRenderer = (function () {
     function _endSpriteAnim(uid) {
         var tw = _spriteAnimTweens.get(uid);
         if (!tw) return;
+        if (tw.sprite && typeof tw.baseScaleX === 'number') {
+            tw.sprite.scale.x = tw.baseScaleX;
+        }
         if (tw.mat) {
             tw.mat.map = tw.idleMap;
             var unit = _findUnit(uid);
@@ -8396,7 +8423,14 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
             var frame = Math.min(tw.frames - 1, Math.floor(t * tw.frames));
-            if (tw.tex) tw.tex.offset.x = frame / tw.frames;
+            if (tw.tex) {
+                var col = frame % tw.cols;
+                var row = Math.floor(frame / tw.cols);
+                tw.tex.offset.x = col / tw.cols;
+                // UV origin is bottom-left, so the top grid row (row 0) maps to
+                // the highest vertical offset.
+                tw.tex.offset.y = (tw.rows - 1 - row) / tw.rows;
+            }
             if (t >= 1) toRemove.push(uid);
         }
         for (var r = 0; r < toRemove.length; r++) {

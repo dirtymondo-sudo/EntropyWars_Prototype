@@ -276,9 +276,11 @@ function getBattleMapSpriteUrl(unit) {
 
 // ───────────────────────────────────────────────────────────────────────────
 // Animated unit sprite sheets.
-// Horizontal strips (frames laid left→right) played on a unit's battle
+// Grid sheets (frames read left→right, top→bottom) played on a unit's battle
 // billboard during actions. `attack` = damaging actions (basic attack +
 // damaging spells); `spell` = non-damaging spells (e.g. Catgirl "Meow").
+//   cols / rows = grid dimensions; frames = how many cells are actually used
+//   (trailing cells may be empty — e.g. a 3×3 sheet with 8 frames).
 // Frame stepping / texture handling lives in three-renderer.js; this is just
 // the lookup table. Add a race here (and upload the sheets to R2) to give it
 // animations — no other wiring needed.
@@ -286,9 +288,10 @@ function getBattleMapSpriteUrl(unit) {
 const RACE_SPRITE_ANIMATIONS = {
   'catgirl': {
     female: {
+      // 1152×1152 sheets, 3×3 grid (384px cells); 8 frames used, last cell blank.
       attack: `${_S}/Races/catgirl/female/attack_animation_1.png`,
       spell:  `${_S}/Races/catgirl/female/attack_animation_2.png`,
-      frames: 8,
+      cols: 3, rows: 3, frames: 8,
     },
   },
 };
