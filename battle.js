@@ -22583,12 +22583,15 @@
                 if (unit._skyThrowGrab) {
 
                     const grabbed = unit._skyThrowGrab;
-                    const throwTarget = unitAt(grabbed.id)
-                        ? state.units.find(u => u.id === grabbed.id && !u.dead)
-                        : null;
+                    // grabbed.id is a unit id, NOT board coords — look the unit up by
+                    // id directly. (unitAt() takes x,y, so unitAt(grabbed.id) always
+                    // returned undefined, making EVERY throw fail with "Grabbed target
+                    // is no longer valid.")
+                    const throwTarget = state.units.find(u => u.id === grabbed.id && !u.dead) || null;
                     if (!throwTarget) {
                         addLog('Grabbed target is no longer valid.');
                         unit._skyThrowGrab = null;
+                        state._skyThrowHighlight = null;
                         playErrorSfx();
                         return 0;
                     }
