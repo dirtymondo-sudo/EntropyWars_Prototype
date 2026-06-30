@@ -23,6 +23,8 @@ const ThreeCamera = (function () {
     let _initialized = false;
     let _lastSyncTime = 0;
     let _smoothOverride = 0;
+    /* Focal height latched while the user hand-pans the board — see sync(). */
+    let _panFocalY = null;
 
     function create(width, height) {
         threeCamera = new THREE.PerspectiveCamera(FOV, width / height, NEAR, FAR);
@@ -72,6 +74,21 @@ const ThreeCamera = (function () {
             const ry = Math.round(cam.y);
             const h = getHeightAt(rx, ry);
             if (h > 0) focalY = h * elevStep;
+        }
+
+        /* While the user is hand-panning the board (right/middle-drag), freeze
+           the focal height to whatever it was when the drag began. The camera
+           orbits its focal point at a fixed distance, so letting focalY track
+           the terrain under the cursor dollies the eye UP over hills and DOWN
+           into valleys — and because this is a perspective camera that reads
+           as an unwanted zoom-in/out, forcing the player to re-zoom after every
+           pan. Latching focalY keeps a drag purely horizontal; normal tracking
+           resumes (smoothly, via the damping below) the moment the drag ends. */
+        if (typeof state !== 'undefined' && state && state._userPanning) {
+            if (_panFocalY === null) _panFocalY = focalY;
+            focalY = _panFocalY;
+        } else {
+            _panFocalY = null;
         }
 
         const dist = baseDist / Math.max(cam.zoom, 0.05);
