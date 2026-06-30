@@ -10417,6 +10417,15 @@
 
                 try {
 
+                    // Balance Lab honours the map dropdown between matches —
+                    // "rotate" cycles the prebuilt pool so balance data isn't
+                    // skewed by one board's quirks. (Training keeps its own
+                    // launch-time map; this branch is gated on balance mode.)
+                    if (_balanceSimMode && _trainMapSetting === 'rotate') {
+                        const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
+                        applyGameMode(nextMap);
+                    }
+
                     if (_aiTrainingMode) {
                         _mirrorRandomizeTeams();
                     } else {
@@ -11622,6 +11631,11 @@
             if (_aiTrainingMode && state.winner != null) {
                 recordTrainingMatch(state.winner);
                 renderTrainingDashboard();
+            }
+
+            if (_balanceSimMode && state.winner != null) {
+                recordBalanceMatch();
+                renderBalanceDashboard();
             }
 
             if (state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
@@ -14460,6 +14474,322 @@
         }
 
         loadAIWeights();
+
+        // ════════════════════════════════════════════════════════════════════
+        // BALANCE LAB — non-mirror dev-sim telemetry
+        // --------------------------------------------------------------------
+        // A second AI-vs-AI auto-sim mode, complementary to AI Training.
+        //   • AI Training MIRRORS the two teams (identical builds) and A/B-tests
+        //     ONE decision weight, so the only variable is AI skill. Good for
+        //     tuning the AI; useless for judging the GAME.
+        //   • Balance Lab does the opposite: BOTH sides run the SAME champion
+        //     weights (AI held equal) while teams are RANDOMISED independently.
+        //     With the AI controlled-for, any job / race / spell whose win rate
+        //     drifts away from 50% is a signal that THE GAME is imbalanced.
+        // Per-unit outcomes are bucketed by job, race, secondary job and spell
+        // and surfaced in a live dashboard (reusing the training panel slot).
+        // ════════════════════════════════════════════════════════════════════
+        let _balanceSimMode = false;
+        let _balanceStats = null;
+        let _balanceTab = 'jobs';
+        const BALANCE_STATS_VERSION = 1;
+        const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
+        const _BAL_TABS = [
+            { id: 'jobs', label: 'Jobs' },
+            { id: 'races', label: 'Races' },
+            { id: 'spells', label: 'Spells' },
+            { id: 'secondaryJobs', label: '2nd Job' },
+        ];
+
+        function _freshBalanceStats() {
+            return {
+                version: BALANCE_STATS_VERSION,
+                totalMatches: 0,
+                noContests: 0,
+                jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
+                updatedAt: 0,
+            };
+        }
+
+        function ensureBalanceStats() {
+            if (!_balanceStats) _balanceStats = _freshBalanceStats();
+            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes']) {
+                if (!_balanceStats[k]) _balanceStats[k] = {};
+            }
+            if (_balanceStats.noContests == null) _balanceStats.noContests = 0;
+            if (_balanceStats.totalMatches == null) _balanceStats.totalMatches = 0;
+            return _balanceStats;
+        }
+
+        function _balBucket(map, key) {
+            if (!key) return null;
+            if (!map[key]) map[key] = { games: 0, wins: 0, kills: 0, dmgDealt: 0, dmgTaken: 0, deaths: 0 };
+            return map[key];
+        }
+
+        function _balAdd(map, key, won, kills, dd, dt, died) {
+            const b = _balBucket(map, key);
+            if (!b) return;
+            b.games++; b.wins += won; b.kills += kills;
+            b.dmgDealt += dd; b.dmgTaken += dt; b.deaths += died;
+        }
+
+        async function loadBalanceStats() {
+            try {
+                const raw = await _aiStorageGet('ew-balance-stats-v' + BALANCE_STATS_VERSION);
+                if (raw) _balanceStats = JSON.parse(raw);
+            } catch (e) { _balanceStats = null; }
+            return ensureBalanceStats();
+        }
+
+        async function saveBalanceStats() {
+            try {
+                ensureBalanceStats();
+                _balanceStats.updatedAt = Date.now();
+                await _aiStorageSet('ew-balance-stats-v' + BALANCE_STATS_VERSION, JSON.stringify(_balanceStats));
+            } catch (e) {  }
+        }
+
+        async function resetBalanceStats() {
+            _balanceStats = _freshBalanceStats();
+            await saveBalanceStats();
+        }
+
+        // Tally one finished balance match. Every living-or-dead unit on a
+        // decisive side is a sample for its job/race/secondary/spells; a draw or
+        // no-contest only bumps the no-contest counter (no win attribution).
+        function recordBalanceMatch() {
+            ensureBalanceStats();
+            const winner = state.winner;
+
+            if (winner === 0 || winner === null) {
+                _balanceStats.noContests++;
+                _balanceStats.totalMatches++;
+                saveBalanceStats();
+                return;
+            }
+
+            _balanceStats.totalMatches++;
+            const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
+                ? getActiveMultiplayerMode().id : null;
+            if (mode) { const mb = _balBucket(_balanceStats.modes, mode); if (mb) mb.games++; }
+
+            for (const u of (state.units || [])) {
+                if (u.player !== 1 && u.player !== 2) continue;
+                const won = (u.player === winner) ? 1 : 0;
+                const kills = u._trackKills || 0;
+                const dd = u._trackDmgDealt || 0;
+                const dt = u._trackDmgReceived || 0;
+                const died = u.dead ? 1 : 0;
+
+                _balAdd(_balanceStats.jobs, u.cls || u.job, won, kills, dd, dt, died);
+                if (u.race) _balAdd(_balanceStats.races, u.race, won, kills, dd, dt, died);
+                if (u._secondaryJob) _balAdd(_balanceStats.secondaryJobs, u._secondaryJob, won, kills, dd, dt, died);
+
+                // A spell can sit on units on both teams; count each unit that
+                // FIELDS it once (win rate of teams that brought it). Per-unit
+                // kills/dmg are stored too but de-emphasised in the UI — they're
+                // the unit's totals, not the individual spell's.
+                const seen = Object.create(null);
+                for (const s of (u.spells || [])) {
+                    const nm = s && s.name;
+                    if (!nm || seen[nm]) continue;
+                    seen[nm] = 1;
+                    _balAdd(_balanceStats.spells, nm, won, kills, dd, dt, died);
+                }
+            }
+
+            saveBalanceStats();
+        }
+
+        function _balRows(map) {
+            const rows = [];
+            for (const key of Object.keys(map || {})) {
+                const b = map[key];
+                if (!b || !b.games) continue;
+                rows.push({
+                    key,
+                    games: b.games,
+                    wr: b.wins / b.games,
+                    kpg: b.kills / b.games,
+                    survival: 1 - (b.deaths / b.games),
+                });
+            }
+            return rows;
+        }
+
+        function renderBalanceDashboard() {
+            const panel = document.getElementById('trainingPanel');
+            if (!panel) return;
+            ensureBalanceStats();
+            const s = _balanceStats;
+            const totalM = s.totalMatches || 0;
+            const nc = s.noContests || 0;
+            const decisive = totalM - nc;
+
+            // Balance flags: jobs + races whose win rate has drifted off 50%
+            // with enough games behind it — the headline "is the game fair?" read.
+            const flags = [];
+            for (const src of [{ tag: 'Job', map: s.jobs }, { tag: 'Race', map: s.races }]) {
+                for (const r of _balRows(src.map)) {
+                    if (r.games < BALANCE_MIN_SAMPLE) continue;
+                    if (r.wr >= 0.56 || r.wr <= 0.44) {
+                        flags.push({ key: r.key, games: r.games, wr: r.wr, tag: src.tag, strong: r.wr >= 0.56 });
+                    }
+                }
+            }
+            flags.sort((a, b) => Math.abs(b.wr - 0.5) - Math.abs(a.wr - 0.5));
+
+            let flagsHtml;
+            if (decisive < 1) {
+                flagsHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:8px 0">Running matches… signals appear after a few games.</div>`;
+            } else if (flags.length === 0) {
+                flagsHtml = `<div style="text-align:center;color:var(--green);font-size:11px;padding:8px 0">✓ No outliers past ${BALANCE_MIN_SAMPLE}+ games — looking balanced.</div>`;
+            } else {
+                flagsHtml = flags.slice(0, 8).map(f => {
+                    const pct = Math.round(f.wr * 100);
+                    const col = f.strong ? 'var(--green)' : 'var(--red)';
+                    const arrow = f.strong ? '⬆ strong' : '⬇ weak';
+                    return `<div class="train-hist-row">
+                        <span style="color:${col};font-weight:700;width:56px">${arrow}</span>
+                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.key} <span style="color:var(--muted);font-size:9px">${f.tag}</span></span>
+                        <span style="color:${col};font-weight:700;min-width:34px;text-align:right">${pct}%</span>
+                        <span style="color:var(--muted);font-size:9px;min-width:34px;text-align:right">${f.games}g</span>
+                    </div>`;
+                }).join('');
+            }
+
+            // Active breakdown tab — sorted most-imbalanced first, with
+            // well-sampled rows ahead of low-sample ones.
+            const map = s[_balanceTab] || {};
+            const showPerf = _balanceTab !== 'spells';
+            const rows = _balRows(map).sort((a, b) => {
+                const aw = a.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
+                const bw = b.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
+                if (aw !== bw) return bw - aw;
+                return Math.abs(b.wr - 0.5) - Math.abs(a.wr - 0.5);
+            });
+
+            let tableHtml;
+            if (rows.length === 0) {
+                tableHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">No data yet.</div>`;
+            } else {
+                tableHtml = rows.slice(0, 80).map(r => {
+                    const pct = Math.round(r.wr * 100);
+                    const low = r.games < BALANCE_MIN_SAMPLE;
+                    let col = 'var(--muted)';
+                    if (!low) col = r.wr >= 0.56 ? 'var(--green)' : (r.wr <= 0.44 ? 'var(--red)' : 'var(--gold)');
+                    const perf = showPerf
+                        ? `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:58px;text-align:right">${r.kpg.toFixed(2)}k·${Math.round(r.survival * 100)}%s</span>`
+                        : '';
+                    return `<div class="train-wt-row"${low ? ' style="opacity:0.5"' : ''} title="${r.games} games${low ? ' — low sample' : ''}">
+                        <span class="train-wt-name" style="flex:1">${r.key}</span>
+                        <span class="train-wt-val" style="color:${col};min-width:32px;text-align:right">${pct}%</span>
+                        <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:24px;text-align:right">${r.games}g</span>
+                        ${perf}
+                    </div>`;
+                }).join('');
+            }
+
+            const tabsHtml = _BAL_TABS.map(t =>
+                `<button class="train-btn${_balanceTab === t.id ? ' active' : ''}" style="flex:1;padding:4px 2px;font-size:10px" onclick="_balanceTab='${t.id}';renderBalanceDashboard()">${t.label}</button>`
+            ).join('');
+
+            const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode());
+            const modeName = mode ? (mode.label || mode.id) : '';
+            const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
+
+            panel.innerHTML = `
+                <div class="train-drag-handle" id="trainDragHandle">
+                    <div class="train-title" style="margin:0">Balance Lab — Non-Mirror</div>
+                    <span class="train-drag-grip">⠿ drag</span>
+                </div>
+                <div class="train-subtitle">Equal AI · random teams · ${modeName} · ${mapLabel}</div>
+
+                <div class="train-cards">
+                    <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${totalM}</span></div>
+                    <div class="train-card"><span class="train-card-label">Decisive</span><span class="train-card-value">${decisive}</span></div>
+                    <div class="train-card"><span class="train-card-label">No-Contest</span><span class="train-card-value">${nc}</span></div>
+                    <div class="train-card"><span class="train-card-label">Flags</span><span class="train-card-value">${flags.length}</span></div>
+                </div>
+
+                <div class="train-group">
+                    <div class="train-group-title">Balance Flags <span style="font-weight:400;text-transform:none;letter-spacing:0">(win-rate vs 50% · ${BALANCE_MIN_SAMPLE}+ games)</span></div>
+                    <div class="train-hist">${flagsHtml}</div>
+                </div>
+
+                <div class="train-group">
+                    <div class="train-group-title">Breakdown</div>
+                    <div style="display:flex;gap:4px;margin-bottom:8px">${tabsHtml}</div>
+                    <div class="train-wt-list">${tableHtml}</div>
+                    <div style="font-size:9px;color:var(--muted);margin-top:6px;text-align:center">${showPerf
+                        ? '% = win rate · g = games · k = avg kills · s = survival'
+                        : '% = win rate of teams fielding the spell · g = games'}</div>
+                </div>
+
+                <div class="train-btns">
+                    <button class="train-btn danger" onclick="if(confirm('Reset all balance data?')){resetBalanceStats().then(()=>{renderBalanceDashboard();addLog('Balance data reset.');});}">Reset</button>
+                    <button class="train-btn" onclick="_exportBalanceStats()">Export JSON</button>
+                    <button class="train-btn" onclick="_exportBalanceCsv()">Export CSV</button>
+                </div>
+            `;
+
+            _initTrainPanelDrag(panel);
+        }
+
+        function _exportBalanceStats() {
+            ensureBalanceStats();
+            const data = {
+                _meta: {
+                    game: 'Entropy Wars',
+                    kind: 'balance-stats',
+                    version: BALANCE_STATS_VERSION,
+                    totalMatches: _balanceStats.totalMatches,
+                    noContests: _balanceStats.noContests,
+                    exportedAt: new Date().toISOString(),
+                },
+                stats: _balanceStats,
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ew-balance-stats.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog('Exported balance stats to ew-balance-stats.json');
+        }
+
+        function _exportBalanceCsv() {
+            ensureBalanceStats();
+            const lines = ['category,name,games,wins,winRate,avgKills,avgDmgDealt,avgDmgTaken,survivalRate'];
+            const cats = [
+                ['job', _balanceStats.jobs], ['race', _balanceStats.races],
+                ['secondaryJob', _balanceStats.secondaryJobs], ['spell', _balanceStats.spells],
+            ];
+            for (const [cat, m] of cats) {
+                for (const key of Object.keys(m || {})) {
+                    const b = m[key];
+                    if (!b || !b.games) continue;
+                    const g = b.games;
+                    const safe = '"' + String(key).replace(/"/g, '""') + '"';
+                    lines.push([
+                        cat, safe, g, b.wins, (b.wins / g).toFixed(3),
+                        (b.kills / g).toFixed(2), (b.dmgDealt / g).toFixed(1),
+                        (b.dmgTaken / g).toFixed(1), (1 - b.deaths / g).toFixed(3),
+                    ].join(','));
+                }
+            }
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ew-balance-stats.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog('Exported balance stats to ew-balance-stats.csv');
+        }
 
         function finishComputerAction() {
 

@@ -970,8 +970,12 @@
                                 <option value="xlarge">Conquest (18×20)</option>
                             </select>
                         </div>
-                        <div class="pm-set-row">
+                        <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchAITraining()">Launch AI Training</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Balance Lab runs AI vs AI with EQUAL weights and random, non-mirror teams — so job, race and spell win rates measure game balance, not AI skill. Uses the Mode / Map above. Live dashboard + JSON/CSV export.</div>
+                        <div class="pm-set-row">
+                            <button class="pm-set-btn" onclick="window._launchBalanceSim()">Launch Balance Lab</button>
                         </div>
                     </div>
                 </div>`;
@@ -1012,6 +1016,12 @@
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
             _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
             window._selectMode('aitrain');
+        };
+
+        window._launchBalanceSim = function() {
+            _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
+            _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
+            window._selectMode('balancesim');
         };
 
         const MS_GAME_MODES = [
@@ -1549,6 +1559,7 @@
                 state.showPlayer2Builder = false;
                 state.squadLeaderMode = false;
                 _aiTrainingMode = true;
+                _balanceSimMode = false;
                 state.devAutoSim = true;
                 state.devSimSpeed = 8;
 
@@ -1573,6 +1584,49 @@
                         if (tp) tp.style.display = 'block';
                         renderTrainingDashboard();
                     }, 100);
+                    state.audioUnlocked = true;
+                    syncMusicToState().catch(() => {});
+                });
+            }
+
+            if (mode === 'balancesim') {
+
+                // Non-mirror balance sim: both AI sides share the same champion
+                // weights (no A/B experiment), but teams are randomised
+                // independently so job/race/spell win rates measure the GAME,
+                // not the AI.
+                state.controllers[1] = CTRL.AI;
+                state.controllers[2] = CTRL.AI;
+                state.showPlayer2Builder = false;
+                state.squadLeaderMode = false;
+                _aiTrainingMode = false;
+                _balanceSimMode = true;
+                state.devAutoSim = true;
+                state.devSimSpeed = 8;
+
+                activeMultiplayerMode = _trainModeSetting;
+
+                const balMap = _trainMapSetting === 'rotate'
+                    ? _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length]
+                    : _trainMapSetting;
+                applyGameMode(balMap);
+
+                Promise.all([loadAIWeights(), loadBalanceStats()]).then(() => {
+                    dismissTitleScreen();
+                    render();
+
+                    setTimeout(() => {
+                        const tp = document.getElementById('trainingPanel');
+                        if (tp) tp.style.display = 'block';
+                        renderBalanceDashboard();
+                    }, 100);
+
+                    // Kick off the auto-sim loop. restartDevSimFromBuilder is the
+                    // same driver finalizeMatch re-arms after every match, and
+                    // (with _aiTrainingMode off) it randomizes non-mirror teams +
+                    // rotates the map before each match.
+                    restartDevSimFromBuilder(60);
+
                     state.audioUnlocked = true;
                     syncMusicToState().catch(() => {});
                 });
