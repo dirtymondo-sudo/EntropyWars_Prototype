@@ -3066,10 +3066,10 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    function _buildRockCluster3D(x, y) {
+    function _buildRockCluster3D(x, y, texOverride) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
-        var rockTex = _getBoulderTexture();
+        var rockTex = texOverride || _getBoulderTexture();
         var g = new THREE.Group();
 
         /* Seed-based pseudo-random for consistent look per tile */
@@ -3110,6 +3110,45 @@ const ThreeRenderer = (function () {
         g._ew_decoX = x;
         g._ew_decoY = y;
         return g;
+    }
+
+    /* ── Editor-placed cosmetic Rock object ───────────────────────────────
+       A standalone boulder cluster the user can drop on ANY terrain (moon,
+       grass, …). The automatic rock scatter in rebuildTerrainDecorations only
+       appears where the *ground tile itself* is rocks_*, which is why the moon
+       map used to need rock-terrain patches to show any rocks. This object
+       decouples rocks from the ground so they can sit on the lunar surface (or
+       anywhere) untethered. The per-placement texture variant (entry.leaf =
+       'rocks_1'..'rocks_5') picks which rocks sprite wraps the boulders — the
+       same per-placement texture mechanism trees use for their leaves. No
+       collision (OBJECT_RULES.rock.cosmetic). */
+    var _ROCK_OBJ_DEFAULT_TEX = 'rocks_1';
+    var _rockObjTexCache = {};
+    function _getRockObjTexture(file) {
+        if (_rockObjTexCache[file]) return _rockObjTexCache[file];
+        var t = getTexture(_FOLIAGE_TERRAIN_TEX + file + '.png', function() { _objectsDirty = true; });
+        if (t) {
+            t.wrapS = THREE.RepeatWrapping;
+            t.wrapT = THREE.RepeatWrapping;
+            t.magFilter = THREE.NearestFilter;
+            t.minFilter = THREE.NearestFilter;
+            t.repeat.set(2, 2);
+        }
+        _rockObjTexCache[file] = t;
+        return t;
+    }
+    function _buildRock3D(x, y) {
+        var rockFile = _ROCK_OBJ_DEFAULT_TEX;
+        try {
+            var _stk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (_stk) {
+                for (var i = 0; i < _stk.length; i++) {
+                    var k = _stk[i].key || _stk[i];
+                    if (k === 'rock' && _stk[i].leaf) { rockFile = _stk[i].leaf; break; }
+                }
+            }
+        } catch (e) {}
+        return _buildRockCluster3D(x, y, _getRockObjTexture(rockFile));
     }
 
     /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */
@@ -3337,6 +3376,7 @@ const ThreeRenderer = (function () {
             }
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
+            else if (ok === 'rock')               m = _buildRock3D(x, y);
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the

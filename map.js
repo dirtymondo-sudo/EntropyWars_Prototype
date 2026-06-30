@@ -4170,14 +4170,20 @@
                     for (let x = 0; x < pb.w; x++) {
                         const stk = Array.isArray(pb.objects[y]?.[x]) ? pb.objects[y][x] : [];
                         if (!stk.length) { row.push(null); continue; }
-                        row.push(stk.map(e => ({
-                            key: ME_OBJECT_IDS[e.oid] || null,
-                            alignX: e.alignX || 'center',
-                            alignY: e.alignY || 'bottom',
-                            rot: e.rot || 0,
-                            flipX: !!e.flipX,
-                            flipY: !!e.flipY
-                        })).filter(e => e.key));
+                        row.push(stk.map(e => {
+                            const o = {
+                                key: ME_OBJECT_IDS[e.oid] || null,
+                                alignX: e.alignX || 'center',
+                                alignY: e.alignY || 'bottom',
+                                rot: e.rot || 0,
+                                flipX: !!e.flipX,
+                                flipY: !!e.flipY
+                            };
+                            /* Preserve the per-placement texture variant (tree leaves
+                               / rock texture) authored into the prebuilt map. */
+                            if (e.leaf) o.leaf = e.leaf;
+                            return o;
+                        }).filter(e => e.key));
                     }
                     objBoard.push(row);
                 }
@@ -5997,6 +6003,8 @@
             'lamp_post',
             'lamp_post_2',
             'grass_tuft',
+            // 2026-06 — append-only (indices are saved-map object ids)
+            'rock',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -6021,8 +6029,9 @@
 
         const ME_OBJECT_CATS = [
             { label: '⚙ Game Mode', keys: ['tower_cube','church','shop','nexus','nexus_cave','nexus_sky'], isGameMode: true },
-            { label: 'Nature', keys: ['tree','grass_tuft','ruins','mountain_top','beanstalk','well','cave_entrance','poison_seed'] },
+            { label: 'Nature', keys: ['tree','rock','grass_tuft','ruins','mountain_top','beanstalk','well','cave_entrance','poison_seed'] },
             { label: 'Trees', keys: ['tree','tree_2','tree_3','tree_4','tree_5','tree_6'] },
+            { label: 'Rocks', keys: ['rock'] },
             { label: 'Barriers', keys: ['barrier_1','barrier_2','barrier_3','barrier_4','barrier_5'] },
             { label: 'Columns', keys: ['column_1','column_2','column_3','column_4'] },
             { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
@@ -6091,6 +6100,12 @@
         let _meMonMaxH = null;   // null → use the kind's default max height
         let _meSelectedLeaf = 'leaves';           // per-tree leaf sprite the brush stamps
         const ME_LEAF_OPTIONS = ['leaves','leaves_2','leaves_3','leaves_4','leaves_5'];
+        /* Per-rock texture the brush stamps. Stored on the placed object in the
+           SAME entry.leaf field trees use (it's the generic "texture variant"
+           slot) — so a placed rock carries leaf='rocks_3', etc. */
+        let _meSelectedRockTex = 'rocks_1';
+        const ME_ROCK_OPTIONS = ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5'];
+        function _meIsRockKey(key){ return key === 'rock'; }
         let _meSelectedObjRef = null;             // {x,y,idx} of the object picked for rotate-after-place
         let _meSelectedMonRef = null;             // index into _meMonuments of the monument picked for rotate
         let _meDialDragging = false;              // true while the user drags the rotation dial
@@ -7441,7 +7456,7 @@
             const selEntry = _meSelectedObjEntry();
             const selMon = _meSelectedMonEntry();
             if (selEntry || selMon) {
-                let kind, label, coord, rotVal, isStair = false, isTree = false;
+                let kind, label, coord, rotVal, isStair = false, isTree = false, isRock = false;
                 if (selMon) {
                     kind = 'mon';
                     const md = ME_MON_BY_KIND[selMon.kind];
@@ -7456,6 +7471,7 @@
                     rotVal = selEntry.rot || 0;
                     isStair = (selKey === 'stairs' || selKey === 'stairs_2');
                     isTree = _meIsTreeKey(selKey);
+                    isRock = _meIsRockKey(selKey);
                 }
 
                 html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 Rotate: ${label} <span style="opacity:0.6;font-weight:400">${coord}</span></div>`;
@@ -7496,6 +7512,14 @@
                         for (const lf of ME_LEAF_OPTIONS) {
                             const la = (selEntry.leaf || 'leaves') === lf ? ' active' : '';
                             html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:32px;height:32px" title="${lf}" onclick="window._meSetSelectedLeaf('${lf}')"></div>`;
+                        }
+                        html += `</div>`;
+                    } else if (isRock) {
+                        html += `<div class="me-pal-cat me-placement-header">🪨 Rock texture</div>`;
+                        html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
+                        for (const rt of ME_ROCK_OPTIONS) {
+                            const ra = (selEntry.leaf || 'rocks_1') === rt ? ' active' : '';
+                            html += `<div class="me-pbtn${ra}" style="background-image:${_meTerrainBg(rt)};background-size:cover;width:32px;height:32px" title="${rt}" onclick="window._meSetSelectedLeaf('${rt}')"></div>`;
                         }
                         html += `</div>`;
                     }
@@ -7654,6 +7678,14 @@
                         html += `<div class="me-pbtn${la}" style="background-image:${_meTerrainBg(lf)};background-size:cover;width:34px;height:34px" title="${lf}" onclick="window._meSetLeaf('${lf}')"></div>`;
                     }
                     html += `</div>`;
+                } else if (_meIsRockKey(_meSelectedObject)) {
+                    html += `<div class="me-pal-cat me-placement-header">🪨 Rock texture (new rocks)</div>`;
+                    html += `<div class="me-pbtn-row" style="flex-wrap:wrap;padding:4px 6px;gap:4px">`;
+                    for (const rt of ME_ROCK_OPTIONS) {
+                        const ra = _meSelectedRockTex === rt ? ' active' : '';
+                        html += `<div class="me-pbtn${ra}" style="background-image:${_meTerrainBg(rt)};background-size:cover;width:34px;height:34px" title="${rt}" onclick="window._meSetRockTex('${rt}')"></div>`;
+                    }
+                    html += `</div>`;
                 }
 
                 html += `<div class="me-pal-cat me-placement-header">Placement</div>`;
@@ -7713,6 +7745,7 @@
         window._meSetMonFoot = function(f) { _meMonFoot = f; _meRenderPalette(); };
         window._meSetMonMaxH = function(h) { _meMonMaxH = h; _meRenderPalette(); };
         window._meSetLeaf = function(lf) { _meSelectedLeaf = lf; _meRenderPalette(); };
+        window._meSetRockTex = function(rt) { _meSelectedRockTex = rt; _meRenderPalette(); };
 
         window._meSetTab = function(tab) {
             _mePaletteTab = tab;
@@ -8236,7 +8269,10 @@
                             if (!objKey) continue;
                             const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
                             const isBldg = oSpr && (typeof OBJECT_RULES !== 'undefined') && OBJECT_RULES[objKey]?.roofWalkable;
-                            const objBg = _meObjectBg(objKey);
+                            /* Rocks carry their texture variant in oe.leaf (the generic
+                               per-placement texture slot) — preview that sprite, not the
+                               default rocks_1 thumbnail. */
+                            const objBg = (_meIsRockKey(objKey) && oe.leaf) ? _meTerrainBg(oe.leaf) : _meObjectBg(objKey);
                             if (!objBg) continue;
 
                             const sprW = oSpr?.width || 128;
@@ -8596,7 +8632,8 @@
             } else if (_meTool === 'object') {
                 const oid = ME_OBJECT_TO_ID[_meSelectedObject] || 1;
                 if (!Array.isArray(_meObjects[y][x])) _meObjects[y][x] = [];
-                const leaf = _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf : null;
+                const leaf = _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf
+                           : (_meIsRockKey(_meSelectedObject) ? _meSelectedRockTex : null);
                 const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
                 _meObjects[y][x].push(entry);
                 if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;

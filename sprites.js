@@ -610,6 +610,11 @@ const OBJECT_SPRITES = {
        _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
        thumbnail; we reuse the grass_2 terrain sprite the blades are textured with. */
     grass_tuft:   { url: `${_T}/grass_2.png`, model3d: true },
+    /* Cosmetic rock/boulder — rendered in-game as a 3D textured boulder by
+       _buildRock3D (three-renderer.js). Per-placement texture variant
+       (rocks_1..rocks_5) authored in the editor, like leaves for trees. The url
+       is only the editor palette thumbnail (defaults to the rocks_1 sprite). */
+    rock:         { url: `${_T}/rocks_1.png`, model3d: true },
 };
 
 const TERRAIN_SPRITES = {
