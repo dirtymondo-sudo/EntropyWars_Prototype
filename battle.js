@@ -3787,8 +3787,6 @@
 
         function triggerCastAnim(unit, spell) {
             if (!unit || unit.dead || _skipVisuals()) return;
-            const _v2 = window._v2UnitSystemActive?.();
-            state.castAnimIds.add(unit.id);
             // Tag whether this cast deals damage so the renderer can pick the
             // right animated sprite sheet for races that have them: damaging
             // spells use the attack animation, non-damaging ones (e.g. Catgirl
@@ -3797,14 +3795,50 @@
                 (Array.isArray(spell.hitDamages) && spell.hitDamages.length) || spell.damageType));
             if (!state._castAnimDamaging) state._castAnimDamaging = {};
             state._castAnimDamaging[unit.id] = _damaging;
-            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
-            if (!_v2) scheduleBoardRender();
-            window.setTimeout(() => {
-                state.castAnimIds.delete(unit.id);
+
+            // The cast sprite-sheet / glow used to start HERE, immediately — but
+            // the projectile / particle effect doesn't launch until the camera's
+            // source-hold (hundreds of ms later), so the wind-up read as a
+            // separate animation queued in front of the effect. Instead, ARM the
+            // cast and let playOffensiveActionCamera RELEASE it exactly at launch
+            // (source-hold), so the sprite and the effect move as one. Self / ally
+            // casts never reach that camera, so a next-tick fallback fires them
+            // immediately (their support VFX is instant anyway).
+            if (!state._pendingCastSprite) state._pendingCastSprite = {};
+            state._pendingCastSprite[unit.id] = true;
+            window.setTimeout(() => _releaseCastSprite(unit, 0), 0);
+        }
+
+        // Start a previously-armed cast sprite-sheet / glow after `holdMs`,
+        // lining the caster's animation up with the moment its projectile or
+        // particle effect actually launches. No-ops if the cast was never armed
+        // or has already been released (so the source-hold release and the
+        // next-tick fallback can't double-fire).
+        function _releaseCastSprite(unit, holdMs) {
+            if (!unit || !state._pendingCastSprite || !state._pendingCastSprite[unit.id]) return;
+            delete state._pendingCastSprite[unit.id];
+            if (unit.dead || _skipVisuals()) {
                 if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                return;
+            }
+            const _v2 = window._v2UnitSystemActive?.();
+            const _start = () => {
+                if (unit.dead) {
+                    if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                    return;
+                }
+                state.castAnimIds.add(unit.id);
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
-            }, 500);
+                window.setTimeout(() => {
+                    state.castAnimIds.delete(unit.id);
+                    if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                    if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                    if (!_v2) scheduleBoardRender();
+                }, 500);
+            };
+            if (holdMs > 0) window.setTimeout(_start, holdMs);
+            else _start();
         }
 
         function triggerDodgeAnim(unit, attackerX, attackerY) {
@@ -7214,6 +7248,11 @@
                 const overlay = document.getElementById('turnBannerOverlay');
                 if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
             }, timings.totalMs);
+
+            // Release an armed cast sprite-sheet at the projectile-launch moment
+            // (source-hold) so the caster's wind-up animation lands in sync with
+            // its projectile / particle effect rather than playing ahead of it.
+            _releaseCastSprite(sourceUnit, Math.max(0, timings.sourceHold || 0));
 
             return { sequenceId, ...timings };
         }
@@ -18290,9 +18329,13 @@
                 }, projectileDelay);
             } else {
 
+                // Fire the lunge + attack sprite-sheet at the SAME instant the
+                // projectile leaves (projectileDelay + lungeLeadMs) so the strike
+                // animation and the projectile read as one motion instead of the
+                // sprite/lunge playing a beat ahead of the shot.
                 window.setTimeout(() => {
                     triggerAttackAnim(unit, target.x, target.y);
-                }, projectileDelay);
+                }, projectileDelay + lungeLeadMs);
 
                 window.setTimeout(() => {
                     playSfx('basicAttack');
@@ -19460,9 +19503,11 @@
                 const _throwDelay = Math.max(0, _baneCam?.sourceHold ?? actionMs(900));
                 const _throwTravelMs = _baneCam?.travelMs ?? actionMs(520);
 
+                // Throw animation (lunge + sprite-sheet) fires together with the
+                // projectile so the wind-up and the thrown bane read as one motion.
                 window.setTimeout(() => {
                     triggerAttackAnim(unit, target.x, target.y);
-                }, _throwDelay);
+                }, _throwDelay + actionMs(120));
                 window.setTimeout(() => {
                     playSfx('itemThrow');
                     playProjectileToUnit(unit, target, 'proj-bane-' + baneRule.baneType, _throwTravelMs);
