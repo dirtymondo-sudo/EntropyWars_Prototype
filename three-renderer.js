@@ -3123,21 +3123,26 @@ const ThreeRenderer = (function () {
        same per-placement texture mechanism trees use for their leaves. No
        collision (OBJECT_RULES.rock.cosmetic). */
     var _ROCK_OBJ_DEFAULT_TEX = 'rocks_1';
+    /* Dedicated, per-file texture cache (NOT the shared terrain cache) so setting
+       wrap/repeat for the boulder never mutates the terrain texture object. */
     var _rockObjTexCache = {};
     function _getRockObjTexture(file) {
         if (_rockObjTexCache[file]) return _rockObjTexCache[file];
-        var t = getTexture(_FOLIAGE_TERRAIN_TEX + file + '.png', function() { _objectsDirty = true; });
-        if (t) {
-            t.wrapS = THREE.RepeatWrapping;
-            t.wrapT = THREE.RepeatWrapping;
-            t.magFilter = THREE.NearestFilter;
-            t.minFilter = THREE.NearestFilter;
-            t.repeat.set(2, 2);
-        }
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file + '.png', function() { _objectsDirty = true; });
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.NearestFilter;
+        t.repeat.set(1.5, 1);
         _rockObjTexCache[file] = t;
         return t;
     }
     function _buildRock3D(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+
+        /* Per-placement texture variant lives in entry.leaf (the generic texture
+           slot): 'rocks_1'..'rocks_5' or a moon regolith ('moon','moon_2',…). */
         var rockFile = _ROCK_OBJ_DEFAULT_TEX;
         try {
             var _stk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
@@ -3148,7 +3153,47 @@ const ThreeRenderer = (function () {
                 }
             }
         } catch (e) {}
-        return _buildRockCluster3D(x, y, _getRockObjTexture(rockFile));
+        var tex = _getRockObjTexture(rockFile);
+
+        var g = new THREE.Group();
+        var seed = (x * 73 + y * 137 + 42) & 0xFFFF;
+        var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
+
+        var count = 2 + Math.floor(_sr() * 3); /* 2-4 boulders */
+        for (var ri = 0; ri < count; ri++) {
+            var radius = ts * (0.10 + _sr() * 0.13);
+            /* SphereGeometry has clean lat/long UVs so the chosen rock sprite
+               actually wraps and reads — IcosahedronGeometry's UVs are degenerate
+               and collapse every variant into the same flat grey lump. Deform
+               for an irregular boulder and squish Y so it sits low. */
+            var geo = new THREE.SphereGeometry(1, 10, 8);
+            var pa = geo.getAttribute('position');
+            for (var vi = 0; vi < pa.count; vi++) {
+                var vx = pa.getX(vi), vy = pa.getY(vi), vz = pa.getZ(vi);
+                var noise = 1 + 0.28 * Math.sin(vx * 6.1 + vy * 9.3 + ri) * Math.cos(vz * 5.2 + vx * 3.7 + ri * 2);
+                pa.setXYZ(vi, vx * noise, vy * noise * 0.72, vz * noise);
+            }
+            pa.needsUpdate = true;
+            geo.computeVertexNormals();
+
+            /* Lit material with only a gentle brightness jitter (no heavy grey
+               multiply) so each texture's real colour shows — moon reads pale,
+               rocks_* read as their own tones, and the variants look different. */
+            var shade = 0.8 + _sr() * 0.2;
+            var mat = _evTintMat(new THREE.MeshLambertMaterial({
+                map: tex, color: new THREE.Color(shade, shade, shade)
+            }), rockFile);
+
+            var rock = new THREE.Mesh(geo, mat);
+            rock.scale.set(radius, radius, radius);
+            var offX = (_sr() - 0.5) * ts * 0.5;
+            var offZ = (_sr() - 0.5) * ts * 0.5;
+            rock.position.set(offX, radius * 0.62, offZ);
+            rock.rotation.y = _sr() * Math.PI * 2;
+            g.add(rock);
+        }
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
     }
 
     /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */

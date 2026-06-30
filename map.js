@@ -6104,7 +6104,9 @@
            SAME entry.leaf field trees use (it's the generic "texture variant"
            slot) — so a placed rock carries leaf='rocks_3', etc. */
         let _meSelectedRockTex = 'rocks_1';
-        const ME_ROCK_OPTIONS = ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5'];
+        /* rocks_1..5 plus the lunar regolith textures, so you can make "moon
+           rocks" that match the moon surface. */
+        const ME_ROCK_OPTIONS = ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','moon','moon_2','moon_3'];
         function _meIsRockKey(key){ return key === 'rock'; }
         let _meSelectedObjRef = null;             // {x,y,idx} of the object picked for rotate-after-place
         let _meSelectedMonRef = null;             // index into _meMonuments of the monument picked for rotate
