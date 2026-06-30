@@ -13017,6 +13017,67 @@
             if (state._turnBannerTimer) { clearTimeout(state._turnBannerTimer); state._turnBannerTimer = null; }
         }
 
+        // ── "It's your turn" sweep — a sleek brush-stroke announcement that paints
+        // on whenever control hands BACK to the local viewer after the opponent
+        // (or the CPU) has acted. Deliberately silent when the viewer keeps acting
+        // with consecutive units — it only marks the enemy→player handoff. Purely
+        // decorative (pointer-events:none) so it can play over the camera glide to
+        // the freshly-activated unit.
+        function hidePlayerTurnAnnounce() {
+            const el = document.getElementById('playerTurnAnnounce');
+            if (el) el.classList.remove('visible');
+            if (state._ptAnnounceTimer) { clearTimeout(state._ptAnnounceTimer); state._ptAnnounceTimer = null; }
+        }
+
+        function showPlayerTurnAnnounce(unit) {
+            const el = document.getElementById('playerTurnAnnounce');
+            if (!el || !unit) return;
+            if (_skipVisuals() || state.winner) return;
+
+            const viewer = getViewerPlayer();
+            // Only for the viewer's own, locally-driven turns — never narrate a CPU
+            // or remote opponent taking over.
+            if (unit.player !== viewer) return;
+            if (state.autoPlayers && state.autoPlayers[unit.player]) return;
+
+            const label = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active)
+                ? 'Your Turn'
+                : `Player ${unit.player}'s Turn`;
+
+            // The brush ribbon: an organic band roughened by fractal-noise
+            // displacement (dry-brush edges) with a soft top-sheen / bottom-shade
+            // gradient for dimension. Re-rendered twice (top + bottom) per banner;
+            // the bottom copy is flipped/rotated in CSS so the shared filter seed
+            // still reads as two distinct strokes.
+            const _ptPath = 'M14 56 C170 40 392 38 604 45 C816 52 1014 41 1186 33 C1197 39 1197 65 1186 73 C1014 85 816 93 604 86 C392 79 170 86 20 79 C8 72 6 62 14 56 Z';
+            const brush = `<svg class="pt-brush-svg" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                    <filter id="ptBrushRough" x="-4%" y="-30%" width="108%" height="160%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G"/></filter>
+                    <linearGradient id="ptBrushGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/><stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.34"/></linearGradient>
+                </defs>
+                <g filter="url(#ptBrushRough)">
+                    <path class="pt-brush-base" d="${_ptPath}"/>
+                    <path fill="url(#ptBrushGrad)" d="${_ptPath}"/>
+                </g>
+            </svg>`;
+
+            el.classList.remove('visible');
+            // force reflow so the entrance animation restarts on every handoff
+            void el.offsetWidth;
+            el.innerHTML = `<div class="pt-announce-stage p${unit.player}">
+                <span class="pt-brush pt-brush-top">${brush}</span>
+                <span class="pt-announce-title">${escapeHtml(label)}</span>
+                <span class="pt-brush pt-brush-bot">${brush}</span>
+            </div>`;
+            el.classList.add('visible');
+
+            if (state._ptAnnounceTimer) clearTimeout(state._ptAnnounceTimer);
+            state._ptAnnounceTimer = setTimeout(() => {
+                el.classList.remove('visible');
+                state._ptAnnounceTimer = null;
+            }, 1850);
+        }
+
         function showRoundBanner(roundNum, onDone) {
             if (_skipVisuals()) { if (onDone) onDone(); return; }
             let overlay = document.getElementById('roundBannerOverlay');
@@ -13057,6 +13118,7 @@
                 if (_roundAdvanceInProgress) return;
 
                 hideTurnBanner();
+                hidePlayerTurnAnnounce();
 
                 if (boardCameraResetTimer) {
                     window.clearTimeout(boardCameraResetTimer);
@@ -13420,6 +13482,13 @@
                 if (!nextUnit) return;
                 if (state.winner) return;
 
+                // Whose unit acted immediately before this one — drives the
+                // enemy→player handoff announcement below. Captured before we
+                // overwrite activePlayer so consecutive friendly units don't
+                // re-trigger it.
+                const _prevActivePlayer = state._prevBlitzActivePlayer;
+                state._prevBlitzActivePlayer = nextUnit.player;
+
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
 
@@ -13430,6 +13499,13 @@
                 const allAliveHaveAp = state.units.filter(u => !u.dead && !u._skippedTurn).every(u => (u.ap || 0) > 0 || u.id === nextUnit.id);
                 const isNewRound = allAliveHaveAp;
                 showTurnBanner(nextUnit.player, state.round, isNewRound, nextUnit);
+
+                // Announce the handoff back to the local player ONLY when an enemy
+                // (or CPU) unit just finished — staying quiet while the player
+                // chains several of their own units in a row.
+                if (_prevActivePlayer != null && _prevActivePlayer !== nextUnit.player) {
+                    showPlayerTurnAnnounce(nextUnit);
+                }
 
                 {
                     const dlgLines = [];

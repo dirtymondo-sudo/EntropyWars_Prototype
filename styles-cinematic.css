@@ -1350,6 +1350,110 @@
         }
 
 
+        /* ── Player-Turn Announcement (enemy→player handoff sweep) ──
+           A centered brush-stroke flourish that paints on when control returns
+           to the local player after the opponent/CPU has acted. Non-blocking
+           (pointer-events:none) so it plays over the camera glide to the new
+           unit, then fades itself out. Team color drives the brush + glow. */
+        .pt-announce {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 96;
+            pointer-events: none;
+            opacity: 0;
+            will-change: opacity;
+        }
+        .pt-announce.visible {
+            animation: ptAnnounceFade 1.85s ease forwards;
+        }
+        @keyframes ptAnnounceFade {
+            0%   { opacity: 0; }
+            7%   { opacity: 1; }
+            74%  { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .pt-announce-stage {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: min(78vw, 780px);
+            --pt-rgb: var(--p1-rgb);
+            transform: translateY(-4%);
+        }
+        .pt-announce-stage.p1 { --pt-rgb: var(--p1-rgb); }
+        .pt-announce-stage.p2 { --pt-rgb: var(--p2-rgb); }
+
+        .pt-announce-title {
+            position: relative;
+            z-index: 2;
+            font-family: 'DotGothic16', monospace;
+            font-weight: 900;
+            font-size: clamp(34px, 7.2vw, 78px);
+            line-height: 1;
+            letter-spacing: 1px;
+            color: #f4efe4;
+            white-space: nowrap;
+            text-shadow:
+                0 2px 0 rgba(0, 0, 0, 0.5),
+                0 0 28px rgba(var(--pt-rgb), 0.6),
+                0 6px 24px rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            animation: ptTitleIn 0.62s cubic-bezier(.18, .9, .28, 1.2) 0.1s forwards;
+        }
+        @keyframes ptTitleIn {
+            0%   { opacity: 0; transform: translateY(14px) scale(.93); letter-spacing: 7px; }
+            55%  { opacity: 1; }
+            100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: 1px; }
+        }
+
+        .pt-brush {
+            position: relative;
+            z-index: 1;
+            display: block;
+            width: 100%;
+            height: clamp(30px, 6.4vw, 66px);
+            filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.42));
+        }
+        .pt-brush-svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        .pt-brush-base { fill: rgb(var(--pt-rgb)); }
+
+        /* Top stroke: full width, gentle tilt, paints left→right.
+           Bottom stroke: shorter, right-offset, flipped + steeper tilt,
+           paints right→left — echoing the two-slash look of the reference. */
+        .pt-brush-top {
+            margin-bottom: -7px;
+            transform: rotate(-1.3deg);
+            clip-path: inset(0 100% 0 0);
+            animation: ptSweepFromLeft 0.5s cubic-bezier(.52, 0, .2, 1) forwards;
+        }
+        .pt-brush-bot {
+            width: 64%;
+            align-self: flex-end;
+            margin-top: -7px;
+            margin-right: 5%;
+            transform: rotate(-2.4deg) scaleX(-1);
+            clip-path: inset(0 0 0 100%);
+            animation: ptSweepFromRight 0.48s cubic-bezier(.52, 0, .2, 1) 0.1s forwards;
+        }
+        @keyframes ptSweepFromLeft  { to { clip-path: inset(0 0 0 0); } }
+        @keyframes ptSweepFromRight { to { clip-path: inset(0 0 0 0); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .pt-announce.visible { animation: ptAnnounceFade 1.85s ease forwards; }
+            .pt-announce-title { animation: none; opacity: 1; }
+            .pt-brush-top, .pt-brush-bot { animation: none; clip-path: none; }
+        }
+
         /* ── Round Banner (new round announcement) ── */
         .round-banner-overlay {
             position: fixed;
