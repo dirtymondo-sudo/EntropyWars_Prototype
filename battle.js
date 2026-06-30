@@ -7980,11 +7980,11 @@
                     for (let x = 0; x < (terrain[y]?.length || 0); x++) {
                         if (x < centerMinX || x > centerMaxX) continue;
                         const t = terrain[y][x];
-                        if (floorId === 'ground' && !unitAt(x, y) && isTerrainPassable(x, y)) {
+                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y)) {
                             floorCandidates.push({ x, y });
-                        } else if (floorId === 'sky' && t && t !== 'sky_void' && t !== 'sky_open') {
+                        } else if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
                             floorCandidates.push({ x, y });
-                        } else if (floorId === 'underground' && t && t !== 'cave_wall' && t !== 'void') {
+                        } else if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') {
                             floorCandidates.push({ x, y });
                         }
                     }
@@ -8014,15 +8014,15 @@
 
                 if (placed < count) {
                     let fallback = [];
-                    if (floorId === 'ground') {
+                    if (floorId === 'ground' || floorId === 'earth') {
                         fallback = candidates.filter(c => c.x < centerMinX || c.x > centerMaxX);
                     } else if (terrain) {
                         for (let y = 0; y < terrain.length; y++) {
                             for (let x = 0; x < (terrain[y]?.length || 0); x++) {
                                 if (x >= centerMinX && x <= centerMaxX) continue;
                                 const t = terrain[y][x];
-                                if (floorId === 'sky' && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
-                                if (floorId === 'underground' && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
+                                if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
+                                if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
                             }
                         }
                     }
