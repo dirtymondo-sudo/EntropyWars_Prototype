@@ -8348,9 +8348,18 @@ const ThreeRenderer = (function () {
         // unit build, so this only skips the rare cold first use).
         if (!baseTex || !baseTex.image || !baseTex.image.complete) return false;
 
-        var cols = anims.cols || anims.frames || 8;
-        var rows = anims.rows || 1;
-        var frames = anims.frames || (cols * rows);
+        // The `spell` sheet may use a different grid than `attack`; honor its
+        // spellCols/spellRows/spellFrames overrides when present.
+        var cols, rows, frames;
+        if (kind === 'spell' && (anims.spellCols || anims.spellRows || anims.spellFrames)) {
+            cols = anims.spellCols || anims.cols || anims.frames || 8;
+            rows = anims.spellRows || anims.rows || 1;
+            frames = anims.spellFrames || anims.frames || (cols * rows);
+        } else {
+            cols = anims.cols || anims.frames || 8;
+            rows = anims.rows || 1;
+            frames = anims.frames || (cols * rows);
+        }
         // Clone so the per-frame UV offset/repeat never mutate the shared
         // cached texture (other units may share the same idle/sheet image).
         var sheetTex = baseTex.clone();

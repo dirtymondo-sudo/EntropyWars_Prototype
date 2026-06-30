@@ -285,6 +285,8 @@ function getBattleMapSpriteUrl(unit) {
 // the lookup table. Add a race here (and upload the sheets to R2) to give it
 // animations — no other wiring needed.
 // ───────────────────────────────────────────────────────────────────────────
+// cols/rows/frames describe the `attack` sheet. When the `spell` sheet uses a
+// different grid, add spellCols/spellRows/spellFrames to override it.
 const RACE_SPRITE_ANIMATIONS = {
   'catgirl': {
     female: {
@@ -294,13 +296,99 @@ const RACE_SPRITE_ANIMATIONS = {
       cols: 3, rows: 3, frames: 8,
     },
   },
+  'bigfoot': {
+    male: {
+      // 3×3 grid; 8 frames used, last cell blank.
+      attack: `${_S}/Races/bigfoot/male/attack_animation_1.png`,
+      spell:  `${_S}/Races/bigfoot/male/attack_animation_2.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  'grey': {
+    male: {
+      // 3×3 grid; 8 frames used, last cell blank.
+      attack: `${_S}/Races/grey/male/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  'quarterback': {
+    male: {
+      // attack: 4×2 grid (8 cells, all used).
+      attack: `${_S}/Races/quarterback/attack_animation_1.png`,
+      // spell: 3×3 grid; 8 frames used, last cell blank.
+      spell:  `${_S}/Races/quarterback/attack_animation_2.png`,
+      cols: 4, rows: 2, frames: 8,
+      spellCols: 3, spellRows: 3, spellFrames: 8,
+    },
+  },
+  // Female Black Mage (Witch): 4×2 grid (8 cells). Male Wizard: 3×3 grid.
+  'wizard': {
+    female: {
+      attack: `${_S}/Races/Homosapien/Female/blackmage/attack_animation_1.png`,
+      cols: 4, rows: 2, frames: 8,
+    },
+    male: {
+      attack: `${_S}/Races/Homosapien/Male/blackmage/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Female Psychic (Telepath): 3×3 grid; 8 frames used, last cell blank.
+  'telepath': {
+    female: {
+      attack: `${_S}/Races/Homosapien/Female/psychic/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Female Knight: 3×3 grid; 8 frames used, last cell blank.
+  'knight': {
+    female: {
+      attack: `${_S}/Races/Homosapien/Female/knight/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Engineer (Mad Scientist), both genders: 3×3 grids; 8 frames, last cell blank.
+  'mad scientist': {
+    female: {
+      attack: `${_S}/Races/Homosapien/Female/engineer/attack_animation_1.png`,
+      spell:  `${_S}/Races/Homosapien/Female/engineer/attack_animation_2.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+    male: {
+      attack: `${_S}/Races/Homosapien/Male/engineer/attack_animation_1.png`,
+      spell:  `${_S}/Races/Homosapien/Male/engineer/attack_animation_2.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Male Agent (Men in Black): 3×3 grid; 8 frames used, last cell blank.
+  'men in black': {
+    male: {
+      attack: `${_S}/Races/Homosapien/Male/agent/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Male Harbinger (Fortune Teller): 3×3 grid; 8 frames used, last cell blank.
+  'fortune teller': {
+    male: {
+      attack: `${_S}/Races/Homosapien/Male/harbinger/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
+  // Fairy (female): 3×3 grid; 8 frames used, last cell blank.
+  'fairy': {
+    female: {
+      attack: `${_S}/Races/Fairy/female/attack_animation_1.png`,
+      cols: 3, rows: 3, frames: 8,
+    },
+  },
 };
 
 function getRaceSpriteAnimations(race, gender) {
   const set = RACE_SPRITE_ANIMATIONS[race];
   if (!set) return null;
-  const g = (gender && set[gender]) ? gender : Object.keys(set)[0];
-  return set[g] || null;
+  // A race may define sheets for only some genders (e.g. only Female Knight).
+  // Match the unit's gender exactly; never substitute another gender's sheet.
+  if (gender) return set[gender] || null;
+  return set[Object.keys(set)[0]] || null;
 }
 
 const RACE_SPRITES = {
