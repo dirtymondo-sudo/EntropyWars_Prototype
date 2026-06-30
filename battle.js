@@ -1588,6 +1588,229 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // TERRAIN × SPELL REACTIONS — natural map interactions triggered when
+        // a spell strikes a terrain feature. Three flavours key off the spell's
+        // "element" (a lightweight name/id classifier — NO full type system):
+        //   ⚡ lightning + water  → the charge arcs across the whole connected
+        //                           body of water, zapping everyone standing in it
+        //   🔥 fire + forest      → the woods catch and burn down to scorched
+        //                           ground, igniting units caught in the blaze
+        //   ❄️ frost + water      → the body of water flash-freezes to slick ice
+        //                           (and stops conducting lightning)
+        // A fourth reaction (knockback into lava / deep water) is element-agnostic
+        // and lives in _applyKnockbackHazard, called from the displacement sites.
+        //
+        // Element is detected by keyword so existing spells "just work"; a spell
+        // may also set `element: 'lightning'|'fire'|'cold'` to opt in explicitly.
+        // ═══════════════════════════════════════════════════════════════════
+        const _ELEMENT_KEYWORDS = {
+            lightning: ['thunder', 'lightning', 'bolt', 'shock', 'tesla', 'volt', 'electr', 'zap', 'taser'],
+            fire: ['fire', 'flame', 'blaze', 'inferno', 'meteor', 'magma', 'ember', 'scorch', 'pyro', 'incinerat', 'immolat', 'napalm', 'cinder', 'molten', 'lava', 'burn'],
+            cold: ['ice', 'icy', 'frost', 'freeze', 'frozen', 'blizzard', 'chill', 'glaci', 'snow', 'cryo', 'cold', 'winter', 'hail']
+        };
+        const _ELEMENT_REGEX = {
+            lightning: new RegExp('\\b(' + _ELEMENT_KEYWORDS.lightning.join('|') + ')', 'i'),
+            fire: new RegExp('\\b(' + _ELEMENT_KEYWORDS.fire.join('|') + ')', 'i'),
+            cold: new RegExp('\\b(' + _ELEMENT_KEYWORDS.cold.join('|') + ')', 'i')
+        };
+
+        function classifySpellElement(spell) {
+            if (!spell) return null;
+            if (spell.element && _ELEMENT_REGEX[spell.element]) return spell.element;
+            const text = ((spell.id || '') + ' ' + (spell.name || ''));
+            if (_ELEMENT_REGEX.lightning.test(text)) return 'lightning';
+            if (_ELEMENT_REGEX.fire.test(text)) return 'fire';
+            if (_ELEMENT_REGEX.cold.test(text)) return 'cold';
+            return null;
+        }
+
+        function _isWaterTile(x, y) {
+            const t = getTerrainAt(x, y);
+            return t === 'water' || t === 'deep_water';
+        }
+
+        function _isForestTile(x, y) {
+            const t = getTerrainAt(x, y);
+            if (t === 'tree' || t === 'forest' || t === 'forest_2') return true;
+            const o = getObjectAt(x, y);
+            return !!(o && /^tree/.test(o));
+        }
+
+        function _isIceTile(x, y) {
+            return getTerrainAt(x, y) === 'ice';
+        }
+
+        // Orthogonal flood-fill of the connected region of tiles satisfying
+        // match(x,y), starting at (sx,sy), capped at `cap` tiles.
+        function _floodConnectedTiles(sx, sy, match, cap) {
+            const out = [];
+            if (!isInside(sx, sy) || !match(sx, sy)) return out;
+            const seen = new Set();
+            const stack = [[sx, sy]];
+            seen.add(sx + ',' + sy);
+            while (stack.length && out.length < cap) {
+                const cur = stack.pop();
+                out.push({ x: cur[0], y: cur[1] });
+                const nbrs = [[cur[0] + 1, cur[1]], [cur[0] - 1, cur[1]], [cur[0], cur[1] + 1], [cur[0], cur[1] - 1]];
+                for (const n of nbrs) {
+                    const k = n[0] + ',' + n[1];
+                    if (seen.has(k) || !isInside(n[0], n[1]) || !match(n[0], n[1])) continue;
+                    seen.add(k);
+                    stack.push(n);
+                }
+            }
+            return out;
+        }
+
+        // ⚡ Water conducts the charge: every unit standing in the connected pool
+        // (friend or foe) takes a conduction tick. Airborne units and the caster
+        // are spared, as is the unit on the origin tile (already hit by the spell).
+        function _reactLightningWater(caster, spell, ox, oy, body) {
+            if (!body || !body.length) return;
+            const tick = Math.max(40, Math.round((spell.dmg || 90) * 0.5));
+            let zapped = 0;
+            for (const t of body) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying) continue;
+                if (u.id === caster.id) continue;
+                if (t.x === ox && t.y === oy) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                applyDamageToUnit(u, tick, `⚡ The water conducts ${spell.name}: `, {
+                    sourceUnit: caster,
+                    allowMarkBonus: false,
+                    damageType: 'magic',
+                    spellType: spell.spellType || null,
+                    flashColor: 'shock'
+                });
+                showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
+                zapped++;
+            }
+            if (body.length > 1 || zapped > 0) {
+                addLog(`⚡ ${spell.name} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
+            }
+        }
+
+        // ❄️ The pool freezes solid: water → slick ice (slippery, no drowning),
+        // and any unit caught in it is frozen in place for a turn.
+        function _reactColdWater(caster, spell, ox, oy, body) {
+            if (!body || !body.length) return;
+            let frozenUnits = 0;
+            for (const t of body) {
+                setTerrainAt(t.x, t.y, 'ice');
+                const u = unitAt(t.x, t.y);
+                if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
+                    applyStatusEffects(u, [{ id: 'stun', duration: 1 }], `${spell.name} flash-freeze: `, caster);
+                    u._drowningStacks = 0;
+                    clearStatus(u, 'drowning');
+                    showFloatingTextForUnit(u, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
+                    frozenUnits++;
+                }
+            }
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`❄️ ${spell.name} flash-freezes the water solid — the pool turns to slick ice${frozenUnits ? `, locking ${frozenUnits} unit${frozenUnits !== 1 ? 's' : ''} in place` : ''}!`);
+        }
+
+        // 🔥 The forest goes up: connected trees burn down to scorched ground
+        // (clearing the tree cover), and units caught in the blaze start burning.
+        function _reactFireForest(caster, spell, ox, oy, stand) {
+            if (!stand || !stand.length) return;
+            let ignited = 0;
+            for (const t of stand) {
+                const o = getObjectAt(t.x, t.y);
+                if (o && /^tree/.test(o)) setObjectAt(t.x, t.y, null);
+                setTerrainAt(t.x, t.y, 'scorched');
+                const u = unitAt(t.x, t.y);
+                if (u && !u.dead && !u._dying) {
+                    applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} wildfire: `, caster);
+                    showFloatingTextForUnit(u, '🔥 BURNING!', 'damage', { durationMs: 1100 });
+                    ignited++;
+                }
+            }
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`🔥 ${spell.name} sets the forest ablaze — the fire tears through the woods, razing ${stand.length} tile${stand.length !== 1 ? 's' : ''} to scorched earth${ignited ? ` and torching ${ignited} unit${ignited !== 1 ? 's' : ''}` : ''}!`);
+        }
+
+        // 🔥💧 Fire melts ice: the connected ice sheet thaws back to shallow
+        // water (the natural reverse of the frost flash-freeze, and it re-arms the
+        // water for lightning conduction).
+        function _reactFireIce(caster, spell, ox, oy, body) {
+            if (!body || !body.length) return;
+            for (const t of body) {
+                setTerrainAt(t.x, t.y, 'water');
+            }
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`🔥 ${spell.name} melts the ice — ${body.length} tile${body.length !== 1 ? 's' : ''} thaw back into water!`);
+            if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 450);
+        }
+
+        // Dispatcher: called from every damage-spell resolver with the tiles the
+        // spell struck. Detects the spell's element and fires the matching terrain
+        // reaction once per connected body (deduped so an AoE over one lake only
+        // conducts once).
+        function triggerTerrainSpellReaction(caster, spell, tiles) {
+            if (!caster || !spell || !tiles || !tiles.length) return;
+            if (state.phase !== 'battle') return;
+            const el = classifySpellElement(spell);
+            if (!el) return;
+            const handled = new Set();
+            for (const tile of tiles) {
+                if (!tile || !isInside(tile.x, tile.y)) continue;
+                if (handled.has(tile.x + ',' + tile.y)) continue;
+                if ((el === 'lightning' || el === 'cold') && _isWaterTile(tile.x, tile.y)) {
+                    const body = _floodConnectedTiles(tile.x, tile.y, _isWaterTile, 80);
+                    body.forEach(b => handled.add(b.x + ',' + b.y));
+                    if (el === 'lightning') _reactLightningWater(caster, spell, tile.x, tile.y, body);
+                    else _reactColdWater(caster, spell, tile.x, tile.y, body);
+                } else if (el === 'fire' && _isForestTile(tile.x, tile.y)) {
+                    const stand = _floodConnectedTiles(tile.x, tile.y, _isForestTile, 40);
+                    stand.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactFireForest(caster, spell, tile.x, tile.y, stand);
+                } else if (el === 'fire' && _isIceTile(tile.x, tile.y)) {
+                    const body = _floodConnectedTiles(tile.x, tile.y, _isIceTile, 80);
+                    body.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactFireIce(caster, spell, tile.x, tile.y, body);
+                }
+            }
+        }
+
+        // 🌋 Knockback into hazards — element-agnostic. When a spell shoves or
+        // drags a unit onto lava or deep water, the terrain bites immediately
+        // instead of waiting for end of round. Flyers / terrain-adapted units are
+        // unaffected. Called from the displacement (push/pull/grab) sites.
+        function _applyKnockbackHazard(unit) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (state.phase !== 'battle') return;
+            if (typeof canFly === 'function' && canFly(unit)
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            const terr = getTerrainAt(unit.x, unit.y);
+            if (terr === 'lava') {
+                if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
+                ensureUnitStatus(unit).lava_burn = 3;
+                unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
+                applyDamageToUnit(unit, 60, `${unitDisplayName(unit)} is hurled into molten lava: `, {
+                    ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn'
+                });
+                addLog(`🌋 ${unitDisplayName(unit)} is knocked into the lava — and bursts into flame!`);
+                showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
+                if (typeof playSfx === 'function') playSfx('burningDamage');
+            } else if (terr === 'deep_water') {
+                if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit)) return;
+                ensureUnitStatus(unit).drowning = 3;
+                unit._drowningStacks = (unit._drowningStacks || 0) + 1;
+                applyDamageToUnit(unit, 36, `${unitDisplayName(unit)} is dragged into the depths: `, {
+                    ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'drowning'
+                });
+                addLog(`🌊 ${unitDisplayName(unit)} is knocked into deep water and starts to drown!`);
+                showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
+                if (typeof playSfx === 'function') playSfx('drowningDamage');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // _applyDamageSpellHit() — resolves damage for a single-target
         // damage spell (kind: 'damage'). Handles bonus damage modifiers,
         // chain profiles, cinematic damage display, and post-effects.
@@ -1681,6 +1904,10 @@
 
             // Ambush bonus is one-shot — consume it after the hit resolves.
             delete unit._sneakStrikeBonus;
+
+            // Terrain reaction: lightning conducts through water, fire ignites
+            // forest, frost freezes water (keys off the struck tile's terrain).
+            triggerTerrainSpellReaction(unit, spell, [{ x: target.x, y: target.y }]);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1740,6 +1967,9 @@
                     }
                 }, hitTime);
             });
+
+            // Terrain reaction off the struck tile (lightning/fire/frost).
+            triggerTerrainSpellReaction(unit, spell, [{ x: target.x, y: target.y }]);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1859,6 +2089,7 @@
                             else break;
                         }
                         if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
+                        if (_crSteps.length > 0) _applyKnockbackHazard(target);
                     }
 
                     // AoePull-style pull toward center
@@ -1866,7 +2097,7 @@
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
                         const _apOldX = target.x, _apOldY = target.y;
-                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180); }
+                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180); _applyKnockbackHazard(target); }
                     }
 
                     // Ground airborne units
@@ -1936,6 +2167,7 @@
                 _invalidateBoardGrid();
                 scheduleBoardRender();
             }
+            triggerTerrainSpellReaction(unit, spell, tiles);
             return hitCount;
         }
 
@@ -2021,10 +2253,12 @@
         function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
             const lineRange = Math.max(bw(), bh());
             const hitTargets = [];
+            const _lineCells = [];
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
                 if (!isInside(cx, cy)) break;
                 if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                _lineCells.push({ x: cx, y: cy });
                 const hit = unitAt(cx, cy);
                 if (hit && hit.player !== unit.player && !hit.dead) {
                     hitTargets.push(hit);
@@ -2069,8 +2303,10 @@
                     }
                     if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `);
                     if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
+                    if (_lpSteps.length > 0) _applyKnockbackHazard(hit);
                 }
             }
+            triggerTerrainSpellReaction(unit, spell, _lineCells);
             return hitTargets;
         }
 
@@ -20345,6 +20581,7 @@
                         addLog(`${unitDisplayName(target)} slams into an obstacle for bonus damage!`);
                         showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
                     }
+                    if (flung > 0) _applyKnockbackHazard(target);
 
                     if (_displaceSteps.length > 0) {
                         if (spell.arcThrow) {
@@ -20553,6 +20790,7 @@
                     });
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
+                if (pulled > 0) _applyKnockbackHazard(target);
 
                 if (_pullSteps.length > 0) {
                     animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120);
@@ -21353,6 +21591,7 @@
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
                             addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
+                            if (pulled > 0) _applyKnockbackHazard(target);
 
                             if (_grSteps.length > 0) {
                                 animateDisplacementPath(target, _grFromX, _grFromY, _grSteps, 120);

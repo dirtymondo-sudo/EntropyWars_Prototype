@@ -120,6 +120,47 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
 - Render bugs seen mid-combat: `hpBar is not defined`, `Cannot read properties of
   null (reading 'accMs')` — animation/render path, worth chasing.
 
+## Terrain × spell reactions (2026-06-30) — natural map interactions
+New system in `battle.js`, all keyed off the **terrain a spell strikes** (NOT a full
+elemental type chart). A spell's "element" is detected by a lightweight name/id
+keyword classifier — `classifySpellElement(spell)` → `'lightning'|'fire'|'cold'|null`
+(keyword tables `_ELEMENT_KEYWORDS` at the top of the block, ~battle.js:1600). A spell
+can also set `element:'lightning'|'fire'|'cold'` to opt in explicitly. The `\b…`
+word-boundary regex avoids false positives (e.g. *Sacrifice*/*Justice* don't read as
+ice; *Sunburn* doesn't read as fire). Four reactions:
+- **⚡ Lightning + water → conduction** (`_reactLightningWater`): flood-fills the
+  connected `water`/`deep_water` body from the struck tile (cap 80) and deals a
+  conduction tick (~50% of `spell.dmg`, min 40) to EVERY unit standing in it —
+  friend or foe — except the caster and the already-hit origin-tile unit. Airborne
+  units are spared. This is the "AOE for the whole body of water" the design asked for.
+- **❄️ Frost + water → flash-freeze** (`_reactColdWater`): converts the connected
+  water body to `ice` terrain (slippery; clears `drowning`; stops conducting
+  lightning — natural counterplay) and `stun`s (1 turn) units caught in it.
+- **🔥 Fire + forest → wildfire** (`_reactFireForest`): flood-fills connected forest
+  (`tree`/`forest` terrain or `tree*` objects, cap 40), burns it down to `scorched`
+  terrain (removes tree cover → changes LOS/pathing, so it calls `_invalidateBoardGrid`),
+  and applies `burn` (2) to units in the blaze.
+- **🔥💧 Fire + ice → melt** (`_reactFireIce`): a fire spell on `ice` thaws the
+  connected ice sheet back to shallow `water` (cap 80) — the natural reverse of the
+  frost freeze, and it re-arms the pool for lightning conduction. Completes the cycle:
+  frost(water→ice) → fire(ice→water) → lightning(conduct water).
+- **🌋 Knockback into hazards** (`_applyKnockbackHazard`, element-agnostic): when a
+  push/pull/grab/fling lands a unit on `lava` (→ `lava_burn` + 60 sizzle) or
+  `deep_water` (→ `drowning` + 36), the hazard bites IMMEDIATELY instead of waiting
+  for end of round. Flyers / lava- or water-adapted units are immune.
+
+Wiring: the damage reactions fire from the shared damage resolvers — `_applyDamageSpellHit`
+(single + chain), `_applyAoeDamage` (aoe/cross/aoePull), `_applyLineDamage` (line/linePush),
+`_applyMultiHitDamage` — each calls `triggerTerrainSpellReaction(unit, spell, tiles)` with
+the tiles it struck (deduped per connected body). The knockback hazard is called at the
+displacement sites (`_applyKnockbackHazard(target)`) right after the logical move — NOT in
+`animateDisplacement`, which early-returns when visuals are skipped (AI/auto-sim) and would
+miss the gameplay effect. **All edits are in `battle.js` only** (no data.js/terrain changes
+needed — `ice`/`scorched` terrain, `burn`/`stun`/`lava_burn`/`drowning` statuses already
+exist). To live, `battle.js` must be re-uploaded to the R2 bucket. To add more lightning/
+fire/cold spells, no code change is needed — name them with a matching keyword, or set
+`element:`.
+
 ## Known findings (from playtests)
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the
   spell" bugs):** highlight (`getMoveTiles`/`getSpellRangeTiles`) and execution
