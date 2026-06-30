@@ -2275,7 +2275,10 @@
 
             const minR = (_kindMeta(spell).minRange ?? 1);
 
-            const skipLOS = spell.kind === 'teleport' || spell.ignoresLineOfSight === true;
+            // 'delayed' (artillery / called-in strikes) is indirect fire that arcs over
+            // terrain — exempt from line-of-sight so its range highlight (and the AI's
+            // reach check) match doSpell, which also skips LOS for this kind.
+            const skipLOS = spell.kind === 'teleport' || spell.kind === 'delayed' || spell.ignoresLineOfSight === true;
 
             const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
             const _km = _kindMeta(spell);
@@ -19463,7 +19466,12 @@
                 }
 
                 const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
-                if (spell.kind !== 'teleport' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+                // 'delayed' = artillery / called-in strikes: indirect fire that marks a
+                // ground tile and arcs over terrain, so it's exempt from the line-of-sight
+                // gate (like teleport). The AI's spell targeter already treats it this way;
+                // gating it here is what produced "Terrain blocks the spell path" on tiles
+                // the AI legitimately picked, wasting the unit's turn.
+                if (spell.kind !== 'teleport' && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
                     addLog('Terrain blocks the spell path.');
                     playErrorSfx();
                     return 0;
