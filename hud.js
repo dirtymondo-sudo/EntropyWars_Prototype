@@ -2292,8 +2292,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const isLeap = sp.kind === 'leapStrike';
 
     if (isBarrage) {
-
-      inSpellRange = true;
+      // Barrage novae (Meow, Quake, Requiem…) center on the CASTER and auto-hit
+      // every enemy inside their radius — aoeRadius for self-origin bursts, else
+      // the spell's range. The clicked enemy is reachable only if it actually
+      // sits inside that radius; if it doesn't, the cast fires and hits nothing,
+      // so treat it as out of range (a move-into-range step is offered below).
+      const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
+      inSpellRange = dist >= 1 && dist <= barrageRadius && (sp.ignoresLineOfSight || !spLos);
     } else if (isAoeOriginSelf) {
 
       const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
@@ -2322,8 +2327,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const canCast = canAfford && tierOk && inSpellRange;
 
     let spMoveTile = null;
-    if (canAfford && tierOk && !inSpellRange && !isBarrage) {
-      if (isAoeOriginSelf) {
+    if (canAfford && tierOk && !inSpellRange) {
+      if (isBarrage) {
+        // Walk the caster close enough that the clicked enemy falls inside the
+        // self-centered blast, so the player gets a one-click "move then nova".
+        const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
+        spMoveTile = findMoveIntoRange(barrageRadius, spellApCost);
+      } else if (isAoeOriginSelf) {
 
         const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
         spMoveTile = findMoveIntoRange(selfRadius, spellApCost);
@@ -2703,7 +2713,18 @@ function EnemyActionMenu({ st }) {
 
               state.selectedTool = spell.name;
               state.actionMode = 'spell';
-              if (typeof doSpell === 'function') doSpell(actingUnit, tx, ty, tz);
+              // Self-centered casts (barrage novae like Meow, auras, self-buffs)
+              // originate ON the caster — the clicked enemy is only how the player
+              // picked the spell, not where it's aimed. Cast on our own tile (after
+              // any move-into-range above) so the engine's caster-range gate, which
+              // measures distance to the *target* tile, doesn't reject a range-0
+              // nova as "out of range" — exactly as the spellbook flow does when
+              // you click your own tile.
+              const _selfCast = typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell);
+              if (typeof doSpell === 'function') {
+                if (_selfCast) doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z);
+                else doSpell(actingUnit, tx, ty, tz);
+              }
             } else if (actionId.startsWith('item:')) {
 
               const _itemKey = actionId.substring(5);

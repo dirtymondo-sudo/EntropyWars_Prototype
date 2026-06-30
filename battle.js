@@ -20467,8 +20467,14 @@
                 const _barrageWaterMult = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
                 const barrageRange = (spell.aoeOriginSelf && spell.aoeRadius) ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
                 const _barrageSrcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+                const _barrageLong = isLongRangeSpell(spell);
                 const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => {
-                    const dist = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                    // 3D reach (elevation counts) so a self-centered nova doesn't hit
+                    // an enemy stacked several levels above/below just because it's
+                    // adjacent on the grid — matches the action-menu range check.
+                    const dist = (typeof combatReach === 'function')
+                        ? combatReach(unit.x, unit.y, _barrageSrcZ, e.x, e.y, e.z ?? 0, _barrageLong)
+                        : Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
                     return dist >= 1 && dist <= barrageRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, _barrageSrcZ));
                 });
                 if (enemies.length === 0) {
