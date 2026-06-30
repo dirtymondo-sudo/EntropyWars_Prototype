@@ -1274,7 +1274,7 @@
             const offC = Math.floor((gridDim - mapCols) / 2);
             const offR = Math.floor((gridDim - mapRows) / 2);
 
-            const _pbTerrainColor = {
+            const _pbTerrainColor = Object.assign({
                 blank:'transparent', grass:'rgba(80,140,60,0.45)', grass_2:'rgba(90,150,70,0.4)',
                 grass_rocky:'rgba(100,130,70,0.35)', water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)',
                 lava:'rgba(220,80,20,0.55)', desert:'rgba(180,160,80,0.4)', dirt:'rgba(130,100,60,0.35)',
@@ -1296,7 +1296,7 @@
                 well:'rgba(70,130,180,0.4)', road:'rgba(150,140,120,0.35)',
                 rocks_1:'rgba(110,105,100,0.4)', rocks_2:'rgba(105,100,95,0.4)',
                 rocks_3:'rgba(100,95,90,0.4)', rocks_4:'rgba(95,90,85,0.4)', rocks_5:'rgba(90,85,80,0.4)',
-            };
+            }, (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || {});
 
             const pbData = (mp.isPrebuilt && typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS[mp.modeId] : null;
 

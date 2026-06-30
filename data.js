@@ -104,6 +104,74 @@ const FACTION_BONUSES = {
     }
 };
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * EW_TERRAIN_COLORS — simplified, semi-transparent overhead colors for EVERY
+ * terrain type in the editor (ME_TERRAIN_IDS in map.js). This is the single
+ * source of truth for the flat "overhead map" look used by:
+ *   • the match-select map preview (match-select.js / map.js)
+ *   • the in-battle minimap (three-renderer.js)
+ * Colors are rgba over a dark panel so they read like the match-select grid.
+ * Add a new terrain's color here once and every overhead view picks it up.
+ * ────────────────────────────────────────────────────────────────────────── */
+window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
+    blank:'transparent', void:'transparent', chasm:'rgba(18,18,26,0.66)',
+    // ── Ground / grass ──
+    grass:'rgba(80,140,60,0.45)', grass_2:'rgba(90,150,70,0.42)', grass_3:'rgba(70,135,55,0.45)',
+    grass_4:'rgba(100,160,75,0.42)', grass_rocky:'rgba(100,130,70,0.4)', purple_grass:'rgba(120,60,140,0.42)',
+    wasteland:'rgba(140,120,80,0.4)',
+    // ── Dirt / road ──
+    dirt:'rgba(130,100,60,0.4)', dirt_2:'rgba(124,95,58,0.4)', dirt_3:'rgba(118,90,55,0.4)',
+    dirt_4:'rgba(112,86,52,0.4)', road:'rgba(150,140,120,0.4)', desert:'rgba(190,168,90,0.42)',
+    // ── Water ──
+    water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)', bridge:'rgba(140,110,70,0.45)',
+    ice:'rgba(160,210,240,0.45)', well:'rgba(70,130,180,0.45)', healing_spring:'rgba(100,220,180,0.45)',
+    // ── Trees / foliage ──
+    tree:'rgba(45,105,45,0.5)', tree_top:'rgba(55,120,55,0.5)', forest:'rgba(40,100,40,0.5)',
+    forest_2:'rgba(50,110,50,0.46)', dark_woods:'rgba(30,60,30,0.55)', leaves:'rgba(62,122,52,0.46)',
+    leaves_2:'rgba(70,130,58,0.46)', leaves_3:'rgba(54,112,46,0.46)', leaves_4:'rgba(80,140,64,0.46)',
+    leaves_5:'rgba(48,104,42,0.46)', mushroom:'rgba(160,80,120,0.42)',
+    // ── Rock / mountain ──
+    mountain:'rgba(120,110,100,0.5)', mountain_2:'rgba(110,100,90,0.46)', mountain_top:'rgba(155,150,144,0.5)',
+    cliff:'rgba(100,92,84,0.5)', rocks_1:'rgba(110,105,100,0.42)', rocks_2:'rgba(105,100,95,0.42)',
+    rocks_3:'rgba(100,95,90,0.42)', rocks_4:'rgba(95,90,85,0.42)', rocks_5:'rgba(90,85,80,0.42)',
+    rock_wall_1:'rgba(90,85,80,0.52)', rock_wall_2:'rgba(85,80,75,0.52)',
+    rubble_1:'rgba(120,110,95,0.42)', rubble_2:'rgba(115,105,90,0.42)', rubble_3:'rgba(110,100,86,0.42)',
+    rubble_4:'rgba(105,96,82,0.42)', ruins:'rgba(140,130,110,0.42)',
+    // ── Volcanic ──
+    lava:'rgba(220,80,20,0.58)', scorched:'rgba(62,52,42,0.5)', obsidian:'rgba(40,35,50,0.55)',
+    crystal:'rgba(160,120,220,0.46)', poison:'rgba(95,170,70,0.46)', poison_bog:'rgba(70,140,80,0.5)',
+    // ── Cave ──
+    cave_floor:'rgba(80,70,60,0.46)', cave_wall:'rgba(60,50,45,0.56)', cave_entrance:'rgba(70,60,50,0.5)',
+    // ── Built / urban ──
+    bricks_1:'rgba(150,100,70,0.46)', bricks_2:'rgba(140,90,65,0.46)', wood_planks:'rgba(160,120,70,0.45)',
+    wood:'rgba(140,100,60,0.42)', urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(130,125,120,0.42)',
+    marble:'rgba(226,222,214,0.46)', marble_2:'rgba(210,206,198,0.46)', cobblestone:'rgba(120,116,110,0.46)',
+    cobblestone_2:'rgba(112,108,102,0.46)', checkerboard:'rgba(180,180,186,0.42)', wallpaper:'rgba(172,150,172,0.42)',
+    carpet:'rgba(150,60,60,0.46)', carpet_2:'rgba(60,90,150,0.46)', carpet_3:'rgba(60,140,90,0.46)',
+    carpet_4:'rgba(140,120,60,0.46)', drywall:'rgba(200,195,185,0.42)', drywall_2:'rgba(195,190,180,0.42)',
+    drywall_3:'rgba(190,185,175,0.42)', drywall_4:'rgba(185,180,170,0.42)',
+    // ── Metal / gold ──
+    gold:'rgba(222,186,72,0.52)', gold_2:'rgba(212,176,62,0.52)', gold_3:'rgba(202,166,56,0.52)',
+    metal:'rgba(130,135,140,0.46)', metal_2:'rgba(120,125,132,0.46)', metal_3:'rgba(120,125,130,0.46)',
+    aluminium:'rgba(182,186,190,0.46)',
+    // ── Lunar ──
+    moon:'rgba(150,150,160,0.46)', moon_2:'rgba(140,140,150,0.46)', moon_3:'rgba(130,130,142,0.46)',
+    // ── Dungeon / flesh ──
+    dungeon:'rgba(85,80,75,0.5)', dungeon_2:'rgba(80,75,70,0.5)', dungeon_3:'rgba(75,70,68,0.5)',
+    dungeon_4:'rgba(70,66,64,0.5)', flesh:'rgba(170,70,80,0.46)', flesh_2:'rgba(160,65,75,0.46)',
+    flesh_3:'rgba(150,60,70,0.46)',
+    // ── Sky ──
+    cloud:'rgba(200,210,230,0.35)', cloud_2:'rgba(190,200,222,0.35)', cloud_thick:'rgba(210,218,235,0.46)',
+    cloud_gap:'rgba(170,185,210,0.22)', sky_open:'rgba(120,170,230,0.26)', sky_ruin:'rgba(150,160,190,0.42)',
+    storm:'rgba(90,100,130,0.46)', beanstalk:'rgba(70,150,60,0.5)', beanstalk_top:'rgba(90,170,70,0.5)',
+    // ── Special / structures ──
+    barrier:'rgba(150,150,205,0.42)', barrier_passage:'rgba(140,140,200,0.22)', fog_wall:'rgba(120,120,130,0.42)',
+    descent_point:'rgba(122,100,160,0.46)', tower_base:'rgba(150,140,130,0.5)', home_base:'rgba(162,150,135,0.5)',
+    sanctuary:'rgba(204,184,124,0.46)', sanctuary_church:'rgba(212,196,150,0.46)', sanctuary_shop:'rgba(200,170,110,0.46)',
+    // ── Nexus (objective) tiles ──
+    nexus:'rgba(255,215,90,0.55)', nexus_cave:'rgba(230,180,80,0.55)', nexus_sky:'rgba(190,225,255,0.55)',
+};
+
 const TERRAIN_RULES = {
     grass: {
         label: 'Grassland',

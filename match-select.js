@@ -164,7 +164,7 @@ const LORE = {
   Apocalypse:   '"The end, but bigger." — maximum scale.',
 };
 
-const TERRAIN_COLORS = {
+const _TERRAIN_COLORS_FALLBACK = {
   blank:'transparent', grass:'rgba(80,140,60,0.45)', grass_2:'rgba(90,150,70,0.4)',
   grass_rocky:'rgba(100,130,70,0.35)', water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)',
   lava:'rgba(220,80,20,0.55)', desert:'rgba(180,160,80,0.4)', dirt:'rgba(130,100,60,0.35)',
@@ -191,6 +191,9 @@ const TERRAIN_COLORS = {
   drywall:'rgba(200,195,185,0.4)', drywall_2:'rgba(195,190,180,0.4)', drywall_3:'rgba(190,185,175,0.4)', drywall_4:'rgba(185,180,170,0.4)',
   metal_3:'rgba(120,125,130,0.45)',
 };
+// Prefer the shared, all-terrain palette (data.js); fall back to the inline set above.
+const TERRAIN_COLORS = Object.assign({}, _TERRAIN_COLORS_FALLBACK,
+  (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || {});
 
 function accentForMap(mp) {
   const name = (mp.name || '').toLowerCase();

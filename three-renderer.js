@@ -10687,6 +10687,7 @@ const ThreeRenderer = (function () {
         _zoneBorderMats.length = 0;
         _lastWeatherVfxKey = '';
         if (renderer) renderer.setAnimationLoop(null);
+        if (_miniWrap) _miniWrap.style.display = 'none';
         if (canvas) canvas.style.display = 'none';
         if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
         _clearFloatTextTweens();
@@ -11477,6 +11478,229 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ────────────────────────────────────────────────────────────────────
+     * Minimap — fixed overhead map pinned to the bottom-right corner. Draws a
+     * simplified, top-down board using the shared terrain palette
+     * (window.EW_TERRAIN_COLORS) and overlays spawn zones, nexus zones, tower
+     * "cubes" (bases) and visible units. The viewer's currently-active unit
+     * gets a white arrow that points the way the camera is facing.
+     * ──────────────────────────────────────────────────────────────────── */
+    var _miniWrap = null, _miniCanvas = null, _miniCtx = null;
+    var MINI_BOX = 188;          /* max wrapper size in CSS px */
+    var _miniLastW = -1, _miniLastH = -1;
+    var _MINI_TERRAIN_FALLBACK = {
+        blank:'transparent', void:'transparent', grass:'rgba(80,140,60,0.45)',
+        water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)',
+        mountain:'rgba(120,110,100,0.5)', lava:'rgba(220,80,20,0.58)',
+        dirt:'rgba(130,100,60,0.4)', forest:'rgba(40,100,40,0.5)'
+    };
+    function _miniTerrainColors() {
+        return (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || _MINI_TERRAIN_FALLBACK;
+    }
+
+    function _ensureMinimap() {
+        if (_miniWrap) return;
+        _miniWrap = document.createElement('div');
+        _miniWrap.id = 'battleMinimap';
+        _miniWrap.style.cssText = [
+            'position:fixed', 'right:14px', 'bottom:14px', 'z-index:60',
+            'pointer-events:none', 'border-radius:10px', 'padding:6px',
+            'box-sizing:content-box', 'background:rgba(10,14,22,0.62)',
+            'border:1px solid rgba(120,150,190,0.35)',
+            'box-shadow:0 4px 18px rgba(0,0,0,0.45)'
+        ].join(';');
+        _miniCanvas = document.createElement('canvas');
+        _miniCanvas.style.cssText = 'display:block;';
+        _miniWrap.appendChild(_miniCanvas);
+        document.body.appendChild(_miniWrap);
+        _miniCtx = _miniCanvas.getContext('2d');
+    }
+
+    /* Which player is "us" (whose units are always shown / arrow is drawn). */
+    function _miniViewerPlayer() {
+        try {
+            if (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active &&
+                typeof window._myPlayer === 'function') return window._myPlayer();
+        } catch (e) {}
+        var ap = (state && state.autoPlayers) || {};
+        if (!ap[1]) return 1;
+        if (!ap[2]) return 2;
+        return 1;
+    }
+
+    /* Fog-of-war aware: own units always show; enemies only when not concealed. */
+    function _miniUnitVisible(u, viewer) {
+        if (u.player === viewer) return true;
+        if (!state.fogOfWar) return true;
+        var ap = (state && state.autoPlayers) || {};
+        if (ap[viewer]) return true; /* viewer is AI / spectated → reveal */
+        try {
+            if (window.GAME && typeof window.GAME.isUnitConcealedFrom === 'function')
+                return !window.GAME.isUnitConcealedFrom(u, viewer);
+        } catch (e) {}
+        return true;
+    }
+
+    function _miniDiamond(ctx, cx, cy, r, color) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
+        ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy);
+        ctx.closePath();
+        ctx.fillStyle = color; ctx.fill();
+        ctx.lineWidth = Math.max(1, r * 0.3);
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+    }
+
+    /* Filled triangle from (cx,cy) pointing along unit vector (fx,fy). */
+    function _miniArrow(ctx, cx, cy, fx, fy, len) {
+        var px = -fy, py = fx;            /* perpendicular */
+        var tipX = cx + fx * len,        tipY = cy + fy * len;
+        var baseX = cx - fx * len * 0.35, baseY = cy - fy * len * 0.35;
+        var hw = len * 0.42;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(baseX + px * hw, baseY + py * hw);
+        ctx.lineTo(baseX - px * hw, baseY - py * hw);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.fill(); ctx.stroke();
+    }
+
+    function _updateMinimap() {
+        try {
+            if (!active || typeof state === 'undefined' || !state || !state.boardTerrain) {
+                if (_miniWrap) _miniWrap.style.display = 'none';
+                return;
+            }
+            var W = (typeof bw === 'function') ? bw() :
+                    (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
+            var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
+            if (!W || !H) { if (_miniWrap) _miniWrap.style.display = 'none'; return; }
+
+            _ensureMinimap();
+            _miniWrap.style.display = 'block';
+
+            var cell = Math.max(2, Math.floor(Math.min(MINI_BOX / W, MINI_BOX / H)));
+            var drawW = cell * W, drawH = cell * H;
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+            if (_miniLastW !== drawW || _miniLastH !== drawH) {
+                _miniCanvas.width = Math.round(drawW * dpr);
+                _miniCanvas.height = Math.round(drawH * dpr);
+                _miniCanvas.style.width = drawW + 'px';
+                _miniCanvas.style.height = drawH + 'px';
+                _miniLastW = drawW; _miniLastH = drawH;
+            }
+
+            var ctx = _miniCtx;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, drawW, drawH);
+
+            var COLORS = _miniTerrainColors();
+
+            /* ── Terrain ── */
+            for (var y = 0; y < H; y++) {
+                var trow = state.boardTerrain[y];
+                if (!trow) continue;
+                for (var x = 0; x < W; x++) {
+                    var t = trow[x];
+                    if (!t || t === 'blank' || t === 'void') continue;
+                    var col = COLORS[t];
+                    if (col === undefined) col = 'rgba(90,120,95,0.3)'; /* unknown terrain */
+                    if (col === 'transparent') continue;
+                    ctx.fillStyle = col;
+                    ctx.fillRect(x * cell, y * cell, cell, cell);
+                }
+            }
+
+            /* ── Spawn zones ── */
+            var sz = state.spawnZones;
+            if (sz) {
+                for (var sp = 1; sp <= 2; sp++) {
+                    var zone = sz[sp];
+                    if (!zone) continue;
+                    ctx.fillStyle = sp === 1 ? 'rgba(60,150,255,0.5)' : 'rgba(255,70,70,0.5)';
+                    for (var zi = 0; zi < zone.length; zi++) {
+                        var tl = zone[zi];
+                        if (tl) ctx.fillRect(tl.x * cell, tl.y * cell, cell, cell);
+                    }
+                }
+            }
+
+            /* ── Nexus zones (objectives) ── */
+            if (state.nexusPoints) {
+                var nkeys = Object.keys(state.nexusPoints);
+                for (var nki = 0; nki < nkeys.length; nki++) {
+                    var nex = state.nexusPoints[nkeys[nki]];
+                    if (!nex) continue;
+                    var nzs = nex.zoneSize || 1;
+                    var nx = (nex.zoneX || 0) * cell, ny = (nex.zoneY || 0) * cell;
+                    var nw = nzs * cell, nh = nzs * cell;
+                    var base = nex.owner === 1 ? 'rgba(60,150,255,'
+                             : nex.owner === 2 ? 'rgba(255,70,70,'
+                             : 'rgba(255,210,80,';
+                    ctx.fillStyle = base + '0.26)';
+                    ctx.fillRect(nx, ny, nw, nh);
+                    var lw = Math.max(1.5, cell * 0.16);
+                    ctx.lineWidth = lw;
+                    ctx.strokeStyle = base + '0.95)';
+                    ctx.strokeRect(nx + lw / 2, ny + lw / 2, nw - lw, nh - lw);
+                }
+            }
+
+            /* ── Tower "cubes" (bases) ── */
+            if (state.towers) {
+                for (var tp = 1; tp <= 2; tp++) {
+                    var tw = state.towers[tp];
+                    if (!tw || (typeof tw.hp === 'number' && tw.hp <= 0)) continue;
+                    _miniDiamond(ctx, (tw.x + 0.5) * cell, (tw.y + 0.5) * cell,
+                                 Math.max(3, cell * 0.6), tp === 1 ? '#3aa0ff' : '#ff5a5a');
+                }
+            }
+
+            /* ── Units (fog-aware) + remember the viewer's active unit ── */
+            var viewer = _miniViewerPlayer();
+            var activeId = state._blitzActiveUnitId;
+            var units = state.units || [];
+            var activeUnitPos = null;
+            for (var uiI = 0; uiI < units.length; uiI++) {
+                var u = units[uiI];
+                if (!u || u.dead || (typeof u.hp === 'number' && u.hp <= 0)) continue;
+                if (!_miniUnitVisible(u, viewer)) continue;
+                var ucx = (u.x + 0.5) * cell, ucy = (u.y + 0.5) * cell;
+                var isOwn = (u.player === viewer);
+                if (u.id === activeId && isOwn) activeUnitPos = { x: ucx, y: ucy };
+                var rad = Math.max(2, cell * 0.34);
+                ctx.beginPath();
+                ctx.arc(ucx, ucy, rad, 0, Math.PI * 2);
+                ctx.fillStyle = isOwn ? '#46d07a' : '#ff4d4d';
+                ctx.fill();
+                ctx.lineWidth = Math.max(1, cell * 0.1);
+                ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+                ctx.stroke();
+            }
+
+            /* ── Camera-facing arrow on the viewer's active unit ── */
+            if (activeUnitPos) {
+                var yaw = (typeof camera !== 'undefined' && camera && typeof camera.yaw === 'number')
+                          ? camera.yaw : 0;
+                var yawRad = yaw * Math.PI / 180;
+                /* world forward (horizontal) → minimap (-sin, -cos): yaw 0 points up/north */
+                var fx = -Math.sin(yawRad), fy = -Math.cos(yawRad);
+                _miniArrow(ctx, activeUnitPos.x, activeUnitPos.y, fx, fy, Math.max(7, cell * 0.95));
+            }
+
+            /* ── Inner frame ── */
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(180,200,230,0.25)';
+            ctx.strokeRect(0.5, 0.5, drawW - 1, drawH - 1);
+        } catch (e) {
+            /* never let the minimap break the render loop */
+        }
+    }
+
     function renderFrame() {
         if (!active || !renderer || !scene) return;
 
@@ -11635,6 +11859,8 @@ const ThreeRenderer = (function () {
             if (css2dRenderer) css2dRenderer.render(scene, cam);
             _scalePlates(cam);
         }
+
+        _updateMinimap();
     }
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null;
