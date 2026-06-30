@@ -1350,11 +1350,13 @@
         }
 
 
-        /* ── Player-Turn Announcement (enemy→player handoff sweep) ──
-           A centered brush-stroke flourish that paints on when control returns
-           to the local player after the opponent/CPU has acted. Non-blocking
+        /* ── Player-Turn Announcement (enemy→player handoff) ──
+           A centered holo-flourish that appears when control returns to the
+           local player after the opponent/CPU has acted. Two slim, skewed
+           parallelogram "data bars" (fading to nothing at each end, neon team
+           glow) slide in from opposite sides to frame the title. Non-blocking
            (pointer-events:none) so it plays over the camera glide to the new
-           unit, then fades itself out. Team color drives the brush + glow. */
+           unit, then fades itself out. */
         .pt-announce {
             position: absolute;
             inset: 0;
@@ -1381,6 +1383,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: clamp(11px, 1.7vw, 19px);
             width: min(78vw, 780px);
             --pt-rgb: var(--p1-rgb);
             transform: translateY(-4%);
@@ -1411,47 +1414,63 @@
             100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: 1px; }
         }
 
-        .pt-brush {
+        .pt-bar {
             position: relative;
             z-index: 1;
             display: block;
-            width: 100%;
-            height: clamp(30px, 6.4vw, 66px);
-            filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.42));
+            height: clamp(7px, 0.95vw, 12px);
+            opacity: 0;
+            /* Body: solid neon team core (a bright hot filament down the middle
+               via the vertical layer); the horizontal mask fades both the body
+               AND its glow to nothing at each end → a clean parallelogram slash
+               that dissolves at the tips. */
+            background:
+                linear-gradient(0deg, transparent 20%, rgba(255, 255, 255, 0.55) 50%, transparent 80%),
+                linear-gradient(90deg, rgba(var(--pt-rgb), 0.85) 0%, rgb(var(--pt-rgb)) 50%, rgba(var(--pt-rgb), 0.85) 100%);
+            -webkit-mask: linear-gradient(90deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+                    mask: linear-gradient(90deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+            filter:
+                drop-shadow(0 0 5px rgba(var(--pt-rgb), 0.9))
+                drop-shadow(0 0 14px rgba(var(--pt-rgb), 0.55));
+            will-change: transform, opacity;
         }
-        .pt-brush-svg {
-            display: block;
-            width: 100%;
-            height: 100%;
-            overflow: visible;
-        }
-        .pt-brush-base { fill: rgb(var(--pt-rgb)); }
 
-        /* Top stroke: full width, gentle tilt, paints left→right.
-           Bottom stroke: shorter, right-offset, flipped + steeper tilt,
-           paints right→left — echoing the two-slash look of the reference. */
-        .pt-brush-top {
-            margin-bottom: -7px;
-            transform: rotate(-1.3deg);
-            clip-path: inset(0 100% 0 0);
-            animation: ptSweepFromLeft 0.5s cubic-bezier(.52, 0, .2, 1) forwards;
+        /* Top bar: full width, slides in from the LEFT.
+           Bottom bar: shorter + right-offset, slides in from the RIGHT —
+           same skew so they read as a matched pair of holo-slashes. */
+        .pt-bar-top {
+            width: 100%;
+            transform: translateX(-150px) skewX(-26deg);
+            animation: ptBarSlideL 0.52s cubic-bezier(.16, .8, .26, 1) forwards;
         }
-        .pt-brush-bot {
-            width: 64%;
+        .pt-bar-bot {
+            width: 62%;
             align-self: flex-end;
-            margin-top: -7px;
-            margin-right: 5%;
-            transform: rotate(-2.4deg) scaleX(-1);
-            clip-path: inset(0 0 0 100%);
-            animation: ptSweepFromRight 0.48s cubic-bezier(.52, 0, .2, 1) 0.1s forwards;
+            margin-right: 4%;
+            transform: translateX(150px) skewX(-26deg);
+            animation: ptBarSlideR 0.52s cubic-bezier(.16, .8, .26, 1) 0.08s forwards;
         }
-        @keyframes ptSweepFromLeft  { to { clip-path: inset(0 0 0 0); } }
-        @keyframes ptSweepFromRight { to { clip-path: inset(0 0 0 0); } }
+        /* slide + holographic power-on flicker baked into the entrance */
+        @keyframes ptBarSlideL {
+            0%   { opacity: 0;    transform: translateX(-150px) skewX(-26deg); }
+            32%  { opacity: 0.95; }
+            46%  { opacity: 0.35; }
+            60%  { opacity: 1; }
+            100% { opacity: 1;    transform: translateX(0) skewX(-26deg); }
+        }
+        @keyframes ptBarSlideR {
+            0%   { opacity: 0;    transform: translateX(150px) skewX(-26deg); }
+            32%  { opacity: 0.95; }
+            46%  { opacity: 0.35; }
+            60%  { opacity: 1; }
+            100% { opacity: 1;    transform: translateX(0) skewX(-26deg); }
+        }
 
         @media (prefers-reduced-motion: reduce) {
             .pt-announce.visible { animation: ptAnnounceFade 1.85s ease forwards; }
             .pt-announce-title { animation: none; opacity: 1; }
-            .pt-brush-top, .pt-brush-bot { animation: none; clip-path: none; }
+            .pt-bar-top { animation: none; opacity: 1; transform: skewX(-26deg); }
+            .pt-bar-bot { animation: none; opacity: 1; transform: skewX(-26deg); }
         }
 
         /* ── Round Banner (new round announcement) ── */
