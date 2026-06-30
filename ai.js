@@ -8,6 +8,7 @@
     let _failedCombos = new Set();
     let _skipAttack = false;
     let _skipTowerAttack = false;
+    let _skipMove = false;
     let _failedNexus = false;
     let _aiLastRecallFailed = false;
     let _failedItems = new Set();
@@ -130,6 +131,7 @@
             _failedCombos = new Set();
             _skipAttack = false;
             _skipTowerAttack = false;
+            _skipMove = false;
             _failedNexus = false;
             _aiLastRecallFailed = false;
             _failedItems = new Set();
@@ -279,7 +281,7 @@
         let best = candidates[0];
 
         if (!best || best.score <= 0) {
-            if (g.canUnitMove(unit)) {
+            if (!_skipMove && g.canUnitMove(unit)) {
                 const moveTiles = g.getMoveTiles(unit);
                 if (moveTiles.length > 0) {
                     const recent = new Set(unit._aiRecentTiles || []);
@@ -2152,7 +2154,7 @@
 
     function scoreMoves(unit, v, out) {
         const g = G();
-        if (!g.canUnitMove(unit)) return;
+        if (_skipMove || !g.canUnitMove(unit)) return;
 
         const moveTiles = g.getMoveTiles(unit);
         if (moveTiles.length === 0) return;
@@ -2250,7 +2252,7 @@
     function scoreKiteRetreat(unit, v, out) {
         const g = G();
         if (!v.tactical.shouldKite) return;
-        if (!g.canUnitMove(unit)) return;
+        if (_skipMove || !g.canUnitMove(unit)) return;
 
         if (unit._aiLoopCount <= 1) return;
 
@@ -3188,7 +3190,7 @@
         }
 
         if (!inZone && distToCenter <= (g.getEffectiveMove?.(unit) || unit.move || 4) + 2 && nex.owner !== unit.player
-            && v.visibleEnemies.length === 0) {
+            && v.visibleEnemies.length === 0 && !_skipMove && g.canUnitMove(unit)) {
             let score = 14;
             if (ownedCount === 0) score += 6;
             score += ownedCount * 3;
@@ -3196,7 +3198,17 @@
             score *= nexusPenalty;
             const tgtX = Math.max(nex.zoneX, Math.min(nex.zoneX + nex.zoneSize - 1, unit.x));
             const tgtY = Math.max(nex.zoneY, Math.min(nex.zoneY + nex.zoneSize - 1, unit.y));
-            if (score > 0) out.push({ type: 'move', x: tgtX, y: tgtY, score });
+            // Snap to an actually-reachable tile. Pushing the raw clamped coord can
+            // hand doMove a tile that isn't in getMoveTiles (out of range / blocked),
+            // which it refuses — the unit then makes no move, no progress, and the AI
+            // loop spins until the stall safety-net force-ends the turn (wasting AP).
+            const moveTiles = g.getMoveTiles(unit);
+            let bt = null, bd = Infinity;
+            for (const t of moveTiles) {
+                const d = Math.abs(t.x - tgtX) + Math.abs(t.y - tgtY);
+                if (d < bd) { bd = d; bt = t; }
+            }
+            if (score > 0 && bt) out.push({ type: 'move', x: bt.x, y: bt.y, z: bt.z, score });
         }
 
         if (g.state.roamingNexus) {
@@ -4065,6 +4077,12 @@
 
                     if (unit.x === prevX && unit.y === prevY) {
                         unit._aiStallCount = (unit._aiStallCount || 0) + 1;
+                        // doMove refused this destination (no moves left, rooted, or the
+                        // chosen tile wasn't actually reachable). Stop proposing moves for
+                        // the rest of this unit's turn so the AI spends its remaining AP on
+                        // a real action (attack/spell/guard) instead of re-picking a move
+                        // the engine keeps rejecting — which is what trips the stall net.
+                        _skipMove = true;
                     }
 
                     const animDelay = (typeof moveResult === 'number' && moveResult > 1) ? moveResult : 0;
