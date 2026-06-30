@@ -2646,12 +2646,16 @@
             // remember the player's live framing so we can drop into a high,
             // strategic top-down view for the burn/poison/etc ticks and then
             // restore their normal angle before the next turn begins.
+            // Return to the player's RESTING orientation after the ticks (not
+            // camera._tt — by now that holds the overview's framing, which would
+            // "restore" to the wrong angle). The next turn re-frames from here
+            // too, so this just keeps the overview readable between units.
             const _eorPrevView = (!state.cameraDisabled)
-                ? { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz } : null;
+                ? { tilt: camera._restTilt, yaw: camera._restYaw, zoom: camera._tz } : null;
             function _restoreEorView() {
                 if (_eorPrevView && !state.cameraDisabled) {
                     camera.moveTo({
-                        tilt: _eorPrevView.tilt, zoom: _eorPrevView.zoom,
+                        tilt: _eorPrevView.tilt, yaw: _eorPrevView.yaw, zoom: _eorPrevView.zoom,
                         duration: 320, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
                     });
@@ -2680,11 +2684,13 @@
                 const isVisible = _isUnitVisibleToViewer(unit, viewer);
 
                 if (isVisible && !state.cameraDisabled) {
-                    // Strategic top-down framing (low tilt = looking down at the
-                    // map) rather than the third-person action angle.
+                    // Pan-and-zoom in on the unit taking damage at the player's
+                    // resting tilt — no tilt swing, so the whole EOR tour reads as
+                    // one smooth glide across the board rather than a series of
+                    // re-angled cuts.
                     camera.moveTo({
                         x: unit.x, y: unit.y,
-                        zoom: getDefaultZoom() * 1.25, tilt: 34,
+                        zoom: getDefaultZoom() * 1.25, tilt: camera._restTilt, yaw: camera._restYaw,
                         duration: 400, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
                     });
@@ -5684,6 +5690,17 @@
             _seqId: 0,
             _isP2: null,
 
+            // Persistent "resting" gameplay orientation — the angle the camera
+            // ALWAYS returns to between actions/turns. Tracks the player's last
+            // manual tilt/yaw (updated in snap()); defaults to the canonical
+            // board angle. This is the single source of truth for "what does the
+            // camera look like during normal play", so a cinematic shot, an
+            // end-of-round overview, or a focus pan can never leave the camera
+            // stranded at a transient angle: the next turn activation (and every
+            // soft-reset) snaps tilt+yaw back to these.
+            _restTilt: 50,
+            _restYaw: 0,
+
             _ease(t, type) {
                 if (type === 'linear') return t;
                 if (type === 'easeIn') return t * t;
@@ -5929,8 +5946,13 @@
                     this._preCineView = null;
                     this._cineShotId = null; this._cineKeepSubject = false;
                 }
-                if (opts.tilt !== undefined) this.tilt = opts.tilt;
-                if (opts.yaw  !== undefined) this.yaw  = opts.yaw;
+                // A snap() that sets tilt/yaw is the player's deliberate
+                // orientation (manual tilt/yaw drag, or a hard reset to a known
+                // angle) — remember it as the resting orientation so every later
+                // return lands here. Cinematic shots and the EOR overview use
+                // moveTo(), not snap(), so they never pollute the resting angle.
+                if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = opts.tilt; }
+                if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
 
@@ -6061,8 +6083,12 @@
                 const pre = this._preCineView;
                 this._preCineView = null;
                 this._cineShotId = null; this._cineKeepSubject = false;
-                const retTilt = pre ? pre.tilt : (cineWasActive ? DEFAULT_BOARD_TILT : undefined);
-                const retYaw  = pre ? pre.yaw  : (cineWasActive ? DEFAULT_BOARD_YAW  : undefined);
+                // ALWAYS return to a known resting orientation (the player's
+                // remembered pre-cine framing if we have it, else the persistent
+                // _restTilt/_restYaw). reset() can never leave the camera tilted
+                // at a transient cinematic/overview angle.
+                const retTilt = pre ? pre.tilt : this._restTilt;
+                const retYaw  = pre ? pre.yaw  : this._restYaw;
                 const retZoom = pre ? pre.zoom : zoom;
                 if (immediate) {
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
@@ -6120,8 +6146,15 @@
                     const dur = actionMs(800);
                     this._busy = true;
                     const seq = ++this._seqId;
+                    // Restore tilt/yaw to a KNOWN resting angle: the remembered
+                    // pre-cine framing, else (returning from a cinematic) the
+                    // persistent rest orientation, else the saved pre-action
+                    // angle. Never leave it at the cinematic tilt.
+                    const _rTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : saved.tilt);
+                    const _rYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : saved.yaw);
                     this.moveTo({ ...saved,
-                        ...(pre ? { tilt: pre.tilt, yaw: pre.yaw, zoom: pre.zoom } : {}),
+                        tilt: _rTilt, yaw: _rYaw,
+                        ...(pre ? { zoom: pre.zoom } : {}),
                         duration: dur, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true });
                     if (this._busyTimer) clearTimeout(this._busyTimer);
@@ -6140,8 +6173,11 @@
                     const pre = this._preCineView;
                     this._preCineView = null;
                     const userZoom = getUserZoomScale();
-                    const retTilt = pre ? pre.tilt : (cineWasActive ? DEFAULT_BOARD_TILT : undefined);
-                    const retYaw  = pre ? pre.yaw  : (cineWasActive ? DEFAULT_BOARD_YAW  : undefined);
+                    // Returning from a cinematic shot ALWAYS un-tilts to the
+                    // resting orientation; a plain (non-cine) soft-reset keeps the
+                    // user's current tilt/yaw (which already equals _restTilt).
+                    const retTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : undefined);
+                    const retYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : undefined);
                     const zoom = pre ? pre.zoom : (userZoom > 1.05 ? userZoom : getDefaultZoom());
                     const dur = actionMs(650);
                     this._busy = true;
@@ -6439,17 +6475,21 @@
         // before the next round; the per-event cameras (DoT pans, storm
         // follow) then drop in from this framing. Called once at the start of
         // the end-of-round sequence.
-        const EOR_OVERVIEW_TILT = 32;
-        // getFullMapZoom() fits the FLAT board to the viewport, but at the tilted
-        // overview angle the board projects taller/wider, so a flat fit crops the
-        // near edge (units fall off the bottom). Pull back by a margin so the
-        // WHOLE battlefield + nameplates sit inside the frame on any map size.
-        const EOR_OVERVIEW_MARGIN = 0.78;
+        // The end-of-round overview is a fit-to-board ZOOM-OUT, not a re-angled
+        // shot: it KEEPS the player's resting tilt/yaw so the only movement is a
+        // single smooth pull-back to take in the whole battlefield (sleek, "few
+        // movements"). Swinging to a flat near-top-down angle every round was the
+        // jarring "weird end-of-round camera angle" — and because the next turn
+        // re-frames from the resting orientation, the angle stays consistent
+        // round-to-round. getFullMapZoom() fits the flat board; a small margin
+        // keeps nameplates + the foreshortened near edge inside the frame.
+        const EOR_OVERVIEW_MARGIN = 0.92;
         function showEndOfRoundOverview() {
             if (_skipVisuals() || state.cameraDisabled) return;
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
-                zoom: getFullMapZoom() * EOR_OVERVIEW_MARGIN, tilt: EOR_OVERVIEW_TILT,
+                zoom: getFullMapZoom() * EOR_OVERVIEW_MARGIN,
+                tilt: camera._restTilt, yaw: camera._restYaw,
                 duration: 520, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
@@ -14788,22 +14828,10 @@
                     const zoom = baseZoom > 1.05 ? baseZoom
                         : (_localActiveTurn ? getTurnFramingZoom() : getDefaultZoom());
 
-                    // In auto mode keep the cinematic framing rolling between
-                    // units; only a real (manual) activation restores overhead.
-                    const _pre = _cameraActingSideIsAuto() ? null : camera._preCineView;
-                    if (_pre) {
-
-                        // Still in a cinematic action framing — swing back up
-                        // to the player's overhead view as part of the pan.
-                        camera._preCineView = null;
-                        camera._savedState = null;
-                        camera.moveTo({
-                            x: unit.x, y: unit.y, zoom,
-                            tilt: _pre.tilt, yaw: _pre.yaw,
-                            duration: 600, easing: 'easeInOut',
-                            _allowZoomChange: true, _bypassCap: true
-                        });
-                    } else {
+                    if (_cameraActingSideIsAuto()) {
+                        // Auto / AI side: keep the cinematic framing rolling
+                        // between units — just follow the new unit without
+                        // yanking the orientation back to overhead.
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
                             _applyZoom: _localActiveTurn,
@@ -14811,6 +14839,27 @@
                             holdMs: 99999,
                             persist: true,
                             transitionMs: 380
+                        });
+                    } else {
+                        // A human side's turn begins: this is the single
+                        // authoritative "back to gameplay" move. ALWAYS return to
+                        // the resting board orientation (tilt+yaw) and frame the
+                        // active unit, regardless of what the previous action or
+                        // end-of-round sequence left on screen. This is what makes
+                        // the start of every turn consistent: the camera can never
+                        // be stranded craned-up from a spell shot or flattened/
+                        // pulled-way-out from the end-of-round overview, and the
+                        // unit whose turn it is is always centred.
+                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        camera._preCineView = null;
+                        camera._savedState = null;
+                        camera._cineKeepSubject = false;
+                        camera.moveTo({
+                            x: unit.x, y: unit.y, zoom,
+                            tilt: _retTilt, yaw: _retYaw,
+                            duration: 600, easing: 'easeInOut',
+                            _allowZoomChange: true, _bypassCap: true
                         });
                     }
                 }

@@ -2173,7 +2173,10 @@
                 && typeof getDefaultZoom === 'function') {
                 _followLeadMs = 320;
                 const _stormZoom = getDefaultZoom() * 1.35;
-                const _stormTilt = 52;   // angled so the funnel and the ground both read
+                // Ride the player's resting tilt so the whole end-of-round tour
+                // (overview → DoT pans → storm follow → regen) stays at one
+                // consistent angle instead of swinging the camera each beat.
+                const _stormTilt = (_cam._restTilt != null) ? _cam._restTilt : 52;
                 // Swoop focus onto the storm's starting tile…
                 _cam.moveTo({
                     x: _focus.fromX, y: _focus.fromY,
