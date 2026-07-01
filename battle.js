@@ -13930,12 +13930,13 @@
             if (state._turnBannerTimer) { clearTimeout(state._turnBannerTimer); state._turnBannerTimer = null; }
         }
 
-        // ── "It's your turn" sweep — a sleek brush-stroke announcement that paints
-        // on whenever control hands BACK to the local viewer after the opponent
-        // (or the CPU) has acted. Deliberately silent when the viewer keeps acting
-        // with consecutive units — it only marks the enemy→player handoff. Purely
-        // decorative (pointer-events:none) so it can play over the camera glide to
-        // the freshly-activated unit.
+        // ── Turn-handoff sweep — a sleek brush-stroke announcement that paints on
+        // whenever control changes hands between the two sides: back to the local
+        // viewer after the opponent/CPU acted, AND over to the enemy when they take
+        // over. Deliberately silent when the same side keeps acting with consecutive
+        // units — it only marks the player↔player handoff. Purely decorative
+        // (pointer-events:none) so it can play over the camera glide to the freshly-
+        // activated unit.
         function hidePlayerTurnAnnounce() {
             const el = document.getElementById('playerTurnAnnounce');
             if (el) el.classList.remove('visible');
@@ -13948,13 +13949,12 @@
             if (_skipVisuals() || state.winner) return;
 
             const viewer = getViewerPlayer();
-            // Only for the viewer's own, locally-driven turns — never narrate a CPU
-            // or remote opponent taking over.
-            if (unit.player !== viewer) return;
-            if (state.autoPlayers && state.autoPlayers[unit.player]) return;
+            const isViewerTurn = unit.player === viewer;
 
+            // Announce both sides of the handoff — the viewer's own turns AND the
+            // enemy / CPU / remote opponent taking over.
             const label = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active)
-                ? 'Your Turn'
+                ? (isViewerTurn ? 'Your Turn' : "Opponent's Turn")
                 : `Player ${unit.player}'s Turn`;
 
             el.classList.remove('visible');
