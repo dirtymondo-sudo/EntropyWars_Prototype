@@ -2530,6 +2530,41 @@ function EnemyActionMenu({ st }) {
     if (typeof renderIfDirty === 'function') { renderIfDirty(); }
   };
 
+  // Predict where a spell will SHOVE its target so we can preview it: a push
+  // spell flings the target away from the cast tile, a pull drags it toward the
+  // caster. Walks tile-by-tile and stops at the board edge / an obstacle / an
+  // occupied tile, mirroring the engine's displacement loop. Returns the landing
+  // tile + mode, or null when the spell doesn't move the target (or can't).
+  const _predictTargetShove = (spell, target, castX, castY) => {
+    if (!spell || !target) return null;
+    const k = spell.kind;
+    const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance;
+    const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
+                    || !!spell.pushDistance || !!spell.displaceDistance);
+    if (!isPull && !isPush) return null;
+
+    let dx, dy, dist, mode;
+    if (isPull) {
+      dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
+      dist = spell.pullDistance || 3; mode = 'pull';
+    } else {
+      dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+      dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
+    }
+    if (dx === 0 && dy === 0) return null;
+
+    let px = target.x, py = target.y;
+    for (let i = 0; i < dist; i++) {
+      const nx = px + dx, ny = py + dy;
+      if (typeof isInside === 'function' && !isInside(nx, ny)) break;
+      if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
+      if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
+      px = nx; py = ny;
+    }
+    if (px === target.x && py === target.y) return null;
+    return { x: px, y: py, mode };
+  };
+
   const _showMoveArrowPreview = (mt, action) => {
     _clearMoveArrowPreview();
     if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -2538,6 +2573,15 @@ function EnemyActionMenu({ st }) {
     const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
 
     const targetY = ThreeRenderer.unitSurfaceY(targetUnit);
+
+    // Team-tinted hologram + a colour for the strike arrow that matches the action.
+    const ghostTint = (typeof getFactionColor === 'function')
+      ? (parseInt(String(getFactionColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+      : 0x66ddff;
+    const arrowColor = _actionPlanArrowColor(action);
+    // Casting position (where the strike/shove is measured from): the move
+    // destination when repositioning, else the unit's current tile.
+    let castX = actingUnit.x, castY = actingUnit.y;
 
     // A height approach (take off / land / raise) casts from the caster's own tile,
     // so there's no walk arrow to draw — fall through to the direct caster→target arrow.
@@ -2558,31 +2602,41 @@ function EnemyActionMenu({ st }) {
       } else {
         destY = ThreeRenderer.tileTopY(mt.x, mt.y);
       }
+      castX = mt.x; castY = mt.y;
 
+      // One continuous bending walk-route arrow through any waypoint, plus tile
+      // markers so the destination reads even head-on.
+      const routeColor = mt._jump ? 0x66ffcc : 0xffcc44;
       if (mt.via) {
-
         const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
-        ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, mt.via.x, mt.via.y, 0xffcc44, true, actingY, viaY);
-        ThreeRenderer.drawArrow3D(mt.via.x, mt.via.y, mt.x, mt.y, 0xffcc44, true, viaY, destY);
+        ThreeRenderer.drawPathArrow3D([
+          { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
+          { x: mt.via.x, y: mt.via.y, yOverride: viaY },
+          { x: mt.x, y: mt.y, yOverride: destY },
+        ], routeColor);
 
         ThreeRenderer.setOverlay('movePreview', [
-          { x: mt.via.x, y: mt.via.y, color: 0xffcc44, opacity: 0.3 },
-          { x: mt.x, y: mt.y, color: 0xffcc44, opacity: 0.45 },
-        ], 0xffcc44, 0.45);
+          { x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 },
+          { x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 },
+        ], routeColor, 0.45);
       } else {
-        ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, mt.x, mt.y, 0xffcc44, true, actingY, destY);
+        ThreeRenderer.drawPathArrow3D([
+          { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
+          { x: mt.x, y: mt.y, yOverride: destY },
+        ], routeColor);
 
-        ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: 0xffcc44, opacity: 0.45 }], 0xffcc44, 0.45);
+        ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
       }
 
-      ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY);
+      // Hologram of the caster standing where it will end up.
+      ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
 
-      const arrowColor = _actionPlanArrowColor(action);
-      ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY);
+      // Arced strike arrow lobbing from the move destination onto the target.
+      ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
     } else {
 
-      const arrowColor = _actionPlanArrowColor(action);
-      ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY);
+      // Arced strike arrow straight from the unit's current tile onto the target.
+      ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
     }
 
     ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
@@ -2601,6 +2655,21 @@ function EnemyActionMenu({ st }) {
           }));
           ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, 0xff3333, 0.35);
         }
+      }
+    }
+
+    // Displacement preview: show a ghost of the target where it will be shoved,
+    // with a bent arrow tracing the knockback/pull — so the player sees exactly
+    // what the spell will DO in this scenario, not just where it aims.
+    if (action && action.spell) {
+      const shove = _predictTargetShove(action.spell, targetUnit, castX, castY);
+      if (shove) {
+        const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
+        const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
+        ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
+        ThreeRenderer.drawArrow3D(tx, ty, shove.x, shove.y, shoveColor, false, targetY, shY,
+          { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
+        ThreeRenderer.setOverlay('actionPlanShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
       }
     }
   };
@@ -2625,6 +2694,7 @@ function EnemyActionMenu({ st }) {
     ThreeRenderer.clearOverlay('movePreview');
     ThreeRenderer.clearOverlay('actionPlanTarget');
     ThreeRenderer.clearOverlay('actionPlanAoe');
+    ThreeRenderer.clearOverlay('actionPlanShove');
   };
 
   return h('div', {

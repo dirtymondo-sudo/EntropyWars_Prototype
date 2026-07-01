@@ -5657,92 +5657,143 @@ const ThreeRenderer = (function () {
         _telegraphTimer = setTimeout(function() { clearOverlay('telegraph'); _telegraphTimer = null; }, 450);
     }
 
-    var _ghostGroup = null;
+    // ── Holographic action-plan ghosts ────────────────────────────────────────
+    // A ghost is a translucent, tinted hologram of a unit sprite standing on a
+    // pulsing footprint ring — used to preview WHERE a unit will end up (the
+    // caster after it moves) and WHAT a spell does to a target (a second ghost
+    // of the enemy at the tile it will be shoved/pulled to). Multiple ghosts can
+    // be shown at once, keyed by a `tag`.
+    var _ghostGroup = null;   // primary ('caster') ghost — kept for back-compat refs
     var _ghostMat = null;
+    var _ghostGroups = [];    // [{ group, mat, ringMat, ring, tag, baseOpacity }]
 
-    function showGhostUnit(unit, tileX, tileY, surfaceYOverride) {
-        clearGhostUnit();
+    function _makeGhostRing(color, radius) {
+        var ringGeo = new THREE.RingGeometry(radius * 0.6, radius, 44);
+        var ringMat = new THREE.MeshBasicMaterial({
+            color: color, transparent: true, opacity: 0.5,
+            side: THREE.DoubleSide, depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+        var ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring._ew_ghostRing = true;
+        return { mesh: ring, mat: ringMat };
+    }
+
+    function showGhostUnit(unit, tileX, tileY, surfaceYOverride, opts) {
+        opts = opts || {};
+        var tag = opts.tag || 'caster';
+        clearGhostUnit(tag);
         if (!highlightGroup || !unit) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = (surfaceYOverride !== undefined && surfaceYOverride !== null)
             ? surfaceYOverride + 1.0
             : tileTopY(tileX, tileY) + 1.0;
 
+        var tintColor = (opts.color !== undefined && opts.color !== null) ? opts.color : 0x66ddff;
+        var baseOpacity = (opts.opacity !== undefined) ? opts.opacity : 0.5;
+
+        var group = new THREE.Group();
+        group.name = 'actionPlanGhost:' + tag;
+        group.position.set(tileX * ts + ts / 2, surfY, tileY * ts + ts / 2);
+
+        // Ground footprint ring — reads instantly even before the sprite loads.
+        var ringInfo = _makeGhostRing(tintColor, ts * 0.42);
+        ringInfo.mesh.position.y = 0.8;
+        group.add(ringInfo.mesh);
+
+        var mat = null;
         var spriteUrl = (typeof getBattleMapSpriteUrl === 'function')
             ? getBattleMapSpriteUrl(unit)
             : ((typeof getR2RaceSpriteUrl === 'function')
                ? getR2RaceSpriteUrl(unit.race, unit.gender, unit.cls) : null);
-        if (!spriteUrl) return;
-        var spriteTex = getTexture(spriteUrl);
-        if (!spriteTex) return;
+        var spriteTex = spriteUrl ? getTexture(spriteUrl) : null;
+        if (spriteTex) {
+            var _nativeScale = ts / 128;
+            var nw = 128, nh = 128;
+            var scanData = window._spriteGroundOffsets
+                ? window._spriteGroundOffsets.get(spriteUrl) : null;
+            if (scanData && !scanData.scanning && scanData.nativeW > 0 && scanData.nativeH > 0) {
+                nw = scanData.nativeW;
+                nh = scanData.nativeH;
+            } else if (spriteTex.image) {
+                var img = spriteTex.image;
+                var iw = img.naturalWidth || img.width || 0;
+                var ih = img.naturalHeight || img.height || 0;
+                if (iw > 0 && ih > 0) { nw = iw; nh = ih; }
+            }
+            var sprW = nw * _nativeScale;
+            var sprH = nh * _nativeScale;
 
-        var _nativeScale = ts / 128;
-        var nw = 128, nh = 128;
-        var scanData = window._spriteGroundOffsets
-            ? window._spriteGroundOffsets.get(spriteUrl) : null;
-        if (scanData && !scanData.scanning && scanData.nativeW > 0 && scanData.nativeH > 0) {
-            nw = scanData.nativeW;
-            nh = scanData.nativeH;
-        } else if (spriteTex && spriteTex.image) {
-            var img = spriteTex.image;
-            var iw = img.naturalWidth || img.width || 0;
-            var ih = img.naturalHeight || img.height || 0;
-            if (iw > 0 && ih > 0) { nw = iw; nh = ih; }
+            // Tint toward the plan colour but blend to white so the silhouette
+            // stays legible; additive blend gives the projected-hologram glow.
+            var _tc = new THREE.Color(tintColor);
+            _tc.lerp(new THREE.Color(0xffffff), 0.5);
+            mat = new THREE.MeshBasicMaterial({
+                map: spriteTex, transparent: true, alphaTest: 0.03,
+                side: THREE.DoubleSide, depthWrite: false,
+                opacity: baseOpacity, color: _tc, blending: THREE.AdditiveBlending
+            });
+
+            var spriteMesh = new THREE.Mesh(new THREE.PlaneGeometry(sprW, sprH), mat);
+            var bottomShift = 0;
+            if (scanData && !scanData.scanning && scanData.bottomGapPct > 0) {
+                bottomShift = sprH * (scanData.bottomGapPct / 100);
+            }
+            spriteMesh.position.y = sprH / 2 - bottomShift;
+            spriteMesh._ew_billboard = true;
+            group.add(spriteMesh);
         }
-        var sprW = nw * _nativeScale;
-        var sprH = nh * _nativeScale;
 
-        _ghostMat = new THREE.MeshBasicMaterial({
-            map: spriteTex, transparent: true, alphaTest: 0.05,
-            side: THREE.DoubleSide, depthWrite: false,
-            opacity: 0.45
+        highlightGroup.add(group);
+        _ghostGroups.push({
+            group: group, mat: mat, ringMat: ringInfo.mat, ring: ringInfo.mesh,
+            tag: tag, baseOpacity: baseOpacity
         });
-
-        var spriteMesh = new THREE.Mesh(new THREE.PlaneGeometry(sprW, sprH), _ghostMat);
-        var bottomShift = 0;
-        if (scanData && !scanData.scanning && scanData.bottomGapPct > 0) {
-            bottomShift = sprH * (scanData.bottomGapPct / 100);
-        }
-        spriteMesh.position.y = sprH / 2 - bottomShift;
-        spriteMesh._ew_billboard = true;
-
-        _ghostGroup = new THREE.Group();
-        _ghostGroup.name = 'actionPlanGhost';
-        _ghostGroup.add(spriteMesh);
-        _ghostGroup.position.set(tileX * ts + ts / 2, surfY, tileY * ts + ts / 2);
-
-        highlightGroup.add(_ghostGroup);
+        if (tag === 'caster') { _ghostGroup = group; _ghostMat = mat; }
 
         _bbLastCamX = NaN;
     }
 
-    function clearGhostUnit() {
-        if (_ghostGroup && highlightGroup) {
-            highlightGroup.remove(_ghostGroup);
-
-            _ghostGroup.traverse(function(child) {
+    // clearGhostUnit()      → clears every ghost.
+    // clearGhostUnit(tag)   → clears only the ghost with that tag.
+    function clearGhostUnit(tag) {
+        for (var i = _ghostGroups.length - 1; i >= 0; i--) {
+            var e = _ghostGroups[i];
+            if (tag && e.tag !== tag) continue;
+            if (highlightGroup) highlightGroup.remove(e.group);
+            e.group.traverse(function(child) {
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) child.material.dispose();
             });
+            _ghostGroups.splice(i, 1);
         }
-        _ghostGroup = null;
-        _ghostMat = null;
+        if (!tag || tag === 'caster') { _ghostGroup = null; _ghostMat = null; }
     }
 
     function _updateActionPlanPulse() {
         var t = performance.now() / 1000.0;
-        var pulse = 0.25 + 0.3 * Math.abs(Math.sin(t * 2.5));
+        var flicker = 0.85 + 0.15 * Math.sin(t * 11.0); // subtle hologram scanline shimmer
 
-        if (_ghostMat) {
-            _ghostMat.opacity = pulse + 0.1;
+        // Holographic ghosts: breathe the sprite opacity and pulse the footprint ring.
+        for (var gi = 0; gi < _ghostGroups.length; gi++) {
+            var e = _ghostGroups[gi];
+            var breathe = 0.7 + 0.45 * Math.abs(Math.sin(t * 2.5));
+            if (e.mat) e.mat.opacity = (e.baseOpacity || 0.5) * breathe * flicker;
+            if (e.ringMat) e.ringMat.opacity = 0.32 + 0.4 * Math.abs(Math.sin(t * 2.5 + 1.0));
+            if (e.ring) {
+                var rs = 1.0 + 0.12 * Math.sin(t * 3.0);
+                e.ring.scale.set(rs, rs, rs);
+            }
         }
 
-        if (_ghostGroup && _arrowMeshes.length > 0) {
-            var arrowPulse = 0.55 + 0.4 * Math.abs(Math.sin(t * 2.5));
+        // Arrow bodies breathe together; flow dots stream toward the target below.
+        if (_arrowMeshes.length > 0) {
+            var arrowPulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 2.5));
             for (var i = 0; i < _arrowMeshes.length; i++) {
                 var m = _arrowMeshes[i];
+                if (m._ew_flowDot) continue;
                 if (m.material && m.material.opacity !== undefined) {
-
                     var baseOp = m._ew_baseOpacity;
                     if (baseOp === undefined) {
                         baseOp = m.material.opacity;
@@ -5752,12 +5803,99 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+
+        for (var f = 0; f < _arrowFlowDots.length; f++) {
+            var fd = _arrowFlowDots[f];
+            var tt = (fd.phase + t * 0.55) % 1.0;
+            if (fd.curve && fd.mesh) {
+                var p = fd.curve.getPointAt(Math.min(1, tt * fd.tEnd));
+                fd.mesh.position.copy(p);
+                if (fd.mesh.material) fd.mesh.material.opacity = 0.25 + 0.6 * Math.sin(tt * Math.PI);
+            }
+        }
     }
 
     var _arrowMeshes = [];
+    var _arrowFlowDots = [];
 
-    function drawArrow3D(fromX, fromY, toX, toY, hexColor, dashed, fromYOverride, toYOverride) {
+    function _addArrowMesh(mesh) {
+        mesh._ew_overlay = 'arrow';
+        if (highlightGroup) highlightGroup.add(mesh);
+        _arrowMeshes.push(mesh);
+    }
+
+    // Core arrow builder — draws a glowing tube shaft that follows an arbitrary
+    // 3D curve (straight, arced through the air, or bending through waypoints),
+    // caps it with a cone head aimed along the final tangent, and seeds a few
+    // "energy" dots that stream toward the target so direction reads at a glance.
+    // opts: { radius, headLen, flow(bool), dotColor }
+    function _buildArrowFromPoints(pts, hexColor, opts) {
+        if (!highlightGroup || !pts || pts.length < 2) return;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+
+        var curve = (pts.length === 2)
+            ? new THREE.LineCurve3(pts[0], pts[1])
+            : new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
+        var fullLen = curve.getLength();
+        if (fullLen < 2) return;
+
+        var shaftRad = opts.radius || ts * 0.03;
+        var headLen = Math.min(opts.headLen || ts * 0.26, 38);
+        var headRad = headLen * 0.5;
+        // Stop the shaft short so the cone head isn't buried in the tube.
+        var tEnd = fullLen > headLen * 1.3 ? (fullLen - headLen * 0.85) / fullLen : 0.9;
+
+        var segs = Math.max(6, Math.min(80, Math.round(fullLen / (ts * 0.13))));
+        var shaftPts = [];
+        for (var s = 0; s <= segs; s++) shaftPts.push(curve.getPointAt(tEnd * (s / segs)));
+        var shaftCurve = new THREE.CatmullRomCurve3(shaftPts);
+
+        var shaftMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.9, depthWrite: false });
+        _addArrowMesh(new THREE.Mesh(new THREE.TubeGeometry(shaftCurve, segs, shaftRad, 8, false), shaftMat));
+
+        var glowMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending });
+        _addArrowMesh(new THREE.Mesh(new THREE.TubeGeometry(shaftCurve, segs, shaftRad * 2.7, 8, false), glowMat));
+
+        // Cone head at the true end, oriented along the curve's final tangent so
+        // it points cleanly even when the arrow arcs or bends.
+        var endPt = curve.getPointAt(1);
+        var tan = curve.getTangentAt(1).normalize();
+        var q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tan);
+
+        var coneMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.95, depthWrite: false });
+        var cone = new THREE.Mesh(new THREE.ConeGeometry(headRad, headLen, 12), coneMat);
+        cone.quaternion.copy(q);
+        cone.position.copy(endPt).addScaledVector(tan, -headLen * 0.32);
+        _addArrowMesh(cone);
+
+        var haloMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending });
+        var halo = new THREE.Mesh(new THREE.ConeGeometry(headRad * 1.7, headLen * 1.25, 12), haloMat);
+        halo.quaternion.copy(q);
+        halo.position.copy(cone.position);
+        _addArrowMesh(halo);
+
+        if (opts.flow !== false) {
+            var dotColor = (opts.dotColor !== undefined) ? opts.dotColor : hexColor;
+            var dotN = Math.max(2, Math.min(6, Math.round(fullLen / (ts * 0.6))));
+            for (var d = 0; d < dotN; d++) {
+                var dotMat = new THREE.MeshBasicMaterial({ color: dotColor, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending });
+                var dot = new THREE.Mesh(new THREE.SphereGeometry(shaftRad * 2.3, 8, 8), dotMat);
+                dot._ew_overlay = 'arrow';
+                dot._ew_flowDot = true;
+                if (highlightGroup) highlightGroup.add(dot);
+                _arrowMeshes.push(dot);
+                _arrowFlowDots.push({ mesh: dot, curve: curve, tEnd: tEnd, phase: d / dotN });
+            }
+        }
+    }
+
+    // Straight or arced arrow between two tiles. Back-compat first 8 args; the
+    // optional `opts` adds { arc, flow, radius, headLen }. arc>0 lobs the arrow
+    // through the air (a curved trajectory) — used for spell/attack plans.
+    function drawArrow3D(fromX, fromY, toX, toY, hexColor, dashed, fromYOverride, toYOverride, opts) {
         if (!highlightGroup) return;
+        opts = opts || {};
         var ts = CONFIG.tileSize || BASE_TILE;
         var inset = ts * 0.22;
 
@@ -5774,69 +5912,49 @@ const ThreeRenderer = (function () {
         ax += nx * inset; az += nz * inset; ay += ny * inset;
         bx -= nx * inset; bz -= nz * inset; by -= ny * inset;
 
-        var shaftLen = Math.sqrt((bx-ax)*(bx-ax) + (by-ay)*(by-ay) + (bz-az)*(bz-az));
-        var shaftRad = ts * 0.025;
-        var shaftGeo = new THREE.CylinderGeometry(shaftRad, shaftRad, shaftLen, 6);
-        var shaftMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.85, depthWrite: false });
-        var shaft = new THREE.Mesh(shaftGeo, shaftMat);
+        var start = new THREE.Vector3(ax, ay, az);
+        var end = new THREE.Vector3(bx, by, bz);
 
-        shaft.position.set((ax+bx)/2, (ay+by)/2, (az+bz)/2);
-
-        var dir = new THREE.Vector3(dx, dy, dz).normalize();
-        var up = new THREE.Vector3(0, 1, 0);
-        var q = new THREE.Quaternion().setFromUnitVectors(up, dir);
-        shaft.quaternion.copy(q);
-        shaft._ew_overlay = 'arrow';
-        highlightGroup.add(shaft);
-        _arrowMeshes.push(shaft);
-
-        var glowGeo = new THREE.CylinderGeometry(shaftRad * 2.5, shaftRad * 2.5, shaftLen, 6);
-        var glowMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.12, depthWrite: false });
-        var glowTube = new THREE.Mesh(glowGeo, glowMat);
-        glowTube.position.copy(shaft.position);
-        glowTube.quaternion.copy(shaft.quaternion);
-        glowTube._ew_overlay = 'arrow';
-        highlightGroup.add(glowTube);
-        _arrowMeshes.push(glowTube);
-
-        var headLen = Math.min(ts * 0.22, 30);
-        var headRad = headLen * 0.55;
-        var coneGeo = new THREE.ConeGeometry(headRad, headLen, 8);
-        var coneMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.92, depthWrite: false });
-        var cone = new THREE.Mesh(coneGeo, coneMat);
-
-        cone.position.set(bx + nx * headLen * 0.4, by + ny * headLen * 0.4, bz + nz * headLen * 0.4);
-        cone.quaternion.copy(q);
-        cone._ew_overlay = 'arrow';
-        highlightGroup.add(cone);
-        _arrowMeshes.push(cone);
-
-        var haloGeo = new THREE.ConeGeometry(headRad * 1.6, headLen * 1.2, 8);
-        var haloMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.15, depthWrite: false });
-        var halo = new THREE.Mesh(haloGeo, haloMat);
-        halo.position.copy(cone.position);
-        halo.quaternion.copy(q);
-        halo._ew_overlay = 'arrow';
-        highlightGroup.add(halo);
-        _arrowMeshes.push(halo);
-
-        if (dashed && shaftLen > ts * 0.3) {
-            var tickCount = Math.floor(shaftLen / (ts * 0.12));
-            for (var ti = 1; ti < tickCount; ti++) {
-                var frac = ti / tickCount;
-                var tGeo = new THREE.SphereGeometry(shaftRad * 1.8, 4, 4);
-                var tMat = new THREE.MeshBasicMaterial({ color: hexColor, transparent: true, opacity: 0.5, depthWrite: false });
-                var tick = new THREE.Mesh(tGeo, tMat);
-                tick.position.set(
-                    ax + dx * frac * (1 - inset/len),
-                    ay + dy * frac * (1 - inset/len),
-                    az + dz * frac * (1 - inset/len)
-                );
-                tick._ew_overlay = 'arrow';
-                highlightGroup.add(tick);
-                _arrowMeshes.push(tick);
-            }
+        var arc = opts.arc || 0;
+        var pts;
+        if (arc > 0) {
+            var flatLen = Math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az));
+            var lift = Math.min(ts * 2.6, flatLen * arc) + ts * 0.3;
+            var mid = new THREE.Vector3((ax + bx) / 2, Math.max(ay, by) + lift, (az + bz) / 2);
+            pts = [start, mid, end];
+        } else {
+            pts = [start, end];
         }
+
+        _buildArrowFromPoints(pts, hexColor, {
+            radius: opts.radius || (dashed ? ts * 0.026 : ts * 0.032),
+            flow: (opts.flow !== undefined) ? opts.flow : true,
+            headLen: opts.headLen,
+            dotColor: opts.dotColor
+        });
+    }
+
+    // Bending walk-route arrow that threads through a list of tile waypoints
+    // (start → optional vias → destination). Hugs the surface of each tile and
+    // curves smoothly around corners so a multi-step move reads as one path.
+    // waypoints: [{ x, y, yOverride? }, ...]  (2+ entries)
+    function drawPathArrow3D(waypoints, hexColor, opts) {
+        if (!highlightGroup || !waypoints || waypoints.length < 2) return;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var lift = (opts.lift !== undefined) ? opts.lift : ts * 0.14;
+        var pts = [];
+        for (var i = 0; i < waypoints.length; i++) {
+            var w = waypoints[i];
+            var wy = (w.yOverride !== undefined && w.yOverride !== null) ? w.yOverride : tileTopY(w.x, w.y);
+            pts.push(new THREE.Vector3(w.x * ts + ts / 2, wy + lift, w.y * ts + ts / 2));
+        }
+        _buildArrowFromPoints(pts, hexColor, {
+            radius: opts.radius || ts * 0.028,
+            flow: (opts.flow !== undefined) ? opts.flow : true,
+            headLen: opts.headLen,
+            dotColor: opts.dotColor
+        });
     }
 
     function clearArrows3D() {
@@ -5846,6 +5964,7 @@ const ThreeRenderer = (function () {
             if (_arrowMeshes[i].material) _arrowMeshes[i].material.dispose();
         }
         _arrowMeshes = [];
+        _arrowFlowDots = [];
     }
 
     var _intentBadgeContainer = null;
@@ -7093,7 +7212,7 @@ const ThreeRenderer = (function () {
 
         if (scene) { for (var s = 0; s < scene.children.length; s++) { var sg = scene.children[s]; if (sg.name === 'wardLights' && sg.children) { for (var w = 0; w < sg.children.length; w++) { var wc = sg.children[w]; if (wc._ew_billboard) { wc.rotation.y = Math.atan2(cx - wc.position.x, cz - wc.position.z); } } } } }
 
-        if (_ghostGroup && _ghostGroup.children) { for (var gi = 0; gi < _ghostGroup.children.length; gi++) { var gc = _ghostGroup.children[gi]; if (gc._ew_billboard) { gc.rotation.y = Math.atan2(cx - _ghostGroup.position.x, cz - _ghostGroup.position.z); } } }
+        for (var _egi = 0; _egi < _ghostGroups.length; _egi++) { var _eg = _ghostGroups[_egi].group; if (_eg && _eg.children) { for (var gi = 0; gi < _eg.children.length; gi++) { var gc = _eg.children[gi]; if (gc._ew_billboard) { gc.rotation.y = Math.atan2(cx - _eg.position.x, cz - _eg.position.z); } } } }
     }
 
     function _easeInOut(t) {
@@ -12288,7 +12407,7 @@ const ThreeRenderer = (function () {
 
         setOverlay, clearOverlay, clearAllOverlays, flashTelegraph,
 
-        drawArrow3D, clearArrows3D,
+        drawArrow3D, drawPathArrow3D, clearArrows3D,
 
         showGhostUnit, clearGhostUnit,
 

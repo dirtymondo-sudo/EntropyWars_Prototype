@@ -161,6 +161,42 @@ exist). To live, `battle.js` must be re-uploaded to the R2 bucket. To add more l
 fire/cold spells, no code change is needed — name them with a matching keyword, or set
 `element:`.
 
+## Action-plan arrow / hologram system (2026-07-01 overhaul)
+The "arrow system in the action menus" = the hover preview that appears when you
+open a unit's quick-action menu against an enemy (`hud.js _showMoveArrowPreview`,
+~2568) and the twin board-hover preview (`battle.js _drawSpellApproachPreview`,
+~10769). Both drive shared THREE primitives in `three-renderer.js`. All three
+files are on R2 → re-upload `three-renderer.js` + `hud.js` for this to go live
+(`battle.js` already benefits from the renderer upgrade without an edit).
+- **`three-renderer.js` arrow builder** — `drawArrow3D(...,opts)` and the new
+  **`drawPathArrow3D(waypoints, color, opts)`** both funnel through
+  `_buildArrowFromPoints(pts, color, opts)`: a glowing **TubeGeometry** shaft
+  that follows an arbitrary 3D curve (CatmullRom for 3+ pts, Line for 2), a
+  cone head aimed along the curve's final tangent, an additive glow tube+halo,
+  and 2–6 **flow dots** that stream toward the target (animated in
+  `_updateActionPlanPulse`, `_arrowFlowDots`). `opts.arc>0` lobs the arrow
+  through the air (curved trajectory); `drawPathArrow3D` hugs the ground and
+  **bends smoothly through every walk waypoint** as one continuous arrow.
+  `drawArrow3D` keeps its old 8-arg signature (opts is the 9th) so the ui.js /
+  battle.js callers are unaffected — they just render nicer now.
+- **Holographic ghosts** — `showGhostUnit(unit,x,y,surfY,opts)` now takes
+  `{tag,color,opacity}`, tints the sprite toward the team colour (additive,
+  blended to white so it stays legible), stands it on a pulsing footprint
+  **ring**, and supports **multiple simultaneous ghosts** keyed by `tag`
+  (`_ghostGroups[]`). `clearGhostUnit(tag)` clears one; `clearGhostUnit()`
+  clears all. Billboarding + pulse iterate the list.
+- **What the spell will DO** — `hud.js _predictTargetShove(spell,target,castX,
+  castY)` replays the engine's displacement loop (push = away from the cast
+  tile by `displaceDistance`/`pushDistance`; pull = toward it by `pullDistance`;
+  stops at edge/obstacle/occupied). When a push/pull/displacement/linePush spell
+  is hovered it drops a **second hologram of the ENEMY at its projected landing
+  tile** (tag `'target'`, magenta push / cyan pull) with a bent arrow tracing
+  the knockback — so the player sees the actual outcome, not just the aim point.
+  Overlay `actionPlanShove` (cleared in `_clearMoveArrowPreview`).
+- Colours: walk route gold (jump-approach teal), strike arrow = attack red /
+  spell type colour (`_actionPlanArrowColor`), caster ghost = team colour,
+  shove ghost/arrow = magenta(push)/cyan(pull).
+
 ## Known findings (from playtests)
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the
   spell" bugs):** highlight (`getMoveTiles`/`getSpellRangeTiles`) and execution
