@@ -2325,6 +2325,22 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // Sky-strike CAMERA gate. Many spells route through the "descent" VFX
+        // pipeline (telegraph ring → body → impact), and that mapping USED to
+        // also hand each one the dramatic tilt-up-and-follow-down camera. That
+        // was too broad — it fired on ground-level / horizontal AOE effects that
+        // have nothing plummeting from the sky. The camera is now reserved for
+        // spells where something CLEARLY falls / strikes from overhead (meteors,
+        // ordnance, divine light, lightning, UFO beams). The few descent-VFX
+        // spells listed here keep their falling/burst VFX unchanged but use the
+        // standard over-the-shoulder action cam instead of the sky-strike shot.
+        // To move a spell in/out of the sky cam, just edit this set.
+        const _NO_SKY_STRIKE_CAM = new Set(['empBurst', 'sharedGlacialTomb', 'shootout']);
+        function _skyStrikeCamAllowed(spellId) {
+            return !!spellId && !_NO_SKY_STRIKE_CAM.has(spellId);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // _setupAoeCameraAndTiming() — common offensive-camera + timing
         // setup for area spells (aoe, cross, aoePull, etc.).
         // Returns { cam, projectileDelay, impactDelay, completionDelay }.
@@ -2340,7 +2356,7 @@
                 sourceHold: 900, targetHold: 900,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 attackName: spell.name,
-                descentCam: hasDescent ? {
+                descentCam: (hasDescent && _skyStrikeCamAllowed(spell.id)) ? {
                     telegraphMs: VFX.getDescentTelegraphMs(spell.id),
                     descentMs: VFX.getDescentDescentMs(spell.id)
                 } : undefined
@@ -2550,7 +2566,8 @@
             const camOpts = opts.cameraOpts || { sourceHold: 900, targetHold: 900 };
             if (profile.camera === 'offensive' && target) {
                 const _VFX = window.ThreeVFXEffects;
-                const _descentCam = (travel === 'descent' && _VFX && _VFX.hasMapping(spell.id, 'descent'))
+                const _descentCam = (travel === 'descent' && _VFX && _VFX.hasMapping(spell.id, 'descent')
+                        && _skyStrikeCamAllowed(spell.id))
                     ? { telegraphMs: _VFX.getDescentTelegraphMs(spell.id),
                         descentMs: _VFX.getDescentDescentMs(spell.id) }
                     : undefined;
@@ -7330,6 +7347,18 @@
             const len = Math.max(1, Math.hypot(dx, dy));
             const dirx = dx / len, diry = dy / len;
 
+            // ONE fixed third-person zoom held for the WHOLE shot — establish on
+            // the caster, tilt UP to watch the body fall in, follow it back DOWN
+            // onto the impact, all at the SAME distance. NO zoom in/out. The old
+            // rig re-derived the zoom per beat from _cineZoomForTiles(5.0 → 6.5 →
+            // 4.0), which not only pumped in and out but sat FAR wider than the
+            // standard action cam (its tile-fit maths lands near ~0.6 zoom vs the
+            // action cam's ~2.0) — that is the "zooms out way too far" the meteor
+            // cam was doing. Reuse the action cam's own signature framing so the
+            // sky-strike shot opens at the exact same third-person distance and
+            // simply cranes up and back down from there.
+            const fixedZoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+
             // Caster + impact-tile elevations (px). The shot is anchored on the
             // CASTER (a 3rd-person of them looking up at the falling body), then
             // resolves down onto the impact tile.
@@ -7373,7 +7402,7 @@
             // 1) Swoop to an over-the-shoulder third-person view of the CASTER
             //    while the telegraph ring forms on the impact tile down-range.
             camera.moveTo({
-                x: ex, y: ey, zoom: _cineZoomForTiles(5.0, ESTAB_TILT), tilt: ESTAB_TILT, yaw,
+                x: ex, y: ey, zoom: fixedZoom, tilt: ESTAB_TILT, yaw,
                 elevZ: casterElevZ,
                 duration: actionMs(440), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true,
@@ -7392,7 +7421,7 @@
                 const upF = Math.min(dist || 1, CINE_FOCAL_LEAD + 1.2);
                 camera.moveTo({
                     x: sx + dirx * upF, y: sy + diry * upF,
-                    zoom: _cineZoomForTiles(6.5, SKY_TILT), tilt: SKY_TILT, yaw,
+                    zoom: fixedZoom, tilt: SKY_TILT, yaw,
                     elevZ: casterPx + ts * 0.55,
                     duration: Math.max(actionMs(260), telegraphMs * 0.9),
                     easing: 'easeOut',
@@ -7408,7 +7437,7 @@
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
                 camera.moveTo({
-                    x: tx, y: ty, zoom: _cineZoomForTiles(4.0, GROUND_TILT), tilt: GROUND_TILT, yaw,
+                    x: tx, y: ty, zoom: fixedZoom, tilt: GROUND_TILT, yaw,
                     elevZ: groundPx + ts * 0.4,
                     duration: Math.max(actionMs(240), descentMs),
                     easing: 'easeIn',
