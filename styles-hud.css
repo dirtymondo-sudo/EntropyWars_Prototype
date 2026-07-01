@@ -1097,6 +1097,7 @@
             left: 12px;
             width: 320px;
             max-height: calc(100vh - 24px);
+            max-height: calc(100dvh - 24px);
             overflow-y: auto;
             z-index: 200;
             background: linear-gradient(168deg, rgba(12,11,20,0.97) 0%, rgba(8,8,16,0.98) 100%);
@@ -2614,7 +2615,9 @@
             align-items: stretch !important;
             justify-content: stretch !important;
             min-height: 100vh;
+            min-height: 100dvh;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             padding: 0 !important;
             gap: 0 !important;
@@ -2637,6 +2640,7 @@
         .app.battle-mode #battlePanel {
             align-self: stretch;
             height: 100vh;
+            height: 100dvh;
             min-height: 0;
             overflow: hidden;
         }
@@ -3146,6 +3150,7 @@
             pointer-events: auto;
             overflow-y: auto;
             max-height: calc(100vh - 80px);
+            max-height: calc(100dvh - 80px);
             scrollbar-width: thin;
             scrollbar-color: rgba(140,140,200,0.1) transparent;
             background: transparent;
@@ -3167,6 +3172,7 @@
             pointer-events: auto;
             overflow-y: auto;
             max-height: calc(100vh - 80px);
+            max-height: calc(100dvh - 80px);
             scrollbar-width: thin;
             scrollbar-color: rgba(140,140,200,0.1) transparent;
             background: transparent;
