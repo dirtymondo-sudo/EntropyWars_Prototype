@@ -1643,9 +1643,9 @@
                 return actionMs(600);
             }
 
-            // Camera: third-person follow behind the caster along the charge, or
-            // the plain top-down path pan if the follow cam declines — mirrors
-            // the dash kind exactly.
+            // Camera: standard static third-person action shot behind the
+            // caster's launch spot (holds while they charge through frame), or
+            // the plain top-down path pan if it declines — mirrors the dash kind.
             if (!state.cameraDisabled) {
                 stopBoardCameraAnimation();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -7199,27 +7199,22 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // animateDashActionCamera() — DISABLED third-person "chase" camera for
-        // dash / charge spells (Brave Charge, dashes, …).
+        // animateDashActionCamera() — STANDARD third-person action shot for dash
+        // / charge spells (Brave Charge, dashes, …).
         //
-        // It used to drop the camera in BEHIND the caster and glide down the
-        // travel line as an over-the-shoulder chase. In practice that framing
-        // sat WAY too close to the unit — you couldn't see the board or what the
-        // charge was hitting — and because it planted a low/craned cinematic
-        // tilt DIRECTLY (bypassing the normal shot machinery) it was a prime
-        // source of the camera getting stranded looking up at the sky when its
-        // restore didn't cleanly fire.
+        // These get the SAME static over-the-shoulder action shot every other
+        // offensive cast gets (identical rig to _playCineActionShot): the camera
+        // swoops in BEHIND the caster's start, looks down the travel line, and
+        // HOLDS while the unit dashes through frame. It deliberately does NOT
+        // glide the focal down the path with the unit — the old "chase" version
+        // did that and it read wrong (the camera raced along with the unit,
+        // sitting too close to follow it). Framing on the START, holding still,
+        // lets you watch the charge cross the board within a steady shot.
         //
-        // So it now DECLINES immediately (returns false): every dash/charge
-        // falls back to animateBoardCameraPath — a plain top-down follow pan at
-        // the player's normal board angle/zoom. That reads clearly (you see the
-        // whole charge) and, crucially, never touches the pitch, so it can't
-        // leave the camera craned up. The old rig is kept below (unreachable)
-        // in case a pulled-back version is ever wanted.
+        // Returns true if it took the camera; false if it declined (the caller
+        // then falls back to the plain path pan).
         // ═══════════════════════════════════════════════════════════════════
         function animateDashActionCamera(fromPoint, toPoint, opts = {}) {
-            return false;
-            // eslint-disable-next-line no-unreachable
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
@@ -7237,8 +7232,9 @@
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
-            // Path-end elevations (px) for the pitch + focal height, so a dash
-            // that climbs or drops keeps the over-the-shoulder line.
+            // Start + destination elevations (px) for the pitch and the above-
+            // target vertical fit, so a charge that climbs or drops still frames
+            // both ends cleanly.
             let fromPx = 0, toPx = 0;
             if (typeof window._getElevationPx === 'function' && typeof getHeightAt === 'function') {
                 const fh = getHeightAt(Math.round(fromPoint.x), Math.round(fromPoint.y));
@@ -7255,19 +7251,33 @@
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
                 Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
 
-            // SUBJECT SIZE: tight signature framing, easing back a touch for a
-            // long dash so the whole path fits.
-            const zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
-            const duration = Math.max(200, opts.duration ?? 1400);
+            // FOCAL (screen centre): a FIXED short lead in front of the caster's
+            // START — exactly like _playCineActionShot — so the shot HOLDS on the
+            // caster's launch spot and never chases the unit down the path. Its
+            // height lifts toward a higher destination so start and end straddle
+            // screen centre.
+            const fx = fromPoint.x + dirx * CINE_FOCAL_LEAD_TILES;
+            const fy = fromPoint.y + diry * CINE_FOCAL_LEAD_TILES;
+            const upGapPx = Math.max(0, toPx - fromPx);
+            const elevZ = fromPx + ts * CINE_FOCAL_RISE + upGapPx * CINE_UP_FRAME_BIAS;
+
+            // SUBJECT SIZE: signature framing, easing back for a long charge so
+            // the whole path fits; widen further for a climb so the high end
+            // (plus its HP bar) clears the top. Same fit as the attack cam.
+            let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+            if (upGapPx > 0) {
+                const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
+                zoom = Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt));
+            }
 
             // Take ownership as a cinematic shot so: (a) the renderer's occlusion
-            // fade keeps the dashing caster (camera._cineShotUnitId, tracked at
-            // its LIVE tween position) and the landing tile clear, (b) the rig's
-            // keep-subject dolly-in floor response keeps the caster framed while
-            // the pitch cranes with a slope, and (c) finishAction's
-            // softResetToUnit un-tilts back to the resting angle on the caster's
-            // NEW tile once the dash lands. Capture the return framing only from
-            // a genuine gameplay pose (see the note in _playCineActionShot).
+            // fade keeps the dashing caster (camera._cineShotUnitId) and the
+            // landing tile clear, (b) the rig's keep-subject dolly-in floor
+            // response keeps the caster framed while the pitch cranes with a
+            // slope, and (c) the auto-side debounced settle / finishAction's
+            // softResetToUnit un-tilts back to the resting angle once the dash
+            // lands. Capture the return framing only from a genuine gameplay pose
+            // (see the note in _playCineActionShot).
             const sequenceId = ++boardCameraSequenceId;
             if (!camera._preCineView && camera._cineShotId == null) {
                 camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
@@ -7277,29 +7287,13 @@
             camera._cineShotTarget = { x: toPoint.x, y: toPoint.y, id: null };
             camera._cineKeepSubject = true;
 
-            // Plant the third-person orientation on THIS frame — the per-frame
-            // damping in _apply() swings tilt/yaw in over ~0.12s (a fast plant,
-            // not a hard cut), so the POV is a consistent over-the-shoulder chase
-            // for the whole charge instead of only arriving at third-person as it
-            // lands. Setting them directly (not via snap()) keeps the resting
-            // _restTilt/_restYaw untouched so the return angle is preserved. The
-            // focal then glides start→end with easeOut to match the unit's
-            // displacement tween (three-renderer startDisplaceTween uses _easeOut),
-            // so the camera stays locked to the caster; zoom dollies in over the
-            // same travel via the tween below.
-            camera.tilt = tilt;
-            camera.yaw  = yaw;
-
-            // FOCAL (screen centre): a FIXED short lead in front of the caster
-            // down the path, so the caster holds the same foreground spot the
-            // whole dash and can never slide off-screen.
-            const endFx = toPoint.x + dirx * CINE_FOCAL_LEAD_TILES;
-            const endFy = toPoint.y + diry * CINE_FOCAL_LEAD_TILES;
-            const endElevZ = toPx + ts * CINE_FOCAL_RISE;
-
+            // ONE smooth swoop into the static over-the-shoulder framing (tilt/
+            // yaw/zoom tween in, not a hard cut), then HOLD — the camera stays put
+            // on the launch spot while the unit dashes through frame. No path
+            // glide, so it never chases the unit.
             camera.moveTo({
-                x: endFx, y: endFy, zoom, tilt, yaw, elevZ: endElevZ,
-                duration, easing: 'easeOut',
+                x: fx, y: fy, zoom, tilt, yaw, elevZ,
+                duration: actionMs(480), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true,
                 _fogAllowed: opts._fogAllowed || undefined
             });
@@ -22972,10 +22966,11 @@
                 if (!state.cameraDisabled) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    // With the cinematic action camera on, ride BEHIND the caster
-                    // in third-person and follow the charge down its path (same
-                    // POV as every other action shot); otherwise keep the plain
-                    // top-down path pan.
+                    // With the cinematic action camera on, take the standard
+                    // static third-person action shot behind the caster's launch
+                    // spot — it holds while the unit dashes through frame (same
+                    // shot as every other offensive cast, no path chasing);
+                    // otherwise keep the plain top-down path pan.
                     const _dashFollowed = state.cinematicActionCam && animateDashActionCamera(
                         { x: casterStartX, y: casterStartY },
                         { x: x, y: y },
