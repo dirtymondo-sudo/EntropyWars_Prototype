@@ -2697,7 +2697,7 @@ const JOB_MODIFIERS = {
         atk: 22,
         def: -15,
         mdef: -5,
-        move: 0,
+        move: -1,
         awr: +3,
         int: 0,
         spd: +1,
@@ -3967,12 +3967,14 @@ const SPELL_LIBRARY = [
         damageType: 'physical',
         projectileOverride: 'proj-bullet',
         ignoreArmor: true,
-        selfStun: 1,
+        delayedMark: true,
+        markDelayRounds: 1,
+        requireVision: true,
         tier: 'III',
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        desc: 'A lethal armor-piercing shot. The recoil stuns the Sniper — cannot move next turn.'
+        desc: 'Paint a target with a laser sight instead of firing. The lethal armor-piercing shot lands at the end of the round — but ONLY if your team still has eyes on the target. Break their line of sight and the shot is wasted.'
     },
     {
         id: 'spotter',
@@ -7371,6 +7373,19 @@ const STATUS_DEFS = {
         spriteName: 'marked',
         spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/marked.png',
         iconSrc: createStatusIconDataUri('🎯', '#4b1a24', '#ffe4e8', '#ff6d8d')
+    },
+    lasered: {
+        icon: '🔴',
+        glyph: '🔴',
+        short: 'LZR',
+        label: 'Laser Sighted',
+        colorText: 'laser-sighted',
+        // 'marker' (not 'debuff') so the paint is never resisted — the laser
+        // always lands; the counterplay is breaking line of sight, not a dice roll.
+        kind: 'marker',
+        category: 'status',
+        stack: 'replace',
+        iconSrc: createStatusIconDataUri('🔴', '#3a0a0a', '#ffd9d9', '#ff2b2b')
     },
     jammed: {
         icon: '📵',

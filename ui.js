@@ -1005,9 +1005,15 @@
         }
 
         for (const ds of (state._delayedSpells || [])) {
-          const r = ds.aoeRadius || 1;
-          const tiles = _squareTilesFor(ds.x, ds.y, r);
-          const color = ZONE_OUTLINE_COLORS_BY_NAME[ds.spellName] || ZONE_OUTLINE_COLORS_BY_TYPE.delayed;
+          let dx = ds.x, dy = ds.y, dr = ds.aoeRadius || 1;
+          let color = ZONE_OUTLINE_COLORS_BY_NAME[ds.spellName] || ZONE_OUTLINE_COLORS_BY_TYPE.delayed;
+          if (ds.markedUnitId) {
+            const _mu = (state.units || []).find(u => u.id === ds.markedUnitId && !u.dead);
+            if (!_mu) continue;            // painted target gone — no dot
+            dx = _mu.x; dy = _mu.y; dr = 0; // single-tile red laser dot that follows them
+            color = '#ff2b2b';
+          }
+          const tiles = _squareTilesFor(dx, dy, dr);
           _zoneGroups.push({ tiles, color, dashed: true });
         }
 
@@ -1126,9 +1132,15 @@
       }
 
       for (const ds of (state._delayedSpells || [])) {
-        const r = ds.aoeRadius || 1;
-        const tiles = _squareTilesFor(ds.x, ds.y, r);
-        const color = ZONE_OUTLINE_COLORS_BY_NAME[ds.spellName] || ZONE_OUTLINE_COLORS_BY_TYPE.delayed;
+        let dx = ds.x, dy = ds.y, dr = ds.aoeRadius || 1;
+        let color = ZONE_OUTLINE_COLORS_BY_NAME[ds.spellName] || ZONE_OUTLINE_COLORS_BY_TYPE.delayed;
+        if (ds.markedUnitId) {
+          const _mu = (state.units || []).find(u => u.id === ds.markedUnitId && !u.dead);
+          if (!_mu) continue;             // painted target gone — no dot
+          dx = _mu.x; dy = _mu.y; dr = 0; // single-tile red laser dot that follows them
+          color = '#ff2b2b';
+        }
+        const tiles = _squareTilesFor(dx, dy, dr);
         _drawOutline(tiles, color, { dashed: true, strokeWidth: 2.5 });
       }
     }

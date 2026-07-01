@@ -2005,6 +2005,65 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // _castLaserMark() — delayed, vision-gated sniper shot (Headshot).
+        // Instead of firing immediately, the sniper paints the target with a red
+        // laser sight. A pending shot is queued in state._delayedSpells and
+        // resolves at the end of the round via _detonateDelayedSpell — but only
+        // if the caster's team still has eyes on the target. Break line of sight
+        // and the shot is wasted.
+        // ═══════════════════════════════════════════════════════════════════
+        function _castLaserMark(unit, spell, target, x, y, z, effectiveSpellCost, spellPower) {
+            unit.mp -= effectiveSpellCost;
+
+            focusUnitPanel(target.id);
+            playSfx(spellLaunchSfx(spell));
+            const cam = playOffensiveActionCamera(unit, target, {
+                sourceHold: 500, targetHold: 700, attackName: spell.name
+            });
+
+            // Red targeting-laser sweep from the sniper to the painted target.
+            const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(400));
+            window.setTimeout(() => {
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    playProjectileToUnit(unit, target, 'damage', actionMs(220),
+                        spell.spellType, spell.projectileOverride || 'proj-bullet', spell);
+                }
+            }, projectileDelay);
+
+            // Paint the target — the 🔴 status follows them until the shot resolves.
+            const delayRounds = spell.markDelayRounds || 1;
+            applyStatusEffects(target, [{ id: 'lasered', duration: delayRounds + 1 }],
+                `${spell.name}: `, unit);
+            if (typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(target, '🔴 PAINTED', 'streak', { durationMs: 1100 });
+            }
+
+            const dmg = Math.max(32, (spell.dmg || 180) + (spellPower || 0));
+            if (!state._delayedSpells) state._delayedSpells = [];
+            state._delayedSpells.push({
+                x: target.x, y: target.y, z: target.z ?? 0,
+                dmg,
+                aoeRadius: 0,
+                markedUnitId: target.id,
+                requireVision: spell.requireVision !== false,
+                ignoreArmor: !!spell.ignoreArmor,
+                sourceUnitId: unit.id,
+                sourcePlayer: unit.player,
+                spellId: spell.id,
+                spellType: spell.spellType,
+                damageType: spell.damageType || 'physical',
+                spellName: spell.name,
+                roundsLeft: delayRounds,
+                statusEffects: spell.statusEffects || []
+            });
+
+            addLog(`🔴 ${unitDisplayName(unit)} paints ${unitDisplayName(target)} with ${spell.name} — the shot lands at the end of the round unless they break the laser's line of sight.`, unit.player);
+            scheduleBoardRender();
+
+            return Math.max(cam?.totalMs ?? actionMs(900), projectileDelay + actionMs(400));
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // _applyMultiHitDamage() — resolves damage for multiHit spells.
         // Staggers multiple hits with per-hit projectiles/strike leaps.
         // Called at impactDelay; internally schedules subsequent hits.
@@ -20275,7 +20334,12 @@
                     markDirty('selectedUnit', 'hud');
                 }
 
-                if (spell.id === 'raceProbe') {
+                if (spell.delayedMark && target) {
+                    // Laser-sight shots (Headshot) don't fire now — they paint the
+                    // target and resolve at the end of the round, vision permitting.
+                    completionDelay = _castLaserMark(
+                        unit, spell, target, x, y, z, effectiveSpellCost, spellPower);
+                } else if (spell.id === 'raceProbe') {
                     // ── Probe: a UFO hovers and extends a metal probe down to pierce
                     //    the target (no horizontal projectile). ──
                     focusUnitPanel(target.id);

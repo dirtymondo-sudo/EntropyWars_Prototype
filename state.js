@@ -2,7 +2,7 @@
             return Math.floor(Math.random() * n);
         }
 
-        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','jammed','drowning','lava_burn','protect']);
+        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','lava_burn','protect']);
 
         const GAME_MODES = {
             normal: {
@@ -1018,6 +1018,13 @@
 
                 const ds = detonating[idx++];
 
+                // A unit-tracking laser mark (Headshot) follows its target — aim the
+                // detonation camera at wherever the marked unit is standing now.
+                if (ds.markedUnitId) {
+                    const _mk = state.units.find(u => u.id === ds.markedUnitId && !u.dead);
+                    if (_mk) { ds.x = _mk.x; ds.y = _mk.y; ds.z = _mk.z ?? ds.z; }
+                }
+
                 const isVisible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(ds.x, ds.y));
                 if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
                     const _detZoom = (typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
@@ -1062,9 +1069,45 @@
         }
 
         function _detonateDelayedSpell(ds) {
+            const sourceUnit = state.units.find(u => u.id === ds.sourceUnitId);
+
+            // ── Unit-tracking laser mark (Headshot) ──────────────────────────
+            // The shot follows the painted target rather than a fixed tile, and
+            // only lands if the caster's team STILL has eyes on them. Break line
+            // of sight (move out of awareness / into smoke) and the shot is lost.
+            if (ds.markedUnitId) {
+                const mark = state.units.find(u => u.id === ds.markedUnitId);
+                if (mark && typeof clearStatus === 'function') clearStatus(mark, 'lasered');
+                if (!mark || mark.dead) {
+                    addLog(`🔴 ${ds.spellName}: the target is already down — the shot is wasted.`);
+                    return;
+                }
+                const stillSeen = !ds.requireVision
+                    || (typeof _isUnitVisibleToViewer !== 'function')
+                    || _isUnitVisibleToViewer(mark, ds.sourcePlayer);
+                if (!stillSeen) {
+                    addLog(`🔴 ${ds.spellName} loses its lock — ${unitDisplayName(mark)} slipped out of sight!`, ds.sourcePlayer);
+                    if (typeof showFloatingTextForUnit === 'function') {
+                        showFloatingTextForUnit(mark, 'Sight lost!', 'streak', { durationMs: 1000 });
+                    }
+                    return;
+                }
+                applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
+                    sourceUnit,
+                    damageType: ds.damageType || 'physical',
+                    spellType: ds.spellType || null,
+                    ignoreArmor: !!ds.ignoreArmor,
+                    flashColor: 'hit'
+                });
+                for (const eff of (ds.statusEffects || [])) {
+                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
+                }
+                addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
+                return;
+            }
+
             const area = getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
             const allUnits = state.units.filter(u => !u.dead);
-            const sourceUnit = state.units.find(u => u.id === ds.sourceUnitId);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
                 if (hit && !hit.dead) {

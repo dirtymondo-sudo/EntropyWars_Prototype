@@ -206,6 +206,30 @@ are on R2 → re-upload `three-renderer.js`, `hud.js`, `ui.js`, `battle.js`.**
   spell type colour (`_actionPlanArrowColor`), caster ghost = team colour,
   shove ghost/arrow = magenta(push)/cyan(pull).
 
+## Sniper rework — Headshot delayed laser mark + move nerf (2026-07-01)
+Headshot was too strong as an instant 180 armour-piercing nuke. It is now a
+**delayed, vision-gated shot** instead of firing immediately:
+- Cast paints the enemy with a red laser dot (`lasered` status → red **LZR** plate
+  badge + a red single-tile board overlay that FOLLOWS the unit) — see
+  `_castLaserMark()` in battle.js. No damage lands on cast.
+- A pending shot is queued in `state._delayedSpells` with `markedUnitId`,
+  `requireVision:true`, `roundsLeft:1`. It resolves at END OF ROUND via
+  `_detonateDelayedSpell()` in state.js (the unit-tracking branch at the top).
+- The 180 dmg only lands if the caster's team STILL sees the target at detonation
+  (`_isUnitVisibleToViewer(mark, sourcePlayer)`, battle.js — awareness-range +
+  wards, minus smoke/concealment). Break LOS / move out of awr and the shot is
+  wasted (logs "slipped out of sight"). `selfStun` was removed (the delay is the
+  drawback now). Data: `headshot` gains `delayedMark/markDelayRounds/requireVision`.
+- Precision Shot is unchanged (still the instant one).
+- Sniper MOVE nerfed: `JOB_MODIFIERS.Sniper.move` 0 → **-1** (most sniper races go
+  2 → 1 move) so they must commit to a firing position.
+- New status id `lasered` is registered in `_STATUS_EFFECT_IDS` (state.js) and
+  `STATUS_DEFS` (data.js, `kind:'marker'` so it is NOT resistable), red badge colour
+  in three-renderer `_SB_COLORS`. Board overlays (ui.js ×2, three-renderer) resolve
+  `markedUnitId` → live unit tile so the dot tracks the target.
+- NOTE: files load from R2, so this can only be tested after the user uploads the
+  edited files. Not smoke-tested locally.
+
 ## Known findings (from playtests)
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the
   spell" bugs):** highlight (`getMoveTiles`/`getSpellRangeTiles`) and execution

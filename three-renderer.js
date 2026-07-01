@@ -5072,7 +5072,7 @@ const ThreeRenderer = (function () {
         if (typeof getActiveStatusKeys === 'function' && typeof _STATUS_EFFECT_IDS !== 'undefined') {
             var _SB_COLORS = {
                 burn:'#c0392b',poison:'#27ae60',silence:'#7f8c8d',stun:'#f39c12',
-                stagger:'#e67e22',marked:'#e74c6f',jammed:'#8e44ad',drowning:'#2980b9',
+                stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
                 lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
                 invisible:'#1a7a4a'
             };
@@ -11310,6 +11310,17 @@ const ThreeRenderer = (function () {
 
         var zones = state._activeZones || [];
         var delayed = state._delayedSpells || [];
+        // Unit-tracking laser marks (Headshot) follow their target — sync the
+        // overlay position to the painted unit so the red dot rides along.
+        for (var _mdi = 0; _mdi < delayed.length; _mdi++) {
+            var _md = delayed[_mdi];
+            if (_md && _md.markedUnitId) {
+                for (var _mui = 0; _mui < state.units.length; _mui++) {
+                    var _mu = state.units[_mui];
+                    if (_mu.id === _md.markedUnitId && !_mu.dead) { _md.x = _mu.x; _md.y = _mu.y; break; }
+                }
+            }
+        }
         var zKey = '';
         for (var zi = 0; zi < zones.length; zi++) {
             var z = zones[zi];
@@ -11347,9 +11358,9 @@ const ThreeRenderer = (function () {
 
             for (var ddi = 0; ddi < delayed.length; ddi++) {
                 var dd = delayed[ddi];
-                var dr = dd.aoeRadius || 1;
+                var dr = dd.markedUnitId ? 0 : (dd.aoeRadius || 1);
                 var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr);
-                _renderZoneBorderGroup(dInfo, 0xdd4444);
+                _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444);
             }
         }
     }
