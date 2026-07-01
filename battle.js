@@ -10238,6 +10238,46 @@
             return getJumpTiles(unit);
         }
 
+        // In-place HEIGHT approaches — a repositioning verb that changes the caster's
+        // standing height WITHOUT leaving its tile, which can unlock a spell:
+        //   • TAKE OFF (flyer, grounded → airborne) — reach airborne targets / clear LOS.
+        //   • LAND     (flyer, airborne → ground)   — for casts that need the ground.
+        //   • RAISE    (non-flyer)                  — raise the ground underfoot to tower
+        //     over an enemy so above-target / leap spells become castable (the ground
+        //     unit's analogue of taking off).
+        // Each costs its action's AP (1) on top of the spell's AP. The probe z mirrors
+        // doAltitudeChange / doReshape so the reachability test matches what execution
+        // will actually produce. Returns [{ mode:'takeoff'|'land'|'raise', z, apCost }].
+        function _spellHeightApproaches(unit, spell) {
+            if (!unit || !spell) return [];
+            const spellAp = getSpellApCost(spell);
+            const out = [];
+            if (typeof canFly === 'function' && canFly(unit)) {
+                if (typeof canChangeAltitude !== 'function' || typeof FLYING_ALTITUDE_CONFIG === 'undefined') return out;
+                const altAp = FLYING_ALTITUDE_CONFIG.apCost;
+                if ((unit.ap || 0) < altAp + spellAp) return out;
+                const groundZ = getHeightAt(unit.x, unit.y);
+                const airborne = (typeof isUnitAirborne === 'function') ? isUnitAirborne(unit) : ((unit.z ?? 0) > groundZ);
+                if (!airborne && canChangeAltitude(unit, 'ascend').ok) {
+                    const minZ = getMinFlyingZ(unit.x, unit.y);
+                    const maxZ = getMaxFlyingZ(unit.x, unit.y);
+                    let z = ((unit.z ?? 0) <= groundZ) ? minZ : (unit.z ?? 0) + 1;
+                    z = Math.min(z, maxZ);
+                    out.push({ mode: 'takeoff', z, apCost: altAp });
+                } else if (airborne && canChangeAltitude(unit, 'descend').ok) {
+                    out.push({ mode: 'land', z: groundZ, apCost: altAp });
+                }
+            } else if (typeof canReshapeTile === 'function' && typeof TERRAIN_RESHAPE_CONFIG !== 'undefined') {
+                const rsAp = TERRAIN_RESHAPE_CONFIG.apCost;
+                if ((unit.ap || 0) < rsAp + spellAp) return out;
+                if (canReshapeTile(unit, 'raise').ok) {
+                    const baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(unit.x, unit.y) : (unit.z ?? 0);
+                    out.push({ mode: 'raise', z: baseH + 1, apCost: rsAp });
+                }
+            }
+            return out;
+        }
+
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
         function spellHasReachableTarget(unit, spell) {
@@ -10276,6 +10316,14 @@
                         }
                     }
                 }
+                // Height approach: take off / land / raise terrain in place, then cast.
+                // Independent of the walk budget (its own AP action), so a unit that
+                // already spent its moves can still unlock an above-target/airborne cast.
+                for (const hp of _spellHeightApproaches(unit, spell)) {
+                    unit.z = hp.z;
+                    if (hasSpellTargetInRange(unit, spell)) return true;
+                    unit.z = sz;
+                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
@@ -10288,13 +10336,17 @@
         // matching the quick-action menu's findMoveIntoRange.
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
             const steps = _spellMoveBudget(unit, spell);
-            if (steps <= 0) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _hitsTarget = () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
             try {
-                const ring1 = getMoveTiles(unit);
+                // Walk approach (1–2 steps). Jump / take-off tiles that getMoveTiles folds
+                // into the walk set are SKIPPED here — they aren't reachable by a plain
+                // doMove; the dedicated jump / height approaches below execute them with
+                // the right verb (doJump / doAltitudeChange).
+                const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
+                    if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
                     if (_hitsTarget()) {
@@ -10306,10 +10358,12 @@
                 if (best) return best;
                 if (steps >= 2) {
                     for (const t1 of ring1) {
+                        if (t1._jump || t1._takeoff) continue;
                         if (unitAt(t1.x, t1.y, t1.z)) continue;
                         unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
                         const r2 = getMoveTiles(unit);
                         for (const t2 of r2) {
+                            if (t2._jump || t2._takeoff) continue;
                             if (unitAt(t2.x, t2.y, t2.z)) continue;
                             unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
                             if (_hitsTarget()) {
@@ -10322,20 +10376,31 @@
                         }
                         unit.x = sx; unit.y = sy; unit.z = sz;
                     }
+                    if (best) return best;
                 }
-                // Jump approach — only if walking can't reach a cast position (e.g. an
+                // Jump approach — leap to high ground / over a gap, then cast (e.g. an
                 // elevation-gated spell that needs high ground a walk can't climb to).
                 // A single deliberate leap, so no via chaining.
-                if (!best) {
-                    for (const jt of _spellJumpApproachTiles(unit, spell)) {
-                        if (unitAt(jt.x, jt.y, jt.z)) continue;
-                        unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
-                        if (_hitsTarget()) {
-                            const d = Math.abs(jt.x - tx) + Math.abs(jt.y - ty);
-                            if (d > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = d; }
-                        }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
+                for (const jt of _spellJumpApproachTiles(unit, spell)) {
+                    if (unitAt(jt.x, jt.y, jt.z)) continue;
+                    unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
+                    if (_hitsTarget()) {
+                        const d = Math.abs(jt.x - tx) + Math.abs(jt.y - ty);
+                        if (d > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = d; }
                     }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
+                // Height approach — take off / land / raise terrain in place, then cast.
+                // Last resort (costs its own AP), and only when no move/jump reaches.
+                for (const hp of _spellHeightApproaches(unit, spell)) {
+                    unit.z = hp.z;
+                    if (_hitsTarget()) {
+                        best = { x: sx, y: sy, z: hp.z, moveCost: hp.apCost, _heightApproach: hp.mode };
+                        unit.z = sz;
+                        break;
+                    }
+                    unit.z = sz;
                 }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -10419,8 +10484,23 @@
                 // arc (~650ms) to land before the cast fires.
                 setTimeout(next, 680);
             };
+            const _heightStep = (mode, next) => {
+                // Take off / land (flyers) or raise the ground underfoot (non-flyers)
+                // in place, then cast — the reposition the approach finder promised.
+                let r;
+                if (mode === 'raise') {
+                    r = (typeof doReshape === 'function') ? doReshape(unit, 'raise') : 0;
+                } else {
+                    r = (typeof doAltitudeChange === 'function')
+                        ? doAltitudeChange(unit, mode === 'takeoff' ? 'ascend' : 'descend') : 0;
+                }
+                if (r === 0 || r === false) { _bail(); return; }
+                setTimeout(next, 560);
+            };
             if (approach._jump) {
                 _jumpStep(approach.x, approach.y, approach.z, _cast);
+            } else if (approach._heightApproach) {
+                _heightStep(approach._heightApproach, _cast);
             } else if (approach.via) {
                 _step(approach.via.x, approach.via.y, approach.via.z, () => {
                     _step(approach.x, approach.y, approach.z, _cast);
@@ -10693,6 +10773,15 @@
                 ThreeRenderer.clearGhostUnit();
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const targetY = ThreeRenderer.tileTopY(tx, ty);
+
+                // In-place height approach (take off / land / raise) — casts from the
+                // caster's own tile, so there's no move arrow/ghost, just aim the target.
+                if (approach._heightApproach) {
+                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff4444, false, actingY, targetY);
+                    ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                    state._spellApproachActive = true;
+                    return;
+                }
 
                 let destY;
                 if (typeof canFly === 'function' && canFly(unit)

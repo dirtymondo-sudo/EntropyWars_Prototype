@@ -2322,6 +2322,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
       const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
       inSpellRange = dist >= minRange && dist <= spRange && !spLos;
+      // Authoritative fallback: trust the engine's own range set (the same one the
+      // board highlight + doSpell use) so a spell is never greyed here when it's
+      // actually castable from where the unit stands.
+      if (!inSpellRange && typeof getSpellRangeTiles === 'function'
+          && getSpellRangeTiles(actingUnit, sp).some(t => t.x === tx && t.y === ty)) {
+        inSpellRange = true;
+      }
     }
 
     const canCast = canAfford && tierOk && inSpellRange;
@@ -2347,7 +2354,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         spMoveTile = (targetUnit && typeof findSpellApproachTile === 'function')
           ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z) : null;
       } else {
-        spMoveTile = findMoveIntoRange(spRange, spellApCost);
+        // Use the engine's authoritative approach finder (walk + jump + take-off /
+        // land / raise-terrain) so the quick-cast menu offers the SAME move-then-cast
+        // the ability menu and board-click already do — no more spells greyed here
+        // that you can actually cast after repositioning first.
+        spMoveTile = (typeof findSpellApproachTile === 'function')
+          ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z)
+          : findMoveIntoRange(spRange, spellApCost);
       }
       if (spMoveTile && (unitAP - spMoveTile.moveCost) < spellApCost) spMoveTile = null;
     }
@@ -2526,7 +2539,9 @@ function EnemyActionMenu({ st }) {
 
     const targetY = ThreeRenderer.unitSurfaceY(targetUnit);
 
-    if (mt) {
+    // A height approach (take off / land / raise) casts from the caster's own tile,
+    // so there's no walk arrow to draw — fall through to the direct caster→target arrow.
+    if (mt && !mt._heightApproach) {
 
       let destY;
       if (typeof canFly === 'function' && canFly(actingUnit) &&
@@ -2662,7 +2677,13 @@ function EnemyActionMenu({ st }) {
       actions.map((a, i) => {
         const isAvail = a.available;
         const isMove = !!a.moveTile;
-        const moveCostLabel = isMove ? a.moveTile.moveCost + ' mv + ' : '';
+        const _mvVerb = isMove
+          ? (a.moveTile._heightApproach === 'takeoff' ? 'take off'
+            : a.moveTile._heightApproach === 'land' ? 'land'
+            : a.moveTile._heightApproach === 'raise' ? 'raise'
+            : a.moveTile._jump ? 'jump' : null)
+          : null;
+        const moveCostLabel = isMove ? (_mvVerb ? _mvVerb + ' + ' : a.moveTile.moveCost + ' mv + ') : '';
         const costLabel = a.mpCost
           ? moveCostLabel + a.mpCost + 'mp · ' + a.apCost + 'ap'
           : moveCostLabel + a.apCost + 'ap';
@@ -2773,6 +2794,28 @@ function EnemyActionMenu({ st }) {
               setTimeout(() => {
                 _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
               }, 680);
+            } else if (mt._heightApproach) {
+              // Take off / land (flyers) or raise the ground underfoot (non-flyers) in
+              // place, then cast — mirrors the engine's _moveThenCast height branch.
+              let hr;
+              if (mt._heightApproach === 'raise') {
+                hr = typeof doReshape === 'function' ? doReshape(actingUnit, 'raise') : 0;
+              } else {
+                hr = typeof doAltitudeChange === 'function'
+                  ? doAltitudeChange(actingUnit, mt._heightApproach === 'takeoff' ? 'ascend' : 'descend') : 0;
+              }
+              if (hr === 0 || hr === false) {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.selectedTool = null;
+                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+                if (typeof renderIfDirty === 'function') renderIfDirty();
+                return;
+              }
+              setTimeout(() => {
+                _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+              }, 560);
             } else if (mt.via) {
 
               const moveResult1 = typeof doMove === 'function' ? doMove(actingUnit, mt.via.x, mt.via.y, mt.via.z) : false;
@@ -2934,7 +2977,7 @@ function EnemyActionMenu({ st }) {
             isMove && h('span', { style: {
               fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
               color: EW.warn, flexShrink: 0,
-            }}, '· ↳ MOVE ' + a.moveTile.moveCost + 'mv'),
+            }}, '· ↳ ' + (_mvVerb ? _mvVerb.toUpperCase() : 'MOVE ' + a.moveTile.moveCost + 'mv')),
             h('span', { style: { flex: 1 }}),
             (!isAvail && a.reason)
               ? h('span', { style: {
