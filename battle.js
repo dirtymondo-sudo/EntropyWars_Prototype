@@ -6635,6 +6635,13 @@
                     // own zoom), so tilt and zoom never restore on split timelines.
                     ...(_cineRet ? { tilt: _cineRetTilt, yaw: _cineRetYaw,
                         ...(opts._applyZoom ? {} : { zoom: _cineRetZoom, _allowZoomChange: true, _bypassCap: true }) } : {}),
+                    // Explicit orientation from the caller (e.g. an auto-side turn
+                    // activation forcing an un-tilt back to the resting board angle
+                    // so consecutive AI turns never inherit the previous action's
+                    // craned-up cinematic tilt). Applied even for auto sides, where
+                    // _cineRet is intentionally suppressed.
+                    ...(opts.tilt !== undefined ? { tilt: opts.tilt } : {}),
+                    ...(opts.yaw  !== undefined ? { yaw:  opts.yaw  } : {}),
                     duration: opts.transitionMs ?? 600,
                     easing: 'easeInOut',
                     elevZ: focusElevZ,
@@ -15851,13 +15858,29 @@
                         : (_localActiveTurn ? getTurnFramingZoom() : getDefaultZoom());
 
                     if (_cameraActingSideIsAuto()) {
-                        // Auto / AI side: keep the cinematic framing rolling
-                        // between units — just follow the new unit without
-                        // yanking the orientation back to overhead.
+                        // Auto / AI side: follow the newly-activated unit, but
+                        // ALWAYS un-tilt back to the resting board orientation as
+                        // the turn passes to a new unit. Keeping the previous
+                        // action's cinematic tilt between units left the camera
+                        // craned up — after an attack/cast at a HIGHER target it
+                        // ends up staring at the sky, so subsequent enemy turns
+                        // showed nothing of the map until a human unit's turn
+                        // finally reset it (and then re-derived the gameplay zoom
+                        // from the craned tilt, pulling it way out). Resetting the
+                        // orientation per AI turn keeps the board visible and the
+                        // zoom sane. We follow the new unit at whatever zoom the
+                        // previous framing left (zoom is only re-applied for the
+                        // local player's own turn), only the angle is restored.
+                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        camera._preCineView = null;
+                        camera._cineKeepSubject = false;
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
                             _applyZoom: _localActiveTurn,
                             _bypassCap: _localActiveTurn,
+                            tilt: _retTilt,
+                            yaw: _retYaw,
                             holdMs: 99999,
                             persist: true,
                             transitionMs: 380
