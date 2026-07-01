@@ -162,12 +162,18 @@ fire/cold spells, no code change is needed — name them with a matching keyword
 `element:`.
 
 ## Action-plan arrow / hologram system (2026-07-01 overhaul)
-The "arrow system in the action menus" = the hover preview that appears when you
-open a unit's quick-action menu against an enemy (`hud.js _showMoveArrowPreview`,
-~2568) and the twin board-hover preview (`battle.js _drawSpellApproachPreview`,
-~10769). Both drive shared THREE primitives in `three-renderer.js`. All three
-files are on R2 → re-upload `three-renderer.js` + `hud.js` for this to go live
-(`battle.js` already benefits from the renderer upgrade without an edit).
+This preview shows up in THREE places, all now upgraded to the same look
+(curved arrows + team-tinted holograms + target displacement holograms):
+1. **Quick-action menu** (hover an enemy, no spell selected) — `hud.js
+   _showMoveArrowPreview` (~2568).
+2. **Main spell menu, in range** (select a spell, hover a reachable tile) —
+   `ui.js updateIntentPreview` → `_renderDisplacementArrows` (~7881): intent
+   badges PLUS arced displacement arrows + a hologram of every unit at the tile
+   it will be pushed/pulled/dashed/teleported/swapped to.
+3. **Main spell menu, out of range** (select a spell, hover a far enemy →
+   move-then-cast) — `battle.js _drawSpellApproachPreview` (~10769).
+All three drive shared THREE primitives in `three-renderer.js`. **All four files
+are on R2 → re-upload `three-renderer.js`, `hud.js`, `ui.js`, `battle.js`.**
 - **`three-renderer.js` arrow builder** — `drawArrow3D(...,opts)` and the new
   **`drawPathArrow3D(waypoints, color, opts)`** both funnel through
   `_buildArrowFromPoints(pts, color, opts)`: a glowing **TubeGeometry** shaft
@@ -185,14 +191,17 @@ files are on R2 → re-upload `three-renderer.js` + `hud.js` for this to go live
   **ring**, and supports **multiple simultaneous ghosts** keyed by `tag`
   (`_ghostGroups[]`). `clearGhostUnit(tag)` clears one; `clearGhostUnit()`
   clears all. Billboarding + pulse iterate the list.
-- **What the spell will DO** — `hud.js _predictTargetShove(spell,target,castX,
-  castY)` replays the engine's displacement loop (push = away from the cast
-  tile by `displaceDistance`/`pushDistance`; pull = toward it by `pullDistance`;
-  stops at edge/obstacle/occupied). When a push/pull/displacement/linePush spell
-  is hovered it drops a **second hologram of the ENEMY at its projected landing
-  tile** (tag `'target'`, magenta push / cyan pull) with a bent arrow tracing
-  the knockback — so the player sees the actual outcome, not just the aim point.
-  Overlay `actionPlanShove` (cleared in `_clearMoveArrowPreview`).
+- **What the spell will DO** — a shove predictor replays the engine's
+  displacement loop (push = away from the cast tile by `displaceDistance`/
+  `pushDistance`; pull = toward it by `pullDistance`; stops at edge/obstacle/
+  occupied) and drops a **second hologram of the ENEMY at its projected landing
+  tile** (magenta push / cyan pull) with a bent arrow tracing the knockback — so
+  the player sees the actual outcome, not just the aim point. Lives as
+  `_predictTargetShove` (hud.js), `_predictSpellApproachShove` +
+  `_drawSpellApproachShove` (battle.js), and inline in `_renderDisplacementArrows`
+  (ui.js, which already computed shove tiles — now adds `_showDisplaceGhost` +
+  arcs). Overlays: `actionPlanShove` / `spellApproachShove` (ui.js reuses the
+  intent-preview clear, which now also calls `clearGhostUnit()`).
 - Colours: walk route gold (jump-approach teal), strike arrow = attack red /
   spell type colour (`_actionPlanArrowColor`), caster ghost = team colour,
   shove ghost/arrow = magenta(push)/cyan(pull).

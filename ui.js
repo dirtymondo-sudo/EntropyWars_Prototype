@@ -7664,6 +7664,7 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 ThreeRenderer.clearIntentBadges();
                 ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit();
             }
         }
 
@@ -7883,6 +7884,14 @@
             if (!projectileLayerEl) return;
             const ts = CONFIG.tileSize || BASE_TILE;
 
+            // Shared colours (match the quick-action menu): push = magenta,
+            // pull = cyan, dash = green, teleport = violet, swap = ice-blue.
+            const PUSH = '#ff66cc', PUSH_H = 0xff66cc;
+            const PULL = '#66ccff', PULL_H = 0x66ccff;
+            const DASH = '#55ff88', DASH_H = 0x55ff88;
+            const TELE = '#bb88ff', TELE_H = 0xbb88ff;
+            const SWAP = '#66ddff', SWAP_H = 0x66ddff;
+
             if (kind === 'pull') {
                 const target = unitAt(tx, ty);
                 if (!target || !isEnemyUnit(caster, target)) return;
@@ -7896,7 +7905,8 @@
                     endX = nx; endY = ny;
                 }
                 if (endX !== target.x || endY !== target.y) {
-                    _drawArrowBetweenTiles(target.x, target.y, endX, endY, '#ffaa33');
+                    _drawArrowBetweenTiles(target.x, target.y, endX, endY, PULL, false, false, { arc: 0.18, flow: true });
+                    _showDisplaceGhost(target, endX, endY, PULL_H);
                 }
             }
 
@@ -7914,7 +7924,8 @@
                         endX = nx; endY = ny;
                     }
                     if (endX !== target.x || endY !== target.y) {
-                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, '#ffaa33');
+                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, PUSH, false, false, { arc: 0.3, flow: true });
+                        _showDisplaceGhost(target, endX, endY, PUSH_H);
                     }
                 }
             }
@@ -7929,7 +7940,8 @@
                     const dy = Math.sign(ty - target.y);
                     const endX = target.x + dx, endY = target.y + dy;
                     if (isInside(endX, endY)) {
-                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, '#ffaa33');
+                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, PULL, false, false, { arc: 0.18, flow: true });
+                        _showDisplaceGhost(target, endX, endY, PULL_H);
                     }
                 }
             }
@@ -7937,8 +7949,11 @@
             if (kind === 'swap') {
                 const target = unitAt(tx, ty);
                 if (target && target.id !== caster.id) {
-                    _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, '#55ddff', true);
-                    _drawArrowBetweenTiles(tx, ty, caster.x, caster.y, '#55ddff', true);
+                    // Both bodies trade places — hologram each at the other's tile.
+                    _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, SWAP, false, false, { arc: 0.28, flow: true });
+                    _drawArrowBetweenTiles(tx, ty, caster.x, caster.y, SWAP, false, false, { arc: 0.28, flow: true });
+                    _showDisplaceGhost(caster, tx, ty, SWAP_H);
+                    _showDisplaceGhost(target, caster.x, caster.y, SWAP_H);
                 }
             }
 
@@ -7954,24 +7969,54 @@
                 );
                 const landTile = adj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
                 if (landTile) {
-                    _drawArrowBetweenTiles(caster.x, caster.y, landTile.x, landTile.y, '#55ff88');
+                    _drawArrowBetweenTiles(caster.x, caster.y, landTile.x, landTile.y, DASH, false, false, { arc: 0.24, flow: true });
+                    _showDisplaceGhost(caster, landTile.x, landTile.y, DASH_H);
                 }
             }
 
             if (kind === 'teleport') {
-                _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, '#bb88ff', false, true);
+                // Teleport is instantaneous — a dotted straight line + a hologram
+                // of the caster at the destination reads better than an arc.
+                _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, TELE, false, true, { arc: 0, flow: false });
+                _showDisplaceGhost(caster, tx, ty, TELE_H);
             }
 
             if (kind === 'displacement') {
                 const target = unitAt(tx, ty);
                 if (target && isEnemyUnit(caster, target)) {
-                    _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, '#55ddff', true);
-                    _drawArrowBetweenTiles(tx, ty, caster.x, caster.y, '#55ddff', true);
+                    // A fling knocks the target AWAY from the caster — trace the
+                    // actual shove and hologram where it lands.
+                    const dx = Math.sign(target.x - caster.x) || 1;
+                    const dy = Math.sign(target.y - caster.y);
+                    const dist = spell.displaceDistance || spell.pushDistance || 2;
+                    let endX = target.x, endY = target.y;
+                    for (let i = 1; i <= dist; i++) {
+                        const nx = target.x + dx * i, ny = target.y + dy * i;
+                        if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                        endX = nx; endY = ny;
+                    }
+                    if (endX !== target.x || endY !== target.y) {
+                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, PUSH, false, false, { arc: 0.3, flow: true });
+                        _showDisplaceGhost(target, endX, endY, PUSH_H);
+                    } else {
+                        _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, PUSH, false, false, { arc: 0.3, flow: true });
+                    }
                 }
             }
         }
 
-        function _drawArrowBetweenTiles(fromX, fromY, toX, toY, color, dashed, dotted) {
+        // Hologram of a unit at the tile a spell will move it to (or the caster's
+        // landing tile for dash/teleport/swap). Mirrors the quick-action menu so
+        // the main spell menu previews WHAT the spell does, not just its aim.
+        function _showDisplaceGhost(unit, x, y, hexColor) {
+            if (!unit) return;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            var surfY = ThreeRenderer.tileTopY(x, y);
+            var tag = 'disp:' + (unit.id != null ? unit.id : (x + ',' + y));
+            ThreeRenderer.showGhostUnit(unit, x, y, surfY, { tag: tag, color: hexColor, opacity: 0.5 });
+        }
+
+        function _drawArrowBetweenTiles(fromX, fromY, toX, toY, color, dashed, dotted, opts) {
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
 
@@ -7979,7 +8024,7 @@
                 if (typeof color === 'string' && color.charAt(0) === '#') {
                     hexColor = parseInt(color.substring(1), 16);
                 }
-                ThreeRenderer.drawArrow3D(fromX, fromY, toX, toY, hexColor, !!dashed);
+                ThreeRenderer.drawArrow3D(fromX, fromY, toX, toY, hexColor, !!dashed, undefined, undefined, opts || {});
                 return;
             }
 

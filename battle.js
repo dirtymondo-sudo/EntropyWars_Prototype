@@ -10763,7 +10763,53 @@
                 ThreeRenderer.clearGhostUnit();
                 ThreeRenderer.clearOverlay('spellApproachMove');
                 ThreeRenderer.clearOverlay('spellApproachTarget');
+                ThreeRenderer.clearOverlay('spellApproachShove');
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        // Predict where a spell will shove/pull its target from the cast tile, so
+        // the approach preview can hologram the outcome (mirrors hud.js).
+        function _predictSpellApproachShove(spell, target, castX, castY) {
+            if (!spell || !target) return null;
+            const k = spell.kind;
+            const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance;
+            const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
+                            || !!spell.pushDistance || !!spell.displaceDistance);
+            if (!isPull && !isPush) return null;
+            let dx, dy, dist, mode;
+            if (isPull) {
+                dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
+                dist = spell.pullDistance || 3; mode = 'pull';
+            } else {
+                dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+                dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
+            }
+            if (dx === 0 && dy === 0) return null;
+            let px = target.x, py = target.y;
+            for (let i = 0; i < dist; i++) {
+                const nx = px + dx, ny = py + dy;
+                if (typeof isInside === 'function' && !isInside(nx, ny)) break;
+                if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
+                if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
+                px = nx; py = ny;
+            }
+            if (px === target.x && py === target.y) return null;
+            return { x: px, y: py, mode };
+        }
+
+        // Hologram + bent arrow showing where the spell will knock/pull the target.
+        function _drawSpellApproachShove(spell, target, castX, castY, targetY) {
+            try {
+                if (!spell || !target) return;
+                const shove = _predictSpellApproachShove(spell, target, castX, castY);
+                if (!shove) return;
+                const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
+                const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
+                ThreeRenderer.showGhostUnit(target, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
+                ThreeRenderer.drawArrow3D(target.x, target.y, shove.x, shove.y, shoveColor, false, targetY, shY,
+                    { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
+                ThreeRenderer.setOverlay('spellApproachShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
+            } catch (e) { /* cosmetic */ }
         }
 
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
@@ -10771,14 +10817,22 @@
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
                 ThreeRenderer.clearArrows3D();
                 ThreeRenderer.clearGhostUnit();
+                ThreeRenderer.clearOverlay('spellApproachShove');
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const targetY = ThreeRenderer.tileTopY(tx, ty);
+                const ghostTint = (typeof getFactionColor === 'function')
+                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                    : 0x66ddff;
+                const _target = typeof unitAt === 'function' ? unitAt(tx, ty) : null;
+                const _spell = (unit.spells || []).find(s => s.name === state.selectedTool)
+                    || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
 
                 // In-place height approach (take off / land / raise) — casts from the
                 // caster's own tile, so there's no move arrow/ghost, just aim the target.
                 if (approach._heightApproach) {
-                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff4444, false, actingY, targetY);
+                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff4444, false, actingY, targetY, { arc: 0.35, flow: true });
                     ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                    _drawSpellApproachShove(_spell, _target, unit.x, unit.y, targetY);
                     state._spellApproachActive = true;
                     return;
                 }
@@ -10797,21 +10851,29 @@
                     destY = ThreeRenderer.tileTopY(approach.x, approach.y);
                 }
 
+                const routeColor = approach._jump ? 0x66ffcc : 0xffcc44;
                 if (approach.via) {
                     const viaY = ThreeRenderer.tileTopY(approach.via.x, approach.via.y);
-                    ThreeRenderer.drawArrow3D(unit.x, unit.y, approach.via.x, approach.via.y, 0xffcc44, true, actingY, viaY);
-                    ThreeRenderer.drawArrow3D(approach.via.x, approach.via.y, approach.x, approach.y, 0xffcc44, true, viaY, destY);
+                    ThreeRenderer.drawPathArrow3D([
+                        { x: unit.x, y: unit.y, yOverride: actingY },
+                        { x: approach.via.x, y: approach.via.y, yOverride: viaY },
+                        { x: approach.x, y: approach.y, yOverride: destY },
+                    ], routeColor);
                     ThreeRenderer.setOverlay('spellApproachMove', [
-                        { x: approach.via.x, y: approach.via.y, color: 0xffcc44, opacity: 0.3 },
-                        { x: approach.x, y: approach.y, color: 0xffcc44, opacity: 0.45 },
-                    ], 0xffcc44, 0.45);
+                        { x: approach.via.x, y: approach.via.y, color: routeColor, opacity: 0.3 },
+                        { x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 },
+                    ], routeColor, 0.45);
                 } else {
-                    ThreeRenderer.drawArrow3D(unit.x, unit.y, approach.x, approach.y, 0xffcc44, true, actingY, destY);
-                    ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: 0xffcc44, opacity: 0.45 }], 0xffcc44, 0.45);
+                    ThreeRenderer.drawPathArrow3D([
+                        { x: unit.x, y: unit.y, yOverride: actingY },
+                        { x: approach.x, y: approach.y, yOverride: destY },
+                    ], routeColor);
+                    ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
                 }
-                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY);
-                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff4444, false, destY, targetY);
+                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff4444, false, destY, targetY, { arc: 0.35, flow: true });
                 ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+                _drawSpellApproachShove(_spell, _target, approach.x, approach.y, targetY);
                 state._spellApproachActive = true;
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
