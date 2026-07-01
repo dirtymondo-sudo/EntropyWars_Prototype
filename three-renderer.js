@@ -7784,18 +7784,63 @@ const ThreeRenderer = (function () {
         };
     }
 
-    function _buildTetherMesh(kind) {
+    // A slightly drooping rope path (from → to) with a gentle catenary sag so a
+    // slack rope reads as rope, not a taut laser line.
+    function _tetherCurve(from, to) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+        var len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        var end = new THREE.Vector3(to.x, to.y, to.z);
+        // Guard against a degenerate zero-length curve (from ≈ to on the first
+        // build) which would give TubeGeometry NaN Frenet frames — nudge the tip.
+        if (len < 0.5) { end.x += 0.5; len = 0.5; }
+        var mid = new THREE.Vector3((from.x + end.x) / 2, (from.y + end.y) / 2, (from.z + end.z) / 2);
+        mid.y -= Math.min(len * 0.12, ts * 0.5);
+        return new THREE.CatmullRomCurve3([
+            new THREE.Vector3(from.x, from.y, from.z),
+            mid,
+            end
+        ]);
+    }
+
+    // A recognizable grappling-hook tip: a central shaft + forward spike plus
+    // three curved flukes radiating around the shaft, so it reads as a hook from
+    // any camera angle. Textured with the same rope sprite (tinted metallic) so
+    // the hook and its rope share a material. Only the shaft axis needs aligning
+    // to the rope tangent; the claw is radially symmetric.
+    function _buildHookMesh(ropeTex) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var grp = new THREE.Group();
+        var mat = new THREE.MeshBasicMaterial({
+            map: ropeTex, color: 0x7a6a4c,
+            transparent: true, alphaTest: 0.06, side: THREE.DoubleSide, depthWrite: false
+        });
+        var tube = ts * 0.028;
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(tube, tube, ts * 0.22, 6), mat);
+        shaft.rotation.x = Math.PI / 2;
+        grp.add(shaft);
+        var spike = new THREE.Mesh(new THREE.ConeGeometry(tube * 1.7, ts * 0.15, 8), mat);
+        spike.rotation.x = Math.PI / 2;
+        spike.position.z = ts * 0.17;
+        grp.add(spike);
+        var fr = ts * 0.09;
+        for (var f = 0; f < 3; f++) {
+            var claw = new THREE.Group();
+            var fluke = new THREE.Mesh(new THREE.TorusGeometry(fr, tube, 6, 12, Math.PI * 0.95), mat);
+            // Bring the ring into a plane containing +Z so it curls toward the tip.
+            fluke.rotation.x = Math.PI / 2;
+            fluke.rotation.z = -Math.PI * 0.18;
+            fluke.position.set(fr, 0, ts * 0.05);
+            claw.add(fluke);
+            claw.rotation.z = (f / 3) * Math.PI * 2;
+            grp.add(claw);
+        }
+        grp._ew_hookMat = mat;
+        return grp;
+    }
+
+    function _buildTetherMesh(kind, hook) {
         var info = _TETHER_SPRITES[kind] || _TETHER_SPRITES['rope'];
-
-        var geo = new THREE.BufferGeometry();
-
-        var positions = new Float32Array(4 * 3);
-        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-        var uvs = new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]);
-        geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-
-        geo.setIndex([0, 1, 2, 1, 3, 2]);
 
         var tex = getTexture(info.url);
         if (tex) {
@@ -7806,62 +7851,79 @@ const ThreeRenderer = (function () {
             map: tex, transparent: true, alphaTest: 0.1,
             side: THREE.DoubleSide, depthWrite: false
         });
-        var mesh = new THREE.Mesh(geo, mat);
-        return { mesh: mesh, geo: geo, mat: mat };
+
+        var group = new THREE.Group();
+        var ropeMesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
+        group.add(ropeMesh);
+
+        var hookMesh = null;
+        if (hook) {
+            hookMesh = _buildHookMesh(tex);
+            hookMesh.visible = false;
+            group.add(hookMesh);
+        }
+
+        return { group: group, ropeMesh: ropeMesh, mat: mat, tex: tex, hookMesh: hookMesh, geo: null };
     }
 
-    function _setTetherVerts(geo, from, to) {
-        var halfH = 8;
+    // Rebuild the rope as a textured tube following the drooping curve, tiling the
+    // rope sprite along its length, and pin/aim the hook at the far tip.
+    function _setTetherTube(tw, from, to) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        var curve = _tetherCurve(from, to);
+        var len = Math.max(1, curve.getLength());
+        var radius = ts * 0.032;
+        var tubularSeg = Math.max(3, Math.min(48, Math.round(len / (ts * 0.22))));
+        var geo = new THREE.TubeGeometry(curve, tubularSeg, radius, 6, false);
 
-        var dx = to.x - from.x;
-        var dz = to.z - from.z;
-        var lenXZ = Math.sqrt(dx * dx + dz * dz);
-
-        var pos = geo.getAttribute('position');
-
-        pos.setXYZ(0, from.x, from.y + halfH, from.z);
-
-        pos.setXYZ(1, from.x, from.y - halfH, from.z);
-
-        pos.setXYZ(2, to.x, to.y + halfH, to.z);
-
-        pos.setXYZ(3, to.x, to.y - halfH, to.z);
-        pos.needsUpdate = true;
-
-        var dist3D = Math.sqrt(
-            (to.x - from.x) * (to.x - from.x) +
-            (to.y - from.y) * (to.y - from.y) +
-            (to.z - from.z) * (to.z - from.z)
-        );
-        var repeatX = Math.max(0.01, dist3D / ts);
+        // Tile the rope texture along the tube's length (u runs along the tube).
+        var repeat = Math.max(0.5, len / (ts * 0.5));
         var uv = geo.getAttribute('uv');
-
-        uv.setXY(0, 0, 1);
-        uv.setXY(1, 0, 0);
-        uv.setXY(2, repeatX, 1);
-        uv.setXY(3, repeatX, 0);
+        for (var i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * repeat);
         uv.needsUpdate = true;
 
-        geo.computeBoundingSphere();
+        tw.ropeMesh.geometry = geo;
+        if (tw.geo) tw.geo.dispose();
+        tw.geo = geo;
+
+        if (tw.hookMesh) {
+            var tip = curve.getPointAt(1);
+            var tan = curve.getTangentAt(1).normalize();
+            tw.hookMesh.position.copy(tip);
+            tw.hookMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tan);
+            tw.hookMesh.visible = len > ts * 0.4;
+        }
     }
 
-    function startTetherTween(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel) {
+    function _disposeTether(tw) {
+        if (tw.group && tw.group.parent && projectileGroup) projectileGroup.remove(tw.group);
+        if (tw.geo) tw.geo.dispose();
+        if (tw.mat) tw.mat.dispose();
+        if (tw.hookMesh) {
+            tw.hookMesh.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+            if (tw.hookMesh._ew_hookMat) tw.hookMesh._ew_hookMat.dispose();
+        }
+        tw.removed = true;
+    }
+
+    function startTetherTween(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel, opts) {
         if (!projectileGroup || !scene) return null;
+        opts = opts || {};
 
         var from = _tetherWorldPos(fromX, fromY, fromZLevel);
         var to = _tetherWorldPos(toX, toY, toZLevel);
 
-        var built = _buildTetherMesh(kind);
+        var built = _buildTetherMesh(kind, !!opts.hook);
 
-        _setTetherVerts(built.geo, from, from);
-        projectileGroup.add(built.mesh);
+        _setTetherTube(built, from, from);
+        projectileGroup.add(built.group);
 
         var id = ++_tetherIdCounter;
         var tw = {
             id: id,
-            mesh: built.mesh, geo: built.geo, mat: built.mat,
-            kind: kind,
+            group: built.group, ropeMesh: built.ropeMesh, mat: built.mat,
+            tex: built.tex, hookMesh: built.hookMesh, geo: built.geo,
+            kind: kind, hook: !!opts.hook,
 
             from: from, to: to,
 
@@ -7936,12 +7998,13 @@ const ThreeRenderer = (function () {
                     y: tw.from.y + (tw.to.y - tw.from.y) * t,
                     z: tw.from.z + (tw.to.z - tw.from.z) * t
                 };
-                _setTetherVerts(tw.geo, tw.from, curTo);
-                if (t >= 1) tw.phase = 'hold';
+                _setTetherTube(tw, tw.from, curTo);
+                if (t >= 1) { tw.phase = 'hold'; tw._heldBuilt = false; }
 
             } else if (tw.phase === 'hold') {
 
-                _setTetherVerts(tw.geo, tw.from, tw.to);
+                // Endpoints are fixed while held — rebuild the tube once, not per frame.
+                if (!tw._heldBuilt) { _setTetherTube(tw, tw.from, tw.to); tw._heldBuilt = true; }
 
             } else if (tw.phase === 'retract') {
 
@@ -7957,7 +8020,7 @@ const ThreeRenderer = (function () {
                     y: tw.retractFrom.y + (tw.retractNewFrom.y - tw.retractFrom.y) * rt,
                     z: tw.retractFrom.z + (tw.retractNewFrom.z - tw.retractFrom.z) * rt
                 } : tw.from;
-                _setTetherVerts(tw.geo, curNear, curFar);
+                _setTetherTube(tw, curNear, curFar);
                 if (rt >= 1) {
                     tw.phase = 'fade';
                     tw.fadeStartTime = now;
@@ -7967,11 +8030,9 @@ const ThreeRenderer = (function () {
             } else if (tw.phase === 'fade') {
                 var ft = Math.min((now - tw.fadeStartTime) / tw.fadeMs, 1);
                 tw.mat.opacity = 1 - ft;
+                if (tw.hookMesh && tw.hookMesh._ew_hookMat) tw.hookMesh._ew_hookMat.opacity = 1 - ft;
                 if (ft >= 1) {
-                    projectileGroup.remove(tw.mesh);
-                    tw.geo.dispose();
-                    tw.mat.dispose();
-                    tw.removed = true;
+                    _disposeTether(tw);
                     _tetherTweens.splice(i, 1);
                 }
             }
@@ -7980,12 +8041,7 @@ const ThreeRenderer = (function () {
 
     function _clearTetherTweens() {
         for (var i = 0; i < _tetherTweens.length; i++) {
-            var tw = _tetherTweens[i];
-            if (tw.mesh && tw.mesh.parent) {
-                projectileGroup.remove(tw.mesh);
-                tw.geo.dispose();
-                tw.mat.dispose();
-            }
+            _disposeTether(_tetherTweens[i]);
         }
         _tetherTweens.length = 0;
     }
@@ -12498,8 +12554,8 @@ window.ThreeAnim = {
         if (ThreeRenderer.isActive()) ThreeRenderer.startProjectileTween(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ);
     },
 
-    tether: function(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel) {
-        if (ThreeRenderer.isActive()) return ThreeRenderer.startTetherTween(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel);
+    tether: function(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel, opts) {
+        if (ThreeRenderer.isActive()) return ThreeRenderer.startTetherTween(fromX, fromY, toX, toY, kind, shootMs, fromZLevel, toZLevel, opts);
         return null;
     },
 

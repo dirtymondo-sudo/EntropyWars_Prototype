@@ -5056,7 +5056,7 @@
                                                 : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
                 const toZLevel = _toUnit3 ? (_toUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_toUnit3.x, _toUnit3.y) : 0))
                                             : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
-                const threeHandle = window.ThreeAnim.tether(fromX, fromY, toX, toY, tetherKind, shootMs, fromZLevel, toZLevel);
+                const threeHandle = window.ThreeAnim.tether(fromX, fromY, toX, toY, tetherKind, shootMs, fromZLevel, toZLevel, { hook: !!opts.hook });
                 if (threeHandle) {
 
                     const handle = {
@@ -5145,9 +5145,38 @@
         function _tetherKindForSpell(spell) {
             if (!spell) return 'rope';
             const st = spell.spellType;
+            const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
+            // Grasping / organic pulls read better as a vine than a woven rope.
+            if (/grasp|vine|root|tentacle|grip|thorn|bramble|lash|weed|creeper/.test(idn)) return 'vine';
             if (st === 'anomaly' || st === 'unholy') return 'vine';
             return 'rope';
         }
+
+        // Which pull/tether spells fire an actual barbed hook at the tip (vs a
+        // lasso loop, grasping vine or beam). Grapples and named hooks bite in.
+        function _tetherHookForSpell(spell) {
+            if (!spell) return false;
+            const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
+            return /grapple|hook|harpoon|claw/.test(idn);
+        }
+
+        // Bresenham line of tiles from (x0,y0) to (x1,y1), EXCLUDING the origin and
+        // INCLUDING the destination. Shared by the grapple self-reel (engine) and
+        // its aim preview (ui.js) so what you see is exactly where you land.
+        function _ewLineTiles(x0, y0, x1, y1) {
+            const pts = [];
+            const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+            const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+            let err = dx - dy, cx = x0, cy = y0, guard = 0;
+            while ((cx !== x1 || cy !== y1) && guard++ < 128) {
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; cx += sx; }
+                if (e2 < dx) { err += dx; cy += sy; }
+                pts.push({ x: cx, y: cy });
+            }
+            return pts;
+        }
+        if (typeof window !== 'undefined') window._ewLineTiles = _ewLineTiles;
 
         function playBeamEffect(fromX, fromY, dx, dy, range, spellType, durationMs) {
             if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
@@ -21436,7 +21465,7 @@
                 _spellFocusCamera(unit, x, y);
 
                 const _pullTetherKind = _tetherKindForSpell(spell);
-                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280) });
+                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell) });
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
@@ -22241,7 +22270,7 @@
                         playSfx('uiConfirm');
                         const cam = playOffensiveActionCamera(unit, target, { sourceHold: 900, targetHold: 900, attackName: 'Grapple' });
 
-                        const _grTether = playTetherEffect(unit.x, unit.y, target.x, target.y, 'rope', 0, { persistent: true, shootMs: actionMs(320) });
+                        const _grTether = playTetherEffect(unit.x, unit.y, target.x, target.y, 'rope', 0, { persistent: true, shootMs: actionMs(320), hook: true });
                         const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                         completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
                         unit.mp -= effectiveSpellCost;
@@ -22320,19 +22349,20 @@
                         }, impactDelay);
                     } else if (!target) {
 
-                        const dx = Math.sign(x - unit.x);
-                        const dy = Math.sign(y - unit.y);
+                        // Reel the caster along the rope straight toward the CLICKED
+                        // tile — land on it if the path is clear, or stop on the last
+                        // clear tile before an obstacle (e.g. pulling up to a wall).
                         let moved = 0;
                         let cx = unit.x, cy = unit.y;
-                        for (let i = 0; i < 2; i++) {
-                            const nx = cx + dx;
-                            const ny = cy + dy;
-                            if (!isInside(nx, ny)) break;
-                            if (unitAt(nx, ny)) break;
-                            if (!isTerrainPassable(nx, ny)) break;
-                            cx = nx;
-                            cy = ny;
+                        const _grPath = _ewLineTiles(unit.x, unit.y, x, y);
+                        for (const _p of _grPath) {
+                            if (!isInside(_p.x, _p.y)) break;
+                            if (unitAt(_p.x, _p.y)) break;
+                            if (!isTerrainPassable(_p.x, _p.y)) break;
+                            cx = _p.x;
+                            cy = _p.y;
                             moved++;
+                            if (_p.x === x && _p.y === y) break;
                         }
                         if (moved === 0) {
                             addLog('No valid position to grapple toward.');
@@ -22344,7 +22374,7 @@
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
                         const _grShootMs = actionMs(200);
-                        const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs });
+                        const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs, hook: true });
 
                         const _grSlideMs = 200;
                         window.setTimeout(() => {

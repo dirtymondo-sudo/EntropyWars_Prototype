@@ -2257,6 +2257,63 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const allSpells = [...(actingUnit.spells || []), ...(actingUnit._raceAbilities || [])].filter(Boolean);
 
+  // --- Grapple → strike combo -------------------------------------------------
+  // If a plain attack can't reach this turn but the unit carries a grappling
+  // hook, check whether reeling the target in first would land it inside melee
+  // range. If so, expose a one-click "Grapple + Strike" action. Only offered
+  // when the pull actually brings the target into attack range from where the
+  // caster currently stands (no post-grapple pathing guesswork).
+  if (!canAttack && !atkMoveTile) {
+    const grappleSp = allSpells.find(s => s.id === 'grapple' || s.id === 'raceGrapple');
+    if (grappleSp) {
+      const gApCost = typeof getSpellApCost === 'function' ? getSpellApCost(grappleSp) : 1;
+      const atkApCost = G.AP_COST_ACTION || 1;
+      const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
+      const gMpCost = (grappleSp.cost || 0) + mpPenalty;
+      const gRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, grappleSp) : (grappleSp.range || 3);
+      const silenced = typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence');
+      const gTierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, grappleSp) : true;
+      const canAffordCombo = unitAP >= (gApCost + atkApCost) && actingUnit.mp >= gMpCost && !silenced && gTierOk;
+      const inGrappleRange = dist >= 1 && dist <= gRange && !losBlocked;
+      if (canAffordCombo && inGrappleRange) {
+        // Simulate the 2-tile reel toward the caster (stops at edge/obstacle/
+        // occupied, never onto the caster) and test the landing tile.
+        const gdx = Math.sign(actingUnit.x - tx), gdy = Math.sign(actingUnit.y - ty);
+        let lx = tx, ly = ty;
+        for (let i = 1; i <= 2; i++) {
+          const nx = tx + gdx * i, ny = ty + gdy * i;
+          if (typeof isInside === 'function' && !isInside(nx, ny)) break;
+          if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
+          if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
+          if (nx === actingUnit.x && ny === actingUnit.y) break;
+          lx = nx; ly = ny;
+        }
+        const landDist = _cd(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, lx, ly, targetZ);
+        const landLos = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, lx, ly);
+        if ((lx !== tx || ly !== ty) && landDist >= 1 && landDist <= effRange && !landLos) {
+          const minRoll = -2, maxRoll = 2;
+          let minDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + minRoll);
+          let maxDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + maxRoll);
+          const effArmor = typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit) : 0;
+          if (effArmor) { minDmg = Math.max(1, minDmg - effArmor); maxDmg = Math.max(1, maxDmg - effArmor); }
+          if (targetUnit.shield > 0) { minDmg = Math.max(0, minDmg - targetUnit.shield); maxDmg = Math.max(0, maxDmg - targetUnit.shield); }
+          actions.push({
+            id: 'grappleAttack',
+            label: 'Grapple + Strike',
+            icon: '🪝',
+            spell: grappleSp,
+            apCost: gApCost + atkApCost,
+            moveTile: null,
+            grappleThenAttack: true,
+            preview: { type: 'damage', min: minDmg, max: maxDmg },
+            typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
+            available: true,
+          });
+        }
+      }
+    }
+  }
+
   const offensiveKinds = new Set([
     'damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'splitBeam',
     'aoe', 'barrage', 'line', 'linePush', 'cross', 'aoePull', 'leapStrike', 'dash',
@@ -2538,7 +2595,8 @@ function EnemyActionMenu({ st }) {
   const _predictTargetShove = (spell, target, castX, castY) => {
     if (!spell || !target) return null;
     const k = spell.kind;
-    const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance;
+    const isGrapple = spell.id === 'grapple' || spell.id === 'raceGrapple';
+    const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance || isGrapple;
     const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
                     || !!spell.pushDistance || !!spell.displaceDistance);
     if (!isPull && !isPush) return null;
@@ -2546,7 +2604,7 @@ function EnemyActionMenu({ st }) {
     let dx, dy, dist, mode;
     if (isPull) {
       dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
-      dist = spell.pullDistance || 3; mode = 'pull';
+      dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
     } else {
       dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
       dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
@@ -2800,6 +2858,21 @@ function EnemyActionMenu({ st }) {
             state._actionExecuting = true;
             if (actionId === 'attack') {
               if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty, tz);
+            } else if (actionId === 'grappleAttack' && spell) {
+              // Fire the grapple to reel the target into melee, then swing once the
+              // reel settles. `target` is the live unit object, so its x/y reflect
+              // the post-pull tile by the time the strike fires.
+              state.selectedTool = spell.name;
+              state.actionMode = 'spell';
+              const _combTarget = target;
+              let _grCd = 0;
+              if (typeof doSpell === 'function') _grCd = doSpell(actingUnit, tx, ty, tz) || 0;
+              if (_grCd) {
+                window.setTimeout(() => {
+                  if (!_combTarget || _combTarget.dead) return;
+                  if (typeof doAttack === 'function') doAttack(actingUnit, _combTarget.x, _combTarget.y, _combTarget.z);
+                }, _grCd + 140);
+              }
             } else if (actionId.startsWith('spell:') && spell) {
 
               state.selectedTool = spell.name;

@@ -7922,6 +7922,43 @@
                 }
             }
 
+            if (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple')) {
+                const target = unitAt(tx, ty);
+                if (target && isEnemyUnit(caster, target)) {
+                    // Reel an enemy up to 2 tiles toward the caster (stops before the caster).
+                    const dx = Math.sign(caster.x - target.x);
+                    const dy = Math.sign(caster.y - target.y);
+                    let endX = target.x, endY = target.y;
+                    for (let i = 1; i <= 2; i++) {
+                        const nx = target.x + dx * i, ny = target.y + dy * i;
+                        if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                        if (nx === caster.x && ny === caster.y) break;
+                        endX = nx; endY = ny;
+                    }
+                    if (endX !== target.x || endY !== target.y) {
+                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, PULL, false, false, { arc: 0.18, flow: true });
+                        _showDisplaceGhost(target, endX, endY, PULL_H);
+                    }
+                } else if (!target) {
+                    // Pull yourself along the rope to the clicked tile (or up to the
+                    // last clear tile before an obstacle). Mirrors the engine's reel.
+                    const line = (typeof window._ewLineTiles === 'function')
+                        ? window._ewLineTiles(caster.x, caster.y, tx, ty) : [];
+                    let endX = caster.x, endY = caster.y;
+                    for (const p of line) {
+                        if (!isInside(p.x, p.y)) break;
+                        if (typeof unitAt === 'function' && unitAt(p.x, p.y)) break;
+                        if (typeof isTerrainPassable === 'function' && !isTerrainPassable(p.x, p.y)) break;
+                        endX = p.x; endY = p.y;
+                        if (p.x === tx && p.y === ty) break;
+                    }
+                    if (endX !== caster.x || endY !== caster.y) {
+                        _drawArrowBetweenTiles(caster.x, caster.y, endX, endY, DASH, false, false, { arc: 0.24, flow: true });
+                        _showDisplaceGhost(caster, endX, endY, DASH_H);
+                    }
+                }
+            }
+
             if (kind === 'linePush') {
                 const footprint = getSpellAoeFootprint(spell, tx, ty, caster);
                 const pushDir = { x: Math.sign(tx - caster.x), y: Math.sign(ty - caster.y) };
