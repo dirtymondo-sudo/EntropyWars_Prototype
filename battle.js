@@ -1537,6 +1537,11 @@
         // ═══════════════════════════════════════════════════════════════════
         function _runPostEffects(unit, spell, target) {
             if (spell.chargeToTarget && !unit.dead) {
+                // Skip the charge-in HOP when the caster already charged across
+                // the gap up front (the third-person follow-cam path in
+                // _runChargeToTargetSpell moved them and struck on arrival); the
+                // swapOnHit half below still runs.
+                if (!unit._chargeHandledExternally) {
                 const fromX = unit.x, fromY = unit.y;
                 const adj = [
                     { x: target.x - 1, y: target.y },
@@ -1557,6 +1562,7 @@
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
                     addLog(`${unitDisplayName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200);
+                }
                 }
 
                 if (spell.swapOnHit && !target.dead) {
@@ -1585,6 +1591,94 @@
                 applyStatusEffects(unit, [{ id: 'stun', duration: spell.selfStun }],
                     `${spell.name} recoil: `, unit);
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _runChargeToTargetSpell() — charge-to-target melee spells (Brave
+        // Charge, Sea Charge, …) as a real CHARGE: the caster rushes across the
+        // gap to a tile adjacent to the target and strikes on ARRIVAL, with the
+        // third-person follow camera riding behind them down the path (same
+        // over-the-shoulder chase as the dash kind, see animateDashActionCamera).
+        // Without this these spells threw a projectile from range and THEN
+        // teleport-hopped in, so the "charge" never read as one and the action
+        // camera never followed. The strike reuses _applyDamageSpellHit (all the
+        // crit / type / status / press-turn math) fired when the caster lands;
+        // the move is flagged so _runPostEffects doesn't charge a second time.
+        // Only used when the cinematic action camera is on and there is a real
+        // gap to cross — otherwise the caller falls back to the standard pipeline.
+        // Returns completionDelay (ms).
+        // ═══════════════════════════════════════════════════════════════════
+        function _runChargeToTargetSpell(unit, spell, target, effectiveSpellCost, spellPower) {
+            const fromX = unit.x, fromY = unit.y;
+
+            // Landing tile: the open tile adjacent to the target CLOSEST to the
+            // caster's start (same pick as _runPostEffects), so the charge lands
+            // on the near side.
+            const adj = [
+                { x: target.x - 1, y: target.y },
+                { x: target.x + 1, y: target.y },
+                { x: target.x, y: target.y - 1 },
+                { x: target.x, y: target.y + 1 }
+            ];
+            adj.sort((a, b) =>
+                (Math.abs(a.x - fromX) + Math.abs(a.y - fromY))
+              - (Math.abs(b.x - fromX) + Math.abs(b.y - fromY)));
+            const landTile = adj.find(t => canOccupy(t.x, t.y)) || { x: fromX, y: fromY };
+            const dist = Math.abs(landTile.x - fromX) + Math.abs(landTile.y - fromY);
+            const chargeMs = Math.max(200, dist * 110);
+
+            playSfx(spellLaunchSfx(spell));
+            focusUnitPanel(target.id);
+            unit.mp -= effectiveSpellCost;
+
+            // Target fully surrounded (no open adjacent tile to charge onto):
+            // there's no path to follow, so just frame the target and strike in
+            // place instead of feeding a zero-length path to the follow cam.
+            if (dist < 1) {
+                _spellFocusCamera(unit, target.x, target.y);
+                window.setTimeout(() => {
+                    if (!_skipVisuals()) shakeBoard('normal');
+                    _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
+                }, actionMs(200));
+                return actionMs(600);
+            }
+
+            // Camera: third-person follow behind the caster along the charge, or
+            // the plain top-down path pan if the follow cam declines — mirrors
+            // the dash kind exactly.
+            if (!state.cameraDisabled) {
+                stopBoardCameraAnimation();
+                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                const _followed = state.cinematicActionCam && animateDashActionCamera(
+                    { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y },
+                    { duration: chargeMs, casterId: unit.id, _fogAllowed: true }
+                );
+                if (!_followed) {
+                    animateBoardCameraPath(
+                        { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y },
+                        { duration: chargeMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                    );
+                }
+            }
+
+            // Move the caster now (model + slide). Flag it so _runPostEffects
+            // doesn't run its own charge hop on top of this (its swapOnHit half
+            // still runs). The strike lands on arrival.
+            unit.x = landTile.x;
+            unit.y = landTile.y;
+            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
+            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
+            unit._chargeHandledExternally = true;
+            animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs);
+            addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+
+            window.setTimeout(() => {
+                if (!_skipVisuals()) shakeBoard('normal');
+                _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
+                delete unit._chargeHandledExternally;
+            }, chargeMs);
+
+            return Math.max(chargeMs + actionMs(360), actionMs(600));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -20056,6 +20150,15 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
+                } else if (spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
+                        && target && target.id !== unit.id
+                        && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
+                        && !(state.fogOfWar && typeof getViewerPlayer === 'function'
+                             && state.activePlayer !== getViewerPlayer())) {
+                    // Charge-to-target melee (Brave Charge, …): rush the gap in
+                    // third-person and strike on arrival, following the caster.
+                    completionDelay = _runChargeToTargetSpell(
+                        unit, spell, target, effectiveSpellCost, spellPower);
                 } else {
                     completionDelay = executeSpellAnimation(
                         unit, spell, target, { x, y },
