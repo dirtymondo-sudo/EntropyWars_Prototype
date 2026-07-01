@@ -6551,13 +6551,48 @@
                     this._savedState = null;
                     this._cineShotId = null; this._cineKeepSubject = false;
 
-                    // The action is over and we're deliberately holding the
-                    // framing — release busy NOW. Leaving it to the action
-                    // timer alone can strand _busy=true (its clear is skipped
-                    // when the camera sequence moved on), stalling the
+                    // The action is over — release busy NOW. Leaving it to the
+                    // action timer alone can strand _busy=true (its clear is
+                    // skipped when the camera sequence moved on), stalling the
                     // _waitForAnimationsThen turn loop after spells.
                     this._busy = false;
                     if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
+
+                    // We still DON'T snap the framing back between consecutive
+                    // actions (restoring the pre-action VIEW mid-streak caused the
+                    // old pan-back-and-forth bounce when a unit attacks several
+                    // times in a row). But a cinematic shot cranes the pitch UP to
+                    // frame its target, and on an auto side nothing else brings it
+                    // back down — only the NEXT unit's activation un-tilts. So once
+                    // the AI STOPS acting (think-time, the tail of its turn, the
+                    // end-of-round sequence) the camera was left stranded looking
+                    // up at the sky with the board out of frame. Craning up during
+                    // the shot is fine; not coming back down after is the bug.
+                    //
+                    // Arm a DEBOUNCED settle: if no new shot takes over within a
+                    // short window (i.e. the streak has genuinely ended), ease the
+                    // PITCH/YAW back to the resting board orientation — keeping the
+                    // current focal position and zoom, so there's no positional
+                    // bounce, just the camera levelling out to a normal view. Every
+                    // action re-arms the timer, so a rapid multi-attack streak
+                    // never settles mid-way; it only levels out after the LAST
+                    // action. The fire-time guard skips it if another shot is
+                    // playing, a move is already animating, the player is
+                    // hand-panning, or the pitch is already level. _fogAllowed lets
+                    // it run on an AI fog turn (a non-viewer camera move is
+                    // otherwise blocked).
+                    if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
+                    this._autoSettleTimer = setTimeout(() => {
+                        this._autoSettleTimer = null;
+                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                        if (this._rafId || this._busy || this._cineShotId != null) return;
+                        if (state._userPanning || state._fullMapOverview) return;
+                        if (this.tilt <= this._restTilt + 3) return;
+                        this.moveTo({
+                            tilt: this._restTilt, yaw: this._restYaw,
+                            duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
+                        });
+                    }, actionMs(600));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -7164,18 +7199,27 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // animateDashActionCamera() — third-person "chase" camera for dash /
-        // charge spells. Instead of the old top-down pan that just slid the
-        // focal to the landing tile, the camera drops in BEHIND the caster,
-        // looks ALONG the direction of travel, and glides down the path in
-        // lockstep with them — so a dash reads as an over-the-shoulder charge
-        // that keeps the SAME third-person POV for the whole move. It reuses the
-        // exact _playCineActionShot rig (shoulder angle, yaw offset, focal lead,
-        // zoom falloff) so the framing matches every other cinematic action
-        // shot. Returns true if it took the camera; false if it declined (the
-        // caller then falls back to the plain path pan).
+        // animateDashActionCamera() — DISABLED third-person "chase" camera for
+        // dash / charge spells (Brave Charge, dashes, …).
+        //
+        // It used to drop the camera in BEHIND the caster and glide down the
+        // travel line as an over-the-shoulder chase. In practice that framing
+        // sat WAY too close to the unit — you couldn't see the board or what the
+        // charge was hitting — and because it planted a low/craned cinematic
+        // tilt DIRECTLY (bypassing the normal shot machinery) it was a prime
+        // source of the camera getting stranded looking up at the sky when its
+        // restore didn't cleanly fire.
+        //
+        // So it now DECLINES immediately (returns false): every dash/charge
+        // falls back to animateBoardCameraPath — a plain top-down follow pan at
+        // the player's normal board angle/zoom. That reads clearly (you see the
+        // whole charge) and, crucially, never touches the pitch, so it can't
+        // leave the camera craned up. The old rig is kept below (unreachable)
+        // in case a pulled-back version is ever wanted.
         // ═══════════════════════════════════════════════════════════════════
         function animateDashActionCamera(fromPoint, toPoint, opts = {}) {
+            return false;
+            // eslint-disable-next-line no-unreachable
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
