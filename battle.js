@@ -267,6 +267,7 @@
             seedHeal:     { minRange: 0, offensive: false, tileTargeted: true },
             seedPoison:   { minRange: 0, offensive: false, tileTargeted: true },
             leechSeed:    { minRange: 0, offensive: false, tileTargeted: true },
+            plantTree:    { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
 
             // ── Utility / vision ──
             utility:      { minRange: 0, offensive: false, tileTargeted: true },
@@ -1037,6 +1038,17 @@
                 sfx: null,
                 postEffects: [],
             },
+            plantTree: {
+                casterAnim: 'cast',
+                camera: 'focus',
+                travel: 'auto',
+                impact: 'none',
+                hitResponse: 'none',
+                bloodTier: 'none',
+                screenShake: 'none',
+                sfx: null,
+                postEffects: [],
+            },
 
             // ── Utility / vision ──
             utility: {
@@ -1756,6 +1768,88 @@
             return out;
         }
 
+        // ── Tree / lumber economy (Harvester) ─────────────────────────────────
+        // Trees are no longer just cosmetic LOS/movement blockers:
+        //  • ANY unit can chop a tree down with a basic attack. A deliberate chop
+        //    banks one "lumber" for the chopper's team.
+        //  • Fire (and now lightning) burns connected forest to scorched ground.
+        //  • Harvesters can PLANT living trees (Wildwood). Each tree a Harvester
+        //    plants grants THAT Harvester (not the team) +ATK / +spell power — so
+        //    enemies are incentivised to cut or burn its trees down.
+        //  • Harvesters can spend a lumber-scaling nuke (Timber Strike) whose
+        //    damage grows for every tree the team has felled.
+        const PLANTED_TREE_STAT_PER = 7;   // atk & spellPower granted per living planted tree
+        const PLANTED_TREE_STAT_CAP = 6;   // …counting at most this many trees
+
+        function _ensureTreeState() {
+            if (!state.plantedTrees) state.plantedTrees = [];
+            if (!state.lumber) state.lumber = { 1: 0, 2: 0 };
+        }
+
+        // Living trees a specific unit has personally planted (its own casterUnitId).
+        // Only the planter is buffed by these (see getPlantedTreeBonus).
+        function getOwnPlantedTreeCount(unit) {
+            if (!unit || !state.plantedTrees) return 0;
+            return state.plantedTrees.reduce((n, t) => n + (t.casterUnitId === unit.id ? 1 : 0), 0);
+        }
+
+        // Standing +ATK / +spell-power buff — applies ONLY to the Harvester that
+        // planted the trees, scaling with how many of ITS OWN trees are still alive.
+        // Not a team buff: only units that plant trees (Harvesters) ever gain it.
+        function getPlantedTreeBonus(unit) {
+            if (!unit) return 0;
+            const n = Math.min(PLANTED_TREE_STAT_CAP, getOwnPlantedTreeCount(unit));
+            return n * PLANTED_TREE_STAT_PER;
+        }
+
+        // Bonus spell power for a lumber-scaling spell (Timber Strike): grows with
+        // the number of trees the caster's team has cut down this match.
+        function getLumberBonus(unit, spell) {
+            if (!unit || !spell || !spell.lumberScale) return 0;
+            const felled = (state.lumber && state.lumber[unit.player]) || 0;
+            const per = spell.lumberPerTree || 30;
+            const cap = spell.lumberCap || 300;
+            return Math.min(cap, felled * per);
+        }
+
+        // Remove any planted-tree record at (x,y) so a burned/cut planted tree stops
+        // buffing its owner. Returns the removed record, or null.
+        function _removePlantedTreeAt(x, y) {
+            if (!state.plantedTrees) return null;
+            const i = state.plantedTrees.findIndex(t => t.x === x && t.y === y);
+            if (i < 0) return null;
+            return state.plantedTrees.splice(i, 1)[0];
+        }
+
+        // True if (x,y) holds a fellable tree — either tree/forest terrain or a
+        // tree* board object. (Same detection _isForestTile uses.)
+        function _tileHasTree(x, y) {
+            const terr = getTerrainAt(x, y);
+            if (terr === 'tree' || terr === 'forest' || terr === 'forest_2') return true;
+            const o = getObjectAt(x, y);
+            return !!(o && /^tree/.test(o));
+        }
+
+        // Fell the tree at (x,y): clear the tree object, convert tree/forest terrain
+        // to grass, refresh LOS/pathing, drop any planted-tree buff record, and (for
+        // a deliberate chop) bank one lumber for byUnit's team. Returns true if a
+        // tree was actually removed. opts.credit=false suppresses the lumber gain.
+        function _fellTreeAt(x, y, byUnit, opts = {}) {
+            if (!isInside(x, y) || !_tileHasTree(x, y)) return false;
+            const o = getObjectAt(x, y);
+            const terr = getTerrainAt(x, y);
+            if (o && /^tree/.test(o)) setObjectAt(x, y, null);
+            if (terr === 'tree' || terr === 'forest' || terr === 'forest_2') setTerrainAt(x, y, 'grass');
+            _removePlantedTreeAt(x, y);
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            if (byUnit && opts.credit !== false) {
+                _ensureTreeState();
+                state.lumber[byUnit.player] = (state.lumber[byUnit.player] || 0) + 1;
+            }
+            return true;
+        }
+
         // ⚡ Water conducts the charge: every unit standing in the connected pool
         // (friend or foe) takes a conduction tick. Airborne units and the caster
         // are spared, as is the unit on the origin tile (already hit by the spell).
@@ -1814,6 +1908,8 @@
             for (const t of stand) {
                 const o = getObjectAt(t.x, t.y);
                 if (o && /^tree/.test(o)) setObjectAt(t.x, t.y, null);
+                // A burned planted tree stops empowering its owner's team.
+                _removePlantedTreeAt(t.x, t.y);
                 setTerrainAt(t.x, t.y, 'scorched');
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying) {
@@ -1859,7 +1955,9 @@
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     if (el === 'lightning') _reactLightningWater(caster, spell, tile.x, tile.y, body);
                     else _reactColdWater(caster, spell, tile.x, tile.y, body);
-                } else if (el === 'fire' && _isForestTile(tile.x, tile.y)) {
+                } else if ((el === 'fire' || el === 'lightning') && _isForestTile(tile.x, tile.y)) {
+                    // 🔥 fire torches the woods directly; ⚡ a lightning strike on a
+                    // tree sets it (and the connected forest) ablaze all the same.
                     const stand = _floodConnectedTiles(tile.x, tile.y, _isForestTile, 40);
                     stand.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactFireForest(caster, spell, tile.x, tile.y, stand);
@@ -8883,6 +8981,8 @@
             state.setupStep = 'builder';
             state.bombs = [];
             state.plantedSeeds = [];
+            state.plantedTrees = [];
+            state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
             state.wards = [];
             state.turrets = [];
@@ -12543,6 +12643,8 @@
             state.currentBattleTrackKey = null;
             state.bombs = [];
             state.plantedSeeds = [];
+            state.plantedTrees = [];
+            state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
             state.wards = [];
             state.turrets = [];
@@ -12919,6 +13021,8 @@
             state.currentBattleTrackKey = null;
             state.bombs = [];
             state.plantedSeeds = [];
+            state.plantedTrees = [];
+            state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
             state.wards = [];
             state.turrets = [];
@@ -13118,6 +13222,8 @@
             state.setupStep = 'builder';
             state.bombs = [];
             state.plantedSeeds = [];
+            state.plantedTrees = [];
+            state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
             state.wards = [];
             state.turrets = [];
@@ -18747,6 +18853,32 @@
                     return 1;
                 }
             }
+            // 🪓 Chop down a tree: attacking an (enemy-free) tree tile fells it,
+            // clears the cover/LOS block, and banks a lumber for your team.
+            if ((!target || target.id === unit.id) && _tileHasTree(x, y)) {
+                pushUndoSnapshot(true);
+                _ensureTreeState();
+                const wasPlanted = state.plantedTrees.some(t => t.x === x && t.y === y);
+                animateStrikeLeap(unit, x, y);
+                _fellTreeAt(x, y, unit);
+                // Only Harvesters can spend lumber (Timber Strike), so only they
+                // see the running lumber tally; for everyone else it's just clearing
+                // cover.
+                const _lumberNote = unit.cls === 'Harvester' ? ` (Lumber felled: ${state.lumber[unit.player] || 0})` : '';
+                addLog(`🪓 ${unitDisplayName(unit)} chops down a ${wasPlanted ? 'planted ' : ''}tree at ${coordLabel(x, y)}!${_lumberNote}`);
+                showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
+                playSfx('basicAttack');
+                grantXP(unit, 4, 'chop');
+                spendAP(unit, AP_COST_ACTION);
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                endUnitIfDone(unit);
+                renderAfterCombat();
+                return 1;
+            }
             if (!target || isAllyUnit(target, unit)) {
                 addLog('Choose an enemy on an attack-highlighted tile.');
                 playErrorSfx();
@@ -18778,7 +18910,7 @@
                 effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
             });
 
-            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -20338,7 +20470,8 @@
                 addLog(`${unitDisplayName(unit)} breaks camouflage!`);
             }
 
-            const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell);
+            const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
+                + getPlantedTreeBonus(unit) + getLumberBonus(unit, spell);
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
@@ -22742,6 +22875,53 @@
                         casterUnitId: unit.id
                     });
                     addLog(`${unitDisplayName(unit)} plants Leech Seed at ${coordLabel(x, y)}. Enemies will be drained, allies nourished. Persists until destroyed.`);
+                    scheduleBoardRender();
+                }, actionMs(200) + flyMs + actionMs(60));
+                completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'plantTree') {
+                _ensureTreeState();
+                const terrain = getTerrainAt(x, y);
+                if (['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(terrain)) {
+                    addLog(`Wildwood needs fertile ground — cannot plant on ${terrain}.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (unitAt(x, y)) {
+                    addLog('Cannot grow a tree on an occupied tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (getObjectAt(x, y)) {
+                    addLog('That tile is already blocked by an object.');
+                    playErrorSfx();
+                    return 0;
+                }
+                // Cap trees per caster; the oldest withers to make room (no lumber).
+                const owned = state.plantedTrees.filter(t => t.casterUnitId === unit.id);
+                if (owned.length >= (spell.maxActivePerCaster || 4)) {
+                    const oldest = owned[0];
+                    _fellTreeAt(oldest.x, oldest.y, null, { credit: false });
+                    addLog(`Oldest planted tree at ${coordLabel(oldest.x, oldest.y)} withers to make room.`);
+                }
+                playSfx('healRegen');
+                unit.mp -= effectiveSpellCost;
+                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }, { x, y }], {
+                    zoom: getWideZoom(),
+                    holdMs: 1200
+                });
+                const flyMs = actionMs(420);
+                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'heal', flyMs, spell.spellType, null, spell), actionMs(200));
+                window.setTimeout(() => {
+                    // Trees root into grass so the trunk always has fertile ground.
+                    if (getTerrainAt(x, y) !== 'grass') setTerrainAt(x, y, 'grass');
+                    setObjectAt(x, y, 'tree');
+                    state.plantedTrees.push({ x, y, owner: unit.player, casterUnitId: unit.id });
+                    _invalidateBoardGrid();
+                    showFloatingTextAtTile(x, y, '🌳', 'heal', { durationMs: 1000 });
+                    const buff = getPlantedTreeBonus(unit);
+                    addLog(`${unitDisplayName(unit)} grows a tree at ${coordLabel(x, y)} — its grove empowers ${unitDisplayName(unit)} (+${buff} ATK & spell power). Enemies must cut or burn it down.`);
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);
