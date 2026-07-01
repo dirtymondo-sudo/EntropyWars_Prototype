@@ -3079,20 +3079,32 @@ const ITEM_META = {
     }
 };
 
-const CLASS_PASSIVES = {
-    Gunslinger: 'Deadeye: +1 SPD.',
-    Warrior: 'Bulwark: reduces incoming damage by 8 and Fortify shields cap at 25% max HP.',
-    'Black Mage': 'Arcane Surge: +8 spell damage.',
-    'White Mage': 'Grace: heal and revive spells gain +2 range and +24 healing power.',
-    Agent: 'Field Operative: can equip up to 2 scanners and has longer inspect reach.',
-    Psychic: 'Third Eye: Glare debuffs applied by this unit have +1 duration. Teleport costs 1 less MP.',
-    Harvester: 'Green Thumb: Planted seeds last 1 extra turn. Life Drain heals 20% more.',
-    Engineer: 'Tinker: Turrets have +1 range and Repair heals 20% more.',
-    Harbinger: 'Crescendo: buff durations from this unit last 1 extra turn. Lullaby has +1 range.',
-    Freelancer: 'Adaptable: no spell restrictions. Can learn spells from any school.',
-    Raider: 'Brute Force: basic attacks deal +20% damage. Gains +8 DEF when HP is below 50%.',
-    Sniper: 'Marksman: +1 basic attack range. Critical hit chance +10% at max range.'
+// ── Job passives ──────────────────────────────────────────────────────────
+// Innate, always-on identity abilities that shape each primary job's playstyle.
+// These are SEPARATE from the flat stat deltas in JOB_MODIFIERS — a passive is a
+// rule, not a number. This registry is the single source of truth for the name +
+// description surfaced in the party builder and unit panels; the mechanics for
+// the focus jobs are wired in battle.js (Sniper / Harvester) and map.js
+// (Freelancer). `id` lets combat code branch on a passive without matching text.
+const JOB_PASSIVES = {
+    Gunslinger:  { id: 'deadeye',        name: 'Deadeye',         desc: '+1 SPD. Always ready to draw first.' },
+    Warrior:     { id: 'bulwark',        name: 'Bulwark',         desc: 'Reduces incoming damage by 8. Fortify shields cap at 25% max HP.' },
+    'Black Mage':{ id: 'arcaneSurge',    name: 'Arcane Surge',    desc: '+8 spell damage on every cast.' },
+    'White Mage':{ id: 'grace',          name: 'Grace',           desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
+    Agent:       { id: 'fieldOperative', name: 'Field Operative', desc: 'Can equip up to 2 scanners and has longer inspect reach.' },
+    Psychic:     { id: 'thirdEye',       name: 'Third Eye',       desc: 'Glare debuffs this unit applies last +1 turn. Teleport costs 1 less MP.' },
+    Harvester:   { id: 'greenThumb',     name: 'Green Thumb',     desc: 'Trees this unit plants buff its ATK & spell power (+7 each, up to 6 living trees), and felled lumber powers Timber Strike. Life Drain heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+    Engineer:    { id: 'tinker',         name: 'Tinker',          desc: 'Turrets have +1 range and Repair heals 20% more.' },
+    Harbinger:   { id: 'crescendo',      name: 'Crescendo',       desc: "This unit's buffs last +1 turn. Lullaby has +1 range." },
+    Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip spells from ANY job pool. A blank slate that borrows every playstyle.' },
+    Raider:      { id: 'bruteForce',     name: 'Brute Force',     desc: 'Basic attacks deal +20% damage. Gains +8 DEF while below 50% HP.' },
+    Sniper:      { id: 'bulletDrop',     name: 'Bullet Drop',     desc: 'Attacks, abilities and spells scale with range to the target: −40% at point-blank, climbing to +20% from 5+ tiles away. Reward the long shot; never get cornered.' },
 };
+// Back-compat: some older lookups expect a flat "Name: desc" string map.
+const CLASS_PASSIVES = Object.fromEntries(
+    Object.entries(JOB_PASSIVES).map(([job, p]) => [job, `${p.name}: ${p.desc}`])
+);
+function getJobPassive(job) { return JOB_PASSIVES[job] || null; }
 
 const JOB_DISPLAY_NAMES = {
     'Raider': 'Bruiser'
@@ -11815,6 +11827,7 @@ const CAMPAIGN_REGION_THEMES = {
 Object.assign(window, {
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
+  JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
