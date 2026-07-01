@@ -2320,11 +2320,18 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     'displacement', 'pull',
   ]);
   for (const sp of allSpells) {
+    // Grapple is a 'utility' cast, but against an enemy it's an offensive tool —
+    // it grounds flyers and hooks/pulls units — so surface it in the enemy menu
+    // even though it deals no listed damage. It flows through the normal
+    // single-target range + move-into-range logic below (id 'spell:Grapple').
+    const isGrappleUtil = sp.id === 'grapple' || sp.id === 'raceGrapple';
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
-    if (cls !== 'damage' && cls !== 'debuff') continue;
-    if (!offensiveKinds.has(sp.kind)) continue;
+    if (!isGrappleUtil) {
+      if (cls !== 'damage' && cls !== 'debuff') continue;
+      if (!offensiveKinds.has(sp.kind)) continue;
 
-    if (cls === 'damage' && !sp.dmg && !(sp.hitDamages && sp.hitDamages.length) && !sp.dotDamage) continue;
+      if (cls === 'damage' && !sp.dmg && !(sp.hitDamages && sp.hitDamages.length) && !sp.dotDamage) continue;
+    }
 
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
