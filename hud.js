@@ -1875,6 +1875,24 @@ function SubMenu({ st }) {
       }
     }
 
+    /* 🛗 Enter Building: standing beside a building rides its lift — ends the
+       turn, unit hides inside and emerges on the roof next turn. */
+    if (typeof getEnterableBuilding === 'function') {
+      const ent = getEnterableBuilding(unit);
+      if (ent) {
+        const enoughAp = (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1);
+        moreItems.push({
+          label: '🛗 Enter Building',
+          sub: enoughAp ? 'Ends turn' : 'No AP',
+          dim: !enoughAp,
+          onClick: () => {
+            if (!enoughAp) return;
+            if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit());
+          }
+        });
+      }
+    }
+
     /* Recall: teleport back to spawn zone */
     if (typeof RECALL_AP_COST !== 'undefined' && typeof RECALL_COOLDOWN_ROUNDS !== 'undefined') {
       const spotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit);
@@ -1987,6 +2005,10 @@ function SubMenu({ st }) {
         else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
         else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
         else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
+        else if (t.kind === 'building') {
+          label = '🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(t.building) : 'Building');
+          hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
+        }
 
         return h(TargetRow, {
           key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
@@ -3452,6 +3474,39 @@ function _computeTileActions(actingUnit, tx, ty) {
         } : null,
       });
     }
+
+    // 🏢 Buildings: attack the structure (6 hits level it). Only offered when
+    // no unit stands on the roof tile — otherwise the swing hits the unit.
+    const bldg = !onSelf && typeof getBuildingAt === 'function' ? getBuildingAt(tx, ty) : null;
+    if (bldg && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty))) {
+      const canSiege = inRangeUnit && !losBlocked;
+      actions.push({
+        id: 'attack:building', label: `Attack Building (${bldg.hp}/${bldg.maxHp})`, icon: '⚔', category: 'attack',
+        apCost: 1, available: canSiege, reason: canSiege ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
+        handler: canSiege ? () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('attack');
+          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
+        } : null,
+      });
+    }
+
+    // 🛗 Enter Building: offered on a building tile the acting unit stands
+    // right next to — rides the lift, ends the turn, emerges on the roof
+    // at the start of its next turn.
+    if (bldg && typeof getEnterableBuilding === 'function' && typeof doEnterBuilding === 'function') {
+      const ent = getEnterableBuilding(actingUnit);
+      if (ent && ent.building.id === bldg.id) {
+        actions.push({
+          id: 'enterBuilding', label: 'Enter Building', icon: '🛗', category: 'actions',
+          apCost: 1, available: true, reason: '',
+          handler: () => {
+            state._tileActionTarget = null;
+            doEnterBuilding(actingUnit);
+          },
+        });
+      }
+    }
   }
 
   if (onSelf && typeof getNexusAtUnit === 'function' && typeof channelNexus === 'function') {
@@ -3524,6 +3579,8 @@ function TileActionMenu({ st }) {
   if (wards.length) tileObjects.push('👁 Ward (P' + wards[0].owner + ')');
   const turret = (st.turrets || []).find(t => t && t.x === tx && t.y === ty && t.hp > 0);
   if (turret) tileObjects.push('🗼 Turret ' + turret.hp + '/' + turret.maxHp);
+  const bldgInfo = typeof getBuildingAt === 'function' ? getBuildingAt(tx, ty) : null;
+  if (bldgInfo) tileObjects.push('🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(bldgInfo) : 'Building') + ' · ' + bldgInfo.hp + '/' + bldgInfo.maxHp + ' hits');
   const deploy = (st._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0);
   // An enemy decoy must read like an ordinary unit — naming it here would give it
   // away the moment the player inspects the tile. The player's own decoys still show.

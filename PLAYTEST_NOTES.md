@@ -193,6 +193,57 @@ exist). To live, `battle.js` must be re-uploaded to the R2 bucket. To add more l
 fire/cold spells, no code change is needed — name them with a matching keyword, or set
 `element:`.
 
+## Buildings 2.0 — visibility fix, HP/siege, Enter-Building lift (2026-07-02)
+Touches `map.js`, `battle.js`, `state.js`, `three-renderer.js`, `hud.js`, `data.js`,
+`ai.js` (all must go to R2 together).
+
+**Fog visibility fix** (the "building invisible while I stand in front of it" bug):
+a 2×2 building renders as ONE prism keyed to its NW anchor tile, and vision to that
+tile was blocked by the building's own body → whole prism hidden from most angles.
+Fixes: (a) `map.js` LOS (`_isRayBlocked3D` + 2D fallback) — a building never occludes
+*itself*: body-blocks belonging to the same footprint as the ray's target tile are
+skipped (`buildingAnchorAt`/`sameBuildingTile`/`buildingFootprintTiles` helpers near
+`getObjectRule`); (b) `three-renderer.js` — prisms are tagged `_ew_isBuilding` and
+shown when ANY footprint tile or a tile in the 1-ring around it is visible
+(`_bldgVisibleInFog`), with their own fade records (`_updateBuildingFogReveal`)
+decoupled from the anchor tile's fade. Footprint `_fp` shadow-stamping now also runs
+for custom-editor maps (`_stampBuildingFootprints`).
+
+**Structure HP (like siege turrets, in HITS)**: every roofWalkable 2×2 building gets
+`state.buildings` record `{id:'bldg_x_y', x, y, key, hp:6, maxHp:6}` (lazy
+`ensureBuildingsInit()`; map.js nulls `state.buildings` on board build). Basic attack
+= 1 hit (also listed in `_getAttackValidTargets` kind:'building' + tile-menu "Attack
+Building" + lights the Attack button via `getActionPanelCache`), single-target spell
+= 1, AOE spell = 2 (deduped per cast), meteor/nuke-class = instant demolish
+(`demolishesBuildings:true` on meteor/nuke/SHARED_NUKE in data.js, plus heuristic
+`terrainDeform && dmg>=150`; delayed nukes handled in state.js
+`_detonateDelayedSpell`). Collapse (`destroyBuilding`): all 4 object cells cleared,
+terrain → random `rubble_1..4`, `ruins` object on the anchor; roof units fall
+(`max(12, drop*8)` ignoreArmor), a unit INSIDE takes 12+36 crush; prism darkens as hp
+drops (rebuildObjects tint). Constants at top of battle.js: `BUILDING_MAX_HITS=6`,
+`BUILDING_COLLAPSE_MIN_DMG=12`, `BUILDING_CRUSH_BONUS_DMG=36`.
+
+**Roofs are lift-only now**: the old "anyone can step/jump onto a 2-high roof"
+bypass is removed from `getMoveTiles`, the path executor, and `getJumpTiles`
+(ai.js pathing mirrored). Rising onto a roofWalkable roof is only possible when the
+rise ≤ `MAX_CLIMB_HEIGHT` (1) — i.e. from equal-height terrain. Otherwise use
+**🛗 Enter Building**: offered in the More menu and the building tile's action menu
+when a ground unit stands adjacent (Chebyshev 1) to a living building with an empty
+lift (capacity 1). Entering costs the rest of the turn; while inside the unit is
+hidden + untargetable (`unitAt`/`unitAt3D`/`unitsAtColumn` skip
+`_insideBuildingId`, renderer hides sprite+plate) but takes the crush if the
+building is destroyed. At its next turn start (`_continueBlitzWithUnit_impl` →
+`processBuildingEmerge`) it emerges on a free roof tile and acts normally; if the
+roof is packed it waits inside (turn skipped). Flyers still land on roofs from the air.
+
+**GAME API**: `getBuildingAt(x,y)`, `buildingDisplayName(b)`, `damageBuildingAt(x,y,
+hits,unit)`, `destroyBuilding(b,unit)`, `getEnterableBuilding(unit)` →
+`{building, doorTile}`, `doEnterBuilding(unit)`, `ensureBuildingsInit()`. Verified
+20/20 scripted checks on Compound (VS-CPU, local-file route interception): fog
+anchor/footprint visibility, no walk/jump onto roofs, enter→hidden→emerge-on-roof,
+5 hits →1hp → 6th collapses → rubble + ruins, roof fall 24 vs inside crush 48,
+meteor/nuke demolish; AI auto-sim advanced rounds with 0 page errors.
+
 ## Action-plan arrow / hologram system (2026-07-01 overhaul)
 This preview shows up in THREE places, all now upgraded to the same look
 (curved arrows + team-tinted holograms + target displacement holograms):

@@ -1806,12 +1806,17 @@
             return true;
         }
 
+        /* Units riding a building's lift (unit._insideBuildingId) are INSIDE the
+           structure: they don't occupy a standing surface, can't be clicked or
+           targeted, and don't block the roof tile above them — so every position
+           lookup skips them. They resurface via processBuildingEmerge (battle.js)
+           or when the building is destroyed on top of them. */
         function unitAt3D(x, y, z) {
-            return state.units.find(u => !u.dead && !u._dying && u.x === x && u.y === y && u.z === z) || null;
+            return state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y && u.z === z) || null;
         }
 
         function unitsAtColumn(x, y) {
-            return state.units.filter(u => !u.dead && !u._dying && u.x === x && u.y === y);
+            return state.units.filter(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y);
         }
 
         function _syncColumnToLegacy(x, y) {
@@ -2097,7 +2102,7 @@
         function unitAt(x, y, z) {
 
             if (z !== undefined && z !== null) {
-                const direct = state.units.find(u => !u.dead && !u._dying && u.x === x && u.y === y && u.z === z);
+                const direct = state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y && u.z === z);
                 if (direct) return direct;
 
                 return state.units.find(u => !u.dead && !u._dying && u._isBoss && u._bossSize === 2 &&
@@ -2105,7 +2110,7 @@
                     (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1)) || null;
             }
 
-            const _allHere = state.units.filter(u => !u.dead && !u._dying && u.x === x && u.y === y);
+            const _allHere = state.units.filter(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y);
             if (_allHere.length === 1) return _allHere[0];
             if (_allHere.length > 1) {
 
@@ -2226,6 +2231,48 @@
 
         function getObjectRule(objKey) {
             return (typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[objKey]) ? OBJECT_RULES[objKey] : null;
+        }
+
+        /* ── 2×2 building footprint identity ─────────────────────────────
+           A roofWalkable building covers a 2×2 footprint anchored at its NW
+           tile (the non-_fp cell; the other three carry _fp shadow copies —
+           see _stampBuildingFootprints). Resolve which building a tile
+           belongs to so LOS / fog / building-HP checks can treat the four
+           tiles as ONE structure. Returns { x, y, key } of the anchor, or
+           null when the tile isn't part of a roofWalkable building. */
+        function buildingAnchorAt(x, y) {
+            const cell = state.boardObjects?.[y]?.[x];
+            if (!cell) return null;
+            const f = Array.isArray(cell) ? cell[0] : { key: cell };
+            if (!f || !f.key) return null;
+            const rule = getObjectRule(f.key);
+            if (!rule || !rule.roofWalkable) return null;
+            if (!f._fp) return { x, y, key: f.key };
+            for (const [dx, dy] of [[-1, 0], [0, -1], [-1, -1]]) {
+                const c2 = state.boardObjects?.[y + dy]?.[x + dx];
+                const f2 = (Array.isArray(c2) && c2.length) ? c2[0] : null;
+                if (f2 && f2.key === f.key && !f2._fp) return { x: x + dx, y: y + dy, key: f.key };
+            }
+            return { x, y, key: f.key };
+        }
+
+        /* True when both tiles are part of the SAME 2×2 building. */
+        function sameBuildingTile(x1, y1, x2, y2) {
+            const a = buildingAnchorAt(x1, y1);
+            if (!a) return false;
+            const b = buildingAnchorAt(x2, y2);
+            return !!b && a.x === b.x && a.y === b.y;
+        }
+
+        /* All existing footprint tiles of the building anchored at (ax,ay). */
+        function buildingFootprintTiles(ax, ay) {
+            const tiles = [];
+            for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+                const tx = ax + dx, ty = ay + dy;
+                const a = buildingAnchorAt(tx, ty);
+                if (a && a.x === ax && a.y === ay) tiles.push({ x: tx, y: ty });
+            }
+            return tiles;
         }
 
         function objectBlocksLanding(x, y) {
@@ -2679,10 +2726,48 @@
             function _initObjectGrid() {
                 state.boardObjects = Array.from({ length: h }, () => Array(w).fill(null));
                 state.boardObjectAlign = Array.from({ length: h }, () => Array(w).fill('center,bottom'));
+                /* Fresh board → building HP records re-scan lazily (battle.js
+                   ensureBuildingsInit) the first time anything touches them. */
+                state.buildings = null;
             }
 
             function _initHeightGrid() {
                 state.boardHeights = Array.from({ length: h }, () => Array(w).fill(0));
+            }
+
+            /* ── 2×2 building footprints ──────────────────────────────────
+               A roofWalkable building (building_*, ancient/abandoned, church,
+               church_*, shop) is drawn as a 2×2 block anchored at its NW tile,
+               covering (x,y),(x+1,y),(x,y+1),(x+1,y+1). Stamp a footprint
+               "shadow" of the same object onto the three SE tiles so every
+               getObjectAt-based check — roof-walk surfaces, height, climb
+               access, LOS — treats all four tiles as the building and units
+               can stand anywhere on the roof. The shadow carries _fp:true so
+               the renderer only draws the prism once (at the anchor). The map
+               data flattens each block to one height, so the roof is level.
+               Runs for BOTH prebuilt and custom-editor maps. */
+            function _stampBuildingFootprints(w, h) {
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                    const cell = state.boardObjects?.[y]?.[x];
+                    if (!cell) continue;
+                    const f = Array.isArray(cell) ? (cell.length ? cell[0] : null) : { key: cell };
+                    if (!f || f._fp || !f.key) continue;
+                    const rule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[f.key] : null;
+                    if (!rule || !rule.roofWalkable) continue;
+                    const baseH = state.boardHeights?.[y]?.[x] ?? 0;
+                    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {
+                        const fx = x + dx, fy = y + dy;
+                        if (fx >= w || fy >= h) continue;
+                        const occ = state.boardObjects?.[fy]?.[fx];
+                        if (occ && (!Array.isArray(occ) || occ.length)) continue;
+                        state.boardObjects[fy][fx] = [{
+                            key: f.key, alignX: f.alignX || 'center', alignY: f.alignY || 'bottom',
+                            rot: f.rot || 0, flipX: !!f.flipX, flipY: !!f.flipY, _fp: true
+                        }];
+                        if (state.boardObjectAlign?.[fy]) state.boardObjectAlign[fy][fx] = (f.alignX || 'center') + ',' + (f.alignY || 'bottom');
+                        if (state.boardHeights?.[fy]) state.boardHeights[fy][fx] = baseH;
+                    }
+                }
             }
 
             function _initTowersFromObjects() {
@@ -3093,6 +3178,10 @@
                 /* Esoteric monuments authored in the editor. */
                 state.monuments = Array.isArray(window._customEditorMonuments) ? window._customEditorMonuments : null;
                 delete window._customEditorMonuments;
+                /* Custom-editor buildings get the same 2×2 footprint shadows as
+                   prebuilt maps so roof-walk / LOS / building HP treat all four
+                   tiles as one structure. */
+                _stampBuildingFootprints(w, h);
                 _initTowersFromObjects();
                 _initNexusFromObjects();
                 _autoPlaceNexusIfNeeded();
@@ -3171,37 +3260,7 @@
                     delete window._prebuiltObjects;
                 }
 
-                /* ── 2×2 building footprints ──────────────────────────────────
-                   A roofWalkable building (building_*, ancient/abandoned, church,
-                   church_*, shop) is drawn as a 2×2 block anchored at its NW tile,
-                   covering (x,y),(x+1,y),(x,y+1),(x+1,y+1). Stamp a footprint
-                   "shadow" of the same object onto the three SE tiles so every
-                   getObjectAt-based check — roof-walk surfaces, height, climb
-                   access, LOS — treats all four tiles as the building and units
-                   can stand anywhere on the roof. The shadow carries _fp:true so
-                   the renderer only draws the prism once (at the anchor). The map
-                   data flattens each block to one height, so the roof is level. */
-                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                    const cell = state.boardObjects?.[y]?.[x];
-                    if (!Array.isArray(cell) || !cell.length) continue;
-                    const f = cell[0];
-                    if (!f || f._fp || !f.key) continue;
-                    const rule = (typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[f.key] : null;
-                    if (!rule || !rule.roofWalkable) continue;
-                    const baseH = state.boardHeights?.[y]?.[x] ?? 0;
-                    for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]]) {
-                        const fx = x + dx, fy = y + dy;
-                        if (fx >= w || fy >= h) continue;
-                        const occ = state.boardObjects?.[fy]?.[fx];
-                        if (Array.isArray(occ) && occ.length) continue;
-                        state.boardObjects[fy][fx] = [{
-                            key: f.key, alignX: f.alignX || 'center', alignY: f.alignY || 'bottom',
-                            rot: f.rot || 0, flipX: !!f.flipX, flipY: !!f.flipY, _fp: true
-                        }];
-                        if (state.boardObjectAlign?.[fy]) state.boardObjectAlign[fy][fx] = (f.alignX || 'center') + ',' + (f.alignY || 'bottom');
-                        if (state.boardHeights?.[fy]) state.boardHeights[fy][fx] = baseH;
-                    }
-                }
+                _stampBuildingFootprints(w, h);
 
                 if (_pb.voxels) {
                     state.boardVoxels = [];
@@ -4535,8 +4594,13 @@
                     if (oRule && oRule.blocksRanged) return true;
                     /* Buildings (roofWalkable) block line-of-sight through their
                        solid body for vision, even though they don't block ranged
-                       attacks. No height data on the 2D fallback path, so block flat. */
-                    if (forVision && oRule && oRule.roofWalkable) return true;
+                       attacks. No height data on the 2D fallback path, so block flat.
+                       A building never occludes ITSELF: when the target tile is part
+                       of the same 2×2 footprint, its own body doesn't block — else
+                       the far footprint tiles read as unseen from most directions
+                       and the whole structure fogs out while you stand beside it. */
+                    if (forVision && oRule && oRule.roofWalkable &&
+                        !sameBuildingTile(p.x, p.y, x2, y2)) return true;
                 }
                 return false;
             });
@@ -4662,12 +4726,20 @@
                             /* Buildings block line-of-sight through their solid body
                                (vision only — they stay shootable-past). Height-aware:
                                the roof sits at objTopZ, so a unit standing ON the roof
-                               (ray at iz === objTopZ) still sees over the building. */
-                            const objBaseZ = _inferStandingZ(ix, iy);
-                            const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
-                            const bldgH = (oSpr && oSpr._gameHeight > 0) ? oSpr._gameHeight : 2;
-                            const objTopZ = objBaseZ + bldgH;
-                            if (iz >= objBaseZ && iz < objTopZ) return true;
+                               (ray at iz === objTopZ) still sees over the building.
+                               A building never occludes ITSELF: when the ray's target
+                               tile is part of this same 2×2 footprint, its own body
+                               doesn't block — otherwise the far footprint tiles (incl.
+                               the NW anchor that owns the render prism) read as unseen
+                               from most directions and the whole building disappears
+                               while you stand right in front of it. */
+                            if (!sameBuildingTile(ix, iy, x2, y2)) {
+                                const objBaseZ = _inferStandingZ(ix, iy);
+                                const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
+                                const bldgH = (oSpr && oSpr._gameHeight > 0) ? oSpr._gameHeight : 2;
+                                const objTopZ = objBaseZ + bldgH;
+                                if (iz >= objBaseZ && iz < objTopZ) return true;
+                            }
                         }
                     }
                 }

@@ -2680,15 +2680,14 @@
                 if (_hasHeight && !_canFly) {
                     const curH = g.getHeightAt(cur.x, cur.y);
                     const nxH = g.getHeightAt(nx, ny);
-                    const hDiff = Math.abs(curH - nxH);
-                    if (hDiff > _jumpH) {
-
-                        const _aiCurObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cur.x, cur.y) : null;
-                        const _aiNxtObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(nx, ny) : null;
-                        const _aiCurRw = _aiCurObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiCurObj]?.roofWalkable;
-                        const _aiNxtRw = _aiNxtObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiNxtObj]?.roofWalkable;
-                        if (!_aiCurRw && !_aiNxtRw) continue;
-                    }
+                    const rise = nxH - curH;
+                    const _aiNxtObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(nx, ny) : null;
+                    const _aiNxtRw = _aiNxtObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiNxtObj]?.roofWalkable;
+                    // 🏢 Roofs are lift-only now (Enter Building) — never path up
+                    // onto one; the engine's getMoveTiles would reject the step.
+                    if (_aiNxtRw && rise > _maxClimb) continue;
+                    // Rising more than a jump is blocked; drops are unlimited.
+                    if (rise > _jumpH) continue;
                 }
                 const ni = nx + ny * W;
 

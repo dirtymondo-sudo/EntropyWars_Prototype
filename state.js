@@ -1132,6 +1132,21 @@
                 }
             }
 
+            /* 🏢 Buildings in the blast — a crater-forming detonation (nuke class)
+               levels every building it touches; lesser delayed strikes chip 2
+               structure hits. Runs AFTER leaveTerrain so collapse rubble stays.
+               One hit per building regardless of overlapped footprint tiles. */
+            if (typeof damageBuildingAt === 'function' && typeof getBuildingAt === 'function') {
+                const _dsBldgs = new Set();
+                const _dsLevel = !!ds.demolishesBuildings || (!!ds.terrainDeform && (ds.dmg || 0) >= 150);
+                for (const tile of area) {
+                    const _b = getBuildingAt(tile.x, tile.y);
+                    if (!_b || _dsBldgs.has(_b.id)) continue;
+                    _dsBldgs.add(_b.id);
+                    damageBuildingAt(tile.x, tile.y, _dsLevel ? Infinity : 2, sourceUnit || null);
+                }
+            }
+
             if (ds.terrainDeform && typeof window !== 'undefined' && window.GAME?.applyTerrainDeform) {
                 window.GAME.applyTerrainDeform(ds.x, ds.y, ds.aoeRadius || 1, ds.terrainDeform);
             }
@@ -4060,7 +4075,8 @@
             const _apcStatusKeys = unit.status ? Object.keys(unit.status).filter(k => unit.status[k] > 0).sort().join(',') : '';
             // Include destructible-structure counts so the Attack button refreshes the
             // instant a turret / deployed object / seed is placed or destroyed nearby.
-            const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0) + ':' + (state._treeTick || 0);
+            const _apcBldgHp = state.buildings ? state.buildings.reduce((s, b) => s + b.hp, 0) : -1;
+            const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0) + ':' + (state._treeTick || 0) + ':' + _apcBldgHp;
             const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys + '|' + _apcStructs;
             if (key === _actionPanelCache.key) return _actionPanelCache;
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
@@ -4123,6 +4139,23 @@
                         if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
                         if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
                         if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break outer; }
+                    }
+                }
+            }
+            // 🏢 An in-range building can always be sieged with a basic attack —
+            // keeps the Attack button lit exactly like trees do.
+            if (!hasAttack && typeof getBuildingAt === 'function') {
+                bOuter:
+                for (let dy = -effRange; dy <= effRange; dy++) {
+                    for (let dx = -effRange; dx <= effRange; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
+                        const tx = unit.x + dx, ty = unit.y + dy;
+                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
+                        if (!getBuildingAt(tx, ty)) continue;
+                        if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
+                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
+                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break bOuter; }
                     }
                 }
             }

@@ -4205,7 +4205,8 @@ const SPELL_LIBRARY = [
             duration: 3
         }],
         terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-        desc: 'Call down a meteor strike on a 3x3 area. Massive magic damage, applies a 3-turn burn, and scorches the impact site.'
+        demolishesBuildings: true,
+        desc: 'Call down a meteor strike on a 3x3 area. Massive magic damage, applies a 3-turn burn, scorches the impact site, and levels any building it hits.'
     },
 
 
@@ -4466,7 +4467,8 @@ const SPELL_LIBRARY = [
         friendlyFire: true,
         leaveTerrain: 'scorched',
         terrainDeform: { centerDelta: -3, edgeDelta: -1 },
-        desc: 'Mark a 5x5 area for a tactical nuke. Detonates after 2 rounds for devastating damage — hits EVERYONE including allies. Everyone sees it coming.'
+        demolishesBuildings: true,
+        desc: 'Mark a 5x5 area for a tactical nuke. Detonates after 2 rounds for devastating damage — hits EVERYONE including allies, and levels every building in the blast. Everyone sees it coming.'
     },
 
     {
@@ -4658,7 +4660,8 @@ const SHARED_NUKE = {
     kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
     leaveTerrain: 'scorched',
     terrainDeform: { centerDelta: -3, edgeDelta: -1 },
-    desc: 'Launch a nuclear strike at target area. After 1 turn, 5×5 devastation. Enemies see the warning. Leaves scorched earth.'
+    demolishesBuildings: true,
+    desc: 'Launch a nuclear strike at target area. After 1 turn, 5×5 devastation. Enemies see the warning. Levels buildings and leaves scorched earth.'
 };
 
 

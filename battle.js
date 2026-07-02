@@ -71,6 +71,19 @@
         const FALL_DAMAGE_THRESHOLD = 3;
         const FALL_DAMAGE_PER_LEVEL = 8;
         const JUMP_HEIGHT = 2;
+
+        // ── Buildings ──────────────────────────────────────────────────────────
+        // Every roofWalkable 2×2 building is a destructible structure with HP
+        // measured in HITS (like siege turrets): basic attacks and single-target
+        // spells chip 1, AOE spells chip 2, and cataclysm-class bombardments
+        // (meteor / nuke — anything that craters the ground) level it outright.
+        // A collapsing building leaves rubble terrain; units riding the roof fall
+        // with the debris, and a unit sheltered INSIDE (via the Enter Building
+        // lift) is crushed under it for bonus damage.
+        const BUILDING_MAX_HITS = 6;
+        const BUILDING_COLLAPSE_MIN_DMG = 12;   // floor for roof-fall damage (roofs are ~2 high)
+        const BUILDING_CRUSH_BONUS_DMG = 36;    // added on top for units caught inside
+        const BUILDING_ENTER_AP_COST = 1;       // riding the lift costs the same as an action
         const HIGH_GROUND_RANGE_BONUS = 1;
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
@@ -1501,6 +1514,26 @@
                 }
             }
 
+            // 🏢 Building targeting — single-target spells chip structure hits
+            // (area spells damage buildings through _applyAoeDamage instead).
+            if (!target && (spell.kind === 'damage' || spell.kind === 'multiHit' || spell.kind === 'ricochet')
+                && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
+                pushUndoSnapshot(true);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                damageBuildingAt(x, y, buildingHitsForSpell(spell), unit);
+                spendAP(unit, spellApCost);
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                endUnitIfDone(unit);
+                renderAfterCombat();
+                return { handled: true, returnVal: 1 };
+            }
+
             // Deployed object targeting
             if (!target && state._deployedObjects) {
                 const dobjIdx = state._deployedObjects.findIndex(o => {
@@ -2413,6 +2446,23 @@
                 }
             }
 
+            // 🏢 Buildings in the blast: AOE chips 2 structure hits; cataclysm-class
+            // spells (meteor / nuke — crater-forming bombardments) level them
+            // outright. One hit per building per cast, however many footprint
+            // tiles the area overlaps. Runs AFTER the leaveTerrain pass so a
+            // collapse's rubble isn't immediately repainted scorched.
+            if (typeof getBuildingAt === 'function') {
+                const _aoeBldgs = new Set();
+                const _bHits = buildingHitsForSpell(spell);
+                for (const tile of tiles) {
+                    const _b = getBuildingAt(tile.x, tile.y);
+                    if (!_b || _aoeBldgs.has(_b.id)) continue;
+                    _aoeBldgs.add(_b.id);
+                    damageBuildingAt(tile.x, tile.y, _bHits, unit);
+                    hitCount++;
+                }
+            }
+
             if (spell.leaveTerrain) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -2526,6 +2576,7 @@
             const lineRange = Math.max(bw(), bh());
             const hitTargets = [];
             const _lineCells = [];
+            const _lnHitBldgs = new Set();   // 🏢 one structure hit per building per cast
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
                 if (!isInside(cx, cy)) break;
@@ -2536,6 +2587,14 @@
                     hitTargets.push(hit);
                 }
                 damageTurretAt(cx, cy, spell.dmg || 80, unit);
+                // 🏢 Beams chip 1 structure hit per building crossed (once per cast).
+                if (typeof getBuildingAt === 'function') {
+                    const _lnB = getBuildingAt(cx, cy);
+                    if (_lnB && !_lnHitBldgs.has(_lnB.id)) {
+                        _lnHitBldgs.add(_lnB.id);
+                        damageBuildingAt(cx, cy, 1, unit);
+                    }
+                }
                 if (state._deployedObjects) {
                     const _lnDObj = state._deployedObjects.find(o => o.x === cx && o.y === cy && o.hp > 0 && !o._detonated);
                     if (_lnDObj) {
@@ -8353,6 +8412,260 @@
             return true;
         }
 
+        // ═══════════════ BUILDINGS — structure HP / demolition / interiors ═══════════════
+
+        /* Lazily scan the board for roofWalkable building anchors and give each a
+           hit-based HP record. map.js nulls state.buildings whenever a fresh board
+           is generated, so records never leak between matches (and never reset
+           mid-match when terrain/voxels rebuild). */
+        function ensureBuildingsInit() {
+            if (state.buildings) return;
+            state.buildings = [];
+            if (typeof buildingAnchorAt !== 'function' || !state.boardObjects) return;
+            for (let y = 0; y < state.boardObjects.length; y++) {
+                const row = state.boardObjects[y] || [];
+                for (let x = 0; x < row.length; x++) {
+                    const a = buildingAnchorAt(x, y);
+                    if (!a || a.x !== x || a.y !== y) continue;   // anchors only
+                    state.buildings.push({
+                        id: `bldg_${x}_${y}`,
+                        x, y, key: a.key,
+                        hp: BUILDING_MAX_HITS, maxHp: BUILDING_MAX_HITS
+                    });
+                }
+            }
+        }
+
+        /* The living building covering tile (x,y) — any of its 2×2 footprint. */
+        function getBuildingAt(x, y) {
+            if (typeof buildingAnchorAt !== 'function') return null;
+            const a = buildingAnchorAt(x, y);
+            if (!a) return null;
+            ensureBuildingsInit();
+            return state.buildings.find(b => b.x === a.x && b.y === a.y && b.hp > 0) || null;
+        }
+
+        function buildingDisplayName(b) {
+            const rule = (typeof OBJECT_RULES !== 'undefined' && b) ? OBJECT_RULES[b.key] : null;
+            return (rule && rule.label) || 'Building';
+        }
+
+        /* How many structure hits a spell inflicts on a building.
+           Infinity = demolished outright (meteor / nuke class). */
+        function buildingHitsForSpell(spell) {
+            if (!spell) return 1;
+            if (spell.demolishesBuildings) return Infinity;
+            // Cataclysms: crater-forming area bombardments (meteor, nuke, …).
+            if (spell.terrainDeform && (spell.aoeRadius || 0) >= 1 && (spell.dmg || 0) >= 150) return Infinity;
+            if ((spell.aoeRadius || 0) >= 1) return 2;
+            return 1;
+        }
+
+        function damageBuildingAt(x, y, hits, attackerUnit) {
+            const b = getBuildingAt(x, y);
+            if (!b) return false;
+            const n = (hits === Infinity) ? b.hp : Math.max(1, Math.floor(hits));
+            b.hp = Math.max(0, b.hp - n);
+            if (b.hp > 0) {
+                addLog(`🏢 ${buildingDisplayName(b)} at ${coordLabel(b.x, b.y)} takes ${n > 1 ? `${n} hits` : 'a hit'}! (${b.hp}/${b.maxHp} hits remaining)`);
+                showFloatingTextAtTile(x, y, n > 1 ? `-${n} HITS` : '-1 HIT', 'damage', { durationMs: 700 });
+                // Refresh the damage-state tint on the prism.
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.rebuildObjects) ThreeRenderer.rebuildObjects();
+                scheduleBoardRender();
+            } else {
+                destroyBuilding(b, attackerUnit);
+            }
+            return true;
+        }
+
+        /* Move a unit to the first footprint/nearby tile no other living unit is
+           standing on (collapse survivors can pile up otherwise). */
+        function _settleUnitAfterCollapse(u, tiles) {
+            const taken = (tx, ty) => state.units.some(o =>
+                o !== u && !o.dead && o.x === tx && o.y === ty && !o._insideBuildingId);
+            if (!taken(u.x, u.y)) return;
+            const cand = [];
+            for (const t of tiles) cand.push(t);
+            for (const t of tiles) {
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    const tx = t.x + dx, ty = t.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
+                    cand.push({ x: tx, y: ty });
+                }
+            }
+            for (const c of cand) {
+                if (taken(c.x, c.y)) continue;
+                if (typeof canOccupy3D === 'function' && typeof nearestWalkableZ === 'function') {
+                    const cz = nearestWalkableZ(c.x, c.y, u.z ?? 0);
+                    if (!canOccupy3D(c.x, c.y, cz)) continue;
+                    u.x = c.x; u.y = c.y; u.z = cz;
+                } else {
+                    u.x = c.x; u.y = c.y;
+                }
+                return;
+            }
+        }
+
+        function destroyBuilding(b, attackerUnit) {
+            const label = buildingDisplayName(b);
+            const tiles = (typeof buildingFootprintTiles === 'function')
+                ? buildingFootprintTiles(b.x, b.y)
+                : [{ x: b.x, y: b.y }];
+            b.hp = 0;
+
+            /* Catch everyone involved BEFORE the structure vanishes. */
+            const insideUnits = (state.units || []).filter(u => !u.dead && u._insideBuildingId === b.id);
+            const roofUnits = (state.units || []).filter(u => !u.dead && !u._insideBuildingId
+                && tiles.some(t => t.x === u.x && t.y === u.y));
+            const roofFromZ = new Map();
+            for (const u of roofUnits) roofFromZ.set(u.id, u.z ?? getHeightAt(u.x, u.y));
+
+            /* Level the structure: clear all four object cells, leave rubble. */
+            for (const t of tiles) {
+                setObjectAt(t.x, t.y, null);
+                if (typeof setTerrainAt === 'function') setTerrainAt(t.x, t.y, `rubble_${1 + randInt(4)}`);
+            }
+            /* A heap of debris on the anchor tile sells the collapse. */
+            setObjectAt(b.x, b.y, 'ruins');
+
+            addLog(`🏚 ${label} at ${coordLabel(b.x, b.y)} COLLAPSES${attackerUnit ? ` under ${unitDisplayName(attackerUnit)}'s assault` : ''}! Rubble covers the ground.`);
+            showFloatingTextAtTile(b.x, b.y, '🏚 COLLAPSE!', 'damage', { durationMs: 1200 });
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
+            playSfx('damage');
+
+            /* Roof riders drop with the debris — collapse falls hurt from any
+               height (no controlled-jump grace like FALL_DAMAGE_THRESHOLD). */
+            for (const u of roofUnits) {
+                const fromZ = roofFromZ.get(u.id) || 0;
+                const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
+                u.z = toZ;
+                const drop = Math.max(1, fromZ - toZ);
+                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG, drop * FALL_DAMAGE_PER_LEVEL);
+                applyDamageToUnit(u, dmg, '🏚 Collapsing roof: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
+                if (!u.dead) _settleUnitAfterCollapse(u, tiles);
+            }
+
+            /* Units sheltered inside are crushed — the fall PLUS the roof coming
+               down on top of them. */
+            for (const u of insideUnits) {
+                u._insideBuildingId = null;
+                u._insideBuildingTurns = 0;
+                const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
+                u.z = toZ;
+                const dmg = BUILDING_COLLAPSE_MIN_DMG + BUILDING_CRUSH_BONUS_DMG;
+                applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
+                if (!u.dead) {
+                    addLog(`💥 ${unitDisplayName(u)} crawls out of the rubble!`);
+                    _settleUnitAfterCollapse(u, tiles);
+                }
+            }
+
+            if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+            if (typeof ThreeRenderer !== 'undefined') {
+                if (ThreeRenderer.rebuildTerrain) ThreeRenderer.rebuildTerrain();
+                if (ThreeRenderer.rebuildObjects) ThreeRenderer.rebuildObjects();
+            }
+            checkWin();
+            scheduleBoardRender();
+        }
+
+        /* ── Enter Building (the lift) ───────────────────────────────────────
+           Roofs are no longer jumpable from the street — a ground unit standing
+           beside a building rides its lift instead: entering ends the turn, the
+           unit spends the enemy phase INSIDE (hidden, untargetable, but crushed
+           for bonus damage if the building is levelled), and emerges on the
+           roof as its next turn opens. One occupant per building. */
+        function getEnterableBuilding(unit) {
+            if (!unit || unit.dead || unit._insideBuildingId) return null;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
+            if (getBuildingAt(unit.x, unit.y)) return null;          // already on this/some roof
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    const b = getBuildingAt(tx, ty);
+                    if (!b) continue;
+                    const occupied = state.units.some(u => !u.dead && u._insideBuildingId === b.id);
+                    if (occupied) continue;                          // lift's taken
+                    return { building: b, doorTile: { x: tx, y: ty } };
+                }
+            }
+            return null;
+        }
+
+        function doEnterBuilding(unit) {
+            if (!unit || !canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                return false;
+            }
+            const ent = getEnterableBuilding(unit);
+            if (!ent) {
+                addLog('No building to enter from here.');
+                playErrorSfx();
+                return false;
+            }
+            if ((unit.ap || 0) < BUILDING_ENTER_AP_COST) {
+                addLog('Not enough AP to enter the building.');
+                playErrorSfx();
+                return false;
+            }
+            pushUndoSnapshot(true);
+            unit._insideBuildingId = ent.building.id;
+            unit._insideBuildingTurns = 0;
+            unit.x = ent.doorTile.x;
+            unit.y = ent.doorTile.y;
+            unit.z = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ent.doorTile.x, ent.doorTile.y) : 0;
+            addLog(`🛗 ${unitDisplayName(unit)} slips inside ${buildingDisplayName(ent.building)} — riding the lift to the roof…`, unit.player);
+            showFloatingTextAtTile(ent.doorTile.x, ent.doorTile.y, '🛗 ENTER', 'buff', { durationMs: 900 });
+            playSfx('uiConfirm');
+            unit.ap = 0;                                             // the lift takes the rest of the turn
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            scheduleBoardRender();
+            endUnitIfDone(unit);
+            renderAfterCombat();
+            return true;
+        }
+
+        /* Runs as the unit's turn opens: the lift arrives at the roof. Returns
+           true if the unit is on the board and may act this turn; false when it
+           has to keep waiting inside (roof completely occupied). */
+        function processBuildingEmerge(unit) {
+            if (!unit || unit.dead || !unit._insideBuildingId) return true;
+            ensureBuildingsInit();
+            const b = state.buildings.find(bb => bb.id === unit._insideBuildingId);
+            if (!b || b.hp <= 0) {                                   // building died with us NOT inside? just step out
+                unit._insideBuildingId = null;
+                unit._insideBuildingTurns = 0;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(unit.x, unit.y, unit.z ?? 0);
+                return true;
+            }
+            const tiles = (typeof buildingFootprintTiles === 'function')
+                ? buildingFootprintTiles(b.x, b.y)
+                : [{ x: b.x, y: b.y }];
+            /* Prefer the door tile they entered through, then any free roof tile. */
+            const ordered = [{ x: unit.x, y: unit.y }].concat(tiles.filter(t => t.x !== unit.x || t.y !== unit.y));
+            for (const t of ordered) {
+                const occ = state.units.some(o => o !== unit && !o.dead && !o._insideBuildingId && o.x === t.x && o.y === t.y);
+                if (occ) continue;
+                unit._insideBuildingId = null;
+                unit._insideBuildingTurns = 0;
+                unit.x = t.x;
+                unit.y = t.y;
+                unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(t.x, t.y, 999) : getHeightAt(t.x, t.y);
+                addLog(`🛗 ${unitDisplayName(unit)} emerges on the roof of ${buildingDisplayName(b)}!`);
+                showFloatingTextForUnit(unit, '🛗 ROOF', 'buff', { durationMs: 900 });
+                scheduleBoardRender();
+                return true;
+            }
+            /* Roof packed — hold the lift for another round. */
+            unit._insideBuildingTurns = (unit._insideBuildingTurns || 0) + 1;
+            addLog(`🛗 The roof of ${buildingDisplayName(b)} is crowded — ${unitDisplayName(unit)} waits inside.`, unit.player);
+            return false;
+        }
+
         function applySeedTileEffects(player) {
             if (!state.plantedSeeds) return;
 
@@ -8639,12 +8952,12 @@
                             const _no = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _sr = _ct === 'barrier_passage' || _nt === 'barrier_passage' || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
 
-                            const _coR = _co ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_co] : null) : null;
                             const _noR = _no ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null) : null;
-                            const _bldgAccess = (_coR && _coR.roofWalkable) || (_noR && _noR.roofWalkable);
-                            if (!_sr && !_bldgAccess) {
-
-                                const _signedHd = nz - cur.z;
+                            const _signedHd = nz - cur.z;
+                            /* 🏢 Mirrors getMoveTiles: no free climbing onto a building
+                               roof — the Enter Building lift is the way up. */
+                            if (_noR && _noR.roofWalkable && _signedHd > MAX_CLIMB_HEIGHT) continue;
+                            if (!_sr) {
                                 if (_signedHd > JUMP_HEIGHT) continue;
                             }
                         }
@@ -14729,6 +15042,19 @@
                 if (nextUnit._tookDamageThisRound) nextUnit._tookDamageThisRound = false;
                 const pendingUnitId = nextUnit.id;
 
+                /* Lift arrives: a unit that entered a building last turn emerges
+                   on the roof before anything else happens on its turn. If the
+                   roof is completely occupied it waits inside and skips the turn. */
+                if (nextUnit._insideBuildingId) {
+                    const _emerged = processBuildingEmerge(nextUnit);
+                    if (!_emerged) {
+                        nextUnit.ap = 0;
+                        scheduleBoardRender();
+                        window.setTimeout(() => maybeAdvanceTurn(), state.devAutoSim ? 0 : 400);
+                        return;
+                    }
+                }
+
                 processTurnStartTowerDamage(nextUnit, function _afterTowerDamage() {
                 if (nextUnit.dead || nextUnit._dying) {
 
@@ -16151,6 +16477,9 @@
             get doWard() { return doWard; },
             get doGuard() { return doGuard; },
             transitionUnitToFloor, switchToFloor,
+            // 🏢 Buildings: structure HP, siege damage and the roof lift.
+            getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
+            getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
             get channelNexus() { return channelNexus; },
             get doRecall() { return doRecall; },
             get getNexusAtUnit() { return getNexusAtUnit; },
@@ -16740,9 +17069,32 @@
                 }
             }
 
-            // Trees sort AFTER real targets so the auto-picked pending target
-            // (and target-cycling) always prefers enemies over scenery.
-            targets.sort((a, b) => ((a.kind === 'tree') - (b.kind === 'tree')) || a.dist - b.dist);
+            // 🏢 Buildings: any unit can siege an in-range building with its basic
+            // attack (6 hits level it). Only the footprint tiles with no unit on
+            // the roof are offered — a manned tile resolves to the unit instead.
+            if (typeof getBuildingAt === 'function') {
+                const _seenBldgTiles = new Set();
+                for (let ty = 0; ty < bh(); ty++) {
+                    for (let tx = 0; tx < bw(); tx++) {
+                        const b = getBuildingAt(tx, ty);
+                        if (!b) continue;
+                        const occ = unitAt(tx, ty);
+                        if (occ && occ.id !== unit.id) continue;
+                        const baseZ = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty) : 0;
+                        const d = combatDist(unit.x, unit.y, unitZ, tx, ty, baseZ);
+                        if (d < 1 || d > effRange) continue;
+                        if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
+                        if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
+                        if (_seenBldgTiles.has(b.id)) continue;   // one entry per building
+                        _seenBldgTiles.add(b.id);
+                        targets.push({ x: tx, y: ty, dist: d, building: b, kind: 'building' });
+                    }
+                }
+            }
+
+            // Trees/buildings sort AFTER real targets so the auto-picked pending
+            // target (and target-cycling) always prefers enemies over scenery.
+            targets.sort((a, b) => (((a.kind === 'tree' || a.kind === 'building')) - ((b.kind === 'tree' || b.kind === 'building'))) || a.dist - b.dist);
             return targets;
         }
 
@@ -18811,11 +19163,15 @@
                         if (!unitCanTraverse(unit, nx, ny, nz)) continue;
                         const hDiff = nz - unitZ;
 
-                        if (hDiff > climb) {
+                        /* 🏢 Building roofs can't be jumped onto (that bypass ignored
+                           unit jump heights entirely) — the Enter Building lift is
+                           the way up. Everything else obeys the unit's jump climb. */
+                        if (hDiff > MAX_CLIMB_HEIGHT) {
                             const _jObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
-                            if (!(_jRule && _jRule.roofWalkable)) continue;
+                            if (_jRule && _jRule.roofWalkable) continue;
                         }
+                        if (hDiff > climb) continue;
 
                         // Skip tile if occupied — but ignore airborne units at different z
                         const _jOccupant = unitAt(nx, ny, nz);
@@ -18963,7 +19319,13 @@
             if (_clickedTarget && _clickedTarget._isBoss && _clickedTarget._bossSize === 2) {
                 d = distToTarget(unit.x, unit.y, _clickedTarget, unit.z);
             } else {
-                const _tz = _clickedTarget ? (_clickedTarget.z ?? 0) : (z ?? 0);
+                let _tz = _clickedTarget ? (_clickedTarget.z ?? 0) : (z ?? 0);
+                // 🏢 Attacking an (empty) building tile strikes the WALL, not the
+                // roof plane — measure to the wall base so melee siege works even
+                // though the roof sits 2 levels up.
+                if (!_clickedTarget && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
+                    _tz = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0;
+                }
                 d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
             }
 
@@ -19213,6 +19575,25 @@
                 state.actionMenuView = 'root';
                 state.selectedTool = null;
                 state.pendingTarget = null;
+                endUnitIfDone(unit);
+                renderAfterCombat();
+                return 1;
+            }
+            // 🏢 Buildings: a basic attack on an (enemy-free) building tile chips
+            // one structure hit — six swings level the block (BUILDING_MAX_HITS).
+            if ((!target || target.id === unit.id) && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
+                pushUndoSnapshot(true);
+                animateStrikeLeap(unit, x, y);
+                damageBuildingAt(x, y, 1, unit);
+                playSfx('basicAttack');
+                grantXP(unit, 4, 'siege');
+                spendAP(unit, AP_COST_ACTION);
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                checkWin();
                 endUnitIfDone(unit);
                 renderAfterCombat();
                 return 1;
@@ -22315,7 +22696,8 @@
                     statusEffects: spell.statusEffects || [],
                     friendlyFire: !!spell.friendlyFire,
                     leaveTerrain: spell.leaveTerrain || null,
-                    terrainDeform: spell.terrainDeform || null
+                    terrainDeform: spell.terrainDeform || null,
+                    demolishesBuildings: !!spell.demolishesBuildings
                 });
                 addLog(`${unitDisplayName(unit)} marks ${coordLabel(x, y)} with ${spell.name}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
@@ -24672,12 +25054,17 @@
                             const _nextObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _hasStairObj = _curObj === 'stairs' || _curObj === 'stairs_2' || _nextObj === 'stairs' || _nextObj === 'stairs_2';
 
-                            const _curRule = _curObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_curObj] : null) : null;
                             const _nextRule = _nextObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_nextObj] : null) : null;
-                            const _hasBldgAccess = (_curRule && _curRule.roofWalkable) || (_nextRule && _nextRule.roofWalkable);
-                            if (!_isStairs && !_hasStairObj && !_hasBldgAccess) {
-
-                                const _signedHDiff = nz - curZ;
+                            const _signedHDiff = nz - curZ;
+                            /* 🏢 Building roofs are OFF the free-climb list: a rise of
+                               more than MAX_CLIMB_HEIGHT onto a roofWalkable roof can't
+                               be walked, jumped or staired — ride the building's lift
+                               (Enter Building) instead. Hopping DOWN off a roof stays
+                               free, and flyers still land on roofs from the air. */
+                            if (_nextRule && _nextRule.roofWalkable && _signedHDiff > MAX_CLIMB_HEIGHT) {
+                                continue;
+                            }
+                            if (!_isStairs && !_hasStairObj) {
                                 if (_signedHDiff > JUMP_HEIGHT) {
                                     continue;
                                 }

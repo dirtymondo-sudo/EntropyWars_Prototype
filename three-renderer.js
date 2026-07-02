@@ -3513,6 +3513,25 @@ const ThreeRenderer = (function () {
                 var _ostk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
                 if (_ostk && _ostk[0] && _ostk[0]._fp) continue;
                 m = _buildBuildingPrism(ok, x, y);
+                if (m && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[ok] && OBJECT_RULES[ok].roofWalkable) {
+                    /* Mark house prisms so fog-of-war can show them when ANY of
+                       their four footprint tiles (or a tile beside the building)
+                       is visible — not just the NW anchor tile. */
+                    m._ew_isBuilding = true;
+                    /* Structure damage state: darken the prism as its HP drops
+                       (materials are per-prism, so in-place tint is safe). */
+                    var _brec = (typeof getBuildingAt === 'function') ? getBuildingAt(x, y) : null;
+                    if (_brec && _brec.maxHp > 0 && _brec.hp < _brec.maxHp) {
+                        var _bmul = 1 - 0.55 * (1 - _brec.hp / _brec.maxHp);
+                        m.traverse(function (o) {
+                            if (!o.isMesh || !o.material) return;
+                            var _bmats = Array.isArray(o.material) ? o.material : [o.material];
+                            for (var _bmi = 0; _bmi < _bmats.length; _bmi++) {
+                                if (_bmats[_bmi] && _bmats[_bmi].color) _bmats[_bmi].color.multiplyScalar(_bmul);
+                            }
+                        });
+                    }
+                }
             }
             else if (_isCrossBillboard(ok))   m = _buildCrossBillboard(ok, x, y);
             else if (_isBarrierKey(ok))       m = _buildBarrierSlab(ok, x, y);
@@ -5574,6 +5593,24 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* 🛗 Units riding a building's lift (unit._insideBuildingId) are inside the
+       structure: hide their sprite group (and thereby their CSS2D plate, which
+       follows the group's visibility) until they emerge. Runs every frame,
+       AFTER the fog pass, so it wins regardless of fog state. */
+    function _updateInsideBuildingVisibility() {
+        unitEntries.forEach(function (entry, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit) return;
+            if (unit._insideBuildingId) {
+                if (entry.group.visible) entry.group.visible = false;
+                entry.group._ew_insideBldg = true;
+            } else if (entry.group._ew_insideBldg) {
+                entry.group._ew_insideBldg = false;
+                entry.group.visible = true;   // fog/concealment passes re-hide if needed
+            }
+        });
+    }
+
     function _updatePlateVisibility() {
 
         var targetSet = window._ewTargetableUnitIds || null;
@@ -6779,7 +6816,10 @@ const ThreeRenderer = (function () {
     function _fogTileContainers(pk) {
         var arr = [];
         var tm = tileMeshes.get(pk); if (tm) arr.push(tm);
-        var om = objectMeshes.get(pk); if (om) arr.push(om);
+        /* Building prisms are NOT tied to their anchor tile's fade — they span a
+           2×2 footprint and stay visible while ANY footprint/adjacent tile is
+           seen (_bldgVisibleInFog), with their own fade records. */
+        var om = objectMeshes.get(pk); if (om && !om._ew_isBuilding) arr.push(om);
         if (_terrainDecoGroup) {
             var parts = pk.split(','); var tx = +parts[0], ty = +parts[1];
             for (var i = 0; i < _terrainDecoGroup.children.length; i++) {
@@ -6789,6 +6829,80 @@ const ThreeRenderer = (function () {
         }
         return arr;
     }
+    /* Should the building prism anchored at pk be shown under fog of war?
+       True when ANY of its 2×2 footprint tiles is visible, or any tile in the
+       one-tile ring around the footprint (x-1..x+2, y-1..y+2) — so a unit
+       standing in front of a building always sees the building itself, even
+       though the far footprint tiles are self-occluded. Units on/behind the
+       building keep their own per-tile visibility and stay fogged. */
+    function _bldgVisibleInFog(pk, visible) {
+        if (visible.has(pk)) return true;
+        var c = pk.indexOf(',');
+        var x = +pk.slice(0, c), y = +pk.slice(c + 1);
+        for (var dy = -1; dy <= 2; dy++) {
+            for (var dx = -1; dx <= 2; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                if (visible.has((x + dx) + ',' + (y + dy))) return true;
+            }
+        }
+        return false;
+    }
+
+    /* Per-building fog fade records (pk -> { op, swapped, meshes, ref }) —
+       buildings fade with the same clone/restore machinery as tiles but track
+       _bldgVisibleInFog instead of their anchor tile's visibility. */
+    var _bldgFogTiles = new Map();
+
+    function _bldgEndFogFade(rec, tgt, om) {
+        if (rec.meshes) {
+            for (var i = 0; i < rec.meshes.length; i++) _fogRestoreMesh(rec.meshes[i]);
+        }
+        om.visible = (tgt > 0);
+        rec.meshes = null;
+        rec.swapped = false;
+        rec.op = tgt;
+    }
+
+    function _updateBuildingFogReveal(visible, k) {
+        objectMeshes.forEach(function (om, pk) {
+            if (!om._ew_isBuilding) return;
+            var tgt = _bldgVisibleInFog(pk, visible) ? 1 : 0;
+            var rec = _bldgFogTiles.get(pk);
+            if (!rec || rec.ref !== om) {
+                /* First sighting or the prism was rebuilt under us — snap. */
+                if (rec && rec.swapped && rec.meshes) {
+                    for (var r = 0; r < rec.meshes.length; r++) _fogRestoreMesh(rec.meshes[r]);
+                }
+                rec = { op: tgt, swapped: false, meshes: null, ref: om };
+                _bldgFogTiles.set(pk, rec);
+                om.visible = (tgt > 0);
+                return;
+            }
+            if (rec.op === tgt && !rec.swapped) return;
+            if (rec.op !== tgt) {
+                if (!rec.swapped) {
+                    om.visible = true;
+                    rec.meshes = [];
+                    var bm = rec.meshes;
+                    om.traverse(function (o) {
+                        if ((o.isMesh || o.isSprite) && o.material) { bm.push(o); _fogApplyFade(o); }
+                    });
+                    rec.swapped = true;
+                }
+                rec.op += (tgt - rec.op) * k;
+                if (Math.abs(rec.op - tgt) < 0.02) rec.op = tgt;
+                if (rec.meshes) {
+                    for (var j = 0; j < rec.meshes.length; j++) {
+                        if (rec.meshes[j].parent) _fogSetMatOpacity(rec.meshes[j], rec.op);
+                    }
+                }
+                if (rec.op === tgt) _bldgEndFogFade(rec, tgt, om);
+            } else {
+                _bldgEndFogFade(rec, tgt, om);
+            }
+        });
+    }
+
     function _fogBeginTileFade(pk, rec) {
         rec.containers = _fogTileContainers(pk);
         rec.meshes = [];
@@ -6820,6 +6934,12 @@ const ThreeRenderer = (function () {
             }
         });
         _fogTiles.clear();
+        _bldgFogTiles.forEach(function (rec) {
+            if (rec.swapped && rec.meshes) {
+                for (var i = 0; i < rec.meshes.length; i++) _fogRestoreMesh(rec.meshes[i]);
+            }
+        });
+        _bldgFogTiles.clear();
     }
 
     function _makeFogEntry(x, y, ts, isEdge) {
@@ -7222,6 +7342,13 @@ const ThreeRenderer = (function () {
         });
 
         objectMeshes.forEach(function(mesh, pk) {
+            /* A building is a 2×2 landmark keyed to its NW anchor tile. Judging
+               it by the anchor alone made whole buildings vanish while the
+               player stood right in front of them (the anchor is often the
+               far corner, self-occluded by the building's own body). Show it
+               whenever any footprint tile — or a tile hugging the building —
+               is visible. */
+            if (mesh._ew_isBuilding) { mesh.visible = _bldgVisibleInFog(pk, visible); return; }
             var rec = _fogTiles.get(pk);
             if (rec && rec.swapped) return;
             mesh.visible = visible.has(pk);
@@ -7414,6 +7541,7 @@ const ThreeRenderer = (function () {
 
         var k = Math.min(1, FOG_FADE_RATE * dt);
         _updateFogTerrainReveal(_fogVisibleSet || new Set(), k);
+        _updateBuildingFogReveal(_fogVisibleSet || new Set(), k);
         _updateFogBoxFade(k);
     }
 
@@ -12763,6 +12891,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _updateTowerCubes();
+        _updateInsideBuildingVisibility();
         _updatePlateVisibility();
         _updatePlateEffBadges();
         _syncNexusBars();
@@ -13096,6 +13225,7 @@ const ThreeRenderer = (function () {
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
         _fogTiles.clear();
+        _bldgFogTiles.clear();
         _fogBuiltBw = 0; _fogBuiltBh = 0;
         _clearAnimations();
         _lastBoardW = 0; _lastBoardH = 0; _lastBuiltTileSize = -1;
