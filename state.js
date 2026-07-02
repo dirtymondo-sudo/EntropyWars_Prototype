@@ -4060,7 +4060,7 @@
             const _apcStatusKeys = unit.status ? Object.keys(unit.status).filter(k => unit.status[k] > 0).sort().join(',') : '';
             // Include destructible-structure counts so the Attack button refreshes the
             // instant a turret / deployed object / seed is placed or destroyed nearby.
-            const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0);
+            const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0) + ':' + (state._treeTick || 0);
             const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys + '|' + _apcStructs;
             if (key === _actionPanelCache.key) return _actionPanelCache;
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
@@ -4107,6 +4107,23 @@
                     if (s.owner === unit.player) continue;
                     const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                     if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y)) { hasAttack = true; break; }
+                }
+            }
+            // 🪓 An in-range tree can always be chopped with a basic attack, so it
+            // keeps the Attack button lit too. Scan the small range diamond only.
+            if (!hasAttack && typeof _tileHasTree === 'function') {
+                outer:
+                for (let dy = -effRange; dy <= effRange; dy++) {
+                    for (let dx = -effRange; dx <= effRange; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
+                        const tx = unit.x + dx, ty = unit.y + dy;
+                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
+                        if (!_tileHasTree(tx, ty)) continue;
+                        if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
+                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
+                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break outer; }
+                    }
                 }
             }
             // Nothing attackable from where the unit stands, but it may be able to

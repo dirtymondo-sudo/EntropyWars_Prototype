@@ -1842,6 +1842,10 @@
             if (terr === 'tree' || terr === 'forest' || terr === 'forest_2') setTerrainAt(x, y, 'grass');
             _removePlantedTreeAt(x, y);
             _invalidateBoardGrid();
+            // Tree count changed → the cached "does the Attack button light up?"
+            // answer (which now includes choppable trees) must be recomputed.
+            state._treeTick = (state._treeTick || 0) + 1;
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             scheduleBoardRender();
             if (byUnit && opts.credit !== false) {
                 _ensureTreeState();
@@ -2128,10 +2132,11 @@
                 }
             }, projectileDelay);
 
-            // Paint the target — the 🔴 status follows them until the shot resolves.
+            // Paint the target — no status badge; the renderer draws an actual red
+            // laser beam from the sniper to the painted unit while the pending
+            // shot below sits in state._delayedSpells (see _updateLaserSightBeams
+            // in three-renderer.js). The beam vanishes if line of sight breaks.
             const delayRounds = spell.markDelayRounds || 1;
-            applyStatusEffects(target, [{ id: 'lasered', duration: delayRounds + 1 }],
-                `${spell.name}: `, unit);
             if (typeof showFloatingTextForUnit === 'function') {
                 showFloatingTextForUnit(target, '🔴 PAINTED', 'streak', { durationMs: 1100 });
             }
@@ -16653,7 +16658,27 @@
                     }
                 }
             }
-            targets.sort((a, b) => a.dist - b.dist);
+
+            // 🪓 Trees: any unit can chop an in-range tree with its basic attack
+            // (banks lumber / clears cover — see the chop branch in doAttack).
+            // Listing them here is what lights up the Attack button and puts them
+            // in the target menu; it also makes move-then-attack reach them.
+            for (let ty = 0; ty < bh(); ty++) {
+                for (let tx = 0; tx < bw(); tx++) {
+                    if (!_tileHasTree(tx, ty)) continue;
+                    const occ = unitAt(tx, ty);
+                    if (occ && occ.id !== unit.id) continue; // a unit on the tile takes the swing instead
+                    const d = combatDist(unit.x, unit.y, unitZ, tx, ty, _tileStandZ(tx, ty));
+                    if (d < 1 || d > effRange) continue;
+                    if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
+                    if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
+                    targets.push({ x: tx, y: ty, dist: d, kind: 'tree' });
+                }
+            }
+
+            // Trees sort AFTER real targets so the auto-picked pending target
+            // (and target-cycling) always prefers enemies over scenery.
+            targets.sort((a, b) => ((a.kind === 'tree') - (b.kind === 'tree')) || a.dist - b.dist);
             return targets;
         }
 
@@ -23243,6 +23268,8 @@
                     setObjectAt(x, y, 'tree');
                     state.plantedTrees.push({ x, y, owner: unit.player, casterUnitId: unit.id });
                     _invalidateBoardGrid();
+                    state._treeTick = (state._treeTick || 0) + 1;
+                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
                     showFloatingTextAtTile(x, y, '🌳', 'heal', { durationMs: 1000 });
                     const buff = getPlantedTreeBonus(unit);
                     addLog(`${unitDisplayName(unit)} grows a tree at ${coordLabel(x, y)} — its grove empowers ${unitDisplayName(unit)} (+${buff} ATK & spell power). Enemies must cut or burn it down.`);

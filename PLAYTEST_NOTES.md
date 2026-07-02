@@ -241,9 +241,20 @@ are on R2 → re-upload `three-renderer.js`, `hud.js`, `ui.js`, `battle.js`.**
 ## Sniper rework — Headshot delayed laser mark + move nerf (2026-07-01)
 Headshot was too strong as an instant 180 armour-piercing nuke. It is now a
 **delayed, vision-gated shot** instead of firing immediately:
-- Cast paints the enemy with a red laser dot (`lasered` status → red **LZR** plate
-  badge + a red single-tile board overlay that FOLLOWS the unit) — see
-  `_castLaserMark()` in battle.js. No damage lands on cast.
+- Cast paints the enemy — see `_castLaserMark()` in battle.js. No damage lands
+  on cast. **2026-07-02: the LZR status badge was REPLACED by an actual red
+  laser BEAM** drawn caster→target (`_updateLaserSightBeams` in
+  three-renderer.js, called every frame from the render loop): additive red
+  cylinder + glow tube + pulsing dot at the target's chest; endpoints track
+  both units' live mesh positions (walk tweens / flying bob included). The beam
+  uses the SAME `_isUnitVisibleToViewer(mark, sourcePlayer)` gate as the shot —
+  lose sight and the beam disappears (returns if sight is regained before EOR);
+  it also hides when either endpoint is fog-concealed from the LOCAL viewer
+  (checks `unitEntries.get(id).group.visible`). `applyStatusEffects('lasered')`
+  is no longer called (status def kept in data.js; the `clearStatus` in
+  `_detonateDelayedSpell` stays as harmless cleanup). The red single-tile board
+  overlay that follows the unit is unchanged. Beams are cleaned up in
+  `dispose()` + `resetForNewMatch()`.
 - A pending shot is queued in `state._delayedSpells` with `markedUnitId`,
   `requireVision:true`, `roundsLeft:1`. It resolves at END OF ROUND via
   `_detonateDelayedSpell()` in state.js (the unit-tracking branch at the top).
@@ -260,7 +271,32 @@ Headshot was too strong as an instant 180 armour-piercing nuke. It is now a
   in three-renderer `_SB_COLORS`. Board overlays (ui.js ×2, three-renderer) resolve
   `markedUnitId` → live unit tile so the dot tracks the target.
 - NOTE: files load from R2, so this can only be tested after the user uploads the
-  edited files. Not smoke-tested locally.
+  edited files. Smoke-tested locally 2026-07-02 via LOCAL_ASSETS (probe: cast →
+  `_delayedSpells` queued, no `lasered` status, beam mesh in scene at the exact
+  caster↔target midpoint, beam removed when `_isUnitVisibleToViewer` → false and
+  restored when it returns).
+
+## Tree chopping is now TARGETABLE like any attack (2026-07-02)
+"Can't cut down trees — Attack greyed out, no chop option on click" was because
+the chop EXECUTION existed (doAttack's 🪓 branch → `_fellTreeAt`) but no
+TARGETING surface ever offered a tree. Fixed in four places (all must be
+uploaded together: battle.js, state.js, hud.js):
+- `_getAttackValidTargets` (battle.js) now appends in-range, LOS-clear,
+  unoccupied tree tiles (`_tileHasTree`) as `kind:'tree'` targets — this drives
+  the attack-target submenu, click validation in attack mode, AND
+  move-then-attack (`findAttackApproachTile`/`attackHasReachableTarget` reuse
+  it, so clicking a far tree walks you into range and chops). Trees sort AFTER
+  real targets so auto-target still prefers enemies.
+- `getActionPanelCache` (state.js) scans the range diamond for choppable trees
+  so the Attack button lights up; cache key includes `state._treeTick`, bumped
+  in `_fellTreeAt` + Wildwood planting (battle.js) alongside
+  `invalidateActionPanelCache()`.
+- hud.js: attack-target rows label trees "🪓 Chop Tree"; the tile quick-action
+  menu (`_computeTileActions`) gets an `attack:tree` "Chop Tree" entry when the
+  clicked tile has a tree and no unit on it.
+- Verified locally via probe: tree listed in targets, hasAttack=true, Chop Tree
+  quick action available, doAttack fells it ("🪓 … chops down a tree", object
+  cleared, +1 lumber).
 
 ## Known findings (from playtests)
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the

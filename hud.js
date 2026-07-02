@@ -1986,6 +1986,7 @@ function SubMenu({ st }) {
         else if (t.kind === 'turret') { label = '🔧 Turret'; hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
         else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
         else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
+        else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
 
         return h(TargetRow, {
           key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
@@ -3427,6 +3428,24 @@ function _computeTileActions(actingUnit, tx, ty) {
         id: 'attack:seed', label: 'Attack ' + seedName, icon: '⚔', category: 'attack',
         apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
         handler: canAtk ? () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('attack');
+          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
+        } : null,
+      });
+    }
+
+    // 🪓 Chop a tree: any unit can fell a tree with a basic attack (banks
+    // lumber / clears cover). Only offered when no unit occupies the tile —
+    // otherwise the swing hits the unit, not the trunk.
+    const hasTree = !onSelf && typeof _tileHasTree === 'function' && _tileHasTree(tx, ty)
+      && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty));
+    if (hasTree) {
+      const canChop = inRangeUnit && !losBlocked;
+      actions.push({
+        id: 'attack:tree', label: 'Chop Tree', icon: '🪓', category: 'attack',
+        apCost: 1, available: canChop, reason: canChop ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
+        handler: canChop ? () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('attack');
           if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);

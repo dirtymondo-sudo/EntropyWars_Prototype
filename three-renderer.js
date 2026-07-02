@@ -7481,6 +7481,132 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── Headshot laser sight ────────────────────────────────────────────
+       While a unit-tracking delayed shot (Headshot) is pending in
+       state._delayedSpells, draw an actual red laser beam from the sniper to
+       the painted target (this replaces the old LZR status badge). Runs every
+       frame so the beam rides walk tweens / flying bob on both ends, and it
+       disappears the moment the sniper's team loses sight of the target — the
+       same vision gate that decides whether the delayed shot lands at all. */
+    var _laserBeamGroup = null;
+    var _laserBeams = new Map(); // 'srcId>tgtId' → { root, beam, glow, dot, beamMat, glowMat, dotMat, phase }
+    var _laserUpVec = null, _laserDirVec = null;
+
+    function _disposeLaserEntry(entry) {
+        if (!entry) return;
+        if (entry.root && entry.root.parent) entry.root.parent.remove(entry.root);
+        if (entry.beam && entry.beam.geometry) entry.beam.geometry.dispose();
+        if (entry.glow && entry.glow.geometry) entry.glow.geometry.dispose();
+        if (entry.dot && entry.dot.geometry) entry.dot.geometry.dispose();
+        if (entry.beamMat) entry.beamMat.dispose();
+        if (entry.glowMat) entry.glowMat.dispose();
+        if (entry.dotMat) entry.dotMat.dispose();
+    }
+
+    function _clearLaserBeams() {
+        _laserBeams.forEach(function(entry) { _disposeLaserEntry(entry); });
+        _laserBeams.clear();
+        if (_laserBeamGroup) {
+            if (_laserBeamGroup.parent) _laserBeamGroup.parent.remove(_laserBeamGroup);
+            _laserBeamGroup = null;
+        }
+    }
+
+    function _buildLaserEntry(key) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var beamMat = new THREE.MeshBasicMaterial({ color: 0xff2222, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+        var glowMat = new THREE.MeshBasicMaterial({ color: 0xff2222, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false });
+        var dotMat  = new THREE.MeshBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.045, 1, 6, 1, true), beamMat);
+        var glow = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.115, ts * 0.115, 1, 6, 1, true), glowMat);
+        var dot  = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 10, 8), dotMat);
+        glow.renderOrder = 9039; beam.renderOrder = 9040; dot.renderOrder = 9041;
+        var root = new THREE.Group();
+        root.add(glow); root.add(beam); root.add(dot);
+        _laserBeamGroup.add(root);
+        var entry = { root: root, beam: beam, glow: glow, dot: dot, beamMat: beamMat, glowMat: glowMat, dotMat: dotMat, phase: (key.length * 1.7) % 6.283 };
+        _laserBeams.set(key, entry);
+        return entry;
+    }
+
+    function _updateLaserSightBeams() {
+        var wanted = null;
+        if (active && scene && typeof state !== 'undefined' && state.phase === 'battle'
+            && !state.devAutoSim && state._delayedSpells && state._delayedSpells.length) {
+            var delayed = state._delayedSpells;
+            for (var i = 0; i < delayed.length; i++) {
+                var ds = delayed[i];
+                if (!ds || !ds.markedUnitId || !ds.sourceUnitId) continue;
+                var src = _findUnit(ds.sourceUnitId);
+                var tgt = _findUnit(ds.markedUnitId);
+                if (!src || src.dead || !tgt || tgt.dead) continue;
+                /* Same rule as the delayed shot itself: no eyes on the target →
+                   the laser is off (and the shot fizzles if it stays off). */
+                if (ds.requireVision !== false && typeof _isUnitVisibleToViewer === 'function'
+                    && !_isUnitVisibleToViewer(tgt, ds.sourcePlayer)) continue;
+                var se = unitEntries.get(src.id), te = unitEntries.get(tgt.id);
+                if (!se || !se.group || !te || !te.group) continue;
+                /* Fog/concealment: if either end is hidden from the LOCAL viewer,
+                   don't draw a beam that would give the hidden unit away. */
+                if (se.group.visible === false || te.group.visible === false) continue;
+                if (!wanted) wanted = {};
+                wanted[ds.sourceUnitId + '>' + ds.markedUnitId] = { se: se, te: te };
+            }
+        }
+
+        if (!wanted) {
+            if (_laserBeams.size || _laserBeamGroup) _clearLaserBeams();
+            return;
+        }
+
+        if (!_laserBeamGroup) {
+            _laserBeamGroup = new THREE.Group();
+            _laserBeamGroup.name = 'laserSights';
+            scene.add(_laserBeamGroup);
+        } else if (_laserBeamGroup.parent !== scene) {
+            scene.add(_laserBeamGroup);
+        }
+
+        /* Drop beams whose mark resolved, fizzled, or went out of sight. */
+        var stale = [];
+        _laserBeams.forEach(function(entry, key) { if (!wanted[key]) stale.push(key); });
+        for (var si = 0; si < stale.length; si++) {
+            _disposeLaserEntry(_laserBeams.get(stale[si]));
+            _laserBeams.delete(stale[si]);
+        }
+
+        if (!_laserUpVec) { _laserUpVec = new THREE.Vector3(0, 1, 0); _laserDirVec = new THREE.Vector3(); }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var spriteH = ts * UNIT_SPRITE_SIZE_RATIO;
+        var now = performance.now() / 1000;
+
+        for (var key in wanted) {
+            var w = wanted[key];
+            var entry = _laserBeams.get(key) || _buildLaserEntry(key);
+            var sp = w.se.group.position, tp = w.te.group.position;
+            /* Muzzle-height origin on the sniper, chest-height end on the target. */
+            var sx = sp.x, sy = sp.y + spriteH * 0.62, sz = sp.z;
+            var tx = tp.x, ty = tp.y + spriteH * 0.45, tz = tp.z;
+            _laserDirVec.set(tx - sx, ty - sy, tz - sz);
+            var len = _laserDirVec.length();
+            if (len < 0.001) { entry.root.visible = false; continue; }
+            entry.root.visible = true;
+            _laserDirVec.multiplyScalar(1 / len);
+            entry.beam.position.set((sx + tx) / 2, (sy + ty) / 2, (sz + tz) / 2);
+            entry.beam.quaternion.setFromUnitVectors(_laserUpVec, _laserDirVec);
+            entry.beam.scale.set(1, len, 1);
+            entry.glow.position.copy(entry.beam.position);
+            entry.glow.quaternion.copy(entry.beam.quaternion);
+            entry.glow.scale.set(1, len, 1);
+            entry.dot.position.set(tx, ty, tz);
+            /* Subtle pulse so it reads as an active sight, not level geometry. */
+            entry.beamMat.opacity = 0.72 + 0.22 * Math.sin(now * 9 + entry.phase);
+            entry.glowMat.opacity = 0.10 + 0.08 * Math.sin(now * 9 + entry.phase);
+            var dScale = 1 + 0.25 * Math.sin(now * 6 + entry.phase);
+            entry.dot.scale.set(dScale, dScale, dScale);
+        }
+    }
+
     var _bbLastCamX = NaN, _bbLastCamZ = NaN;
 
     function _updateBillboards() {
@@ -12680,6 +12806,7 @@ const ThreeRenderer = (function () {
 
         _syncWeatherOverlays();
         _syncWeatherVFX();
+        _updateLaserSightBeams();
         _updateTornadoBillboards();
         _updateHurricaneVortices();
         _updateBlizzardVortices();
@@ -12903,6 +13030,7 @@ const ThreeRenderer = (function () {
     function dispose() {
         deactivate();
         _clearPlates();
+        _clearLaserBeams();
         if (ThreeVFX && ThreeVFX.dispose) ThreeVFX.dispose();
         if (window.ThreeLightning && ThreeLightning.dispose) ThreeLightning.dispose();
         if (ThreePost && ThreePost.dispose) ThreePost.dispose();
@@ -12961,6 +13089,7 @@ const ThreeRenderer = (function () {
     // camera to snap cleanly to the new framing instead of drifting from the last.
     function resetForNewMatch() {
         _clearAnimations();
+        _clearLaserBeams();
         _lastBoardW = 0; _lastBoardH = 0;
         _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
         _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
