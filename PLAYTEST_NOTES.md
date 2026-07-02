@@ -529,6 +529,33 @@ a full tile under flyers) and the camera focused below airborne units. Now:
   use `unit.z` levels for airborne, terrain+roof otherwise. Parties roll
   jetpacks/sky races often — airborne units appear in normal matches.
 
+## Line of sight — eye-height + corner-graze fix (2026-07-02, map.js)
+LoS is `isRangeBlockedByTerrain` → `_isRayBlocked3D` (map.js ~4505), a 3D voxel
+DDA. Chebyshev d ≤ 1 is always exempt; `wallVision` units bypass entirely.
+Two bugs fixed this session:
+- **Sight ray started at the WAIST, not the eyes.** Ray endpoints were
+  `z + 1.5` = center of the lower body voxel (feet at world z+1, 1-tile-tall
+  sprite head at z+2). Result: a unit atop a staircase could NOT see down it —
+  on 1:1 stairs every step ≥2 tiles away was "blocked" (ray grazed the first
+  step's corner), and on 1-in-2 stairs EVERYTHING downhill was blocked (ray
+  clipped the floor of the shooter's own step level). Now `EYE = 1.8` at both
+  endpoints (eye-to-eye keeps LoS mutual).
+- **DDA tie-break falsely hit corner-grazed voxels + made LoS asymmetric.**
+  Endpoints sit at *.5 with integer heights, so rays cross voxel edges/corners
+  EXACTLY all the time. The old walk stepped one axis at a time on ties,
+  detouring through a voxel the ray only touches at an edge → downhill blocked
+  while uphill was clear (9.5% of random pairs were one-way sight!). Now all
+  tied axes step together (grazing an edge ≠ a hit). Symmetry fuzz over 60
+  random heightmaps: 0 asymmetric pairs.
+- Preserved on purpose: 1-high bump still hides two flat-ground units (sprite
+  is 1 tile tall, head exactly at bump top); 2-high walls block; standing 1
+  block up sees over a 1-high bump (used to be blocked).
+- **Testing gotcha:** `_inferStandingZ` prefers a live unit's `u.z` over the
+  column top. If you sculpt terrain under a unit with `setBlockAt` its stale
+  `u.z` corrupts LoS queries for that tile — evacuate units (or reset
+  `u.z = nearestWalkableZ(x,y)`) before asserting. Cost 20 min of phantom
+  in-game "failures" that the offline harness didn't have.
+
 ## Jump mechanic — Phase 1 redesign (2026-06-29)
 Jump was reworked from a 1-AP, 4-cardinal, single-tile shuffle into a deliberate
 traversal verb. All logic in `battle.js`.

@@ -4585,8 +4585,15 @@
 
         function _isRayBlocked3D(x1, y1, z1, x2, y2, z2, forVision) {
 
-            const ox = x1 + 0.5, oy = y1 + 0.5, oz = z1 + 1.5;
-            const ex = x2 + 0.5, ey = y2 + 0.5, ez = z2 + 1.5;
+            /* Sight ray runs eye-to-eye. A unit standing on block index z has its
+               feet at world z+1 and its 1-tile-tall sprite's head at z+2, so the
+               eyes sit at z+1.8 — NOT z+1.5 (torso), which made units unable to
+               see down staircases because the ray clipped the floor of their own
+               step level. Both endpoints use the same offset so LoS is mutual:
+               if A can see B, B can see A. */
+            const EYE = 1.8;
+            const ox = x1 + 0.5, oy = y1 + 0.5, oz = z1 + EYE;
+            const ex = x2 + 0.5, ey = y2 + 0.5, ez = z2 + EYE;
 
             const dx = ex - ox, dy = ey - oy, dz = ez - oz;
             const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -4611,26 +4618,25 @@
 
             const maxSteps = (Math.abs(x2 - x1) + Math.abs(y2 - y1) + Math.abs(z2 - z1) + 1) * 3 + 10;
             let steps = 0;
+            const TIE_EPS = 1e-9;
 
             while (steps < maxSteps) {
 
-                if (tMaxX < tMaxY) {
-                    if (tMaxX < tMaxZ) {
-                        if (tMaxX > 1.0) break;
-                        ix += stepX; tMaxX += tDeltaX;
-                    } else {
-                        if (tMaxZ > 1.0) break;
-                        iz += stepZ; tMaxZ += tDeltaZ;
-                    }
-                } else {
-                    if (tMaxY < tMaxZ) {
-                        if (tMaxY > 1.0) break;
-                        iy += stepY; tMaxY += tDeltaY;
-                    } else {
-                        if (tMaxZ > 1.0) break;
-                        iz += stepZ; tMaxZ += tDeltaZ;
-                    }
-                }
+                /* Step ALL axes whose boundary crossing ties the nearest one.
+                   A tie means the ray passes exactly through a voxel edge or
+                   corner (endpoints sit at *.5 with integer heights, so stair
+                   corners produce exact ties constantly). The old one-axis-at-
+                   a-time walk detoured into a voxel the ray only grazes — a
+                   unit atop a 1:1 staircase was "blocked" by the corner of the
+                   step below it, and sight was asymmetric (downhill blocked,
+                   uphill clear). Grazing an edge is not a hit: step through the
+                   corner diagonally and only test voxels the ray actually
+                   enters. */
+                const tMin = Math.min(tMaxX, tMaxY, tMaxZ);
+                if (tMin > 1.0) break;
+                if (tMaxX - tMin < TIE_EPS) { ix += stepX; tMaxX += tDeltaX; }
+                if (tMaxY - tMin < TIE_EPS) { iy += stepY; tMaxY += tDeltaY; }
+                if (tMaxZ - tMin < TIE_EPS) { iz += stepZ; tMaxZ += tDeltaZ; }
                 steps++;
 
                 if (ix === ixEnd && iy === iyEnd && iz === izEnd) continue;
