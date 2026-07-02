@@ -141,8 +141,8 @@ the FRONT cap (material switched MeshBasic→MeshLambert so sun/hemi/point light
 shade units) and `_attachSpriteShell` parents a generated shell to it: back cap at
 z=−depth + side walls traced from the sprite's alpha silhouette (merged per straight
 run, UVs sample the boundary pixel → rim carries edge colours). Depth =
-`UNIT_SPRITE_DEPTH_PX` (5 native px since the 2026-07-02 facing update — was 10;
-const at top; 0 reverts to flat). Geometry
+`UNIT_SPRITE_DEPTH_PX` (8 native px since the 2026-07-02 facing update — was 10,
+briefly 5; const at top; 0 reverts to flat). Geometry
 cached per URL in `_spriteShellGeoCache`; built async via canvas `getImageData`
 (tainted canvas → silently stays flat). The shell SHARES the plane's material, so
 hit flashes / AP grey / cloak opacity / texture swaps all apply for free; it's
@@ -799,19 +799,35 @@ New tactical layer in **battle.js + three-renderer.js** (both on R2 → re-uploa
   dodge it. Lives in `doAttack`'s impact callback right after the counter block.
 - **Renderer (three-renderer.js)**: unit sprites **no longer billboard the camera** —
   `_updateUnitFacing()` (every frame, after `_updateBillboards` in renderFrame) yaws
-  the sprite slab + a new team-colored **wedge on the selection ring**
+  the sprite slab + a team-colored **wedge on the selection ring**
   (`_ew_facingIndicator` wrapper group; wedge tip = facing) to
   `yaw = atan2(f.dx, f.dy)`; while a walk tween runs the unit faces its current path
   segment. Sprites keep `_ew_billboard` (opacity/shadow sweeps) plus new
-  `_ew_facingSprite` flag — the camera-billboard pass skips those. A small **"BACK"
-  canvas-texture tag** floats off the rear cap (child of sprite, `rotation.y=π`,
-  FrontSide → only visible from behind) since the back reuses the front art. Bat
-  swarms, ghosts, deployables still camera-billboard. `UNIT_SPRITE_DEPTH_PX` 10 → 5.
-- **Verified** (scratchpad facing-verify*.js via LOCAL_ASSETS): arc table incl.
-  diagonals + ranged; doMove sets facing; forced-RNG backstab = +25%, no dodge, no
-  counter; front attack still dodgeable; follow-up fires (front-facing target dodges
-  it, back-facing target can't); 8/8 sprites yawed, 8 wedges, 8 BACK labels, 0 page
-  errors. Screenshot recipe: `deviceScaleFactor: 2.5` context + clip around
+  `_ew_facingSprite` flag — the camera-billboard pass skips those. Bat swarms,
+  ghosts, deployables still camera-billboard. `UNIT_SPRITE_DEPTH_PX` 10 → 8. The
+  ring wedge is the ONLY facing cue (an earlier "BACK" text tag on the rear cap was
+  dropped as too noisy).
+- **X-ray silhouette self-paint fix (IMPORTANT — non-billboard side effect)**: the
+  blue/red hologram shown when a unit hides behind terrain (`_ew_silhouette`,
+  `depthFunc GreaterDepth`, "paint only where occluded") is NOT gated by an
+  occluded flag — it relies purely on the depth test to hide itself. Once sprites
+  stopped billboarding, a unit facing AWAY put its own extruded back cap in FRONT
+  of the coincident silhouette plane, so GreaterDepth self-triggered and painted
+  the hologram onto the unit's own back. Fix: the silhouette is now a child of the
+  GROUP (not the yawing sprite) and `_updateUnitFacing` keeps it **camera-facing and
+  nudged camera-ward of the slab** each frame (offset `UNIT_SPRITE_DEPTH_PX·(ts/128)
+  + ts·0.02`), so the unit's own slab never occludes it — only real terrain
+  occluders do. A fixed local-z offset can't fix this (the slab is symmetric around
+  the plane, so one facing always self-occludes); the offset MUST be camera-relative
+  (world), hence the reparent. Loses sprite bob/flip/shake inheritance on the ghost
+  (cosmetic, acceptable). Don't reparent it back under the sprite.
+- **Verified** (scratchpad facing-verify*.js / back-verify.js via LOCAL_ASSETS): arc
+  table incl. diagonals + ranged; doMove sets facing; forced-RNG backstab = +25%, no
+  dodge, no counter; front attack still dodgeable; follow-up fires (front-facing
+  target dodges it, back-facing target can't); 8/8 sprites yawed, 8 wedges; after the
+  polish pass — 0 BACK labels, silhouette reparented to group (8/8, offset in front),
+  a unit staged back-to-camera shows clean art (no tint/text), 0 page errors.
+  Screenshot recipe: `deviceScaleFactor: 2.5` context + clip around
   `ThreeRenderer.worldToScreen(x,y,40)` beats fighting the auto-zoom clamp.
 - **NOT done / follow-ups**: AI (ainew.js/ai.js) is facing-blind — it neither seeks
   backstabs nor protects its rear (human players get a free edge; a scoring term for

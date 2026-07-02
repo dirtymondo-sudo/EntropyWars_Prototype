@@ -14,10 +14,10 @@ const ThreeRenderer = (function () {
 
     /* Unit sprites are extruded into thin voxel-style slabs so they react to
        scene lighting like real geometry. Thickness is in NATIVE sprite pixels
-       (the art is authored at 128px tall), so a 5px depth keeps the flat
+       (the art is authored at 128px tall), so an 8px depth keeps the flat
        billboard read while giving the silhouette an actual 3D rim. Set to 0
        to revert to pure flat billboards. */
-    const UNIT_SPRITE_DEPTH_PX = 5;
+    const UNIT_SPRITE_DEPTH_PX = 8;
 
     /* ════════════════════════════════════════════════════════════════════
      *  BEVELED / NATURAL TERRAIN
@@ -4796,26 +4796,6 @@ const ThreeRenderer = (function () {
         return Math.atan2(f.dx, f.dy);
     }
 
-    /* Small "BACK" tag shown on the rear of every unit — the extruded back
-       cap reuses the FRONT art (mirrored), so without this a unit seen from
-       behind is indistinguishable from one seen from the front. */
-    var _backLabelTex = null;
-    function _getBackLabelTexture() {
-        if (_backLabelTex) return _backLabelTex;
-        var cv = document.createElement('canvas');
-        cv.width = 128; cv.height = 40;
-        var ctx = cv.getContext('2d');
-        ctx.fillStyle = 'rgba(8, 8, 14, 0.55)';
-        ctx.fillRect(14, 4, 100, 32);
-        ctx.font = '700 22px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-        ctx.fillText('BACK', 64, 21);
-        _backLabelTex = new THREE.CanvasTexture(cv);
-        return _backLabelTex;
-    }
-
     function _buildUnitEntry(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
@@ -4905,25 +4885,6 @@ const ThreeRenderer = (function () {
             _attachSpriteShell(spriteMesh, spriteUrl, spriteMat, sprW, sprH,
                                UNIT_SPRITE_DEPTH_PX * _nativeScale);
 
-            // "BACK" tag floating just off the slab's rear cap — visible only
-            // from behind (FrontSide + 180° yaw), since the back reuses the
-            // front art.
-            var _backW = sprW * 0.55;
-            var _backH = _backW * (40 / 128);
-            var backLabel = new THREE.Mesh(
-                new THREE.PlaneGeometry(_backW, _backH),
-                new THREE.MeshBasicMaterial({
-                    map: _getBackLabelTexture(), transparent: true, opacity: 0.9,
-                    depthWrite: false, side: THREE.FrontSide
-                })
-            );
-            backLabel.rotation.y = Math.PI;
-            backLabel.position.set(0, sprH * 0.12, -(UNIT_SPRITE_DEPTH_PX * _nativeScale + 1.5));
-            backLabel._ew_billboard = true;        // include in cloak-dim sweeps
-            backLabel._ew_shadowFlagged = true;
-            backLabel.raycast = function () {};    // never block unit picking
-            spriteMesh.add(backLabel);
-
             // Shadow proxy: a second, invisible copy of the sprite plane that
             // faces the SUN instead of the camera, so the unit casts its full
             // cutout silhouette at any free-camera yaw (a camera-billboarded
@@ -4955,7 +4916,16 @@ const ThreeRenderer = (function () {
                 );
                 silMesh.renderOrder = 9999;   // draw after terrain/props so the depth buffer is populated
                 silMesh._ew_silhouette = true;
-                spriteMesh.add(silMesh);
+                // Parented to the GROUP (not the yawing sprite) and kept camera-
+                // facing + nudged camera-ward of the slab each frame in
+                // _updateUnitFacing. Now that sprites yaw to gameplay facing, a
+                // child-of-sprite silhouette would sit BEHIND the unit's own
+                // extruded back cap when facing away, and its GreaterDepth x-ray
+                // test would self-paint the hologram onto the back. Staying in
+                // front of the unit's own slab means only real terrain occluders
+                // trigger the x-ray.
+                silMesh.position.y = spriteMesh._ew_baseY;
+                group.add(silMesh);
                 silMesh._ew_unitId = unit.id;
                 silhouetteMesh = silMesh;
             }
@@ -7540,6 +7510,12 @@ const ThreeRenderer = (function () {
     function _updateUnitFacing() {
         if (!unitGroup) return;
         var now = performance.now();
+        var cam = ThreeCamera.getCamera();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        // Keep the x-ray silhouette this far in FRONT of the slab (its full
+        // extrude depth + a small margin) so the unit's own back cap never
+        // occludes it (which would self-paint the hologram — see _buildUnitEntry).
+        var silOff = (UNIT_SPRITE_DEPTH_PX * (ts / 128)) + ts * 0.02;
         for (var i = 0; i < unitGroup.children.length; i++) {
             var g = unitGroup.children[i];
             var uid = g._ew_unitId;
@@ -7563,7 +7539,15 @@ const ThreeRenderer = (function () {
 
             for (var k = 0; k < g.children.length; k++) {
                 var ch = g.children[k];
-                if (ch._ew_facingSprite || ch._ew_facingIndicator) ch.rotation.y = yaw;
+                if (ch._ew_facingSprite || ch._ew_facingIndicator) {
+                    ch.rotation.y = yaw;
+                } else if (ch._ew_silhouette && cam) {
+                    // Face the camera and sit just in front of the unit's slab.
+                    var syaw = Math.atan2(cam.position.x - g.position.x, cam.position.z - g.position.z);
+                    ch.rotation.y = syaw;
+                    ch.position.x = Math.sin(syaw) * silOff;
+                    ch.position.z = Math.cos(syaw) * silOff;
+                }
             }
         }
     }
