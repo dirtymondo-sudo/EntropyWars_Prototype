@@ -119,6 +119,37 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   `animations:'disabled'` and treat failures as non-fatal.
 - Render bugs seen mid-combat: `hpBar is not defined`, `Cannot read properties of
   null (reading 'accMs')` — animation/render path, worth chasing.
+- **Chromium can't reach localhost:3000 in the remote-agent sandbox** (proxy
+  autodetect eats it): launch with `--proxy-server=direct:// --proxy-bypass-list=*`
+  (external R2/CDN still load — TLS interception is transparent; keep
+  `ignoreHTTPSErrors:true`). Playwright's bundled browser may be absent; pass
+  `executablePath` from `ls /opt/pw-browsers/` (e.g. `chromium-1194/chrome-linux/chrome`).
+- **Testing LOCAL script edits** (game loads everything from R2): intercept in
+  Playwright — `page.route('**/three-renderer.js*', r => r.fulfill({ contentType:
+  'application/javascript', body: fs.readFileSync('three-renderer.js','utf8') }))`
+  before `page.goto`. Works for any of the ~35 R2 scripts.
+- **Top-level `const` globals (`ThreeRenderer`, `ThreeCamera`, `camera`, `CONFIG`)
+  are NOT on `window`** — in `page.evaluate` use the bare identifier (guard with
+  `typeof X !== 'undefined'`), not `window.X`.
+- **Camera close-ups for screenshots:** `camera.x/y` are TILE coords of the focal
+  point (sync() multiplies by tileSize). Set `x/y/zoom/tilt/yaw` AND their `_t*` +
+  `_smooth*` twins, wait ~1s, then screenshot.
+
+## 3D unit sprites — extruded slab shells (2026-07-02, three-renderer.js)
+Unit billboards are now REAL 3D and lit. `_buildUnitEntry` keeps the flat plane as
+the FRONT cap (material switched MeshBasic→MeshLambert so sun/hemi/point lights
+shade units) and `_attachSpriteShell` parents a generated shell to it: back cap at
+z=−depth + side walls traced from the sprite's alpha silhouette (merged per straight
+run, UVs sample the boundary pixel → rim carries edge colours). Depth =
+`UNIT_SPRITE_DEPTH_PX` (10 native px, const at top; 0 reverts to flat). Geometry
+cached per URL in `_spriteShellGeoCache`; built async via canvas `getImageData`
+(tainted canvas → silently stays flat). The shell SHARES the plane's material, so
+hit flashes / AP grey / cloak opacity / texture swaps all apply for free; it's
+`_ew_shadowFlagged` (no cast/receive — the sun-facing shadow proxy still does unit
+shadows, and receiving would self-shadow). Sheet anims (`_maybeStartSpriteAnim`)
+hide the shell (idle-baked silhouette would clip extended limbs) and restore it in
+`_endSpriteAnim`. Verified in-game: 8/8 units shelled (~400–2k tris), no console
+errors; edge-on debug (kill `_ew_billboard`, yaw the sprite) shows the slab rim.
 
 ## Terrain × spell reactions (2026-06-30) — natural map interactions
 New system in `battle.js`, all keyed off the **terrain a spell strikes** (NOT a full

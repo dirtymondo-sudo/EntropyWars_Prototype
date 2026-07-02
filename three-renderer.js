@@ -12,6 +12,13 @@ const ThreeRenderer = (function () {
     const BILLBOARD_DEFAULT_H = 1.2;
     const TURRET_COLORS = { 1: 0x4466aa, 2: 0xaa4444 };
 
+    /* Unit sprites are extruded into thin voxel-style slabs so they react to
+       scene lighting like real geometry. Thickness is in NATIVE sprite pixels
+       (the art is authored at 128px tall), so a 10px depth keeps the flat
+       billboard read while giving the silhouette an actual 3D rim. Set to 0
+       to revert to pure flat billboards. */
+    const UNIT_SPRITE_DEPTH_PX = 10;
+
     /* ════════════════════════════════════════════════════════════════════
      *  BEVELED / NATURAL TERRAIN
      *  Instead of razor-edged voxel cubes, ground tiles are built with a
@@ -4643,6 +4650,138 @@ const ThreeRenderer = (function () {
         ue.group._ew_subSink = sink;
     }
 
+    /* ── 3D sprite shells ────────────────────────────────────────────────
+       Extrudes a unit's cutout sprite into a thin slab. The existing flat
+       billboard plane stays as the FRONT cap — every system that drives it
+       (billboard yaw, bob, hit flashes, sheet anims, cloak fading) keeps
+       working untouched — and a generated shell is parented to it: a back
+       cap at z = -depth (same UVs, trimmed by the material's alphaTest) plus
+       side walls traced from the alpha silhouette, one merged quad per
+       straight boundary run. Wall UVs sample the boundary pixel they extrude
+       from, so the rim carries the art's own edge colours. The shell SHARES
+       the plane's material, so tints/opacity/texture swaps apply to the whole
+       slab for free. Geometry is cached per sprite URL + size. */
+    var _spriteShellGeoCache = new Map();
+
+    function _buildSpriteShellGeometry(img, sprW, sprH, depth) {
+        var nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
+        if (!nw || !nh) return null;
+        var data;
+        try {
+            var cv = document.createElement('canvas');
+            cv.width = nw; cv.height = nh;
+            var ctx = cv.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0);
+            data = ctx.getImageData(0, 0, nw, nh).data;
+        } catch (e) { return null; }   // tainted canvas → keep the flat billboard
+
+        var ALPHA_CUT = 26;            // matches the material's alphaTest 0.1
+        function solid(px, py) {
+            if (px < 0 || py < 0 || px >= nw || py >= nh) return false;
+            return data[(py * nw + px) * 4 + 3] >= ALPHA_CUT;
+        }
+        var pw = sprW / nw, ph = sprH / nh;
+        function lx(px) { return -sprW / 2 + px * pw; }   // pixel (0,0) = top-left
+        function ly(py) { return sprH / 2 - py * ph; }
+
+        var pos = [], nor = [], uvs = [], idx = [];
+        function quad(a, b, c, d, n, ta, tb, tc, td) {
+            var base = pos.length / 3;
+            pos.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2]);
+            for (var i = 0; i < 4; i++) nor.push(n[0], n[1], n[2]);
+            uvs.push(ta[0], ta[1], tb[0], tb[1], tc[0], tc[1], td[0], td[1]);
+            idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        }
+
+        // Back cap: one full quad facing -Z; the texture's alpha cuts it out.
+        quad([lx(nw), ly(nh), -depth], [lx(0), ly(nh), -depth],
+             [lx(0), ly(0), -depth], [lx(nw), ly(0), -depth],
+             [0, 0, -1], [1, 0], [0, 0], [0, 1], [1, 1]);
+
+        // Vertical silhouette walls (normals ±X), merged along y-runs.
+        for (var px = 0; px <= nw; px++) {
+            var py = 0;
+            while (py < nh) {
+                var right = solid(px, py), left = solid(px - 1, py);
+                if (left === right) { py++; continue; }
+                var facing = right ? -1 : 1;
+                var sampleX = right ? px : px - 1;
+                var y0 = py;
+                while (py < nh && solid(px, py) !== solid(px - 1, py)
+                       && (solid(px, py) ? -1 : 1) === facing) py++;
+                var y1 = py;
+                var wx = lx(px);
+                var u = (sampleX + 0.5) / nw;
+                var vT = 1 - (y0 + 0.5) / nh, vB = 1 - (y1 - 0.5) / nh;
+                if (facing === -1) {
+                    quad([wx, ly(y0), -depth], [wx, ly(y1), -depth], [wx, ly(y1), 0], [wx, ly(y0), 0],
+                         [-1, 0, 0], [u, vT], [u, vB], [u, vB], [u, vT]);
+                } else {
+                    quad([wx, ly(y0), 0], [wx, ly(y1), 0], [wx, ly(y1), -depth], [wx, ly(y0), -depth],
+                         [1, 0, 0], [u, vT], [u, vB], [u, vB], [u, vT]);
+                }
+            }
+        }
+
+        // Horizontal silhouette walls (normals ±Y), merged along x-runs.
+        for (var ey = 0; ey <= nh; ey++) {
+            var ex = 0;
+            while (ex < nw) {
+                var below = solid(ex, ey), above = solid(ex, ey - 1);
+                if (below === above) { ex++; continue; }
+                var facingY = below ? 1 : -1;
+                var sampleY = below ? ey : ey - 1;
+                var x0 = ex;
+                while (ex < nw && solid(ex, ey) !== solid(ex, ey - 1)
+                       && (solid(ex, ey) ? 1 : -1) === facingY) ex++;
+                var x1 = ex;
+                var wy = ly(ey);
+                var v = 1 - (sampleY + 0.5) / nh;
+                var uL = (x0 + 0.5) / nw, uR = (x1 - 0.5) / nw;
+                if (facingY === 1) {
+                    quad([lx(x0), wy, 0], [lx(x1), wy, 0], [lx(x1), wy, -depth], [lx(x0), wy, -depth],
+                         [0, 1, 0], [uL, v], [uR, v], [uR, v], [uL, v]);
+                } else {
+                    quad([lx(x0), wy, -depth], [lx(x1), wy, -depth], [lx(x1), wy, 0], [lx(x0), wy, 0],
+                         [0, -1, 0], [uL, v], [uR, v], [uR, v], [uL, v]);
+                }
+            }
+        }
+
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geo.setIndex(idx);
+        return geo;
+    }
+
+    function _attachSpriteShell(spriteMesh, spriteUrl, mat, sprW, sprH, depth) {
+        if (!spriteUrl || !(depth > 0)) return;
+        var key = spriteUrl + '|' + sprW.toFixed(2) + 'x' + sprH.toFixed(2) + 'x' + depth.toFixed(2);
+        function attach(geo) {
+            if (!geo || !spriteMesh.parent || spriteMesh._ew_shell) return;
+            var shell = new THREE.Mesh(geo, mat);
+            shell._ew_spriteShell = true;
+            // The sun-facing shadow proxy already casts the unit's shadow, and
+            // receiving would let that proxy self-shadow the slab — opt out of
+            // the _flagMeshShadows sweep entirely.
+            shell._ew_shadowFlagged = true;
+            spriteMesh._ew_shell = shell;
+            spriteMesh.add(shell);
+        }
+        var cached = _spriteShellGeoCache.get(key);
+        if (cached) { attach(cached); return; }
+        getTexture(spriteUrl, function (tex) {
+            if (_spriteShellGeoCache.has(key)) { attach(_spriteShellGeoCache.get(key)); return; }
+            if (!tex || !tex.image) return;
+            var geo = _buildSpriteShellGeometry(tex.image, sprW, sprH, depth);
+            if (!geo) return;
+            _spriteShellGeoCache.set(key, geo);
+            attach(geo);
+        });
+    }
+
     function _buildUnitEntry(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
@@ -4682,7 +4821,9 @@ const ThreeRenderer = (function () {
                 }
             }
 
-            var spriteMat = new THREE.MeshBasicMaterial({
+            // Lambert (not Basic) so units react to the sun / hemisphere /
+            // point lights like the rest of the board geometry does.
+            var spriteMat = new THREE.MeshLambertMaterial({
                 map: spriteTex, transparent: true, alphaTest: 0.1,
                 side: THREE.DoubleSide, depthWrite: true
             });
@@ -4719,6 +4860,11 @@ const ThreeRenderer = (function () {
                 spriteMesh.scale.x = -1;
             }
             group.add(spriteMesh);
+
+            // Extrude the sprite into a lit 3D slab (async — waits for the
+            // texture's pixels). The plane above stays as the front cap.
+            _attachSpriteShell(spriteMesh, spriteUrl, spriteMat, sprW, sprH,
+                               UNIT_SPRITE_DEPTH_PX * _nativeScale);
 
             // Shadow proxy: a second, invisible copy of the sprite plane that
             // faces the SUN instead of the camera, so the unit casts its full
@@ -8641,6 +8787,10 @@ const ThreeRenderer = (function () {
         var spr = ue.sprite;
         var mat = spr.material;
 
+        // The 3D shell's silhouette is baked from the idle art — hide it while
+        // a sheet plays so extended limbs aren't clipped by the idle outline.
+        if (spr._ew_shell) spr._ew_shell.visible = false;
+
         // Correct the billboard's on-screen aspect so a (square) sheet cell is
         // never stretched by a non-square idle plane. Display width is forced
         // to cellAspect * height; sign of scale.x preserves any sprite flip.
@@ -8679,6 +8829,7 @@ const ThreeRenderer = (function () {
         if (tw.sprite && typeof tw.baseScaleX === 'number') {
             tw.sprite.scale.x = tw.baseScaleX;
         }
+        if (tw.sprite && tw.sprite._ew_shell) tw.sprite._ew_shell.visible = true;
         if (tw.mat) {
             tw.mat.map = tw.idleMap;
             var unit = _findUnit(uid);
