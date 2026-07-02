@@ -1413,6 +1413,67 @@ const ThreeRenderer = (function () {
         if (obj.children) { for (var i = obj.children.length - 1; i >= 0; i--) _disposeR(obj.children[i]); }
     }
 
+    /* ── Sun-shadow opt-in ─────────────────────────────────────────────
+       Walk a group after a rebuild and flag which meshes join the shadow
+       depth pass. Only solid, lit geometry participates: opaque Lambert/
+       Standard/Phong meshes (terrain boxes, landforms, stairs, props,
+       monument models) cast AND receive; opaque unlit (Basic) meshes cast
+       only (Basic can't receive). Glow planes, rings, highlights, fluids'
+       additive layers, billboards and silhouettes are skipped — flagging
+       those would double-darken or cast garbage. Alpha-cutout casters get a
+       depth material that respects their cutout (r128's default shadow depth
+       material ignores maps, which would cast a solid quad per leaf). */
+    /* Depth materials for alpha-cutout shadow casters, cached per texture —
+       rebuilds run constantly (units every structural change), so per-mesh
+       instances would slow-leak. alphaTest 0.5 keeps the silhouette crisp. */
+    var _cutoutDepthMats = new Map();
+    function _getCutoutDepthMat(tex) {
+        var dm = _cutoutDepthMats.get(tex);
+        if (!dm) {
+            dm = new THREE.MeshDepthMaterial({
+                depthPacking: THREE.RGBADepthPacking,
+                map: tex,
+                alphaTest: 0.5
+            });
+            dm.side = THREE.DoubleSide;   // planes must cast with their back to the sun too
+            _cutoutDepthMats.set(tex, dm);
+        }
+        return dm;
+    }
+
+    /* Invisible color-pass material for the unit shadow-proxy planes: writes
+       neither color nor depth, so the proxy exists ONLY in the shadow pass. */
+    var _shadowProxyMat = null;
+    function _getShadowProxyMat() {
+        if (!_shadowProxyMat) {
+            _shadowProxyMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+            _shadowProxyMat._ew_shared = true;
+        }
+        return _shadowProxyMat;
+    }
+
+    function _flagMeshShadows(o) {
+        if (!o.isMesh || o._ew_shadowFlagged) return;
+        o._ew_shadowFlagged = true;
+        if (o._ew_billboard || o._ew_silhouette || o._ew_shadowProxy) return;
+        var m = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (!m || m.isShaderMaterial) return;
+        var lit = m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshPhongMaterial;
+        var opaque = !m.transparent && m.blending === THREE.NormalBlending;
+        var cutout = m.transparent !== true && m.alphaTest > 0;
+        if (opaque || cutout) {
+            o.castShadow = true;
+            if (lit) o.receiveShadow = true;
+            if (cutout && m.map) {
+                o.customDepthMaterial = _getCutoutDepthMat(m.map);
+            }
+        }
+    }
+    function _applyShadowFlags(group) {
+        if (!group) return;
+        group.traverse(_flagMeshShadows);
+    }
+
     function _minSlab(ts) { return ts * ELEV_STEP_RATIO; }
 
     /* Organic top-swell at a tile's centre, matching the beveled terrain dome
@@ -2004,6 +2065,14 @@ const ThreeRenderer = (function () {
 
         if (ThreePost && ThreePost.rebuildLavaLights) {
             ThreePost.rebuildLavaLights(lavaTiles, tileTopY, ts);
+        }
+
+        _applyShadowFlags(terrainGroup);
+        // Fit the sun's ortho shadow camera to the (possibly resized) board.
+        if (ThreePost && ThreePost.setShadowFrame) {
+            var _sfW = _bw * ts, _sfH = _bh * ts;
+            ThreePost.setShadowFrame(_sfW / 2, _sfH / 2,
+                Math.sqrt(_sfW * _sfW + _sfH * _sfH) / 2 + ts * 3);
         }
     }
 
@@ -4651,6 +4720,25 @@ const ThreeRenderer = (function () {
             }
             group.add(spriteMesh);
 
+            // Shadow proxy: a second, invisible copy of the sprite plane that
+            // faces the SUN instead of the camera, so the unit casts its full
+            // cutout silhouette at any free-camera yaw (a camera-billboarded
+            // plane viewed edge-on from the light collapses to a sliver).
+            // colorWrite/depthWrite are off — it exists only in the depth pass.
+            if (spriteTex) {
+                var shadowProxy = new THREE.Mesh(spriteMesh.geometry, _getShadowProxyMat());
+                shadowProxy.position.copy(spriteMesh.position);
+                shadowProxy.rotation.y = (typeof ThreePost !== 'undefined' && ThreePost.getSunAzimuth)
+                    ? ThreePost.getSunAzimuth() : 0;
+                if (unit._spriteFlipX) shadowProxy.scale.x = -1;
+                shadowProxy.castShadow = true;
+                shadowProxy.customDepthMaterial = _getCutoutDepthMat(spriteTex);
+                shadowProxy._ew_shadowProxy = true;
+                shadowProxy._ew_shadowFlagged = true;
+                shadowProxy.raycast = function () {};   // never block unit picking
+                group.add(shadowProxy);
+            }
+
             // Holographic x-ray ghost shown when this unit is hidden behind
             // terrain/props. Parented to the sprite so it inherits the same
             // billboard facing, position, flip and shake automatically.
@@ -7205,10 +7293,12 @@ const ThreeRenderer = (function () {
         var cx = cam.position.x, cz = cam.position.z;
         if (cx === _bbLastCamX && cz === _bbLastCamZ) return;
         _bbLastCamX = cx; _bbLastCamZ = cz;
+        var _bbSunAz = (typeof ThreePost !== 'undefined' && ThreePost.getSunAzimuth)
+            ? ThreePost.getSunAzimuth() : 0;
 
         if (objectGroup) { for (var i = 0; i < objectGroup.children.length; i++) { var c = objectGroup.children[i]; if (c._ew_billboard) { c.rotation.y = Math.atan2(cx - c.position.x, cz - c.position.z); } } }
 
-        if (unitGroup) { for (var j = 0; j < unitGroup.children.length; j++) { var g = unitGroup.children[j]; if (!g.children) continue; for (var k = 0; k < g.children.length; k++) { var ch = g.children[k]; if (ch._ew_billboard) { ch.rotation.y = Math.atan2(cx - g.position.x, cz - g.position.z); } else if (ch._ew_batSwarm && ch.children) { for (var b = 0; b < ch.children.length; b++) { var bat = ch.children[b]; if (bat._ew_billboard) { bat.getWorldPosition(_batWorldVec); bat.rotation.y = Math.atan2(cx - _batWorldVec.x, cz - _batWorldVec.z); } } } } } }
+        if (unitGroup) { for (var j = 0; j < unitGroup.children.length; j++) { var g = unitGroup.children[j]; if (!g.children) continue; for (var k = 0; k < g.children.length; k++) { var ch = g.children[k]; if (ch._ew_billboard) { ch.rotation.y = Math.atan2(cx - g.position.x, cz - g.position.z); } else if (ch._ew_shadowProxy) { ch.rotation.y = _bbSunAz; } else if (ch._ew_batSwarm && ch.children) { for (var b = 0; b < ch.children.length; b++) { var bat = ch.children[b]; if (bat._ew_billboard) { bat.getWorldPosition(_batWorldVec); bat.rotation.y = Math.atan2(cx - _batWorldVec.x, cz - _batWorldVec.z); } } } } } }
 
         if (scene) { for (var s = 0; s < scene.children.length; s++) { var sg = scene.children[s]; if (sg.name === 'wardLights' && sg.children) { for (var w = 0; w < sg.children.length; w++) { var wc = sg.children[w]; if (wc._ew_billboard) { wc.rotation.y = Math.atan2(cx - wc.position.x, cz - wc.position.z); } } } } }
 
@@ -12110,6 +12200,8 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+
+        if (_objDirty) _applyShadowFlags(objectGroup);
 
         if (_objDirty && state.fogOfWar && _fogVisibleSet) {
             _applyFogVisibility(_fogVisibleSet);

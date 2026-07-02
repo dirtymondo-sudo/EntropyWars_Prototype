@@ -309,6 +309,14 @@ const ThreeCamera = (function () {
 
     function getCamera() { return threeCamera; }
 
+    /* The camera's live (smoothed) look-at point in world space — what the
+       player is actually focused on. ThreePost projects this to screen space
+       to place the tilt-shift DoF's sharp band. */
+    function getFocalWorld() {
+        if (!_initialized) return null;
+        return { x: _smoothLookX, y: _smoothLookY, z: _smoothLookZ };
+    }
+
     return {
         create,
         resize,
@@ -321,6 +329,7 @@ const ThreeCamera = (function () {
         setBaseDist,
         getBaseDist,
         getCamera,
+        getFocalWorld,
         markUserInput,
         snapImmediate,
         FOV,

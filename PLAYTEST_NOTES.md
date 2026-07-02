@@ -658,6 +658,52 @@ arrays). Key lessons from this batch:
 - All three validated: spawns mutually reachable, ≥95% tiles reachable, terrain/object
   ids in range, grid/heightMap/objects dims == w×h, all files `node --check` clean.
 
+## HD-2D visual upgrade — V1 lighting/shadows/filmic + V2 tilt-shift DoF (2026-07-01)
+Team-Asano-style (Triangle Strategy / Adventures of Elliot) render upgrade. Files:
+**three-post.js, three-renderer.js, three-camera.js, ui.js** (all on R2 → re-upload).
+- **Lighting flip (three-post.js `LIGHT_DAY/NIGHT`)**: was ambient 1.0 + sun 0.3 (flat);
+  now warm sun 1.0 (`0xfff0d6`) + hemisphere fill 0.45 (sky `0x9db8e0` / ground
+  `0x8a7458`) + cool ambient 0.38. Night = cool moonlight key 0.55. Day/night lerp
+  system unchanged.
+- **Sun shadows**: `renderer.shadowMap` PCFSoft, enabled in `ThreePost.init`. The sun's
+  ortho shadow camera is fitted to the board by **`ThreePost.setShadowFrame(cx,cz,r)`**
+  (called at the end of `rebuildTerrain`); `_applyCurrent` parks the sun at
+  `center + dir·max(r·1.8, 900)` with a target at board centre. Meshes opt in via
+  **`_applyShadowFlags(group)`** (three-renderer): traverses terrainGroup after
+  `rebuildTerrain` and objectGroup whenever `_objDirty` in `renderFrame`; opaque
+  Lambert/Standard/Phong cast+receive, opaque Basic cast-only, alpha-cutout casters get
+  a cached `MeshDepthMaterial` (`_getCutoutDepthMat`, keyed per texture — do NOT create
+  per-mesh, rebuilds run constantly). Skips `_ew_billboard/_ew_silhouette/ShaderMaterial`.
+- **Unit sprite shadows**: billboards would cast slivers when viewed edge-on from the
+  light, so each unit gets an invisible **shadow-proxy plane** (`_ew_shadowProxy`,
+  colorWrite:false + depthWrite:false, `raycast` no-op so it can't block unit picking)
+  that faces the sun (`ThreePost.getSunAzimuth()`, re-aimed in `_updateBillboards`) and
+  casts via the cutout depth material. Built next to the sprite in `rebuildUnits`.
+- **Filmic tone**: ACESFilmicToneMapping by default (`ew_filmicTone`), Linear when off.
+  Exposure is multiplied by `FILMIC_EXPOSURE_COMP` (1.22) when on. Toggling recompiles
+  all scene materials (`_recompileSceneMaterials`) — tone mapping + shadow defines are
+  baked into programs. NOTE r128 applies tone mapping inside the composer's RenderPass
+  (that's why the Brightness slider already worked), so ACES works through the chain.
+- **Tilt-shift DoF (V2)**: two `_TiltShiftShader` ShaderPasses (H+V separable gaussian)
+  between bloom and FXAA. Sharp band (±0.13 uv, feather 0.30) tracks the camera focal:
+  **`ThreeCamera.getFocalWorld()`** (new; returns the smoothed look-at) is projected in
+  `ThreePost._updateDofFocus(cam)` each frame and damped (0.12/frame), clamped 0.22–0.82.
+  Strength slider = `setDofStrength(0..1)` → blur px = 5·s (`ew_dofStrength`, default
+  0.45, 0 disables the passes).
+- **Pause menu (ui.js `_buildPauseVideo` Graphics group)**: Filmic Tone toggle,
+  Shadows Off/Low/High seg (`setShadowQuality`, 1024/2048 map, `ew_shadows`),
+  Tilt-Shift slider. All persisted; verified rendering in-game.
+- **Verified** via LOCAL_ASSETS harness (scratchpad visual_smoke*.js pattern: pin the
+  camera by setting `GAME._camera` x/y/zoom/tilt on an interval — `camera.moveTo` opts
+  zoom is ignored mid-battle): shadows on/off diff visible, DoF max/off diff visible,
+  pause Video tab renders, 0 page errors. Shots: `shots/v1v2-*.png`. Swiftshader is too
+  slow for the day↔night lerp to finish in a screenshot window — night values eyeballed.
+- **Gotchas for future edits**: any NEW mesh type added to terrainGroup/objectGroup gets
+  shadows automatically on next rebuild (traversal is idempotent via `_ew_shadowFlagged`).
+  A new always-on ShaderPass must update `uResolution` in `resize()`. If units ever stop
+  casting, check the proxy wasn't dropped when sprite creation branched (bat swarms skip
+  proxies intentionally).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

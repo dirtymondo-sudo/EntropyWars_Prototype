@@ -6304,6 +6304,10 @@
             const bloomMaxV = (typeof ThreePost!=='undefined'&&ThreePost.getBloomMaxStrength)?ThreePost.getBloomMaxStrength():1.6;
             const bloomPct = Math.round(bloomStr*100);
             const bloomMaxPct = Math.round(bloomMaxV*100);
+            const shadowQ = (typeof ThreePost!=='undefined'&&ThreePost.getShadowQuality)?ThreePost.getShadowQuality():'high';
+            const filmicOn = !!(typeof ThreePost!=='undefined'&&ThreePost.isFilmicTone&&ThreePost.isFilmicTone());
+            const dofStr = (typeof ThreePost!=='undefined'&&ThreePost.getDofStrength)?ThreePost.getDofStrength():0;
+            const dofPct = Math.round(dofStr*100);
             const expVal = (typeof ThreePost!=='undefined'&&ThreePost.getExposureScale)?ThreePost.getExposureScale():1.0;
             const expRange = (typeof ThreePost!=='undefined'&&ThreePost.getExposureRange)?ThreePost.getExposureRange():{min:0.55,max:1.25};
             const expPct = Math.round(expVal*100);
@@ -6346,6 +6350,20 @@
                     <div class="pm-set-group-title">Graphics</div>
                     <div class="pm-set-toggles">
                         <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${filmicOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFilmicTone)ThreePost.setFilmicTone(this.checked);"><span class="pm-toggle-label">Filmic Tone</span><span class="pm-toggle-hint">rich contrast grade</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Shadows</span>
+                        <div class="pm-seg-group">
+                            <button class="pm-seg-btn${shadowQ==='off'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('off');_renderPauseMenu();">Off</button>
+                            <button class="pm-seg-btn${shadowQ==='low'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('low');_renderPauseMenu();">Low</button>
+                            <button class="pm-seg-btn${shadowQ==='high'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('high');_renderPauseMenu();">High</button>
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Tilt-Shift</span>
+                        <input type="range" min="0" max="100" step="5" value="${dofPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setDofStrength)ThreePost.setDofStrength(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${dofPct===0?'off':dofStr.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Bloom</span>

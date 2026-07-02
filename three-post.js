@@ -41,6 +41,47 @@ const ThreePost = (function () {
         }
     } catch (e) {}
 
+    // ── HD-2D upgrade state (filmic tone / shadows / tilt-shift DoF) ────
+    // Filmic tone mapping (ACESFilmic) — richer contrast + highlight rolloff.
+    // ACES darkens midtones vs the old Linear pipe, so when it's on the
+    // day/night exposure is multiplied by FILMIC_EXPOSURE_COMP to match the
+    // scene's authored brightness. Toggling requires a material recompile
+    // (tone mapping is baked into every program), handled in setFilmicTone.
+    var _filmic = true;
+    var FILMIC_EXPOSURE_COMP = 1.22;
+    try {
+        var _fmSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_filmicTone') : null;
+        if (_fmSaved !== null) _filmic = (_fmSaved === '1' || _fmSaved === 'true');
+    } catch (e) {}
+
+    // Real-time sun shadows. Quality picks the shadow-map resolution; 'off'
+    // disables the depth pass entirely. The ortho shadow frustum is fitted to
+    // the board by setShadowFrame (called from ThreeRenderer.rebuildTerrain).
+    var _shadowQuality = 'high';               // 'off' | 'low' | 'high'
+    var SHADOW_MAP_SIZE = { low: 1024, high: 2048 };
+    try {
+        var _shSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_shadows') : null;
+        if (_shSaved === 'off' || _shSaved === 'low' || _shSaved === 'high') _shadowQuality = _shSaved;
+    } catch (e) {}
+    var _shadowFrame = null;                   // { cx, cz, radius } board fit, world px
+
+    // Tilt-shift depth of field (the HD-2D diorama look): a horizontal band of
+    // the screen around the camera's focal point stays sharp, everything
+    // nearer/farther melts into a miniature-photography blur. Strength 0 = off.
+    var _dofStrength = 0.45;                   // 0..1 (slider), 0 disables
+    var DOF_MAX_BLUR_PX = 5.0;                 // tap spread at strength 1 (per pass)
+    var DOF_BAND = 0.13;                       // half-height of the fully-sharp band (uv)
+    var DOF_FEATHER = 0.30;                    // uv distance over which blur ramps to full
+    try {
+        var _dofSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_dofStrength') : null;
+        if (_dofSaved !== null) {
+            var _dv = parseFloat(_dofSaved);
+            if (!isNaN(_dv)) _dofStrength = Math.max(0, Math.min(1, _dv));
+        }
+    } catch (e) {}
+    var _dofPassH = null, _dofPassV = null;
+    var _dofFocusCur = 0.5;                    // smoothed focus line (screen v, 0=bottom)
+
     var _cinematicPass = null;
 
     // ── CRT / cinematic filter + vignette state ─────────────────────────
@@ -78,6 +119,54 @@ const ThreePost = (function () {
             if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cinematic', JSON.stringify(_cin));
         } catch (e) {}
     }
+
+    // ── Tilt-shift blur shader (run twice: horizontal then vertical) ─────
+    // Separable 9-tap gaussian whose radius scales with distance from a focus
+    // line (uFocus, screen v). Inside ±uBand it's fully sharp; blur ramps in
+    // over uFeather. This is what sells the HD-2D miniature-diorama look.
+    var _TiltShiftShader = {
+        uniforms: {
+            'tDiffuse':   { value: null },
+            'uResolution':{ value: new THREE.Vector2(1, 1) },
+            'uDir':       { value: new THREE.Vector2(1, 0) },
+            'uFocus':     { value: 0.5 },
+            'uBand':      { value: DOF_BAND },
+            'uFeather':   { value: DOF_FEATHER },
+            'uAmount':    { value: 0.0 }
+        },
+        vertexShader: [
+            'varying vec2 vUv;',
+            'void main() {',
+            '  vUv = uv;',
+            '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+            '}'
+        ].join('\n'),
+        fragmentShader: [
+            'uniform sampler2D tDiffuse;',
+            'uniform vec2 uResolution;',
+            'uniform vec2 uDir;',
+            'uniform float uFocus;',
+            'uniform float uBand;',
+            'uniform float uFeather;',
+            'uniform float uAmount;',
+            'varying vec2 vUv;',
+            '',
+            'void main() {',
+            '  float d = abs(vUv.y - uFocus);',
+            '  float f = clamp((d - uBand) / max(uFeather, 0.001), 0.0, 1.0);',
+            '  f = f * f;                                // ease-in so the band edge is gentle',
+            '  float r = uAmount * f;',
+            '  if (r < 0.05) { gl_FragColor = texture2D(tDiffuse, vUv); return; }',
+            '  vec2 step = (uDir / uResolution) * r;',
+            '  vec4 c = texture2D(tDiffuse, vUv) * 0.2270;',
+            '  c += (texture2D(tDiffuse, vUv + step * 1.0) + texture2D(tDiffuse, vUv - step * 1.0)) * 0.1946;',
+            '  c += (texture2D(tDiffuse, vUv + step * 2.0) + texture2D(tDiffuse, vUv - step * 2.0)) * 0.1216;',
+            '  c += (texture2D(tDiffuse, vUv + step * 3.0) + texture2D(tDiffuse, vUv - step * 3.0)) * 0.0541;',
+            '  c += (texture2D(tDiffuse, vUv + step * 4.0) + texture2D(tDiffuse, vUv - step * 4.0)) * 0.0162;',
+            '  gl_FragColor = c;',
+            '}'
+        ].join('\n')
+    };
 
     var _CinematicShader = {
         uniforms: {
@@ -376,34 +465,40 @@ const ThreePost = (function () {
     var _ambientLight = null;
     var _lastCycle = null;
 
+    // HD-2D lighting model: a STRONG warm directional key (the shadow-caster)
+    // with a low cool ambient + hemisphere fill, instead of the old flat
+    // ambient-1.0 wash. Every cliff face / building now has a lit side and a
+    // shade side, which is most of what made the old look read as "flat".
+    // Total top-face illumination stays close to the old level so the authored
+    // terrain palette still reads correctly.
     var LIGHT_DAY = {
 
-        sunColor:    0xffffff,
-        sunIntensity: 0.3,
-        sunX: -0.3, sunY: 1.4, sunZ: -0.2,
+        sunColor:    0xfff0d6,
+        sunIntensity: 1.0,
+        sunX: -0.55, sunY: 1.05, sunZ: -0.42,
 
-        skyColor:    0x000000,
-        groundColor: 0x000000,
-        hemiIntensity: 0.0,
+        skyColor:    0x9db8e0,
+        groundColor: 0x8a7458,
+        hemiIntensity: 0.45,
 
-        ambientColor: 0xffffff,
-        ambientIntensity: 1.0,
+        ambientColor: 0xccd4e8,
+        ambientIntensity: 0.38,
         exposure: 0.98,
         bloomStrength: 0, bloomThreshold: 1.0
     };
 
     var LIGHT_NIGHT = {
 
-        sunColor:    0x8899cc,
-        sunIntensity: 0.18,
-        sunX: 0.3, sunY: 1.3, sunZ: 0.2,
+        sunColor:    0x9db4e8,
+        sunIntensity: 0.55,
+        sunX: 0.4, sunY: 1.1, sunZ: 0.3,
 
-        skyColor:    0x000000,
-        groundColor: 0x000000,
-        hemiIntensity: 0.0,
+        skyColor:    0x2c3a5e,
+        groundColor: 0x1a1826,
+        hemiIntensity: 0.28,
 
-        ambientColor: 0x6672a0,
-        ambientIntensity: 0.45,
+        ambientColor: 0x5a66a0,
+        ambientIntensity: 0.32,
         exposure: 0.92,
         bloomStrength: 0, bloomThreshold: 1.0
     };
@@ -446,7 +541,23 @@ const ThreePost = (function () {
         if (_sunLight) {
             _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB);
             _sunLight.intensity = _cur.sunInt;
-            _sunLight.position.set(_cur.sunDirX, _cur.sunDirY, _cur.sunDirZ).normalize();
+            // Direction only (no shadow frame yet): a unit vector aimed at the
+            // origin behaves exactly like the old rig. Once setShadowFrame has
+            // fitted the board, park the sun a real distance out along that
+            // direction so its ortho shadow camera hangs over the battlefield.
+            if (_shadowFrame) {
+                var _sf = _shadowFrame;
+                var _sd = Math.max(_sf.radius * 1.8, 900);
+                _sunLight.position.set(_cur.sunDirX, _cur.sunDirY, _cur.sunDirZ).normalize().multiplyScalar(_sd);
+                _sunLight.position.x += _sf.cx;
+                _sunLight.position.z += _sf.cz;
+                if (_sunLight.target) {
+                    _sunLight.target.position.set(_sf.cx, 0, _sf.cz);
+                    _sunLight.target.updateMatrixWorld();
+                }
+            } else {
+                _sunLight.position.set(_cur.sunDirX, _cur.sunDirY, _cur.sunDirZ).normalize();
+            }
         }
         if (_hemiLight) {
             _hemiLight.color.setRGB(_cur.skyR, _cur.skyG, _cur.skyB);
@@ -458,7 +569,7 @@ const ThreePost = (function () {
             _ambientLight.intensity = _cur.ambInt;
         }
         if (_renderer) {
-            _renderer.toneMappingExposure = _cur.exposure * _exposureUser;
+            _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         if (_bloomPass) {
             var _bloomOn = BLOOM_USER_STRENGTH > 0;
@@ -475,14 +586,20 @@ const ThreePost = (function () {
 
     function _initLighting(scene) {
 
-        _sunLight = new THREE.DirectionalLight(0xffffff, 0.3);
-        _sunLight.position.set(-0.3, 1.4, -0.2).normalize();
+        _sunLight = new THREE.DirectionalLight(0xfff0d6, 1.0);
+        _sunLight.position.set(-0.55, 1.05, -0.42).normalize();
         scene.add(_sunLight);
+        scene.add(_sunLight.target);
+        _sunLight.castShadow = (_shadowQuality !== 'off');
+        _sunLight.shadow.mapSize.width = _sunLight.shadow.mapSize.height =
+            SHADOW_MAP_SIZE[_shadowQuality] || SHADOW_MAP_SIZE.high;
+        _sunLight.shadow.bias = -0.0004;
+        _sunLight.shadow.normalBias = 3.0;   // world px — kills acne on the flat cube faces
 
-        _hemiLight = new THREE.HemisphereLight(0x000000, 0x000000, 0.0);
+        _hemiLight = new THREE.HemisphereLight(0x9db8e0, 0x8a7458, 0.45);
         scene.add(_hemiLight);
 
-        _ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        _ambientLight = new THREE.AmbientLight(0xccd4e8, 0.38);
         scene.add(_ambientLight);
 
         _target = _presetToTarget(LIGHT_DAY);
@@ -517,6 +634,114 @@ const ThreePost = (function () {
             }
             _applyCurrent();
         }
+    }
+
+    // ── Sun shadow rig ───────────────────────────────────────────────────
+    // Fit the sun's ortho shadow camera to the board. Called by the renderer
+    // whenever the terrain rebuilds (board size / tile size changes).
+    // cx/cz = board centre (world px), radius = half the board diagonal + margin.
+    function setShadowFrame(cx, cz, radius) {
+        _shadowFrame = { cx: cx, cz: cz, radius: radius };
+        if (!_sunLight) return;
+        var sc = _sunLight.shadow.camera;
+        var r = radius * 1.12;
+        sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r;
+        sc.near = 1;
+        sc.far = Math.max(radius * 1.8, 900) + radius * 2.5;
+        sc.updateProjectionMatrix();
+        _applyCurrent();   // repark the sun over the new frame
+    }
+
+    // Every material bakes tone mapping + shadow defines into its program, so
+    // flipping either at runtime needs a recompile sweep.
+    function _recompileSceneMaterials() {
+        if (!_scene) return;
+        _scene.traverse(function (o) {
+            if (!o.material) return;
+            if (Array.isArray(o.material)) {
+                for (var i = 0; i < o.material.length; i++) o.material[i].needsUpdate = true;
+            } else {
+                o.material.needsUpdate = true;
+            }
+        });
+    }
+
+    function setShadowQuality(q) {
+        if (q !== 'off' && q !== 'low' && q !== 'high') return;
+        _shadowQuality = q;
+        var on = (q !== 'off');
+        if (_renderer) _renderer.shadowMap.enabled = on;
+        if (_sunLight) {
+            _sunLight.castShadow = on;
+            if (on) {
+                var size = SHADOW_MAP_SIZE[q] || SHADOW_MAP_SIZE.high;
+                if (_sunLight.shadow.mapSize.width !== size) {
+                    _sunLight.shadow.mapSize.width = _sunLight.shadow.mapSize.height = size;
+                    if (_sunLight.shadow.map) { _sunLight.shadow.map.dispose(); _sunLight.shadow.map = null; }
+                }
+            }
+        }
+        _recompileSceneMaterials();
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_shadows', q); } catch (e) {}
+    }
+    function getShadowQuality() { return _shadowQuality; }
+
+    // Yaw (rotation.y) that faces a vertical plane's normal toward the sun —
+    // used by the renderer's per-unit shadow-proxy planes so a billboard
+    // sprite always casts its full silhouette regardless of the free camera.
+    function getSunAzimuth() { return Math.atan2(_cur.sunDirX, _cur.sunDirZ); }
+
+    function setFilmicTone(enabled) {
+        _filmic = !!enabled;
+        if (_renderer) {
+            _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+            _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+        }
+        _recompileSceneMaterials();
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_filmicTone', _filmic ? '1' : '0'); } catch (e) {}
+    }
+    function isFilmicTone() { return _filmic; }
+
+    // ── Tilt-shift DoF API ───────────────────────────────────────────────
+    function _applyDofUniforms() {
+        var on = _dofStrength > 0.01;
+        var amt = DOF_MAX_BLUR_PX * _dofStrength;
+        if (_dofPassH) {
+            _dofPassH.enabled = on;
+            _dofPassH.material.uniforms['uAmount'].value = amt;
+        }
+        if (_dofPassV) {
+            _dofPassV.enabled = on;
+            _dofPassV.material.uniforms['uAmount'].value = amt;
+        }
+    }
+    function setDofStrength(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _dofStrength = Math.max(0, Math.min(1, s));
+        _applyDofUniforms();
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_dofStrength', String(_dofStrength)); } catch (e) {}
+    }
+    function getDofStrength() { return _dofStrength; }
+
+    // Track the camera's focal point: project it to screen space and slide the
+    // sharp band there (damped, so cinematic pans don't snap the blur around).
+    var _dofProjVec = null;
+    function _updateDofFocus(cam) {
+        if (!_dofPassH || !_dofPassH.enabled || !cam) return;
+        var focal = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getFocalWorld)
+                  ? ThreeCamera.getFocalWorld() : null;
+        var target = 0.5;
+        if (focal) {
+            if (!_dofProjVec) _dofProjVec = new THREE.Vector3();
+            _dofProjVec.set(focal.x, focal.y, focal.z).project(cam);
+            if (_dofProjVec.z > -1 && _dofProjVec.z < 1) {
+                target = Math.max(0.22, Math.min(0.82, _dofProjVec.y * 0.5 + 0.5));
+            }
+        }
+        _dofFocusCur += (target - _dofFocusCur) * 0.12;
+        _dofPassH.material.uniforms['uFocus'].value = _dofFocusCur;
+        if (_dofPassV) _dofPassV.material.uniforms['uFocus'].value = _dofFocusCur;
     }
 
     var _wardLights = [];
@@ -874,13 +1099,20 @@ const ThreePost = (function () {
         _renderer = renderer;
         _scene = scene;
 
-        // LinearToneMapping (not NoToneMapping) so toneMappingExposure actually
-        // takes effect — it just multiplies scene colour by exposure and clamps,
-        // so at exposure 1.0 it matches the old NoToneMapping look, but now the
-        // day/night exposure grade + the pause-menu Brightness slider work.
-        renderer.toneMapping = THREE.LinearToneMapping;
-        renderer.toneMappingExposure = 1.0;
+        // Filmic (ACESFilmic) tone mapping by default: richer contrast + a real
+        // highlight rolloff, which is a big part of the HD-2D look. Falls back
+        // to LinearToneMapping (the old pipe: exposure multiply + clamp) via the
+        // pause-menu "Filmic Tone" toggle. Either way toneMappingExposure works,
+        // so the day/night exposure grade + Brightness slider are unaffected.
+        renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+        renderer.toneMappingExposure = _filmic ? FILMIC_EXPOSURE_COMP : 1.0;
         renderer.setClearColor(0x000000, 0);
+
+        // Sun shadows (the depth pass is skipped entirely at quality 'off').
+        // PCFSoft = the soft-edged look; meshes opt in via castShadow/
+        // receiveShadow flags set by the renderer after each rebuild.
+        renderer.shadowMap.enabled = (_shadowQuality !== 'off');
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         _initLighting(scene);
 
@@ -915,6 +1147,18 @@ const ThreePost = (function () {
             _composer.addPass(_bloomPass);
         }
 
+        // Tilt-shift DoF — after bloom (so the glow melts into the blur), before
+        // FXAA/cinematic/retro. Two passes of the same separable gaussian.
+        _dofPassH = new THREE.ShaderPass(_TiltShiftShader);
+        _dofPassH.material.uniforms['uResolution'].value.set(w, h);
+        _dofPassH.material.uniforms['uDir'].value.set(1, 0);
+        _composer.addPass(_dofPassH);
+        _dofPassV = new THREE.ShaderPass(_TiltShiftShader);
+        _dofPassV.material.uniforms['uResolution'].value.set(w, h);
+        _dofPassV.material.uniforms['uDir'].value.set(0, 1);
+        _composer.addPass(_dofPassV);
+        _applyDofUniforms();
+
         if (THREE.FXAAShader) {
             _fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
             var pixelRatio = renderer.getPixelRatio();
@@ -941,7 +1185,7 @@ const ThreePost = (function () {
         _applySceneFog();
 
         _ready = true;
-        console.log('[ThreePost] initialized — bloom + FXAA + cinematic filter + retro filter + directional/hemi lighting');
+        console.log('[ThreePost] initialized — bloom + tilt-shift DoF + FXAA + cinematic filter + retro filter + sun shadows (' + _shadowQuality + ') + filmic tone (' + (_filmic ? 'on' : 'off') + ')');
     }
 
     function render(cam) {
@@ -966,6 +1210,8 @@ const ThreePost = (function () {
             return;
         }
 
+        _updateDofFocus(cam);
+
         _composer.passes[0].camera = cam;
         _composer.render();
     }
@@ -985,6 +1231,8 @@ const ThreePost = (function () {
         if (_retroPass) {
             _retroPass.material.uniforms['uResolution'].value.set(w, h);
         }
+        if (_dofPassH) _dofPassH.material.uniforms['uResolution'].value.set(w, h);
+        if (_dofPassV) _dofPassV.material.uniforms['uResolution'].value.set(w, h);
     }
 
     function setBloom(strength, radius, threshold) {
@@ -1101,7 +1349,11 @@ const ThreePost = (function () {
 
         if (_scene && _scene.fog) _scene.fog = null;
 
-        if (_sunLight && _scene) _scene.remove(_sunLight);
+        if (_sunLight && _scene) {
+            if (_sunLight.target) _scene.remove(_sunLight.target);
+            if (_sunLight.shadow && _sunLight.shadow.map) { _sunLight.shadow.map.dispose(); _sunLight.shadow.map = null; }
+            _scene.remove(_sunLight);
+        }
         if (_hemiLight && _scene) _scene.remove(_hemiLight);
         if (_ambientLight && _scene) _scene.remove(_ambientLight);
         _sunLight = null; _hemiLight = null; _ambientLight = null;
@@ -1115,6 +1367,9 @@ const ThreePost = (function () {
         _composer = null;
         _bloomPass = null;
         _fxaaPass = null;
+        _dofPassH = null;
+        _dofPassV = null;
+        _shadowFrame = null;
         _renderer = null;
         _scene = null;
         _ready = false;
@@ -1253,6 +1508,14 @@ const ThreePost = (function () {
         isFXAAEnabled: isFXAAEnabled,
         setPixelRatio: setPixelRatio,
         syncLighting: syncLighting,
+        setShadowFrame: setShadowFrame,
+        setShadowQuality: setShadowQuality,
+        getShadowQuality: getShadowQuality,
+        getSunAzimuth: getSunAzimuth,
+        setFilmicTone: setFilmicTone,
+        isFilmicTone: isFilmicTone,
+        setDofStrength: setDofStrength,
+        getDofStrength: getDofStrength,
         rebuildWardLights: rebuildWardLights,
         rebuildUnitLights: rebuildUnitLights,
         rebuildLavaLights: rebuildLavaLights,
