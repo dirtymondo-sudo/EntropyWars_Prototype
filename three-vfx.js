@@ -1002,6 +1002,7 @@ const ThreeVFX = (function () {
         if (!_initialized) return;
 
         _rainTick(dt);
+        _ambientTick(dt);
 
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.tick) {
             window.ThreeVFXEffects.tick(dt);
@@ -1086,6 +1087,210 @@ const ThreeVFX = (function () {
             }
         }
     }
+
+    // ── Ambient atmosphere: dust motes (day) + fireflies (night) ────────
+    // Two GPU-animated THREE.Points clouds that live over the battlefield and
+    // crossfade with the day/night cycle. All motion (drift loops, firefly
+    // blink) runs in the vertex shader off uTime — zero per-frame CPU work
+    // beyond a handful of uniform writes. Density is a pause-menu slider
+    // (`ew_ambientFx`, ThreeVFX.setAmbientDensity, 0 = off); it gates
+    // particles per-fragment via each point's aRand, so the slider thins the
+    // clouds smoothly instead of popping whole systems.
+    var _ambDensity = 0.6;
+    try {
+        var _ambSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_ambientFx') : null;
+        if (_ambSaved !== null) {
+            var _av = parseFloat(_ambSaved);
+            if (!isNaN(_av)) _ambDensity = Math.max(0, Math.min(1, _av));
+        }
+    } catch (e) {}
+    var _ambMotes = null, _ambFlies = null;   // { points, geo, mat }
+    var _ambKey = '';
+    var _ambNight = 0;                        // lerped: 0 = day, 1 = night
+    var _ambTime = 0;
+    var _ambCanvasEl = null;
+
+    var _AMB_VERT = [
+        'attribute float aPhase;',
+        'attribute float aSpeed;',
+        'attribute vec3 aAmp;',
+        'attribute float aSize;',
+        'attribute float aRand;',
+        'uniform float uTime;',
+        'uniform float uScale;',
+        'uniform float uBlink;',
+        'varying float vBright;',
+        'varying float vRand;',
+        'void main() {',
+        '  vRand = aRand;',
+        '  float t = uTime * aSpeed + aPhase;',
+        '  vec3 p = position;',
+        // layered sin/cos loops read as organic wandering, and (unlike a
+        // linear drift) never need wrapping
+        '  p.x += sin(t * 0.31) * aAmp.x + sin(t * 0.83 + aPhase * 2.7) * aAmp.x * 0.35;',
+        '  p.y += sin(t * 0.47 + aPhase * 1.3) * aAmp.y;',
+        '  p.z += cos(t * 0.28) * aAmp.z + cos(t * 0.71 + aPhase * 3.1) * aAmp.z * 0.3;',
+        '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+        '  gl_PointSize = aSize * uScale / max(1.0, -mv.z);',
+        '  gl_Position = projectionMatrix * mv;',
+        // firefly blink: mostly dark, brief soft pulses, desynced per particle
+        '  float blink = smoothstep(0.45, 0.95, sin(uTime * (0.6 + fract(aPhase) * 0.9) + aPhase * 7.0) * 0.5 + 0.5);',
+        '  vBright = mix(1.0, blink, uBlink);',
+        '}'
+    ].join('\n');
+
+    var _AMB_FRAG = [
+        'uniform vec3 uColorA;',
+        'uniform vec3 uColorB;',
+        'uniform float uOpacity;',
+        'uniform float uDensity;',
+        'varying float vBright;',
+        'varying float vRand;',
+        'void main() {',
+        '  if (vRand > uDensity) discard;',
+        '  vec2 c = gl_PointCoord - 0.5;',
+        '  float d = length(c) * 2.0;',
+        '  float a = smoothstep(1.0, 0.15, d);',
+        '  float alpha = a * uOpacity * vBright;',
+        '  if (alpha < 0.004) discard;',
+        '  vec3 col = mix(uColorA, uColorB, vRand);',
+        '  gl_FragColor = vec4(col * vBright, alpha);',
+        '}'
+    ].join('\n');
+
+    function _ambDisposeCloud(cloud) {
+        if (!cloud) return;
+        if (_scene && cloud.points) _scene.remove(cloud.points);
+        if (cloud.geo) cloud.geo.dispose();
+        if (cloud.mat) cloud.mat.dispose();
+    }
+
+    // opts: { count, colorA, colorB, blink, sizeLo, sizeHi (world px),
+    //         ampXZ [lo,hi], ampY [lo,hi], yLo, yHi (× tileSize above terrain),
+    //         speedLo, speedHi }
+    function _ambBuildCloud(bwT, bhT, ts, opts) {
+        var n = opts.count;
+        var pos = new Float32Array(n * 3);
+        var phase = new Float32Array(n);
+        var speed = new Float32Array(n);
+        var amp = new Float32Array(n * 3);
+        var size = new Float32Array(n);
+        var rand = new Float32Array(n);
+        for (var i = 0; i < n; i++) {
+            var tx = Math.floor(Math.random() * bwT);
+            var ty = Math.floor(Math.random() * bhT);
+            var topY = _rainTileTopY(tx, ty);
+            pos[i * 3]     = (tx + Math.random()) * ts;
+            pos[i * 3 + 1] = topY + ts * (opts.yLo + Math.random() * (opts.yHi - opts.yLo));
+            pos[i * 3 + 2] = (ty + Math.random()) * ts;
+            phase[i] = Math.random() * 6.28318;
+            speed[i] = opts.speedLo + Math.random() * (opts.speedHi - opts.speedLo);
+            var aXZ = ts * (opts.ampXZ[0] + Math.random() * (opts.ampXZ[1] - opts.ampXZ[0]));
+            amp[i * 3]     = aXZ;
+            amp[i * 3 + 1] = ts * (opts.ampY[0] + Math.random() * (opts.ampY[1] - opts.ampY[0]));
+            amp[i * 3 + 2] = aXZ * (0.7 + Math.random() * 0.6);
+            size[i] = ts * (opts.sizeLo + Math.random() * (opts.sizeHi - opts.sizeLo));
+            rand[i] = Math.random();
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+        geo.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1));
+        geo.setAttribute('aAmp', new THREE.BufferAttribute(amp, 3));
+        geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+        geo.setAttribute('aRand', new THREE.BufferAttribute(rand, 1));
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime:    { value: 0 },
+                uScale:   { value: 800 },
+                uBlink:   { value: opts.blink ? 1.0 : 0.0 },
+                uColorA:  { value: new THREE.Color(opts.colorA) },
+                uColorB:  { value: new THREE.Color(opts.colorB) },
+                uOpacity: { value: 0 },
+                uDensity: { value: _ambDensity }
+            },
+            vertexShader: _AMB_VERT,
+            fragmentShader: _AMB_FRAG,
+            transparent: true,
+            depthWrite: false,
+            depthTest: true,
+            blending: THREE.AdditiveBlending
+        });
+        var points = new THREE.Points(geo, mat);
+        points.frustumCulled = false;   // cloud spans the board; skip per-frame sphere math
+        points.renderOrder = 60;
+        points._ew_ambient = true;
+        _scene.add(points);
+        return { points: points, geo: geo, mat: mat };
+    }
+
+    function _ambientTick(dt) {
+        if (!_scene) return;
+        var haveBoard = (typeof bw === 'function' && typeof bh === 'function');
+        var bwT = haveBoard ? bw() : 0, bhT = haveBoard ? bh() : 0;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
+        var inBattle = (typeof state !== 'undefined' && state && state.phase === 'battle');
+        if (!inBattle || !bwT || !bhT || _ambDensity <= 0) {
+            if (_ambMotes) _ambMotes.points.visible = false;
+            if (_ambFlies) _ambFlies.points.visible = false;
+            return;
+        }
+
+        var key = bwT + 'x' + bhT + 'x' + ts;
+        if (key !== _ambKey) {
+            _ambDisposeCloud(_ambMotes);
+            _ambDisposeCloud(_ambFlies);
+            var area = bwT * bhT;
+            _ambMotes = _ambBuildCloud(bwT, bhT, ts, {
+                count: Math.min(420, Math.round(area * 1.1) + 30),
+                colorA: 0xfff6dd, colorB: 0xd8e2f0, blink: false,
+                sizeLo: 0.028, sizeHi: 0.055,
+                ampXZ: [0.18, 0.42], ampY: [0.10, 0.30],
+                yLo: 0.25, yHi: 2.3,
+                speedLo: 0.35, speedHi: 0.8
+            });
+            _ambFlies = _ambBuildCloud(bwT, bhT, ts, {
+                count: Math.min(180, Math.round(area * 0.45) + 12),
+                colorA: 0xb8ff5e, colorB: 0xffe066, blink: true,
+                sizeLo: 0.06, sizeHi: 0.11,
+                ampXZ: [0.45, 1.1], ampY: [0.12, 0.35],
+                yLo: 0.2, yHi: 0.95,
+                speedLo: 0.5, speedHi: 1.1
+            });
+            _ambKey = key;
+        }
+
+        _ambTime += dt;
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var tgt = (cycle === 'night') ? 1 : 0;
+        _ambNight += (tgt - _ambNight) * Math.min(1, dt * 1.5);
+
+        if (!_ambCanvasEl) _ambCanvasEl = document.getElementById('threeCanvas');
+        var scale = (_ambCanvasEl && _ambCanvasEl.height) ? _ambCanvasEl.height : 800;
+
+        var moteOp = 0.5 * (1 - _ambNight * 0.75);   // faint dust lingers at night
+        var flyOp = 0.95 * _ambNight;                // fireflies are night-only
+        if (_ambMotes) {
+            var mu = _ambMotes.mat.uniforms;
+            mu.uTime.value = _ambTime; mu.uScale.value = scale;
+            mu.uOpacity.value = moteOp; mu.uDensity.value = _ambDensity;
+            _ambMotes.points.visible = moteOp > 0.02;
+        }
+        if (_ambFlies) {
+            var fu = _ambFlies.mat.uniforms;
+            fu.uTime.value = _ambTime; fu.uScale.value = scale;
+            fu.uOpacity.value = flyOp; fu.uDensity.value = _ambDensity;
+            _ambFlies.points.visible = flyOp > 0.02;
+        }
+    }
+
+    function setAmbientDensity(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _ambDensity = Math.max(0, Math.min(1, s));
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_ambientFx', String(_ambDensity)); } catch (e) {}
+    }
+    function getAmbientDensity() { return _ambDensity; }
 
     function _rainTileTopY(tx, ty) {
         var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
@@ -1482,6 +1687,9 @@ const ThreeVFX = (function () {
         _rainDrops = []; _rainSplashes = [];
         _rainActive = false; _rainZones = []; _rainTileIndex = null; _rainBounds = null;
 
+        _ambDisposeCloud(_ambMotes); _ambDisposeCloud(_ambFlies);
+        _ambMotes = null; _ambFlies = null; _ambKey = ''; _ambCanvasEl = null;
+
         if (_sharedPlaneGeo) { _sharedPlaneGeo.dispose(); _sharedPlaneGeo = null; }
         if (_atlasTexture) { _atlasTexture.dispose(); _atlasTexture = null; }
 
@@ -1537,6 +1745,7 @@ const ThreeVFX = (function () {
 
     return { init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
+             setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, _diag: _diag, _getScene: _getScene };
 })();
 

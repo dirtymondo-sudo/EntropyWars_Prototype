@@ -704,6 +704,27 @@ Team-Asano-style (Triangle Strategy / Adventures of Elliot) render upgrade. File
   casting, check the proxy wasn't dropped when sprite creation branched (bat swarms skip
   proxies intentionally).
 
+## Ambient atmosphere — dust motes (day) + fireflies (night) (2026-07-02)
+V3 slice, in **three-vfx.js** (+ an "Ambient FX" slider in ui.js Graphics). Two
+GPU-animated `THREE.Points` clouds (flagged `_ew_ambient`), fully shader-driven
+(layered sin/cos wander + per-particle firefly blink off `uTime` — no per-frame CPU
+position writes; 2 draw calls total). Wiring:
+- `_ambientTick(dt)` runs from `ThreeVFX.tick` (alongside `_rainTick`); builds lazily
+  in battle when `bw()×bh()×tileSize` changes (key `_ambKey`), placing particles above
+  per-tile terrain via `_rainTileTopY`. Motes ≈ area·1.1+30 (cap 420) at 0.25–2.3 ts
+  above ground; fireflies ≈ area·0.45+12 (cap 180) hugging 0.2–0.95 ts.
+- Day/night crossfade: own dt-lerped `_ambNight` off `body.dataset.cycle` (NOTE: the
+  three-post light presets lerp per-FRAME at fixed 0.016 — under swiftshader they crawl,
+  while this one uses real dt but is still bound by the renderer's 0.05s dt clamp).
+  Motes opacity 0.5 → 0.125 at night; fireflies 0 by day → 0.95 at night.
+- **Slider**: `ThreeVFX.setAmbientDensity(0..1)` (`ew_ambientFx`, default 0.6, 0=off).
+  Density gates per-fragment via each particle's `aRand` → thins smoothly, no rebuild.
+- Verified in-match: clouds build (8×8 → 100 motes + 41 flies), density 0 hides both,
+  fireflies visible as glow specks when forced all-on (`uBlink=0` via scene traversal —
+  a handy debug trick since blink keeps most dark in any single frame). 0 page errors.
+- Gotcha: firefly colour reads cyan-green over blue stone (additive) — tune `colorA/B`
+  in `_ambientTick`'s build opts if a warmer look is wanted.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
