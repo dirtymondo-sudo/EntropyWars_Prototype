@@ -704,6 +704,25 @@ Team-Asano-style (Triangle Strategy / Adventures of Elliot) render upgrade. File
   casting, check the proxy wasn't dropped when sprite creation branched (bat swarms skip
   proxies intentionally).
 
+## Sun/moon god rays V2 (2026-07-02)
+- `three-renderer.js` `_buildLightRays`/`_updateLightRays` rebuilt. The V1 shafts were
+  effectively invisible: the fragment shader's radial falloff ran on RAW local px
+  (`length(position.xz)*2` vs a smoothstep to 1.0 → lit only a ~1px core), and the
+  vertical profile used `vLocal.y+0.5` on a ±1100px range. V2 normalizes via
+  `uW`/`uH` uniforms.
+- 8 shafts (2 wide "heroes"), stratified across the board, each anchored to a ground
+  landing point (`tileTopY`) with an additive elliptical **light pool** + ~14–26
+  drifting **dust motes** (Points, local space so they ride the lean). Beams lean
+  along ThreePost's key-light dirs (LIGHT_DAY `(-0.55,1.05,-0.42)` / LIGHT_NIGHT
+  `(0.4,1.1,0.3)`) blended by the smoothed night factor, so they rake opposite the
+  cast shadows and swing to the moon side at night; gold ↔ silver-blue color lerp,
+  blood-moon tint, eclipse kill. Pools stay anchored while tops sway.
+- **Light Rays slider** in pause Video tab (between Ambient FX and Bloom):
+  `ThreeRenderer.setLightRayStrength(0..1.5)` (`ew_lightRays`, default 1.0, 0 hides
+  the group). Verified in-game via LOCAL_ASSETS harness: 16 group children render,
+  day gold + night silver visible, slider row present and drives the API, strength 0
+  → `group.visible=false`, 0 page errors.
+
 ## Ambient atmosphere — dust motes (day) + fireflies (night) (2026-07-02)
 V3 slice, in **three-vfx.js** (+ an "Ambient FX" slider in ui.js Graphics). Two
 GPU-animated `THREE.Points` clouds (flagged `_ew_ambient`), fully shader-driven

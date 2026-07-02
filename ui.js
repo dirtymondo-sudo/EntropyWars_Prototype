@@ -6310,6 +6310,8 @@
             const dofPct = Math.round(dofStr*100);
             const ambStr = (typeof ThreeVFX!=='undefined'&&ThreeVFX.getAmbientDensity)?ThreeVFX.getAmbientDensity():0;
             const ambPct = Math.round(ambStr*100);
+            const rayStr = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getLightRayStrength)?ThreeRenderer.getLightRayStrength():1.0;
+            const rayPct = Math.round(rayStr*100);
             const expVal = (typeof ThreePost!=='undefined'&&ThreePost.getExposureScale)?ThreePost.getExposureScale():1.0;
             const expRange = (typeof ThreePost!=='undefined'&&ThreePost.getExposureRange)?ThreePost.getExposureRange():{min:0.55,max:1.25};
             const expPct = Math.round(expVal*100);
@@ -6371,6 +6373,11 @@
                         <span class="pm-setting-label">Ambient FX</span>
                         <input type="range" min="0" max="100" step="5" value="${ambPct}" class="pm-vol-slider" oninput="if(typeof ThreeVFX!=='undefined'&&ThreeVFX.setAmbientDensity)ThreeVFX.setAmbientDensity(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
                         <span class="pm-vol-val">${ambPct===0?'off':ambStr.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Light Rays</span>
+                        <input type="range" min="0" max="150" step="5" value="${rayPct}" class="pm-vol-slider" oninput="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setLightRayStrength)ThreeRenderer.setLightRayStrength(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${rayPct===0?'off':rayStr.toFixed(2)}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Bloom</span>

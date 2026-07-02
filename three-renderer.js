@@ -9520,12 +9520,37 @@ const ThreeRenderer = (function () {
     var _HZ_HAZE_DAY = null, _HZ_HAZE_NIGHT = null, _hzHaze = null;
 
     // ── Volumetric light shafts (god rays) ──
-    // A handful of additive box-prism beams raking down onto the board. Solid
-    // world geometry, so they tilt / orbit with the map and read as real shafts
-    // of light. Tiny fragment shader + 6 meshes ⇒ negligible cost.
+    // A handful of additive box-prism beams raking down onto the board, each
+    // anchored to a ground "light pool" and carrying drifting dust motes.
+    // The beams lean along the SAME sun/moon direction ThreePost's key light
+    // uses (so they agree with the cast shadows), and swing to the moon side
+    // as night falls. Solid world geometry, so everything tilts / orbits with
+    // the map. Tiny shaders + ~8 shafts ⇒ negligible cost.
     var _rayGroup = null, _rayKey = '', _rayShafts = [];
-    var _RAY_VS = null, _RAY_FS = null;
+    var _RAY_VS = null, _RAY_FS = null, _RAY_POOL_VS = null, _RAY_POOL_FS = null;
+    var _RAY_MOTE_VS = null, _RAY_MOTE_FS = null;
     var _RAY_DAY = null, _RAY_NIGHT = null, _rayCol = null, _RAY_RED = null;
+    // Directions the beams lean FROM (unit vectors toward the light source) —
+    // matched to ThreePost's LIGHT_DAY / LIGHT_NIGHT sun positions so the
+    // shafts rake exactly opposite the shadows they "cast".
+    var _RAY_DIR_DAY = null, _RAY_DIR_NIGHT = null;
+    var _rayAxis = null, _rayAxisJ = null, _rayUpVec = null;
+    // User strength (pause-menu slider, persisted). 0 hides the shafts.
+    var _rayStrength = 1.0;
+    try {
+        var _raySaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_lightRays') : null;
+        if (_raySaved !== null) {
+            var _rv = parseFloat(_raySaved);
+            if (!isNaN(_rv)) _rayStrength = Math.max(0, Math.min(1.5, _rv));
+        }
+    } catch (e) {}
+    function setLightRayStrength(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _rayStrength = Math.max(0, Math.min(1.5, s));
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_lightRays', String(_rayStrength)); } catch (e) {}
+    }
+    function getLightRayStrength() { return _rayStrength; }
 
     function _mulberry32(a) {
         return function () {
@@ -10875,19 +10900,72 @@ const ThreeRenderer = (function () {
         if (_RAY_VS) return;
         _RAY_VS =
             'varying vec3 vLocal;\n' +
-            'void main(){ vLocal = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+            'uniform float uH; uniform float uW;\n' +
+            // normalize: x/z → ±0.5 across the prism, y → 0 bottom … 1 top
+            'void main(){ vLocal = vec3(position.x / uW, position.y / uH + 0.5, position.z / uW);\n' +
+            '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
         _RAY_FS =
             'precision mediump float;\n' +
             'varying vec3 vLocal;\n' +
             'uniform float uTime; uniform vec3 uColor; uniform float uIntensity; uniform float uSeed;\n' +
             'void main(){\n' +
             '  float r = length(vec2(vLocal.x, vLocal.z)) * 2.0;\n' +        // 0 core → 1 face edge
-            '  float radial = pow(smoothstep(1.0, 0.0, r), 1.7);\n' +        // soft round falloff
-            '  float yy = vLocal.y + 0.5;\n' +                              // 0 bottom → 1 top
-            '  float vert = smoothstep(0.0, 0.30, yy) * smoothstep(1.0, 0.42, yy);\n' +
-            '  float flick = 0.82 + 0.18 * sin(uTime * 1.1 + uSeed + vLocal.y * 5.0);\n' +
-            '  float a = radial * vert * uIntensity * flick;\n' +
+            '  float radial = pow(smoothstep(1.0, 0.0, r), 1.6);\n' +        // soft round falloff
+            '  float yy = vLocal.y;\n' +                                     // 0 bottom → 1 top
+            // brightest in the lower third (where the beam meets the map),
+            // dissolving toward the sky; the below-board dip fades to nothing
+            '  float vert = smoothstep(0.0, 0.07, yy) * (1.0 - smoothstep(0.28, 0.95, yy) * 0.92);\n' +
+            // internal streak bands — a bundle of rays instead of a uniform glow
+            '  float st = 0.70 + 0.30 * sin(vLocal.x * 16.0 + uTime * 0.35 + uSeed * 7.0)\n' +
+            '                   * sin(vLocal.z * 13.0 - uTime * 0.22 + uSeed * 3.0);\n' +
+            '  float flick = 0.86 + 0.14 * sin(uTime * 0.9 + uSeed + yy * 5.0);\n' +
+            '  float a = radial * vert * st * uIntensity * flick;\n' +
             '  if (a <= 0.002) discard;\n' +
+            // hot core — a brighter central filament that catches the bloom pass
+            '  vec3 col = uColor * (1.0 + 0.7 * pow(smoothstep(0.45, 0.0, r), 2.0));\n' +
+            '  gl_FragColor = vec4(col * a, a);\n' +
+            '}';
+        // Ground light-pool: a soft additive ellipse where the beam lands.
+        _RAY_POOL_VS =
+            'varying vec2 vUv;\n' +
+            'void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+        _RAY_POOL_FS =
+            'precision mediump float;\n' +
+            'varying vec2 vUv;\n' +
+            'uniform float uTime; uniform vec3 uColor; uniform float uIntensity; uniform float uSeed;\n' +
+            'void main(){\n' +
+            '  float r = length(vUv * 2.0 - 1.0);\n' +
+            '  float shimmer = 0.82 + 0.18 * sin(uTime * 1.3 + uSeed + r * 4.0);\n' +
+            '  float a = pow(smoothstep(1.0, 0.0, r), 2.2) * uIntensity * shimmer * 2.1;\n' +
+            '  if (a <= 0.002) discard;\n' +
+            '  gl_FragColor = vec4(uColor * a, a);\n' +
+            '}';
+        // Dust motes drifting down inside the beam (local space, so they ride
+        // the shaft's lean). aBase.y lives in [0, uBand] above the beam base.
+        _RAY_MOTE_VS =
+            'attribute float aSpeed; attribute float aSize; attribute float aPhase;\n' +
+            'uniform float uTime; uniform float uH; uniform float uBand; uniform float uIntensity;\n' +
+            'varying float vA;\n' +
+            'void main(){\n' +
+            '  vec3 p = position;\n' +
+            '  float yy = mod(p.y - uTime * aSpeed, uBand);\n' +             // sink, wrap within the band
+            '  float ny = yy / uBand;\n' +
+            '  p.y = yy - uH * 0.5;\n' +                                     // band sits at the beam base
+            '  p.x += sin(uTime * 0.55 + aPhase) * 7.0;\n' +
+            '  p.z += cos(uTime * 0.48 + aPhase * 1.7) * 7.0;\n' +
+            '  vA = smoothstep(0.0, 0.12, ny) * smoothstep(1.0, 0.78, ny) * clamp(uIntensity * 2.6, 0.0, 0.85);\n' +
+            '  vec4 mv = modelViewMatrix * vec4(p, 1.0);\n' +
+            '  gl_PointSize = aSize * clamp(700.0 / max(1.0, -mv.z), 0.3, 3.0);\n' +
+            '  gl_Position = projectionMatrix * mv;\n' +
+            '}';
+        _RAY_MOTE_FS =
+            'precision mediump float;\n' +
+            'uniform vec3 uColor;\n' +
+            'varying float vA;\n' +
+            'void main(){\n' +
+            '  float d = length(gl_PointCoord - 0.5) * 2.0;\n' +
+            '  float a = smoothstep(1.0, 0.25, d) * vA;\n' +
+            '  if (a <= 0.004) discard;\n' +
             '  gl_FragColor = vec4(uColor * a, a);\n' +
             '}';
     }
@@ -10910,18 +10988,20 @@ const ThreeRenderer = (function () {
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
         var W = _bw * ts, H = _bh * ts;
         var shaftH = Math.max(2200, _bh * ts * 1.1 + 1800);
-        // one shared low-sun direction so the beams rake the board consistently
-        var sunTiltX = 0.22, sunTiltZ = 0.16, sunYaw = -0.6;
         var rng = _mulberry32(0xBEAC07 + _bw * 131 + _bh * 17 + ts);
-        var N = 6;
+        var N = 8;   // 2 wide "hero" beams + 6 supporting ones
         for (var i = 0; i < N; i++) {
-            var cw = ts * (1.1 + rng() * 1.0);
+            var hero = (i < 2);
+            var cw = hero ? ts * (3.0 + rng() * 1.0) : ts * (1.4 + rng() * 1.1);
             var geo = new THREE.BoxGeometry(cw, shaftH, cw);
             var uni = {
                 uTime: { value: 0 },
                 uColor: { value: new THREE.Color(0xfff0d2) },
-                uIntensity: { value: 0.15 + rng() * 0.08 },
-                uSeed: { value: rng() * 6.2832 }
+                uIntensity: { value: hero ? (0.36 + rng() * 0.10) : (0.26 + rng() * 0.10) },
+                uSeed: { value: rng() * 6.2832 },
+                uH: { value: shaftH },
+                uW: { value: cw },
+                uBand: { value: shaftH * 0.42 }
             };
             var mat = new THREE.ShaderMaterial({
                 uniforms: uni, vertexShader: _RAY_VS, fragmentShader: _RAY_FS,
@@ -10929,16 +11009,69 @@ const ThreeRenderer = (function () {
                 depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false
             });
             var m = new THREE.Mesh(geo, mat);
-            // scatter landing points across (and a touch beyond) the board
-            var lx = cx + (rng() - 0.5) * W * 1.15;
-            var lz = cz + (rng() - 0.5) * H * 1.15;
-            m.position.set(lx, shaftH * 0.45, lz);   // base dips into the board, top high above
-            m.rotation.set(sunTiltX + (rng() - 0.5) * 0.06, sunYaw + (rng() - 0.5) * 0.20, sunTiltZ + (rng() - 0.5) * 0.06);
             m.frustumCulled = false;
             _rayGroup.add(m);
+
+            // Landing points: stratified across the board width (one per column
+            // slot, jittered) and clamped ONTO the board so every beam visibly
+            // lands on the map. The pool is anchored to the landing tile's top.
+            var lx = ((i + 0.5) / N + (rng() - 0.5) * 0.10) * W;
+            var lz = cz + (rng() - 0.5) * H * 0.85;
+            var tx = Math.max(0, Math.min(_bw - 1, Math.floor(lx / ts)));
+            var tz = Math.max(0, Math.min(_bh - 1, Math.floor(lz / ts)));
+            var ly = 0;
+            try { ly = tileTopY(tx, tz) || 0; } catch (e) {}
+            var land = new THREE.Vector3(lx, ly + 2, lz);
+
+            // ground light-pool (flat additive ellipse, shares the shaft's uniforms)
+            var poolGeo = new THREE.CircleGeometry(1, 24);
+            var poolMat = new THREE.ShaderMaterial({
+                uniforms: uni, vertexShader: _RAY_POOL_VS, fragmentShader: _RAY_POOL_FS,
+                transparent: true, blending: THREE.AdditiveBlending,
+                depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false
+            });
+            var pool = new THREE.Mesh(poolGeo, poolMat);
+            pool.position.copy(land);
+            pool.scale.set(cw * 0.95, cw * 0.70, 1);   // x elongated along the beam azimuth
+            pool.renderOrder = 2;
+            pool.frustumCulled = false;
+            _rayGroup.add(pool);
+
+            // dust motes drifting down the lower part of the beam (local space,
+            // so they inherit the shaft's lean and sway)
+            var moteN = hero ? 26 : 14;
+            var mPos = new Float32Array(moteN * 3);
+            var mSpeed = new Float32Array(moteN);
+            var mSize = new Float32Array(moteN);
+            var mPhase = new Float32Array(moteN);
+            for (var j = 0; j < moteN; j++) {
+                var ang = rng() * 6.2832, rad = Math.sqrt(rng()) * cw * 0.34;
+                mPos[j * 3]     = Math.cos(ang) * rad;
+                mPos[j * 3 + 1] = rng() * shaftH * 0.42;   // [0, uBand] above the base
+                mPos[j * 3 + 2] = Math.sin(ang) * rad;
+                mSpeed[j] = 26 + rng() * 34;               // world px / s, downward
+                mSize[j]  = 4 + rng() * 6;
+                mPhase[j] = rng() * 6.2832;
+            }
+            var moteGeo = new THREE.BufferGeometry();
+            moteGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
+            moteGeo.setAttribute('aSpeed', new THREE.BufferAttribute(mSpeed, 1));
+            moteGeo.setAttribute('aSize', new THREE.BufferAttribute(mSize, 1));
+            moteGeo.setAttribute('aPhase', new THREE.BufferAttribute(mPhase, 1));
+            var moteMat = new THREE.ShaderMaterial({
+                uniforms: uni, vertexShader: _RAY_MOTE_VS, fragmentShader: _RAY_MOTE_FS,
+                transparent: true, blending: THREE.AdditiveBlending,
+                depthWrite: false, depthTest: true, fog: false
+            });
+            var motes = new THREE.Points(moteGeo, moteMat);
+            motes.frustumCulled = false;
+            m.add(motes);
+
             _rayShafts.push({
-                mesh: m, uni: uni, baseInt: uni.uIntensity.value,
-                baseRotZ: m.rotation.z, sway: (rng() < 0.5 ? 1 : -1) * (0.02 + rng() * 0.03),
+                mesh: m, pool: pool, uni: uni, baseInt: uni.uIntensity.value,
+                land: land, shaftH: shaftH,
+                jx: (rng() - 0.5) * 0.10, jz: (rng() - 0.5) * 0.10,
+                sway: 0.02 + rng() * 0.03,
                 phase: rng() * 6.2832
             });
         }
@@ -10946,20 +11079,45 @@ const ThreeRenderer = (function () {
     }
 
     function _updateLightRays(t, night, skyEvent, skyAmt) {
-        if (!_rayShafts.length) return;
-        if (!_RAY_DAY) { _RAY_DAY = new THREE.Color(0xfff0d2); _RAY_NIGHT = new THREE.Color(0x9fb8ff); _rayCol = new THREE.Color(); }
+        if (!_rayShafts.length || !_rayGroup) return;
+        if (_rayStrength <= 0.01) { _rayGroup.visible = false; return; }
+        _rayGroup.visible = true;
+        if (!_RAY_DAY) {
+            _RAY_DAY = new THREE.Color(0xffe9bc);       // warm late-afternoon gold
+            _RAY_NIGHT = new THREE.Color(0xaac4f8);     // silver-blue moonlight
+            _rayCol = new THREE.Color();
+            // beam lean = ThreePost's key-light directions (LIGHT_DAY / LIGHT_NIGHT
+            // sun positions), so shafts rake exactly opposite the cast shadows
+            _RAY_DIR_DAY = new THREE.Vector3(-0.55, 1.05, -0.42).normalize();
+            _RAY_DIR_NIGHT = new THREE.Vector3(0.4, 1.1, 0.3).normalize();
+            _rayAxis = new THREE.Vector3(); _rayAxisJ = new THREE.Vector3();
+            _rayUpVec = new THREE.Vector3(0, 1, 0);
+        }
         _rayCol.copy(_RAY_DAY).lerp(_RAY_NIGHT, night);
         var bloodM = (skyEvent > 0.5 && skyEvent < 1.5) ? skyAmt : 0;
         var ecl = (skyEvent >= 1.5) ? skyAmt : 0;
         if (bloodM > 0.01) _rayCol.lerp(_RAY_RED || (_RAY_RED = new THREE.Color(0xff5a3c)), bloodM * 0.6);
-        // beams soften at night and all but vanish under an eclipse
-        var intMul = (1.0 - night * 0.45) * (1.0 - ecl * 0.7);
+        // moonbeams stay clearly visible (the dark scene makes additive light
+        // pop, so only a gentle dip); an eclipse all but swallows them
+        var intMul = _rayStrength * (1.0 - night * 0.2) * (1.0 - ecl * 0.75);
+        // swing the shared lean from the sun side to the moon side with dusk
+        _rayAxis.copy(_RAY_DIR_DAY).lerp(_RAY_DIR_NIGHT, night).normalize();
         for (var i = 0; i < _rayShafts.length; i++) {
             var s = _rayShafts[i];
             s.uni.uTime.value = t;
             s.uni.uColor.value.copy(_rayCol);
             s.uni.uIntensity.value = s.baseInt * intMul;
-            s.mesh.rotation.z = s.baseRotZ + Math.sin(t * 0.25 + s.phase) * s.sway;
+            // per-shaft static jitter + slow sway around the shared axis
+            _rayAxisJ.set(
+                _rayAxis.x + s.jx + Math.sin(t * 0.22 + s.phase) * s.sway,
+                _rayAxis.y,
+                _rayAxis.z + s.jz + Math.cos(t * 0.19 + s.phase) * s.sway * 0.7
+            ).normalize();
+            s.mesh.quaternion.setFromUnitVectors(_rayUpVec, _rayAxisJ);
+            // keep the beam base anchored to its ground pool while the top sways
+            s.mesh.position.copy(s.land).addScaledVector(_rayAxisJ, s.shaftH * 0.42);
+            // point the pool's elongated axis along the beam's ground azimuth
+            s.pool.rotation.set(-Math.PI / 2, 0, Math.atan2(-_rayAxisJ.z, _rayAxisJ.x));
         }
     }
 
@@ -12587,6 +12745,8 @@ const ThreeRenderer = (function () {
         hasActiveAnims,
 
         setHorizonFog,
+
+        setLightRayStrength, getLightRayStrength,
 
         get _scene() { return scene; }
     };
