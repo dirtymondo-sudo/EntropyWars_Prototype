@@ -12822,6 +12822,10 @@ const ThreeRenderer = (function () {
         }
         var cam = ThreeCamera.getCamera();
         if (cam) {
+            /* Keep the hover pick glued to the cursor while the ENGINE moves the
+               camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
+            if (_onMouseMove) _refreshHoverOnCameraMove(cam);
+
             if (ThreePost && ThreePost.isReady()) {
                 ThreePost.render(cam);
             } else {
@@ -12838,6 +12842,13 @@ const ThreeRenderer = (function () {
     var _onMouseMove = null, _onClick = null, _onContextMenu = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
     var _lastHitX = -1, _lastHitY = -1;
+    /* Last known mouse position over the canvas + the camera pose it was last
+       resolved against. The engine moves the camera on its own all the time
+       (blitz activation pans, cinematics, end-of-round overview, wheel zoom),
+       which slides the world under a stationary cursor; renderFrame re-resolves
+       the hover from these whenever the camera pose changes so the highlight /
+       pending target can never point at where the mouse ray hit BEFORE a pan. */
+    var _lastMouseClientX = null, _lastMouseClientY = null, _lastHoverCamSig = '';
 
     /* Raycast the floating tower cubes and return the hit cube group (carries
        _ew_towerOwner), or null. Used so a cube can be clicked to attack/target it. */
@@ -12875,52 +12886,75 @@ const ThreeRenderer = (function () {
         return hit;
     }
 
+    /* Resolve what the pointer at (clientX, clientY) is over and update all
+       hover state (highlight, unit hover, pending target). Called from the
+       canvas mousemove handler AND from renderFrame whenever the camera pose
+       changes under a stationary mouse. */
+    function _resolveHoverAt(clientX, clientY) {
+        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+        _updateUnitHover(unitHit ? unitHit.unitId : null);
+
+        var hit = _editorResolveTile(clientX, clientY);
+        /* Hovering the floating cube resolves to the tower's own tile. */
+        var tcHover = _pickTowerCube(clientX, clientY);
+        if (tcHover) {
+            var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
+            if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
+        }
+        if (hit) {
+            var tx = hit.tileX, ty = hit.tileY;
+            updateHoverHighlight(tx, ty);
+
+            if (tx !== _lastHitX || ty !== _lastHitY) {
+                _lastHitX = tx; _lastHitY = ty;
+                if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
+                if (typeof updateHoveredTarget === 'function') {
+                    var changed = updateHoveredTarget(tx, ty);
+                    if (changed) {
+
+                        var _hu = (typeof unitAt === 'function') ? unitAt(tx, ty) : null;
+                        if (_hu && typeof focusUnitPanel === 'function') {
+                            focusUnitPanel(_hu.id, null, 'hover');
+                        }
+                        if (typeof scheduleHoverHighlightUpdate === 'function') scheduleHoverHighlightUpdate(tx, ty);
+                        if (!_hu && typeof renderSelectedUnitPanel === 'function') renderSelectedUnitPanel();
+                    }
+                }
+            }
+        } else {
+            updateHoverHighlight(-1, -1);
+
+            if (_lastHitX >= 0 || _lastHitY >= 0) {
+                var prevX = _lastHitX, prevY = _lastHitY;
+                _lastHitX = -1; _lastHitY = -1;
+                if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
+                if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
+                if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
+            }
+        }
+    }
+
+    /* Re-resolve the hover when the camera moved without the mouse moving —
+       compares the camera's world matrix against the pose of the last resolve.
+       Runs once per frame from renderFrame; a no-op while the pose is stable. */
+    function _refreshHoverOnCameraMove(cam) {
+        if (_lastMouseClientX === null || !canvas) return;
+        cam.updateMatrixWorld();
+        var e = cam.matrixWorld.elements;
+        var sig = e[12].toFixed(1) + ',' + e[13].toFixed(1) + ',' + e[14].toFixed(1) + ','
+                + e[0].toFixed(4) + ',' + e[5].toFixed(4) + ',' + e[10].toFixed(4) + ','
+                + cam.projectionMatrix.elements[0].toFixed(5);
+        if (sig === _lastHoverCamSig) return;
+        _lastHoverCamSig = sig;
+        _resolveHoverAt(_lastMouseClientX, _lastMouseClientY);
+    }
+
     function _bindInput() {
         if (!canvas) return;
 
         _onMouseMove = function(e) {
-
-            var unitHit = ThreeCamera.screenToUnit(e.clientX, e.clientY, canvas, unitGroup);
-            _updateUnitHover(unitHit ? unitHit.unitId : null);
-
-            var hit = _editorResolveTile(e.clientX, e.clientY);
-            /* Hovering the floating cube resolves to the tower's own tile. */
-            var tcHover = _pickTowerCube(e.clientX, e.clientY);
-            if (tcHover) {
-                var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
-                if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
-            }
-            if (hit) {
-                var tx = hit.tileX, ty = hit.tileY;
-                updateHoverHighlight(tx, ty);
-
-                if (tx !== _lastHitX || ty !== _lastHitY) {
-                    _lastHitX = tx; _lastHitY = ty;
-                    if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
-                    if (typeof updateHoveredTarget === 'function') {
-                        var changed = updateHoveredTarget(tx, ty);
-                        if (changed) {
-
-                            var _hu = (typeof unitAt === 'function') ? unitAt(tx, ty) : null;
-                            if (_hu && typeof focusUnitPanel === 'function') {
-                                focusUnitPanel(_hu.id, null, 'hover');
-                            }
-                            if (typeof scheduleHoverHighlightUpdate === 'function') scheduleHoverHighlightUpdate(tx, ty);
-                            if (!_hu && typeof renderSelectedUnitPanel === 'function') renderSelectedUnitPanel();
-                        }
-                    }
-                }
-            } else {
-                updateHoverHighlight(-1, -1);
-
-                if (_lastHitX >= 0 || _lastHitY >= 0) {
-                    var prevX = _lastHitX, prevY = _lastHitY;
-                    _lastHitX = -1; _lastHitY = -1;
-                    if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
-                    if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
-                    if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
-                }
-            }
+            _lastMouseClientX = e.clientX; _lastMouseClientY = e.clientY;
+            _resolveHoverAt(e.clientX, e.clientY);
         };
 
         _onClick = function(e) {
@@ -12981,6 +13015,7 @@ const ThreeRenderer = (function () {
         };
 
         _onMouseLeave = function() {
+            _lastMouseClientX = _lastMouseClientY = null;
             _updateUnitHover(null);
             updateHoverHighlight(-1, -1);
             if (_lastHitX >= 0 || _lastHitY >= 0) {
@@ -13013,6 +13048,7 @@ const ThreeRenderer = (function () {
         if (_onContextMenu) canvas.removeEventListener('contextmenu', _onContextMenu);
         _onMouseMove = _onClick = _onMouseDown = _onTouchStart = _onMouseLeave = _onContextMenu = null;
         _lastHitX = -1; _lastHitY = -1;
+        _lastMouseClientX = _lastMouseClientY = null; _lastHoverCamSig = '';
     }
 
     function hookCamera() {

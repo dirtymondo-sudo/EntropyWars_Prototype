@@ -299,6 +299,25 @@ uploaded together: battle.js, state.js, hud.js):
   cleared, +1 lumber).
 
 ## Known findings (from playtests)
+- **Mouse-hover / highlighted-tile mismatch (FIXED in three-renderer.js):** the
+  hover pick (`_onMouseMove` → `_editorResolveTile` raycast) only ran on real
+  `mousemove` events, but the engine moves the camera on its own constantly
+  (blitz activation pans, attack cinematics, end-of-round overview + restore,
+  wheel zoom). With a stationary mouse the world slides under the cursor and the
+  hover highlight / pendingTarget stayed where the ray hit BEFORE the pan —
+  measured 268px away from the cursor after one 3-tile pan. Fix: `_onMouseMove`
+  stores the last client coords; `renderFrame` calls
+  `_refreshHoverOnCameraMove(cam)` which re-runs `_resolveHoverAt(...)` whenever
+  the camera's world/projection matrix changes (signature compare, no-op when
+  the pose is stable). Verified with a probe (scratchpad `probe_verify.js`
+  pattern): after 4 engine-style pans/zooms, hover tile == fresh pick every time,
+  and clears when the cursor ends over void. Probe technique: intercept
+  `three-renderer.js` via `page.route`, add a `__probe` object to the module
+  return exposing `_editorResolveTile`/hoverMesh tile/canvas rect.
+- **Terrain occlusion picks are correct but surprising:** with 1-height = 1 full
+  tile elevation, tall columns hide many tiles behind them; the ray rightly picks
+  the front (visible) column. ~half the 8×8 hilly board can be unpickable from a
+  low camera tilt — not a bug, but explains "I can't click that tile" reports.
 - **Stale highlights (the "won't move to the orange tile" / "terrain blocks the
   spell" bugs):** highlight (`getMoveTiles`/`getSpellRangeTiles`) and execution
   (`doMove`/`doSpell` via `isRangeBlockedByTerrain`) use the SAME logic with the
