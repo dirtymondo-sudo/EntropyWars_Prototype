@@ -14,10 +14,10 @@ const ThreeRenderer = (function () {
 
     /* Unit sprites are extruded into thin voxel-style slabs so they react to
        scene lighting like real geometry. Thickness is in NATIVE sprite pixels
-       (the art is authored at 128px tall), so a 10px depth keeps the flat
+       (the art is authored at 128px tall), so a 5px depth keeps the flat
        billboard read while giving the silhouette an actual 3D rim. Set to 0
        to revert to pure flat billboards. */
-    const UNIT_SPRITE_DEPTH_PX = 10;
+    const UNIT_SPRITE_DEPTH_PX = 5;
 
     /* ════════════════════════════════════════════════════════════════════
      *  BEVELED / NATURAL TERRAIN
@@ -4782,6 +4782,40 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ── Unit facing (gameplay yaw) ──────────────────────────────────────
+       Unit sprites no longer billboard to the camera: the slab is yawed to
+       the unit's gameplay facing (unit.facing, a normalized board-space
+       vector battle.js sets on move/attack/cast) so back and flank attacks
+       actually read on the board. Board (dx, dy) maps to world (x, z), and
+       PlaneGeometry faces +Z, so yaw = atan2(dx, dy). */
+    function _unitFacingYaw(unit) {
+        var f = (typeof GAME !== 'undefined' && GAME.getUnitFacing)
+            ? GAME.getUnitFacing(unit)
+            : (unit && unit.facing);
+        if (!f || (!f.dx && !f.dy)) return 0;
+        return Math.atan2(f.dx, f.dy);
+    }
+
+    /* Small "BACK" tag shown on the rear of every unit — the extruded back
+       cap reuses the FRONT art (mirrored), so without this a unit seen from
+       behind is indistinguishable from one seen from the front. */
+    var _backLabelTex = null;
+    function _getBackLabelTexture() {
+        if (_backLabelTex) return _backLabelTex;
+        var cv = document.createElement('canvas');
+        cv.width = 128; cv.height = 40;
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = 'rgba(8, 8, 14, 0.55)';
+        ctx.fillRect(14, 4, 100, 32);
+        ctx.font = '700 22px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillText('BACK', 64, 21);
+        _backLabelTex = new THREE.CanvasTexture(cv);
+        return _backLabelTex;
+    }
+
     function _buildUnitEntry(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
@@ -4855,6 +4889,11 @@ const ThreeRenderer = (function () {
             spriteMesh.position.y = sprH / 2 - bottomShift;
             spriteMesh._ew_baseY = sprH / 2 - bottomShift;
             spriteMesh._ew_billboard = true;
+            // Gameplay facing owns this mesh's yaw (see _updateUnitFacing);
+            // _ew_billboard stays set for the shadow/opacity sweeps but the
+            // camera-billboard pass skips facing sprites.
+            spriteMesh._ew_facingSprite = true;
+            spriteMesh.rotation.y = _unitFacingYaw(unit);
 
             if (unit._spriteFlipX && spriteMesh) {
                 spriteMesh.scale.x = -1;
@@ -4865,6 +4904,25 @@ const ThreeRenderer = (function () {
             // texture's pixels). The plane above stays as the front cap.
             _attachSpriteShell(spriteMesh, spriteUrl, spriteMat, sprW, sprH,
                                UNIT_SPRITE_DEPTH_PX * _nativeScale);
+
+            // "BACK" tag floating just off the slab's rear cap — visible only
+            // from behind (FrontSide + 180° yaw), since the back reuses the
+            // front art.
+            var _backW = sprW * 0.55;
+            var _backH = _backW * (40 / 128);
+            var backLabel = new THREE.Mesh(
+                new THREE.PlaneGeometry(_backW, _backH),
+                new THREE.MeshBasicMaterial({
+                    map: _getBackLabelTexture(), transparent: true, opacity: 0.9,
+                    depthWrite: false, side: THREE.FrontSide
+                })
+            );
+            backLabel.rotation.y = Math.PI;
+            backLabel.position.set(0, sprH * 0.12, -(UNIT_SPRITE_DEPTH_PX * _nativeScale + 1.5));
+            backLabel._ew_billboard = true;        // include in cloak-dim sweeps
+            backLabel._ew_shadowFlagged = true;
+            backLabel.raycast = function () {};    // never block unit picking
+            spriteMesh.add(backLabel);
 
             // Shadow proxy: a second, invisible copy of the sprite plane that
             // faces the SUN instead of the camera, so the unit casts its full
@@ -4920,6 +4978,29 @@ const ThreeRenderer = (function () {
         outerRing.rotation.x = -Math.PI / 2;
         outerRing.position.y = SELECTED_RING_OFFSET - 0.1;
         group.add(outerRing);
+
+        // Facing indicator: a wedge on the team ring pointing the way the
+        // unit faces — read enemy wedges to line up flank/back attacks. The
+        // wedge lives in a wrapper group so yaw (rotation.y, updated every
+        // frame in _updateUnitFacing) composes cleanly with the flatten
+        // rotation.
+        var _fiW = ts * 0.10, _fiInner = ts * 0.36, _fiTip = ts * 0.62;
+        var _fiShape = new THREE.Shape();
+        _fiShape.moveTo(0, _fiTip);
+        _fiShape.lineTo(-_fiW, _fiInner);
+        _fiShape.lineTo(_fiW, _fiInner);
+        _fiShape.closePath();
+        var facingWedge = new THREE.Mesh(
+            new THREE.ShapeGeometry(_fiShape),
+            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
+        );
+        facingWedge.rotation.x = Math.PI / 2;   // flatten; shape +Y → world +Z
+        var facingGroup = new THREE.Group();
+        facingGroup.add(facingWedge);
+        facingGroup.position.y = SELECTED_RING_OFFSET + 0.05;
+        facingGroup.rotation.y = _unitFacingYaw(unit);
+        facingGroup._ew_facingIndicator = true;
+        group.add(facingGroup);
 
         if (state.selectedUnitId === unit.id) {
             var selGlow = new THREE.Mesh(
@@ -7444,11 +7525,47 @@ const ThreeRenderer = (function () {
 
         if (objectGroup) { for (var i = 0; i < objectGroup.children.length; i++) { var c = objectGroup.children[i]; if (c._ew_billboard) { c.rotation.y = Math.atan2(cx - c.position.x, cz - c.position.z); } } }
 
-        if (unitGroup) { for (var j = 0; j < unitGroup.children.length; j++) { var g = unitGroup.children[j]; if (!g.children) continue; for (var k = 0; k < g.children.length; k++) { var ch = g.children[k]; if (ch._ew_billboard) { ch.rotation.y = Math.atan2(cx - g.position.x, cz - g.position.z); } else if (ch._ew_shadowProxy) { ch.rotation.y = _bbSunAz; } else if (ch._ew_batSwarm && ch.children) { for (var b = 0; b < ch.children.length; b++) { var bat = ch.children[b]; if (bat._ew_billboard) { bat.getWorldPosition(_batWorldVec); bat.rotation.y = Math.atan2(cx - _batWorldVec.x, cz - _batWorldVec.z); } } } } } }
+        if (unitGroup) { for (var j = 0; j < unitGroup.children.length; j++) { var g = unitGroup.children[j]; if (!g.children) continue; for (var k = 0; k < g.children.length; k++) { var ch = g.children[k]; if (ch._ew_facingSprite || ch._ew_facingIndicator) { /* yaw owned by _updateUnitFacing */ } else if (ch._ew_billboard) { ch.rotation.y = Math.atan2(cx - g.position.x, cz - g.position.z); } else if (ch._ew_shadowProxy) { ch.rotation.y = _bbSunAz; } else if (ch._ew_batSwarm && ch.children) { for (var b = 0; b < ch.children.length; b++) { var bat = ch.children[b]; if (bat._ew_billboard) { bat.getWorldPosition(_batWorldVec); bat.rotation.y = Math.atan2(cx - _batWorldVec.x, cz - _batWorldVec.z); } } } } } }
 
         if (scene) { for (var s = 0; s < scene.children.length; s++) { var sg = scene.children[s]; if (sg.name === 'wardLights' && sg.children) { for (var w = 0; w < sg.children.length; w++) { var wc = sg.children[w]; if (wc._ew_billboard) { wc.rotation.y = Math.atan2(cx - wc.position.x, cz - wc.position.z); } } } } }
 
         for (var _egi = 0; _egi < _ghostGroups.length; _egi++) { var _eg = _ghostGroups[_egi].group; if (_eg && _eg.children) { for (var gi = 0; gi < _eg.children.length; gi++) { var gc = _eg.children[gi]; if (gc._ew_billboard) { gc.rotation.y = Math.atan2(cx - _eg.position.x, cz - _eg.position.z); } } } }
+    }
+
+    /* Per-frame gameplay-facing pass: yaws each unit's sprite slab and its
+       ring wedge to unit.facing. Runs every frame (unlike the camera
+       billboard pass, which early-outs when the camera is still) because
+       facing changes on move/attack/cast with no camera motion. While a
+       walk tween is live the unit faces along its current path segment. */
+    function _updateUnitFacing() {
+        if (!unitGroup) return;
+        var now = performance.now();
+        for (var i = 0; i < unitGroup.children.length; i++) {
+            var g = unitGroup.children[i];
+            var uid = g._ew_unitId;
+            if (!uid || !g.children || g._ew_isBatSwarm) continue;
+            var unit = _findUnit(uid);
+            if (!unit) continue;
+
+            var yaw;
+            var tw = _walkTweens.get(uid);
+            if (tw) {
+                // Same segment math as _updateWalkTweens.
+                var gt = Math.min((now - tw.startTime) / tw.totalMs, 1);
+                var traveled = _easeInOut(gt) * tw.segs;
+                var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
+                var from = tw.path[stepIdx], to = tw.path[stepIdx + 1];
+                var ddx = to.x - from.x, ddy = to.y - from.y;
+                yaw = (ddx || ddy) ? Math.atan2(ddx, ddy) : _unitFacingYaw(unit);
+            } else {
+                yaw = _unitFacingYaw(unit);
+            }
+
+            for (var k = 0; k < g.children.length; k++) {
+                var ch = g.children[k];
+                if (ch._ew_facingSprite || ch._ew_facingIndicator) ch.rotation.y = yaw;
+            }
+        }
     }
 
     function _easeInOut(t) {
@@ -12532,6 +12649,7 @@ const ThreeRenderer = (function () {
         if (hlKey !== _lastHlKey || _hasStaleHl) { rebuildHighlights(); _lastHlKey = hlKey; }
 
         _updateBillboards();
+        _updateUnitFacing();
         _updateBatSwarms();
         _updateFlyingBob();
         _updateTowerCubes();

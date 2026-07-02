@@ -4435,6 +4435,67 @@
             return Math.max(24, Math.floor((unit.atk || 0) * 0.4) + randInt(24));
         }
 
+        /* ── Unit Facing ─────────────────────────────────────────────────
+           Facing is a normalized board-space vector {dx, dy} stored on the
+           unit (doMove/doJump set it from the travel direction, doAttack/
+           doSpell square the actor up on its target). Grid moves quantize
+           it to 8 directions but the math is fully 360°: the attack arc is
+           classified by the angle between the DEFENDER's facing and the
+           attack's travel direction —
+             within ~45° of straight behind → 'back'  (+25% dmg, can't be
+                                              dodged or countered)
+             head-on (~90° front cone)      → 'front' (no bonus)
+             otherwise                      → 'side'  (+10% dmg)          */
+        const FACING_BACK_DMG_MULT = 1.25;
+        const FACING_SIDE_DMG_MULT = 1.10;
+
+        function setUnitFacing(unit, dx, dy) {
+            if (!unit) return;
+            const len = Math.hypot(dx, dy);
+            if (!(len > 0)) return;   // zero vector → keep current facing
+            unit.facing = { dx: dx / len, dy: dy / len };
+        }
+
+        function getUnitFacing(unit) {
+            if (!unit) return { dx: 0, dy: 1 };
+            if (!unit.facing || (!unit.facing.dx && !unit.facing.dy)) {
+                // Lazy default: square up against the nearest living enemy
+                // (units open a battle facing the other side, not the camera).
+                let best = null, bestD = Infinity;
+                for (const e of (state.units || [])) {
+                    if (e.dead || e.player === unit.player) continue;
+                    const ed = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                    if (ed < bestD) { bestD = ed; best = e; }
+                }
+                if (best && (best.x !== unit.x || best.y !== unit.y)) {
+                    setUnitFacing(unit, best.x - unit.x, best.y - unit.y);
+                } else {
+                    unit.facing = { dx: 0, dy: 1 };
+                }
+            }
+            return unit.facing;
+        }
+
+        function getAttackArc(attacker, defender) {
+            if (!attacker || !defender) return 'front';
+            const f = getUnitFacing(defender);
+            let ax = defender.x - attacker.x, ay = defender.y - attacker.y;
+            const len = Math.hypot(ax, ay);
+            if (!(len > 0)) return 'front';
+            ax /= len; ay /= len;
+            // Dot of the attack's travel direction with the defender's facing:
+            // 1 = arrives dead from behind, -1 = met head-on.
+            const dot = f.dx * ax + f.dy * ay;
+            if (dot >= 0.70) return 'back';    // ±45° rear cone (diagonals count)
+            if (dot <= -0.70) return 'front';
+            return 'side';
+        }
+
+        function getFacingDamageMult(arc) {
+            return arc === 'back' ? FACING_BACK_DMG_MULT
+                 : arc === 'side' ? FACING_SIDE_DMG_MULT : 1;
+        }
+
         const STREAK_LABELS = {
             2: {
                 text: 'Killstreak!',
@@ -9810,6 +9871,7 @@
         const XP_ENV_BONUS_HIT      = 2;
         const XP_BUFF_ASSIST        = 2;
         const XP_COMBO              = 5;
+        const XP_FOLLOWUP           = 4;
 
         function getUnitLevel(unit) {
             if (!unit) return 1;
@@ -16009,6 +16071,10 @@
 
             getComboPartners, getComboForUnits, getComboTypeSynergy,
 
+            getUnitFacing, setUnitFacing, getAttackArc, getFacingDamageMult,
+            get FACING_BACK_DMG_MULT() { return FACING_BACK_DMG_MULT; },
+            get FACING_SIDE_DMG_MULT() { return FACING_SIDE_DMG_MULT; },
+
             doMove, doAttack, doSpell, doItem, doInspect, doReshape, canReshapeTile, applyTerrainDeform,
             doAltitudeChange, canChangeAltitude,
             doComboAttack, doDetonate, doJump,
@@ -18608,6 +18674,14 @@
             _revertSpriteOverride(unit);
             if (_hadMoveSprite && !unit._spriteOverride) markDirty('board');
 
+            // Facing: end the move looking the way the last step traveled.
+            if (path.length >= 2) {
+                const _fPrev = path[path.length - 2];
+                setUnitFacing(unit, x - _fPrev.x, y - _fPrev.y);
+            } else {
+                setUnitFacing(unit, x - startX, y - startY);
+            }
+
             resolveMovePath(unit, path, x, y);
 
             checkWarpRuneTrigger(unit);
@@ -18713,6 +18787,7 @@
             unit.x = x;
             unit.y = y;
             unit.z = z;
+            setUnitFacing(unit, x - fromX, y - fromY);
             spendAP(unit, AP_COST_ACTION);
             unit._jumpedThisTurn = true;
 
@@ -19072,7 +19147,14 @@
                 addLog(`${unitDisplayName(unit)} breaks camouflage!`);
             }
 
-            const evaded = rollEvasion(target);
+            // Facing: square the attacker up on the target, then read which
+            // arc of the DEFENDER this attack lands in. Back attacks cannot
+            // be dodged (and later: cannot be countered).
+            setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
+            const _atkArc = getAttackArc(unit, target);
+            const _facingMult = getFacingDamageMult(_atkArc);
+
+            const evaded = _atkArc === 'back' ? false : rollEvasion(target);
 
             const isCrit = !evaded && rollCrit(unit);
 
@@ -19090,6 +19172,7 @@
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
                 if (unit._matchCrits >= 3) checkAchievement('critMaster', unit);
             }
+            if (_facingMult !== 1) damage = Math.floor(damage * _facingMult);
 
             focusUnitPanel(target.id);
 
@@ -19162,6 +19245,13 @@
                 } else {
 
                     const preHp = target.hp;
+                    if (_atkArc === 'back') {
+                        addLog(`🗡️ BACKSTAB! ${unitDisplayName(unit)} strikes ${unitDisplayName(target)} from behind (+25% damage)!`);
+                        showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
+                    } else if (_atkArc === 'side') {
+                        addLog(`🗡️ ${unitDisplayName(unit)} flanks ${unitDisplayName(target)} (+10% damage)!`);
+                        showFloatingTextForUnit(target, 'FLANKED!', 'counter', { durationMs: 900 });
+                    }
                     if (isCrit) {
                         addLog(`⚡ CRITICAL HIT!`);
                         showBattleDialogue([`<span class="dlg-effective">⚡ CRITICAL HIT!</span>`], 1200);
@@ -19219,7 +19309,7 @@
                 state.selectedTool = null;
                 state.pendingTarget = null;
 
-                if (!evaded && !target.dead && !target._dying && d === 1 && rollCounter(target)) {
+                if (!evaded && !target.dead && !target._dying && d === 1 && _atkArc !== 'back' && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -19238,6 +19328,51 @@
                         });
                         checkWin();
                     }, actionMs(500));
+                }
+
+                // Follow-Up Attack: landing a melee hit while an ally stands on
+                // the target's OPPOSITE side lets that ally throw in a free
+                // strike (no AP). The follow-up is facing-aware — a pinned
+                // target usually faces the initiator, so the flanker's strike
+                // typically lands as an undodgeable backstab.
+                if (!evaded && !target.dead && !target._dying && d === 1) {
+                    const _fuX = target.x + (target.x - unit.x);
+                    const _fuY = target.y + (target.y - unit.y);
+                    const _fuAlly = state.units.find(a => !a.dead && !a._dying && a.id !== unit.id
+                        && a.player === unit.player && a.x === _fuX && a.y === _fuY
+                        && Math.abs((a.z ?? 0) - (target.z ?? 0)) <= 1
+                        && !unitHasStatus(a, 'invisible')
+                        && !getActiveStatusKeys(a).some(k => STATUS_DEFS[k]?.blockMove));
+                    if (_fuAlly) {
+                        const _fuTarget = target;
+                        window.setTimeout(() => {
+                            if (state.winner || _fuTarget.dead || _fuTarget._dying || _fuAlly.dead) return;
+                            setUnitFacing(_fuAlly, _fuTarget.x - _fuAlly.x, _fuTarget.y - _fuAlly.y);
+                            const _fuArc = getAttackArc(_fuAlly, _fuTarget);
+                            const _fuEvaded = _fuArc === 'back' ? false : rollEvasion(_fuTarget);
+                            animateStrikeLeap(_fuAlly, _fuTarget.x, _fuTarget.y);
+                            playSfx('basicAttack');
+                            if (_fuEvaded) {
+                                _fuTarget._matchDodges = (_fuTarget._matchDodges || 0) + 1;
+                                grantXP(_fuTarget, XP_DODGE, 'dodge');
+                                addLog(`${unitDisplayName(_fuTarget)} slips ${unitDisplayName(_fuAlly)}'s follow-up strike!`);
+                                showFloatingTextForUnit(_fuTarget, 'DODGE!', 'dodge', { durationMs: 1000 });
+                                playSfx('dodge');
+                                triggerDodgeAnim(_fuTarget, _fuAlly.x, _fuAlly.y);
+                                return;
+                            }
+                            let _fuDmg = Math.max(24, Math.floor((_fuAlly.atk || 0) * 0.4) + randInt(24));
+                            _fuDmg = Math.floor(_fuDmg * getFacingDamageMult(_fuArc));
+                            _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
+                            grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
+                            addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
+                            showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
+                            applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
+                                sourceUnit: _fuAlly
+                            });
+                            checkWin();
+                        }, actionMs(650));
+                    }
                 }
 
                 /* Unit animation override: revert race-specific attack sprite */
@@ -19896,6 +20031,12 @@
             }
 
             pushUndoSnapshot(true);
+
+            // Facing: both combo participants square up on the target.
+            if (isOffensive && target) {
+                setUnitFacing(initiator, targetX - initiator.x, targetY - initiator.y);
+                setUnitFacing(partner, targetX - partner.x, targetY - partner.y);
+            }
 
             const synergy = isOffensive && target ?
                 getComboTypeSynergyVsTarget(initiator, partner, target) :
@@ -20577,6 +20718,10 @@
                     return 0;
                 }
             }
+
+            // Facing: casting turns the caster toward the target tile
+            // (self-casts pass a zero vector, which keeps current facing).
+            setUnitFacing(unit, x - unit.x, y - unit.y);
 
             if (_isSpellSkyTelescopeTarget && state.fogOfWar && !state.devAutoSim) {
                 if (!state._fogRevealTiles) state._fogRevealTiles = new Set();

@@ -141,7 +141,8 @@ the FRONT cap (material switched MeshBasic→MeshLambert so sun/hemi/point light
 shade units) and `_attachSpriteShell` parents a generated shell to it: back cap at
 z=−depth + side walls traced from the sprite's alpha silhouette (merged per straight
 run, UVs sample the boundary pixel → rim carries edge colours). Depth =
-`UNIT_SPRITE_DEPTH_PX` (10 native px, const at top; 0 reverts to flat). Geometry
+`UNIT_SPRITE_DEPTH_PX` (5 native px since the 2026-07-02 facing update — was 10;
+const at top; 0 reverts to flat). Geometry
 cached per URL in `_spriteShellGeoCache`; built async via canvas `getImageData`
 (tainted canvas → silently stays flat). The shell SHARES the plane's material, so
 hit flashes / AP grey / cloak opacity / texture swaps all apply for free; it's
@@ -774,6 +775,49 @@ position writes; 2 draw calls total). Wiring:
   a handy debug trick since blink keeps most dark in any single frame). 0 page errors.
 - Gotcha: firefly colour reads cyan-green over blue stone (additive) — tune `colorA/B`
   in `_ambientTick`'s build opts if a warmer look is wanted.
+
+## Unit facing + back/flank attacks + follow-ups (2026-07-02)
+New tactical layer in **battle.js + three-renderer.js** (both on R2 → re-upload).
+- **Facing model**: `unit.facing = {dx, dy}` normalized board-space vector (continuous
+  360°; grid moves naturally quantize to 8 directions). Lazy default = toward nearest
+  enemy (`getUnitFacing`). Setters: `doMove` (last path step), `doJump` (leap dir),
+  `doAttack`/`doSpell`/`doComboAttack` (square up on target; self-casts keep facing).
+  Exported on `GAME`: `getUnitFacing/setUnitFacing/getAttackArc/getFacingDamageMult`,
+  `FACING_BACK_DMG_MULT` (1.25) / `FACING_SIDE_DMG_MULT` (1.10).
+- **Arc rule** (`getAttackArc(attacker, defender)`, dot of attack travel dir vs
+  DEFENDER facing): ≥0.70 → `'back'` (+25% dmg, **cannot be dodged or countered** —
+  `doAttack` skips `rollEvasion` and the `rollCounter` gate); ≤−0.70 → `'front'`
+  (no bonus); else `'side'` (+10%). Diagonal-behind counts as back (FFT-style).
+  Applies to BASIC attacks (any range — arrows to the back get it too); spells/combos
+  unaffected. Logs `🗡️ BACKSTAB!`/flank lines + floating text at impact.
+- **Follow-Up Attack**: melee hit (d===1) that LANDS (not dodged, target survives)
+  while an ally stands on the target's exact opposite tile (`target + (target−attacker)`,
+  |Δz|≤1, not invisible/move-blocked) → that ally strikes free ~650ms later
+  (counter-formula dmg ×facing mult, no AP, `XP_FOLLOWUP` 4, `_matchFollowUps`).
+  Follow-up is itself facing-aware AND dodgeable from front/side — a pinned target
+  facing its attacker eats an undodgeable backstab follow-up; one facing the ally can
+  dodge it. Lives in `doAttack`'s impact callback right after the counter block.
+- **Renderer (three-renderer.js)**: unit sprites **no longer billboard the camera** —
+  `_updateUnitFacing()` (every frame, after `_updateBillboards` in renderFrame) yaws
+  the sprite slab + a new team-colored **wedge on the selection ring**
+  (`_ew_facingIndicator` wrapper group; wedge tip = facing) to
+  `yaw = atan2(f.dx, f.dy)`; while a walk tween runs the unit faces its current path
+  segment. Sprites keep `_ew_billboard` (opacity/shadow sweeps) plus new
+  `_ew_facingSprite` flag — the camera-billboard pass skips those. A small **"BACK"
+  canvas-texture tag** floats off the rear cap (child of sprite, `rotation.y=π`,
+  FrontSide → only visible from behind) since the back reuses the front art. Bat
+  swarms, ghosts, deployables still camera-billboard. `UNIT_SPRITE_DEPTH_PX` 10 → 5.
+- **Verified** (scratchpad facing-verify*.js via LOCAL_ASSETS): arc table incl.
+  diagonals + ranged; doMove sets facing; forced-RNG backstab = +25%, no dodge, no
+  counter; front attack still dodgeable; follow-up fires (front-facing target dodges
+  it, back-facing target can't); 8/8 sprites yawed, 8 wedges, 8 BACK labels, 0 page
+  errors. Screenshot recipe: `deviceScaleFactor: 2.5` context + clip around
+  `ThreeRenderer.worldToScreen(x,y,40)` beats fighting the auto-zoom clamp.
+- **NOT done / follow-ups**: AI (ainew.js/ai.js) is facing-blind — it neither seeks
+  backstabs nor protects its rear (human players get a free edge; a scoring term for
+  attack arc + end-of-turn facing choice would fix it). No UI to choose end-of-turn
+  facing (FFT-style). Counters don't turn the defender around. `_spriteFlipX` travel
+  flip still applies on top of facing yaw (only race move-sprites use it).
 
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
