@@ -66,8 +66,13 @@ const ThreeCamera = (function () {
         const focalZ = cam.y * ts + ts / 2;
 
         let focalY = 0;
-        if (cam._computedElevZ > 0) {
-
+        /* Trust the controller's focal height whenever it has one — including
+           0: while the hand-pan latch (battle.js _apply) holds the height
+           frozen at ground level, re-deriving it from getHeightAt() here would
+           re-introduce the drag-over-hills bob this rig is meant to prevent.
+           The getHeightAt fallback only covers the frames before _apply has
+           run at all. */
+        if (Number.isFinite(cam._computedElevZ) && cam._computedElevZ >= 0) {
             focalY = cam._computedElevZ;
         } else if (typeof getHeightAt === 'function') {
             const rx = Math.round(cam.x);

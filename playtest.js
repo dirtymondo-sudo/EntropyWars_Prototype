@@ -100,7 +100,9 @@ const TURN_FN = () => {
 };
 
 (async () => {
-  const browser = await chromium.launch({ headless: true, args: ['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage'] });
+  // PW_CHROMIUM: path to a system/pre-installed Chromium when the Playwright
+  // registry download isn't available (e.g. remote sandboxes).
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.PW_CHROMIUM || undefined, args: ['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--no-sandbox','--disable-dev-shm-usage'] });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: true }); // ignoreHTTPSErrors: assets load from R2/CDN behind TLS inspection
   // USE_ASSET_CACHE=1 → serve R2/CDN assets from .asset-cache; combine with
   // LOCAL_ASSETS=a.js,b.js to test local repo edits before the R2 upload.

@@ -3162,12 +3162,21 @@
             // camera._tt — by now that holds the overview's framing, which would
             // "restore" to the wrong angle). The next turn re-frames from here
             // too, so this just keeps the overview readable between units.
+            // NOTE: don't capture camera._tz here — showEndOfRoundOverview()
+            // has already retargeted it to the pulled-back overview zoom, so
+            // "restoring" it left the camera stranded miles out after every
+            // round. Restore to the player's actual gameplay zoom instead,
+            // re-read at fire time so a wheel-zoom made DURING the sequence
+            // sticks.
             const _eorPrevView = (!state.cameraDisabled)
-                ? { tilt: camera._restTilt, yaw: camera._restYaw, zoom: camera._tz } : null;
+                ? { tilt: camera._restTilt, yaw: camera._restYaw,
+                    zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom() } : null;
             function _restoreEorView() {
                 if (_eorPrevView && !state.cameraDisabled) {
+                    const _uz = getUserZoomScale();
                     camera.moveTo({
-                        tilt: _eorPrevView.tilt, yaw: _eorPrevView.yaw, zoom: _eorPrevView.zoom,
+                        tilt: _eorPrevView.tilt, yaw: _eorPrevView.yaw,
+                        zoom: _uz > 1.05 ? _uz : _eorPrevView.zoom,
                         duration: 320, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
                     });
@@ -3199,10 +3208,14 @@
                     // Pan-and-zoom in on the unit taking damage at the player's
                     // resting tilt — no tilt swing, so the whole EOR tour reads as
                     // one smooth glide across the board rather than a series of
-                    // re-angled cuts.
+                    // re-angled cuts. A zoom the player dialed in by hand (wheel)
+                    // wins over the tour's framing — auto moves must never yank
+                    // an engaged user zoom back out.
+                    const _uz = getUserZoomScale();
                     camera.moveTo({
                         x: unit.x, y: unit.y,
-                        zoom: getDefaultZoom() * 1.25, tilt: camera._restTilt, yaw: camera._restYaw,
+                        zoom: _uz > 1.05 ? _uz : getDefaultZoom() * 1.25,
+                        tilt: camera._restTilt, yaw: camera._restYaw,
                         duration: 400, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
                     });
@@ -6302,6 +6315,9 @@
 
             x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
             _elevOverride: -1,
+            // Focal height frozen while (and after) the player hand-pans the
+            // board — see the latch in _apply(). null = tracking normally.
+            _panElevLatch: null,
 
             _tx: 0, _ty: 0, _tz: 1, _tt: 50, _tyaw: 0, _tcz: 900, _tElev: -1,
 
@@ -6432,6 +6448,26 @@
                     if (this._elevOverride >= 0) {
 
                         elevZ = this._elevOverride;
+                        this._panElevLatch = null;
+                    } else if (state._userPanning || this._panElevLatch !== null) {
+                        // ── Hand-pan focal-height LATCH ──
+                        // The natural tracking below re-derives the focal height
+                        // from the terrain under the camera every frame, so a
+                        // right-drag across hills dollied the whole view up and
+                        // down with the ground — pure jank while the player is
+                        // just trying to slide across the map. Freeze the height
+                        // the moment a manual pan/tilt begins and KEEP it frozen
+                        // after release: a hand-held camera never moves
+                        // vertically on its own. The latch is released by the
+                        // next programmatic camera move (moveTo/snap/focus pan),
+                        // which tweens the height smoothly from this frozen
+                        // value, so the hand-off is seamless. This feeds BOTH
+                        // render paths — the CSS transform below and
+                        // ThreeCamera.sync (via _computedElevZ).
+                        if (this._panElevLatch === null) {
+                            this._panElevLatch = Number.isFinite(this._computedElevZ) ? this._computedElevZ : 0;
+                        }
+                        elevZ = this._panElevLatch;
                     } else if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
                         const floorX = Math.floor(this.x), floorY = Math.floor(this.y);
                         const ceilX = Math.ceil(this.x),   ceilY = Math.ceil(this.y);
@@ -6655,6 +6691,15 @@
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
                 this._elevRelease = false;
+                // A programmatic reposition (reset, focus snap, explicit height)
+                // takes ownership of the focal height again. Pan/tilt-drag snaps
+                // arrive with state._userPanning set and keep the latch; a
+                // zoom-only snap (mouse wheel) keeps it too — zooming must not
+                // change the camera's height.
+                if (!state._userPanning
+                    && (opts.x !== undefined || opts.y !== undefined || this._elevOverride >= 0)) {
+                    this._panElevLatch = null;
+                }
 
                 this._tx = this.x; this._ty = this.y; this._tz = this.zoom;
                 this._tt = this.tilt; this._tyaw = this.yaw; this._tcz = this.camZ;
@@ -6676,6 +6721,11 @@
 
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+
+                // A real camera move takes over from any hand-pan height latch;
+                // _fromElev below starts from _computedElevZ (the latched value),
+                // so the height tweens smoothly out of the freeze.
+                this._panElevLatch = null;
 
                 this._fromX = this.x; this._fromY = this.y; this._fromZ = this.zoom;
                 this._fromT = this.tilt; this._fromYaw = this.yaw; this._fromCZ = this.camZ;
@@ -7124,6 +7174,7 @@
             camera.x = x; camera.y = y; camera.zoom = zoom;
             camera._tx = x; camera._ty = y; camera._tz = zoom;
             camera._elevOverride = -1; camera._tElev = -1;
+            camera._panElevLatch = null;
             camera._apply();
         }
         function setBoardZoomState(z) { camera._updateZoomState(z); }
@@ -7179,7 +7230,11 @@
             return z <= 1.05 ? '🔍 Overview' : `🔎 ${Math.round(z * 100)}%`;
         }
 
-        const MAX_AUTO_ZOOM_OUT_TILES = 14;
+        // Hard floor on every AUTOMATIC zoom: no auto move may pull back
+        // further than this many tile-rows visible, regardless of map size.
+        // Map-sized framings (default zoom, EOR overview) clamp to this, so
+        // big maps get the same readable mid-distance camera as small ones.
+        const MAX_AUTO_ZOOM_OUT_TILES = 12;
         const _zoomMemo = new Map();
         let _zoomMemoKey = '';
 
@@ -7316,9 +7371,18 @@
         const EOR_OVERVIEW_MARGIN = 0.92;
         function showEndOfRoundOverview() {
             if (_skipVisuals() || state.cameraDisabled) return;
+            // The pull-back is bounded by the same cap as every other auto
+            // move (getMaxAutoZoomOut): on a small map the fit-to-board zoom
+            // wins (stays close), on a big map the cap wins — the EOR beats
+            // read fine from a mid overview and the full-board fit was the
+            // "watching the match from 3 miles away" complaint. If the player
+            // has a hand zoom engaged, keep it: the overview becomes a plain
+            // pan to center.
+            const _uz = getUserZoomScale();
+            const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN, getMaxAutoZoomOut());
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
-                zoom: getFullMapZoom() * EOR_OVERVIEW_MARGIN,
+                zoom: _uz > 1.05 ? _uz : _fitZoom,
                 tilt: camera._restTilt, yaw: camera._restYaw,
                 duration: 520, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true

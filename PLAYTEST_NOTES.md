@@ -441,6 +441,35 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   landing tile over `SLIDE_MS`, tilt 52, `getDefaultZoom()×1.35`; strike
   resolution waits `followLeadMs + SLIDE_MS`); `processEndOfRoundRegen`
   re-frames to the overhead so every `+HP/+MP` float reads at once.
+- **Camera jank pass (2026-07-02)** — three user-reported issues, all fixed:
+  - **Right-drag pan bobbed with the terrain.** Root: `camera._apply()`
+    (battle.js) re-derives the focal HEIGHT from the terrain under the camera
+    every frame (bilinear `getHeightAt` interp → `_computedElevZ`) and applies
+    it RAW in the CSS transform (`translate3d(..., -elevZ)`); the old latch
+    lived only in `ThreeCamera.sync` and only DURING the drag, so the DOM layer
+    still bobbed and every release caused a vertical settle. Fix at the source:
+    `camera._panElevLatch` freezes `_computedElevZ` when `state._userPanning`
+    starts and STAYS frozen after release; it's released by the next
+    programmatic move (`moveTo` — which tweens height from the latched value —,
+    a non-pan `snap` that sets x/y/elevZ, or `setBoardCameraFocusPoint`).
+    Zoom-only snaps (wheel) and tilt-drag snaps keep the latch. `ThreeCamera.sync`
+    now trusts any finite `_computedElevZ >= 0` (0 is a valid latched height —
+    the old `> 0` guard fell back to raw `getHeightAt` and re-introduced the bob).
+  - **EOR zoomed out to the whole map ("watching from 3 miles away") and
+    STAYED out.** `showEndOfRoundOverview()` used `getFullMapZoom()` with
+    `_bypassCap`; worse, `processEndOfRoundStatuses` captured its restore zoom
+    from `camera._tz` AFTER the overview had already retargeted it → the
+    "restore" restored the far-out zoom. Now the overview clamps to
+    `max(getFullMapZoom()·0.92, getMaxAutoZoomOut())` and the restore re-derives
+    the gameplay zoom (`userZoom > 1.05 ? userZoom : getDefaultZoom()`) at fire
+    time.
+  - **Wheel zoom-in during the EOR sequence bounced right back out.** Every EOR
+    camera call passed an explicit zoom ignoring `state.userZoomScale`. All EOR
+    moves (overview, per-unit DoT pan, restore) now honor an engaged user zoom
+    (`> 1.05`) — the tour becomes plain pans at the player's zoom.
+  - `MAX_AUTO_ZOOM_OUT_TILES` 14 → **12**: hard floor for EVERY automatic zoom,
+    map-size independent (this is the "one size fits all" knob — auto moves can
+    never show more than ~12 tile-rows no matter how big the map is).
 - **EOR combat-log de-bloat (2026-06):** the global regen log is a single
   summary line; spawn-zone friendly regen (`processEndOfRoundZonesAndSeeds`)
   no longer logs one `Spawn zone heals NAME (+HP, +MP)` line PER unit — it
