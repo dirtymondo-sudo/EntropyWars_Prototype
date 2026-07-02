@@ -6242,6 +6242,7 @@
             _startTime: 0,
             _duration: 0,
             _fromX: 0, _fromY: 0, _fromZ: 1, _fromT: 50, _fromYaw: 0, _fromCZ: 900, _fromElev: -1,
+            _elevRelease: false,
             _yawDelta: 0,
             _easing: 'easeOut',
             _rafId: null,
@@ -6493,7 +6494,11 @@
 
                     this.x = this._tx; this.y = this._ty; this.zoom = this._tz;
                     this.tilt = this._tt; this.yaw = this._tyaw; this.camZ = this._tcz;
-                    this._elevOverride = this._tElev;
+                    // A released focal height hands back to natural per-frame
+                    // tracking now that the tween has landed ON that height, so
+                    // the hand-off is seamless.
+                    this._elevOverride = this._elevRelease ? -1 : this._tElev;
+                    this._elevRelease = false;
                     this._apply();
                     this._rafId = null;
                     this._duration = 0;
@@ -6504,6 +6509,55 @@
                 if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
                 if (this._convergenceRaf) { cancelAnimationFrame(this._convergenceRaf); this._convergenceRaf = null; }
                 this._duration = 0;
+            },
+
+            // ── Cinematic keep-subject release (the "tilts up even MORE after
+            // an uphill attack" fix) ──
+            // The rig's keep-subject floor response (ThreeCamera, cam._cineKeepSubject)
+            // dollies the eye IN toward the subject while a shot cranes past the
+            // horizon at a higher target. Clearing that flag INSTANTLY when the
+            // return tween starts flipped ThreeCamera to the free-look floor
+            // response while the pitch was still craned past 90°: the eye pops up
+            // to the (raised) focal's floor and the look-point is rebuilt from the
+            // up-pitched view direction — flinging the gaze INTO THE SKY for the
+            // first frames of every return. Keep the flag alive THROUGH the return
+            // tween and release it only once the un-tilt has landed; a new shot
+            // that starts meanwhile keeps ownership (checked at fire time).
+            _cineSubjectReleaseTimer: null,
+            _releaseCineSubject(afterMs) {
+                if (this._cineSubjectReleaseTimer) {
+                    clearTimeout(this._cineSubjectReleaseTimer);
+                    this._cineSubjectReleaseTimer = null;
+                }
+                if (!this._cineKeepSubject) return;
+                this._cineSubjectReleaseTimer = setTimeout(() => {
+                    this._cineSubjectReleaseTimer = null;
+                    if (this._cineShotId == null) this._cineKeepSubject = false;
+                }, Math.max(50, afterMs || 0));
+            },
+
+            // Natural (un-overridden) focal height at a tile — the same value
+            // _apply computes when no elevZ override is active: terrain height
+            // (or an airborne unit's altitude) plus the sprite anchor lift when
+            // a unit stands there. Used by moveTo to EASE an elevated cinematic
+            // focal back down instead of snapping the override off in one frame.
+            _naturalElevAt(x, y) {
+                const ts = CONFIG.tileSize || BASE_TILE;
+                let elevZ = 0;
+                if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
+                    const rx = Math.round(x), ry = Math.round(y);
+                    const u = (typeof unitAt === 'function') ? unitAt(rx, ry) : null;
+                    if (u && typeof canFly === 'function' && canFly(u)
+                        && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
+                        const uz = u.z ?? 0;
+                        elevZ = uz > 0 ? window._getElevationPx(uz) : 0;
+                    } else {
+                        const h = getHeightAt(rx, ry);
+                        if (h > 0) elevZ = window._getElevationPx(h);
+                    }
+                    if (u && !u.dead) elevZ += ts * 0.55;
+                }
+                return elevZ;
             },
 
             _fogBlocked(fogAllowed) {
@@ -6534,6 +6588,7 @@
                 if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
+                this._elevRelease = false;
 
                 this._tx = this.x; this._ty = this.y; this._tz = this.zoom;
                 this._tt = this.tilt; this._tyaw = this.yaw; this._tcz = this.camZ;
@@ -6558,7 +6613,11 @@
 
                 this._fromX = this.x; this._fromY = this.y; this._fromZ = this.zoom;
                 this._fromT = this.tilt; this._fromYaw = this.yaw; this._fromCZ = this.camZ;
-                this._fromElev = this._elevOverride;
+                // Tween the focal HEIGHT from its LIVE value: when no override is
+                // active, start from the natural elevation _apply computed this
+                // frame, so height transitions are always continuous.
+                this._fromElev = this._elevOverride >= 0 ? this._elevOverride
+                    : (Number.isFinite(this._computedElevZ) ? this._computedElevZ : -1);
 
                 // Unspecified axes keep the previous tween TARGET (not the
                 // current interpolated value): a pan that interrupts e.g. a
@@ -6574,7 +6633,24 @@
                 this._tt   = opts.tilt ?? this._tt;
                 this._tyaw = opts.yaw  ?? this._tyaw;
                 this._tcz  = opts.camZ ?? this._tcz;
-                this._tElev = opts.elevZ ?? -1;
+                // Focal height: an explicit elevZ tweens to that value. No elevZ
+                // (or -1) means "back to natural terrain tracking" — but snapping
+                // the override off dropped the focal a full cliff-height in ONE
+                // frame at the end of every elevated cinematic shot (the visible
+                // jolt/extra-tilt on the return). Instead, ease down to the
+                // DESTINATION tile's natural height and only hand back to
+                // per-frame tracking once the tween lands (see _tick/_elevRelease).
+                const _wantElev = opts.elevZ ?? -1;
+                if (_wantElev >= 0) {
+                    this._tElev = _wantElev;
+                    this._elevRelease = false;
+                } else if (this._fromElev >= 0) {
+                    this._tElev = this._naturalElevAt(this._tx, this._ty);
+                    this._elevRelease = true;
+                } else {
+                    this._tElev = -1;
+                    this._elevRelease = false;
+                }
 
                 let yd = this._tyaw - this._fromYaw;
                 this._yawDelta = ((yd % 360) + 540) % 360 - 180;
@@ -6616,8 +6692,9 @@
                 // orientation — prefer it.
                 const pre = this._preCineView;
                 this._preCineView = null;
-                this._cineShotId = null; this._cineKeepSubject = false;
+                this._cineShotId = null;
                 const dur = opts.duration ?? actionMs(700);
+                this._releaseCineSubject(dur + 150);
                 this._busy = true;
                 const seq = ++this._seqId;
                 this.moveTo({ ...s,
@@ -6661,7 +6738,7 @@
                 const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 const pre = this._preCineView;
                 this._preCineView = null;
-                this._cineShotId = null; this._cineKeepSubject = false;
+                this._cineShotId = null;
                 // ALWAYS return to a known resting orientation (the player's
                 // remembered pre-cine framing if we have it, else the persistent
                 // _restTilt/_restYaw). reset() can never leave the camera tilted
@@ -6670,10 +6747,12 @@
                 const retYaw  = pre ? pre.yaw  : this._restYaw;
                 const retZoom = pre ? pre.zoom : zoom;
                 if (immediate) {
+                    this._cineKeepSubject = false;
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
                     this.snap({ x: target.x, y: target.y, zoom: cineWasActive ? retZoom : zoom,
                         tilt: retTilt, yaw: retYaw });
                 } else {
+                    this._releaseCineSubject(actionMs(750));
                     this.moveTo({ x: target.x, y: target.y,
                         zoom: cineWasActive ? retZoom : zoom, duration: actionMs(600),
                         _fogAllowed: true, easing: 'easeInOut',
@@ -6683,7 +6762,7 @@
                 }
             },
 
-            softResetToUnit(targetUnit) {
+            softResetToUnit(targetUnit, opts = {}) {
                 if (!boardStageEl || state.cameraDisabled) { this.reset(); this._savedState = null; return; }
 
                 // Auto-controlled side (AI / auto / remote): keep the action
@@ -6693,7 +6772,12 @@
                 // bounce when a unit attacks several times in a row.
                 if (_cameraActingSideIsAuto()) {
                     this._savedState = null;
-                    this._cineShotId = null; this._cineKeepSubject = false;
+                    this._cineShotId = null;
+                    // Keep the rig's keep-subject floor response alive until the
+                    // debounced settle below has un-tilted (600ms arm + 650ms
+                    // tween) — clearing it while the pitch is still craned past
+                    // the horizon flings the gaze skyward (see _releaseCineSubject).
+                    this._releaseCineSubject(actionMs(1400));
 
                     // The action is over — release busy NOW. Leaving it to the
                     // action timer alone can strand _busy=true (its clear is
@@ -6739,6 +6823,51 @@
                     }, actionMs(600));
                     return;
                 }
+                // ── Turn-ownership guard (the "camera isn't on my unit at the
+                // start of its turn" fix) ──
+                // Action completions arrive on their OWN timers (spell settles,
+                // impact delays, shot-clock force-ends), so a soft-reset for the
+                // PREVIOUS unit can fire AFTER the next unit's activation pan has
+                // already started — and this method _stop()s that pan and drags
+                // the camera back to the old unit, leaving the player to go find
+                // the active one by hand. Once the blitz turn belongs to a
+                // DIFFERENT unit, the activation pan owns the camera: just drop
+                // the stale bookkeeping and leave the motion alone. Deliberate
+                // "watch the displaced target land" beats during the actor's own
+                // turn opt out via opts.focusTarget.
+                if (!opts.focusTarget && targetUnit && state._blitzActiveUnitId
+                    && state._blitzActiveUnitId !== targetUnit.id) {
+                    this._savedState = null;
+                    this._cineShotId = null;
+                    this._releaseCineSubject(actionMs(700));
+                    return;
+                }
+                // ── Press-turn HOLD: the unit can still act — stay in the shot ──
+                // After an offensive action, if the acting unit still has AP
+                // (press-turn refund, multi-action turn), KEEP the third-person
+                // action framing instead of swinging all the way back to the
+                // overhead view: chained attacks (a super-effective press into an
+                // immediate follow-up) were wasting seconds rotating back and
+                // forth between the two views. The remembered pre-action view
+                // (_preCineView) is RETAINED, so the real return still lands on
+                // the player's own framing the moment the unit's turn actually
+                // ends (the next activation pan), the unit moves, or any gameplay
+                // focus pan takes over — those paths all consume _preCineView and
+                // fold the un-tilt into their own motion. The keep-subject floor
+                // response stays live for the whole hold (the pose may be craned
+                // up); busy is released NOW so the turn loop never stalls on a
+                // camera that intentionally isn't moving.
+                if (!opts.focusTarget && targetUnit && !targetUnit.dead
+                    && this._cineShotId != null && this._preCineView
+                    && (targetUnit.ap || 0) > 0 && !unitFinished(targetUnit)) {
+                    this._savedState = null;
+                    this._cineShotId = null;
+                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                    if (this._cineSubjectReleaseTimer) { clearTimeout(this._cineSubjectReleaseTimer); this._cineSubjectReleaseTimer = null; }
+                    this._busy = false;
+                    if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
+                    return;
+                }
                 ++boardCameraSequenceId;
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -6748,7 +6877,11 @@
                 // Capture BEFORE clearing the shot id so the no-saved branch below
                 // can still tell it is returning from a cinematic shot.
                 const cineWasActive = this._cineShotId != null || this._preCineView != null;
-                this._cineShotId = null; this._cineKeepSubject = false;
+                this._cineShotId = null;
+                // Keep the rig's keep-subject floor response alive through the
+                // return tween (see _releaseCineSubject) — covers both branch
+                // durations below (800/650ms).
+                this._releaseCineSubject(actionMs(950));
 
                 if (saved && focusUnit) {
 
@@ -6767,6 +6900,15 @@
                     const _rTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : saved.tilt);
                     const _rYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : saved.yaw);
                     this.moveTo({ ...saved,
+                        // Re-centre on the unit ITSELF, not the remembered
+                        // pre-action position: after a movement action (dash /
+                        // charge / leap / teleport / swap) the unit is no longer
+                        // where the camera was parked, and restoring that stale
+                        // spot left the player staring at an empty tile with AP
+                        // still to spend. The unit with AP left IS the relevant
+                        // subject — always land the return on it. elevZ -1 lets
+                        // moveTo ease the focal height onto the unit's own tile.
+                        x: focusUnit.x, y: focusUnit.y, elevZ: -1,
                         tilt: _rTilt, yaw: _rYaw,
                         ...(pre ? { zoom: pre.zoom } : {}),
                         duration: dur, easing: 'easeInOut',
@@ -6828,7 +6970,8 @@
                     _cineRetYaw  = this._preCineView.yaw;
                     _cineRetZoom = this._preCineView.zoom;
                     this._preCineView = null;
-                    this._cineShotId = null; this._cineKeepSubject = false;
+                    this._cineShotId = null;
+                    this._releaseCineSubject((opts.transitionMs ?? 600) + 150);
                     _cineRet = true;
                 }
 
@@ -6919,7 +7062,7 @@
         }
         function setBoardZoomState(z) { camera._updateZoomState(z); }
         function resetBoardCamera(immediate) { camera.reset(immediate); }
-        function _softResetCameraToUnit(unit) { camera.softResetToUnit(unit); }
+        function _softResetCameraToUnit(unit, opts) { camera.softResetToUnit(unit, opts); }
         function focusBoardCameraOnTiles(points, opts) { camera.focusOnTiles(points, opts); }
         function _saveCameraState() { camera.save(); }
         function _popSavedCameraState() { const s = camera._savedState; camera._savedState = null; return s; }
@@ -7656,8 +7799,10 @@
 
             // Default OFF; only the over-the-shoulder action shot below turns on the
             // rig's keep-subject (dolly-in) floor response. Descent/plain shots and
-            // free-look keep the standard sky-revealing floor pan.
-            camera._cineKeepSubject = false;
+            // free-look keep the standard sky-revealing floor pan. Released on a
+            // short delay so a previous craned-up shot eases down instead of
+            // flipping floor response mid-crane (a new shot re-owns the flag).
+            camera._releaseCineSubject(actionMs(500));
 
             if (_descentEligible) {
                 _playDescentCam(sourceUnit, target, opts.descentCam, timings, _fogPassthrough, sequenceId);
@@ -16135,7 +16280,7 @@
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
                         const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
                         camera._preCineView = null;
-                        camera._cineKeepSubject = false;
+                        camera._releaseCineSubject(550);
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
                             _applyZoom: _localActiveTurn,
@@ -16160,7 +16305,7 @@
                         const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
                         camera._preCineView = null;
                         camera._savedState = null;
-                        camera._cineKeepSubject = false;
+                        camera._releaseCineSubject(750);
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
                             tilt: _retTilt, yaw: _retYaw,
@@ -21337,7 +21482,7 @@
                         }
                     } else if (!state.cameraDisabled) {
                         ++boardCameraSequenceId;
-                        _softResetCameraToUnit(target);
+                        _softResetCameraToUnit(target, { focusTarget: true });
                     }
                     scheduleBoardRender();
                 }, impactDelay);
@@ -21636,7 +21781,7 @@
                             _pullTether.retract(unit.x, unit.y, actionMs(250));
                         }, _shootMs + actionMs(120));
                     }
-                    if (!state.cameraDisabled) _softResetCameraToUnit(target);
+                    if (!state.cameraDisabled) _softResetCameraToUnit(target, { focusTarget: true });
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(600);
@@ -22637,7 +22782,11 @@
 
                     if (!state.cameraDisabled) {
                         window.setTimeout(() => {
-                            _softResetCameraToUnit(tUnit);
+                            // focusTarget: teleporting ANOTHER unit (teleportAnyUnit)
+                            // should still show where it landed even though the
+                            // caster owns the turn; self-teleports pass the guard
+                            // anyway.
+                            _softResetCameraToUnit(tUnit, { focusTarget: true });
                             scheduleBoardRender();
                         }, actionMs(80));
                     }
