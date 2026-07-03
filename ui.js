@@ -4767,6 +4767,13 @@
             pushUndoSnapshot(true);
             spendAP(unit, NEXUS_CHANNEL_COST_AP);
 
+            // Channeling a Nexus is a beacon — it breaks stealth. No capturing
+            // objectives from inside a cloak.
+            if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'invisible')) {
+                clearStatus(unit, 'invisible');
+                addLog(`👁 ${unitDisplayName(unit)} is revealed — channeling breaks camouflage!`);
+            }
+
             _fireNexusVfx3d(unit.player === 1 ? '_nexusChannelP1' : '_nexusChannelP2', unit.x, unit.y);
 
             const direction = unit.player === 1 ? 1 : -1;
@@ -4847,7 +4854,10 @@
             for (const section of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[section];
                 if (!nex || nex.owner === 0) continue;
+                // Cloaked units don't contest — you can't dispute ground you
+                // aren't visibly standing on.
                 const enemyInZone = state.units.some(u => !u.dead && u.player !== nex.owner &&
+                    !(typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) &&
                     isInNexusZone(u.x, u.y, section));
                 if (enemyInZone) {
                     addLog(`⬡ The ${section} Nexus is contested — no gold generated.`);

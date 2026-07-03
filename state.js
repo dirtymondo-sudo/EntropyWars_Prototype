@@ -3410,29 +3410,36 @@
                 return a;
             };
             const slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+            // Slot budget: spells occupy 1-3 slots each (getSpellSlotCost).
+            const slotCostOf = (sp) => (typeof getSpellSlotCost === 'function') ? getSpellSlotCost(sp, cls, secJob) : 1;
 
             const picks = [];
             const seenIds = new Set();
+            let slotsUsed = 0;
+            const tryPick = (sp) => {
+                if (!sp || seenIds.has(sp.id)) return false;
+                const c = slotCostOf(sp);
+                if (slotsUsed + c > slotCap) return false;
+                picks.push(sp.id);
+                seenIds.add(sp.id);
+                slotsUsed += c;
+                return true;
+            };
             const mainDamage = mainPool.filter(s => s.type === 'damage' || s.kind === 'damage');
             if (mainDamage.length > 0) {
-                const pick = mainDamage[randInt(mainDamage.length)];
-                picks.push(pick.id);
-                seenIds.add(pick.id);
+                tryPick(mainDamage[randInt(mainDamage.length)]);
             }
 
             const pushFrom = (pool, count) => {
                 const shuffled = shuffle(pool);
                 for (const sp of shuffled) {
-                    if (picks.length >= slotCap) break;
+                    if (slotsUsed >= slotCap) break;
                     if (count <= 0) break;
-                    if (seenIds.has(sp.id)) continue;
-                    picks.push(sp.id);
-                    seenIds.add(sp.id);
-                    count--;
+                    if (tryPick(sp)) count--;
                 }
             };
 
-            const remainingSlots = slotCap - picks.length;
+            const remainingSlots = slotCap - slotsUsed;
             const mainCount = Math.max(1, Math.round(remainingSlots * 0.6));
             const secCount = secPool.length > 0 ? Math.max(1, Math.round(remainingSlots * 0.3)) : 0;
             const crossCount = Math.max(0, remainingSlots - mainCount - secCount);
@@ -3440,13 +3447,11 @@
             pushFrom(secPool, secCount);
             pushFrom(crossPool, crossCount);
 
-            if (picks.length < slotCap) {
+            if (slotsUsed < slotCap) {
                 const leftover = shuffle([...mainPool, ...secPool, ...crossPool]);
                 for (const sp of leftover) {
-                    if (picks.length >= slotCap) break;
-                    if (seenIds.has(sp.id)) continue;
-                    picks.push(sp.id);
-                    seenIds.add(sp.id);
+                    if (slotsUsed >= slotCap) break;
+                    tryPick(sp);
                 }
             }
             meta.customSpells = picks;
@@ -4183,6 +4188,22 @@
                         if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
                         if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
                         if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break bOuter; }
+                    }
+                }
+            }
+            // 🔨 An in-range smashable terrain column (exposed raised tile) also
+            // keeps the Attack button lit — same diamond scan as trees.
+            if (!hasAttack && typeof _tileIsSmashable === 'function') {
+                tOuter:
+                for (let dy = -effRange; dy <= effRange; dy++) {
+                    for (let dx = -effRange; dx <= effRange; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
+                        const tx = unit.x + dx, ty = unit.y + dy;
+                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
+                        if (!_tileIsSmashable(tx, ty)) continue;
+                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
+                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break tOuter; }
                     }
                 }
             }

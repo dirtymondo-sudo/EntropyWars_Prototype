@@ -7139,6 +7139,105 @@ function computeSpellManaCost(s){
     console.log(`[ManaEconomy] Derived mana costs for ${all.length} spells (${changed} changed); priciest: ${maxName} @ ${maxCost} MP`);
 })();
 
+// --- Spell SLOT costs (the loadout budget) ---
+// Every unit has SPELL_SLOT_MAX (8) spell slots, and a spell occupies 1-3 of
+// them based on its power — the derived mana cost above is the power proxy.
+// So a build is "8 cheap tricks" or "a few premium bombs", never both.
+// 3-slot territory is reserved for the marquee spell(s) of each type
+// (Nuke, Meteor, EMP Burst, Judgment, Overgrowth, Dragonfire...).
+// An explicit spell.slotCost (1-3) overrides the derivation.
+const SLOT_COST_2_MIN_MANA = 35;
+const SLOT_COST_3_MIN_MANA = 60;
+
+function _spellGrantsPremiumBuff(s) {
+    const eff = [...(s.statusEffects || []), ...(s.allyStatusEffects || [])];
+    return eff.some(e => e && (e.id === 'protect' || e.id === 'invisible'));
+}
+
+function getSpellSlotCost(spell, cls, secJob) {
+    if (!spell) return 0;
+    if (spell.kind === 'basicAttack') return 0;
+    let slots;
+    if (typeof spell.slotCost === 'number') {
+        slots = spell.slotCost;
+    } else {
+        const mana = spell.cost || 0;
+        slots = mana >= SLOT_COST_3_MIN_MANA ? 3 : mana >= SLOT_COST_2_MIN_MANA ? 2 : 1;
+        // Mana under-prices game-warping utility (invulnerability, stealth,
+        // revives, extra actions, spell theft) — floor those at 2 slots.
+        if (slots < 2 && (spell.kind === 'revive' || spell.revivePct || spell.reviveHpPct ||
+            spell.kind === 'encore' || spell.stealSpell || _spellGrantsPremiumBuff(spell))) {
+            slots = 2;
+        }
+    }
+    // Cross-class picks (not from your job, secondary job, or race) take an
+    // extra slot to master. Freelancer counts everything as native.
+    if (cls && typeof isSpellNativeToClass === 'function') {
+        const native = isSpellNativeToClass(spell, cls) || (secJob && isSpellNativeToClass(spell, secJob));
+        if (!native) slots += 1;
+    }
+    return Math.max(1, Math.min(3, slots));
+}
+
+function getSpellIdsSlotCost(spellIds, cls, secJob) {
+    let total = 0;
+    for (const id of (spellIds || [])) {
+        if (!id) continue;
+        const sp = (typeof getSpellById === 'function') ? getSpellById(id) : null;
+        if (sp) total += getSpellSlotCost(sp, cls, secJob);
+    }
+    return total;
+}
+
+// --- Sparse spell cooldowns ---
+// MP + AP remain the everyday limiters; cooldownRounds exists ONLY for spells
+// that would be broken on repeat: invulnerability (protect) and stealth
+// (invisible) can't be maintained every round, spell theft and encore can't
+// be spammed, and the apex nukes (Nuke/Meteor, >= 80 MP) land as moments, not
+// maintenance. Checked in canAffordSpell/doSpell (battle.js); a cast stamps
+// unit._spellCooldowns[spell.id] with the round it becomes ready again.
+// Explicit spell.cooldownRounds in a definition wins over these baselines.
+(function _applyBaselineCooldowns(){
+    const all = [];
+    const seen = new Set();
+    for (const sp of SPELL_LIBRARY) if (!seen.has(sp)) { seen.add(sp); all.push(sp); }
+    for (const abilities of Object.values(RACE_ABILITIES)) {
+        for (const ab of abilities) if (!seen.has(ab)) { seen.add(ab); all.push(ab); }
+    }
+    let stamped = 0;
+    for (const s of all) {
+        if (typeof s.cooldownRounds === 'number') continue;
+        const eff = [...(s.statusEffects || []), ...(s.allyStatusEffects || [])];
+        if (eff.some(e => e && (e.id === 'protect' || e.id === 'invisible'))) s.cooldownRounds = 2;
+        else if (s.stealSpell) s.cooldownRounds = 3;
+        else if (s.kind === 'encore') s.cooldownRounds = 2;
+        else if ((s.cost || 0) >= 80) s.cooldownRounds = 2;
+        if (s.cooldownRounds) stamped++;
+    }
+    console.log(`[Cooldowns] ${stamped} spells carry a cooldown (protect/invis granters, spell theft, encore, apex nukes).`);
+})();
+
+// Trim a wish-list of spell ids to the slot budget, keeping earlier picks and
+// skipping (not truncating at) anything that no longer fits — the graceful
+// "over budget" path for saved parties built before the budget existed.
+function trimSpellIdsToSlotBudget(spellIds, cls, secJob, budget) {
+    const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 8);
+    const kept = [];
+    const seen = new Set();
+    let used = 0;
+    for (const id of (spellIds || [])) {
+        if (!id || seen.has(id)) continue;
+        const sp = (typeof getSpellById === 'function') ? getSpellById(id) : null;
+        if (!sp || sp.kind === 'basicAttack') continue;
+        const c = getSpellSlotCost(sp, cls, secJob);
+        if (used + c > cap) continue;
+        seen.add(id);
+        kept.push(id);
+        used += c;
+    }
+    return kept;
+}
+
 const WEAPON_CATEGORIES = {};
 function getUnitDominantWeapon(unit) { return null; }
 
@@ -7583,6 +7682,22 @@ const STATUS_DEFS = {
         spriteName: 'protect',
         spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/protect.png',
         iconSrc: createStatusIconDataUri('🛡', '#1b344d', '#ddf2ff', '#5fc7ff')
+    },
+
+    spawnGuard: {
+        icon: '🛡️',
+        glyph: '⛨',
+        short: 'SPW',
+        label: 'Spawn Guard',
+        colorText: 'under spawn protection',
+        kind: 'buff',
+        category: 'status',
+        stack: 'max',
+        // General incoming-damage multiplier (see getStatusDamageTakenMultiplier
+        // in battle.js). Granted for 1 round on respawn so fresh spawns can't
+        // be instantly deleted at the spawn zone.
+        damageTakenMult: 0.5,
+        iconSrc: createStatusIconDataUri('⛨', '#1b3d2a', '#ddffe9', '#5fe0a0')
     },
 
     guardBreak: {
@@ -11927,6 +12042,7 @@ Object.assign(window, {
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
+  getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
   computeSecJobBonuses, computeEquipBonuses,

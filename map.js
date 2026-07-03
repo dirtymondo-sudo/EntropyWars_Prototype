@@ -5479,11 +5479,11 @@
                         unit.mp = unit.maxMp;
                         unit.shield = 0;
                         unit.ap = 0;
-                        unit.status = {};
+                        unit.status = { spawnGuard: 1 };
                         unit._respawnIn = null;
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
-                        addLog(`🔄 ${unitDisplayName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP)`);
+                        addLog(`🔄 ${unitDisplayName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                         if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                         continue;
@@ -5523,11 +5523,11 @@
                                 unit.mp = unit.maxMp;
                                 unit.shield = 0;
                                 unit.ap = 0;
-                                unit.status = {};
+                                unit.status = { spawnGuard: 1 };
                                 unit._respawnIn = null;
                                 unit._justRespawned = true;
                                 unit._showRespawnBanner = true;
-                                addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP)`);
+                                addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
                                 if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                                 continue;
                             }
@@ -5570,11 +5570,11 @@
                     unit.mp = unit.maxMp;
                     unit.shield = 0;
                     unit.ap = 0;
-                    unit.status = {};
+                    unit.status = { spawnGuard: 1 };
                     unit._respawnIn = null;
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
-                    addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP)`);
+                    addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                     if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                 }
@@ -5817,15 +5817,24 @@
                 const _customSpells = Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null;
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
-                    const _seen = new Set();
-                    const _validIds = [];
-                    for (const sid of _customSpells) {
-                        if (!sid || _seen.has(sid)) continue;
-                        const sp = (typeof getSpellById === 'function') ? getSpellById(sid) : null;
-                        if (!sp || sp.kind === 'basicAttack') continue;
-                        _seen.add(sid);
-                        _validIds.push(sid);
-                        if (_validIds.length >= _slotCap) break;
+                    // Slot-budget aware: spells occupy 1-3 slots; over-budget
+                    // saved builds are trimmed gracefully (later picks that no
+                    // longer fit are skipped, earlier picks are kept).
+                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    let _validIds;
+                    if (typeof trimSpellIdsToSlotBudget === 'function') {
+                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
+                    } else {
+                        const _seen = new Set();
+                        _validIds = [];
+                        for (const sid of _customSpells) {
+                            if (!sid || _seen.has(sid)) continue;
+                            const sp = (typeof getSpellById === 'function') ? getSpellById(sid) : null;
+                            if (!sp || sp.kind === 'basicAttack') continue;
+                            _seen.add(sid);
+                            _validIds.push(sid);
+                            if (_validIds.length >= _slotCap) break;
+                        }
                     }
                     if (_validIds.length > 0) {
                         newUnit._spellSlots = _validIds.slice();
@@ -5876,15 +5885,24 @@
                 const _customSpells = Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null;
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
-                    const _seen = new Set();
-                    const _validIds = [];
-                    for (const sid of _customSpells) {
-                        if (!sid || _seen.has(sid)) continue;
-                        const sp = (typeof getSpellById === 'function') ? getSpellById(sid) : null;
-                        if (!sp || sp.kind === 'basicAttack') continue;
-                        _seen.add(sid);
-                        _validIds.push(sid);
-                        if (_validIds.length >= _slotCap) break;
+                    // Slot-budget aware: spells occupy 1-3 slots; over-budget
+                    // saved builds are trimmed gracefully (later picks that no
+                    // longer fit are skipped, earlier picks are kept).
+                    const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
+                    let _validIds;
+                    if (typeof trimSpellIdsToSlotBudget === 'function') {
+                        _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
+                    } else {
+                        const _seen = new Set();
+                        _validIds = [];
+                        for (const sid of _customSpells) {
+                            if (!sid || _seen.has(sid)) continue;
+                            const sp = (typeof getSpellById === 'function') ? getSpellById(sid) : null;
+                            if (!sp || sp.kind === 'basicAttack') continue;
+                            _seen.add(sid);
+                            _validIds.push(sid);
+                            if (_validIds.length >= _slotCap) break;
+                        }
                     }
                     if (_validIds.length > 0) {
                         newUnit._spellSlots = _validIds.slice();

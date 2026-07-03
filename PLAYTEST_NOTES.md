@@ -1191,6 +1191,70 @@ system, enforce the spell-point budget + cross-class cap, make stun block action
 LoS-reachable cap or erosion), invisible units shouldn't contest objectives,
 race-kit size normalization (kits run 1→8 abilities), spawn protection round.
 
+## Competitive balance pass #2 (2026-07-03) — budget, cooldowns, smash terrain,
+## stealth-vs-objectives, spawn guard, AI facing
+Files touched (ALL must go to R2 together): **data.js, battle.js, state.js,
+map.js, hud.js, ui.js, ai.js, party-builder.js**. Verified via scratchpad
+probe (LOCAL_ASSETS route interception): 16/16 checks + 150s auto-sim soak,
+0 page errors. User's design answers: stun stays move-only (stun+silence+
+stagger together ≈ full stun by design); race-kit normalization deferred.
+
+1. **Slot-based loadout budget (LIVE — replaces the dead 200-pt budget).**
+   Every spell occupies **1–3 of the 8 spell slots** (`SPELL_SLOT_MAX`).
+   - `getSpellSlotCost(spell, cls?, secJob?)` in **data.js** (exported on
+     window): derived from the computed mana cost — `>=60 MP → 3 slots`
+     (only the ~16 apex spells: Nuke/Meteor/EMP Burst/Judgment/Overgrowth/
+     Dragonfire/…), `>=35 → 2`, else 1. Game-warping utility (grants
+     protect/invisible, revives, encore, stealSpell) floors at 2. Explicit
+     `spell.slotCost` overrides. Cross-class picks (not native to main job,
+     secondary job, or race; Freelancer counts all native) cost **+1 slot**,
+     capped at 3. Distribution: 250×1 / 179×2 / 16×3.
+   - Enforced at: party-builder `toggleSpell`/default/randomize fills (shows
+     ◆ pips per row + used/8 header, red OVER BUDGET row), map.js
+     `createUnit` (graceful `trimSpellIdsToSlotBudget` — earlier picks kept,
+     non-fitting later picks skipped, old saved parties never brick),
+     battle.js `randomSpellLoadoutForClass` + both preferred-fill paths +
+     `_doAutoFill` + `learnSpellForUnit` (level-ups), state.js
+     `applyRandomSpellsAndSecJob`. `getEffectiveEquipCost`/`getLoadoutPoints`
+     un-stubbed (now slot-based).
+2. **Sparse cooldowns.** `spell.cooldownRounds` (data.js baseline pass, ~35
+   spells): protect/invisible granters 2, stealSpell 3, encore 2, nukes with
+   cost ≥80 MP 2. Cast stamps `unit._spellCooldowns[spell.id] = state.round +
+   cooldownRounds` (round-stamp, nothing ticks). Gate lives in
+   **`canAffordSpell`** (battle.js) so HUD graying, both AIs and doSpell all
+   inherit it; doSpell also logs "⏳ X is on cooldown for N more rounds";
+   hud.js shows `⏳ CD N` as the row reason. `getSpellCooldownRemaining` on
+   GAME. This kills perma-protect/perma-invis without touching power.
+3. **Smash terrain.** `_tileIsSmashable(x,y)` (battle.js, exported): raised
+   column (h>0) with an exposed face (a cardinal neighbor lower) and no
+   unit/tree/building. Basic attack knocks it down 1 level (`smashTerrainAt`,
+   removeBlockAt + grid/chunk/panel invalidation + occupant z-fixup).
+   Range is measured to the column FACE at the attacker's height
+   (min(colH, unit.z), mirrors the building-wall rule in doAttack) so melee
+   can smash tall pillars beside them. Offered in `_getAttackValidTargets`
+   (kind:'terrain', sorts after units like trees), tile quick-menu
+   ("🔨 Smash Terrain (H n)"), Attack-button diamond scan (state.js).
+4. **Stealth vs objectives.** `channelNexus` (ui.js) clears `invisible`
+   (contesting breaks camouflage); CTF flag pickup clears it (battle.js
+   checkFlagPickup); `applyStatusPayload` refuses to apply `invisible` to a
+   flag carrier; `processNexusIncome`'s enemyInZone ignores cloaked units
+   (can't dispute ground while hidden).
+5. **Spawn Guard.** New STATUS_DEFS entry `spawnGuard` (`damageTakenMult:
+   0.5`) + general `getStatusDamageTakenMultiplier` applied in
+   applyDamageToUnit (all damage types, after armor, before shield). All 3
+   respawn branches in map.js `processRespawns` grant `{spawnGuard:1}` —
+   respawn happens AFTER the round's status tick, so it lasts exactly one
+   full round. Kill credit: `_lastDamageSourceRound` stamped on damage; the
+   killer fallback ignores `_lastDamageSource` older than 2 rounds (ancient
+   chip damage no longer earns environmental kills).
+6. **AI facing.** ai.js `scoreAttacks` + `scoreMoveToAttack` multiply by
+   `getFacingDamageMult(getAttackArc(...))` (+30 flat for a back arc since
+   backstabs are undodgeable/uncounterable); `scoreMoveToAttack` passes the
+   HYPOTHETICAL tile `{x,y}` as attacker (getAttackArc only reads x/y). All
+   three explicit turn-end sites in `aiTakeTurn` call `_faceNearestEnemy`
+   (setUnitFacing toward nearest visible enemy) so the AI stops leaving its
+   back open. ainew.js untouched (it delegates scoring to ai.js).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

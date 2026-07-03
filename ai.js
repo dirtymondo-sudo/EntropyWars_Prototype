@@ -79,6 +79,23 @@
         log[enemyId] = (log[enemyId] || 0) + dmg;
     }
 
+    // End-of-turn facing discipline: square up on the nearest visible enemy so
+    // the unit doesn't leave its back (undodgeable +25% backstabs, free
+    // follow-ups) exposed to whoever acts next.
+    function _faceNearestEnemy(unit, g) {
+        if (!g || typeof g.setUnitFacing !== 'function') return;
+        let best = null, bestD = Infinity;
+        for (const e of g.getHostileUnits(unit.player)) {
+            if (e.dead) continue;
+            if (typeof g.unitHasStatus === 'function' && g.unitHasStatus(e, 'invisible')) continue;
+            const d = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+            if (d < bestD) { bestD = d; best = e; }
+        }
+        if (best && (best.x !== unit.x || best.y !== unit.y)) {
+            g.setUnitFacing(unit, best.x - unit.x, best.y - unit.y);
+        }
+    }
+
     window.aiTakeTurn = function (unit) {
         const g = G();
         if (!g) { console.error('GAME API not available'); return; }
@@ -94,6 +111,7 @@
             g.state.actionMode = null;
             g.state.comboPartner = null;
             g.state.selectedTool = null;
+            _faceNearestEnemy(unit, g);
             g.finishComputerAction();
             return;
         }
@@ -114,6 +132,7 @@
                 g.state.actionMode = null;
                 g.state.comboPartner = null;
                 g.state.selectedTool = null;
+                _faceNearestEnemy(unit, g);
                 g.finishComputerAction();
                 return;
             }
@@ -315,6 +334,7 @@
                 g.state.actionMode = null;
                 g.state.comboPartner = null;
                 g.state.selectedTool = null;
+                _faceNearestEnemy(unit, g);
                 g.finishComputerAction();
                 return;
             }
@@ -1082,6 +1102,14 @@
 
                     score -= 5 * (tgtH - srcH);
                 }
+            }
+
+            // Facing: a back attack is +25% dmg, undodgeable and uncounterable;
+            // a flank is +10%. Weigh the arc so the AI prefers rear strikes.
+            if (typeof g.getAttackArc === 'function' && typeof g.getFacingDamageMult === 'function') {
+                const arc = g.getAttackArc(unit, tgt);
+                score *= g.getFacingDamageMult(arc);
+                if (arc === 'back') score += 30; // no dodge / no counter is worth more than raw dmg
             }
 
             score += getTargetPriority(tgt, unit, v);
@@ -2209,6 +2237,15 @@
 
                         attackVal -= 5 * (eH - tileH);
                     }
+                }
+
+                // Facing-aware flanking: score the arc AS IF attacking from this
+                // tile (getAttackArc only reads attacker x/y, so a hypothetical
+                // position works). Back = +25% dmg, undodgeable, uncounterable.
+                if (typeof g.getAttackArc === 'function' && typeof g.getFacingDamageMult === 'function') {
+                    const arc = g.getAttackArc({ x: tile.x, y: tile.y }, e);
+                    attackVal *= g.getFacingDamageMult(arc);
+                    if (arc === 'back') attackVal += 30;
                 }
 
                 tileScore = Math.max(tileScore, attackVal);

@@ -3014,6 +3014,12 @@
             return getActiveStatusKeys(unit).reduce((mult, key) => mult * (STATUS_DEFS[key]?.rangedMult || 1), 1);
         }
 
+        // General incoming-damage multiplier from statuses (any damage type,
+        // any source — spells, DoT, environment). Used by spawnGuard (0.5).
+        function getStatusDamageTakenMultiplier(unit) {
+            return getActiveStatusKeys(unit).reduce((mult, key) => mult * (STATUS_DEFS[key]?.damageTakenMult || 1), 1);
+        }
+
         function getStatusEntries(unit) {
             const entries = [];
             if (!unit) return entries;
@@ -3155,6 +3161,12 @@
 
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
             if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+            // A flag carrier can't cloak — the flag stays visible no matter what.
+            if (payload.id === 'invisible' && state.flags &&
+                [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {
+                addLog(`👁 ${unitDisplayName(target)} can't hide while carrying the flag!`);
+                return false;
+            }
             const status = ensureUnitStatus(target);
             const meta = STATUS_DEFS[payload.id];
             const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
@@ -8249,6 +8261,10 @@
             if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 finalDamage = Math.max(1, Math.round(finalDamage * getStatusRangedDamageTakenMultiplier(target)));
             }
+            const _dtMult = getStatusDamageTakenMultiplier(target);
+            if (_dtMult !== 1 && finalDamage > 0) {
+                finalDamage = Math.max(1, Math.round(finalDamage * _dtMult));
+            }
 
             if (target.shield > 0) {
                 const shieldIgnore = Math.max(0, Number(opts.shieldIgnore || 0));
@@ -8270,6 +8286,7 @@
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
 
                     target._lastDamageSource = sourceUnit;
+                    target._lastDamageSourceRound = state.round || 0;
                     if (!target._damageContributors) target._damageContributors = {};
                     target._damageContributors[sourceUnit.id] = (target._damageContributors[sourceUnit.id] || 0) + finalDamage;
 
@@ -8383,7 +8400,11 @@
 
             if (target.hp <= 0) {
 
-                const killer = sourceUnit || target._lastDamageSource || null;
+                // Kill-credit fallback expires: chip damage from >2 rounds ago
+                // doesn't earn credit for an environmental/DoT death.
+                const _ldsFresh = target._lastDamageSource &&
+                    ((state.round || 0) - (target._lastDamageSourceRound || 0)) <= 2;
+                const killer = sourceUnit || (_ldsFresh ? target._lastDamageSource : null) || null;
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
@@ -8913,12 +8934,22 @@
             return normalized;
         }
 
+        // Loadout budget = spell SLOTS (SPELL_SLOT_MAX = 8). A spell occupies
+        // 1-3 slots based on power (see getSpellSlotCost in data.js), so the
+        // deckbuilding trade is "8 cheap tricks" vs "a few premium bombs".
         function getEffectiveEquipCost(spell, cls, race) {
-            return 0;
+            if (typeof getSpellSlotCost === 'function') return getSpellSlotCost(spell, cls);
+            return spell ? 1 : 0;
         }
 
         function getLoadoutPoints(loadout, cls, race) {
-            return 0;
+            let total = 0;
+            for (const id of (loadout?.spells || [])) {
+                if (!id) continue;
+                const sp = getSpellById(id);
+                if (sp) total += getEffectiveEquipCost(sp, cls, race);
+            }
+            return total;
         }
 
         function getItemCapForClass(cls, itemKey) {
@@ -9307,17 +9338,18 @@
         }
 
         function getLoadoutValidation(loadout, cls, race) {
+            const slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 8;
             const pointsUsed = getLoadoutPoints(loadout, cls, race);
             const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
             const crossClassCount = countCrossClassSpells(loadout.spells || [], cls);
             return {
                 pointsUsed,
-                pointsRemaining: CONFIG.unitSpellBudget - pointsUsed,
+                pointsRemaining: slotBudget - pointsUsed,
                 totalItems,
                 itemSlotsRemaining: CONFIG.unitItemSlots - totalItems,
                 scannerCap: getItemCapForClass(cls, 'scanner'),
                 crossClassCount,
-                valid: totalItems <= CONFIG.unitItemSlots && (loadout.items.scanner || 0) <= getItemCapForClass(cls, 'scanner') && crossClassCount <= CONFIG.maxCrossClassSpells
+                valid: pointsUsed <= slotBudget && totalItems <= CONFIG.unitItemSlots && (loadout.items.scanner || 0) <= getItemCapForClass(cls, 'scanner') && crossClassCount <= CONFIG.maxCrossClassSpells
             };
         }
 
@@ -9596,27 +9628,35 @@
         function randomSpellLoadoutForClass(cls, race) {
             const loadout = emptyLoadout();
             const pool = getEligibleSpellsForClass(cls, race).slice().sort(() => Math.random() - 0.5);
+            const slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
             let slot = 0;
+            let slotsUsed = 0;
             let crossClassCount = 0;
             for (const spell of pool) {
-                if (slot >= CONFIG.unitSkillSlots) break;
+                if (slotsUsed >= slotBudget) break;
                 const isCross = !isSpellNativeToClass(spell, cls);
                 if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                const sc = getEffectiveEquipCost(spell, cls, race);
+                if (slotsUsed + sc > slotBudget) continue;
                 loadout.spells[slot] = spell.id;
                 slot += 1;
+                slotsUsed += sc;
                 if (isCross) crossClassCount++;
             }
 
-            if (slot < CONFIG.unitSkillSlots) {
+            if (slotsUsed < slotBudget) {
                 const usedIds = new Set(loadout.spells.filter(Boolean));
                 const remaining = getEligibleSpellsForClass(cls, race)
                     .filter(s => !usedIds.has(s.id));
                 for (const spell of remaining) {
-                    if (slot >= CONFIG.unitSkillSlots) break;
+                    if (slotsUsed >= slotBudget) break;
                     const isCross = !isSpellNativeToClass(spell, cls);
                     if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                    const sc = getEffectiveEquipCost(spell, cls, race);
+                    if (slotsUsed + sc > slotBudget) continue;
                     loadout.spells[slot] = spell.id;
                     slot += 1;
+                    slotsUsed += sc;
                     if (isCross) crossClassCount++;
                 }
             }
@@ -9818,15 +9858,24 @@
                         return true;
                     });
 
+                    const _slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
+                    let _slotsUsed = existingSpells.reduce((t, id) => {
+                        const sp = id ? getSpellById(id) : null;
+                        return t + (sp ? getEffectiveEquipCost(sp, cls, race) : 0);
+                    }, 0);
                     for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
                         if (existingSpells[s]) continue;
+                        if (_slotsUsed >= _slotBudget) break;
                         for (let c = 0; c < uniqueCandidates.length; c++) {
                             const spellId = uniqueCandidates[c];
                             const spell = getSpellById(spellId);
                             if (!spell) continue;
                             const isCross = !isSpellNativeToClass(spell, cls);
                             if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                            const sc = getEffectiveEquipCost(spell, cls, race);
+                            if (_slotsUsed + sc > _slotBudget) continue;
                             existingSpells[s] = spellId;
+                            _slotsUsed += sc;
                             if (isCross) crossClassCount++;
                             uniqueCandidates.splice(c, 1);
                             break;
@@ -9948,15 +9997,24 @@
                 return true;
             });
 
+            const _slotBudget2 = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
+            let _slotsUsed2 = existingSpells.reduce((t, id) => {
+                const sp = id ? getSpellById(id) : null;
+                return t + (sp ? getEffectiveEquipCost(sp, cls, race) : 0);
+            }, 0);
             for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
                 if (existingSpells[s]) continue;
+                if (_slotsUsed2 >= _slotBudget2) break;
                 for (let c = 0; c < uniqueCandidates.length; c++) {
                     const spellId = uniqueCandidates[c];
                     const spell = getSpellById(spellId);
                     if (!spell) continue;
                     const isCross = !isSpellNativeToClass(spell, cls);
                     if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
+                    const sc = getEffectiveEquipCost(spell, cls, race);
+                    if (_slotsUsed2 + sc > _slotBudget2) continue;
                     existingSpells[s] = spellId;
+                    _slotsUsed2 += sc;
                     if (isCross) crossClassCount++;
                     uniqueCandidates.splice(c, 1);
                     break;
@@ -10502,7 +10560,8 @@
 
             if (!unit._spellSlots) unit._spellSlots = [];
             const maxSlots = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6;
-            if (unit._spellSlots.length >= maxSlots) return;
+            const usedSlots = (unit.spells || []).reduce((t, s) => t + (s ? getEffectiveEquipCost(s, cls) : 0), 0);
+            if (usedSlots + getEffectiveEquipCost(spell, cls) > maxSlots) return;
             unit._spellSlots.push(spellId);
 
             if (!unit.spells) unit.spells = [];
@@ -10648,10 +10707,21 @@
             return (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
         }
 
+        // Spell cooldowns: a spell with cooldownRounds > 0 stamps the round it
+        // becomes castable again into unit._spellCooldowns[spell.id] on cast.
+        // Round-stamp (not a tick counter) so nothing needs decrementing.
+        function getSpellCooldownRemaining(unit, spell) {
+            if (!unit || !spell || !(spell.cooldownRounds > 0)) return 0;
+            const ready = unit._spellCooldowns ? unit._spellCooldowns[spell.id] : null;
+            if (ready == null) return 0;
+            return Math.max(0, ready - (state.round || 0));
+        }
+
         function canAffordSpell(unit, spell) {
             const cost = spell ? getSpellApCost(spell) : AP_COST_SPELL;
             if ((unit.ap || 0) < cost) return false;
             if (spell && !unitMeetsSpellTierReq(unit, spell)) return false;
+            if (spell && getSpellCooldownRemaining(unit, spell) > 0) return false;
             return true;
         }
 
@@ -13859,14 +13929,23 @@
                                 const usedIds = new Set(existingSpells.filter(Boolean));
                                 const eligible = getEligibleSpellsForClass(c, r)
                                     .filter(sp => !usedIds.has(sp.id));
+                                const afBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
+                                let afUsed = existingSpells.reduce((t, id) => {
+                                    const sp = id ? getSpellById(id) : null;
+                                    return t + (sp ? getEffectiveEquipCost(sp, c, r) : 0);
+                                }, 0);
                                 for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
                                     if (existingSpells[s]) continue;
+                                    if (afUsed >= afBudget) break;
                                     for (const spell of eligible) {
                                         if (usedIds.has(spell.id)) continue;
                                         const isCross = !isSpellNativeToClass(spell, c);
                                         if (isCross && ccCount >= CONFIG.maxCrossClassSpells) continue;
+                                        const sc = getEffectiveEquipCost(spell, c, r);
+                                        if (afUsed + sc > afBudget) continue;
                                         existingSpells[s] = spell.id;
                                         usedIds.add(spell.id);
+                                        afUsed += sc;
                                         if (isCross) ccCount++;
                                         break;
                                     }
@@ -16477,7 +16556,7 @@
             getUnitLevel, getXPProgressPct,
 
             canUnitAct, canUnitMove,
-            canAffordSpell, getSpellApCost,
+            canAffordSpell, getSpellApCost, getSpellCooldownRemaining,
             getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
             getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb,
@@ -16513,6 +16592,7 @@
             // 🏢 Buildings: structure HP, siege damage and the roof lift.
             getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
             getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
+            _tileIsSmashable, smashTerrainAt,
             get channelNexus() { return channelNexus; },
             get doRecall() { return doRecall; },
             get getNexusAtUnit() { return getNexusAtUnit; },
@@ -17023,6 +17103,36 @@
             return false;
         }
 
+        // 🔨 Smashable terrain: a raised column with at least one exposed face
+        // (a cardinal neighbor lower than it) and nothing standing on it.
+        function _tileIsSmashable(x, y) {
+            if (!isInside(x, y)) return false;
+            const h = getBaseHeightAt(x, y);
+            if (h <= 0) return false;
+            if (unitAt(x, y)) return false;
+            if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return false;
+            if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return false;
+            return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) =>
+                isInside(x + dx, y + dy) && getBaseHeightAt(x + dx, y + dy) < h);
+        }
+
+        function smashTerrainAt(x, y, attacker) {
+            const oldH = getBaseHeightAt(x, y);
+            if (oldH <= 0) return false;
+            removeBlockAt(x, y, oldH);
+            // Safety: anyone somehow standing in the column drops with it.
+            const occupant = unitAt(x, y);
+            if (occupant && !occupant.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occupant))) {
+                occupant.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, occupant.z) : oldH - 1;
+                if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: occupant, fromX: x, fromY: y });
+            }
+            if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            return true;
+        }
+
         function _getAttackValidTargets(unit) {
             if (!unit) return [];
             const targets = [];
@@ -17127,9 +17237,26 @@
                 }
             }
 
-            // Trees/buildings sort AFTER real targets so the auto-picked pending
-            // target (and target-cycling) always prefers enemies over scenery.
-            targets.sort((a, b) => (((a.kind === 'tree' || a.kind === 'building')) - ((b.kind === 'tree' || b.kind === 'building'))) || a.dist - b.dist);
+            // 🔨 Raised terrain: an exposed raised column (a cardinal neighbor
+            // sits lower) can be smashed down one level with a basic attack —
+            // the counterplay to reshape pillars and tower camping.
+            for (let ty = 0; ty < bh(); ty++) {
+                for (let tx = 0; tx < bw(); tx++) {
+                    if (!_tileIsSmashable(tx, ty)) continue;
+                    // Range is measured to the column's exposed FACE at the
+                    // attacker's height (see doAttack), not its top.
+                    const d = combatDist(unit.x, unit.y, unitZ, tx, ty, Math.min(getBaseHeightAt(tx, ty), unitZ));
+                    if (d < 1 || d > effRange) continue;
+                    if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
+                    if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
+                    targets.push({ x: tx, y: ty, dist: d, kind: 'terrain' });
+                }
+            }
+
+            // Trees/buildings/terrain sort AFTER real targets so the auto-picked
+            // pending target (and target-cycling) always prefers enemies over scenery.
+            const _isScenery = (t) => (t.kind === 'tree' || t.kind === 'building' || t.kind === 'terrain') ? 1 : 0;
+            targets.sort((a, b) => (_isScenery(a) - _isScenery(b)) || a.dist - b.dist);
             return targets;
         }
 
@@ -19385,6 +19512,12 @@
                 if (!_clickedTarget && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
                     _tz = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0;
                 }
+                // 🔨 Attacking a raised terrain column strikes its exposed FACE
+                // at the attacker's own height (or its top when striking down),
+                // so melee can smash a tall pillar it stands beside.
+                else if (!_clickedTarget && _tileIsSmashable(x, y)) {
+                    _tz = Math.min(getBaseHeightAt(x, y), unit.z ?? 0);
+                }
                 d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
             }
 
@@ -19653,6 +19786,28 @@
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 checkWin();
+                endUnitIfDone(unit);
+                renderAfterCombat();
+                return 1;
+            }
+            // 🔨 Smash terrain: attacking an exposed raised column knocks it
+            // down one level — the counter to reshape pillars / tower camping.
+            if ((!target || target.id === unit.id) && _tileIsSmashable(x, y)) {
+                pushUndoSnapshot(true);
+                const _oldH = getBaseHeightAt(x, y);
+                animateStrikeLeap(unit, x, y);
+                smashTerrainAt(x, y, unit);
+                addLog(`🔨 ${unitDisplayName(unit)} smashes the terrain at ${coordLabel(x, y)}! (Height ${_oldH} → ${_oldH - 1})`);
+                showFloatingTextAtTile(x, y, '🔨 CRUMBLE!', 'damage', { durationMs: 1100 });
+                playSfx('basicAttack');
+                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                grantXP(unit, 4, 'smash');
+                spendAP(unit, AP_COST_ACTION);
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
                 endUnitIfDone(unit);
                 renderAfterCombat();
                 return 1;
@@ -21335,6 +21490,13 @@
                     scheduleBoardRender();
                 }, 3500);
             }
+            const _cdLeft = getSpellCooldownRemaining(unit, spell);
+            if (_cdLeft > 0) {
+                addLog(`⏳ ${spell.name} is on cooldown for ${_cdLeft} more round${_cdLeft > 1 ? 's' : ''}.`);
+                state._teleportingUnit = null;
+                playErrorSfx();
+                return 0;
+            }
             if (!canAffordSpell(unit, spell)) {
                 const needed = getSpellApCost(spell);
                 addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
@@ -21406,6 +21568,11 @@
                 grantXP(unit, XP_SPELL_CAST, 'spell');
                 if (!unit._spellLog) unit._spellLog = {};
                 unit._spellLog[spell.id] = (unit._spellLog[spell.id] || 0) + 1;
+
+                if (spell.cooldownRounds > 0) {
+                    if (!unit._spellCooldowns) unit._spellCooldowns = {};
+                    unit._spellCooldowns[spell.id] = (state.round || 0) + spell.cooldownRounds;
+                }
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
                 spendAP(unit, spellApCost);
@@ -25030,6 +25197,11 @@
             if (enemyFlag && !enemyFlag.carriedBy && enemyFlag.x === unit.x && enemyFlag.y === unit.y) {
                 enemyFlag.carriedBy = unit.id;
                 enemyFlag.atBase = false;
+                // Grabbing the flag breaks stealth — no invisible flag runners.
+                if (unitHasStatus(unit, 'invisible')) {
+                    clearStatus(unit, 'invisible');
+                    addLog(`👁 ${unitDisplayName(unit)} is revealed — carrying the flag breaks camouflage!`);
+                }
                 addLog(`🏳️ ${unitDisplayName(unit)} grabs Player ${enemyPlayer}'s flag!`);
                 showFloatingTextForUnit(unit, '🏳️ FLAG!', 'streak', { durationMs: 1400 });
                 showCombatBanner('🏳️ FLAG TAKEN!', `Player ${unit.player} has the flag!`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');

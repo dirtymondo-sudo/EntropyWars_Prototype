@@ -1599,10 +1599,12 @@ function SubMenu({ st }) {
         const needsMove = canCast && !hasTarget && canReach;
         const active = am === 'spell' && st.selectedTool === sp.name;
 
+        const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(unit, sp) : 0;
         let spellReason = '';
         if (!canCast) {
           if (isSilenced) spellReason = 'Silenced';
           else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; spellReason = 'Req Lv.' + trl; }
+          else if (cdLeft > 0) spellReason = '⏳ CD ' + cdLeft;
           else if (unit.mp < cost) spellReason = 'No MP';
           else if ((unit.ap || 0) < apCost) spellReason = 'No AP';
           else if (!hasTarget) spellReason = 'No target';
@@ -2005,6 +2007,7 @@ function SubMenu({ st }) {
         else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
         else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
         else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
+        else if (t.kind === 'terrain') { label = '🔨 Smash Terrain'; }
         else if (t.kind === 'building') {
           label = '🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(t.building) : 'Building');
           hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
@@ -3497,6 +3500,23 @@ function _computeTileActions(actingUnit, tx, ty) {
         id: 'attack:tree', label: 'Chop Tree', icon: '🪓', category: 'attack',
         apCost: 1, available: canChop, reason: canChop ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
         handler: canChop ? () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('attack');
+          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
+        } : null,
+      });
+    }
+
+    // 🔨 Smash terrain: an exposed raised column can be knocked down one
+    // level with a basic attack — counterplay to reshape pillars.
+    const smashable = !onSelf && typeof _tileIsSmashable === 'function' && _tileIsSmashable(tx, ty);
+    if (smashable) {
+      const canSmash = inRangeUnit && !losBlocked;
+      const _smH = typeof G.getBaseHeightAt === 'function' ? G.getBaseHeightAt(tx, ty) : (typeof getBaseHeightAt === 'function' ? getBaseHeightAt(tx, ty) : 0);
+      actions.push({
+        id: 'attack:terrain', label: `Smash Terrain (H${_smH})`, icon: '🔨', category: 'attack',
+        apCost: 1, available: canSmash, reason: canSmash ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
+        handler: canSmash ? () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('attack');
           if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);

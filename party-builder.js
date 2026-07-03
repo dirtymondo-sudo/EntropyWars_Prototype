@@ -346,49 +346,64 @@ function getLearnedSpells(cls, customSpells) {
   return order.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean);
 }
 
+// Slot budget: a spell occupies 1-3 of the SPELL_SLOT_MAX slots based on power.
+function spellSlotCost(sp) {
+  if (!sp) return 0;
+  return typeof window.getSpellSlotCost === 'function' ? window.getSpellSlotCost(sp) : 1;
+}
+function spellIdSlotCost(id) {
+  const sp = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+  return sp ? spellSlotCost(sp) : (id ? 1 : 0);
+}
+function usedSpellSlots(ids) {
+  return (ids || []).reduce((s, id) => s + spellIdSlotCost(id), 0);
+}
+
 function buildDefaultCustomSpells(race, cls, secJob) {
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 8;
   const picks = [];
   const seen = new Set();
+  let used = 0;
+  const tryAdd = (sid) => {
+    if (!sid || seen.has(sid)) return;
+    const c = spellIdSlotCost(sid);
+    if (used + c > slotCap) return;
+    picks.push(sid);
+    seen.add(sid);
+    used += c;
+  };
 
   const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
     ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id)
     : [];
   for (const a of ra) {
-    if (picks.length >= slotCap) break;
-    if (seen.has(a.id)) continue;
-    picks.push(a.id);
-    seen.add(a.id);
+    if (used >= slotCap) break;
+    tryAdd(a.id);
   }
 
   const learnOrder = (typeof window.CLASS_SPELL_LEARN_ORDER !== 'undefined' && window.CLASS_SPELL_LEARN_ORDER[cls]) || [];
   for (const sid of learnOrder) {
-    if (picks.length >= slotCap) break;
-    if (seen.has(sid)) continue;
+    if (used >= slotCap) break;
     const sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
     if (!sp || sp.kind === 'basicAttack') continue;
-    picks.push(sid);
-    seen.add(sid);
+    tryAdd(sid);
   }
 
   if (secJob) {
     const secOrder = (typeof window.CLASS_SPELL_LEARN_ORDER !== 'undefined' && window.CLASS_SPELL_LEARN_ORDER[secJob]) || [];
     for (const sid of secOrder) {
-      if (picks.length >= slotCap) break;
-      if (seen.has(sid)) continue;
+      if (used >= slotCap) break;
       const sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
       if (!sp || sp.kind === 'basicAttack') continue;
-      picks.push(sid);
-      seen.add(sid);
+      tryAdd(sid);
     }
   }
 
-  if (picks.length < slotCap && typeof window.SPELL_LIBRARY !== 'undefined' && typeof window.isSpellNativeToClass === 'function') {
+  if (used < slotCap && typeof window.SPELL_LIBRARY !== 'undefined' && typeof window.isSpellNativeToClass === 'function') {
     for (const sp of window.SPELL_LIBRARY) {
-      if (picks.length >= slotCap) break;
+      if (used >= slotCap) break;
       if (!sp || !sp.id || sp.kind === 'basicAttack') continue;
-      if (seen.has(sp.id)) continue;
-      if (window.isSpellNativeToClass(sp, cls)) { picks.push(sp.id); seen.add(sp.id); }
+      if (window.isSpellNativeToClass(sp, cls)) tryAdd(sp.id);
     }
   }
   return picks;
@@ -768,7 +783,7 @@ function PartyBuilder() {
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
   function doRandomize() { if (typeof window.randomizeUnitSlot==='function') window.randomizeUnitSlot(player,slot); if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiButtonConfirm'); refresh(); }
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
-  function doDefaults() { st.builderConfirmedSlots={}; if (typeof window.defaultAllTeams==='function') window.defaultAllTeams();  const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; [1,2].forEach(p=>{ if (!st.partyMeta[p]) st.partyMeta[p]=[]; for (let i=0;i<(st.partyBuilds[p]||[]).length;i++){ if (!st.partyMeta[p][i]) st.partyMeta[p][i]={}; const lo=st.loadouts?.[p]?.[i]; if (lo&&Array.isArray(lo.spells)&&lo.spells.filter(Boolean).length>0){ st.partyMeta[p][i].customSpells=lo.spells.filter(Boolean).slice(0,slotCap); }}}); refresh(); }
+  function doDefaults() { st.builderConfirmedSlots={}; if (typeof window.defaultAllTeams==='function') window.defaultAllTeams();  const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; [1,2].forEach(p=>{ if (!st.partyMeta[p]) st.partyMeta[p]=[]; for (let i=0;i<(st.partyBuilds[p]||[]).length;i++){ if (!st.partyMeta[p][i]) st.partyMeta[p][i]={}; const lo=st.loadouts?.[p]?.[i]; if (lo&&Array.isArray(lo.spells)&&lo.spells.filter(Boolean).length>0){ const _ids=lo.spells.filter(Boolean); st.partyMeta[p][i].customSpells=typeof window.trimSpellIdsToSlotBudget==='function'?window.trimSpellIdsToSlotBudget(_ids,st.partyBuilds[p][i]):_ids.slice(0,slotCap); }}}); refresh(); }
   function doBack() { if (typeof window.backToModeSelect==='function') window.backToModeSelect(); }
   function doStart() {
     // Block entering a match with a locked vessel on the local player's team.
@@ -801,7 +816,7 @@ function PartyBuilder() {
 
       st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, mainJob, val);
     st.teamLockedIn=false; refresh(); }
-  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(arr.length>=slotCap){sfx('uiError');return;}arr.push(spellId);} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
+  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId);} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -816,7 +831,9 @@ function PartyBuilder() {
     const raIds=raceAbilities.filter(a=>a.id).map(a=>a.id);
 
     const freshPool = []; if (typeof window.SPELL_LIBRARY!=='undefined'&&typeof window.isSpellNativeToClass==='function') { for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack')continue;const isM=window.isSpellNativeToClass(sp,mainJob);const isS=curSecJob&&window.isSpellNativeToClass(sp,curSecJob);if(isM||isS){freshPool.push(sp);}}}
-    const pool=[...raIds,...freshPool.map(e=>e.id)],shuffled=pool.slice(); for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];} st.partyMeta[player][slot].customSpells=shuffled.slice(0,slotCap); st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
+    const pool=[...raIds,...freshPool.map(e=>e.id)],shuffled=pool.slice(); for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+    const rndPicks=[]; let rndUsed=0; for(const sid of shuffled){const c=spellIdSlotCost(sid); if(rndUsed+c>slotCap)continue; rndPicks.push(sid); rndUsed+=c; if(rndUsed>=slotCap)break;}
+    st.partyMeta[player][slot].customSpells=rndPicks; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function equipAccessory(accId) {
     if (!st.loadouts[player]) st.loadouts[player] = [];
     if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
@@ -1104,20 +1121,32 @@ function PartyBuilder() {
               !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'RND'),
               !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'RST'),
               !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'CLR'),
-              h('span',{style:{fontSize:10,color:EW.time,letterSpacing:'0.14em'}},learnedSpells.length,'/',slotCap,' SLOTS'))),
+              h('span',{style:{fontSize:10,color:(learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0)>slotCap)?EW.bad:EW.time,letterSpacing:'0.14em'}},learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0),'/',slotCap,' SLOTS'))),
 
           h('div', { style:{ display:'flex', flexDirection:'column', gap:1, flexShrink:0 } },
-            Array.from({length:slotCap}).map((_,si)=>{
-              const sp=learnedSpells[si]||null;
-              if(sp){const cat=classifySpellLocal(sp),catC=spellCategoryColor(cat);return h('div',{key:sp.id||si,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:!isArena?()=>toggleSpell(sp.id):undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:`rgba(${cat==='damage'?'152,80,80':cat==='heal'?'90,148,86':cat==='buff'?'80,126,160':cat==='debuff'?'200,170,70':'140,100,180'},0.1)`,borderLeft:`3px solid ${catC}`,cursor:!isArena?'pointer':'help',fontSize:11}},
-                h('span',{style:{width:12,fontSize:9,color:EW.inkDim,flexShrink:0}},si+1),
-                h('span',{style:{flex:1,color:EW.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
-                sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
-                typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(sp)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.7)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(sp)):null,
-                sp.spellType?h('span',{style:{display:'inline-flex',alignItems:'center',gap:2,color:getTypeColor(sp.spellType),fontSize:8,flexShrink:0}},h('span',{style:{width:3,height:3,background:getTypeColor(sp.spellType),borderRadius:'50%'}}),sp.spellType):null);}
-              return h('div',{key:`empty-${si}`,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:'rgba(255,255,255,0.015)',borderLeft:'3px solid rgba(120,140,180,0.1)',opacity:0.5,fontSize:11}},
-                h('span',{style:{width:12,fontSize:9,color:EW.inkDim,flexShrink:0}},si+1),h('span',{style:{flex:1,color:EW.inkDim,fontStyle:'italic'}},'\u2014 empty \u2014'));
-            })),
+            (()=>{
+              const usedTotal=learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0);
+              let slotNo=1;
+              const rows=learnedSpells.map((sp,si)=>{
+                const cat=classifySpellLocal(sp),catC=spellCategoryColor(cat),sc=spellSlotCost(sp),slotLabel=sc>1?`${slotNo}-${slotNo+sc-1}`:`${slotNo}`;slotNo+=sc;
+                return h('div',{key:sp.id||si,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:!isArena?()=>toggleSpell(sp.id):undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:`rgba(${cat==='damage'?'152,80,80':cat==='heal'?'90,148,86':cat==='buff'?'80,126,160':cat==='debuff'?'200,170,70':'140,100,180'},0.1)`,borderLeft:`3px solid ${catC}`,cursor:!isArena?'pointer':'help',fontSize:11}},
+                  h('span',{style:{width:20,fontSize:9,color:EW.inkDim,flexShrink:0}},slotLabel),
+                  h('span',{style:{flex:1,color:EW.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
+                  h('span',{style:{fontSize:8,color:sc>=3?'rgba(255,150,120,0.85)':sc===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0,letterSpacing:'0.05em'}},'\u25c6'.repeat(sc)),
+                  sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
+                  typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(sp)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.7)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(sp)):null,
+                  sp.spellType?h('span',{style:{display:'inline-flex',alignItems:'center',gap:2,color:getTypeColor(sp.spellType),fontSize:8,flexShrink:0}},h('span',{style:{width:3,height:3,background:getTypeColor(sp.spellType),borderRadius:'50%'}}),sp.spellType):null);
+              });
+              for(let si=usedTotal;si<slotCap;si++){
+                rows.push(h('div',{key:`empty-${si}`,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:'rgba(255,255,255,0.015)',borderLeft:'3px solid rgba(120,140,180,0.1)',opacity:0.5,fontSize:11}},
+                  h('span',{style:{width:20,fontSize:9,color:EW.inkDim,flexShrink:0}},si+1),h('span',{style:{flex:1,color:EW.inkDim,fontStyle:'italic'}},'\u2014 empty \u2014')));
+              }
+              if(usedTotal>slotCap){
+                rows.push(h('div',{key:'overbudget',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:'rgba(255,120,120,0.08)',borderLeft:'3px solid rgba(255,120,120,0.6)',fontSize:10,color:EW.bad}},
+                  h('span',{style:{flex:1}},'OVER BUDGET \u2014 remove spells (extras are dropped in battle)')));
+              }
+              return rows;
+            })()),
 
           (!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h('div',{style:{flex:1,minHeight:0,overflow:'auto',display:'flex',flexDirection:'column',gap:1,marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:3}},
             h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:1}},
@@ -1130,12 +1159,14 @@ function PartyBuilder() {
                 a.id && !isArena && h('div',{style:{width:11,height:11,border:'1px solid rgba(140,120,200,0.6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},isEquipped&&h('div',{style:{width:6,height:6,background:'rgba(140,120,200,0.9)'}})),
                 h('span',{style:{width:12,fontSize:8,color:'rgba(140,120,200,0.6)',flexShrink:0,fontWeight:700}},'RA'),
                 h('span',{style:{flex:1,color:'rgba(180,160,220,0.9)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},a.name),
+                h('span',{style:{fontSize:8,color:spellSlotCost(a)>=3?'rgba(255,150,120,0.85)':spellSlotCost(a)===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0}},'◆'.repeat(spellSlotCost(a))),
                 a.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},a.cost+'mp'):null,
                 typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(a)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.65)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(a)):null);
             }),
             spellPool.map(sp=>{const selected=customSpells?customSpells.includes(sp.id):false,tc=getTypeColor(sp.spellType||'human');return h('div',{key:sp.id,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:()=>toggleSpell(sp.id),className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:selected?`${tc}14`:'rgba(255,255,255,0.02)',borderLeft:`3px solid ${selected?tc:'transparent'}`,cursor:'pointer',fontSize:11}},
               h('div',{style:{width:11,height:11,border:`1px solid ${tc}88`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},selected&&h('div',{style:{width:6,height:6,background:tc}})),
               h('span',{style:{flex:1,color:selected?EW.ink:EW.inkMute,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
+              h('span',{style:{fontSize:8,color:spellSlotCost(sp)>=3?'rgba(255,150,120,0.85)':spellSlotCost(sp)===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0}},'◆'.repeat(spellSlotCost(sp))),
               sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
               typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(sp)?h('span',{style:{fontSize:8,color:'rgba(220,190,140,0.5)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(sp)):null,
               sp.spellType?h('span',{style:{display:'inline-flex',alignItems:'center',gap:1,color:tc,fontSize:8,flexShrink:0}},h('span',{style:{width:3,height:3,background:tc,borderRadius:'50%'}})):null);})),
