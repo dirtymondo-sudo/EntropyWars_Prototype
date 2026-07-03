@@ -206,17 +206,49 @@ const ThreeCamera = (function () {
         const hits = raycaster.intersectObjects(terrainGroup.children, true);
         if (objectGroup) {
             const objHits = raycaster.intersectObjects(objectGroup.children, true);
-            for (let i = 0; i < objHits.length; i++) hits.push(objHits[i]);
+            for (let i = 0; i < objHits.length; i++) { objHits[i]._ew_objHit = true; hits.push(objHits[i]); }
             if (hits.length > 1) hits.sort(function(a, b) { return a.distance - b.distance; });
         }
         if (hits.length === 0) return null;
 
-        const p = hits[0].point;
+        /* Side-face correctness: a hit on the side wall of a raised cube lands
+           EXACTLY on the boundary between two tiles, so a bare floor() used to
+           resolve the east/south faces to the NEIGHBOURING tile. Push the hit
+           point a hair INTO the surface (against the face normal) before
+           flooring so every face — top or side — resolves to the cube that was
+           actually struck. The face normal is also reported so callers can do
+           Minecraft-style placement against the clicked wall. */
+        const hit = hits[0];
+        const p = hit.point;
         const ts = tileSize;
-        return {
-            tileX: Math.floor(p.x / ts),
-            tileY: Math.floor(p.z / ts)
+        let nx = 0, ny = 1, nz = 0;
+        if (hit.face && hit.face.normal && hit.object) {
+            const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+            nx = n.x; ny = n.y; nz = n.z;
+        }
+        const eps = ts * 0.01;
+        const res = {
+            tileX: Math.floor((p.x - nx * eps) / ts),
+            tileY: Math.floor((p.z - nz * eps) / ts),
+            faceNX: nx, faceNY: ny, faceNZ: nz,
+            /* true when the closest hit was terrain (a cube face), not a prop/object mesh */
+            isTerrainHit: !hit._ew_objHit,
+            /* for a cube-wall hit, the open tile IN FRONT of the struck wall */
+            isSideFace: false, sideTileX: null, sideTileY: null
         };
+        /* A wall hit has a horizontal normal AND straddles a tile boundary —
+           props (tree planes, torch sticks…) also have horizontal normals but
+           their hit points sit inside the tile, so both floors agree. */
+        if (Math.abs(ny) < 0.5 && (Math.abs(nx) > 0.5 || Math.abs(nz) > 0.5)) {
+            const sx = Math.floor((p.x + nx * eps) / ts);
+            const sy = Math.floor((p.z + nz * eps) / ts);
+            if (sx !== res.tileX || sy !== res.tileY) {
+                res.isSideFace = true;
+                res.sideTileX = sx;
+                res.sideTileY = sy;
+            }
+        }
+        return res;
     }
 
     /* Resolve a board tile by intersecting the pointer ray with a flat ground

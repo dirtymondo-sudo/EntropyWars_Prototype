@@ -5067,6 +5067,25 @@
                 playErrorSfx();
                 return;
             }
+            /* 🧱 Minecraft-style wall placement: clicking the SIDE FACE of a
+               raised cube redirects the ward to the open tile in front of that
+               face and remembers which wall it hangs on (wallD4: 0=N 1=E 2=S
+               3=W) so the renderer draws it wall-mounted. The pick comes from
+               the canvas raycast (window._ewLastPick, three-renderer.js) and
+               only applies when it matches the exact tile this call targets —
+               menu-driven and AI placements are unaffected. */
+            let wallD4 = null;
+            const _pick = (typeof window !== 'undefined') ? window._ewLastPick : null;
+            if (_pick && _pick.isSideFace && _pick.isTerrainHit && _pick.tileX === x && _pick.tileY === y
+                && _pick.sideTileX != null && !state.autoPlayers?.[unit.player]
+                && typeof isInside === 'function' && isInside(_pick.sideTileX, _pick.sideTileY)
+                && typeof getBaseHeightAt === 'function'
+                && getBaseHeightAt(x, y) > getBaseHeightAt(_pick.sideTileX, _pick.sideTileY)) {
+                const _dx = x - _pick.sideTileX, _dy = y - _pick.sideTileY;
+                wallD4 = (_dy === -1) ? 0 : (_dx === 1) ? 1 : (_dy === 1) ? 2 : 3;
+                x = _pick.sideTileX;
+                y = _pick.sideTileY;
+            }
             const d = Math.abs(unit.x - x) + Math.abs(unit.y - y);
             if (d > 3) {
                 addLog('Target tile is out of ward range.');
@@ -5092,7 +5111,9 @@
                 y,
                 owner: unit.player,
                 visionRange: 3,
-                placedBy: unit.id
+                placedBy: unit.id,
+                /* non-null when hung on a neighbouring cube face (0=N 1=E 2=S 3=W) */
+                wallD4
             });
 
             if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});

@@ -16758,6 +16758,9 @@
             getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
             getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
             _tileIsSmashable, smashTerrainAt,
+            // 🔨 right-click-hold demolition (see beginTileDemolishHold)
+            beginTileDemolishHold, cancelTileDemolishHold,
+            get TILE_DEMOLISH_HOLD_MS() { return TILE_DEMOLISH_HOLD_MS; },
             get channelNexus() { return channelNexus; },
             get doRecall() { return doRecall; },
             get getNexusAtUnit() { return getNexusAtUnit; },
@@ -17296,6 +17299,128 @@
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             return true;
+        }
+
+        /* ── Right-click-hold demolition ─────────────────────────────────────
+           Hold right-click on a destroyable tile (exposed raised cube or tree)
+           for TILE_DEMOLISH_HOLD_MS to destroy it through the normal
+           basic-attack path (1 AP, same range/LOS rules as before). While the
+           button is held a translucent radial dial fills at the cursor;
+           releasing, moving the pointer (that's the camera-pan gesture), or
+           losing the ability to act cancels. This replaces the per-column
+           "Smash Terrain" rows that used to clutter the attack target menu.
+           Entry point: the right-mousedown handler in three-renderer.js. */
+        const TILE_DEMOLISH_HOLD_MS = 2000;
+        let _demolishHold = null;
+
+        function _demolishKindAt(x, y) {
+            if (typeof _tileHasTree === 'function' && _tileHasTree(x, y) && !unitAt(x, y)) return 'tree';
+            if (typeof _tileIsSmashable === 'function' && _tileIsSmashable(x, y)) return 'terrain';
+            return null;
+        }
+
+        /* Returns { unit, kind } when the hold may start, a string reason for
+           user-visible failures on a destroyable tile, or null to stay silent
+           (right-click doubles as camera pan — never nag on ordinary tiles). */
+        function _demolishValidate(x, y) {
+            if (state.phase !== 'battle' || state.winner) return null;
+            if (state._actionExecuting) return null;
+            if (state.autoPlayers?.[state.activePlayer]) return null;
+            if (typeof isCinematicActive === 'function' && isCinematicActive()) return null;
+            const unit = getSelectedUnit();
+            if (!unit || unit.player !== state.activePlayer) return null;
+            const kind = _demolishKindAt(x, y);
+            if (!kind) return null;
+            if (!canUnitAct(unit)) return 'NO AP';
+            const reachable = _getAttackValidTargets(unit).some(t =>
+                (t.kind === 'tree' || t.kind === 'terrain') && t.x === x && t.y === y);
+            if (!reachable) return 'OUT OF RANGE';
+            return { unit, kind };
+        }
+
+        function _demolishEnsureEl() {
+            let el = document.getElementById('demolishHoldDial');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'demolishHoldDial';
+                el.style.cssText = 'position:fixed;z-index:2600;width:54px;height:54px;margin:-27px 0 0 -27px;'
+                    + 'border-radius:50%;pointer-events:none;display:none;'
+                    + 'border:2px solid rgba(255,255,255,0.35);box-shadow:0 0 14px rgba(0,0,0,0.35);';
+                const icon = document.createElement('div');
+                icon.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;'
+                    + 'justify-content:center;font-size:20px;opacity:0.85;'
+                    + 'text-shadow:0 1px 3px rgba(0,0,0,0.6)';
+                icon.textContent = '🔨';
+                el.appendChild(icon);
+                document.body.appendChild(el);
+            }
+            return el;
+        }
+
+        function beginTileDemolishHold(x, y, clientX, clientY) {
+            cancelTileDemolishHold();
+            const v = _demolishValidate(x, y);
+            if (!v) return false;
+            if (typeof v === 'string') {
+                showFloatingTextAtTile(x, y, v, 'damage');
+                return false;
+            }
+            const el = _demolishEnsureEl();
+            el.style.left = clientX + 'px';
+            el.style.top = clientY + 'px';
+            el.style.display = 'block';
+            const hold = {
+                x, y, unitId: v.unit.id, el,
+                startT: performance.now(),
+                startCX: clientX, startCY: clientY,
+                raf: 0,
+                onMove: (e) => {
+                    if (Math.abs(e.clientX - hold.startCX) > 6 || Math.abs(e.clientY - hold.startCY) > 6) {
+                        cancelTileDemolishHold();
+                    }
+                },
+                onEnd: () => cancelTileDemolishHold(),
+            };
+            document.addEventListener('mousemove', hold.onMove, true);
+            document.addEventListener('mouseup', hold.onEnd, true);
+            window.addEventListener('blur', hold.onEnd, true);
+            const _tick = () => {
+                if (_demolishHold !== hold) return;
+                // Re-validate every frame so a mid-hold change (AP spent via
+                // hotkey, unit switched, terrain reshaped) aborts cleanly.
+                const vv = _demolishValidate(hold.x, hold.y);
+                if (!vv || typeof vv === 'string' || vv.unit.id !== hold.unitId) {
+                    cancelTileDemolishHold();
+                    return;
+                }
+                const t = (performance.now() - hold.startT) / TILE_DEMOLISH_HOLD_MS;
+                const pct = Math.min(100, t * 100);
+                hold.el.style.background =
+                    'conic-gradient(rgba(255,205,130,0.55) ' + pct + '%, rgba(20,20,20,0.18) 0)';
+                if (t >= 1) {
+                    cancelTileDemolishHold();
+                    doAttack(vv.unit, hold.x, hold.y);   // tree-chop / terrain-smash branch, 1 AP
+                    return;
+                }
+                hold.raf = requestAnimationFrame(_tick);
+            };
+            hold.raf = requestAnimationFrame(_tick);
+            _demolishHold = hold;
+            return true;
+        }
+
+        function cancelTileDemolishHold() {
+            const hold = _demolishHold;
+            if (!hold) return;
+            _demolishHold = null;
+            cancelAnimationFrame(hold.raf);
+            document.removeEventListener('mousemove', hold.onMove, true);
+            document.removeEventListener('mouseup', hold.onEnd, true);
+            window.removeEventListener('blur', hold.onEnd, true);
+            if (hold.el) {
+                hold.el.style.display = 'none';
+                hold.el.style.background = 'none';
+            }
         }
 
         function _getAttackValidTargets(unit) {

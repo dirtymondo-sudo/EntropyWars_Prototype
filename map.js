@@ -8823,14 +8823,33 @@
                 }
             } else if (_meTool === 'object') {
                 const oid = ME_OBJECT_TO_ID[_meSelectedObject] || 1;
-                if (!Array.isArray(_meObjects[y][x])) _meObjects[y][x] = [];
-                const leaf = _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf
+                /* 🔥 Minecraft-style torch stamping: clicking the SIDE FACE of a
+                   raised block auto-places a WALL torch on the open tile in
+                   front of that face, rotated to aim back at the wall — no
+                   manual mount + rotate-dial dance. The face comes from the 3D
+                   canvas raycast (window._ewLastPick, three-renderer.js) and
+                   must match the tile being painted; top-face clicks keep the
+                   palette's selected mount as before. */
+                let px = x, py = y, rotOv = null, leafOv = null;
+                const _pick = (typeof window !== 'undefined') ? window._ewLastPick : null;
+                if (_meIsTorchKey(_meSelectedObject) && _pick && _pick.isSideFace && _pick.isTerrainHit
+                    && _pick.tileX === x && _pick.tileY === y && _pick.sideTileX != null
+                    && _pick.sideTileX >= 0 && _pick.sideTileY >= 0
+                    && _pick.sideTileX < _meW && _pick.sideTileY < _meH) {
+                    const _dx = x - _pick.sideTileX, _dy = y - _pick.sideTileY;
+                    px = _pick.sideTileX; py = _pick.sideTileY;
+                    rotOv = ((_dy === -1) ? 0 : (_dx === 1) ? 1 : (_dy === 1) ? 2 : 3) * 90;
+                    leafOv = 'wall';
+                }
+                if (!Array.isArray(_meObjects[py][px])) _meObjects[py][px] = [];
+                const leaf = leafOv !== null ? leafOv
+                           : _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf
                            : _meIsRockKey(_meSelectedObject) ? _meSelectedRockTex
                            : _meIsTorchKey(_meSelectedObject) ? _meSelectedTorchMount
                            : null;
-                const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
-                _meObjects[y][x].push(entry);
-                if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;
+                const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, rotOv !== null ? rotOv : _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
+                _meObjects[py][px].push(entry);
+                if (_meGrid[py][px] === 0) _meGrid[py][px] = 1;
 
                 if (_meSelectedObject === 'stairs' || _meSelectedObject === 'stairs_2') {
                     const bpTid = ME_TERRAIN_TO_ID['barrier_passage'];
@@ -8851,7 +8870,7 @@
                    ring — no separate "Select" step needed. Skipped mid-drag so
                    rapid stamping doesn't thrash the panel. */
                 if (!_meEditorDragging) {
-                    _meSelectedObjRef = { x, y, idx: _meObjects[y][x].length - 1 };
+                    _meSelectedObjRef = { x: px, y: py, idx: _meObjects[py][px].length - 1 };
                     _meSelectedMonRef = null;
                     _meRenderPalette();
                     _meScrollPaletteToTop();

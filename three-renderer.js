@@ -3754,13 +3754,32 @@ const ThreeRenderer = (function () {
     }
 
     /* Vision-ward torch (deployable) — same model, no own point light because
-       ThreePost.rebuildWardLights already lights + haloes every ward. */
-    function _buildWardTorch(x, y) {
+       ThreePost.rebuildWardLights already lights + haloes every ward.
+       Takes the ward OBJECT: a ward placed against a cube face (w.wallD4:
+       0=N 1=E 2=S 3=W, the neighbouring wall it hangs on) renders wall-mounted
+       Minecraft-style exactly like the editor's wall torches. */
+    function _buildWardTorch(w) {
+        var x = w.x, y = w.y;
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
         var parts = _makeTorchModel({ scale: 0.85, noGlow: true });
         g.add(parts.model);
+        if (w.wallD4 != null) {
+            var d4 = ((Math.round(w.wallD4) % 4) + 4) % 4;
+            g.rotation.y = -d4 * (Math.PI / 2);
+            var dv = [[0, -1], [1, 0], [0, 1], [-1, 0]][d4];
+            var nx = x + dv[0], ny = y + dv[1];
+            var _tbw = (typeof bw === 'function') ? bw() : 0, _tbh = (typeof bh === 'function') ? bh() : 0;
+            var wallH = ts * 0.9;
+            if (nx >= 0 && ny >= 0 && nx < _tbw && ny < _tbh) {
+                var nTop = tileTopY(nx, ny);
+                if (nTop > topY) wallH = nTop - topY;
+            }
+            parts.model.position.z = -ts * 0.38;
+            parts.model.position.y = Math.min(wallH * 0.45, ts * 0.55);
+            parts.model.rotation.x = 0.42;
+        }
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
         g._ew_deployable = true;
         _torchRegisterFlame({ root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: (x * 11 + y * 17) % 100 });
@@ -4139,7 +4158,7 @@ const ThreeRenderer = (function () {
         if (state.wards) {
             for (var i = 0; i < state.wards.length; i++) {
                 var w = state.wards[i];
-                parts.push('w' + w.x + ',' + w.y + ':' + w.owner);
+                parts.push('w' + w.x + ',' + w.y + ':' + w.owner + ':' + (w.wallD4 != null ? w.wallD4 : ''));
             }
         }
         if (state.warpRunes) {
@@ -4245,7 +4264,7 @@ const ThreeRenderer = (function () {
                 var w = state.wards[i];
                 /* Wards render as the same 3D wood-and-rope torch the map
                    editor places (was: the flat torch.png billboard). */
-                var m = _buildWardTorch(w.x, w.y);
+                var m = _buildWardTorch(w);
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = w.x; m._ew_depY = w.y;
@@ -14192,11 +14211,23 @@ const ThreeRenderer = (function () {
        back to a flat ground-plane intersection so click-to-place is reliable. */
     function _editorResolveTile(clientX, clientY) {
         var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
-        if (hit) return hit;
+        if (hit) { _stashPick(hit); return hit; }
         if (typeof state !== 'undefined' && state.phase === 'editor' && ThreeCamera.screenToTilePlane) {
             return ThreeCamera.screenToTilePlane(clientX, clientY, canvas, 0);
         }
         return hit;
+    }
+
+    /* Publish the most recent tile pick (with face-normal info from
+       ThreeCamera.screenToTile) so gameplay/editor code can do Minecraft-style
+       side-face placement: ward placement (ui.js doWard) and editor torch
+       stamping (map.js _mePaintCell) consume window._ewLastPick, guarded by a
+       tile match against the coords they were invoked with. */
+    function _stashPick(hit) {
+        if (hit && hit.faceNX !== undefined) {
+            hit._t = performance.now();
+            window._ewLastPick = hit;
+        }
     }
 
     /* Resolve what the pointer at (clientX, clientY) is over and update all
@@ -14296,6 +14327,7 @@ const ThreeRenderer = (function () {
             if (tx === undefined) {
                 var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
                 if (!hit) return;
+                _stashPick(hit);
                 tx = hit.tileX; ty = hit.tileY;
             }
 
@@ -14319,6 +14351,17 @@ const ThreeRenderer = (function () {
         };
 
         _onMouseDown = function(e) {
+            /* Right-click-hold on a destroyable tile (raised cube / tree)
+               starts the demolish dial — battle.js owns the hold logic and
+               cancels it if the pointer moves (camera pan gesture). */
+            if (e.button === 2) {
+                if (typeof state !== 'undefined' && state.phase === 'battle'
+                    && typeof beginTileDemolishHold === 'function') {
+                    var rhit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
+                    if (rhit) beginTileDemolishHold(rhit.tileX, rhit.tileY, e.clientX, e.clientY);
+                }
+                return;
+            }
             if (e.button !== 0) return;
             var hit = _editorResolveTile(e.clientX, e.clientY);
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);

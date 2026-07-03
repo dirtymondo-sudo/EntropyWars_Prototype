@@ -1994,7 +1994,11 @@ function SubMenu({ st }) {
   }
 
   if (menuView === 'attackTargets') {
-    const targets = typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [];
+    /* Terrain cubes are destroyed by right-click-HOLDING them on the board
+       (see beginTileDemolishHold in battle.js) — listing every smashable
+       column here buried the real targets under "Smash Terrain" rows. */
+    const targets = (typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [])
+      .filter(t => t.kind !== 'terrain');
     return h(SubMenuPanel, { title: 'Attack Targets', fc: fc, count: targets.length + '' },
       targets.map((t, i) => {
         const isPending = st.pendingTarget && st.pendingTarget.x === t.x && st.pendingTarget.y === t.y;
@@ -3512,22 +3516,9 @@ function _computeTileActions(actingUnit, tx, ty) {
       });
     }
 
-    // 🔨 Smash terrain: an exposed raised column can be knocked down one
-    // level with a basic attack — counterplay to reshape pillars.
-    const smashable = !onSelf && typeof _tileIsSmashable === 'function' && _tileIsSmashable(tx, ty);
-    if (smashable) {
-      const canSmash = inRangeUnit && !losBlocked;
-      const _smH = typeof G.getBaseHeightAt === 'function' ? G.getBaseHeightAt(tx, ty) : (typeof getBaseHeightAt === 'function' ? getBaseHeightAt(tx, ty) : 0);
-      actions.push({
-        id: 'attack:terrain', label: `Smash Terrain (H${_smH})`, icon: '🔨', category: 'attack',
-        apCost: 1, available: canSmash, reason: canSmash ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canSmash ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
-      });
-    }
+    // 🔨 Smash terrain moved OFF the menus: an exposed raised column is now
+    // destroyed by right-click-HOLDING it on the board (1 AP, same range/LOS
+    // rules — see beginTileDemolishHold in battle.js).
 
     // 🏢 Buildings: attack the structure (6 hits level it). Only offered when
     // no unit stands on the roof tile — otherwise the swing hits the unit.

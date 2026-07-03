@@ -1394,9 +1394,12 @@ stagger together ≈ full stun by design); race-kit normalization deferred.
    removeBlockAt + grid/chunk/panel invalidation + occupant z-fixup).
    Range is measured to the column FACE at the attacker's height
    (min(colH, unit.z), mirrors the building-wall rule in doAttack) so melee
-   can smash tall pillars beside them. Offered in `_getAttackValidTargets`
-   (kind:'terrain', sorts after units like trees), tile quick-menu
-   ("🔨 Smash Terrain (H n)"), Attack-button diamond scan (state.js).
+   can smash tall pillars beside them. Still listed in `_getAttackValidTargets`
+   (kind:'terrain', sorts after units like trees — the AI and move-then-attack
+   depend on it), but 2026-07: HIDDEN from the player-facing menus. The player
+   path is now **right-click-hold** (see "Right-click-hold demolition" below);
+   hud.js filters kind:'terrain' out of the attackTargets submenu and the tile
+   quick-menu no longer offers "Smash Terrain".
 4. **Stealth vs objectives.** `channelNexus` (ui.js) clears `invisible`
    (contesting breaks camouflage); CTF flag pickup clears it (battle.js
    checkFlagPickup); `applyStatusPayload` refuses to apply `invisible` to a
@@ -1451,6 +1454,52 @@ state.js and hud.js:
    (e.g. waitForFunction on `#announcementBanner.visible`), never by sleep
    +screenshot cadence. Force a zodiac shift in-page:
    `state.zodiacOffset++; checkZodiacRotation(); showNextAnnouncement(()=>{})`.
+
+## Right-click-hold demolition + side-face picking + wall-mounted wards/torches (2026-07-03)
+1. **Side-face picking fixed.** `ThreeCamera.screenToTile` (three-camera.js)
+   used a bare `floor(hit.point)`, so a click on the EAST/SOUTH wall of a
+   raised cube landed exactly on the tile boundary and resolved to the
+   NEIGHBOUR. Now the hit point is pushed a hair INTO the surface along the
+   face normal before flooring — every face resolves to the struck cube. The
+   result also carries `faceNX/faceNY/faceNZ`, `isTerrainHit` (closest hit was
+   terrain, not a prop — prop meshes get tagged `_ew_objHit`), and, when a
+   horizontal-normal hit straddles a tile boundary, `isSideFace` +
+   `sideTileX/sideTileY` = the open tile IN FRONT of the struck wall.
+   three-renderer stashes every resolved pick on **`window._ewLastPick`**
+   (`_stashPick`) for the consumers below.
+2. **Right-click-hold demolition (replaces menu smash).** battle.js:
+   `beginTileDemolishHold(x,y,clientX,clientY)` / `cancelTileDemolishHold`,
+   `TILE_DEMOLISH_HOLD_MS = 2000` (all on GAME). Right-mousedown on the board
+   canvas (three-renderer `_onMouseDown`) starts it in battle phase. Holding
+   right-click ~2s on a smashable column OR choppable tree fills a translucent
+   conic-gradient dial (`#demolishHoldDial`, fixed at the cursor, 🔨 center)
+   then fires plain `doAttack(unit, x, y)` → the existing smash/chop branch
+   (1 AP, range/LOS enforced via `_getAttackValidTargets`). Cancels on: mouse
+   up, >6px pointer move (that's the right-drag camera pan — both coexist),
+   window blur, or any mid-hold validity change (re-validated every rAF).
+   Out-of-range / no-AP right-clicks on a destroyable tile show floating text;
+   other tiles stay silent (pan gesture). Menus: hud.js attackTargets filters
+   `kind:'terrain'` rows and the tile quick-menu "Smash Terrain" entry is gone
+   (Chop Tree kept — single row, and trees also work via the hold).
+3. **Wards hang on cube walls (Minecraft style).** `doWard` (ui.js): when the
+   click that targeted the ward hit a cube SIDE face (`window._ewLastPick`
+   matches the target tile, `isSideFace && isTerrainHit`, cube taller than the
+   front tile, human player only), the ward is REDIRECTED to the open tile in
+   front of the wall and stores `wallD4` (0=N 1=E 2=S 3=W = which neighbour it
+   hangs on). `_buildWardTorch(w)` (three-renderer, now takes the ward object)
+   applies the same wall transform as editor wall torches; `wallD4` is in the
+   deployable serial so rebuilds notice.
+4. **Editor torches auto-wall-mount.** `_mePaintCell` (map.js): stamping a
+   torch while the click hit a cube side face places the entry on the tile in
+   front of that face with `leaf:'wall'` and rot aimed back at the wall —
+   no manual Mount+Rotate dance. Top-face clicks keep the palette mount.
+5. **Verified** via scratchpad Playwright harness (LOCAL_ASSETS trick): pick
+   sweep invariant (side picks always resolve to the taller cube), API + REAL
+   right-mousedown hold→smash (height −1, AP −1), move-cancel, menu filtering,
+   ward redirect + wallD4, editor wall-stamp, AI smoke run. NOTE for tests:
+   freeze the game first (`controllers={1:'local',2:'local'}`, clear
+   autoPlayers, force `_blitzActiveUnitId`) and allow ≥3.5s for the 2s hold —
+   rAF ticks are slow under swiftshader.
 
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
