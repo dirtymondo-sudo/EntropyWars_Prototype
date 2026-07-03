@@ -3011,6 +3011,167 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── 3D Traffic Light ────────────────────────────────────────────────
+       Cosmetic editor prop ('traffic_light'): a galvanized-grey tapered pole
+       + mast arm carrying a YELLOW-housed three-lamp signal head whose
+       red / yellow / green lamps cycle BETWEEN ROUNDS (green → yellow → red,
+       keyed off state.round). _updateTrafficLights patches the lamp material
+       colours + glow visibility in place every frame — no rebuild when the
+       round ticks over. Pole, arm and housing all reuse the aluminium terrain
+       sprite; the paint colours come from a multiply tint on the material
+       colour (the same tint trick the turrets / 5G tower use for their metal
+       cladding — grey tint for the pole, signal yellow for the housing).
+       Honors an editor-authored rotation (entry.rot): the lamps face the
+       direction the rot points at (0=N 90=E 180=S 270=W). */
+    var _trafficLights = [];
+    var _TL_BRIGHT = { red: 0xff2a22, yellow: 0xffc828, green: 0x36ff4e };
+    var _TL_DARK   = { red: 0x3c0f0c, yellow: 0x4a3a0c, green: 0x0c3212 };
+    /* round → lit lamp: round 1 green, round 2 yellow, round 3 red, repeat */
+    function _tlLitLamp(round) {
+        var i = (Math.max(1, round || 1) - 1) % 3;
+        return i === 0 ? 'green' : (i === 1 ? 'yellow' : 'red');
+    }
+    /* Per-instance clone of the aluminium/metal terrain sprite (own tiling,
+       shared <img>) — like _turretMetalTex, but a load re-flags OBJECTS dirty
+       so the first-ever placement rebuilds textured instead of staying blank. */
+    function _tlMetalTex(repX, repY) {
+        var key = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES.aluminium) ? 'aluminium' : 'metal';
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) ? TERRAIN_SPRITES[key][0] : null;
+        if (!url) return null;
+        var base = getTexture(url, function () { _objectsDirty = true; });
+        if (!base) return null;
+        var tex = base.clone();
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repX, repY);
+        tex.needsUpdate = true;
+        return tex;
+    }
+    function _buildTrafficLight3D(objKey, x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var g = new THREE.Group();
+
+        /* two paints: galvanized grey for the pole/mast arm (neutral multiply
+           tint over brushed aluminium — like the real thing), signal yellow
+           only on the lamp HOUSING + visors */
+        var poleTex = _tlMetalTex(1, 3);
+        var poleMat = poleTex
+            ? new THREE.MeshLambertMaterial({ map: poleTex, color: 0x9aa0a8 })
+            : new THREE.MeshLambertMaterial({ color: 0x767c84 });
+        var housTex = _tlMetalTex(1, 1);
+        var housingMat = housTex
+            ? new THREE.MeshLambertMaterial({ map: housTex, color: 0xffb324 })
+            : new THREE.MeshLambertMaterial({ color: 0xd99a1a });
+        var visorMat = housTex
+            ? new THREE.MeshLambertMaterial({ map: housTex, color: 0xe09a1c, side: THREE.DoubleSide })
+            : new THREE.MeshLambertMaterial({ color: 0xbd861a, side: THREE.DoubleSide });
+
+        /* pole + base collar */
+        var poleH = ts * 1.9, poleR = ts * 0.045;
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(poleR * 0.8, poleR, poleH, 8), poleMat);
+        pole.position.y = poleH / 2;
+        g.add(pole);
+        var collar = new THREE.Mesh(new THREE.CylinderGeometry(poleR * 1.7, poleR * 2.1, ts * 0.07, 8), poleMat);
+        collar.position.y = ts * 0.035;
+        g.add(collar);
+
+        /* mast arm reaching out over the road (local -Z = the facing) —
+           a leaned riser off the pole top, then the horizontal reach */
+        var armLen = ts * 0.62, armR = poleR * 0.7;
+        var riser = new THREE.Mesh(new THREE.CylinderGeometry(armR, armR, ts * 0.30, 7), poleMat);
+        riser.position.set(0, poleH + ts * 0.10, -ts * 0.085);
+        riser.rotation.x = 0.62;
+        g.add(riser);
+        var arm = new THREE.Mesh(new THREE.CylinderGeometry(armR * 0.85, armR, armLen, 7), poleMat);
+        arm.rotation.x = Math.PI / 2;
+        arm.position.set(0, poleH + ts * 0.21, -(ts * 0.17 + armLen / 2));
+        g.add(arm);
+
+        /* three-lamp head hanging off the end of the arm */
+        var headW = ts * 0.17, headH = ts * 0.46, headD = ts * 0.13;
+        var headY = poleH + ts * 0.21 - headH / 2 - ts * 0.02;
+        var headZ = -(ts * 0.17 + armLen) + headD * 0.2;
+        var head = new THREE.Mesh(new THREE.BoxGeometry(headW, headH, headD), housingMat);
+        head.position.set(0, headY, headZ);
+        g.add(head);
+
+        /* lamps (red top / yellow mid / green bottom) — self-lit discs that
+           _updateTrafficLights swaps between dark and bright each round, each
+           under a half-cylinder visor hood, with a soft glow on the lit one */
+        var order = ['red', 'yellow', 'green'];
+        var lampR = ts * 0.052;
+        var lampMats = {}, glows = {};
+        for (var li = 0; li < order.length; li++) {
+            var cn = order[li];
+            var ly = headY + headH * (0.30 - 0.30 * li);
+            var lz = headZ - headD / 2 - ts * 0.006;
+            var lm = new THREE.MeshBasicMaterial({ color: _TL_DARK[cn], fog: false });
+            var lamp = new THREE.Mesh(new THREE.CylinderGeometry(lampR, lampR, ts * 0.018, 10), lm);
+            lamp.rotation.x = Math.PI / 2;
+            lamp.position.set(0, ly, lz);
+            g.add(lamp);
+            lampMats[cn] = lm;
+
+            /* visor hood: open half-cylinder shading the top of the lamp
+               (axis rotated onto Z; thetaStart π/2 keeps the upper half) */
+            var visor = new THREE.Mesh(
+                new THREE.CylinderGeometry(lampR * 1.3, lampR * 1.3, ts * 0.07, 8, 1, true, Math.PI / 2, Math.PI),
+                visorMat);
+            visor.rotation.x = Math.PI / 2;
+            visor.position.set(0, ly, lz - ts * 0.018);
+            g.add(visor);
+
+            if (typeof _hzGlowCore === 'function') {
+                var glow = _hzGlowCore(lampR * 0.9, _TL_BRIGHT[cn]);
+                glow.position.set(0, ly, lz - ts * 0.03);
+                glow.visible = false;
+                g.add(glow);
+                glows[cn] = glow;
+            }
+        }
+
+        /* editor-authored facing, same as the lamp posts */
+        var rot = 0;
+        try {
+            var stack = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (stack) {
+                for (var i = 0; i < stack.length; i++) {
+                    var ek = stack[i].key || stack[i];
+                    if (ek === objKey && stack[i].rot) { rot = stack[i].rot; break; }
+                }
+            }
+        } catch (e) {}
+        g.rotation.y = -rot * Math.PI / 180;
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+
+        /* register for the per-round lamp cycling (self-cleaning: entries
+           whose root left the scene are dropped by _updateTrafficLights) */
+        _trafficLights.push({ root: g, lampMats: lampMats, glows: glows, lit: '' });
+        return g;
+    }
+
+    /* Animated every frame next to _updateTowerCubes: reads state.round and,
+       when it has ticked over, patches the lamp colours + glow visibility in
+       place (green → yellow → red → green …). Prunes torn-down roots. */
+    function _updateTrafficLights() {
+        if (!_trafficLights.length) return;
+        var lit = _tlLitLamp(state ? state.round : 1);
+        var alive = [];
+        for (var i = 0; i < _trafficLights.length; i++) {
+            var e = _trafficLights[i];
+            if (!e.root.parent) continue;
+            alive.push(e);
+            if (e.lit === lit) continue;
+            e.lit = lit;
+            for (var cn in e.lampMats) {
+                e.lampMats[cn].color.setHex(cn === lit ? _TL_BRIGHT[cn] : _TL_DARK[cn]);
+                if (e.glows[cn]) e.glows[cn].visible = (cn === lit);
+            }
+        }
+        _trafficLights = alive;
+    }
+
     function _buildBillboard(objKey, x, y) {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y), tex = getObjectTexture(objKey);
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[objKey] : null;
@@ -3859,6 +4020,7 @@ const ThreeRenderer = (function () {
                 continue;
             }
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
+            else if (ok === 'traffic_light')      m = _buildTrafficLight3D(ok, x, y);
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
             else if (ok === 'rock')               m = _buildRock3D(x, y);
             else if (ok === 'torch')              m = _buildTorch3D(ok, x, y);
@@ -13425,6 +13587,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _updateTowerCubes();
+        _updateTrafficLights();
         _updateTorchFlames();
         _updateInsideBuildingVisibility();
         _updatePlateVisibility();

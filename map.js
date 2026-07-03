@@ -6140,6 +6140,9 @@
             // 2026-07 — 3D wood-and-rope torch (floor or Minecraft-style wall
             // mount via entry.leaf; see _buildTorch3D in three-renderer.js)
             'torch',
+            // 2026-07 — cosmetic 3D traffic light; its red/yellow/green lamps
+            // cycle between rounds (see _buildTrafficLight3D in three-renderer.js)
+            'traffic_light',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -6172,7 +6175,7 @@
             { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
             { label: 'Churches', keys: ['church_1','church_2'] },
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
-            { label: 'Props', keys: ['lamp_post','lamp_post_2','torch'] },
+            { label: 'Props', keys: ['lamp_post','lamp_post_2','torch','traffic_light'] },
         ];
 
         let _meW = 12, _meH = 12;

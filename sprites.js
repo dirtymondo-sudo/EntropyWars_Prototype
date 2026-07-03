@@ -669,6 +669,21 @@ const _LAMP_POST_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(
     '</svg>'
 );
 
+/* Inline SVG thumbnail for the traffic-light object (editor palette only — the
+   in-game render is the procedural 3D signal built by _buildTrafficLight3D in
+   three-renderer.js: yellow pole + mast arm, lamps cycle between rounds). */
+const _TRAFFIC_LIGHT_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">' +
+    '<rect x="14" y="56" width="24" height="6" rx="2.5" fill="#3a3e46"/>' +
+    '<rect x="23" y="18" width="6" height="40" rx="2" fill="#8b9098"/>' +
+    '<rect x="26" y="12" width="20" height="5" rx="2.5" fill="#8b9098"/>' +
+    '<rect x="38" y="14" width="16" height="34" rx="4" fill="#e0af2e" stroke="#8a6a1c" stroke-width="1.5"/>' +
+    '<circle cx="46" cy="22" r="4.2" fill="#ff3b30"/>' +
+    '<circle cx="46" cy="31" r="4.2" fill="#ffcc00"/>' +
+    '<circle cx="46" cy="40" r="4.2" fill="#34c759"/>' +
+    '</svg>'
+);
+
 const OBJECT_SPRITES = {
     church:       { url: `${_O}/church_2.png` },
     shop:         { url: `${_O}/itemshop.png` },
@@ -712,6 +727,10 @@ const OBJECT_SPRITES = {
        (inline SVG, so no extra asset upload is needed). */
     lamp_post:    { url: _LAMP_POST_ICON, model3d: true },
     lamp_post_2:  { url: _LAMP_POST_ICON, model3d: true },
+    /* Cosmetic traffic light — rendered in-game as a procedural 3D signal by
+       _buildTrafficLight3D (three-renderer.js); its red/yellow/green lamps
+       cycle between rounds. The url is only the editor palette thumbnail. */
+    traffic_light:{ url: _TRAFFIC_LIGHT_ICON, model3d: true },
     pathway_1:    { url: `${_O}/pathway_1.png` },
     pathway_2:    { url: `${_O}/pathway_2.png` },
     church_1:     { url: `${_O}/church_1.png` },

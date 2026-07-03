@@ -1577,6 +1577,22 @@ const OBJECT_RULES = {
         moveCostAdd: 0,
         healMultiplier: 1,
     },
+    /* Cosmetic 3D traffic light — a galvanized-grey pole + mast arm carrying
+       a yellow-housed signal head whose red / yellow / green lamps cycle
+       BETWEEN ROUNDS (green → yellow → red, keyed off state.round; see
+       _buildTrafficLight3D / _updateTrafficLights in three-renderer.js).
+       Purely cosmetic: fully passable, no collision, no height. */
+    traffic_light: {
+        label: 'Traffic Light',
+        short: 'TFL',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 0,
+        cosmetic: true,
+    },
 };
 const JOB_ARCHETYPES = {
     'Gunslinger': {
