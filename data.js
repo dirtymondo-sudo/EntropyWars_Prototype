@@ -3770,7 +3770,7 @@ const SPELL_LIBRARY = [
         turretHp: 20,
         turretDmg: 64,
         turretRange: 2,
-        desc: 'Deploy a turret on an empty tile (1 AP). Auto-attacks the nearest enemy within 2 tiles each round for 64 damage. Max 2 per Engineer. Enemies can destroy turrets.'
+        desc: 'Deploy a turret on an empty tile (1 AP). It paints the nearest enemy within 2 tiles with a targeting laser — the shot lands at the end of the round for 64 damage. Max 2 per Engineer. Enemies can destroy turrets.'
     },
     {
         id: 'overclock',

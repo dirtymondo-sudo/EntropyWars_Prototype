@@ -1035,6 +1035,68 @@ New tactical layer in **battle.js + three-renderer.js** (both on R2 → re-uploa
   `maybeTriggerComputerTurn` — the HUD only stamps `dataset.cycle` while renders flow.
   `ThreeRenderer._scene` getter is exported for scene-graph inspection.
 
+## Turret rework: laser-mark model + first-placement texture fix (2026-07-03)
+Files touched: `three-renderer.js`, `three-vfx.js`, `three-vfx-effects.js`,
+`battle.js`, `state.js`, `data.js`.
+- **First-placement texture bug (turrets + 5G towers) FIXED**: three r128's
+  `Texture.clone()` copies the `image` ref at clone time, so `_turretMetalTex`
+  clones made while metal/aluminium.png was still downloading stayed blank forever
+  (a SECOND placement forced a rebuild that cloned the now-loaded base — hence
+  "placing another one fixes it"). Fix: `getTexture` now queues `onLoad` callbacks
+  on in-flight textures (`_ew_pendingLoads`), and `_turretMetalTex` registers a
+  callback that zeroes `_lastTurretSerial` → `rebuildTurrets()` re-clones once the
+  pixels land. Same trap exists anywhere else that clones a maybe-unloaded texture.
+- **Turret model/behavior now mirrors the Headshot laser mark**:
+  - Renderer `_updateTurretAim()` (every frame, before `_updateLaserSightBeams`):
+    each non-5G turret arm smoothly yaws toward the closest living enemy in
+    Manhattan range (ties → lower HP, matching the shot's pick), using unit VISUAL
+    positions so it rides walk tweens; fog-hidden meshes are never tracked. Locked
+    targets get a red targeting laser from the muzzle — `_updateLaserSightBeams`
+    was refactored to endpoint-based entries (`'tur:'+id` keys) shared with the
+    sniper beams. `facingAngle` was REMOVED from `_computeTurretSerial` (renderer
+    owns aim; serial rebuilds would fight the per-frame rotation); arm yaw is
+    carried across hp-change rebuilds. World yaw convention: `atan2(dxWorld,
+    dzWorld)` points local +Z; tile-space `facingAngle` converts via
+    `atan2(cos θ, sin θ)` — the old `-facingAngle` mapping was simply wrong,
+    which is why arms never pointed at targets.
+  - New arm build: metal-clad housing + twin barrels with muzzle collars + red
+    emitter lens. Barrels/lens live in a nested PITCH group (`g._ew_pitch`, the
+    trunnion at `g._ew_pivotUp` above the group origin) that tilts up/down at the
+    target's chest (`rotation.x`, NEGATED — positive x-rotation tips +Z down in
+    three.js; clamped ±1.45 rad so near-vertical shots at close flyers still
+    align). The laser origin is computed ON the pitched barrel axis
+    (`_ew_muzzleFwd` along yaw+pitch), so beam and barrels are collinear — dot
+    product of (pivot→lens) vs (pivot→laser-dot) measures 1.0000 on ground
+    targets, 0.9994 vs a bobbing flyer.
+  - Battle: turret damage MOVED from turn-start (`processTurnStartTowerDamage`,
+    now a no-op passthrough) to the end-of-round sequence — `processTurretVolleys`
+    runs right after `processDelayedSpellDetonations` in `maybeAdvanceTurn` (one
+    extra `});` in that closer stack). Camera to the sight line → `_turretBlast`
+    beam (now `laser-red` sprite, added to three-vfx.js tints+gradients; impact
+    swapped to laser-red slashes + embers) → damage. Old `processPlayerTurrets`
+    (dead code — never called) was deleted. `_turretBlast` S-map now also has an
+    `impact` mapping.
+  - Headshot detonation (`_detonateDelayedSpell`, state.js) now plays a hit: a
+    themed beam down the sight line + `fire('impact','headshot')` (muzzle flash /
+    steel sparks / blood — the mapping existed but was never fired on the delayed
+    path) + `playSfx('gun')`.
+- Drive-by fog fix: turret visibility checked `turret.player` (undefined — turrets
+  store `owner`), so your own turrets could vanish under fog.
+- **Verified** (scratchpad verify_turrets.js via LOCAL_ASSETS, 12/12 checks): metal
+  sprite delayed 4s via a route registered AFTER installAssetCache (last route wins;
+  `route.fallback()` chains to the cache) → first turret self-heals its texture;
+  arm yaw correct for 3 enemy positions; turret + sniper lasers coexist (probe
+  `scene.children` name `laserSights`); round-end volley fires + damages; headshot
+  lands with impact; barrel/laser collinearity + pitch-up vs an elevated flyer
+  (test hack: `SKY_RACES.push(mark.race)` then `mark.z = getHeightAt(x,y)+3` —
+  plain `unit.z` is IGNORED by `unitSurfaceY` unless `isUnitAirborne`, i.e. the
+  race canFly); 0 page errors. Gotchas: freeze BOTH controllers to 'local' or
+  live AI moves units mid-assert; teleporting units OFF-BOARD kills the render loop
+  (`_getSubmersionDepth` throws on undefined terrain and `setAnimationLoop` dies —
+  symptom: frozen arms, no lasers, one 'replace' pageerror); swiftshader runs ~3fps
+  so lerp-settle waits need ~2.5s; zoom via `state.userZoomScale = 2.4` +
+  `camera.snap({x,y,zoom})` (plain `camera.moveTo` zoom gets clamped/reset).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

@@ -1092,6 +1092,25 @@
                     }
                     return;
                 }
+                /* The shot lands — flash a bright beam down the sight line and
+                   play the impact animation on the target (muzzle flash,
+                   sparks, blood). Until now the laser just vanished and HP
+                   dropped with no visible hit. */
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && state.phase === 'battle'
+                    && !(typeof _skipVisuals === 'function' ? _skipVisuals() : state.animationsDisabled)) {
+                    try {
+                        if (sourceUnit && !sourceUnit.dead && typeof window.ThreeVFXEffects.beam === 'function') {
+                            window.ThreeVFXEffects.beam(sourceUnit.x, sourceUnit.y, mark.x, mark.y,
+                                ds.spellType || 'tech', ds.spellId || 'headshot', ds.spellName);
+                        }
+                        const _impactId = (ds.spellId && window.ThreeVFXEffects.hasMapping(ds.spellId, 'impact'))
+                            ? ds.spellId
+                            : (window.ThreeVFXEffects.hasMapping('headshot', 'impact') ? 'headshot' : null);
+                        if (_impactId) window.ThreeVFXEffects.fire('impact', _impactId, { tx: mark.x, ty: mark.y });
+                        if (typeof playSfx === 'function') playSfx('gun');
+                    } catch (e) {  }
+                }
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
                     sourceUnit,
                     damageType: ds.damageType || 'physical',

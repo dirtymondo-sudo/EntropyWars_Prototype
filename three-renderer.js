@@ -1147,14 +1147,32 @@ const ThreeRenderer = (function () {
         if (textureCache.has(url)) {
             var cached = textureCache.get(url);
 
-            if (onLoad && cached.image && cached.image.complete) {
-                setTimeout(function() { onLoad(cached); }, 0);
+            if (onLoad) {
+                if (cached.image && cached.image.complete) {
+                    setTimeout(function() { onLoad(cached); }, 0);
+                } else if (cached._ew_pendingLoads) {
+                    /* Still downloading — queue the callback; the loader's
+                       completion handler below flushes the queue. (Without
+                       this, a second caller registering interest in an
+                       in-flight texture never hears about the load.) */
+                    cached._ew_pendingLoads.push(onLoad);
+                } else {
+                    setTimeout(function() { onLoad(cached); }, 0);
+                }
             }
             return cached;
         }
         var tex = textureLoader.load(url, function(loadedTex) {
             if (onLoad) onLoad(loadedTex);
+            var pend = loadedTex._ew_pendingLoads;
+            loadedTex._ew_pendingLoads = null;
+            if (pend) {
+                for (var pi = 0; pi < pend.length; pi++) {
+                    try { pend[pi](loadedTex); } catch (e) {}
+                }
+            }
         });
+        tex._ew_pendingLoads = [];
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.NearestFilter;
 
@@ -2124,7 +2142,10 @@ const ThreeRenderer = (function () {
     }
     function _computeTurretSerial() {
         if (!state.turrets || !state.turrets.length) return '';
-        var p = []; for (var i = 0; i < state.turrets.length; i++) { var t = state.turrets[i]; p.push(t.id+':'+t.x+','+t.y+','+t.hp+','+(t.facingAngle!=null?t.facingAngle.toFixed(2):'0')); }
+        /* facingAngle intentionally NOT in the serial — the renderer aims the
+           arm itself every frame (_updateTurretAim), so aim changes must not
+           trigger full mesh rebuilds. */
+        var p = []; for (var i = 0; i < state.turrets.length; i++) { var t = state.turrets[i]; p.push(t.id+':'+t.x+','+t.y+','+t.hp); }
         return p.join('|');
     }
 
@@ -2359,15 +2380,22 @@ const ThreeRenderer = (function () {
         if (!url) return null;
         var base = getTexture(url);
         if (!base) return null;
+        if (!base.image || !base.image.complete) {
+            /* First placement: the shared image is still downloading. A clone
+               made now copies the (empty) image reference and stays blank even
+               after the download lands, so the very first turret/5G tower used
+               to render textureless until a SECOND placement forced a rebuild.
+               Instead, queue a turret rebuild for the moment the pixels arrive —
+               the rebuilt meshes clone from the loaded base and texture
+               correctly. */
+            getTexture(url, function() {
+                _lastTurretSerial = '';   // forces rebuildTurrets() next frame
+            });
+        }
         var tex = base.clone();
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(repX, repY);
         tex.needsUpdate = true;
-        if (base.image && !base.image.complete && base.image.addEventListener) {
-            base.image.addEventListener('load', function() {
-                tex.needsUpdate = true; _objectsDirty = true;
-            }, { once: true });
-        }
         return tex;
     }
 
@@ -2489,22 +2517,77 @@ const ThreeRenderer = (function () {
         ring.position.y = h;
         g.add(ring);
 
-        // ── rotating arm: the dome head + cannon swivel to track the target ──
-        // (the cylindrical base stays put; battle.js keeps turret.facingAngle
-        // pointed at the closest / currently-targeted enemy).
+        // ── rotating arm: dome head + twin-barrel cannon assembly ──────────
+        // The whole group swivels around Y to track the closest enemy in range,
+        // and a nested pitch group tilts the barrels up/down at the trunnion so
+        // the gun line runs STRAIGHT at the target (the targeting laser is
+        // anchored to the tilted muzzle, keeping beam and barrels collinear).
+        // _updateTurretAim drives both every frame; the cylindrical base stays
+        // put. Local +Z is the firing direction.
         var arm = new THREE.Group();
         arm.position.y = h;
+
+        // brushed-metal cladding for the swiveling head (own clone so the arm
+        // can tile the sprite differently from the hull)
+        var armTex = _turretMetalTex('metal', 2, 1) || _turretMetalTex('aluminium', 2, 1);
+        var armMat = armTex
+            ? new THREE.MeshLambertMaterial({ map: armTex, color: 0xd0d4dc })
+            : new THREE.MeshLambertMaterial({ color: 0x9aa0a8 });
+        var barrelMat = armTex
+            ? new THREE.MeshLambertMaterial({ map: armTex, color: 0x82868e })
+            : new THREE.MeshLambertMaterial({ color: 0x555a60 });
 
         var dome = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
         arm.add(dome);
 
-        var cL = ts * CANNON_LENGTH_RATIO;
-        var cannon = new THREE.Mesh(new THREE.BoxGeometry(CANNON_THICKNESS, CANNON_THICKNESS, cL),
-            new THREE.MeshLambertMaterial({ color: 0x333333 }));
-        cannon.position.y = CANNON_THICKNESS; cannon.position.z = cL / 2;
-        arm.add(cannon);
+        // armored housing block the barrels seat into
+        var housing = new THREE.Mesh(new THREE.BoxGeometry(r * 1.2, r * 0.6, r * 1.15), armMat);
+        housing.position.y = r * 0.35;
+        housing.position.z = r * 0.1;
+        arm.add(housing);
 
-        if (turret.facingAngle != null) arm.rotation.y = -turret.facingAngle;
+        // pitch group — the trunnion the barrels/lens tilt around (rotation.x;
+        // positive tilts the muzzle DOWN in three.js, so aim applies -pitch)
+        var barrelY = r * 0.42, barrelZ0 = r * 0.5;
+        var pitchGrp = new THREE.Group();
+        pitchGrp.position.y = barrelY;
+        arm.add(pitchGrp);
+
+        // twin barrels — chunky metal cylinders along +Z with muzzle collars
+        var cL = ts * (isSiege ? 0.62 : CANNON_LENGTH_RATIO * 1.15);
+        var bR = Math.max(3.5, ts * 0.05);
+        for (var bi = 0; bi < 2; bi++) {
+            var bx = (bi === 0 ? -1 : 1) * r * 0.3;
+            var barrel = new THREE.Mesh(new THREE.CylinderGeometry(bR, bR * 1.2, cL, 8), barrelMat);
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.set(bx, 0, barrelZ0 + cL / 2);
+            pitchGrp.add(barrel);
+            var collar = new THREE.Mesh(new THREE.CylinderGeometry(bR * 1.45, bR * 1.45, bR * 1.6, 8), armMat);
+            collar.rotation.x = Math.PI / 2;
+            collar.position.set(bx, 0, barrelZ0 + cL - bR * 0.8);
+            pitchGrp.add(collar);
+        }
+
+        // red targeting lens between the barrels — self-lit so it reads as the
+        // laser emitter even before the beam switches on
+        var lens = new THREE.Mesh(new THREE.SphereGeometry(Math.max(2.5, ts * 0.035), 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xff2222, fog: false }));
+        lens.position.set(0, 0, barrelZ0 + cL * 0.55);
+        pitchGrp.add(lens);
+
+        /* Aim bookkeeping for _updateTurretAim / the targeting laser: the
+           trunnion pivot sits _ew_pivotUp above the group origin and the
+           muzzle _ew_muzzleFwd along the (yawed + pitched) barrel axis. */
+        g._ew_arm = arm;
+        g._ew_pitch = pitchGrp;
+        g._ew_pivotUp = h + barrelY;
+        g._ew_muzzleFwd = barrelZ0 + cL;
+
+        if (turret.facingAngle != null) {
+            // facingAngle is tile-space atan2(dy,dx); convert to a world yaw
+            // that points local +Z at that direction (x→world X, y→world Z).
+            arm.rotation.y = Math.atan2(Math.cos(turret.facingAngle), Math.sin(turret.facingAngle));
+        }
         g.add(arm);
 
         g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
@@ -3570,10 +3653,25 @@ const ThreeRenderer = (function () {
     }
     function rebuildTurrets() {
         if (!objectGroup) return;
+        /* Carry each arm's current yaw + pitch across the rebuild so tracking
+           doesn't visibly snap whenever a turret takes damage (hp is in the
+           serial). */
+        var _savedAim = {};
+        for (var se of turretMeshes) {
+            if (se[1]._ew_arm) _savedAim[se[0]] = { ry: se[1]._ew_arm.rotation.y, rx: se[1]._ew_pitch ? se[1]._ew_pitch.rotation.x : 0 };
+        }
         for (var e of turretMeshes) { objectGroup.remove(e[1]); _disposeR(e[1]); }
         turretMeshes.clear();
         if (!state.turrets) return;
-        for (var i = 0; i < state.turrets.length; i++) { var t = state.turrets[i]; if (t.hp <= 0) continue; var m = _buildTurret(t); objectGroup.add(m); turretMeshes.set(t.id, m); }
+        for (var i = 0; i < state.turrets.length; i++) {
+            var t = state.turrets[i]; if (t.hp <= 0) continue;
+            var m = _buildTurret(t);
+            if (m._ew_arm && _savedAim[t.id]) {
+                m._ew_arm.rotation.y = _savedAim[t.id].ry;
+                if (m._ew_pitch) m._ew_pitch.rotation.x = _savedAim[t.id].rx;
+            }
+            objectGroup.add(m); turretMeshes.set(t.id, m);
+        }
         _lastTurretSerial = _computeTurretSerial();
     }
 
@@ -7379,7 +7477,7 @@ const ThreeRenderer = (function () {
                 var turret = state.turrets.find(function(t) { return t.id === tid; });
                 if (!turret) return;
                 var tpk = turret.x + ',' + turret.y;
-                if (turret.player === vp) {
+                if (turret.owner === vp) {
                     mesh.visible = true;
                 } else {
                     mesh.visible = visible.has(tpk);
@@ -7609,13 +7707,106 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* ── Headshot laser sight ────────────────────────────────────────────
+    /* ── Turret target tracking ──────────────────────────────────────────
+       Every frame each turret arm swivels toward the closest living enemy
+       inside its range (Manhattan distance — the same rule the end-of-round
+       shot uses, ties to the lower-HP unit). While a target is locked the
+       turret also paints it with a red targeting laser, drawn by
+       _updateLaserSightBeams below in the same visual language as the
+       Headshot sight. Uses the units' VISUAL positions so the arm and beam
+       track smoothly through walk tweens. */
+    var _turretAimTargets = new Map(); // turret id → laser beam endpoints
+    var _lastTurretAimTime = 0;
+
+    function _updateTurretAim() {
+        _turretAimTargets.clear();
+        if (!active || !turretMeshes.size || typeof state === 'undefined'
+            || !state.turrets || !state.turrets.length) { _lastTurretAimTime = 0; return; }
+        var now = performance.now();
+        var dt = _lastTurretAimTime ? Math.min((now - _lastTurretAimTime) / 1000, 0.05) : 0.016;
+        _lastTurretAimTime = now;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var spriteH = ts * UNIT_SPRITE_SIZE_RATIO;
+        var inBattle = state.phase === 'battle';
+        turretMeshes.forEach(function(mesh, tid) {
+            var arm = mesh._ew_arm;
+            if (!arm) return;                       // 5G towers have no arm
+            var turret = null;
+            for (var i = 0; i < state.turrets.length; i++) {
+                if (state.turrets[i].id === tid) { turret = state.turrets[i]; break; }
+            }
+            if (!turret || turret.hp <= 0 || turret.auraDebuff) return;
+
+            var best = null, bestD = Infinity, bestEntry = null;
+            if (inBattle && state.units) {
+                for (var ui = 0; ui < state.units.length; ui++) {
+                    var u = state.units[ui];
+                    if (!u || u.dead || u._dying || u.player === turret.owner) continue;
+                    var d = Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y);
+                    if (d > turret.range || d > bestD) continue;
+                    if (d === bestD && best && u.hp >= best.hp) continue;
+                    var ue = unitEntries.get(u.id);
+                    /* Fog/concealment: never track (and so never reveal) a
+                       unit the local viewer can't currently see. */
+                    if (!ue || !ue.group || ue.group.visible === false) continue;
+                    best = u; bestD = d; bestEntry = ue;
+                }
+            }
+
+            if (bestEntry) {
+                var tp = bestEntry.group.position;
+                var adx = tp.x - mesh.position.x, adz = tp.z - mesh.position.z;
+                var ady = (tp.y + spriteH * 0.45) - (mesh.position.y + (mesh._ew_pivotUp || 0));
+                var horiz = Math.sqrt(adx * adx + adz * adz);
+                if (horiz > 0.001) {
+                    mesh._ew_aimRy = Math.atan2(adx, adz);
+                    /* Elevation: tilt the barrels at the target's chest height
+                       (flying units, cliffs) so gun line and laser stay
+                       collinear. Near-vertical shots are allowed — a high
+                       flyer over an adjacent tile needs ~70°+; the slight
+                       dome intersection at extremes reads as the gun
+                       recessing into its housing. */
+                    mesh._ew_aimRp = Math.max(-1.45, Math.min(1.45, Math.atan2(ady, horiz)));
+                }
+            }
+            if (mesh._ew_aimRy != null) {
+                var diff = mesh._ew_aimRy - arm.rotation.y;
+                diff = Math.atan2(Math.sin(diff), Math.cos(diff));   // shortest arc
+                arm.rotation.y += diff * Math.min(1, dt * 9);
+            }
+            if (mesh._ew_aimRp != null && mesh._ew_pitch) {
+                // rotation.x is inverted: positive tips the muzzle down
+                var pdiff = (-mesh._ew_aimRp) - mesh._ew_pitch.rotation.x;
+                mesh._ew_pitch.rotation.x += pdiff * Math.min(1, dt * 9);
+            }
+
+            if (bestEntry && mesh.visible !== false && !state.devAutoSim) {
+                var ry = arm.rotation.y;
+                var rp = mesh._ew_pitch ? -mesh._ew_pitch.rotation.x : 0;
+                var fwd = mesh._ew_muzzleFwd || 0;
+                var cosP = Math.cos(rp);
+                var tp2 = bestEntry.group.position;
+                /* Beam starts at the muzzle ON the pitched barrel axis, so once
+                   the lerp settles the laser is exactly collinear with the gun. */
+                _turretAimTargets.set(tid, {
+                    sx: mesh.position.x + Math.sin(ry) * fwd * cosP,
+                    sy: mesh.position.y + (mesh._ew_pivotUp || 0) + Math.sin(rp) * fwd,
+                    sz: mesh.position.z + Math.cos(ry) * fwd * cosP,
+                    tx: tp2.x, ty: tp2.y + spriteH * 0.45, tz: tp2.z
+                });
+            }
+        });
+    }
+
+    /* ── Headshot / turret laser sights ──────────────────────────────────
        While a unit-tracking delayed shot (Headshot) is pending in
        state._delayedSpells, draw an actual red laser beam from the sniper to
-       the painted target (this replaces the old LZR status badge). Runs every
-       frame so the beam rides walk tweens / flying bob on both ends, and it
-       disappears the moment the sniper's team loses sight of the target — the
-       same vision gate that decides whether the delayed shot lands at all. */
+       the painted target (this replaces the old LZR status badge). Turrets
+       with a locked target (see _updateTurretAim above) get the same beam
+       from their muzzle. Runs every frame so the beam rides walk tweens /
+       flying bob on both ends, and it disappears the moment the sniper's
+       team loses sight of the target — the same vision gate that decides
+       whether the delayed shot lands at all. */
     var _laserBeamGroup = null;
     var _laserBeams = new Map(); // 'srcId>tgtId' → { root, beam, glow, dot, beamMat, glowMat, dotMat, phase }
     var _laserUpVec = null, _laserDirVec = null;
@@ -7632,6 +7823,8 @@ const ThreeRenderer = (function () {
     }
 
     function _clearLaserBeams() {
+        _turretAimTargets.clear();
+        _lastTurretAimTime = 0;
         _laserBeams.forEach(function(entry) { _disposeLaserEntry(entry); });
         _laserBeams.clear();
         if (_laserBeamGroup) {
@@ -7659,6 +7852,8 @@ const ThreeRenderer = (function () {
 
     function _updateLaserSightBeams() {
         var wanted = null;
+        var ts0 = CONFIG.tileSize || BASE_TILE;
+        var spriteH0 = ts0 * UNIT_SPRITE_SIZE_RATIO;
         if (active && scene && typeof state !== 'undefined' && state.phase === 'battle'
             && !state.devAutoSim && state._delayedSpells && state._delayedSpells.length) {
             var delayed = state._delayedSpells;
@@ -7678,8 +7873,23 @@ const ThreeRenderer = (function () {
                    don't draw a beam that would give the hidden unit away. */
                 if (se.group.visible === false || te.group.visible === false) continue;
                 if (!wanted) wanted = {};
-                wanted[ds.sourceUnitId + '>' + ds.markedUnitId] = { se: se, te: te };
+                var sp = se.group.position, tp = te.group.position;
+                /* Muzzle-height origin on the sniper, chest-height end on the target. */
+                wanted[ds.sourceUnitId + '>' + ds.markedUnitId] = {
+                    sx: sp.x, sy: sp.y + spriteH0 * 0.62, sz: sp.z,
+                    tx: tp.x, ty: tp.y + spriteH0 * 0.45, tz: tp.z
+                };
             }
+        }
+
+        /* Turret targeting lasers — endpoints computed by _updateTurretAim
+           earlier this frame (already fog-gated and muzzle-anchored). */
+        if (active && scene && typeof state !== 'undefined' && state.phase === 'battle'
+            && !state.devAutoSim && _turretAimTargets.size) {
+            _turretAimTargets.forEach(function(pts, tid) {
+                if (!wanted) wanted = {};
+                wanted['tur:' + tid] = pts;
+            });
         }
 
         if (!wanted) {
@@ -7704,17 +7914,13 @@ const ThreeRenderer = (function () {
         }
 
         if (!_laserUpVec) { _laserUpVec = new THREE.Vector3(0, 1, 0); _laserDirVec = new THREE.Vector3(); }
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var spriteH = ts * UNIT_SPRITE_SIZE_RATIO;
         var now = performance.now() / 1000;
 
         for (var key in wanted) {
             var w = wanted[key];
             var entry = _laserBeams.get(key) || _buildLaserEntry(key);
-            var sp = w.se.group.position, tp = w.te.group.position;
-            /* Muzzle-height origin on the sniper, chest-height end on the target. */
-            var sx = sp.x, sy = sp.y + spriteH * 0.62, sz = sp.z;
-            var tx = tp.x, ty = tp.y + spriteH * 0.45, tz = tp.z;
+            var sx = w.sx, sy = w.sy, sz = w.sz;
+            var tx = w.tx, ty = w.ty, tz = w.tz;
             _laserDirVec.set(tx - sx, ty - sy, tz - sz);
             var len = _laserDirVec.length();
             if (len < 0.001) { entry.root.visible = false; continue; }
@@ -12935,6 +13141,7 @@ const ThreeRenderer = (function () {
 
         _syncWeatherOverlays();
         _syncWeatherVFX();
+        _updateTurretAim();
         _updateLaserSightBeams();
         _updateTornadoBillboards();
         _updateHurricaneVortices();

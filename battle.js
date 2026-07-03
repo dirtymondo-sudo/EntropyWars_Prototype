@@ -8419,46 +8419,108 @@
 
         }
 
-        function processPlayerTurrets(player) {
-            if (!state.turrets || !state.turrets.length) return;
-            const turrets = state.turrets.filter(t => t.owner === player && t.hp > 0);
-            for (const turret of turrets) {
-
-                if (turret.auraDebuff) continue;
-                const enemies = aliveUnitsOnFloor(enemyOf(player), 'ground')
-                    .filter(e => Math.abs(e.x - turret.x) + Math.abs(e.y - turret.y) <= turret.range)
-                    .sort((a, b) => a.hp - b.hp);
-                if (enemies.length > 0) {
-                    const target = enemies[0];
+        // ═══════════════════════════════════════════════════════════════════
+        // processTurretVolleys() — end-of-round turret fire (all owners).
+        // Turrets work like the Headshot laser mark now: all round long each
+        // turret tracks the closest enemy inside its range and paints them
+        // with a red targeting laser (drawn by the renderer's
+        // _updateTurretAim/_updateLaserSightBeams). Here, in the end-of-round
+        // sequence, the shot actually lands — camera to the sight line, a
+        // laser blast down it, then the impact animation + damage.
+        // ═══════════════════════════════════════════════════════════════════
+        function processTurretVolleys(onDone) {
+            const shots = [];
+            if (state.turrets && state.turrets.length) {
+                for (const turret of state.turrets) {
+                    if (turret.hp <= 0 || turret.auraDebuff) continue;   // 5G towers don't shoot
+                    const inRange = getHostileUnits(turret.owner)
+                        .filter(u => (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
+                            && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range)
+                        .sort((a, b) => {
+                            const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
+                            const db = Math.abs(b.x - turret.x) + Math.abs(b.y - turret.y);
+                            return (da - db) || (a.hp - b.hp);   // closest first — the unit the laser is painting
+                        });
+                    if (!inRange.length) continue;
+                    const target = inRange[0];
                     turret.facingAngle = Math.atan2(target.y - turret.y, target.x - turret.x);
-                    if (_bufferingRoundEvents) _reBeginGroup(`🔧 Turret → ${unitDisplayName(target)}`);
-                    const dmg = Math.max(24, turret.dmg + randInt(24) - 8);
-                    addLog(`🔧 Turret at ${coordLabel(turret.x, turret.y)} fires at ${unitDisplayName(target)} for ${dmg} damage!`);
-                    playSfx('turret');
+                    shots.push({ turret, target, dmg: Math.max(24, turret.dmg + randInt(24) - 8) });
+                }
+            }
+            if (!shots.length) { if (onDone) onDone(); return; }
 
-                    if (!_skipVisuals() && typeof window !== 'undefined' && window.ThreeVFXEffects
+            function applyShot(s) {
+                if (s.target.dead || s.target._dying) return;
+                const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
+                addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
+                    ignoreArmor: false,
+                    damageType: 'physical',
+                    sourceUnit: caster || undefined,
+                    flashColor: 'hit'
+                });
+            }
+
+            if (state.devAutoSim || _skipVisuals()) {
+                for (const s of shots) applyShot(s);
+                checkWin();
+                scheduleBoardRender();
+                if (onDone) onDone();
+                return;
+            }
+
+            let idx = 0;
+            function fireNext() {
+                if (state.winner) { if (onDone) onDone(); return; }
+                if (idx >= shots.length) {
+                    scheduleBoardRender();
+                    if (onDone) onDone();
+                    return;
+                }
+                const s = shots[idx++];
+                if (s.target.dead || s.target._dying) { fireNext(); return; }
+
+                const isVisible = !state.fogOfWar
+                    || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(s.target.x, s.target.y));
+                if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
+                    const camZoom = (typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05)
+                        ? getUserZoomScale() : getDefaultZoom();
+                    camera.moveTo({
+                        x: (s.turret.x + s.target.x) / 2, y: (s.turret.y + s.target.y) / 2,
+                        zoom: camZoom, duration: 350, _fogAllowed: true
+                    });
+                }
+
+                window.setTimeout(() => {
+                    if (state.winner) { if (onDone) onDone(); return; }
+                    playSfx('turret');
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
                         && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
-                        const _tdx = target.x - turret.x;
-                        const _tdy = target.y - turret.y;
+                        const _tdx = s.target.x - s.turret.x;
+                        const _tdy = s.target.y - s.turret.y;
                         const _tDist = Math.max(Math.abs(_tdx), Math.abs(_tdy));
                         window.ThreeVFXEffects.fire('beam', '_turretBlast', {
-                            fromX: turret.x, fromY: turret.y,
+                            fromX: s.turret.x, fromY: s.turret.y,
                             dx: _tDist ? Math.sign(_tdx) : 0,
                             dy: _tDist ? Math.sign(_tdy) : 0,
                             range: _tDist,
-                            hitTiles: [{ x: target.x, y: target.y }]
+                            hitTiles: [{ x: s.target.x, y: s.target.y }]
                         });
                     }
-                    const turretCaster = turret.casterUnitId ? unitFromId(turret.casterUnitId) : null;
-                    applyDamageToUnit(target, dmg, `🔧 Turret blast: `, {
-                        ignoreArmor: false,
-                        damageType: 'physical',
-                        sourceUnit: turretCaster || undefined
-                    });
-                    scheduleBoardRender();
-                }
+                    // Land the damage as the blast connects (beam charge + flash).
+                    window.setTimeout(() => {
+                        if (state.winner) { if (onDone) onDone(); return; }
+                        applyShot(s);
+                        scheduleBoardRender();
+                        if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
+                        checkWin();
+                        if (state.winner) { if (onDone) onDone(); return; }
+                        window.setTimeout(fireNext, actionMs(450));
+                    }, actionMs(280));
+                }, actionMs(420));
             }
+            fireNext();
         }
 
         function damageTurretAt(x, y, dmg, attackerUnit) {
@@ -14684,6 +14746,9 @@
                     processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
                     if (state.winner) return;
 
+                    processTurretVolleys(function _afterTurretVolleyPhase() {
+                    if (state.winner) return;
+
                     processHomingWeather(function _afterHomingWeatherPhase() {
                     if (state.winner) return;
 
@@ -14817,6 +14882,7 @@
                     });
                     });
                     });
+                    });
                     return;
                 }
 
@@ -14826,87 +14892,12 @@
         }
 
         function processTurnStartTowerDamage(unit, onDone) {
-            if (!unit || unit.dead) { if (onDone) onDone(); return; }
-
-            const hits = [];
-
-            if (state.turrets?.length) {
-                const enemyTurrets = state.turrets.filter(t => t.owner !== unit.player && t.hp > 0 && !t.auraDebuff);
-                for (const turret of enemyTurrets) {
-                    if (getSectionForUnit(unit) !== 'earth') continue;
-                    const dist = Math.abs(unit.x - turret.x) + Math.abs(unit.y - turret.y);
-                    if (dist > turret.range) continue;
-                    turret.facingAngle = Math.atan2(unit.y - turret.y, unit.x - turret.x);
-                    const dmg = Math.max(24, turret.dmg + randInt(24) - 8);
-                    hits.push({ kind: 'turret', srcX: turret.x, srcY: turret.y, dmg });
-                }
-                if (hits.length) scheduleBoardRender();
-            }
-
-            if (hits.length === 0) { if (onDone) onDone(); return; }
-
-            const mainHit = hits[0];
-            const pseudoSource = { x: mainHit.srcX, y: mainHit.srcY, player: unit.player === 1 ? 2 : 1 };
-
-            if (state.cameraDisabled) {
-                _applyTowerHits(unit, hits);
-                if (onDone) onDone();
-                return;
-            }
-
-            const camZoom = getDefaultZoom();
-            camera.moveTo({ x: mainHit.srcX, y: mainHit.srcY, zoom: camZoom,
-                duration: actionMs(350), _fogAllowed: true });
-
-            const holdMs = actionMs(600);
-            const travelMs = actionMs(500);
-            window.setTimeout(() => {
-                if (state.winner) { if (onDone) onDone(); return; }
-                camera.moveTo({ x: unit.x, y: unit.y, zoom: camZoom,
-                    duration: travelMs, easing: 'easeInOut', _fogAllowed: true });
-                for (const h of hits) {
-
-                    if (!_skipVisuals() && typeof window !== 'undefined' && window.ThreeVFXEffects
-                        && typeof window.ThreeVFXEffects.hasMapping === 'function'
-                        && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
-                        const _tdx = unit.x - h.srcX;
-                        const _tdy = unit.y - h.srcY;
-                        const _tDist = Math.max(Math.abs(_tdx), Math.abs(_tdy));
-                        window.ThreeVFXEffects.fire('beam', '_turretBlast', {
-                            fromX: h.srcX, fromY: h.srcY,
-                            dx: _tDist ? Math.sign(_tdx) : 0,
-                            dy: _tDist ? Math.sign(_tdy) : 0,
-                            range: _tDist,
-                            hitTiles: [{ x: unit.x, y: unit.y }]
-                        });
-                    } else {
-                        playProjectile(h.srcX, h.srcY, unit.x, unit.y, 'damage', travelMs);
-                    }
-                }
-            }, holdMs);
-
-            window.setTimeout(() => {
-                if (state.winner) { if (onDone) onDone(); return; }
-                camera.snap({ x: unit.x, y: unit.y, zoom: camZoom });
-                _applyTowerHits(unit, hits);
-                scheduleBoardRender();
-            }, holdMs + travelMs);
-
-            const totalMs = holdMs + travelMs + actionMs(700);
-            window.setTimeout(() => {
-                if (onDone) onDone();
-            }, totalMs);
-        }
-
-        function _applyTowerHits(unit, hits) {
-            for (const h of hits) {
-                if (unit.dead || unit._dying) break;
-
-                if (h.kind === 'turret') {
-                    addLog(`🔧 Turret fires at ${unitDisplayName(unit)} for ${h.dmg} damage!`);
-                    applyDamageToUnit(unit, h.dmg, `🔧 Turret blast: `, { ignoreArmor: false, damageType: 'physical' });
-                }
-            }
+            /* Turrets no longer snipe a unit at the start of its turn. They
+               track and paint the closest enemy in range with a targeting
+               laser all round (renderer-side), and the shot itself lands in
+               the end-of-round sequence — see processTurretVolleys — mirroring
+               the Headshot laser-mark flow. */
+            if (onDone) onDone();
         }
 
         function _waitForAnimationsThen(callback) {
