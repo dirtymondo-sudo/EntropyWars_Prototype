@@ -1017,6 +1017,24 @@ New tactical layer in **battle.js + three-renderer.js** (both on R2 → re-uploa
   facing (FFT-style). Counters don't turn the defender around. `_spriteFlipX` travel
   flip still applies on top of facing yaw (only race move-sprites use it).
 
+## Per-unit light sources restored (2026-07-03)
+- `three-post.js` `rebuildUnitLights`/`_updateUnitLights` (+ constants `UNIT_LIGHT_*`):
+  every alive unit carries a warm PointLight (0xffe0a0, dist 320, decay 1.6, 64 above
+  the sprite's surface). Was night-only + static; users perceived it as "removed"
+  because day rounds showed nothing and the night glow was subtle. Now: always built
+  (day 0.45 / night 1.7 intensity, chosen per-frame off `body.dataset.cycle` so a
+  mid-match day↔night flip needs NO structural rebuild), flickers, and re-anchors to
+  the unit's current tile every frame (stored `unit` ref + `unitSurfaceY` fn), so the
+  glow follows moves instead of waiting for the next `rebuildUnits()`.
+- Wiring: `three-renderer.js` `rebuildUnits()` (~line 5071) calls
+  `ThreePost.rebuildUnitLights(state.units, unitSurfaceY, tileSize)`; per-frame update
+  runs inside `ThreePost.render()`. Cycle = `getCurrentCyclePhase()` (map.js): odd
+  round day, even round night; the HUD render stamps it onto `body.dataset.cycle`.
+- Probe trick used to verify: fast-forward to round 2 by zeroing each active P1
+  unit's AP + `endUnitIfDone`, then keep pumping `maybeAdvanceTurn`/
+  `maybeTriggerComputerTurn` — the HUD only stamps `dataset.cycle` while renders flow.
+  `ThreeRenderer._scene` getter is exported for scene-graph inspection.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

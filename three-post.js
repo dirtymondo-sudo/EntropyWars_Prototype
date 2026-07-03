@@ -1046,9 +1046,12 @@ const ThreePost = (function () {
 
     var _unitLights = [];
     var _unitLightGroup = null;
+    var _unitLightSurfaceFn = null;
+    var _unitLightTileSize = 128;
 
     var UNIT_LIGHT_COLOR           = 0xffe0a0;
-    var UNIT_LIGHT_INTENSITY_NIGHT = 1.2;
+    var UNIT_LIGHT_INTENSITY_DAY   = 0.45;
+    var UNIT_LIGHT_INTENSITY_NIGHT = 1.7;
     var UNIT_LIGHT_DISTANCE        = 320;
     var UNIT_LIGHT_DECAY           = 1.6;
     var UNIT_LIGHT_HEIGHT          = 64;
@@ -1056,6 +1059,8 @@ const ThreePost = (function () {
     function rebuildUnitLights(units, unitSurfaceYFn, tileSize) {
         if (!_scene) return;
         var ts = tileSize || 128;
+        _unitLightSurfaceFn = unitSurfaceYFn;
+        _unitLightTileSize = ts;
 
         if (!_unitLightGroup) {
             _unitLightGroup = new THREE.Group();
@@ -1071,27 +1076,41 @@ const ThreePost = (function () {
 
         if (!units || !units.length) return;
 
+        // Lights exist day AND night — day is a faint warm presence, night is the
+        // real torch glow. Intensity is set per-frame in _updateUnitLights so a
+        // mid-match day↔night flip doesn't need a structural rebuild to show up.
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
-        if (cycle !== 'night') return;
+        var baseIntensity = (cycle === 'night') ? UNIT_LIGHT_INTENSITY_NIGHT : UNIT_LIGHT_INTENSITY_DAY;
 
         for (var i = 0; i < units.length; i++) {
             var u = units[i];
             if (u.dead || u._dying) continue;
 
             var surfY = unitSurfaceYFn(u);
-            var pl = new THREE.PointLight(UNIT_LIGHT_COLOR, UNIT_LIGHT_INTENSITY_NIGHT, UNIT_LIGHT_DISTANCE, UNIT_LIGHT_DECAY);
+            var pl = new THREE.PointLight(UNIT_LIGHT_COLOR, baseIntensity, UNIT_LIGHT_DISTANCE, UNIT_LIGHT_DECAY);
             pl.position.set(u.x * ts + ts / 2, surfY + UNIT_LIGHT_HEIGHT, u.y * ts + ts / 2);
             _unitLightGroup.add(pl);
-            _unitLights.push({ light: pl, unitId: u.id });
+            _unitLights.push({ light: pl, unit: u, unitId: u.id });
         }
     }
 
     function _updateUnitLights() {
         if (_unitLights.length === 0) return;
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var baseIntensity = (cycle === 'night') ? UNIT_LIGHT_INTENSITY_NIGHT : UNIT_LIGHT_INTENSITY_DAY;
+        var ts = _unitLightTileSize;
         var now = performance.now() * 0.001;
         for (var i = 0; i < _unitLights.length; i++) {
+            var entry = _unitLights[i];
+            var u = entry.unit;
+            if (u && (u.dead || u._dying)) { entry.light.intensity = 0; continue; }
+            // Re-anchor to the unit's current tile each frame so the glow follows
+            // moves immediately instead of waiting for the next full unit rebuild.
+            if (u && _unitLightSurfaceFn) {
+                entry.light.position.set(u.x * ts + ts / 2, _unitLightSurfaceFn(u) + UNIT_LIGHT_HEIGHT, u.y * ts + ts / 2);
+            }
             var flicker = 1.0 + 0.06 * Math.sin(now * 3.5 + i * 2.1) + 0.03 * Math.sin(now * 7.8 + i * 4.3);
-            _unitLights[i].light.intensity = UNIT_LIGHT_INTENSITY_NIGHT * flicker;
+            entry.light.intensity = baseIntensity * flicker;
         }
     }
 
