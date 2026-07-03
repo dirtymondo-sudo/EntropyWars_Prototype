@@ -1709,7 +1709,7 @@
             // Camera: standard static third-person action shot behind the
             // caster's launch spot (holds while they charge through frame), or
             // the plain top-down path pan if it declines — mirrors the dash kind.
-            if (!state.cameraDisabled) {
+            if (!state.cameraDisabled && _fogCamTilesVisible({ x: fromX, y: fromY }, { x: landTile.x, y: landTile.y })) {
                 stopBoardCameraAnimation();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                 const _followed = state.cinematicActionCam && animateDashActionCamera(
@@ -4078,6 +4078,21 @@
                         if (dist <= (w.radius || 3)) return true;
                     }
                 }
+            }
+            return false;
+        }
+
+        /* Fog gate for camera moves that trace an opponent's action (walk pans,
+           dash/charge cams, displacement follows, spell-focus pans). During the
+           LOCAL viewer's own turn (or with fog off) the camera is always free;
+           during an opponent's (AI/remote) turn it may only move if at least one
+           of the traced points is actually visible to the viewer — otherwise the
+           pan itself would reveal where a hidden unit is acting. */
+        function _fogCamTilesVisible(...points) {
+            if (!state.fogOfWar) return true;
+            if (state.activePlayer === getViewerPlayer()) return true;
+            for (const p of points) {
+                if (p && _isTileVisibleToViewer(Math.round(p.x), Math.round(p.y))) return true;
             }
             return false;
         }
@@ -7675,8 +7690,12 @@
             // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
             // degrees off-axis so the caster reads as an over-the-shoulder
             // foreground subject rather than dead-centered.
+            // NOTE: yaw is ABSOLUTE in the 3D world — do NOT add 180 for the P2
+            // viewer. The old `is-p2-viewer` +180 here dated from the 2D CSS
+            // board (which is rotated for P2); the WebGL canvas is never
+            // rotated, so the flip put the camera BEHIND THE TARGET looking
+            // back at the caster — the online "reverse angle action cam" bug.
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-            if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
             const ts = CONFIG.tileSize || BASE_TILE;
 
@@ -7798,8 +7817,8 @@
             // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
             // degrees off-axis so the caster reads as an over-the-shoulder
             // foreground subject rather than dead-centred — same as the attack cam.
+            // Absolute world yaw — no P2 flip (see note in _playCineActionShot).
             let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-            if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
             // Start + destination elevations (px) for the pitch and the above-
             // target vertical fit, so a charge that climbs or drops still frames
@@ -7929,8 +7948,8 @@
             // meteors keep the player's heading so the look-up doesn't spin.
             let yaw = camera._tyaw;
             if (dist >= 1) {
+                // Absolute world yaw — no P2 flip (see note in _playCineActionShot).
                 yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-                if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
             }
 
             // tilt: LOW = looking down, HIGH = near-horizontal / looking up.
@@ -15233,6 +15252,13 @@
                 } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
 
                     _stopShotClock();
+                    // Mirror the remote player's acting unit into the local
+                    // selection/focus so the top-left ActiveUnitPanel (and the
+                    // roster highlight) shows the SAME unit on both screens.
+                    // Input on it stays blocked — the online wrappers gate all
+                    // actions on activePlayer === local player.
+                    state.selectedUnitId = nextUnit.id;
+                    state.focusedUnitId = nextUnit.id;
                     if (!state.cameraDisabled && _shouldCameraFollowUnit(nextUnit)) {
                         invalidateLayoutCache();
                         renderBoard();
@@ -18042,11 +18068,16 @@
 
                                 const stepMs = Math.max(80, Math.min(160, 140 - combinedPath.length * 8));
                                 const walkDurationMs = combinedPath.length * stepMs;
-                                animateBoardCameraPath(
-                                    { x: savedX, y: savedY },
-                                    { x: x, y: y },
-                                    { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
-                                );
+                                // Fog gate: when this click is a REPLAYED remote
+                                // action the local viewer is the opponent — only
+                                // trail the walk if some part of it is visible.
+                                if (_fogCamTilesVisible({ x: savedX, y: savedY }, { x, y })) {
+                                    animateBoardCameraPath(
+                                        { x: savedX, y: savedY },
+                                        { x: x, y: y },
+                                        { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                    );
+                                }
                             }
                             pushUndoSnapshot(false);
 
@@ -19184,7 +19215,11 @@
             }
 
             const path = findMovePath(unit, x, y, z);
-            const isHuman = !state.autoPlayers?.[unit.player];
+            // A REPLAYED remote move executes on the host as "human", but the
+            // local viewer is the opponent — take the AI (fog-aware, partial-
+            // path) animation branch below so the camera never trails a hidden
+            // enemy unit through the fog.
+            const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
             const startX = unit.x,
                 startY = unit.y;
 
@@ -19445,8 +19480,10 @@
             }
 
             if (!state.cameraDisabled) {
-                const isHuman = !state.autoPlayers?.[unit.player];
-                if (isHuman) {
+                // A replayed remote jump is "human" but the local viewer is the
+                // opponent — apply the same fog visibility gate as AI jumps.
+                const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
+                if (isHuman && _fogCamTilesVisible({ x: fromX, y: fromY }, { x, y })) {
 
                     const _curZoom = typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05
                         ? getUserZoomScale()
@@ -21314,7 +21351,7 @@
                 holdMs: 99999,
                 persist: true,
                 transitionMs: opts.transitionMs ?? 380,
-                _fogAllowed: true
+                _fogAllowed: _fogCamTilesVisible(...points)
             });
         }
 
@@ -22385,7 +22422,7 @@
                             animateBoardCameraPath(
                                 { x: _displaceFromX, y: _displaceFromY },
                                 { x: target.x, y: target.y },
-                                { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: true }
+                                { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: _fogCamTilesVisible({ x: _displaceFromX, y: _displaceFromY }, { x: target.x, y: target.y }) }
                             );
                         }
                     } else if (!state.cameraDisabled) {
@@ -22678,7 +22715,7 @@
                         animateBoardCameraPath(
                             { x: _pullFromX, y: _pullFromY },
                             { x: target.x, y: target.y },
-                            { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: true }
+                            { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: _fogCamTilesVisible({ x: _pullFromX, y: _pullFromY }, { x: target.x, y: target.y }) }
                         );
                     }
                 } else {
@@ -22720,7 +22757,7 @@
                     animateBoardCameraPath(
                         { x: ux, y: uy },
                         { x: tx, y: ty },
-                        { duration: 250, zoom: _swapZoom, _fogAllowed: true }
+                        { duration: 250, zoom: _swapZoom, _fogAllowed: _fogCamTilesVisible({ x: ux, y: uy }, { x: tx, y: ty }) }
                     );
                 }
 
@@ -22799,7 +22836,7 @@
                             animateBoardCameraPath(
                                 { x: _escFromX, y: _escFromY },
                                 { x: candidates[0].x, y: candidates[0].y },
-                                { duration: 220, zoom: _escZoom, _fogAllowed: true }
+                                { duration: 220, zoom: _escZoom, _fogAllowed: _fogCamTilesVisible({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
                             );
                         }
                     }
@@ -23390,7 +23427,7 @@
                                     animateBoardCameraPath(
                                         { x: _grFromX, y: _grFromY },
                                         { x: target.x, y: target.y },
-                                        { duration: _grAnimMs, zoom: _grZoom, _fogAllowed: true }
+                                        { duration: _grAnimMs, zoom: _grZoom, _fogAllowed: _fogCamTilesVisible({ x: _grFromX, y: _grFromY }, { x: target.x, y: target.y }) }
                                     );
                                 }
                             } else if (_grTether) {
@@ -23438,7 +23475,7 @@
                             unit._trackTilesMoved = (unit._trackTilesMoved || 0) + moved;
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
 
-                            if (!state.cameraDisabled) {
+                            if (!state.cameraDisabled && _fogCamTilesVisible({ x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                                 const _grSelfZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
@@ -24273,7 +24310,7 @@
                 // Scale dash travel time with distance so long dashes glide
                 // instead of snapping; keep the camera in lockstep with the unit.
                 const dashAnimMs = Math.max(200, dist * 110);
-                if (!state.cameraDisabled) {
+                if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterStartX, y: casterStartY }, { x, y })) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                     // With the cinematic action camera on, take the standard
@@ -24697,7 +24734,7 @@
 
                 const casterFromX = unit.x, casterFromY = unit.y;
 
-                if (!state.cameraDisabled) {
+                if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterFromX, y: casterFromY }, { x, y })) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                     animateBoardCameraPath(

@@ -551,9 +551,20 @@ function buildSpellTooltip(sp, x, y) {
 function PartyBuilder() {
   const st = getSt();
   if (!st || !st.partyBuilds) return h('div', { style:{ color:'#8a93a8', padding:40, fontFamily:'DotGothic16, monospace', textAlign:'center' } }, 'Initializing\u2026');
-  const isOnline = window.ONLINE_RULES?.active;
-  const isWaitingOnline = isOnline && !!(window._NET?._waitingForOpponent);
-  const opponentLockedToo = isWaitingOnline && !!(window._NET?._lockState?.guestPartyReceived || window._NET?._lockState?.hostLocked);
+  const NET = window._NET;
+  const isOnline = !!(window.ONLINE_RULES?.active || (NET && NET.online));
+  const netRole = NET?.role || null;
+  const netLock = NET?._lockState || {};
+  const isRankedNet = !!NET?.ranked;
+  // "I have locked in" — ranked sets _waitingForOpponent; friendly tracks the
+  // role's own lock flag. "Opponent locked" — the host learns via
+  // guestPartyReceived, the guest via the host-locked relay.
+  const isWaitingOnline = isOnline && (!!NET?._waitingForOpponent || !!NET?._autoStartFired
+    || (netRole === 'guest' ? !!netLock.guest : !!netLock.host));
+  const opponentLockedToo = isOnline && (netRole === 'guest' ? !!netLock.hostLocked : !!netLock.guestPartyReceived);
+  // Friendly rooms: the HOST controls the start — once both sides are locked
+  // their button becomes a live START MATCH instead of a dead waiting label.
+  const friendlyHostCanStart = isWaitingOnline && !isRankedNet && netRole === 'host' && opponentLockedToo;
   const player = isOnline ? (typeof window._myPlayer === 'function' ? window._myPlayer() : 1) : (st.builderSelectedPlayer || 1);
   const teamSize = window.CONFIG?.teamSize || 4;
   const [slot, setSlot] = React.useState(() => st.builderSelectedSlot || 0);
@@ -788,10 +799,11 @@ function PartyBuilder() {
   function doStart() {
     // Block entering a match with a locked vessel on the local player's team.
     if (typeof window.isUnitUnlocked === 'function') {
-      const size = (st.partyBuilds?.[1] || []).length || teamSize;
+      // Check the LOCAL player's team (the online guest builds team 2).
+      const size = (st.partyBuilds?.[player] || []).length || teamSize;
       const lockedNames = [];
       for (let i = 0; i < size; i++) {
-        const rk = st.partyMeta?.[1]?.[i]?.race || 'homosapien';
+        const rk = st.partyMeta?.[player]?.[i]?.race || 'homosapien';
         if (!window.isUnitUnlocked(rk)) {
           const lbl = (window.RACE_PROFILES?.[rk]?.label) || rk;
           if (lockedNames.indexOf(lbl) === -1) lockedNames.push(lbl);
@@ -1198,9 +1210,14 @@ function PartyBuilder() {
       }),
       h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
       h('button',{onClick:confirmSlot,className:'pb-btn-confirm',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'8px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM'),
-      isWaitingOnline
-        ? h('button',{className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:14,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10}},
-            opponentLockedToo ? 'MATCH STARTING…' : 'WAITING FOR OPPONENT…')
+      friendlyHostCanStart
+        ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 18px rgba(100,200,120,0.25)',display:'flex',alignItems:'center',gap:10}},
+            '⚔ START MATCH')
+        : isWaitingOnline
+        ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:14,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
+            (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
+            : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
+            : '⌛ WAITING ON OPPONENT…')
         : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:`linear-gradient(180deg,${fc}28,${fc}0a)`,color:fc,border:`1px solid ${fc}`,padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:`0 0 18px ${fc}33`,display:'flex',alignItems:'center',gap:10}},
             'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5')),
     ),

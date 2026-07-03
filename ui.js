@@ -8706,9 +8706,12 @@
                 let [dx, dy] = dirs[key];
 
                 {
+                    // dioramaYawDeg is the ACTUAL live camera yaw — it already
+                    // reflects whatever orientation the viewer is using. The old
+                    // is-p2-viewer +180 assumed the (2D-era) CSS board flip, which
+                    // the 3D canvas never gets, so it inverted WASD for the online
+                    // guest. Use the real yaw only.
                     let yaw = (state.dioramaYawDeg || 0)
-
-                    if (document.body.classList.contains('is-p2-viewer')) yaw += 180;
 
                     const steps = Math.round(((yaw % 360) + 360) % 360 / 90) % 4;
                     for (let i = 0; i < steps; i++) {
@@ -8989,6 +8992,10 @@
             set myPlayer(v) {},
             set role(v) {},
         };
+        /* Exported for the React party builder (party-builder.js) — it checks
+           window.ONLINE_RULES.active to decide whether SEAL YOUR FATE should
+           become the online lock/waiting button. */
+        window.ONLINE_RULES = ONLINE_RULES;
 
     (function() {
       let _fpsEl = null, _fpsRunning = false;

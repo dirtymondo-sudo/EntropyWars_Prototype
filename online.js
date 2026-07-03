@@ -313,6 +313,123 @@
             if (window._broadcastState) window._broadcastState();
         };
 
+        /* ── Engine-mutator relay (the "guest actions do nothing" fix) ──────
+           The HUD quick-action menu, the attack/spell target submenu, tile
+           actions (Chop Tree / Smash Terrain), the More menu (Channel, Enter
+           Building) and drag-moves call the engine mutators (doAttack /
+           doSpell / doMove / …) DIRECTLY instead of going through clickTile.
+           Offline that's fine; online the GUEST was running them on its own
+           NON-authoritative copy of the match — the attack played out locally
+           (complete with Press-Turn "+1 AP" popups) while the HOST never saw
+           it, and the next state sync rolled everything back. Net effect the
+           user sees: seemingly unlimited actions and enemy HP that never
+           drops. Route them exactly like clickTile: the guest emits a
+           semantic game-action, the host replays it authoritatively, state
+           syncs back. Host-side direct calls stay local + broadcast.
+           NOTE: these reassign the top-level function bindings, so engine-
+           INTERNAL calls also resolve to the wrappers — the state._remoteAction
+           pass-through keeps host replays running the originals. */
+        function _guestOwnsAction(unit) {
+            return state.phase === 'battle' && !state.winner
+                && unit && !unit.dead && unit.player === _myPlayer()
+                && state.activePlayer === _myPlayer();
+        }
+
+        function _hostRunAndSync(orig, args) {
+            const r = orig.apply(null, args);
+            if (window._broadcastState) window._broadcastState();
+            return r;
+        }
+
+        const _origDoAttack = doAttack;
+        doAttack = function(unit, x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _origDoAttack(unit, x, y, z);
+            if (_isHost()) return _hostRunAndSync(_origDoAttack, [unit, x, y, z]);
+            if (!_guestOwnsAction(unit)) return 0;
+            _emit('game-action', { type: 'engine', fn: 'doAttack', unitId: unit.id, x: x, y: y, z: z });
+            return 1200; /* nominal delay — the real visuals arrive via host relays */
+        };
+
+        const _origDoSpell = doSpell;
+        doSpell = function(unit, x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _origDoSpell(unit, x, y, z);
+            if (_isHost()) return _hostRunAndSync(_origDoSpell, [unit, x, y, z]);
+            if (!_guestOwnsAction(unit)) return 0;
+            _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
+            return 1200;
+        };
+
+        const _origDoMove = doMove;
+        doMove = function(unit, x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _origDoMove(unit, x, y, z);
+            if (_isHost()) return _hostRunAndSync(_origDoMove, [unit, x, y, z]);
+            if (!_guestOwnsAction(unit)) return false;
+            _emit('game-action', { type: 'engine', fn: 'doMove', unitId: unit.id, x: x, y: y, z: z });
+            return true;
+        };
+
+        const _origDoJump = doJump;
+        doJump = function(unit, x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _origDoJump(unit, x, y, z);
+            if (_isHost()) return _hostRunAndSync(_origDoJump, [unit, x, y, z]);
+            if (!_guestOwnsAction(unit)) return false;
+            _emit('game-action', { type: 'engine', fn: 'doJump', unitId: unit.id, x: x, y: y, z: z });
+            return true;
+        };
+
+        const _origDoItem = doItem;
+        doItem = function(unit, x, y) {
+            if (!_isOnline() || state._remoteAction) return _origDoItem(unit, x, y);
+            if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y]);
+            if (!_guestOwnsAction(unit)) return;
+            _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, tool: state.selectedTool });
+        };
+
+        const _origDoComboAttack = doComboAttack;
+        doComboAttack = function(initiator, partner, targetX, targetY) {
+            if (!_isOnline() || state._remoteAction) return _origDoComboAttack(initiator, partner, targetX, targetY);
+            if (_isHost()) return _hostRunAndSync(_origDoComboAttack, [initiator, partner, targetX, targetY]);
+            if (!_guestOwnsAction(initiator)) return;
+            _emit('game-action', { type: 'engine', fn: 'doComboAttack', unitId: initiator.id, partnerId: partner ? partner.id : null, x: targetX, y: targetY });
+        };
+
+        const _origDoEnterBuilding = (typeof doEnterBuilding === 'function') ? doEnterBuilding : null;
+        if (_origDoEnterBuilding) {
+            doEnterBuilding = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origDoEnterBuilding(unit);
+                if (_isHost()) return _hostRunAndSync(_origDoEnterBuilding, [unit]);
+                if (!_guestOwnsAction(unit)) return false;
+                _emit('game-action', { type: 'engine', fn: 'doEnterBuilding', unitId: unit.id });
+                return true;
+            };
+        }
+
+        const _origChannelNexus = (typeof channelNexus === 'function') ? channelNexus : null;
+        if (_origChannelNexus) {
+            channelNexus = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origChannelNexus(unit);
+                if (_isHost()) return _hostRunAndSync(_origChannelNexus, [unit]);
+                if (!_guestOwnsAction(unit)) return false;
+                _emit('game-action', { type: 'engine', fn: 'channelNexus', unitId: unit.id });
+                return true;
+            };
+        }
+
+        /* Host: rebroadcast at every action COMPLETION. Damage/AP land on
+           impact timers ~1-2s after the click that triggered them, long after
+           the click-time broadcast went out — this is why the guest saw enemy
+           HP "never go down" until the next turn advance. endUnitIfDone runs
+           at the tail of every action, making it the perfect sync point. */
+        const _origEndUnitIfDone = endUnitIfDone;
+        endUnitIfDone = function(unit) {
+            const r = _origEndUnitIfDone(unit);
+            var _netOnE = window._NET && window._NET.online;
+            if (_netOnE && _isHost() && state.phase === 'battle' && window._broadcastState) {
+                window._broadcastState();
+            }
+            return r;
+        };
+
         const _origForfeit = forfeitMatch;
         forfeitMatch = function() {
             if (!_isOnline()) return _origForfeit();
@@ -457,6 +574,9 @@
                 addLog('Your party is locked in and sent to the host.');
             } else {
                 lock.host = true;
+                /* Tell the guest too — drives the "opponent locked in" state
+                   on their SEAL YOUR FATE button (ranked already emits this). */
+                _emit('relay', { type: 'host-locked' });
                 addLog('Your party is locked in.' + (!lock.guestPartyReceived ? ' Waiting for Player 2 to lock in…' : ' Both players ready — click Start Match!'));
             }
             render();
@@ -743,6 +863,39 @@
                             }
                         }
                         break;
+                    case 'engine': {
+                        /* Direct engine mutator relayed from the guest's HUD
+                           (quick-action menu, target submenu, tile actions,
+                           More-menu verbs, drag-moves). Validate ownership +
+                           turn, then replay authoritatively — the wrappers
+                           pass through to the originals while
+                           state._remoteAction is set. */
+                        var engUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        if (!engUnit || engUnit.player !== remoteP) break;
+                        if (state.activePlayer !== remoteP) break;
+                        state.selectedUnitId = engUnit.id;
+                        state.focusedUnitId = engUnit.id;
+                        if (data.tool !== undefined) state.selectedTool = data.tool;
+                        switch (data.fn) {
+                            case 'doAttack': doAttack(engUnit, data.x, data.y, data.z); break;
+                            case 'doSpell': doSpell(engUnit, data.x, data.y, data.z); break;
+                            case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
+                            case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
+                            case 'doItem': doItem(engUnit, data.x, data.y); break;
+                            case 'doComboAttack': {
+                                var engPartner = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
+                                if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y);
+                                break;
+                            }
+                            case 'doEnterBuilding':
+                                if (typeof doEnterBuilding === 'function') doEnterBuilding(engUnit);
+                                break;
+                            case 'channelNexus':
+                                if (typeof channelNexus === 'function') channelNexus(engUnit);
+                                break;
+                        }
+                        break;
+                    }
                 }
             } catch (err) {
                 console.error('[NET] Remote action error:', err);
@@ -766,6 +919,24 @@
                     state.selectedTool = null;
                     state.pendingTarget = null;
                     state.comboPartner = null;
+                }
+            }
+
+            /* While it's the REMOTE player's turn, keep the local top-left
+               unit panel MIRRORING the unit the opponent is actually driving
+               (their selection or the blitz-active unit) instead of the
+               host's stale pre-turn selection — both screens now show the
+               same "current unit". Local input on it stays blocked by the
+               activePlayer gates in the wrappers above. */
+            if (state.phase === 'battle' && !state.winner && state.activePlayer === remoteP) {
+                var _mirrorId = (data.type === 'selectUnit' && data.id) ? data.id
+                    : (data.unitId || (data._ctx && data._ctx.selectedUnitId) || state._blitzActiveUnitId);
+                var _mirrorU = _mirrorId ? state.units.find(function(u) {
+                    return u.id === _mirrorId && !u.dead && u.player === remoteP;
+                }) : null;
+                if (_mirrorU) {
+                    state.selectedUnitId = _mirrorU.id;
+                    state.focusedUnitId = _mirrorU.id;
                 }
             }
 
@@ -1003,6 +1174,11 @@
         window.CTRL = CTRL;
         window.isOnlineMatch = isOnlineMatch;
         window.getLocalPlayer = getLocalPlayer;
+        /* The React party builder reads these off window (it used to silently
+           fall back to "offline, player 1" because they were never exported —
+           which is why SEAL YOUR FATE never showed its waiting state). */
+        window._myPlayer = _myPlayer;
+        if (typeof ONLINE_RULES !== 'undefined' && !window.ONLINE_RULES) window.ONLINE_RULES = ONLINE_RULES;
         window._startOnlineRematch = _startOnlineRematch;
         window.showVsSplash = showVsSplash;
         window.showResultOverlay = showResultOverlay;
@@ -1957,7 +2133,13 @@
                     }
 
                     if (data.type === 'floating-text' && NET.role === 'guest') {
-                        if (typeof window.showFloatingTextAtTile === 'function') {
+                        // Fog gate: don't render combat numbers happening inside
+                        // the fog — they'd reveal hidden enemy positions/fights.
+                        var _ftVisible = true;
+                        if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
+                            _ftVisible = window._isTileVisibleToViewer(data.x, data.y);
+                        }
+                        if (_ftVisible && typeof window.showFloatingTextAtTile === 'function') {
                             window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind);
                         }
                     }
@@ -1965,23 +2147,49 @@
                     if (data.type === 'walk-anim' && NET.role === 'guest') {
                         var walkUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (walkUnit && data.path && data.path.length > 0) {
+                            var _isEnemyWalk = walkUnit.player !== NET.myPlayer;
+                            var _fogCheck = (st.fogOfWar && typeof window._isTileVisibleToViewer === 'function')
+                                ? window._isTileVisibleToViewer : null;
+
+                            // For an ENEMY walk under fog, trim the animated path
+                            // and the camera pan to the VISIBLE portion only —
+                            // never trail a hidden unit (or its destination)
+                            // through the fog. Friendly walks show in full.
+                            var _walkFrom = { x: data.fromX, y: data.fromY, z: data.fromZ ?? 0 };
+                            var _walkPath = data.path;
                             var _showWalk = true;
-                            if (st.fogOfWar && walkUnit.player !== NET.myPlayer) {
-                                _showWalk = false;
-                                var _fogCheck = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
-                                if (_fogCheck) {
-                                    if (_fogCheck(data.fromX, data.fromY)) { _showWalk = true; }
-                                    else { for (var _wi = 0; _wi < data.path.length; _wi++) { if (_fogCheck(data.path[_wi].x, data.path[_wi].y)) { _showWalk = true; break; } } }
-                                } else { _showWalk = true; }
+                            if (_isEnemyWalk && _fogCheck) {
+                                var _full = [_walkFrom].concat(data.path);
+                                var _lastVis = -1, _firstVis = -1;
+                                for (var _wi = 0; _wi < _full.length; _wi++) {
+                                    if (_fogCheck(_full[_wi].x, _full[_wi].y)) {
+                                        if (_firstVis < 0) _firstVis = _wi;
+                                        _lastVis = _wi;
+                                    }
+                                }
+                                if (_lastVis < 0) {
+                                    _showWalk = false;           // fully hidden walk
+                                } else if (_firstVis === 0) {
+                                    // Visible from the start: animate up to the
+                                    // last visible step, then let the unit vanish
+                                    // into the fog (the sync places it silently).
+                                    _walkPath = _full.slice(1, _lastVis + 1);
+                                } else {
+                                    // Emerges INTO vision mid-path: start the
+                                    // visible animation at the first seen tile.
+                                    _walkFrom = _full[_firstVis];
+                                    _walkPath = _full.slice(_firstVis + 1, _lastVis + 1);
+                                }
+                                if (_walkPath.length === 0) _showWalk = false;
                             }
                             if (_showWalk) {
                                 var _threeOk = false;
                                 if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                                     var _savedX = walkUnit.x, _savedY = walkUnit.y, _savedZ = walkUnit.z;
-                                    walkUnit.x = data.fromX;
-                                    walkUnit.y = data.fromY;
-                                    walkUnit.z = data.fromZ ?? 0;
-                                    window.ThreeAnim.walkPath(walkUnit, data.path);
+                                    walkUnit.x = _walkFrom.x;
+                                    walkUnit.y = _walkFrom.y;
+                                    walkUnit.z = _walkFrom.z ?? 0;
+                                    window.ThreeAnim.walkPath(walkUnit, _walkPath);
                                     walkUnit.x = _savedX;
                                     walkUnit.y = _savedY;
                                     walkUnit.z = _savedZ;
@@ -1989,16 +2197,16 @@
                                 }
                                 if (!_threeOk && typeof window.animateWalkPath === 'function') {
                                     var _savedX2 = walkUnit.x, _savedY2 = walkUnit.y, _savedZ2 = walkUnit.z;
-                                    if (data.fromX !== undefined) walkUnit.x = data.fromX;
-                                    if (data.fromY !== undefined) walkUnit.y = data.fromY;
-                                    if (data.fromZ !== undefined) walkUnit.z = data.fromZ;
-                                    window.animateWalkPath(walkUnit, data.path);
+                                    walkUnit.x = _walkFrom.x;
+                                    walkUnit.y = _walkFrom.y;
+                                    if (_walkFrom.z !== undefined) walkUnit.z = _walkFrom.z;
+                                    window.animateWalkPath(walkUnit, _walkPath);
                                     walkUnit.x = _savedX2;
                                     walkUnit.y = _savedY2;
                                     walkUnit.z = _savedZ2;
                                 }
 
-                                var _walkDest = data.path[data.path.length - 1];
+                                var _walkDest = _walkPath[_walkPath.length - 1];
                                 if (_walkDest && typeof focusBoardCameraOnTiles === 'function') {
                                     var _wz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _dz2 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
@@ -2015,9 +2223,17 @@
                         var jumpUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (jumpUnit) {
                             var _showJump = true;
+                            var _jumpCamX = data.toX, _jumpCamY = data.toY;
                             if (st.fogOfWar && jumpUnit.player !== NET.myPlayer) {
                                 var _jfog = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
-                                _showJump = _jfog ? (_jfog(data.fromX, data.fromY) || _jfog(data.toX, data.toY)) : true;
+                                if (_jfog) {
+                                    var _jFromVis = _jfog(data.fromX, data.fromY);
+                                    var _jToVis = _jfog(data.toX, data.toY);
+                                    _showJump = _jFromVis || _jToVis;
+                                    // Camera may only travel to a VISIBLE tile —
+                                    // a hidden landing spot must stay unknown.
+                                    if (!_jToVis) { _jumpCamX = data.fromX; _jumpCamY = data.fromY; }
+                                }
                             }
                             if (_showJump) {
 
@@ -2036,7 +2252,7 @@
                                 if (typeof focusBoardCameraOnTiles === 'function') {
                                     var _jz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _djz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
-                                    focusBoardCameraOnTiles([{ x: data.toX, y: data.toY }], {
+                                    focusBoardCameraOnTiles([{ x: _jumpCamX, y: _jumpCamY }], {
                                         zoom: _jz > 1.05 ? _jz : _djz,
                                         holdMs: 99999, persist: true, transitionMs: 400, _fogAllowed: true
                                     });
@@ -2071,7 +2287,25 @@
                     }
 
                     if (data.type === 'vfx3d' && NET.role === 'guest') {
-                        if (typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
+                        // Fog gate: skip spell VFX whose every anchor point is
+                        // hidden in the fog (a fireball flashing inside the fog
+                        // pinpoints the hidden caster/fight).
+                        var _vfxVisible = true;
+                        if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
+                            var _vp = data.params || {};
+                            var _pts = [];
+                            if (_vp.tx !== undefined) _pts.push([_vp.tx, _vp.ty]);
+                            if (_vp.fromX !== undefined) _pts.push([_vp.fromX, _vp.fromY]);
+                            if (_vp.casterX !== undefined) _pts.push([_vp.casterX, _vp.casterY]);
+                            if (_vp.hitTiles) for (var _hi = 0; _hi < _vp.hitTiles.length; _hi++) _pts.push([_vp.hitTiles[_hi].x, _vp.hitTiles[_hi].y]);
+                            if (_pts.length > 0) {
+                                _vfxVisible = false;
+                                for (var _pi = 0; _pi < _pts.length; _pi++) {
+                                    if (window._isTileVisibleToViewer(_pts[_pi][0], _pts[_pi][1])) { _vfxVisible = true; break; }
+                                }
+                            }
+                        }
+                        if (_vfxVisible && typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
                             try {
                                 VFX3D.fire(data.phase, data.spellId, data.params || {});
                             } catch (e) {  }
@@ -2285,8 +2519,14 @@
                         if (!N || !N.online || N.role !== 'host' || !N.socket) return;
                         if (!st || st.phase !== 'battle' || st.winner) return;
                         var remoteP = N.myPlayer === 1 ? 2 : 1;
-                        if (st.activePlayer !== remoteP) return; // only while waiting on the guest
-                        N.lastSyncJson = '';                     // bypass dedup → force a resend
+                        // During the remote player's turn, FORCE a resend
+                        // (bypassing the dedup) so a missed turn-handoff packet
+                        // self-heals. During the host's own turn just call
+                        // _broadcastState — the JSON dedup already suppresses
+                        // no-change sends, and this picks up delayed damage /
+                        // DoT / counter hits that land on impact timers between
+                        // clicks (the guest's "HP never updates" staleness).
+                        if (st.activePlayer === remoteP) N.lastSyncJson = '';
                         if (window._broadcastState) window._broadcastState();
                     } catch (e) { /* never let the heartbeat throw */ }
                 }, 1200);

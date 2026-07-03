@@ -836,6 +836,67 @@ serialized state, Set-aware, throttled 50ms). Guest applies host state via
 - **`rejoin-failed` flag** is the disconnect/rejoin probe, a separate area (socket
   reconnect path) — not investigated this session.
 
+## Online play bug-fix pass (2026-07-03) — 5 user-reported bugs, root causes
+Files touched (ALL must go to R2 together): **battle.js, online.js, ui.js,
+party-builder.js**. Key discoveries (don't re-learn these):
+- **All game scripts are TOP-LEVEL classic scripts (no IIFE)** — function
+  declarations are shared globals, and online.js's wrapper pattern
+  (`const _orig = fn; fn = function(...)`) intercepts battle.js-INTERNAL calls
+  too. This is the backbone of the online layer and of this session's fixes.
+- **"Guest attacks do nothing / unlimited actions / Press Turn AP refunds"**:
+  the HUD quick-action menu, target submenu, tile actions (chop/smash), More
+  menu (Channel/Enter Building), and drag-moves call `doAttack/doSpell/doMove/
+  doJump/doItem/doComboAttack/channelNexus/doEnterBuilding` DIRECTLY (hud.js
+  ~2900-3600, ui.js 3094/4504) — these bypassed the online clickTile relay, so
+  the GUEST ran them on its non-authoritative local engine (press popups
+  included) and the next sync rolled everything back. Fix: online.js wraps ALL
+  engine mutators — guest emits `game-action {type:'engine', fn, unitId, x, y,
+  z, tool, partnerId}`, host replays in `_executeRemoteAction` (new 'engine'
+  case). Host-side direct calls run locally + `_broadcastState()`.
+- **"Opponent HP never goes down" (staleness)**: damage/AP land on impact
+  timers ~1-2s AFTER the click-time broadcast; nothing rebroadcast afterward
+  during the HOST's own turn. Fixes: `endUnitIfDone` wrapper broadcasts at
+  every action completion, and the handoff heartbeat now runs during BOTH
+  turns (forced dedup-bypass only while waiting on the guest).
+- **Reverse-angle action cam for the P2 viewer**: `_playCineActionShot` /
+  `animateDashActionCamera` / `_playDescentCam` added `yaw += 180` when
+  `body.is-p2-viewer` — that flip dates from the 2D CSS board (rotated 180 for
+  P2); the 3D canvas (in `.map-center`, NOT inside `#board`) is never rotated,
+  so the flip put the camera behind the TARGET looking back at the caster.
+  Removed (yaw is absolute world-space). Same dead assumption inverted WASD
+  for the guest (ui.js ~8711) — also removed. NOTE: in 3D the P2 viewer sees
+  the SAME board orientation as P1 (resting yaw 0 for both).
+- **Fog camera leaks (online + offline vs CPU)**: new gate
+  `_fogCamTilesVisible(...points)` (battle.js, next to _isTileVisibleToViewer)
+  = free on own turn / fog off, else requires ≥1 traced point visible. Applied
+  to: charge/dash cams (2 sites), displacement follows (fling/pull/swap/
+  escape/grab/self-grapple), `_spellFocusCamera`, teleport-dash pan, clickTile
+  combined-path walk pan, doJump pan. `doMove`/`doJump` now treat
+  `state._remoteAction` like AI (fog-aware partial-path anim branch). Guest
+  side (online.js): walk-anim relay trims enemy walks to the VISIBLE segment
+  (mirrors the offline doMove logic) and pans only to visible tiles; jump-anim
+  pans only to a visible endpoint; floating-text + vfx3d relays are gated on
+  tile visibility.
+- **Top-left panel desync**: the ActiveUnitPanel (hud.js) is driven by
+  `_blitzActiveUnitId → selectedUnitId`; selection keys are viewer-LOCAL (in
+  the `_serializeState` skip list). The host kept its stale pre-turn selection
+  during the guest's turn. Fixes: `_continueBlitzWithUnit_impl` REMOTE branch
+  sets selectedUnitId/focusedUnitId = acting unit; `_executeRemoteAction`
+  mirrors the guest's selection while activePlayer === remoteP.
+- **"Seal Your Fate" never showed a waiting state**: party-builder.js read
+  `window.ONLINE_RULES` / `window._myPlayer` which were NEVER exported (both
+  are top-level-const/closure values) → `isOnline` was always undefined. Now
+  exported (ui.js + online.js). Button is role-aware: ranked → WAITING ON
+  OPPONENT/MATCH STARTING; friendly guest → WAITING FOR HOST TO START;
+  friendly host → WAITING ON OPPONENT then an enabled ⚔ START MATCH (host
+  also now emits `host-locked` relay in friendly, not just ranked). Also
+  fixed doStart's locked-vessel check to use the LOCAL player (was hardcoded
+  team 1 — the guest was validated against the host's roster).
+- Verification harness: scratchpad `verify_online_fixes.js` (two browsers,
+  LOCAL_ASSETS=battle.js,online.js,ui.js,party-builder.js,hud.js) — asserts
+  builder button states, panel mirroring, guest direct-doAttack relays to
+  host (HP/AP), guest sees damage ≤3s, fog gate truth table, 0 page errors.
+
 ## R2 throttling + the on-disk asset cache (`asset_cache.js`)
 The game pulls ~35 scripts/styles (~1.3MB; `battle.js` alone ~975KB) from the **public
 `*.r2.dev` dev bucket** (rate-limited, NOT CDN-cached) + a few CDNs. Each Playwright
