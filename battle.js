@@ -69,7 +69,12 @@
         const MAX_CLIMB_HEIGHT = 1;
 
         const FALL_DAMAGE_THRESHOLD = 3;
-        const FALL_DAMAGE_PER_LEVEL = 8;
+        const FALL_DAMAGE_PER_LEVEL = 8;            // legacy flat fallback (kept for exports)
+        // Falls now hurt in proportion to the faller: each level of drop past the
+        // grace threshold costs this fraction of MAX HP (so a 6-level plunge takes
+        // ~20% off a 1000-HP giant instead of a meaningless flat 8/level).
+        const FALL_DAMAGE_PCT_PER_LEVEL = 0.05;
+        const FALL_DAMAGE_MIN = 24;
         const JUMP_HEIGHT = 2;
 
         // ── Buildings ──────────────────────────────────────────────────────────
@@ -81,8 +86,11 @@
         // with the debris, and a unit sheltered INSIDE (via the Enter Building
         // lift) is crushed under it for bonus damage.
         const BUILDING_MAX_HITS = 6;
-        const BUILDING_COLLAPSE_MIN_DMG = 12;   // floor for roof-fall damage (roofs are ~2 high)
-        const BUILDING_CRUSH_BONUS_DMG = 36;    // added on top for units caught inside
+        // Collapse damage scales with the victim's max HP (see percent constants
+        // below) — these flat values are only the absolute floors.
+        const BUILDING_COLLAPSE_MIN_DMG = 40;       // floor for roof-fall damage (roofs are ~2 high)
+        const BUILDING_COLLAPSE_PCT = 0.10;         // % of max HP for riding a roof down
+        const BUILDING_CRUSH_PCT = 0.18;            // % of max HP for being INSIDE when it drops
         const BUILDING_ENTER_AP_COST = 1;       // riding the lift costs the same as an action
         const HIGH_GROUND_RANGE_BONUS = 1;
         const HIGH_GROUND_DEF_BONUS = 5;
@@ -129,9 +137,13 @@
             return Math.random() <= chance;
         }
 
+        // Each hourglass level is worth a real chunk of power (+8 damage dealt,
+        // -8 damage taken per level) instead of a symbolic +1.
+        const HOURGLASS_POWER_PER_LEVEL = 8;
+
         function getHourglassPower(unit) {
 
-            return unit?.hourglassBuff || 0;
+            return (unit?.hourglassBuff || 0) * HOURGLASS_POWER_PER_LEVEL;
         }
 
         function getHourglassMoveBonus(unit) {
@@ -141,7 +153,7 @@
 
         function getHourglassDamageReduction(unit) {
 
-            return unit?.hourglassBuff || 0;
+            return (unit?.hourglassBuff || 0) * HOURGLASS_POWER_PER_LEVEL;
         }
 
         function getEffectiveMove(unit) {
@@ -2918,19 +2930,35 @@
         }
 
         // ── Stat-stage buffs (statStageBoost) ─────────────────────────────────
-        // Many race abilities (Howl, Blood Ritual, Perch Form, …) carry a
-        // `statStageBoost: { atk, def, spd, int }`. Each stage maps to a flat
-        // stat delta and rides a carrier status ('statUp'/'statDown') so the
-        // existing duration-tick + status UI handle expiry and display.
+        // EVERY spell/status stat modifier speaks in STAGES. One stage is a
+        // fixed, meaningful chunk of the stat (below); a unit's total stages per
+        // stat — statStageBoost stages PLUS any status carrying `stageMod`
+        // (Overclock, Inspired, Discord, Glare, …) — is clamped to ±STAT_STAGE_CAP.
+        // The nameplate badge shows the stage count ("ATK+2" = 2 stages = +28 pts),
+        // so what the player reads is exactly what the math does.
         const STAT_STAGE_STEP = { atk: 14, def: 9, spd: 3, int: 12 };
         const STAT_STAGE_DURATION = 3;
+        const STAT_STAGE_CAP = 5;
+
+        // Total live stages for one stat: carrier-status stages + per-status
+        // stageMod contributions, clamped to ±STAT_STAGE_CAP.
+        function getStatStageCount(unit, stat) {
+            if (!unit) return 0;
+            let stages = 0;
+            // Stages on the carrier only count while it is live; once it ticks
+            // away the accumulated numbers are stale and contribute nothing.
+            if (unit.statStages && (unitHasStatus(unit, 'statUp') || unitHasStatus(unit, 'statDown'))) {
+                stages += unit.statStages[stat] || 0;
+            }
+            for (const key of getActiveStatusKeys(unit)) {
+                const mod = STATUS_DEFS[key]?.stageMod;
+                if (mod && mod[stat]) stages += mod[stat];
+            }
+            return Math.max(-STAT_STAGE_CAP, Math.min(STAT_STAGE_CAP, stages));
+        }
 
         function getStatStageDelta(unit, stat) {
-            if (!unit || !unit.statStages) return 0;
-            // Stages only count while a carrier status is live; once it ticks
-            // away the accumulated numbers are stale and contribute nothing.
-            if (!unitHasStatus(unit, 'statUp') && !unitHasStatus(unit, 'statDown')) return 0;
-            return (unit.statStages[stat] || 0) * (STAT_STAGE_STEP[stat] || 0);
+            return getStatStageCount(unit, stat) * (STAT_STAGE_STEP[stat] || 0);
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null) {
@@ -2946,8 +2974,15 @@
             for (const stat of ['atk', 'def', 'spd', 'int']) {
                 const n = boost[stat] || 0;
                 if (!n) continue;
-                st[stat] = (st[stat] || 0) + n;
-                parts.push(`${n > 0 ? '+' : ''}${n} ${stat.toUpperCase()}`);
+                const before = st[stat] || 0;
+                const after = Math.max(-STAT_STAGE_CAP, Math.min(STAT_STAGE_CAP, before + n));
+                st[stat] = after;
+                const applied = after - before;
+                if (!applied) {
+                    parts.push(`${stat.toUpperCase()} ${n > 0 ? 'maxed' : 'floored'}`);
+                    continue;
+                }
+                parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${after === STAT_STAGE_CAP || after === -STAT_STAGE_CAP ? ' (max)' : ''}`);
             }
             if (!parts.length) return;
             const anyPos = ['atk', 'def', 'spd', 'int'].some(s => (st[s] || 0) > 0);
@@ -2997,7 +3032,7 @@
             const unitBuff = unit.hourglassBuff || 0;
             if (unitBuff > 0) entries.push({
                 key: 'hourglass',
-                text: `Temporal Buff Lv.${unitBuff}: +${unitBuff} ATK, +${unitBuff} DEF, +${Math.floor(unitBuff/2)} MOV`
+                text: `Temporal Buff Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
             });
             if ((unit._killStreak || 0) >= 2) entries.push({
                 key: 'damage',
@@ -3701,6 +3736,120 @@
             }, delay);
         }
 
+        // ── Seed effect core ───────────────────────────────────────────────────
+        // One source of truth for what a planted seed does to a unit standing on
+        // it. Used by (1) the end-of-round tick, (2) planting a seed on an
+        // occupied tile (fires immediately), and (3) units stepping onto a seed
+        // mid-round. Amounts scale with max HP so seeds stay relevant whether the
+        // unit has 450 HP or 1000.
+        const SEED_HEAL_PCT = 0.08;       // healing seed: % max HP per proc (doubled in rain)
+        const SEED_POISON_PCT = 0.06;     // poison seed: % max HP per proc (+ poison status)
+        const SEED_LEECH_PCT = 0.05;      // leech seed: % max HP drained from enemies
+        const SEED_LEECH_ALLY_PCT = 0.04; // leech seed: % max HP healed for allies on it
+
+        function _seedRainAt(x, y) {
+            const weatherHere = getWeatherAtTile(x, y);
+            return weatherHere.some(w => {
+                const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === x && t.y === y));
+                const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
+                return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
+            });
+        }
+
+        function applySeedEffectToUnit(seed, unit, events = null) {
+            if (!seed || !unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            const pushEvt = (u, msg, float) => {
+                if (!events) return;
+                let evt = events.find(e => e.unit === u);
+                if (!evt) { evt = { unit: u, msgs: [], floats: [] }; events.push(evt); }
+                if (msg) evt.msgs.push(msg);
+                if (float) evt.floats.push(float);
+            };
+
+            if (seed.type === 'heal' && unit.player === seed.owner) {
+                const isRaining = _seedRainAt(unit.x, unit.y);
+                const healAmt = Math.max(12, Math.round(unit.maxHp * SEED_HEAL_PCT)) * (isRaining ? 2 : 1);
+                const healed = applyHealingToUnit(unit, healAmt, null);
+                if (healed > 0) {
+                    pushEvt(unit, `<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                }
+                return healed > 0;
+            }
+
+            if (seed.type === 'poison' && unit.player !== seed.owner) {
+                const caster = unitFromId(seed.casterUnitId);
+                const hpBefore = unit.hp;
+                const dmgAmt = Math.max(16, Math.round(unit.maxHp * SEED_POISON_PCT));
+                applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
+                    ignoreArmor: true,
+                    damageType: 'dot',
+                    consumeMarked: false
+                });
+                const dmg = hpBefore - unit.hp;
+                if (!unit.dead) {
+                    applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
+                }
+                if (unit.dead) {
+                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed claims ${unitDisplayName(unit)}</span>`, null);
+                } else if (dmg > 0) {
+                    pushEvt(unit, `<span class="dlg-damage">🌿 Poison Seed stings ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                }
+                return true;
+            }
+
+            if (seed.type === 'leech') {
+                if (unit.player !== seed.owner) {
+                    const hpBefore = unit.hp;
+                    const drainAmt = Math.max(12, Math.round(unit.maxHp * SEED_LEECH_PCT));
+                    applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
+                        ignoreArmor: true,
+                        damageType: 'dot',
+                        consumeMarked: false
+                    });
+                    const dmg = hpBefore - unit.hp;
+                    if (dmg > 0) {
+                        pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    }
+                    // Everything drained is channeled to the owner's weakest ally.
+                    const ownerAllies = aliveUnitsFor(seed.owner);
+                    if (dmg > 0 && ownerAllies.length > 0) {
+                        const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+                        const healed = applyHealingToUnit(target, dmg, null);
+                        if (healed > 0) {
+                            pushEvt(target, `<span class="dlg-heal">🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
+                            addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
+                        }
+                    }
+                    return true;
+                }
+                const healed = applyHealingToUnit(unit, Math.max(10, Math.round(unit.maxHp * SEED_LEECH_ALLY_PCT)), null);
+                if (healed > 0) {
+                    pushEvt(unit, `<span class="dlg-heal">🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
+                }
+                return healed > 0;
+            }
+            return false;
+        }
+
+        // Mid-round trigger: fires when a unit ENTERS a seed tile (movement,
+        // jump, displacement) — once per unit per round so pacing on and off a
+        // tile can't machine-gun the effect. The end-of-round tick still fires
+        // on top for units that stay put ("camping the seed").
+        function checkSeedStepTrigger(unit) {
+            if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
+            for (const seed of seedsHere) {
+                const round = state.round || 0;
+                seed._procs = seed._procs || {};
+                if (seed._procs[unit.id] === round) continue;
+                if (applySeedEffectToUnit(seed, unit)) seed._procs[unit.id] = round;
+            }
+        }
+
         function applySeedTileEffects_endOfRound(player, events) {
             if (!state.plantedSeeds) return;
 
@@ -3739,83 +3888,7 @@
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                 const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
                 for (const seed of seedsHere) {
-                    if (seed.type === 'heal' && unit.player === seed.owner) {
-                        const weatherHere = getWeatherAtTile(unit.x, unit.y);
-                        const isRaining = weatherHere.some(w => {
-                            const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === unit.x && t.y === unit.y));
-                            const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
-                            return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
-                        });
-                        const healAmt = isRaining ? 12 : 6;
-                        const hpBefore = unit.hp;
-                        const healed = applyHealingToUnit(unit, healAmt, null);
-                        if (healed > 0) {
-                            let evt = events.find(e => e.unit === unit);
-                            if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                            evt.msgs.push(`<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`);
-                            evt.floats.push({ text: `+${healed}`, type: 'heal' });
-                            addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
-                        }
-                    } else if (seed.type === 'poison' && unit.player !== seed.owner) {
-                        const caster = unitFromId(seed.casterUnitId);
-                        const hpBefore = unit.hp;
-                        applyDamageToUnit(unit, 8, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
-                            ignoreArmor: true,
-                            damageType: 'dot',
-                            consumeMarked: false
-                        });
-                        const dmg = hpBefore - unit.hp;
-                        if (!unit.dead) {
-                            applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
-                        }
-                        let evt = events.find(e => e.unit === unit);
-                        if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                        if (unit.dead) {
-                            evt.msgs.push(`<span class="dlg-damage">🌿 Poison Seed claims ${unitDisplayName(unit)}</span>`);
-                        } else if (dmg > 0) {
-                            evt.msgs.push(`<span class="dlg-damage">🌿 Poison Seed stings ${unitDisplayName(unit)} for ${dmg}</span>`);
-                            evt.floats.push({ text: `-${dmg}`, type: 'damage' });
-                        }
-                    } else if (seed.type === 'leech') {
-                        if (unit.player !== seed.owner) {
-                            const hpBefore = unit.hp;
-                            applyDamageToUnit(unit, 4, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
-                                ignoreArmor: true,
-                                damageType: 'dot',
-                                consumeMarked: false
-                            });
-                            const dmg = hpBefore - unit.hp;
-                            if (dmg > 0) {
-                                let evt = events.find(e => e.unit === unit);
-                                if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                                evt.msgs.push(`<span class="dlg-damage">🌿 Leech Seed drains ${unitDisplayName(unit)} for ${dmg}</span>`);
-                                evt.floats.push({ text: `-${dmg}`, type: 'damage' });
-                            }
-
-                            const ownerAllies = aliveUnitsFor(seed.owner);
-                            if (ownerAllies.length > 0) {
-                                const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-                                const healed = applyHealingToUnit(target, 4, null);
-                                if (healed > 0) {
-                                    let hEvt = events.find(e => e.unit === target);
-                                    if (!hEvt) { hEvt = { unit: target, msgs: [], floats: [] }; events.push(hEvt); }
-                                    hEvt.msgs.push(`<span class="dlg-heal">🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}</span>`);
-                                    hEvt.floats.push({ text: `+${healed}`, type: 'heal' });
-                                    addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
-                                }
-                            }
-                        } else {
-
-                            const healed = applyHealingToUnit(unit, 3, null);
-                            if (healed > 0) {
-                                let evt = events.find(e => e.unit === unit);
-                                if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                                evt.msgs.push(`<span class="dlg-heal">🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP</span>`);
-                                evt.floats.push({ text: `+${healed}`, type: 'heal' });
-                                addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
-                            }
-                        }
-                    }
+                    applySeedEffectToUnit(seed, unit, events);
                 }
             }
         }
@@ -4693,7 +4766,9 @@
                 shakeBoard(streak >= 4 ? 'hard' : 'normal');
             }
 
-            if (streak >= 2) killer._streakAtkBonus = Math.min(3, streak - 1);
+            // +8 ATK per streak step (capped at +24) — enough to actually feel
+            // the hot hand against 500–1000 HP units, not a token +1/+2/+3.
+            if (streak >= 2) killer._streakAtkBonus = Math.min(3, streak - 1) * 8;
 
             killer._maxKillStreak = Math.max(killer._maxKillStreak || 0, streak);
         }
@@ -4747,8 +4822,8 @@
             if (!unit || unit.dead || unit._lastStandTriggered) return;
             if (unit.hp > 0 && unit.hp <= unit.maxHp * 0.20) {
                 unit._lastStandTriggered = true;
-                unit._lastStandAtkBonus = 3;
-                addLog(`💢 ${unitDisplayName(unit)} enters LAST STAND! (+3 ATK)`);
+                unit._lastStandAtkBonus = 16;
+                addLog(`💢 ${unitDisplayName(unit)} enters LAST STAND! (+16 ATK)`);
                 showFloatingTextForUnit(unit, 'LAST STAND!', 'laststd', {
                     durationMs: 1200
                 });
@@ -8540,7 +8615,8 @@
                 const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
                 u.z = toZ;
                 const drop = Math.max(1, fromZ - toZ);
-                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG, drop * FALL_DAMAGE_PER_LEVEL);
+                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG,
+                    Math.round(u.maxHp * Math.max(BUILDING_COLLAPSE_PCT, FALL_DAMAGE_PCT_PER_LEVEL * drop)));
                 applyDamageToUnit(u, dmg, '🏚 Collapsing roof: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
                 if (!u.dead) _settleUnitAfterCollapse(u, tiles);
             }
@@ -8552,7 +8628,7 @@
                 u._insideBuildingTurns = 0;
                 const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
                 u.z = toZ;
-                const dmg = BUILDING_COLLAPSE_MIN_DMG + BUILDING_CRUSH_BONUS_DMG;
+                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
                 applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
                 if (!u.dead) {
                     addLog(`💥 ${unitDisplayName(u)} crawls out of the rubble!`);
@@ -8705,49 +8781,7 @@
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                 const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
                 for (const seed of seedsHere) {
-                    if (seed.type === 'heal' && unit.player === seed.owner) {
-
-                        const weatherHere = getWeatherAtTile(unit.x, unit.y);
-                        const isRaining = weatherHere.some(w => {
-                            const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === unit.x && t.y === unit.y));
-                            const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
-                            return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
-                        });
-                        const healAmt = isRaining ? 12 : 6;
-                        const healed = applyHealingToUnit(unit, healAmt, null);
-                        if (healed > 0) addLog(`🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
-                    } else if (seed.type === 'poison' && unit.player !== seed.owner) {
-
-                        const caster = unitFromId(seed.casterUnitId);
-                        applyDamageToUnit(unit, 8, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
-                            ignoreArmor: true,
-                            damageType: 'dot',
-                            consumeMarked: false
-                        });
-
-                        if (!unit.dead) {
-                            applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
-                        }
-                    } else if (seed.type === 'leech') {
-                        if (unit.player !== seed.owner) {
-                            applyDamageToUnit(unit, 4, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
-                                ignoreArmor: true,
-                                damageType: 'dot',
-                                consumeMarked: false
-                            });
-
-                            const ownerAllies = aliveUnitsFor(seed.owner);
-                            if (ownerAllies.length > 0) {
-                                const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
-                                const healed = applyHealingToUnit(target, 4, null);
-                                if (healed > 0) addLog(`🌿 Leech Seed channels ${healed} HP to ${unitDisplayName(target)}.`);
-                            }
-                        } else {
-
-                            const healed = applyHealingToUnit(unit, 3, null);
-                            if (healed > 0) addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
-                        }
-                    }
+                    applySeedEffectToUnit(seed, unit);
                 }
             }
         }
@@ -17888,6 +17922,7 @@
                                 }
                             }
                             if (!_inlineAirborne) checkWarpRuneTrigger(actingUnit);
+                            if (!_inlineAirborne) checkSeedStepTrigger(actingUnit);
 
                             if (!_inlineAirborne && destZ < savedZ && typeof applyFallDamage === 'function') {
                                 applyFallDamage(actingUnit, savedZ, destZ, 'Fall: ');
@@ -19126,6 +19161,7 @@
             resolveMovePath(unit, path, x, y);
 
             checkWarpRuneTrigger(unit);
+            checkSeedStepTrigger(unit);
 
             if (_aiWalkAnimDelay > 0) {
                 return _aiWalkAnimDelay;
@@ -19950,7 +19986,7 @@
 
             if (totalHourglasses > 0) {
                 const newLevel = unit.hourglassBuff || 0;
-                const buffDesc = `+${newLevel} ATK, +${newLevel} DEF, +${Math.floor(newLevel/2)} MOV`;
+                const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
                 showFloatingTextForUnit(unit, `⏳ +${totalHourglasses}`, 'streak');
@@ -23487,24 +23523,22 @@
                         setTerrainAt(x, y, 'grass');
                         _invalidateBoardGrid();
                     }
-                    state.plantedSeeds.push({
+                    const _newSeed = {
                         x,
                         y,
                         z,
                         type: 'heal',
                         owner: unit.player,
                         casterUnitId: unit.id
-                    });
+                    };
+                    state.plantedSeeds.push(_newSeed);
                     addLog(`${unitDisplayName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
 
-                    const wHere = getWeatherAtTile(x, y);
-                    const raining = wHere.length > 0 && (state.activeWeather || []).some(aw => aw.tiles.some(t => t.x === x && t.y === y) && ['thunderstorm', 'hurricane'].includes(aw.type));
-                    if (raining) {
-                        const unitsHere = aliveUnitsFor(unit.player).filter(u => u.x === x && u.y === y);
-                        for (const ally of unitsHere) {
-                            const h = applyHealingToUnit(ally, 12, unit);
-                            if (h > 0) addLog(`🌱 The seed blooms in the rain! ${unitDisplayName(ally)} is healed for ${h} HP.`);
-                        }
+                    // Planting under an ally's feet works right away — no waiting
+                    // a round for the first tick (rain still doubles the heal).
+                    const _occupant = unitAt(x, y);
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                        _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
@@ -23549,15 +23583,21 @@
                         setTerrainAt(x, y, 'grass');
                         _invalidateBoardGrid();
                     }
-                    state.plantedSeeds.push({
+                    const _newSeed = {
                         x,
                         y,
                         z,
                         type: 'poison',
                         owner: unit.player,
                         casterUnitId: unit.id
-                    });
+                    };
+                    state.plantedSeeds.push(_newSeed);
                     addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
+                    // Planting under an enemy's feet stings immediately.
+                    const _occupant = unitAt(x, y);
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                        _newSeed._procs = { [_occupant.id]: state.round || 0 };
+                    }
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);
@@ -23661,15 +23701,22 @@
                         setTerrainAt(x, y, 'grass');
                         _invalidateBoardGrid();
                     }
-                    state.plantedSeeds.push({
+                    const _newSeed = {
                         x,
                         y,
                         z,
                         type: 'leech',
                         owner: unit.player,
                         casterUnitId: unit.id
-                    });
+                    };
+                    state.plantedSeeds.push(_newSeed);
                     addLog(`${unitDisplayName(unit)} plants Leech Seed at ${coordLabel(x, y)}. Enemies will be drained, allies nourished. Persists until destroyed.`);
+                    // Planting under someone's feet works immediately — drain an
+                    // enemy or nourish an ally standing there right now.
+                    const _occupant = unitAt(x, y);
+                    if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
+                        _newSeed._procs = { [_occupant.id]: state.round || 0 };
+                    }
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);
