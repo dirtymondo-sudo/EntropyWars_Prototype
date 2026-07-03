@@ -3080,7 +3080,9 @@ const ThreeRenderer = (function () {
         var armLen = ts * 0.62, armR = poleR * 0.7;
         var riser = new THREE.Mesh(new THREE.CylinderGeometry(armR, armR, ts * 0.30, 7), poleMat);
         riser.position.set(0, poleH + ts * 0.10, -ts * 0.085);
-        riser.rotation.x = 0.62;
+        /* negative pitch leans the riser's top TOWARD the arm (local -Z);
+           positive leaned it backwards, leaving the arm floating */
+        riser.rotation.x = -0.62;
         g.add(riser);
         var arm = new THREE.Mesh(new THREE.CylinderGeometry(armR * 0.85, armR, armLen, 7), poleMat);
         arm.rotation.x = Math.PI / 2;
