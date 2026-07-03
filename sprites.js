@@ -732,6 +732,13 @@ const OBJECT_SPRITES = {
        (rocks_1..rocks_5) authored in the editor, like leaves for trees. The url
        is only the editor palette thumbnail (defaults to the rocks_1 sprite). */
     rock:         { url: `${_T}/rocks_1.png`, model3d: true },
+    /* Cosmetic torch — rendered in-game as a real 3D wood-and-rope torch with a
+       live flame + flickering point light by _buildTorch3D (three-renderer.js).
+       The url is only the editor palette thumbnail (the legacy flat torch
+       sprite). The mount variant lives in the object entry's generic texture
+       slot (entry.leaf): 'floor' stands on the tile top, 'wall' hangs off the
+       side of the neighbouring tile the entry's rot points at, Minecraft-style. */
+    torch:        { url: `${_S}/torch.png`, model3d: true },
 };
 
 const TERRAIN_SPRITES = {
@@ -896,6 +903,9 @@ const LEECH_SEED_SPRITE_URL    = `${_S}/leech_seed.png`;
 const POWDER_KEG_SPRITE_URL    = `${_S}/powder_keg.png`;
 const BOMB_SPRITE_URL          = `${_S}/bomb.png`;
 const WARD_SPRITE_URL          = `${_S}/torch.png`;
+/* Twisted-rope strip (128×32) — wrapped around the 3D torch's lashing rings
+   by _buildTorch3D (three-renderer.js). */
+const ROPE_SPRITE_URL          = `${_S}/rope.png`;
 const BONE_WALL_SPRITE_URL     = `${_S}/bone_wall.png`;
 
 const DRAGON_SPRITES = {

@@ -6137,6 +6137,9 @@
             'grass_tuft',
             // 2026-06 — append-only (indices are saved-map object ids)
             'rock',
+            // 2026-07 — 3D wood-and-rope torch (floor or Minecraft-style wall
+            // mount via entry.leaf; see _buildTorch3D in three-renderer.js)
+            'torch',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -6169,7 +6172,7 @@
             { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
             { label: 'Churches', keys: ['church_1','church_2'] },
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
-            { label: 'Props', keys: ['lamp_post','lamp_post_2'] },
+            { label: 'Props', keys: ['lamp_post','lamp_post_2','torch'] },
         ];
 
         let _meW = 12, _meH = 12;
@@ -6240,6 +6243,16 @@
            rocks" that match the moon surface. */
         const ME_ROCK_OPTIONS = ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','moon','moon_2','moon_3'];
         function _meIsRockKey(key){ return key === 'rock'; }
+        /* Torch mount the brush stamps — stored on the placed object in the
+           SAME entry.leaf field trees/rocks use (the generic variant slot):
+           'floor' stands on the tile top, 'wall' hangs Minecraft-style off the
+           tile side the entry's rot points at (aim it with the rotate dial). */
+        let _meSelectedTorchMount = 'floor';
+        const ME_TORCH_MOUNTS = [
+            { key: 'floor', label: '⬇ Floor', tip: 'Stands upright on the tile top' },
+            { key: 'wall',  label: '🧱 Wall',  tip: 'Hangs on the tile side the rotate arrow points at' },
+        ];
+        function _meIsTorchKey(key){ return key === 'torch'; }
         let _meSelectedObjRef = null;             // {x,y,idx} of the object picked for rotate-after-place
         let _meSelectedMonRef = null;             // index into _meMonuments of the monument picked for rotate
         let _meDialDragging = false;              // true while the user drags the rotation dial
@@ -7590,7 +7603,7 @@
             const selEntry = _meSelectedObjEntry();
             const selMon = _meSelectedMonEntry();
             if (selEntry || selMon) {
-                let kind, label, coord, rotVal, isStair = false, isTree = false, isRock = false;
+                let kind, label, coord, rotVal, isStair = false, isTree = false, isRock = false, isTorch = false;
                 if (selMon) {
                     kind = 'mon';
                     const md = ME_MON_BY_KIND[selMon.kind];
@@ -7606,6 +7619,7 @@
                     isStair = (selKey === 'stairs' || selKey === 'stairs_2');
                     isTree = _meIsTreeKey(selKey);
                     isRock = _meIsRockKey(selKey);
+                    isTorch = _meIsTorchKey(selKey);
                 }
 
                 html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 Rotate: ${label} <span style="opacity:0.6;font-weight:400">${coord}</span></div>`;
@@ -7656,6 +7670,17 @@
                             html += `<div class="me-pbtn${ra}" style="background-image:${_meTerrainBg(rt)};background-size:cover;width:32px;height:32px" title="${rt}" onclick="window._meSetSelectedLeaf('${rt}')"></div>`;
                         }
                         html += `</div>`;
+                    } else if (isTorch) {
+                        html += `<div class="me-pal-cat me-placement-header">🔥 Mount</div>`;
+                        html += `<div class="me-pbtn-row" style="padding:4px 6px;gap:4px">`;
+                        for (const tm of ME_TORCH_MOUNTS) {
+                            const ta = (selEntry.leaf || 'floor') === tm.key ? ' active' : '';
+                            html += `<div class="me-pbtn${ta}" title="${tm.tip}" onclick="window._meSetSelectedLeaf('${tm.key}')">${tm.label}</div>`;
+                        }
+                        html += `</div>`;
+                        if ((selEntry.leaf || 'floor') === 'wall') {
+                            html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:2px 6px">The torch hangs on the tile side the dial points at — aim N/E/S/W at the neighbouring wall block.</div>`;
+                        }
                     }
                 } else {
                     html += `<div class="me-pbtn-row" style="padding:0 6px 4px">`;
@@ -7820,6 +7845,17 @@
                         html += `<div class="me-pbtn${ra}" style="background-image:${_meTerrainBg(rt)};background-size:cover;width:34px;height:34px" title="${rt}" onclick="window._meSetRockTex('${rt}')"></div>`;
                     }
                     html += `</div>`;
+                } else if (_meIsTorchKey(_meSelectedObject)) {
+                    html += `<div class="me-pal-cat me-placement-header">🔥 Mount (new torches)</div>`;
+                    html += `<div class="me-pbtn-row" style="padding:4px 6px;gap:4px">`;
+                    for (const tm of ME_TORCH_MOUNTS) {
+                        const ta = _meSelectedTorchMount === tm.key ? ' active' : '';
+                        html += `<div class="me-pbtn${ta}" title="${tm.tip}" onclick="window._meSetTorchMount('${tm.key}')">${tm.label}</div>`;
+                    }
+                    html += `</div>`;
+                    if (_meSelectedTorchMount === 'wall') {
+                        html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:2px 6px">Wall torches hang on the tile side the Rotate arrow points at (N/E/S/W) — place them on the open tile NEXT TO a raised block, aiming at its wall.</div>`;
+                    }
                 }
 
                 html += `<div class="me-pal-cat me-placement-header">Placement</div>`;
@@ -7880,6 +7916,7 @@
         window._meSetMonMaxH = function(h) { _meMonMaxH = h; _meRenderPalette(); };
         window._meSetLeaf = function(lf) { _meSelectedLeaf = lf; _meRenderPalette(); };
         window._meSetRockTex = function(rt) { _meSelectedRockTex = rt; _meRenderPalette(); };
+        window._meSetTorchMount = function(m) { _meSelectedTorchMount = m; _meRenderPalette(); };
 
         window._meSetTab = function(tab) {
             _mePaletteTab = tab;
@@ -8767,7 +8804,9 @@
                 const oid = ME_OBJECT_TO_ID[_meSelectedObject] || 1;
                 if (!Array.isArray(_meObjects[y][x])) _meObjects[y][x] = [];
                 const leaf = _meIsTreeKey(_meSelectedObject) ? _meSelectedLeaf
-                           : (_meIsRockKey(_meSelectedObject) ? _meSelectedRockTex : null);
+                           : _meIsRockKey(_meSelectedObject) ? _meSelectedRockTex
+                           : _meIsTorchKey(_meSelectedObject) ? _meSelectedTorchMount
+                           : null;
                 const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
                 _meObjects[y][x].push(entry);
                 if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;

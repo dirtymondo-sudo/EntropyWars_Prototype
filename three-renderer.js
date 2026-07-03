@@ -2123,9 +2123,14 @@ const ThreeRenderer = (function () {
                             if (_e0.rot) s += _e0.rot;
                             if (_e0.alignX === 'left') s += 1; else if (_e0.alignX === 'right') s += 2;
                             if (_e0.alignY === 'top') s += 4;
-                            /* leaf choice changes the canopy texture → bust the cache */
+                            /* leaf choice changes the canopy texture → bust the cache.
+                               rot of EVERY entry too (not just entry 0) — a wall
+                               torch stacked behind another object re-mounts to a
+                               different tile side when spun. */
                             for (var _ei = 0; _ei < _rkRaw.length; _ei++) {
-                                var _le = _rkRaw[_ei]; if (_le && _le.leaf) { for (var _ci = 0; _ci < _le.leaf.length; _ci++) s += _le.leaf.charCodeAt(_ci) * (_ei + 1); } }
+                                var _le = _rkRaw[_ei]; if (!_le) continue;
+                                if (_le.leaf) { for (var _ci = 0; _ci < _le.leaf.length; _ci++) s += _le.leaf.charCodeAt(_ci) * (_ei + 1); }
+                                if (_le.rot) s += _le.rot * (_ei + 2); }
                         }
                     }
                 }
@@ -3361,6 +3366,275 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── 3D Torch ─────────────────────────────────────────────────────────
+       A real wood-and-rope torch replacing the old flat torch.png billboard:
+       a bark-textured handle (terrain/wood.png), twisted-rope lashing rings
+       (rope.png) holding a charred head, a live animated flame with an
+       additive glow halo, and a flickering point light that dims by day and
+       brightens at night (same behaviour as the ward / street-lamp lights).
+
+       Editor-placed torches ('torch' object) support two mounts, carried in
+       the placed entry's generic variant slot (entry.leaf):
+         'floor' (default) — stands upright on the tile top;
+         'wall'            — hangs Minecraft-style off the side of the
+                             neighbouring tile the entry's rot points at
+                             (0=N 90=E 180=S 270=W), leaning away from the
+                             wall face.
+       Vision wards reuse the same model via _buildWardTorch (they skip the
+       point light — ThreePost.rebuildWardLights already lights each ward). */
+    var _torchWoodTex = null, _torchRopeTex = null, _torchFlameTexObj = null;
+    function _getTorchWoodTex() {
+        if (_torchWoodTex) return _torchWoodTex;
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + 'wood.png', function () { _objectsDirty = true; });
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.NearestFilter;
+        /* zoom into the bark so the grain still reads on a thin stick */
+        t.repeat.set(0.5, 0.5);
+        _torchWoodTex = t;
+        return t;
+    }
+    function _getTorchRopeTex() {
+        if (_torchRopeTex) return _torchRopeTex;
+        var url = (typeof ROPE_SPRITE_URL !== 'undefined')
+            ? ROPE_SPRITE_URL
+            : 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/rope.png';
+        var t = textureLoader.load(url, function () { _objectsDirty = true; });
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.NearestFilter;
+        /* the strip runs u-wise around each lashing ring — several repeats so
+           the twist reads as coiled cord */
+        t.repeat.set(5, 1);
+        _torchRopeTex = t;
+        return t;
+    }
+    /* Soft teardrop flame painted once on a canvas — additively blended so it
+       reads bright by day and glows at night. */
+    function _getTorchFlameTex() {
+        if (_torchFlameTexObj) return _torchFlameTexObj;
+        var c = document.createElement('canvas'); c.width = 64; c.height = 96;
+        var ctx = c.getContext('2d');
+        /* body: warm orb hugging the wick */
+        var g1 = ctx.createRadialGradient(32, 62, 3, 32, 60, 30);
+        g1.addColorStop(0.00, 'rgba(255,244,190,0.95)');
+        g1.addColorStop(0.30, 'rgba(255,180,70,0.90)');
+        g1.addColorStop(0.65, 'rgba(255,100,25,0.50)');
+        g1.addColorStop(1.00, 'rgba(180,40,10,0)');
+        ctx.fillStyle = g1; ctx.fillRect(0, 0, 64, 96);
+        /* tongue: narrower lick rising off the body */
+        var g2 = ctx.createRadialGradient(32, 34, 2, 32, 36, 20);
+        g2.addColorStop(0.00, 'rgba(255,220,120,0.85)');
+        g2.addColorStop(0.45, 'rgba(255,130,40,0.55)');
+        g2.addColorStop(1.00, 'rgba(200,60,15,0)');
+        ctx.fillStyle = g2; ctx.fillRect(0, 0, 64, 96);
+        /* hot core */
+        var g3 = ctx.createRadialGradient(32, 66, 1, 32, 66, 10);
+        g3.addColorStop(0, 'rgba(255,255,235,0.95)');
+        g3.addColorStop(1, 'rgba(255,220,140,0)');
+        ctx.fillStyle = g3; ctx.fillRect(0, 0, 64, 96);
+        _torchFlameTexObj = new THREE.CanvasTexture(c);
+        return _torchFlameTexObj;
+    }
+
+    /* Live flame/light entries animated every frame by _updateTorchFlames().
+       Self-cleaning: entries whose root group has been removed from the scene
+       (any rebuild pass) are dropped on the next update — no explicit
+       unregistration needed. */
+    var _torchFlames = [];
+    var TORCH_LIGHT_COLOR_DAY   = 0xff9944;
+    var TORCH_LIGHT_COLOR_NIGHT = 0xff8833;
+    var TORCH_LIGHT_INT_DAY     = 0.55;
+    var TORCH_LIGHT_INT_NIGHT   = 1.35;
+    var TORCH_LIGHT_DISTANCE    = 340;
+    var TORCH_LIGHT_DECAY       = 1.5;
+    /* Every PointLight added to the scene recompiles the lit shaders and adds
+       per-fragment cost, so only the first N torches carry a real light — the
+       rest keep the flame + additive glow (which still read as lit). */
+    var TORCH_MAX_LIGHTS = 20;
+
+    /* Builds the torch mesh with its origin at the BASE of the handle.
+       Returns { model, flame, flameMat, flameY } — the caller positions the
+       model, registers the flame for animation, and (optionally) parents a
+       point light at flameY. */
+    function _makeTorchModel(opts) {
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var s = opts.scale || 1;
+        var g = new THREE.Group();
+
+        var stickH = ts * 0.55 * s, stickR = ts * 0.05 * s;
+        var woodMat = _evTintMat(new THREE.MeshLambertMaterial({ map: _getTorchWoodTex() }), 'wood');
+        var stick = new THREE.Mesh(new THREE.CylinderGeometry(stickR * 0.82, stickR, stickH, 7), woodMat);
+        stick.position.y = stickH / 2;
+        g.add(stick);
+
+        /* charred head the rope lashes the wick cloth to */
+        var headH = ts * 0.11 * s, headR = stickR * 1.28;
+        var headMat = new THREE.MeshLambertMaterial({ map: _getTorchWoodTex(), color: new THREE.Color(0x4a3826) });
+        var head = new THREE.Mesh(new THREE.CylinderGeometry(headR, stickR * 0.9, headH, 7), headMat);
+        head.position.y = stickH + headH / 2 - ts * 0.01 * s;
+        g.add(head);
+
+        /* rope lashing — three stacked rings under the head + a grip wrap low
+           on the handle, the twisted rope.png strip coiled around each ring */
+        var ropeMat = new THREE.MeshLambertMaterial({
+            map: _getTorchRopeTex(), transparent: true, alphaTest: 0.15, side: THREE.DoubleSide
+        });
+        for (var ri = 0; ri < 3; ri++) {
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(stickR * 1.12, ts * 0.016 * s, 5, 14), ropeMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = stickH * (0.68 + ri * 0.085);
+            g.add(ring);
+        }
+        var grip = new THREE.Mesh(new THREE.TorusGeometry(stickR * 1.02, ts * 0.014 * s, 5, 12), ropeMat);
+        grip.rotation.x = Math.PI / 2;
+        grip.position.y = stickH * 0.24;
+        g.add(grip);
+
+        /* flame — two crossed additive planes (reads from any camera angle
+           without billboarding; _updateTorchFlames flutters the group) */
+        var flameW = ts * 0.30 * s, flameH = ts * 0.44 * s;
+        var flameMat = new THREE.MeshBasicMaterial({
+            map: _getTorchFlameTex(), transparent: true, depthWrite: false, fog: false,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+        });
+        var flame = new THREE.Group();
+        var fA = new THREE.Mesh(new THREE.PlaneGeometry(flameW, flameH), flameMat);
+        fA.position.y = flameH * 0.5;
+        flame.add(fA);
+        var fB = new THREE.Mesh(new THREE.PlaneGeometry(flameW, flameH), flameMat);
+        fB.rotation.y = Math.PI / 2;
+        fB.position.y = flameH * 0.5;
+        flame.add(fB);
+        var flameY = stickH + headH * 0.5;
+        flame.position.y = flameY;
+        g.add(flame);
+
+        /* soft camera-facing halo around the flame (skipped for wards —
+           ThreePost's ward light already draws its own glow plane there) */
+        if (!opts.noGlow && typeof _hzGlowCore === 'function') {
+            var glow = _hzGlowCore(ts * 0.16 * s, 0xffc06a, 0xff8a30);
+            glow.position.y = flameY + flameH * 0.42;
+            g.add(glow);
+        }
+
+        return { model: g, flame: flame, flameMat: flameMat, flameY: flameY };
+    }
+
+    function _torchRegisterFlame(entry) {
+        /* prune roots torn down by an earlier rebuild so the light budget
+           below counts only live torches */
+        _torchFlames = _torchFlames.filter(function (e) { return !!e.root.parent; });
+        _torchFlames.push(entry);
+    }
+
+    /* Editor-placed torch object. */
+    function _buildTorch3D(objKey, x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+
+        /* mount + facing authored in the editor */
+        var mount = 'floor', rot = 0;
+        try {
+            var stk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+            if (stk) {
+                for (var i = 0; i < stk.length; i++) {
+                    var k = stk[i].key || stk[i];
+                    if (k === objKey) { if (stk[i].leaf) mount = stk[i].leaf; rot = stk[i].rot || 0; break; }
+                }
+            }
+        } catch (e) {}
+
+        var g = new THREE.Group();
+        var parts = _makeTorchModel({ scale: 1 });
+        g.add(parts.model);
+
+        if (mount === 'wall') {
+            /* Hang off the wall of the neighbouring tile the rotation points
+               at: yaw the group so local -Z faces that wall, shove the torch
+               to that edge of THIS tile, raise it to roughly mid-face of the
+               wall, and lean the top back into the tile (Minecraft-style). */
+            var d4 = ((Math.round(rot / 90) % 4) + 4) % 4;      /* 0=N 1=E 2=S 3=W */
+            g.rotation.y = -d4 * (Math.PI / 2);
+            var dv = [[0, -1], [1, 0], [0, 1], [-1, 0]][d4];
+            var nx = x + dv[0], ny = y + dv[1];
+            var _tbw = (typeof bw === 'function') ? bw() : 0, _tbh = (typeof bh === 'function') ? bh() : 0;
+            var wallH = ts * 0.9;                                /* fallback: assume a 1-block wall */
+            if (nx >= 0 && ny >= 0 && nx < _tbw && ny < _tbh) {
+                var nTop = tileTopY(nx, ny);
+                if (nTop > topY) wallH = nTop - topY;
+            }
+            parts.model.position.z = -ts * 0.38;
+            parts.model.position.y = Math.min(wallH * 0.45, ts * 0.55);
+            parts.model.rotation.x = 0.42;                       /* ~24° lean away from the wall */
+        } else {
+            /* floor torch — rotation is cosmetically irrelevant but honored */
+            g.rotation.y = -rot * Math.PI / 180;
+        }
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+
+        var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: (x * 7 + y * 13) % 100 };
+        _torchRegisterFlame(entry);
+        var litCount = 0;
+        for (var li = 0; li < _torchFlames.length; li++) { if (_torchFlames[li].light) litCount++; }
+        if (litCount < TORCH_MAX_LIGHTS) {
+            var pl = new THREE.PointLight(TORCH_LIGHT_COLOR_DAY, TORCH_LIGHT_INT_DAY, TORCH_LIGHT_DISTANCE, TORCH_LIGHT_DECAY);
+            pl.position.set(0, parts.flameY + ts * 0.10, 0);
+            parts.model.add(pl);
+            entry.light = pl;
+        }
+        return g;
+    }
+
+    /* Vision-ward torch (deployable) — same model, no own point light because
+       ThreePost.rebuildWardLights already lights + haloes every ward. */
+    function _buildWardTorch(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var g = new THREE.Group();
+        var parts = _makeTorchModel({ scale: 0.85, noGlow: true });
+        g.add(parts.model);
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        _torchRegisterFlame({ root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: (x * 11 + y * 17) % 100 });
+        return g;
+    }
+
+    /* Per-frame flame flutter + light flicker, day/night aware (mirrors the
+       ward-light flicker in three-post.js). */
+    function _updateTorchFlames() {
+        if (!_torchFlames.length) return;
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var isNight = (cycle === 'night');
+        var baseInt = isNight ? TORCH_LIGHT_INT_NIGHT : TORCH_LIGHT_INT_DAY;
+        var now = performance.now() * 0.001;
+        var alive = [];
+        for (var i = 0; i < _torchFlames.length; i++) {
+            var e = _torchFlames[i];
+            if (!e.root.parent) continue;   /* torn down by a rebuild — drop */
+            alive.push(e);
+            var f = 1.0
+                + 0.08 * Math.sin(now * 6.3 + e.seed * 1.7)
+                + 0.05 * Math.sin(now * 13.1 + e.seed * 3.2)
+                + 0.03 * Math.sin(now * 2.1 + e.seed * 5.0);
+            if (e.flame) {
+                e.flame.scale.set(0.92 + 0.10 * f, f, 0.92 + 0.10 * f);
+                /* small sideways shiver so the tongue licks around */
+                e.flame.rotation.y = 0.25 * Math.sin(now * 3.7 + e.seed);
+            }
+            if (e.mat) e.mat.opacity = Math.min(1, 0.82 * f + (isNight ? 0.12 : 0));
+            if (e.light) {
+                e.light.intensity = baseInt * f;
+                e.light.color.set(isNight ? TORCH_LIGHT_COLOR_NIGHT : TORCH_LIGHT_COLOR_DAY);
+            }
+        }
+        _torchFlames = alive;
+    }
+
     /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */
     function _buildCrystalCluster3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -3587,6 +3861,7 @@ const ThreeRenderer = (function () {
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
             else if (ok === 'rock')               m = _buildRock3D(x, y);
+            else if (ok === 'torch')              m = _buildTorch3D(ok, x, y);
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the
@@ -3804,7 +4079,9 @@ const ThreeRenderer = (function () {
         if (state.wards) {
             for (var i = 0; i < state.wards.length; i++) {
                 var w = state.wards[i];
-                var m = _buildDeployableBillboard('ward', w.x, w.y, null);
+                /* Wards render as the same 3D wood-and-rope torch the map
+                   editor places (was: the flat torch.png billboard). */
+                var m = _buildWardTorch(w.x, w.y);
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = w.x; m._ew_depY = w.y;
@@ -12003,6 +12280,7 @@ const ThreeRenderer = (function () {
             }
         }
         _towerCubes.length = 0;
+        _torchFlames.length = 0;
         if (_terrainDecoGroup && objectGroup) {
             objectGroup.remove(_terrainDecoGroup);
             _disposeR(_terrainDecoGroup);
@@ -13147,6 +13425,7 @@ const ThreeRenderer = (function () {
         _updateBatSwarms();
         _updateFlyingBob();
         _updateTowerCubes();
+        _updateTorchFlames();
         _updateInsideBuildingVisibility();
         _updatePlateVisibility();
         _updatePlateEffBadges();

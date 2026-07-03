@@ -1108,6 +1108,23 @@ const OBJECT_RULES = {
         gameHeight: 0,
         cosmetic: true,
     },
+    /* Cosmetic torch — 3D wood-and-rope torch with a live flame + flickering
+       point light (rendered by _buildTorch3D in three-renderer). Fully
+       passable, no collision, no height. The mount lives in the placed
+       entry's generic variant slot (entry.leaf): 'floor' stands on the tile
+       top, 'wall' hangs Minecraft-style off the tile side the entry's rot
+       points at. */
+    torch: {
+        label: 'Torch',
+        short: 'TCH',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 0,
+        cosmetic: true,
+    },
     church: {
         label: 'Church',
         short: 'CHR',
