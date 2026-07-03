@@ -135,6 +135,59 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   point (sync() multiplies by tileSize). Set `x/y/zoom/tilt/yaw` AND their `_t*` +
   `_smooth*` twins, wait ~1s, then screenshot.
 
+## Online-experience pass (2026-07-03) — online.js, battle.js, ui.js, index.html, server.js
+Four upgrades verified end-to-end with a two-browser probe (29/29) + a two-socket
+server test (21/21). Client files → R2: **online.js, battle.js, ui.js**;
+**index.html + server.js are served by the Node server** → redeploy those there.
+- **Reconnect banner (non-blocking):** `_showReconnectOverlay` in online.js is now a
+  top-center pill (pointer-events:none) instead of the old full-screen blackout —
+  the board stays visible during the 90s window. Showing it calls
+  `window._pauseShotClock()`, hiding calls `_resumeShotClock()` (battle.js —
+  resume shifts `startedAt` by the paused span). Exposed:
+  `window._ewHideReconnectBanner`.
+- **Shot clock actually works now (online-only):** `_shotClockExpired` compared
+  `ctrl !== CTRL.HUMAN` but CTRL has no HUMAN key → it NEVER fired. Now gated
+  `ctrl === CTRL.LOCAL && isOnlineMatch()` (single-player unaffected), and expiry
+  routes through `triggerEndTurn()` so a guest EMITS the end-turn instead of
+  desyncing its local copy. New self-contained countdown pill
+  (`_renderShotClockPill`, battle.js, `#shotClockPill`) appears under the top bar
+  when ≤15s remain, red ≤5s, ⏸ while paused. `state.shotClock.pausedAt` is the
+  pause flag; the 1s `_matchClockInterval` tick drives everything.
+- **Guest latency-hiding feedback:** `_guestActionFeedback(kind, unit, x, y)`
+  (online.js) fires instant LOCAL cosmetics on every guest emit — attack/combo:
+  `triggerAttackAnim` + basicAttack sfx; spell: `triggerCastAnim` + spellDamage
+  (or buff for support kinds); move/jump: moveStep sfx + a team-tinted
+  `ThreeRenderer.showGhostUnit(..., {tag:'netPending'})` hologram at the
+  destination (cleared in `_applyRemoteState` when the authoritative sync lands);
+  item: itemThrow. Wired into all guest engine-wrapper emits AND the clickTile
+  confirm/move branches (move ghost only for tiles `getMoveTiles` accepts).
+  Damage numbers still arrive only with the host relay — feedback ≠ prediction.
+  GOTCHA: `window.GAME.doAttack` etc. are STALE pre-wrap snapshots; the real UI
+  (and any probe) must call the bare globals (`window.doAttack`) to hit the
+  online wrappers.
+- **Post-match Main Menu:** new `#mainMenuBtn` on the result overlay (index.html
+  + `_restoreResultOverlayButtons` in battle.js), wired late-bound in ui.js →
+  `backToMainMenu()` (battle.js): backToPartyBuilder-style cleanup, then
+  `transitionTo(GS.MAIN_MENU)` + `_showTitlePage('mainMenuPage')`. online.js
+  wraps it: socket.disconnect + NET/controller reset + sessionStorage rejoin
+  cleanup, so ONLINE_RULES.active goes false before the menu rebuilds. The
+  server closes the room as a **post-match departure** (`postMatch:true` on
+  player-disconnected) and the remaining client keeps its result screen (no
+  forced reload); a late match-forfeit is ignored when `state.winner` is set.
+- **server.js relay hardening + replays** (deploy server-side, no R2):
+  direction enforcement (game-action must come from the room's GUEST socket,
+  state-sync from the HOST — spoofed side dropped + `[GUARD]` logged);
+  turn-ownership gating (server tracks `activePlayer` from host syncs; mutating
+  guest actions — clickTile/engine/triggerEndTurn/useRosterItem/recall — are
+  dropped while it isn't P2's turn; selectUnit/setTool/forfeit always pass);
+  per-socket token-bucket rate limits (game-action 12/s burst 30, state-sync
+  30/60, relay 60/120); JSONL replay per started match in `./replays/`
+  (header + party-configs + full guest action stream + battle-start baseline
+  snapshot + 60s periodic + final state + end record; ~20k-event cap). Rematch
+  (winner→null sync) re-arms forfeit + `_resultProcessed` (fixes rematch ELO
+  never processing) and starts a new replay segment. Scratchpad probes:
+  `server_test.js` (socket.io-client) + `probe_online_ux.js` (2-browser).
+
 ## 3D unit sprites — extruded slab shells (2026-07-02, three-renderer.js)
 Unit billboards are now REAL 3D and lit. `_buildUnitEntry` keeps the flat plane as
 the FRONT cap (material switched MeshBasic→MeshLambert so sun/hemi/point lights

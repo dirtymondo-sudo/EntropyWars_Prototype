@@ -13273,15 +13273,18 @@
                 <button id="exportLastMatchBtn">Export Last Match</button>
                 <button id="exportMatchHistoryBtn">Export Match History</button>
                 <button id="startOverBtn" class="warn">Back to Party Builder</button>
+                <button id="mainMenuBtn">Main Menu</button>
             `;
             const nmb = document.getElementById('nextMatchBtn');
             const sob = document.getElementById('startOverBtn');
             const elm = document.getElementById('exportLastMatchBtn');
             const emh = document.getElementById('exportMatchHistoryBtn');
+            const mmb = document.getElementById('mainMenuBtn');
             if (nmb) nmb.onclick = continueToNextMatch;
             if (sob) sob.onclick = backToPartyBuilder;
             if (elm) elm.onclick = exportLastMatch;
             if (emh) emh.onclick = exportMatchHistory;
+            if (mmb) mmb.onclick = () => window.backToMainMenu();
         }
 
         let _finalizing = false;
@@ -13764,6 +13767,42 @@
             addLog('Returned to the party builder with your current party and loadouts preserved.');
             render();
         }
+
+        /* Post-match "Main Menu": same battle-state cleanup as
+           backToPartyBuilder, but lands on the title overlay's main menu page
+           instead of the builder. online.js wraps this to tear the network
+           session down first when leaving an online match. */
+        async function backToMainMenu() {
+            playSfx('uiButtonConfirm');
+            hideResultOverlay();
+            setDevAutoSim(false);
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.winner = null;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+
+            transitionTo(GS.MAIN_MENU);
+            const _mmOverlay = document.getElementById('startOverlay');
+            if (_mmOverlay) {
+                _mmOverlay.classList.remove('hidden');
+                _mmOverlay.style.display = '';
+                _mmOverlay.style.pointerEvents = '';
+                _mmOverlay.setAttribute('aria-hidden', 'false');
+            }
+            if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
+            await syncMusicToState();
+            render();
+        }
+        window.backToMainMenu = backToMainMenu;
 
         function toggleAutoMode() {
             if (state.phase !== 'battle' || state.winner) return;
@@ -25051,10 +25090,19 @@
                 if (typeof renderTurnClock === 'function') renderTurnClock();
 
                 if (state.shotClock && state.shotClock.active && !state.winner) {
-                    const elapsed = (Date.now() - state.shotClock.startedAt) / 1000;
-                    if (elapsed >= state.shotClock.limitSec) {
-                        _shotClockExpired();
+                    if (state.shotClock.pausedAt) {
+                        // Paused (opponent reconnecting) — hold the countdown.
+                        _renderShotClockPill(null, true);
+                    } else {
+                        const elapsed = (Date.now() - state.shotClock.startedAt) / 1000;
+                        const left = Math.ceil(state.shotClock.limitSec - elapsed);
+                        _renderShotClockPill(left, false);
+                        if (elapsed >= state.shotClock.limitSec) {
+                            _shotClockExpired();
+                        }
                     }
+                } else {
+                    _renderShotClockPill(null, false);
                 }
             }, 1000);
         }
@@ -25070,33 +25118,95 @@
             const unit = state.units.find(u => u.id === state._blitzActiveUnitId);
             if (!unit || unit.dead) return;
 
+            /* The shot clock only bites in ONLINE matches, and only for the
+               unit WE control — each client times and ends its own player's
+               turns. (The old check compared against CTRL.HUMAN, a constant
+               that doesn't exist, so the clock could never fire at all.) */
             const ctrl = state.controllers[unit.player];
-            if (ctrl !== CTRL.HUMAN) return;
+            if (ctrl !== CTRL.LOCAL || !isOnlineMatch()) {
+                state.shotClock.active = false;
+                return;
+            }
             state.shotClock.active = false;
             addLog(`⏱ Shot clock! ${unitDisplayName(unit)}'s turn ends automatically.`);
             showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
             playSfx('uiBack');
 
-            unit.ap = 0;
-            state.actionMode = null;
+            /* Route through triggerEndTurn so the online wrappers handle it
+               correctly for either role: the guest EMITS the end-turn to the
+               host instead of silently ending the turn on its own
+               non-authoritative copy; the host ends it locally + broadcasts. */
+            state.selectedUnitId = unit.id;
             state._actionExecuting = false;
+            state.actionMode = null;
             state.actionMenuView = 'root';
             state.pendingTarget = null;
-            endUnitIfDone(unit);
+            triggerEndTurn();
         }
 
         function _startShotClock() {
             if (!state.shotClock) return;
             state.shotClock.startedAt = Date.now();
+            state.shotClock.pausedAt = null;
             state.shotClock.active = true;
         }
 
         function _stopShotClock() {
             if (!state.shotClock) return;
             state.shotClock.active = false;
+            state.shotClock.pausedAt = null;
+            _renderShotClockPill(null, false);
+        }
+
+        /* Pause/resume for the reconnect window: while a player is
+           disconnected the match can't progress, so nobody should lose their
+           turn to the timer. Resume shifts startedAt forward by the paused
+           span so the remaining time is exactly what it was at pause. */
+        function _pauseShotClock() {
+            if (!state.shotClock || !state.shotClock.active || state.shotClock.pausedAt) return;
+            state.shotClock.pausedAt = Date.now();
+        }
+
+        function _resumeShotClock() {
+            if (!state.shotClock || !state.shotClock.pausedAt) return;
+            state.shotClock.startedAt += Date.now() - state.shotClock.pausedAt;
+            state.shotClock.pausedAt = null;
+        }
+
+        /* Small self-contained countdown pill (no index.html markup needed).
+           Appears only in online matches when OUR shot clock is under 15s —
+           an invisible timer that suddenly ends the turn would read as a bug. */
+        function _renderShotClockPill(secondsLeft, paused) {
+            let el = document.getElementById('shotClockPill');
+            const show = state.phase === 'battle' && !state.winner && isOnlineMatch() &&
+                (paused || (secondsLeft !== null && secondsLeft <= 15));
+            if (!show) {
+                if (el) el.style.display = 'none';
+                return;
+            }
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'shotClockPill';
+                el.style.cssText = 'position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:8000;padding:4px 14px;border-radius:14px;font-family:DotGothic16,monospace;font-size:15px;font-weight:bold;background:rgba(10,8,14,0.82);border:1px solid rgba(255,184,77,0.5);color:#ffb84d;pointer-events:none;letter-spacing:0.06em;';
+                document.body.appendChild(el);
+            }
+            el.style.display = '';
+            if (paused) {
+                el.textContent = '⏸ SHOT CLOCK PAUSED';
+                el.style.color = '#9ad0ff';
+                el.style.borderColor = 'rgba(154,208,255,0.5)';
+            } else {
+                el.textContent = '⏱ ' + Math.max(0, secondsLeft) + 's';
+                const urgent = secondsLeft <= 5;
+                el.style.color = urgent ? '#ff5a5a' : '#ffb84d';
+                el.style.borderColor = urgent ? 'rgba(255,90,90,0.6)' : 'rgba(255,184,77,0.5)';
+                if (secondsLeft === 10 || secondsLeft === 5) playSfx('uiCursorFocus');
+            }
         }
         window._startShotClock = _startShotClock;
         window._stopShotClock = _stopShotClock;
+        window._pauseShotClock = _pauseShotClock;
+        window._resumeShotClock = _resumeShotClock;
 
         function tickMatchClock() {
             if (!state.matchClock || state.matchClock.paused || state.winner) return;

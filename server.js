@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 const d1 = require('./d1');
 
 const app = express();
@@ -97,6 +98,134 @@ function findRoomBySocket(socketId) {
         if (room.host === socketId || room.guest === socketId) return { code, room };
     }
     return null;
+}
+
+// ── MATCH INTEGRITY + REPLAYS ───────────────────────────────────────────────
+// The gameplay sim stays on the host client, but the relay is no longer a
+// blind pipe:
+//  • Direction enforcement — in this protocol only the GUEST emits
+//    'game-action' and only the HOST emits 'state-sync' / 'friendly-config' /
+//    'ranked-result'. A modified client emitting the other side's events
+//    (e.g. a guest pushing a forged state-sync over the host's authority) is
+//    dropped and logged.
+//  • Turn-ownership gating — the host's state-syncs flow through us, so the
+//    server always learns a turn handoff BEFORE the guest can act on it.
+//    Mutating guest actions while it isn't player 2's turn are dropped.
+//  • Per-socket rate limits — token buckets per event type stop a hacked
+//    client from flooding the room (or the disk, via replay logging).
+//  • Replays — every started match appends a JSONL action log under
+//    ./replays/: header, party configs, the full semantic game-action
+//    stream, periodic state snapshots (baseline at battle start, then every
+//    60s, then the final state) and an end record. Enough to reconstruct or
+//    scrub any ranked match after the fact.
+
+const REPLAY_DIR = path.join(__dirname, 'replays');
+try { fs.mkdirSync(REPLAY_DIR, { recursive: true }); } catch (e) { console.error('[REPLAY] mkdir failed:', e.message); }
+
+const RATE_LIMITS = {
+    'game-action':  { rate: 12, burst: 30 },   // human input tops out well below this
+    'state-sync':   { rate: 30, burst: 60 },   // host throttles to 50ms + heartbeat
+    'relay':        { rate: 60, burst: 120 },  // VFX/floating-text bursts on big AOEs
+    'party-config': { rate: 2,  burst: 6 },
+};
+const _rateBuckets = new Map(); // socketId -> { evt: { tokens, last } }
+function allowEvent(socketId, evt) {
+    const cfg = RATE_LIMITS[evt];
+    if (!cfg) return true;
+    let sock = _rateBuckets.get(socketId);
+    if (!sock) { sock = {}; _rateBuckets.set(socketId, sock); }
+    const now = Date.now();
+    let b = sock[evt];
+    if (!b) b = sock[evt] = { tokens: cfg.burst, last: now, warned: 0 };
+    b.tokens = Math.min(cfg.burst, b.tokens + ((now - b.last) / 1000) * cfg.rate);
+    b.last = now;
+    if (b.tokens < 1) {
+        if (now - b.warned > 5000) {
+            b.warned = now;
+            console.warn(`[GUARD] rate limit: dropping '${evt}' from ${socketId}`);
+        }
+        return false;
+    }
+    b.tokens -= 1;
+    return true;
+}
+
+function replayInit(room, code) {
+    if (room._replay) return;
+    const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    room._replay = {
+        file: path.join(REPLAY_DIR, `${stamp}_${code}.jsonl`),
+        buf: [],
+        count: 0,
+        hasBaseline: false,
+        lastSnapshotAt: 0,
+    };
+    replayWrite(room, {
+        t: Date.now(), e: 'header', v: 1, code,
+        ranked: !!room.ranked,
+        rankedMode: room.rankedMode || null,
+        mapModeId: room.mapModeId || null,
+        teamSize: room.teamSize || null,
+        host: room.hostUsername || null,
+        guest: room.guestUsername || null,
+        friendlyConfig: room.friendlyConfig || null,
+    });
+    // Party configs relayed before match-started were stashed on the room.
+    if (room._preMatchEvents) {
+        for (const entry of room._preMatchEvents) replayWrite(room, entry);
+        room._preMatchEvents = null;
+    }
+}
+
+function replayWrite(room, entry) {
+    const r = room._replay;
+    if (!r || r.count > 20000) return; // runaway-match backstop
+    r.count++;
+    try { r.buf.push(JSON.stringify(entry)); } catch (e) { return; }
+    if (r.buf.length >= 25) replayFlush(room);
+}
+
+function replayFlush(room) {
+    const r = room._replay;
+    if (!r || !r.buf.length) return;
+    const chunk = r.buf.join('\n') + '\n';
+    r.buf = [];
+    fs.appendFile(r.file, chunk, (err) => {
+        if (err) console.error('[REPLAY] write failed:', err.message);
+    });
+}
+
+function replayEnd(room, reason, extra) {
+    if (!room._replay) return;
+    replayWrite(room, Object.assign({ t: Date.now(), e: 'end', reason }, extra || {}));
+    replayFlush(room);
+    room._replay = null;
+}
+
+// State snapshots inside the replay: baseline at battle start, then at most
+// one per 60s, plus the final winning state. Full syncs run ~20/s — logging
+// them all would be tens of MB per match for no extra information.
+function maybeReplaySnapshot(room, data) {
+    const r = room._replay;
+    if (!r) return;
+    const now = Date.now();
+    const battleStart = data.phase === 'battle' && !r.hasBaseline;
+    const matchEnd = !!data.winner && !room._matchEnded;
+    if (matchEnd) room._matchEnded = true;
+    const periodic = r.hasBaseline && (now - r.lastSnapshotAt) > 60000;
+    if (!battleStart && !matchEnd && !periodic) return;
+    try {
+        if (JSON.stringify(data).length > 2000000) return; // never log a pathological payload
+    } catch (e) { return; }
+    r.hasBaseline = true;
+    r.lastSnapshotAt = now;
+    replayWrite(room, {
+        t: now,
+        e: matchEnd ? 'final-state' : (battleStart ? 'baseline' : 'snapshot'),
+        round: data.round,
+        state: data,
+    });
+    if (matchEnd) replayFlush(room);
 }
 
 const queues = {};
@@ -1131,25 +1260,106 @@ io.on('connection', (socket) => {
     socket.on('game-action', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
+        const { room, code } = found;
+        if (!allowEvent(socket.id, 'game-action')) return;
 
-        socket.to(found.code).emit('game-action', data);
+        // Direction: only the GUEST ever emits game-action (the host applies
+        // its own input locally and broadcasts state-sync). Anything else is
+        // a spoofed/modified client.
+        if (socket.id !== room.guest) {
+            console.warn(`[GUARD] game-action from non-guest socket in room ${code} — dropped`);
+            return;
+        }
+
+        // Turn ownership: the host's state-syncs told us whose turn it is,
+        // and a handoff always reaches the server before the guest can act on
+        // it — so a mutating action while activePlayer is 1 is out-of-turn.
+        // Non-mutating UI mirroring (selectUnit/setTool/…) and forfeit stay
+        // allowed at any time.
+        const MUTATING = { clickTile: 1, engine: 1, triggerEndTurn: 1, useRosterItem: 1, recall: 1 };
+        const ls = room._lastState;
+        if (data && MUTATING[data.type] && ls && ls.phase === 'battle' && !ls.winner &&
+            typeof ls.activePlayer === 'number' && ls.activePlayer !== 2) {
+            console.warn(`[GUARD] out-of-turn '${data.type}' from guest in room ${code} — dropped`);
+            replayWrite(room, { t: Date.now(), e: 'blocked', from: 'guest', reason: 'out-of-turn', type: data.type });
+            return;
+        }
+
+        replayWrite(room, { t: Date.now(), e: 'action', from: 'guest', data });
+        socket.to(code).emit('game-action', data);
     });
 
     socket.on('state-sync', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
-        socket.to(found.code).emit('state-sync', data);
+        const { room, code } = found;
+        if (!allowEvent(socket.id, 'state-sync')) return;
+
+        // Only the HOST is authoritative — a guest emitting state-sync would
+        // let a modified client overwrite the real match state.
+        if (socket.id !== room.host) {
+            console.warn(`[GUARD] state-sync from non-host socket in room ${code} — dropped`);
+            return;
+        }
+
+        if (data && typeof data === 'object') {
+            // Rematch: the host clears the winner and restarts. Re-arm the
+            // room — forfeits count again and the rematch may report its own
+            // ranked result — and start a fresh replay segment.
+            if (room._matchEnded && !data.winner && data.phase) {
+                room._matchEnded = false;
+                room._resultProcessed = false;
+                replayWrite(room, { t: Date.now(), e: 'rematch' });
+                if (room._replay) room._replay.hasBaseline = false;
+            }
+            room._lastState = {
+                activePlayer: data.activePlayer,
+                phase: data.phase,
+                winner: data.winner ?? null,
+                round: data.round,
+            };
+            maybeReplaySnapshot(room, data);
+        }
+        socket.to(code).emit('state-sync', data);
     });
 
     socket.on('party-config', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
+        const { room } = found;
+        if (!allowEvent(socket.id, 'party-config')) return;
+
+        // Loadouts are needed to reconstruct a match; they usually arrive
+        // before match-started, so stash them until the replay file opens.
+        const entry = {
+            t: Date.now(), e: 'party-config',
+            from: room.host === socket.id ? 'host' : 'guest',
+            data,
+        };
+        if (room._replay) {
+            replayWrite(room, entry);
+        } else {
+            (room._preMatchEvents = room._preMatchEvents || []).push(entry);
+            if (room._preMatchEvents.length > 8) room._preMatchEvents.shift();
+        }
         socket.to(found.code).emit('party-config', data);
     });
 
     socket.on('relay', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
+        if (!allowEvent(socket.id, 'relay')) return;
+
+        // Only the small semantic relays matter for replays — the VFX /
+        // floating-text / camera streams are re-derivable from the actions.
+        const SEMANTIC = { 'rematch-request': 1, 'guest-locked': 1, 'host-locked': 1, 'pickup-response': 1 };
+        if (data && SEMANTIC[data.type]) {
+            replayWrite(found.room, {
+                t: Date.now(), e: 'relay',
+                from: found.room.host === socket.id ? 'host' : 'guest',
+                data,
+            });
+        }
         socket.to(found.code).emit('relay', data);
     });
 
@@ -1164,6 +1374,13 @@ io.on('connection', (socket) => {
 
         if (room._resultProcessed) return;
         room._resultProcessed = true;
+        room._matchEnded = true;
+        replayWrite(room, {
+            t: Date.now(), e: 'ranked-result',
+            winnerId: data.winnerId, loserId: data.loserId,
+            durationMs: data.durationMs || 0,
+        });
+        replayFlush(room);
 
         const winnerId = data.winnerId;
         const loserId = data.loserId;
@@ -1272,6 +1489,7 @@ io.on('connection', (socket) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         found.room._matchStarted = true;
+        replayInit(found.room, found.code);
         console.log(`[IO] Room ${found.code} match started`);
     });
 
@@ -1303,6 +1521,7 @@ io.on('connection', (socket) => {
 
         socket.join(code);
         console.log(`[IO] ${role} rejoined room ${code} as ${socket.id}`);
+        replayWrite(room, { t: Date.now(), e: 'rejoin', role });
 
         if (callback) callback({ ok: true, role: role, myPlayer: role === 'host' ? 1 : 2 });
 
@@ -1318,6 +1537,7 @@ io.on('connection', (socket) => {
 
         authenticatedSockets.delete(socket.id);
         botSockets.delete(socket.id);
+        _rateBuckets.delete(socket.id);
 
         const found = findRoomBySocket(socket.id);
         if (!found) return;
@@ -1331,9 +1551,22 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Match already decided (winner synced or ranked result processed):
+        // a departure now is someone leaving the result screen, not a
+        // forfeit. Close the room cleanly — postMatch tells the remaining
+        // client to keep its result screen instead of reloading.
+        if (room._matchEnded || room._resultProcessed) {
+            console.log(`[IO] ${role} left room ${code} post-match — closing room`);
+            socket.to(code).emit('player-disconnected', { role, reconnectable: false, postMatch: true });
+            replayEnd(room, 'closed');
+            rooms.delete(code);
+            return;
+        }
+
         console.log(`[IO] ${role} disconnected from room ${code} — 90s rejoin window`);
 
         socket.to(code).emit('player-disconnected', { role, reconnectable: true });
+        replayWrite(room, { t: Date.now(), e: 'disconnect', role });
 
         room._disconnected = {
             role: role,
@@ -1343,6 +1576,7 @@ io.on('connection', (socket) => {
                 console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
                 const forfeitPlayer = role === 'host' ? 1 : 2;
                 io.to(code).emit('match-forfeit', { forfeitPlayer: forfeitPlayer, role: role });
+                replayEnd(room, 'forfeit', { forfeitPlayer });
                 rooms.delete(code);
             }, 90 * 1000)
         };

@@ -8434,6 +8434,9 @@
         if (exportLastMatchBtn) exportLastMatchBtn.onclick = exportLastMatch;
         if (exportMatchHistoryBtn) exportMatchHistoryBtn.onclick = exportMatchHistory;
         startOverBtn.onclick = backToPartyBuilder;
+        // Late-bound: online.js wraps backToMainMenu with network teardown.
+        const _resultMainMenuBtn = document.getElementById('mainMenuBtn');
+        if (_resultMainMenuBtn) _resultMainMenuBtn.onclick = () => window.backToMainMenu();
         if (autoBtn) autoBtn.onclick = toggleAutoMode;
         const devSimBattleBtn = document.getElementById('devSimBattleBtn');
         if (devSimBattleBtn) devSimBattleBtn.onclick = toggleDevAutoSim;

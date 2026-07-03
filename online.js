@@ -176,6 +176,18 @@
 
                         if (sentPendingTarget && sentPendingTarget.x === x && sentPendingTarget.y === y) {
 
+                            /* Confirming click — the host will execute this
+                               action. Fire the local cosmetics now so the
+                               confirm doesn't feel like a dead click. */
+                            if (actingUnit) {
+                                var _fbKind = sentActionMode === 'attack' ? 'attack'
+                                    : sentActionMode === 'spell' ? 'spell'
+                                    : sentActionMode === 'item' ? 'item'
+                                    : sentActionMode === 'jump' ? 'jump'
+                                    : null;
+                                if (_fbKind) _guestActionFeedback(_fbKind, actingUnit, x, y);
+                            }
+
                             state.actionMode = null;
                             state.actionMenuView = 'root';
                             state.selectedTool = null;
@@ -200,6 +212,18 @@
                             scheduleBoardRender();
                         }
                     } else if (sentActionMode === 'move') {
+
+                        /* Instant move feedback — footstep + a destination
+                           hologram — but only for a tile the engine will
+                           actually accept, so the ghost never lies. */
+                        if (actingUnit && typeof getMoveTiles === 'function') {
+                            try {
+                                var _mvTiles = getMoveTiles(actingUnit);
+                                if (_mvTiles && _mvTiles.some(function(t) { return t.x === x && t.y === y; })) {
+                                    _guestActionFeedback('move', actingUnit, x, y);
+                                }
+                            } catch (e) {}
+                        }
 
                         state.actionMode = null;
                         state.actionMenuView = 'root';
@@ -335,6 +359,41 @@
                 && state.activePlayer === _myPlayer();
         }
 
+        /* ── Latency-hiding cosmetic feedback (guest) ───────────────────────
+           A guest action is only a network emit — the authoritative result
+           plays back 0.5–2s later when the host replays it and syncs. That
+           gap reads as "my click did nothing". Fire the cheap local
+           cosmetics IMMEDIATELY on the emit: attack lunge + swoosh, cast
+           pose + cast sound, footstep + a destination hologram for moves.
+           Purely visual — no state mutation, damage numbers still arrive
+           only with the authoritative result, and the move ghost is cleared
+           by the next state-sync. */
+        function _guestActionFeedback(kind, unit, x, y) {
+            try {
+                if (!unit || unit.dead) return;
+                if (kind === 'attack') {
+                    if (typeof triggerAttackAnim === 'function') triggerAttackAnim(unit, x, y);
+                    playSfx('basicAttack');
+                } else if (kind === 'spell') {
+                    var sp = null;
+                    if (state.selectedTool && unit.spells) {
+                        sp = unit.spells.find(function(s) { return s && s.name === state.selectedTool; }) || null;
+                    }
+                    if (typeof triggerCastAnim === 'function') triggerCastAnim(unit, sp);
+                    var _support = sp && /heal|buff|cleanse|shield|protect/i.test(String(sp.kind || sp.type || ''));
+                    playSfx(_support ? 'buff' : 'spellDamage');
+                } else if (kind === 'move' || kind === 'jump') {
+                    playSfx('moveStep');
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.showGhostUnit) {
+                        var tint = unit.player === 1 ? 0x4da3ff : 0xff5a5a;
+                        ThreeRenderer.showGhostUnit(unit, x, y, undefined, { tag: 'netPending', color: tint, opacity: 0.45 });
+                    }
+                } else if (kind === 'item') {
+                    playSfx('itemThrow');
+                }
+            } catch (e) { /* cosmetics must never break the emit */ }
+        }
+
         function _hostRunAndSync(orig, args) {
             const r = orig.apply(null, args);
             if (window._broadcastState) window._broadcastState();
@@ -346,6 +405,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoAttack(unit, x, y, z);
             if (_isHost()) return _hostRunAndSync(_origDoAttack, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return 0;
+            _guestActionFeedback('attack', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doAttack', unitId: unit.id, x: x, y: y, z: z });
             return 1200; /* nominal delay — the real visuals arrive via host relays */
         };
@@ -355,6 +415,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoSpell(unit, x, y, z);
             if (_isHost()) return _hostRunAndSync(_origDoSpell, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return 0;
+            _guestActionFeedback('spell', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
             return 1200;
         };
@@ -364,6 +425,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoMove(unit, x, y, z);
             if (_isHost()) return _hostRunAndSync(_origDoMove, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return false;
+            _guestActionFeedback('move', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doMove', unitId: unit.id, x: x, y: y, z: z });
             return true;
         };
@@ -373,6 +435,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoJump(unit, x, y, z);
             if (_isHost()) return _hostRunAndSync(_origDoJump, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return false;
+            _guestActionFeedback('jump', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doJump', unitId: unit.id, x: x, y: y, z: z });
             return true;
         };
@@ -382,6 +445,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoItem(unit, x, y);
             if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y]);
             if (!_guestOwnsAction(unit)) return;
+            _guestActionFeedback('item', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, tool: state.selectedTool });
         };
 
@@ -390,6 +454,7 @@
             if (!_isOnline() || state._remoteAction) return _origDoComboAttack(initiator, partner, targetX, targetY);
             if (_isHost()) return _hostRunAndSync(_origDoComboAttack, [initiator, partner, targetX, targetY]);
             if (!_guestOwnsAction(initiator)) return;
+            _guestActionFeedback('attack', initiator, targetX, targetY);
             _emit('game-action', { type: 'engine', fn: 'doComboAttack', unitId: initiator.id, partnerId: partner ? partner.id : null, x: targetX, y: targetY });
         };
 
@@ -443,6 +508,40 @@
             _origForfeit();
             if (window._broadcastState) window._broadcastState();
         };
+
+        /* Post-match "Main Menu" — online teardown. Leaving to the menu ends
+           the online session: drop the socket (the server closes the room and
+           informs the opponent), clear the NET flags, and restore the local
+           controller defaults so ONLINE_RULES.active goes false before the
+           base implementation rebuilds the menu. */
+        const _origBackToMainMenu = (typeof backToMainMenu === 'function') ? backToMainMenu : null;
+        if (_origBackToMainMenu) {
+            backToMainMenu = function() {
+                if (_isOnline()) {
+                    var N = window._NET;
+                    try { if (N && N.socket) N.socket.disconnect(); } catch (e) {}
+                    if (N) {
+                        N.online = false;
+                        N.connected = false;
+                        N.role = null;
+                        N.roomCode = null;
+                        N.ranked = false;
+                        N._wasInMatch = false;
+                        N._rematchState = null;
+                        N.rejoinToken = null;
+                        N.socket = null;
+                    }
+                    try {
+                        sessionStorage.removeItem('ew_rejoinToken');
+                        sessionStorage.removeItem('ew_rejoinRoom');
+                        sessionStorage.removeItem('ew_rejoinRole');
+                    } catch (e) {}
+                    state.controllers = { 1: CTRL.LOCAL, 2: CTRL.AI };
+                    if (typeof window._ewHideReconnectBanner === 'function') window._ewHideReconnectBanner();
+                }
+                return _origBackToMainMenu();
+            };
+        }
 
         /* Recall action sync */
         window._onlineEmitRecall = function(unitId) {
@@ -1696,21 +1795,38 @@
             var _reconnectTimer = null;
             var _reconnectOverlay = null;
 
+            /* Non-blocking reconnect banner (was a full-screen blackout that
+               hid the board and blocked all input for up to 90s). The board
+               stays visible — you can review the field while you wait — and
+               the local shot clock pauses so nobody loses a turn to a
+               disconnect. Same function names/call sites as the old overlay. */
             function _showReconnectOverlay(oppLabel, seconds) {
                 _hideReconnectOverlay();
-                var overlay = document.createElement('div');
-                overlay.id = 'reconnectOverlay';
-                overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:DotGothic16,monospace;color:#fff;';
+                if (typeof window._pauseShotClock === 'function') window._pauseShotClock();
+                var isSelf = oppLabel === 'You';
+                var msg = isSelf
+                    ? '⚠️ Connection lost — reconnecting…'
+                    : '⚠️ ' + oppLabel + ' disconnected — waiting for reconnect…';
+                if (!document.getElementById('ewReconnectPulseStyle')) {
+                    var st = document.createElement('style');
+                    st.id = 'ewReconnectPulseStyle';
+                    st.textContent = '@keyframes ewReconnectPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.35;transform:scale(0.7)}}';
+                    document.head.appendChild(st);
+                }
+                var banner = document.createElement('div');
+                banner.id = 'reconnectOverlay';
+                banner.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:10px;padding:9px 18px;border-radius:20px;background:rgba(12,9,16,0.92);border:1px solid rgba(255,184,77,0.55);box-shadow:0 6px 24px rgba(0,0,0,0.55);font-family:DotGothic16,monospace;color:#fff;pointer-events:none;max-width:min(92vw,560px);';
+                banner.innerHTML =
+                    '<span style="display:inline-block;flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:#ffb84d;animation:ewReconnectPulse 1s ease-in-out infinite;"></span>' +
+                    '<span style="font-size:0.95rem;">' + msg + '</span>' +
+                    '<span id="reconnectCountdown" style="font-size:1.05rem;color:#dc3c82;font-weight:bold;min-width:36px;text-align:right;">' + seconds + 's</span>';
+                document.body.appendChild(banner);
+                _reconnectOverlay = banner;
                 var remaining = seconds;
-                overlay.innerHTML = '<div style="font-size:1.4rem;margin-bottom:12px;">⚠️ ' + oppLabel + ' disconnected</div>' +
-                    '<div style="font-size:0.95rem;color:#aaa;margin-bottom:16px;">Waiting for reconnection…</div>' +
-                    '<div id="reconnectCountdown" style="font-size:2.2rem;color:#dc3c82;font-weight:bold;">' + remaining + 's</div>';
-                document.body.appendChild(overlay);
-                _reconnectOverlay = overlay;
                 _reconnectTimer = setInterval(function() {
                     remaining--;
                     var cd = document.getElementById('reconnectCountdown');
-                    if (cd) cd.textContent = remaining + 's';
+                    if (cd) cd.textContent = Math.max(0, remaining) + 's';
                     if (remaining <= 0) {
                         clearInterval(_reconnectTimer);
                         _reconnectTimer = null;
@@ -1723,7 +1839,11 @@
                 if (_reconnectOverlay) { _reconnectOverlay.remove(); _reconnectOverlay = null; }
                 var existing = document.getElementById('reconnectOverlay');
                 if (existing) existing.remove();
+                if (typeof window._resumeShotClock === 'function') window._resumeShotClock();
             }
+            /* Exposed so the main-menu teardown (defined in the wrapper scope
+               above this closure) can clear a live banner. */
+            window._ewHideReconnectBanner = _hideReconnectOverlay;
 
             function _connectSocket(onReady) {
                 if (NET.socket && NET.socket.connected) {
@@ -1904,6 +2024,22 @@
                 NET.socket.on('player-disconnected', function(data) {
                     if (!NET.online) return;
 
+                    /* Opponent left AFTER the match was decided (e.g. via the
+                       result screen's Main Menu button). Don't yank the local
+                       player off their victory screen with a reload — just
+                       note it and retire the rematch button. */
+                    var st = window._gameState;
+                    if (data.postMatch || (st && st.winner)) {
+                        NET.connected = false;
+                        ewToast('Your opponent left the match.', 4000);
+                        var rmBtn = document.getElementById('nextMatchBtn');
+                        if (rmBtn) {
+                            rmBtn.disabled = true;
+                            rmBtn.textContent = 'Opponent Left';
+                        }
+                        return;
+                    }
+
                     if (!data.reconnectable) {
                         NET.connected = false;
                         ewToast('Your opponent (' + (data.role === 'host' ? 'Player 1' : 'Player 2') + ') disconnected.', 4000);
@@ -1924,6 +2060,11 @@
 
                 NET.socket.on('match-forfeit', function(data) {
                     _hideReconnectOverlay();
+                    /* Match already decided locally — a trailing forfeit from a
+                       post-result disconnect must not reload us off the result
+                       screen or flip the recorded winner. */
+                    var stF = window._gameState;
+                    if (stF && stF.winner) return;
                     var forfeitPlayer = data.forfeitPlayer;
                     var myP = NET.myPlayer;
                     if (forfeitPlayer === myP) {
@@ -2553,6 +2694,12 @@
                     var prevPhase = st.phase;
 
                     _deserializeInto(st, data);
+
+                    /* The authoritative result is here — retire the guest's
+                       latency-hiding move hologram (tag set on emit). */
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearGhostUnit) {
+                        try { ThreeRenderer.clearGhostUnit('netPending'); } catch (e) {}
+                    }
 
                     // ── Keep CONFIG board dimensions in lock-step with the synced board ──
                     // bw()/bh()/isInside() derive bounds from CONFIG.boardWidth/Height, but
