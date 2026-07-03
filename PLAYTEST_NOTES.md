@@ -244,6 +244,26 @@ anchor/footprint visibility, no walk/jump onto roofs, enter→hidden→emerge-on
 5 hits →1hp → 6th collapses → rubble + ruins, roof fall 24 vs inside crush 48,
 meteor/nuke demolish; AI auto-sim advanced rounds with 0 page errors.
 
+## Quick-action menu now offers target-focused UTILITY moves (2026-07-03, hud.js)
+`_computeEnemyActions` (hud.js ~2340) used to whitelist only damage/debuff kinds
+(`offensiveKinds`), so poison seeds, terrain walls/floods, summoned weather,
+swaps, artillery marks etc. never appeared when clicking an enemy. Now INVERTED:
+everything is offered except a `nonEnemyTargetKinds` exclusion set (ally/self
+support kinds incl. utility-typed healers like `seedHeal`; caster repositioning
+`teleport`/`escape`; global `trickRoom`; placements that reject occupied tiles:
+`warpRune`, `buildBridge`, `plantTree`, `deployObject/Pair/Turret`, `remoteView`).
+Extra gates: `requiresFlight` spells skipped for grounded casters; seed kinds
+skipped when the target stands on mountain/lava (engine rejects the plant).
+Utility casts flow through the SAME range + `findSpellApproachTile`
+move-then-cast logic and are cast AT the enemy's tile (engine accepts e.g.
+`seedPoison`/`terrainCreate` on occupied tiles — verified via doSpell).
+Sort: available first → expected damage desc → NEW `_actionSortClass` tiebreak
+(damage 0 / debuff 1 / utility 2) → attack/spell/item order, so damaging moves
+stay on top and pure-utility rows sit below. hud.js is on R2 → re-upload.
+Verified via Playwright probe (LOCAL_ASSETS=hud.js): menu listed Poison Seed /
+terrainCreate / swap / delayed-artillery rows (with working move-then-cast
+tiles), excluded heal/teleport/turret, and kept damage rows on top.
+
 ## Action-plan arrow / hologram system (2026-07-01 overhaul)
 This preview shows up in THREE places, all now upgraded to the same look
 (curved arrows + team-tinted holograms + target displacement holograms):

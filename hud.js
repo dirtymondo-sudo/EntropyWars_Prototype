@@ -2337,23 +2337,33 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     }
   }
 
-  const offensiveKinds = new Set([
-    'damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'splitBeam',
-    'aoe', 'barrage', 'line', 'linePush', 'cross', 'aoePull', 'leapStrike', 'dash',
-    'displacement', 'pull',
+  // Anything that can land on the clicked enemy belongs in this menu: damage
+  // and debuffs, but also target-focused utility — poison/leech seeds, terrain
+  // walls and floods, summoned weather, swaps, artillery marks, Grapple,
+  // Plunder… Each flows through the normal range + move-into-range logic below
+  // and is cast AT the enemy's tile. Only casts that cannot affect an
+  // enemy-occupied tile are filtered out here; the sort at the end keeps the
+  // damaging moves on top.
+  const nonEnemyTargetKinds = new Set([
+    // ally / self support (kind-level — also catches healers typed 'utility')
+    'heal', 'selfHeal', 'healAll', 'zoneHeal', 'seedHeal', 'revive', 'cleanse',
+    'manaRestoreAll', 'buff', 'warCry', 'encore', 'shield', 'aoeShield', 'guard',
+    // caster repositioning / global field effects with no aim point
+    'teleport', 'escape', 'trickRoom',
+    // placements the engine rejects on occupied tiles, or that never touch the target
+    'warpRune', 'buildBridge', 'plantTree',
+    'deployObject', 'deployPair', 'deployTurret', 'remoteView',
   ]);
   for (const sp of allSpells) {
-    // Grapple is a 'utility' cast, but against an enemy it's an offensive tool —
-    // it grounds flyers and hooks/pulls units — so surface it in the enemy menu
-    // even though it deals no listed damage. It flows through the normal
-    // single-target range + move-into-range logic below (id 'spell:Grapple').
-    const isGrappleUtil = sp.id === 'grapple' || sp.id === 'raceGrapple';
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
-    if (!isGrappleUtil) {
-      if (cls !== 'damage' && cls !== 'debuff') continue;
-      if (!offensiveKinds.has(sp.kind)) continue;
-
-      if (cls === 'damage' && !sp.dmg && !(sp.hitDamages && sp.hitDamages.length) && !sp.dotDamage) continue;
+    if (cls === 'heal' || cls === 'buff') continue;
+    if (nonEnemyTargetKinds.has(sp.kind)) continue;
+    // Flight-gated grabs (Sky Drop / Sky Throw) are dead rows for grounded casters.
+    if (sp.requiresFlight && !(typeof canFly === 'function' && canFly(actingUnit))) continue;
+    // Seeds can't root on mountain/lava — the engine rejects the plant outright.
+    if ((sp.kind === 'seedPoison' || sp.kind === 'leechSeed') && typeof getTerrainAt === 'function') {
+      const seedGround = getTerrainAt(tx, ty);
+      if (seedGround === 'mountain' || seedGround === 'lava') continue;
     }
 
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
@@ -2560,9 +2570,15 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const availB = b.available ? 0 : 1;
     if (availA !== availB) return availA - availB;
 
+    // Damaging moves first, highest expected damage on top…
     const dmgA = _actionSortDamage(a);
     const dmgB = _actionSortDamage(b);
     if (dmgB !== dmgA) return dmgB - dmgA;
+
+    // …then, among the non-damaging rest, debuffs before pure utility.
+    const clsA = _actionSortClass(a);
+    const clsB = _actionSortClass(b);
+    if (clsA !== clsB) return clsA - clsB;
 
     const orderA = a.id === 'attack' ? 0 : a.id.startsWith('spell:') ? 1 : a.id.startsWith('item:') ? 2 : 3;
     const orderB = b.id === 'attack' ? 0 : b.id.startsWith('spell:') ? 1 : b.id.startsWith('item:') ? 2 : 3;
@@ -2577,6 +2593,15 @@ function _actionSortDamage(action) {
   if (action.preview.amount) return action.preview.amount;
   if (action.preview.min != null && action.preview.max != null) return (action.preview.min + action.preview.max) / 2;
   return 0;
+}
+
+// Tiebreak for zero-damage rows: attacks/combos (0) and damage-class spells
+// with no listed numbers sort ahead of debuffs (1), which sort ahead of pure
+// utility casts like seeds / terrain / weather (2).
+function _actionSortClass(action) {
+  if (!action.spell) return 0;
+  const cls = typeof classifySpell === 'function' ? classifySpell(action.spell) : 'damage';
+  return cls === 'damage' ? 0 : cls === 'debuff' ? 1 : 2;
 }
 
 function EnemyActionMenu({ st }) {
