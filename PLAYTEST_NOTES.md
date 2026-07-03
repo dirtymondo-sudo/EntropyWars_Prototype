@@ -1141,6 +1141,56 @@ Files touched: `three-renderer.js`, `three-vfx.js`, `three-vfx-effects.js`,
   so lerp-settle waits need ~2.5s; zoom via `state.userZoomScale = 2.4` +
   `camera.snap({x,y,zoom})` (plain `camera.moveTo` zoom gets clamped/reset).
 
+## Competitive balance pass #1 (2026-07-03)
+Full audit of SPELL_LIBRARY (73), RACE_ABILITIES (~370), the mana formula, and the
+combat engine. Key structural facts discovered (don't rediscover these):
+- **All spell `cost:` fields are dead** — `computeSpellManaCost` (data.js ~6995)
+  overwrites every cost at load. Balance mana costs by fixing the FORMULA or the
+  raw fields, never the `cost:` numbers. `manaCostOverride` exists but is unused.
+- **There are no cooldowns anywhere.** MP+AP are the only limiters. Only
+  `oneRevivePerUnitPerMatch` and `maxActivePerCaster` (deployables) restrict reuse.
+- **The 200-pt spell budget is dead code**: `getEffectiveEquipCost`/`getLoadoutPoints`
+  are stubbed to 0 (battle.js ~8916); `maxCrossClassSpells:6` is never enforced on
+  hand-built loadouts; Freelancer can natively equip anything (map.js ~5903).
+- **Stun only blocks movement** (blockMove) — stunned units still attack/cast/item.
+  `blockAction` is referenced by reshape/altitude code but no status defines it.
+- **guaranteedCrit is flavor-only** — spell path never applies a crit multiplier
+  (only the AI estimators assume 1.5x). Spells never crit or get dodged at all.
+- Statuses NOT in `getStatusApplyChance`'s table applied at 100% (now expanded).
+
+Changes applied this pass (data.js + battle.js + state.js):
+- Hard-CC durations capped: empBurst silence/jam 2→1, mindShatter silence 2→1,
+  pirate Anchor stun 3→1, succubus Charm 2→1, anubis Canopic jam 3→2, mermaid
+  Siren Song 2→1. Rule going forward: hard CC (stun/charm/sleep/freeze/silence)
+  never exceeds 1 round from a single cast.
+- freeEnergy: 40→20 MP/ally and the caster is now EXCLUDED (battle.js) — it was a
+  net-positive team mana printer (cast 35, team gained ~160).
+- Mana formula blind spots fixed: cross/line/barrage kinds now priced as AoE;
+  executePct, teleportAnyUnit, unholyBonus/actedTargetBonus/repeatDmg/lumberCap/
+  sneakBonus now priced; per-status `chance` discounts; hard-CC duration scaling
+  steepened (0.55→0.9/turn); protect 14→20, invisible 9→12, stealSpell 10→18 pts.
+  Result: Divine Judgment 35→65 MP, Requiem 30→50, Atomic Breath →55, hostile
+  Teleport 15→25, Walk the Plank →65 (execute also 30%→20%).
+- Damage outliers: deadEye 256→200, sneakSlash 224→176, timberStrike lumber cap
+  +300→+120. Shadow Lunge reworked into the Agent's tactical engage: 128/48 dash
+  → 80/24, now applies marked(+40):2 + slow:1, spellType unholy→tech.
+- Race revives (necromancer/valkraye) now `oneRevivePerUnitPerMatch`.
+- Smoke Screen ally invisibility 2→1 (zone already re-applies each round inside).
+- Basic-attack double-count bug fixed: `getEffectiveAttackBonus` was added in the
+  attack roll (battle.js ~19698) AND again in `applyDamageToUnit` (~8218) — every
+  chaos/killstreak/terrain ATK bonus counted twice for basic attacks.
+- Status resist table expanded (state.js): charm/sleep/freeze/sirenSong/stagger/
+  slow/glare/discord are now resistible (were guaranteed).
+- Stats: chosen one trimmed (mp 238→225, mdef 52→48, int 76→72, spd 11→9);
+  homosapien Adrenaline Rush buffed (30% heal, cleanse 2, +1 SPD); faction
+  bonuses rebalanced (chaos atk 16→12, space armor 5→8, time heal 24→32).
+
+Open (bigger) recommendations — see the balance-pass chat report: real cooldown
+system, enforce the spell-point budget + cross-class cap, make stun block actions
+(or rename it Pin/Snare in UI), terrain self-pillar counterplay (reshape needs
+LoS-reachable cap or erosion), invisible units shouldn't contest objectives,
+race-kit size normalization (kits run 1→8 abilities), spawn protection round.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

@@ -2975,7 +2975,15 @@
                 guardBreak: 0.9,
                 stun: 0.86,
                 jammed: 0.8,
-                silence: 0.82
+                silence: 0.82,
+                charm: 0.8,
+                sleep: 0.82,
+                freeze: 0.84,
+                sirenSong: 0.8,
+                stagger: 0.9,
+                slow: 0.9,
+                glare: 0.9,
+                discord: 0.9
             };
             const base = Number(payload.chance ?? baseByStatus[payload.id] ?? 1);
             if (!sourceUnit || !targetUnit || sourceUnit.player === targetUnit.player || base >= 0.999) return Math.max(0, Math.min(1, base));

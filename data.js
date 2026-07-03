@@ -92,15 +92,15 @@ const STAB_MULTIPLIER = 1.25;
 const FACTION_BONUSES = {
     space: {
         label: 'Space Alignment',
-        armorBonus: 5
+        armorBonus: 8
     },
     time: {
         label: 'Time Alignment',
-        healBonus: 24
+        healBonus: 32
     },
     chaos: {
         label: 'Chaos Alignment',
-        atkBonus: 16
+        atkBonus: 12
     }
 };
 
@@ -2543,7 +2543,7 @@ const RACE_BASE_STATS = {
     'antihero':      { hp: 558, mp: 118, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
     'conspiracy theorist':{ hp: 522, mp: 162, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
     'overlord':      { hp: 625, mp: 72,  atk: 76, def: 32, mdef: 18, move: 2, awr: 2, int: 14, spd: 4 },
-    'chosen one':    { hp: 452, mp: 238, atk: 32, def: 24, mdef: 52, move: 2, awr: 5, int: 76, spd: 11 },
+    'chosen one':    { hp: 452, mp: 225, atk: 32, def: 24, mdef: 48, move: 2, awr: 5, int: 72, spd: 9 },
     'politician':    { hp: 548, mp: 138, atk: 42, def: 34, mdef: 30, move: 2, awr: 4, int: 36, spd: 5 },
 
     'atlantean':     { hp: 524, mp: 155, atk: 36, def: 34, mdef: 33, move: 2, awr: 3, int: 42, spd: 4 },
@@ -3714,12 +3714,12 @@ const SPELL_LIBRARY = [
         damageType: 'physical',
         lumberScale: true,
         lumberPerTree: 30,
-        lumberCap: 300,
+        lumberCap: 120,
         tier: 'II',
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Hurl a felled trunk at an enemy. Damage grows by +30 for every tree your team has chopped down this match (up to +300). Chop the forest, then swing it.'
+        desc: 'Hurl a felled trunk at an enemy. Damage grows by +30 for every tree your team has chopped down this match (up to +120). Chop the forest, then swing it.'
     },
 
     {
@@ -3752,7 +3752,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 25,
         equipCost: 15,
-        dmg: 224,
+        dmg: 176,
         range: 1,
         kind: 'damage',
         damageType: 'physical',
@@ -3847,13 +3847,13 @@ const SPELL_LIBRARY = [
         type: 'heal',
         cost: 50,
         equipCost: 20,
-        mpRestore: 40,
+        mpRestore: 20,
         range: 0,
         kind: 'manaRestoreAll',
         tier: 'II',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Tap into zero-point energy to restore 40 MP to all living allies.'
+        desc: 'Tap into zero-point energy to restore 20 MP to every OTHER living ally. The engineer keeps none for themself.'
     },
 
     {
@@ -4199,7 +4199,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 256,
+        dmg: 200,
         range: 4,
         kind: 'damage',
         damageType: 'physical',
@@ -4261,12 +4261,12 @@ const SPELL_LIBRARY = [
         aoeOriginSelf: true,
         statusEffects: [{
             id: 'silence',
-            duration: 2
+            duration: 1
         }, {
             id: 'jammed',
-            duration: 2
+            duration: 1
         }],
-        desc: 'Emit a massive EMP pulse centered on self. Damages all enemies within 2 tiles and silences + jams them for 2 turns.'
+        desc: 'Emit a massive EMP pulse centered on self. Damages all enemies within 2 tiles and silences + jams them for 1 turn.'
     },
 
     {
@@ -4285,9 +4285,9 @@ const SPELL_LIBRARY = [
         classRestriction: 'Psychic',
         statusEffects: [{
             id: 'silence',
-            duration: 2
+            duration: 1
         }],
-        desc: 'Tear apart an enemy\'s mind. Heavy magic damage and silences for 2 turns. Total shutdown.'
+        desc: 'Tear apart an enemy\'s mind. Heavy magic damage and silences for 1 turn. Total shutdown.'
     },
 
     {
@@ -4403,24 +4403,28 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'shadowLunge',
-        spellType: 'unholy',
+        spellType: 'tech',
         name: 'Shadow Lunge',
         type: 'damage',
         cost: 25,
         equipCost: 15,
-        dmg: 128,
+        dmg: 80,
         range: 3,
         kind: 'dash',
         damageType: 'physical',
         tier: 'II',
         school: 'Agent',
         classRestriction: 'Agent',
-        dashDamage: 48,
+        dashDamage: 24,
         statusEffects: [{
+            id: 'marked',
+            duration: 2,
+            bonusDamage: 40
+        }, {
             id: 'slow',
             duration: 1
         }],
-        desc: 'Dash through shadows up to 3 tiles, slashing enemies in your path for 48 damage. Slows primary target.'
+        desc: 'Cloak-dash up to 3 tiles through enemy lines, grazing units in your path. Tags and slows the primary target — a painted, slowed mark your team can collapse on.'
     },
 
     {
@@ -4704,8 +4708,8 @@ const SHARED_SMOKE_SCREEN = {
     kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
     smokeConcealment: true,
     statusEffects: [],
-    allyStatusEffects: [{ id: 'invisible', duration: 2 }],
-    desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden and turn invisible while they remain in the cloud.'
+    allyStatusEffects: [{ id: 'invisible', duration: 1 }],
+    desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden and stay invisible only while they remain in the cloud.'
 };
 
 
@@ -4847,8 +4851,8 @@ const RACE_ABILITIES = {
         { id: 'raceCharm', spellType: 'unholy', name: 'Charm',
           type: 'debuff', cost: 30, range: 3, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'charm', duration: 2 }],
-          desc: 'Bewitch an enemy. Charmed targets cannot attack the caster for 2 turns. Removes 1 buff.' },
+          statusEffects: [{ id: 'charm', duration: 1 }],
+          desc: 'Bewitch an enemy. Charmed targets cannot attack the caster for 1 turn. Removes 1 buff.' },
         { id: 'raceDrainingEmbrace', spellType: 'unholy', name: 'Draining Embrace',
           type: 'damage', cost: 35, dmg: 160, range: 1, apCost: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.60,
@@ -4887,8 +4891,8 @@ const RACE_ABILITIES = {
         { id: 'raceCanopicCurse', spellType: 'unholy', name: 'Canopic Curse',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'jammed', duration: 3 }],
-          desc: 'Seal a target\'s vital essence. Jammed for 3 turns — abilities cost more MP.' },
+          statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Seal a target\'s vital essence. Jammed for 2 turns — abilities cost more MP.' },
         SHARED_SUMMON_SANDSTORM,
         SHARED_FISSURE
     ],
@@ -5230,8 +5234,9 @@ const RACE_ABILITIES = {
     'homosapien': [
         { id: 'raceAdrenalineRush', spellType: 'human', name: 'Adrenaline Rush',
           type: 'utility', cost: 20, apCost: 1, range: 0,
-          kind: 'selfHeal', selfHealPct: 0.15, cleanse: 1,
-          desc: 'Tap into survival instincts. Heal 15% max HP and cleanse 1 debuff.' }
+          kind: 'selfHeal', selfHealPct: 0.30, cleanse: 2,
+          statStageBoost: { spd: 1 },
+          desc: 'Tap into survival instincts. Heal 30% max HP, cleanse 2 debuffs, and gain +1 SPD. Humanity refuses to die.' }
     ],
     'pirate': [
         { id: 'raceCannonball', spellType: 'tech', name: 'Cannonball',
@@ -5242,8 +5247,8 @@ const RACE_ABILITIES = {
         { id: 'raceWalkThePlank', spellType: 'human', name: 'Walk the Plank',
           type: 'damage', cost: 35, dmg: 90, range: 3, apCost: 2,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 9, orientable: false,
-          aoeRadius: 1, squareFlood: true, damageType: 'physical', executePct: 0.30,
-          desc: 'Force enemies overboard. Floods a 3×3 area with deep water, drowning all caught. Executes any enemy below 30% HP.' },
+          aoeRadius: 1, squareFlood: true, damageType: 'physical', executePct: 0.20,
+          desc: 'Force enemies overboard. Floods a 3×3 area with deep water, drowning all caught. Executes any enemy below 20% HP.' },
         { id: 'racePlunder', spellType: 'human', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 70, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
@@ -5261,8 +5266,8 @@ const RACE_ABILITIES = {
         { id: 'raceAnchor', spellType: 'human', name: 'Anchor',
           type: 'debuff', cost: 25, range: 2, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'stun', duration: 3 }],
-          desc: 'Drop a massive anchor on an enemy, pinning them in place. Stunned for 3 turns. Deals no damage.' },
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'Drop a massive anchor on an enemy, pinning them in place. Stunned for 1 turn. Deals no damage.' },
         { id: 'raceGrapple', spellType: 'human', name: 'Grapple',
           type: 'utility', cost: 20, apCost: 1, range: 3,
           kind: 'utility',
@@ -5792,8 +5797,8 @@ const RACE_ABILITIES = {
         { id: 'raceSirenSong', spellType: 'anomaly', name: 'Siren Song',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'sirenSong', duration: 2 }],
-          desc: 'Bewitch an enemy with an irresistible melody. Target walks 1 tile toward caster each turn.' },
+          statusEffects: [{ id: 'sirenSong', duration: 1 }],
+          desc: 'Bewitch an enemy with an irresistible melody. Target walks 1 tile toward caster.' },
         SHARED_FLASH_FREEZE,
         SHARED_TIDAL_SURGE,
         SHARED_MAELSTROM
@@ -6562,8 +6567,8 @@ const RACE_ABILITIES = {
           desc: 'Curse a 3x3 area with pestilence for 3 turns. Enemies inside are continually poisoned.' },
         { id: 'raceDarkResurrection', spellType: 'unholy', name: 'Dark Resurrection',
           type: 'heal', cost: 40, range: 4, apCost: 2,
-          kind: 'revive', reviveHpPct: 0.50,
-          desc: 'Raise a fallen ally from death with 50% HP. The necromancer laughs at mortality.' }
+          kind: 'revive', reviveHpPct: 0.50, oneRevivePerUnitPerMatch: true,
+          desc: 'Raise a fallen ally from death with 50% HP. Each ally can only be raised once per match — even the necromancer cannot cheat death twice.' }
     ],
 
     'occulus': [
@@ -6777,8 +6782,8 @@ const RACE_ABILITIES = {
           desc: 'Dive from the heavens. Damage scales with elevation delta. Wings of judgment.' },
         { id: 'raceChooserOfSlain', spellType: 'divine', name: 'Chooser of the Slain',
           type: 'heal', cost: 35, range: 4, apCost: 2,
-          kind: 'revive', reviveHpPct: 0.60,
-          desc: 'Choose a fallen warrior and return them from Valhalla with 60% HP.' },
+          kind: 'revive', reviveHpPct: 0.60, oneRevivePerUnitPerMatch: true,
+          desc: 'Choose a fallen warrior and return them from Valhalla with 60% HP. Valhalla releases each warrior only once per match.' },
         { id: 'raceShieldMaiden', spellType: 'divine', name: 'Shield Maiden',
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 120,
@@ -6949,11 +6954,11 @@ const MANA_FORMULA = {
     MAX_TARGETS: 4.0,   // a spell never realistically hits more than ~4 of 6 enemies
 };
 
-const _MF_HARD_CC = { stun:13, freeze:13, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, glare:9, guardBreak:8 };
+const _MF_HARD_CC = { stun:13, freeze:13, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, sirenSong:11, guardBreak:8 };
 const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6 };
 const _MF_DOT     = { burn:7, poison:7, bleed:7, lava_burn:7 };
-const _MF_DEBUFF  = { marked:5, discord:6, inspiredWeak:5, vulnerable:5, weak:5 };
-const _MF_BUFF    = { protect:14, invulnerable:15, invisible:9, untargetable:9, regen:6, inspired:7,
+const _MF_DEBUFF  = { marked:5, discord:6, inspiredWeak:5, vulnerable:5, weak:5, glare:6 };
+const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12, regen:6, inspired:7,
                       guarding:6, guard:6, steadyAim:6, overclock:8, encore:9, warpRune:5, scanner:3,
                       remoteView:3, warCry:7 };
 
@@ -6965,7 +6970,10 @@ function _mfStatusPoints(list, isAlly, areaMult){
     for (const st of list){
         const id = st && st.id; if (!id) continue;
         const dur = Math.max(1, st.duration || 1);
-        const durScale = 1 + 0.55 * (dur - 1);
+        // Hard CC gets steeper duration scaling: a 2-turn stun is far more than
+        // 1.55x as oppressive as a 1-turn stun (it spans two whole activations).
+        const durFactor = (!isAlly && _MF_HARD_CC[id] != null) ? 0.9 : 0.55;
+        const durScale = 1 + durFactor * (dur - 1);
         let base;
         if (isAlly) base = _MF_BUFF[id] != null ? _MF_BUFF[id] : 6;
         else if (_MF_HARD_CC[id] != null) base = _MF_HARD_CC[id];
@@ -6975,7 +6983,9 @@ function _mfStatusPoints(list, isAlly, areaMult){
         else if (_MF_BUFF[id] != null) base = _MF_BUFF[id];
         else base = 5;
         if (st.bonusDamage) base += st.bonusDamage * 0.05;
-        p += base * durScale;
+        // A status with an apply chance is only worth its expected value.
+        const chance = (st.chance > 0 && st.chance < 1) ? st.chance : 1;
+        p += base * durScale * chance;
     }
     return p * areaMult;
 }
@@ -6988,7 +6998,11 @@ function _mfEffectiveTargets(s){
     if (s.splitCount)  E = Math.max(E, s.splitCount);
     if (s.kind === 'healAll' || s.healAll || s.manaRestoreAll || s.auraHeal) E = Math.max(E, 3.5);
     if (s.kind === 'summonWeather') E = Math.max(E, 2.6);
-    if (s.cross) E = Math.max(E, 2.8);
+    if (s.cross || s.kind === 'cross' || s.crossRadius) E = Math.max(E, 2.8);
+    // Line and barrage kinds hit multiple units but carried no area fields, so
+    // they were priced single-target — the biggest historical underpricing.
+    if (s.kind === 'line' || s.kind === 'linePush' || s.lineWidth) E = Math.max(E, 2.4);
+    if (s.kind === 'barrage') E = Math.max(E, 3.2);
     return Math.min(E, MANA_FORMULA.MAX_TARGETS);
 }
 
@@ -6998,7 +7012,8 @@ function computeSpellManaCost(s){
     const MF = MANA_FORMULA;
     const E = _mfEffectiveTargets(s);
     const k = s.kind;
-    const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || k === 'summonWeather');
+    const areaDmg = !!(s.aoeRadius || s.tileCount || s.blastRadius || s.cross || s.crossRadius || s.lineWidth
+        || k === 'summonWeather' || k === 'cross' || k === 'line' || k === 'linePush' || k === 'barrage');
     const areaMult = areaDmg ? 1.3 : 1;
 
     // --- Damage (every form, target-scaled for area effects) ---
@@ -7008,11 +7023,18 @@ function computeSpellManaCost(s){
     dmg += (s.bounceDamage || 0) + (s.dashDamage || 0) + (s.collisionBonus || 0) * 0.5;
     if (s.dmgPerLevel) dmg += s.dmgPerLevel * (s.carryHeight || 2) * 0.5;
     if (s.dot) dmg += s.dot * 2;
+    // Conditional damage riders count at partial weight — they don't always
+    // apply, but a spell that can hit harder must cost more than one that can't.
+    dmg += (s.unholyBonus || 0) * 0.5 + (s.actedTargetBonus || 0) * 0.5 + (s.repeatDmg || 0) * 0.7;
+    if (s.lumberScale) dmg += (s.lumberCap || 0) * 0.25;
     let dmgMod = 1;
     if (s.ignoreArmor || s.piercing || s.bounceShieldIgnore) dmgMod *= 1.25;
-    if (s.guaranteedCrit) dmgMod *= 1.25;
+    if (s.guaranteedCrit) dmgMod *= 1.6;
+    if (s.sneakBonus) dmgMod *= 1.15;
     if (s.consumeMarked || s.markedSecondHitBonus) dmgMod *= 1.08;
     let P = dmg * MF.DMG_PER_PT * dmgMod;
+    // Executes are binary kill pressure no damage number captures.
+    if (s.executePct) P += s.executePct * 60;
 
     // --- Healing / revives ---
     let heal = (s.heal || 0) + (s.healAmt || 0) + (s.auraHeal || 0) + (s.comboHeal || 0) + (s.seedHeal || 0) + (s.selfHeal || 0);
@@ -7050,6 +7072,9 @@ function computeSpellManaCost(s){
     P += (s.pullDistance || 0) * 3;
     P += (s.displaceDistance || 0) * 3;
     P += (s.teleportDistance || 0) * 2;
+    // Forcibly warping ENEMIES (into hazards, off objectives) is worth far
+    // more than a self-blink of the same range.
+    if (s.teleportAnyUnit) P += 12;
     if (s.chargeToTarget || k === 'leapStrike' || k === 'dash' || k === 'teleport' || k === 'skyThrow' || k === 'skySlam') P += 5;
     if (k === 'swap' || s.swap) P += 5;
     if (s.moveDelta) P += Math.abs(s.moveDelta) * 4;
@@ -7072,7 +7097,7 @@ function computeSpellManaCost(s){
     if (k === 'warpRune') P += 8;
     if (k === 'encore') P += 20;          // grants an extra action — premium tempo
     if (k === 'trickRoom') P += 12;       // global speed inversion
-    if (s.stealSpell) P += 10;            // strip a buff/spell off the target
+    if (s.stealSpell) P += 18;            // permanently strip a buff/spell off the target
     if (s.apDrain) P += 8;
     if (k === 'scan' || s.scanner || k === 'remoteView' || s.untargetable) P += 4;
 

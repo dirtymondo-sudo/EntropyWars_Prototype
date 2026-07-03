@@ -19695,7 +19695,11 @@
                 effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
             });
 
-            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+            // getEffectiveAttackBonus is intentionally NOT added here: this damage
+            // flows into applyDamageToUnit, which adds it for every enemy hit.
+            // Adding it in both places double-counted chaos/killstreak/terrain
+            // attack bonuses for basic attacks (spells only ever got it once).
+            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -22009,6 +22013,9 @@
                 const allies = aliveUnitsFor(unit.player);
                 let totalRestored = 0;
                 for (const ally of allies) {
+                    // The caster never restores their own MP — otherwise the spell
+                    // partially refunds itself and becomes a team-wide mana printer.
+                    if (ally.id === unit.id) continue;
                     const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
                     if (restoreAmount > 0) {
                         ally.mp += restoreAmount;
