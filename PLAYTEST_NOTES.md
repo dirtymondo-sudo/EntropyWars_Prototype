@@ -657,6 +657,55 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   - `MAX_AUTO_ZOOM_OUT_TILES` 14 → **12**: hard floor for EVERY automatic zoom,
     map-size independent (this is the "one size fits all" knob — auto moves can
     never show more than ~12 tile-rows no matter how big the map is).
+- **Camera overhaul v3 (2026-07-03)** — five user complaints ("spell zoomed out
+  ridiculously far", "tilt up + cast = stuck looking up", "random far zoom-outs",
+  "unnecessary panning", "tired of scrolling to re-zoom"), all root-caused.
+  Files: **battle.js** (all logic) + **state.js/ui.js/online.js** (zoom-gate
+  sweep) — the four must go to R2 together.
+  - **Action-cam elevation zoom blow-out (the screenshot bug, zoom 0.68 during
+    Knife Throw at a rooftop target):** `_playCineActionShot`/`animateDashActionCamera`
+    fit an above-caster target with `_cineZoomForTiles`, whose `cos(tilt)` factor
+    floors at 0.35 at the shot's ~76–90° tilt → the fit resolved ~3× wider than
+    the elevation gap needs (1-level ledge → 0.67 zoom). Fixes: the fit factor is
+    now `sin(tilt)` (a world-VERTICAL span projects ∝ sin, not cos), and both
+    call sites floor the result at `CINE_MIN_ZOOM` (1.5) — the action cam's zoom
+    now always stays in its signature [1.5, 2.5] band. Verified live: 3-level
+    gap cast held min zoom exactly 1.50.
+  - **"Tilt up then cast → camera stuck looking up":** the middle-drag tilt snap
+    records the dragged pitch as `_restTilt` (up to 135° = staring at sky), and
+    a cast captured it into `_preCineView` — every return then "restored" the
+    sky-gaze, and the auto-settle guard (`tilt <= _restTilt+3`) could never fire.
+    Fixes: **`REST_TILT_MAX = 62`** — `snap()` clamps `_restTilt`, and the (now
+    shared) `_captureCineReturnView()` clamps the captured pre-cine pitch. Live
+    tilt still cranes freely to 135; only the REMEMBERED resting/return pitch is
+    capped. Also: the player-side press-turn HOLD (unit still has AP after an
+    action) now arms **`camera._armLevelSettle(900ms)`** — the same debounced
+    pitch/yaw-only settle the auto side uses — so holding the action framing can
+    never strand the camera craned at the spell angle.
+  - **"Zoomed out so far / scrolling to re-zoom" (the big one):**
+    `computeZoomForVisibleTiles` MULTIPLIED by cos(tilt) where it must DIVIDE
+    (rows foreshorten on a tilted board: one row ≈ ts·zoom·cos px), so every
+    "12-row" auto framing (default zoom, auto floor, EOR overview, turn framing)
+    undershot by cos² ≈ 2.4× — default zoom resolved 0.28 on an 8×8 map. Now
+    `parentH / (rows·ts·cos)`; measured live via `ThreeRenderer.worldToScreen`:
+    default ≈0.91, ~5.8 center-rows ≈ whole 8×8 board + margin in frame
+    (screenshots `shots/camfix-default-framing.png`, `camsoak-r2.png`).
+  - **User zoom now actually sticks:** every auto-move gate was the absolute
+    `userZoomScale > 1.05`, which assumed default ≈1.0×; with real defaults
+    ≈0.4–0.9 ANY wheel zoom-in below 1.05 was discarded by the next reset/turn
+    pan/EOR beat. New **`isUserZoomEngaged()`** (battle.js, global) =
+    `userZoomScale > getDefaultZoom()·1.05`, swapped into ~35 call sites across
+    battle/state/ui/online. Engaged user zoom also now BEATS the remembered
+    `_preCineView.zoom` on every cine return (restore/reset/softReset/focusOnTiles)
+    — a wheel zoom dialed mid-shot survives the shot's return. The zoom toggle
+    button (`cycleUserZoom`) was dead on big maps (toggled 1.0 ↔ default, both
+    "not engaged"); it now toggles default ↔ `getTurnFramingZoom()`.
+  - **Verification harness:** scratchpad `verify_camera.js` (10 checks — cine
+    fit math, elevated-cast zoom floor ≥1.45, rest-tilt clamp, HOLD settle,
+    engaged-zoom persistence incl. mid-shot) + `soak_camera.js` (real TDM vs
+    CPU, action cam on, in-page 400ms camera monitor flagging zoom-below-floor
+    and tilt-stuck-high>6s). Result: 10/10 + 0 anomaly flags + 0 page errors.
+    Both need `USE_ASSET_CACHE=1 LOCAL_ASSETS=battle.js,state.js,ui.js,online.js`.
 - **EOR combat-log de-bloat (2026-06):** the global regen log is a single
   summary line; spawn-zone friendly regen (`processEndOfRoundZonesAndSeeds`)
   no longer logs one `Spawn zone heals NAME (+HP, +MP)` line PER unit — it

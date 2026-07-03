@@ -1719,7 +1719,7 @@
                 if (!_followed) {
                     animateBoardCameraPath(
                         { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y },
-                        { duration: chargeMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                        { duration: chargeMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                     );
                 }
             }
@@ -3282,13 +3282,13 @@
             // sticks.
             const _eorPrevView = (!state.cameraDisabled)
                 ? { tilt: camera._restTilt, yaw: camera._restYaw,
-                    zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom() } : null;
+                    zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom() } : null;
             function _restoreEorView() {
                 if (_eorPrevView && !state.cameraDisabled) {
                     const _uz = getUserZoomScale();
                     camera.moveTo({
                         tilt: _eorPrevView.tilt, yaw: _eorPrevView.yaw,
-                        zoom: _uz > 1.05 ? _uz : _eorPrevView.zoom,
+                        zoom: isUserZoomEngaged() ? _uz : _eorPrevView.zoom,
                         duration: 320, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
                     });
@@ -3326,7 +3326,7 @@
                     const _uz = getUserZoomScale();
                     camera.moveTo({
                         x: unit.x, y: unit.y,
-                        zoom: _uz > 1.05 ? _uz : getDefaultZoom() * 1.25,
+                        zoom: isUserZoomEngaged() ? _uz : getDefaultZoom() * 1.25,
                         tilt: camera._restTilt, yaw: camera._restYaw,
                         duration: 400, easing: 'easeInOut',
                         _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
@@ -6477,6 +6477,17 @@
         // pre-cine view (`_preCineView`); this is the floor under it.
         const DEFAULT_BOARD_TILT = 50;
         const DEFAULT_BOARD_YAW  = 0;
+        // Ceiling on the REMEMBERED resting/return pitch. The player can still
+        // crane the live camera all the way up (tilt-drag allows 135° — looking
+        // at the sky), but that pose must never become the angle every
+        // post-action return lands on: casting a spell while craned up used to
+        // record the sky-gaze as the "gameplay view" (_restTilt/_preCineView),
+        // so every return came back STUCK looking up with the board out of
+        // frame — and the auto-settle guard (tilt <= _restTilt+3) could never
+        // fire. Returns clamp to this instead: a deliberate low angle within
+        // the ceiling is honored exactly; anything above it settles to a view
+        // where the board is actually readable.
+        const REST_TILT_MAX = 62;
 
         const camera = {
 
@@ -6805,6 +6816,35 @@
                 }, Math.max(50, afterMs || 0));
             },
 
+            // ── Debounced "level back out" ──
+            // If no new shot / camera move takes over within delayMs, ease ONLY
+            // the pitch/yaw back to the resting board orientation — position and
+            // zoom stay, so there is no positional bounce, just the camera
+            // levelling out of a craned action angle. Armed wherever an action
+            // intentionally KEEPS the cinematic framing afterwards (an
+            // auto-side's action streak, a player unit holding its shot with AP
+            // left) so the camera can never sit stranded at a spell-cast pitch
+            // once the streak pauses. Every new action re-arms it; the
+            // fire-time guards skip it if something else owns the camera.
+            _autoSettleTimer: null,
+            _armLevelSettle(delayMs) {
+                if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
+                this._autoSettleTimer = setTimeout(() => {
+                    this._autoSettleTimer = null;
+                    if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                    if (this._rafId || this._busy || this._cineShotId != null) return;
+                    if (state._userPanning || state._fullMapOverview) return;
+                    if (this.tilt <= this._restTilt + 3) return;
+                    this.moveTo({
+                        tilt: this._restTilt, yaw: this._restYaw,
+                        duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
+                    });
+                    // The un-tilt drops the pitch back below the horizon —
+                    // release the keep-subject floor response once it lands.
+                    this._releaseCineSubject(actionMs(800));
+                }, delayMs);
+            },
+
             // Natural (un-overridden) focal height at a tile — the same value
             // _apply computes when no elevZ override is active: terrain height
             // (or an airborne unit's altitude) plus the sprite anchor lift when
@@ -6853,7 +6893,9 @@
                 // angle) — remember it as the resting orientation so every later
                 // return lands here. Cinematic shots and the EOR overview use
                 // moveTo(), not snap(), so they never pollute the resting angle.
-                if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = opts.tilt; }
+                // The LIVE tilt takes the raw value (free look, sky included);
+                // only the remembered RESTING pitch is clamped — see REST_TILT_MAX.
+                if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = Math.min(opts.tilt, REST_TILT_MAX); }
                 if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
@@ -6946,7 +6988,7 @@
 
             panTo(tx, ty, opts = {}) {
                 const userZoom = getUserZoomScale();
-                const zoom = opts.zoom ?? (userZoom > 1.05 ? userZoom : getDefaultZoom());
+                const zoom = opts.zoom ?? (isUserZoomEngaged() ? userZoom : getDefaultZoom());
                 this.moveTo({
                     x: tx, y: ty, zoom,
                     duration: opts.duration ?? 600,
@@ -6981,7 +7023,10 @@
                 this._busy = true;
                 const seq = ++this._seqId;
                 this.moveTo({ ...s,
-                    ...(pre ? { tilt: pre.tilt, yaw: pre.yaw, zoom: pre.zoom } : {}),
+                    // A zoom the player dialed in (even mid-shot) beats the
+                    // remembered pre-shot zoom — the user's zoom always sticks.
+                    ...(pre ? { tilt: pre.tilt, yaw: pre.yaw,
+                        zoom: isUserZoomEngaged() ? getUserZoomScale() : pre.zoom } : {}),
                     duration: dur, easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true });
                 if (this._busyTimer) clearTimeout(this._busyTimer);
@@ -7010,7 +7055,7 @@
                 }
                 const target = this._getBestResetTarget();
                 const userZoom = getUserZoomScale();
-                const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                const zoom = isUserZoomEngaged() ? userZoom : getDefaultZoom();
 
                 // Coming back from a cinematic action shot: restore the player's
                 // pre-cine framing as ONE motion — tilt + yaw + ZOOM together — so
@@ -7028,7 +7073,9 @@
                 // at a transient cinematic/overview angle.
                 const retTilt = pre ? pre.tilt : this._restTilt;
                 const retYaw  = pre ? pre.yaw  : this._restYaw;
-                const retZoom = pre ? pre.zoom : zoom;
+                // An engaged user zoom (already resolved into `zoom` above)
+                // beats the remembered pre-shot zoom.
+                const retZoom = (pre && !isUserZoomEngaged()) ? pre.zoom : zoom;
                 if (immediate) {
                     this._cineKeepSubject = false;
                     if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
@@ -7092,18 +7139,7 @@
                     // hand-panning, or the pitch is already level. _fogAllowed lets
                     // it run on an AI fog turn (a non-viewer camera move is
                     // otherwise blocked).
-                    if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
-                    this._autoSettleTimer = setTimeout(() => {
-                        this._autoSettleTimer = null;
-                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
-                        if (this._rafId || this._busy || this._cineShotId != null) return;
-                        if (state._userPanning || state._fullMapOverview) return;
-                        if (this.tilt <= this._restTilt + 3) return;
-                        this.moveTo({
-                            tilt: this._restTilt, yaw: this._restYaw,
-                            duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
-                        });
-                    }, actionMs(600));
+                    this._armLevelSettle(actionMs(600));
                     return;
                 }
                 // ── Turn-ownership guard (the "camera isn't on my unit at the
@@ -7149,6 +7185,14 @@
                     if (this._cineSubjectReleaseTimer) { clearTimeout(this._cineSubjectReleaseTimer); this._cineSubjectReleaseTimer = null; }
                     this._busy = false;
                     if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
+                    // Holding the action framing is fine — holding the craned
+                    // PITCH is not: if the player doesn't chain another action
+                    // shortly, level the camera back to the resting angle
+                    // (position/zoom stay; _preCineView remains pending so the
+                    // real return still lands on the player's own framing).
+                    // Without this, a spell cast at a higher target left the
+                    // camera staring up at the sky for the rest of the turn.
+                    this._armLevelSettle(actionMs(900));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -7193,7 +7237,7 @@
                         // moveTo ease the focal height onto the unit's own tile.
                         x: focusUnit.x, y: focusUnit.y, elevZ: -1,
                         tilt: _rTilt, yaw: _rYaw,
-                        ...(pre ? { zoom: pre.zoom } : {}),
+                        ...(pre ? { zoom: isUserZoomEngaged() ? getUserZoomScale() : pre.zoom } : {}),
                         duration: dur, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true });
                     if (this._busyTimer) clearTimeout(this._busyTimer);
@@ -7217,7 +7261,7 @@
                     // user's current tilt/yaw (which already equals _restTilt).
                     const retTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : undefined);
                     const retYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : undefined);
-                    const zoom = pre ? pre.zoom : (userZoom > 1.05 ? userZoom : getDefaultZoom());
+                    const zoom = isUserZoomEngaged() ? userZoom : (pre ? pre.zoom : getDefaultZoom());
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
@@ -7298,7 +7342,9 @@
                     // framing in the SAME move (unless the caller is setting its
                     // own zoom), so tilt and zoom never restore on split timelines.
                     ...(_cineRet ? { tilt: _cineRetTilt, yaw: _cineRetYaw,
-                        ...(opts._applyZoom ? {} : { zoom: _cineRetZoom, _allowZoomChange: true, _bypassCap: true }) } : {}),
+                        ...(opts._applyZoom ? {} : {
+                            zoom: isUserZoomEngaged() ? getUserZoomScale() : _cineRetZoom,
+                            _allowZoomChange: true, _bypassCap: true }) } : {}),
                     // Explicit orientation from the caller (e.g. an auto-side turn
                     // activation forcing an un-tilt back to the resting board angle
                     // so consecutive AI turns never inherit the previous action's
@@ -7392,9 +7438,25 @@
             if (!z || z < 0.01) { state.userZoomScale = getDefaultZoom(); return state.userZoomScale; }
             return z;
         }
+        // TRUE when the player has dialed in a zoom of their own (wheel /
+        // pinch) that is meaningfully tighter than the automatic framing.
+        // Every auto camera move must honor an engaged user zoom. The old
+        // test was the absolute `userZoom > 1.05`, which assumed the default
+        // framing was ~1.0× — but on real maps getDefaultZoom() resolves well
+        // below 1 (≈0.4–0.7), so ANY zoom-in short of 1.05 was treated as "no
+        // user zoom" and yanked back out by the next reset / turn pan / EOR
+        // beat. That was the "I have to scroll to re-zoom the map after every
+        // single action" complaint. Relative test: anything ≳5% tighter than
+        // the auto default is the player's deliberate choice and STICKS until
+        // they zoom back out themselves.
+        function isUserZoomEngaged() {
+            const z = state.userZoomScale || 0;
+            if (z < 0.01) return false;
+            return z > getDefaultZoom() * 1.05;
+        }
         function getUserZoomLabel() {
             const z = state.userZoomScale || 1;
-            return z <= 1.05 ? '🔍 Overview' : `🔎 ${Math.round(z * 100)}%`;
+            return isUserZoomEngaged() ? `🔎 ${Math.round(z * 100)}%` : '🔍 Overview';
         }
 
         // Hard floor on every AUTOMATIC zoom: no auto move may pull back
@@ -7439,7 +7501,15 @@
 
             const tiltDeg = _zoomRefTilt();
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
-            const zoom = Math.max(0.15, Math.min(10.0, (parentH * tiltFactor) / (targetRows * (ts + gap))));
+            // Rows on the tilted board FORESHORTEN: one row of board depth
+            // occupies ts·zoom·cos(tilt) screen px, so the zoom that fits N
+            // rows in parentH is parentH / (N·ts·cos) — the tilt factor
+            // DIVIDES. The old formula MULTIPLIED by it, undershooting the
+            // zoom by cos² (≈2.4× at the resting 50° tilt): every automatic
+            // framing labelled "12 visible rows" actually framed ~29, parking
+            // the camera so far out that players had to wheel-zoom back in
+            // after every reset ("watching the match from 3 miles away").
+            const zoom = Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
             _zoomMemo.set(targetRows, zoom);
             return zoom;
         }
@@ -7481,21 +7551,25 @@
         }
 
         function cycleUserZoom() {
-            if ((state.userZoomScale || 1) > 1.05) {
-                state.userZoomScale = 1;
-            } else {
+            // Toggle between the automatic overview framing and the closer
+            // "turn" framing. The old toggle flipped between 1.0 and
+            // getDefaultZoom() — on most maps BOTH sit below the engaged-zoom
+            // threshold, so the button read as doing nothing.
+            if (isUserZoomEngaged()) {
                 state.userZoomScale = getDefaultZoom();
+            } else {
+                state.userZoomScale = getTurnFramingZoom();
             }
             const btn = document.getElementById('zoomToggleBtn');
-            if (btn) { btn.textContent = getUserZoomLabel(); btn.classList.toggle('active', (state.userZoomScale || 1) > 1.05); }
-            if (state._fullMapOverview && (state.userZoomScale || 1) > 1.05) {
+            if (btn) { btn.textContent = getUserZoomLabel(); btn.classList.toggle('active', isUserZoomEngaged()); }
+            if (state._fullMapOverview && isUserZoomEngaged()) {
                 state._fullMapOverview = false;
                 const ovBtn = document.getElementById('overviewBtn');
                 if (ovBtn) ovBtn.classList.remove('active');
             }
             const unit = getSelectedUnit();
             const z = state.userZoomScale;
-            if (z > 1.05) {
+            if (isUserZoomEngaged()) {
                 const t = unit || { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
 
                 camera.snap({ x: t.x, y: t.y, zoom: z });
@@ -7549,7 +7623,7 @@
             const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN, getMaxAutoZoomOut());
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
-                zoom: _uz > 1.05 ? _uz : _fitZoom,
+                zoom: isUserZoomEngaged() ? _uz : _fitZoom,
                 tilt: camera._restTilt, yaw: camera._restYaw,
                 duration: 520, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
@@ -7658,9 +7732,34 @@
             const ts = CONFIG.tileSize || BASE_TILE, gap = CONFIG.tileGap ?? 0;
             const parentH = _layoutCache.valid ? _layoutCache.parentH
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
-            const tiltFactor = Math.max(0.35, Math.cos((tiltDeg ?? 60) * Math.PI / 180));
+            // VERTICAL projection factor. Both callers use this to fit an
+            // ELEVATION gap — a world-VERTICAL span — and a vertical span
+            // projects to the screen ∝ sin(tilt): full size at a level camera
+            // (90°), shrinking toward top-down. The old cos() factor here
+            // modeled flat board-ROW foreshortening; at the action shot's
+            // ~76–90° tilt it floored at 0.35 and resolved the fit ~3× wider
+            // than the gap needs — the "camera zooms out ridiculously far
+            // whenever the target stands on higher ground" bug (a ONE-level
+            // ledge pulled the shot out to ~0.67 zoom).
+            const tiltFactor = Math.max(0.35, Math.abs(Math.sin((tiltDeg ?? 60) * Math.PI / 180)));
             return Math.max(0.15, Math.min(10.0,
                 (parentH * tiltFactor) / (Math.max(1, tiles) * (ts + gap))));
+        }
+
+        // Remember the player's framing so the post-action return can restore
+        // it — captured ONLY from a genuine gameplay state (no shot currently
+        // owns the camera; capturing mid-shot would record a cinematic angle
+        // as the "overhead" view), and with the pitch clamped to the playable
+        // ceiling so a hand-craned sky gaze at cast time can never become the
+        // view every return lands on (the "camera gets stuck looking up after
+        // a spell" bug).
+        function _captureCineReturnView() {
+            if (camera._preCineView || camera._cineShotId != null) return;
+            camera._preCineView = {
+                tilt: Math.min(camera._tt, REST_TILT_MAX),
+                yaw: camera._tyaw,
+                zoom: camera._tz
+            };
         }
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
@@ -7671,9 +7770,7 @@
             // then return to that tilt — the root of the "stays tilted up / at the
             // angle the spell was cast" drift. If a shot is already active we keep
             // the framing it remembered.
-            if (!camera._preCineView && camera._cineShotId == null) {
-                camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
-            }
+            _captureCineReturnView();
             camera._cineShotId = sequenceId;
             camera._cineShotUnitId = sourceUnit.id;
             // Published for the renderer's occlusion fade — terrain/props between
@@ -7763,7 +7860,12 @@
             let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
             if (upGapPx > 0) {
                 const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
-                zoom = Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt));
+                // Never let the vertical fit widen past the action cam's own
+                // minimum framing: the focal-height bias + the rig's
+                // keep-subject response already hold both subjects in frame,
+                // and dropping below CINE_MIN_ZOOM reads as a random
+                // full-board zoom-out in the middle of a spell.
+                zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
             }
 
             // Tell the rig to keep the caster framed (dolly-in floor response) while
@@ -7855,7 +7957,9 @@
             let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
             if (upGapPx > 0) {
                 const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
-                zoom = Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt));
+                // Floor at CINE_MIN_ZOOM — same reasoning as the attack shot:
+                // the fit may ease back, never blow out to a full-board view.
+                zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
             }
 
             // Take ownership as a cinematic shot so: (a) the renderer's occlusion
@@ -7867,9 +7971,7 @@
             // lands. Capture the return framing only from a genuine gameplay pose
             // (see the note in _playCineActionShot).
             const sequenceId = ++boardCameraSequenceId;
-            if (!camera._preCineView && camera._cineShotId == null) {
-                camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
-            }
+            _captureCineReturnView();
             camera._cineShotId = sequenceId;
             camera._cineShotUnitId = (opts.casterId != null) ? opts.casterId : null;
             camera._cineShotTarget = { x: toPoint.x, y: toPoint.y, id: null };
@@ -7902,9 +8004,7 @@
             // Capture the return framing only from a true gameplay state — see
             // the note in _playCineActionShot. Prevents a sky-strike shot from
             // recording a cinematic tilt as the player's "overhead" view.
-            if (!camera._preCineView && camera._cineShotId == null) {
-                camera._preCineView = { tilt: camera._tt, yaw: camera._tyaw, zoom: camera._tz };
-            }
+            _captureCineReturnView();
             camera._cineShotId = sequenceId;
             camera._cineShotUnitId = sourceUnit.id;
             // Published for the renderer's occlusion fade (see _playCineActionShot).
@@ -8529,7 +8629,7 @@
                 const isVisible = !state.fogOfWar
                     || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(s.target.x, s.target.y));
                 if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
-                    const camZoom = (typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05)
+                    const camZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
                         ? getUserZoomScale() : getDefaultZoom();
                     camera.moveTo({
                         x: (s.turret.x + s.target.x) / 2, y: (s.turret.y + s.target.y) / 2,
@@ -15274,7 +15374,7 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
                             holdMs: 99999,
@@ -15302,7 +15402,7 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
                             holdMs: 99999,
@@ -16898,13 +16998,13 @@
 
                     // The local player's OWN unit gets a closer "medium" framing
                     // when its turn activates, instead of the whole-board
-                    // overview that pulled the camera way out every turn. A
-                    // user-pinned zoom (>1.05) still wins; enemy/AI activations
+                    // overview that pulled the camera way out every turn. An
+                    // engaged user zoom still wins; enemy/AI activations
                     // keep the overview.
                     const _localActiveTurn = unitId === state._blitzActiveUnitId
                         && state.controllers?.[unit.player] === CTRL.LOCAL
                         && unit.player === getViewerPlayer();
-                    const zoom = baseZoom > 1.05 ? baseZoom
+                    const zoom = isUserZoomEngaged() ? baseZoom
                         : (_localActiveTurn ? getTurnFramingZoom() : getDefaultZoom());
 
                     if (_cameraActingSideIsAuto()) {
@@ -18114,7 +18214,7 @@
                                     animateBoardCameraPath(
                                         { x: savedX, y: savedY },
                                         { x: x, y: y },
-                                        { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                        { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                                     );
                                 }
                             }
@@ -18346,7 +18446,7 @@
 
             if (!state.cameraDisabled && !unit.dead) {
                 const baseZoom = getUserZoomScale();
-                const zoom = baseZoom > 1.05 ? baseZoom : getDefaultZoom();
+                const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
                 focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                     zoom,
                     holdMs: 99999,
@@ -19292,7 +19392,7 @@
                         animateBoardCameraPath(
                             { x: startX, y: startY },
                             { x: x, y: y },
-                            { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                            { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                         );
                         playSfx('moveStep');
                         _aiWalkAnimDelay = walkDurationMs + 180;
@@ -19315,7 +19415,7 @@
                             animateBoardCameraPath(
                                 { x: startX, y: startY },
                                 { x: lastVisible.x, y: lastVisible.y },
-                                { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                             );
                             playSfx('moveStep');
                             _aiWalkAnimDelay = walkDurationMs + 180;
@@ -19351,7 +19451,7 @@
                             animateBoardCameraPath(
                                 { x: entryX, y: entryY },
                                 { x: x, y: y },
-                                { duration: walkDurationMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                                { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                             );
                             playSfx('moveStep');
                             _aiWalkAnimDelay = walkDurationMs + 180;
@@ -19524,7 +19624,7 @@
                 const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
                 if (isHuman && _fogCamTilesVisible({ x: fromX, y: fromY }, { x, y })) {
 
-                    const _curZoom = typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05
+                    const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
                         ? getUserZoomScale()
                         : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
                     if (typeof animateBoardCameraPath === 'function') {
@@ -19535,7 +19635,7 @@
                         );
                     }
                 } else if (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
-                    const _curZoom = typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05
+                    const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
                         ? getUserZoomScale()
                         : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
                     if (typeof animateBoardCameraPath === 'function') {
@@ -21084,7 +21184,7 @@
 
                 if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
                     focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                        zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(),
+                        zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
                         holdMs: 99999, persist: true, transitionMs: 350,
                         _fogAllowed: true
                     });
@@ -21123,7 +21223,7 @@
 
                 if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
                     focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                        zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(),
+                        zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
                         holdMs: 99999, persist: true, transitionMs: 350,
                         _fogAllowed: true
                     });
@@ -22457,7 +22557,7 @@
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                             const flingAnimMs = _displaceSteps.length * 120;
-                            const _flingZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                            const _flingZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                             animateBoardCameraPath(
                                 { x: _displaceFromX, y: _displaceFromY },
                                 { x: target.x, y: target.y },
@@ -22750,7 +22850,7 @@
                     if (!state.cameraDisabled) {
                         stopBoardCameraAnimation();
                         if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                        const _pullZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                        const _pullZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                         animateBoardCameraPath(
                             { x: _pullFromX, y: _pullFromY },
                             { x: target.x, y: target.y },
@@ -22792,7 +22892,7 @@
                 if (!state.cameraDisabled) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    const _swapZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                    const _swapZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                     animateBoardCameraPath(
                         { x: ux, y: uy },
                         { x: tx, y: ty },
@@ -22871,7 +22971,7 @@
                         if (!state.cameraDisabled) {
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                            const _escZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                            const _escZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                             animateBoardCameraPath(
                                 { x: _escFromX, y: _escFromY },
                                 { x: candidates[0].x, y: candidates[0].y },
@@ -23462,7 +23562,7 @@
                                 if (!state.cameraDisabled) {
                                     stopBoardCameraAnimation();
                                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                                    const _grZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                                    const _grZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                                     animateBoardCameraPath(
                                         { x: _grFromX, y: _grFromY },
                                         { x: target.x, y: target.y },
@@ -23517,7 +23617,7 @@
                             if (!state.cameraDisabled && _fogCamTilesVisible({ x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                                const _grSelfZoom = getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom();
+                                const _grSelfZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                                 animateBoardCameraPath(
                                     { x: _grSelfFromX, y: _grSelfFromY },
                                     { x: cx, y: cy },
@@ -24366,7 +24466,7 @@
                         animateBoardCameraPath(
                             { x: casterStartX, y: casterStartY },
                             { x: x, y: y },
-                            { duration: dashAnimMs, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                            { duration: dashAnimMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                         );
                     }
                 }
@@ -24779,7 +24879,7 @@
                     animateBoardCameraPath(
                         { x: casterFromX, y: casterFromY },
                         { x: x, y: y },
-                        { duration: 250, zoom: getUserZoomScale() > 1.05 ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
+                        { duration: 250, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                     );
                 }
 

@@ -8755,7 +8755,7 @@
                         else focusUnitPanel(unit.id, null, 'hover');
                         if (!state.cameraDisabled) {
                             const userZoom = getUserZoomScale();
-                            const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                            const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();
                             focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });
                         }
                         scheduleBoardRender();
@@ -8804,7 +8804,7 @@
 
                 if (!state.cameraDisabled) {
                     const userZoom = getUserZoomScale();
-                    const zoom = userZoom > 1.05 ? userZoom : getDefaultZoom();
+                    const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();
                     focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });
                 }
                 scheduleBoardRender();

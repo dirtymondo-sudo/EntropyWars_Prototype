@@ -2352,7 +2352,7 @@
                                     var _wz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _dz2 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: _walkDest.x, y: _walkDest.y }], {
-                                        zoom: _wz > 1.05 ? _wz : _dz2,
+                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _wz : _dz2,
                                         holdMs: 99999, persist: true, transitionMs: 500, _fogAllowed: true
                                     });
                                 }
@@ -2394,7 +2394,7 @@
                                     var _jz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _djz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: _jumpCamX, y: _jumpCamY }], {
-                                        zoom: _jz > 1.05 ? _jz : _djz,
+                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _jz : _djz,
                                         holdMs: 99999, persist: true, transitionMs: 400, _fogAllowed: true
                                     });
                                 }
@@ -2768,7 +2768,7 @@
                                     var _bz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _dz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: hostUnit.x, y: hostUnit.y }], {
-                                        zoom: _bz > 1.05 ? _bz : _dz,
+                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz : _dz,
                                         holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
                                     });
                                 }
@@ -2862,7 +2862,7 @@
                                     var _bz3 = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _dz3 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: activeU.x, y: activeU.y }], {
-                                        zoom: _bz3 > 1.05 ? _bz3 : _dz3,
+                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz3 : _dz3,
                                         holdMs: 99999, persist: true, transitionMs: 600
                                     });
                                 }

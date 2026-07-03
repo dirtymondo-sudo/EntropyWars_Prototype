@@ -1027,7 +1027,7 @@
 
                 const isVisible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(ds.x, ds.y));
                 if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
-                    const _detZoom = (typeof getUserZoomScale === 'function' && getUserZoomScale() > 1.05) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
+                    const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
                     camera.moveTo({ x: ds.x, y: ds.y, zoom: _detZoom, duration: 350, _fogAllowed: true });
                 }
 
@@ -4747,14 +4747,14 @@
 
                 const currentTransform = (boardStageEl?.style.transform || '').match(/scale\(([^)]+)\)/);
                 const displayedZoom = currentTransform ? parseFloat(currentTransform[1]) : getDefaultZoom();
-                const oldZoom = state.userZoomScale > 1.05 ? state.userZoomScale : displayedZoom;
+                const oldZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? state.userZoomScale : displayedZoom;
                 const newZoom = Math.round(Math.max(0.25, Math.min(10.0, oldZoom + delta)) * 100) / 100;
                 if (Math.abs(newZoom - oldZoom) < 0.01) return;
                 state.userZoomScale = newZoom;
                 const btn = document.getElementById('zoomToggleBtn');
                 if (btn) {
                     btn.textContent = getUserZoomLabel();
-                    btn.classList.toggle('active', newZoom > 1.05);
+                    btn.classList.toggle('active', typeof isUserZoomEngaged === 'function' ? isUserZoomEngaged() : newZoom > 1.05);
                 }
 
                 if (typeof camera !== 'undefined') {
@@ -4890,7 +4890,7 @@
                     const u = state.units?.find(u => u.id === defId && !u.dead);
                     if (u && typeof focusBoardCameraOnTiles === 'function') {
                         const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
-                        const zoom = baseZoom > 1.05 ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                        const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                         focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
                             zoom,
                             holdMs: 99999,
@@ -4962,7 +4962,7 @@
                     const u = state.units?.find(u => u.id === defId && !u.dead);
                     if (u && typeof focusBoardCameraOnTiles === 'function') {
                         const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
-                        const zoom = baseZoom > 1.05 ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                        const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                         focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
                             zoom,
                             holdMs: 99999,
@@ -5253,7 +5253,7 @@
                             const btn = document.getElementById('zoomToggleBtn');
                             if (btn) {
                                 btn.textContent = getUserZoomLabel();
-                                btn.classList.toggle('active', camera.zoom > 1.05);
+                                btn.classList.toggle('active', typeof isUserZoomEngaged === 'function' ? isUserZoomEngaged() : camera.zoom > 1.05);
                             }
                         }
                     } else {
@@ -5263,7 +5263,7 @@
                             const btn = document.getElementById('zoomToggleBtn');
                             if (btn) {
                                 btn.textContent = getUserZoomLabel();
-                                btn.classList.toggle('active', t.zoom > 1.05);
+                                btn.classList.toggle('active', typeof isUserZoomEngaged === 'function' ? isUserZoomEngaged() : t.zoom > 1.05);
                             }
                         }
                     }
@@ -5294,7 +5294,7 @@
                             const u = state.units?.find(u => u.id === defId && !u.dead);
                             if (u && typeof focusBoardCameraOnTiles === 'function') {
                                 const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
-                                const zoom = baseZoom > 1.05 ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                                const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                                 focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
                                     zoom,
                                     holdMs: 99999,
@@ -5317,7 +5317,7 @@
                             const u = state.units?.find(u => u.id === defId && !u.dead);
                             if (u && typeof focusBoardCameraOnTiles === 'function') {
                                 const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
-                                const zoom = baseZoom > 1.05 ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                                const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                                 focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
                                     zoom,
                                     holdMs: 99999,
