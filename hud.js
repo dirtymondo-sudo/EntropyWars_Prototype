@@ -2014,7 +2014,9 @@ function SubMenu({ st }) {
           key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
           hpVal: hpVal, hpMax: hpMax, dist: t.dist,
           isPending: isPending,
-          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y); },
+          // Pass the target's own elevation so an airborne unit (or the upper
+          // unit of a stack) is hit — not whoever stands on the ground below.
+          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, (tUnit && tUnit.z != null) ? tUnit.z : undefined); },
         });
       }),
       targets.length === 0 && h('div', { style: {
@@ -2050,7 +2052,9 @@ function SubMenu({ st }) {
           key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
           hpVal: tUnit ? tUnit.hp : 0, hpMax: tUnit ? tUnit.maxHp : 1,
           dist: t.dist, isPending: isPending,
-          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y); },
+          // Pass the target's own elevation so an airborne unit (or the upper
+          // unit of a stack) is hit — not whoever stands on the ground below.
+          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, (tUnit && tUnit.z != null) ? tUnit.z : undefined); },
         });
       }),
       targets.length === 0 && h('div', { style: {

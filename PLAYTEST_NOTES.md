@@ -244,6 +244,50 @@ anchor/footprint visibility, no walk/jump onto roofs, enter→hidden→emerge-on
 5 hits →1hp → 6th collapses → rubble + ruins, roof fall 24 vs inside crush 48,
 meteor/nuke demolish; AI auto-sim advanced rounds with 0 page errors.
 
+## 3D collision + airborne targeting fixes (2026-07-03) — battle.js, hud.js, ai.js, three-renderer.js, three-camera.js
+User bugs: (1) units ending up on the SAME tile + SAME elevation; (2) targeting an
+airborne unit always hit the unit standing beneath it. Root causes + fixes (all 5
+files must go to R2 together):
+- **Air targeting, the big one:** `_resolveOffensiveTarget` (battle.js ~1470) — the
+  shared resolver for ALL offensive spells — ignored its `z` arg and used
+  `unitAt(x,y)`, whose column fallback PREFERS THE GROUND UNIT (map.js ~2117). Now
+  exact-z first: `unitAt(x,y,z) || unitAt(x,y)`. (Basic attack already honored z;
+  every other single-target kind already used the `||` pattern — this one was missed.)
+- **Target submenu:** `selectTargetFromMenu(x,y)` executed with the STALE
+  `state._clickedZ` of the last board click → picking a flyer's row hit the ground
+  unit. Now takes an optional `z` (hud.js rows pass `t.unit.z`), stores it in
+  `pendingTarget.z`, and passes it to doAttack/doSpell. Missing z acts as a wildcard
+  in the confirm-compare so the hover→row-click flow still confirms in one click.
+- **Pixel-accurate picking:** unit sprite quads are mostly transparent padding and
+  raycast as solid rectangles, so one unit's invisible corner could eat a click
+  aimed at the unit above/behind. `screenToUnit` (three-camera.js) now skips hits
+  whose sampled texel is transparent via `_ew_alphaPickTest` closures attached in
+  three-renderer (`_makeAlphaPickTest`, per-URL ImageData cache `_spritePickAlphaCache`;
+  tainted canvas or sheet-anim map swap → falls back to solid quad). Attached to the
+  sprite plane, the x-ray silhouette, and the shell (walls sample opaque texels).
+- **Stacking:** `getMoveTiles` airborne branch had `_blocked = _isAirborne ? false :
+  !!_occupant` — a FRIENDLY flyer at the destination's exact z didn't block, so two
+  same-team flyers at equal clearance could stack. Now any occupant at the exact z
+  blocks (pass-through unchanged). The inline two-step move in `clickTile`
+  (~battle.js 17890) committed `actingUnit.x/y/z = destZ` with NO final occupancy
+  check (ring-2 tile match is z-agnostic, airborne destZ re-derived) — now guarded.
+- **`enforceUnitSeparation(context)`** (battle.js, next to resolveDescentCollision):
+  defense-in-depth sweep run in `endUnitIfDone` + at round start. Any exact x,y,z
+  overlap: airborne mover climbs to the next free altitude in the column, otherwise
+  `pushUnitToNearestOpen`; keeps the active blitz unit in place; logs
+  `[enforceUnitSeparation] unstacked …` to console (trace remaining sources there)
+  + a "jostled" combat-log line. 90s auto-sim soak: 0 sweep events, 0 stacks, 0 errors.
+- Also: ai.js passes `action.target.z` to doAttack/doSpell (AI can hit flyers over
+  stacks) and warp-stone now sets `unit.z`; renderer hover panel prefers the sprite
+  under the cursor over the tile lookup (which showed the ground unit's panel).
+- **Verified** via scratchpad `probe_fixes.js` (LOCAL_ASSETS route interception):
+  9/9 — doAttack@z / doSpell@z / menu-row@z hit ONLY the flyer stacked over a ground
+  enemy (stale `_clickedZ` set on purpose), getMoveTiles offers 0 occupied-z tiles for
+  a flyer beside another flyer at equal clearance, forced overlap unstacked, and a
+  real `page.mouse.click` on the flyer's projected sprite resolved `_clickedUnitId`
+  and the quick-menu target to the FLYER. Probe gotcha: doAttack/doSpell return a
+  DELAY and land damage on a timer — assert HP after ~2.5s, never synchronously.
+
 ## Quick-action menu now offers target-focused UTILITY moves (2026-07-03, hud.js)
 `_computeEnemyActions` (hud.js ~2340) used to whitelist only damage/debuff kinds
 (`offensiveKinds`), so poison seeds, terrain walls/floods, summoned weather,

@@ -1468,7 +1468,13 @@
         // target: <unit> } or { handled: true, returnVal: 0 } on error.
         // ═══════════════════════════════════════════════════════════════════
         function _resolveOffensiveTarget(unit, spell, x, y, z, effectiveSpellCost, spellPower, finishAction, spellApCost) {
-            let target = unitAt(x, y);
+            /* Honor the clicked elevation: a target picked at its own z (an
+               airborne flyer, or the upper unit of a stacked column) must not
+               resolve to whoever stands on the ground beneath it. Exact-z
+               first, column fallback (which prefers the ground unit). */
+            let target = (z !== undefined && z !== null)
+                ? (unitAt(x, y, z) || unitAt(x, y))
+                : unitAt(x, y);
 
             // Sky telescope: earth unit targeting above-section enemy
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth') {
@@ -14830,6 +14836,8 @@
                     }
                     state._skippedUnit = null;
 
+                    enforceUnitSeparation('roundStart:' + state.round);
+
                     buildBlitzTurnOrder();
 
                     beginBlitzRound();
@@ -16655,6 +16663,8 @@
         function endUnitIfDone(unit) {
             if (!unit) return;
 
+            enforceUnitSeparation('endUnitIfDone:' + (unit.name || unit.id));
+
             if (!unitFinished(unit) && !unit.dead) return;
             _stopShotClock();
             state.actionMode = null;
@@ -17123,7 +17133,7 @@
             return targets;
         }
 
-        function selectTargetFromMenu(x, y) {
+        function selectTargetFromMenu(x, y, z) {
             const unit = getSelectedUnit();
             if (!unit) return;
             if (state._actionExecuting) return;
@@ -17138,20 +17148,28 @@
                 return;
             }
 
-            if (state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y) {
+            /* z (optional) is the picked TARGET's elevation. It must ride along
+               to the execution — the old code fired with the stale z of the
+               last BOARD click, so picking an airborne unit from the target
+               menu hit whatever stood on the ground beneath it instead. Two
+               stacked units share x,y, so the confirm-compare includes z. */
+            if (state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y
+                && (state.pendingTarget.z == null || z == null || state.pendingTarget.z === z)) {
 
                 state._actionExecuting = true;
                 clearAoePreview();
                 clearHoveredTarget();
                 state.pendingTarget = null;
 
-                if (state.actionMode === 'attack') { doAttack(unit, x, y, state._clickedZ); }
-                else if (state.actionMode === 'spell') { doSpell(unit, x, y, state._clickedZ); }
+                const execZ = (z !== undefined && z !== null) ? z : state._clickedZ;
+                if (execZ !== undefined && execZ !== null) state._clickedZ = execZ;
+                if (state.actionMode === 'attack') { doAttack(unit, x, y, execZ); }
+                else if (state.actionMode === 'spell') { doSpell(unit, x, y, execZ); }
                 scheduleBoardRender();
                 return;
             }
 
-            state.pendingTarget = { x, y, mode: state.actionMode, tool: state.selectedTool, viaHover: false };
+            state.pendingTarget = { x, y, z, mode: state.actionMode, tool: state.selectedTool, viaHover: false };
             playSfx('uiCursorFocus');
             updateAoePreview(x, y);
             renderBattleSelectionUI({ includeBoard: false });
@@ -17206,7 +17224,7 @@
 
                 const targets = _getAttackValidTargets(unit);
                 if (targets.length > 0) {
-                    state.pendingTarget = { x: targets[0].x, y: targets[0].y, mode: 'attack', tool: null, viaHover: false };
+                    state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
                 }
             } else {
                 state.actionMenuView = 'root';
@@ -17872,6 +17890,20 @@
                         }
                         const path2 = findMovePath(actingUnit, x, y, destZ);
                         actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
+
+                        /* Final collision guard: the ring-2 tile list is z-agnostic
+                           and the airborne destZ is re-derived here, so make sure
+                           nobody already occupies the exact landing spot before
+                           committing the move — never stack two units. */
+                        const _dstOcc = unitAt(x, y, destZ);
+                        if (_dstOcc && _dstOcc.id !== actingUnit.id) {
+                            state._actionExecuting = false;
+                            addLog('That tile is occupied.', actingUnit.player);
+                            playErrorSfx();
+                            markDirty('board', 'hud');
+                            renderIfDirty();
+                            return;
+                        }
 
                         const combinedPath = [...path1, ...path2];
                         if (combinedPath.length > 0) {
@@ -19383,7 +19415,7 @@
                 playErrorSfx();
                 return 0;
             }
-            let target = z != null ? unitAt(x, y, z) : unitAt(x, y);
+            let target = z != null ? (unitAt(x, y, z) || unitAt(x, y)) : unitAt(x, y);
 
             if (target && target.id === unit.id) {
                 const colEnemy = unitsAtColumn(x, y).find(u => u.id !== unit.id && u.player !== unit.player);
@@ -20164,6 +20196,66 @@
             }
 
             return null;
+        }
+
+        /* ── Anti-stack sweep (defense in depth) ─────────────────────────────
+           Two living units must NEVER share the same tile AND elevation. Every
+           legal path checks occupancy up front, but displacement chains, spawn
+           edge cases and animation-deferred landings have historically slipped
+           through. This sweep runs at action boundaries (endUnitIfDone) and at
+           end of round: any exact x,y,z overlap gets resolved on the spot —
+           airborne units climb to the next free altitude, grounded units are
+           jostled to the nearest open tile — and a console warning names the
+           colliders so the offending path can be traced and fixed at source. */
+        function enforceUnitSeparation(context) {
+            if (!state.units || state.phase !== 'battle') return;
+            const byPos = new Map();
+            for (const u of state.units) {
+                if (u.dead || u._dying || u._insideBuildingId || u._benched) continue;
+                const key = u.x + ',' + u.y + ',' + (u.z ?? 0);
+                const holder = byPos.get(key);
+                if (!holder) { byPos.set(key, u); continue; }
+
+                // Prefer to keep the active blitz unit in place; relocate the other.
+                let mover = u, stay = holder;
+                if (state._blitzActiveUnitId === u.id) { mover = holder; stay = u; byPos.set(key, u); }
+
+                const fx = mover.x, fy = mover.y, fz = mover.z ?? 0;
+                let placed = false;
+
+                // 1) Airborne collider: climb to the next free altitude in the column.
+                if (typeof canFly === 'function' && canFly(mover)
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(mover)
+                    && typeof getMaxFlyingZ === 'function') {
+                    const maxZ = getMaxFlyingZ(mover.x, mover.y);
+                    for (let nz = fz + 1; nz <= maxZ; nz++) {
+                        const taken = state.units.some(o => o !== mover && !o.dead && !o._dying
+                            && !o._insideBuildingId && o.x === mover.x && o.y === mover.y && (o.z ?? 0) === nz);
+                        if (!taken) { mover.z = nz; placed = true; break; }
+                    }
+                }
+
+                // 2) Otherwise: nearest open neighbouring tile (column-free).
+                if (!placed && typeof pushUnitToNearestOpen === 'function') {
+                    pushUnitToNearestOpen(mover, mover.x, mover.y);
+                    placed = (mover.x !== fx || mover.y !== fy || (mover.z ?? 0) !== fz);
+                }
+
+                if (placed) {
+                    console.warn('[enforceUnitSeparation] unstacked', unitDisplayName(mover),
+                        'from (' + fx + ',' + fy + ',z' + fz + ') shared with', unitDisplayName(stay),
+                        context ? '(' + context + ')' : '');
+                    addLog(`⚠ ${unitDisplayName(mover)} is jostled off ${unitDisplayName(stay)}'s position!`);
+                    if (typeof animateDisplacement === 'function' && (mover.x !== fx || mover.y !== fy)) {
+                        animateDisplacement(mover, fx, fy, mover.x, mover.y, 160);
+                    }
+                    byPos.set(mover.x + ',' + mover.y + ',' + (mover.z ?? 0), mover);
+                    scheduleBoardRender();
+                } else {
+                    console.warn('[enforceUnitSeparation] could not unstack', unitDisplayName(mover),
+                        'at (' + fx + ',' + fy + ',z' + fz + ')', context ? '(' + context + ')' : '');
+                }
+            }
         }
 
         function doAltitudeChange(unit, mode) {
@@ -25177,7 +25269,11 @@
                                 _isBuilding = true;
                             }
                         }
-                        const _blocked = _isAirborne ? false : !!_occupant;
+                        /* A unit already at the destination's EXACT elevation blocks
+                           landing there — airborne included (two flyers may share a
+                           column, never a z). Allies can still be passed THROUGH;
+                           only enemies stop pathing (the continue above). */
+                        const _blocked = !!_occupant;
                         if (!_blocked && !_isBuilding && !tileSet.has(nKey)) {
                             tileSet.add(nKey);
 

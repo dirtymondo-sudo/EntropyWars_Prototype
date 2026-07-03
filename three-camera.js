@@ -264,6 +264,12 @@ const ThreeCamera = (function () {
         for (let i = 0; i < hits.length; i++) {
 
             let obj = hits[i].object;
+            /* Pixel-accurate pick: a sprite quad's transparent padding must not
+               eat clicks aimed at the unit visible behind/above it (stacked or
+               airborne units). Meshes carrying _ew_alphaPickTest (attached by
+               three-renderer) veto hits whose sampled texel is transparent. */
+            if (obj && obj._ew_alphaPickTest && hits[i].uv
+                && !obj._ew_alphaPickTest(hits[i].uv, obj)) continue;
             while (obj) {
                 if (obj._ew_unitId !== undefined) return { unitId: obj._ew_unitId };
                 obj = obj.parent;

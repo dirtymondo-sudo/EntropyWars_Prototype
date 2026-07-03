@@ -4780,6 +4780,50 @@ const ThreeRenderer = (function () {
        slab for free. Geometry is cached per sprite URL + size. */
     var _spriteShellGeoCache = new Map();
 
+    /* ── Pixel-accurate unit picking ─────────────────────────────────────
+       A sprite quad is mostly transparent padding; without an alpha test the
+       raycaster treats the whole rectangle as solid, so the invisible corner
+       of one unit's quad can eat a click aimed at a unit behind/above it —
+       e.g. clicking a flyer hovering over a ground unit. Each unit sprite
+       gets an _ew_alphaPickTest(uv, mesh) closure; ThreeCamera.screenToUnit
+       skips hits whose sampled texel is transparent. Alpha data is read once
+       per URL (async; tainted canvas → test stays permissive/quad-based). */
+    var _spritePickAlphaCache = new Map();
+    function _getSpriteAlphaData(url) {
+        if (_spritePickAlphaCache.has(url)) return _spritePickAlphaCache.get(url);
+        _spritePickAlphaCache.set(url, null);   // reserve slot; filled async
+        getTexture(url, function (tex) {
+            if (!tex || !tex.image) return;
+            var img = tex.image;
+            var nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
+            if (!nw || !nh) return;
+            try {
+                var cv = document.createElement('canvas');
+                cv.width = nw; cv.height = nh;
+                var ctx = cv.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+                var data = ctx.getImageData(0, 0, nw, nh).data;
+                _spritePickAlphaCache.set(url, { data: data, w: nw, h: nh, img: img });
+            } catch (e) { /* tainted canvas → keep quad-based picking */ }
+        });
+        return null;
+    }
+    function _makeAlphaPickTest(url) {
+        if (!url) return null;
+        _getSpriteAlphaData(url);   // kick off the async read
+        return function (uv, mesh) {
+            var a = _spritePickAlphaCache.get(url);
+            if (!a) return true;    // not ready / unreadable → treat quad as solid
+            // Sprite-sheet anims swap material.map — alpha data no longer lines
+            // up with what's on screen, so fall back to solid while animating.
+            if (mesh && mesh.material && mesh.material.map && mesh.material.map.image
+                && mesh.material.map.image !== a.img) return true;
+            var px = Math.max(0, Math.min(a.w - 1, Math.floor(uv.x * a.w)));
+            var py = Math.max(0, Math.min(a.h - 1, Math.floor((1 - uv.y) * a.h)));
+            return a.data[(py * a.w + px) * 4 + 3] >= 26;   // material alphaTest 0.1
+        };
+    }
+
     function _buildSpriteShellGeometry(img, sprW, sprH, depth) {
         var nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
         if (!nw || !nh) return null;
@@ -4880,6 +4924,10 @@ const ThreeRenderer = (function () {
             if (!geo || !spriteMesh.parent || spriteMesh._ew_shell) return;
             var shell = new THREE.Mesh(geo, mat);
             shell._ew_spriteShell = true;
+            // Back cap is a full quad cut out by texture alpha — give it the
+            // same pixel pick test as the front plane (walls sample opaque
+            // boundary texels, so they always pass).
+            shell._ew_alphaPickTest = spriteMesh._ew_alphaPickTest || _makeAlphaPickTest(spriteUrl);
             // The sun-facing shadow proxy already casts the unit's shadow, and
             // receiving would let that proxy self-shadow the slab — opt out of
             // the _flagMeshShadows sweep entirely.
@@ -4991,6 +5039,7 @@ const ThreeRenderer = (function () {
             // camera-billboard pass skips facing sprites.
             spriteMesh._ew_facingSprite = true;
             spriteMesh.rotation.y = _unitFacingYaw(unit);
+            spriteMesh._ew_alphaPickTest = _makeAlphaPickTest(spriteUrl);
 
             if (unit._spriteFlipX && spriteMesh) {
                 spriteMesh.scale.x = -1;
@@ -5042,6 +5091,7 @@ const ThreeRenderer = (function () {
                 // front of the unit's own slab means only real terrain occluders
                 // trigger the x-ray.
                 silMesh.position.y = spriteMesh._ew_baseY;
+                silMesh._ew_alphaPickTest = spriteMesh._ew_alphaPickTest;
                 group.add(silMesh);
                 silMesh._ew_unitId = unit.id;
                 silhouetteMesh = silMesh;
@@ -13248,7 +13298,11 @@ const ThreeRenderer = (function () {
                     var changed = updateHoveredTarget(tx, ty);
                     if (changed) {
 
-                        var _hu = (typeof unitAt === 'function') ? unitAt(tx, ty) : null;
+                        /* Prefer the sprite actually under the cursor — a tile
+                           lookup always resolves to the GROUND unit, hiding an
+                           airborne unit hovering over it from the info panel. */
+                        var _hu = unitHit ? (_unitById.get(unitHit.unitId) || null) : null;
+                        if (!_hu && typeof unitAt === 'function') _hu = unitAt(tx, ty);
                         if (_hu && typeof focusUnitPanel === 'function') {
                             focusUnitPanel(_hu.id, null, 'hover');
                         }

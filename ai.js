@@ -3897,6 +3897,7 @@
                 unit.items.warpStone -= 1;
                 unit.x = wx;
                 unit.y = wy;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(wx, wy, unit.z);
                 g.addLog(`🌀 ${g.unitDisplayName(unit)} warps to (${wx},${wy})!`);
                 g.showFloatingTextForUnit(unit, '🌀 WARP', 'buff', { durationMs: 1000 });
 
@@ -3908,7 +3909,7 @@
             case 'attack':
                 g.state.actionMode = 'attack';
                 g.queueComputerAction(() => {
-                    const delay = g.doAttack(unit, action.target.x, action.target.y) || 0;
+                    const delay = g.doAttack(unit, action.target.x, action.target.y, action.target.z) || 0;
                     if (delay > 0) {
                         window.setTimeout(() => g.finishComputerAction(), delay);
                     } else {
@@ -3994,7 +3995,7 @@
                         g.maybeTriggerComputerTurn();
                         return;
                     }
-                    const delay = g.doSpell(unit, action.target.x, action.target.y) || 0;
+                    const delay = g.doSpell(unit, action.target.x, action.target.y, action.target.z) || 0;
                     if (delay > 0) {
                         window.setTimeout(() => g.finishComputerAction(), delay);
                     } else {
