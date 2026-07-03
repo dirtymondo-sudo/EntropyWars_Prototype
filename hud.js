@@ -734,6 +734,9 @@ function MatchMeta({ st }) {
   const zodiac = st.activeZodiac || 'aries';
   const zodiacIcon = typeof ZODIAC_ICONS !== 'undefined' ? (ZODIAC_ICONS[zodiac] || '✦') : '✦';
   const zodiacLabel = zodiac.charAt(0).toUpperCase() + zodiac.slice(1);
+  // Ignite the chip while at least one living unit carries the reigning sign
+  // (i.e. someone on the field is actually receiving the zodiac blessing).
+  const zodiacBlessed = (st.units || []).some(u => u && !u.dead && u.zodiac === zodiac);
 
   const matchNum = st.matchNumber || 1;
   const p1Score = st.record ? (st.record[1] || 0) : 0;
@@ -754,10 +757,12 @@ function MatchMeta({ st }) {
     }},
       h('span', { style: { color: EW.ink }}, weatherText),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
-      h('span', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-        h('span', { style: {
+      h('span', { style: { display: 'flex', alignItems: 'center', gap: 4 },
+        title: zodiacBlessed ? zodiacLabel + ' reigns — matching units gain +10%' : zodiacLabel + ' reigns' },
+        h('span', { className: zodiacBlessed ? 'ew-zodiac-blessed' : undefined, style: {
           fontFamily: '"Cinzel", serif', fontStyle: 'italic',
-          fontSize: 13, color: EW.time,
+          fontSize: 13, color: zodiacBlessed ? '#ffd866' : EW.time,
+          textShadow: zodiacBlessed ? '0 0 8px rgba(255,200,80,0.9), 0 0 16px rgba(255,170,40,0.5)' : undefined,
         }}, zodiacIcon),
         h('span', { style: { color: EW.ink }}, zodiacLabel),
       ),
@@ -4452,6 +4457,11 @@ function _injectHudHideStyles() {
     }
     .ew-sudden-death { animation: ewSuddenBlink 1s steps(1, end) infinite; }
     @keyframes ewSuddenBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .ew-zodiac-blessed { animation: ewZodiacGlow 1.8s ease-in-out infinite; display: inline-block; }
+    @keyframes ewZodiacGlow {
+      0%, 100% { filter: brightness(1); transform: scale(1); }
+      50%      { filter: brightness(1.55); transform: scale(1.12); }
+    }
     .ew-scoreboard-sheen { animation: ewSheen 5s ease-in-out infinite; }
     @keyframes ewSheen { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 

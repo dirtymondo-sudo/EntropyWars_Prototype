@@ -1428,6 +1428,102 @@
                 if (onDone) onDone();
                 return;
             }
+            // Zodiac shifts and celestial events get the full sky cinematic:
+            // crane the camera up at the firmament, rotate the constellation
+            // wheel / reveal the event, flash the banner while the star-lines
+            // draw, then settle back to the board. Falls back to the plain
+            // banner whenever the 3D sky or the camera isn't available.
+            if ((kind === 'zodiac' || kind === 'sky') && _canPlaySkyCinematic()) {
+                playSkyCinematic(title, subtitle, kind, onDone);
+                return;
+            }
+            _flashAnnouncementBanner(title, subtitle, kind, actionMs(2200), onDone, shake);
+        }
+
+        function _canPlaySkyCinematic() {
+            if (state.animationsDisabled || state.cameraDisabled) return false;
+            if (state.phase !== 'battle') return false;
+            if (typeof camera === 'undefined' || !camera || typeof camera.moveTo !== 'function') return false;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return false;
+            if (!ThreeRenderer.getSkyShot) return false;
+            return true;
+        }
+
+        /* The between-round sky spectacle. Sequence:
+           1. crane the gaze up past the horizon to the sky subject (the zodiac
+              wheel's prime slot, or the sun/moon a celestial event transforms);
+           2. zodiac: rotate the wheel so the new sign clicks into place, then
+              draw its constellation lines on star by star — the banner drops in
+              right as the lines start drawing. Celestial event: the black sun /
+              blood moon / eclipse ramps in ON CAMERA (it was held out of the
+              dome until now), banner shortly after;
+           3. hold the tableau, then ease the camera back to its resting angle
+              and hand control back to the round pipeline via onDone. */
+        function playSkyCinematic(title, subtitle, kind, onDone) {
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                try {
+                    camera._busy = false;
+                    if (typeof _resumeShotClock === 'function') _resumeShotClock();
+                } catch (e) {}
+                if (onDone) onDone();
+            };
+            try {
+                // Claim the camera for the whole spectacle: pause the blitz shot
+                // clock (a force-ended turn's activation pan would yank the gaze
+                // back to the board mid-shot) and flag busy so the auto-settle
+                // watchdog leaves the craned pitch alone.
+                if (typeof _pauseShotClock === 'function') _pauseShotClock();
+                camera._busy = true;
+                if (camera._busyTimer) { clearTimeout(camera._busyTimer); camera._busyTimer = null; }
+                if (camera._autoSettleTimer) { clearTimeout(camera._autoSettleTimer); camera._autoSettleTimer = null; }
+                const evType = (kind === 'sky' && state.skyEvent && state.skyEvent.type) || null;
+                const shot = ThreeRenderer.getSkyShot(kind === 'zodiac' ? 'zodiac' : (evType || 'bloodMoon'));
+                const retTilt = (camera._restTilt != null) ? camera._restTilt : 50;
+                const retYaw = (camera._restYaw != null) ? camera._restYaw : 0;
+                const upMs = actionMs(1050);
+                const downMs = actionMs(900);
+
+                camera.moveTo({ tilt: shot.tilt, yaw: shot.yaw, duration: upMs, easing: 'easeInOut', _fogAllowed: true });
+
+                window.setTimeout(() => {
+                    let revealMs = 0;
+                    try {
+                        if (kind === 'zodiac' && ThreeRenderer.playZodiacReveal) {
+                            const r = ThreeRenderer.playZodiacReveal({ rotMs: actionMs(1900), drawMs: actionMs(1700) });
+                            revealMs = r.totalMs;
+                            // banner lands just as the wheel locks in and the lines begin
+                            window.setTimeout(() => {
+                                _flashAnnouncementBanner(title, subtitle, kind, actionMs(2400), null);
+                            }, Math.max(0, r.rotMs - actionMs(150)));
+                        } else if (ThreeRenderer.playSkyEventReveal) {
+                            const r = ThreeRenderer.playSkyEventReveal(evType, { rampMs: actionMs(2100) });
+                            revealMs = r.totalMs;
+                            window.setTimeout(() => {
+                                _flashAnnouncementBanner(title, subtitle, kind, actionMs(2400), null);
+                            }, actionMs(650));
+                        }
+                    } catch (e) { /* sky reveal is decorative — never block the round */ }
+
+                    const holdMs = Math.max(revealMs + actionMs(900), actionMs(3300));
+                    window.setTimeout(() => {
+                        try {
+                            camera.moveTo({ tilt: retTilt, yaw: retYaw, duration: downMs, easing: 'easeInOut', _fogAllowed: true });
+                        } catch (e) {}
+                        window.setTimeout(finish, downMs + actionMs(150));
+                    }, holdMs);
+                }, upMs + actionMs(120));
+
+                // hard safety net: a stuck cinematic must never wedge the round pipeline
+                window.setTimeout(finish, upMs + actionMs(9500));
+            } catch (e) {
+                finish();
+            }
+        }
+
+        function _flashAnnouncementBanner(title, subtitle, kind, holdMs, onDone, shake) {
             const el = document.getElementById('announcementBanner');
             if (!el) {
                 if (onDone) onDone();
@@ -1451,7 +1547,7 @@
                 }
             }
 
-            const duration = actionMs(2200);
+            const duration = holdMs != null ? holdMs : actionMs(2200);
             window.setTimeout(() => {
 
                 if (shakeTarget) {

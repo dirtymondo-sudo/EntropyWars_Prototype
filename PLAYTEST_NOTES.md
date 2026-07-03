@@ -1369,6 +1369,40 @@ stagger together ≈ full stun by design); race-kit normalization deferred.
    (setUnitFacing toward nearest visible enemy) so the AI stops leaving its
    back open. ainew.js untouched (it delegates scoring to ai.js).
 
+## Zodiac sky system (2026-07 session)
+The zodiac/celestial layer got a full visual pass across three-renderer.js,
+state.js and hud.js:
+1. **Nameplate badges.** `_createPlate`/`_buildClonePlate` embed two always-
+   present spans in `.tp-name`: `[data-zbadge]` (unit's zodiac glyph, ignites
+   gold via `.tp-zodiac-on` while `getZodiacBonus(u).active`) and
+   `[data-evbadge]` (sky-event icon, pulses via `.tp-skyev-on` while
+   `getSkyEventBonus(u).active`). `_updatePlateSkyBadges()` (render loop,
+   keyed on `activeZodiac|skyEvent.type`) live-toggles them. HUD MatchMeta
+   zodiac chip glows (`.ew-zodiac-blessed`) when any living unit matches.
+2. **Constellation wheel.** The dome shader's old node-dots/random cluster
+   were replaced by real geometry (`_initZodiacWheel` in three-renderer.js):
+   12 authored constellations (`_ZW_CONST`) on a camera-anchored ring at 26°
+   elevation, faint rim + hub dots + glyph seals; the ACTIVE sign burns gold
+   with its star-lines drawn. On a sign change the whole wheel ROTATES the
+   new sign into the prime slot (azimuth 0 = yaw-0 camera) — API:
+   `ThreeRenderer.getSkyShot(kind)`, `playZodiacReveal({rotMs,drawMs})`,
+   `playSkyEventReveal(type)`. A 9s auto-fallback fires the reveal if the
+   cinematic never does (auto-sim / banners skipped). New sky events are
+   HELD out of the dome (`_envReadState`) until revealed, same 9s fallback.
+3. **Sky cinematic.** `showAnnouncementBanner` (state.js) routes kinds
+   'zodiac'/'sky' through `playSkyCinematic`: pauses the shot clock, flags
+   `camera._busy`, `camera.moveTo` cranes tilt past 90° (getSkyShot ≈122°),
+   fires the reveal, flashes the banner mid-tableau, then eases back to
+   `camera._restTilt/_restYaw` and calls onDone (hard 9.5s safety net).
+   Falls back to the plain banner when animations/camera/renderer are off.
+4. **Testing trick.** `USE_ASSET_CACHE=1 LOCAL_ASSETS=three-renderer.js,
+   state.js,hud.js node playtest.js …` serves repo-local copies of R2-hosted
+   scripts (asset_cache.js) — the ONLY way local edits run in the harness.
+   Screenshots stall seconds under swiftshader: time assertions IN-PAGE
+   (e.g. waitForFunction on `#announcementBanner.visible`), never by sleep
+   +screenshot cadence. Force a zodiac shift in-page:
+   `state.zodiacOffset++; checkZodiacRotation(); showNextAnnouncement(()=>{})`.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

@@ -5868,6 +5868,31 @@ const ThreeRenderer = (function () {
                 '  text-shadow: 0 0 9px rgba(255,120,120,0.8), 0 1px 3px #000;',
                 '}',
 
+                /* Celestial-favour badges: the unit's zodiac glyph ignites gold
+                   while the reigning constellation matches; a sky-event moon/sun
+                   badge pulses while a celestial event empowers the faction. */
+                '.tp-wrap .tp-zodiac, .tp-wrap .tp-skyev {',
+                '  display: none; margin-left: 5px; font-size: 12px; line-height: 1;',
+                '  flex-shrink: 0; position: relative;',
+                '}',
+                '.tp-wrap .tp-zodiac.tp-zodiac-on {',
+                '  display: inline-block; color: #ffd866;',
+                '  text-shadow: 0 0 6px rgba(255,200,80,0.95), 0 0 13px rgba(255,170,40,0.65), 0 1px 2px #000;',
+                '  animation: tp-zodiac-glow 1.8s ease-in-out infinite;',
+                '}',
+                '.tp-wrap .tp-skyev.tp-skyev-on {',
+                '  display: inline-block;',
+                '  animation: tp-skyev-glow 2.2s ease-in-out infinite;',
+                '}',
+                '@keyframes tp-zodiac-glow {',
+                '  0%, 100% { transform: scale(1); opacity: 0.85; }',
+                '  50% { transform: scale(1.25); opacity: 1; }',
+                '}',
+                '@keyframes tp-skyev-glow {',
+                '  0%, 100% { filter: drop-shadow(0 0 2px rgba(200,120,255,0.7)); transform: scale(1); }',
+                '  50% { filter: drop-shadow(0 0 7px rgba(230,150,255,1)); transform: scale(1.18); }',
+                '}',
+
                 '.tp-eff-badge {',
                 '  position: absolute; top: -2px; right: -6px; width: 16px; height: 16px;',
                 '  border-radius: 50%; font-size: 11px; font-weight: 900;',
@@ -5909,6 +5934,69 @@ const ThreeRenderer = (function () {
         if (ratio > 0.5) return 'hp-high';
         if (ratio > 0.25) return 'hp-mid';
         return 'hp-low';
+    }
+
+    /* Celestial-favour badges for the nameplate: the unit's zodiac glyph glows
+       gold while the reigning constellation matches (the +10% blessing), and a
+       sky-event badge pulses while a Blood Moon / Black Sun / Lunar Eclipse is
+       empowering the unit's faction. Both spans are always present (hidden by
+       default) so _updatePlateSkyBadges can live-toggle them when the heavens
+       shift mid-match without rebuilding plates. */
+    function _plateSkyBadgesHtml(u) {
+        var zOn = false;
+        try {
+            zOn = (typeof getZodiacBonus === 'function') ? !!getZodiacBonus(u).active
+                : !!(typeof state !== 'undefined' && state && state.activeZodiac && u.zodiac === state.activeZodiac);
+        } catch (e) {}
+        var zIcon = (typeof ZODIAC_ICONS !== 'undefined' && u.zodiac && ZODIAC_ICONS[u.zodiac]) || '✦';
+        var zName = u.zodiac ? u.zodiac.charAt(0).toUpperCase() + u.zodiac.slice(1) : 'Zodiac';
+        var html = '<span class="tp-zodiac' + (zOn ? ' tp-zodiac-on' : '') + '" data-zbadge title="'
+            + zName + ' blessing — the reigning constellation empowers this unit (+10%)">' + zIcon + '</span>';
+
+        var eOn = false, eIcon = '🌑', eTitle = '';
+        try {
+            if (typeof getSkyEventBonus === 'function') eOn = !!getSkyEventBonus(u).active;
+            if (eOn && typeof SKY_EVENTS !== 'undefined' && state && state.skyEvent) {
+                var evm = SKY_EVENTS[state.skyEvent.type];
+                if (evm) { eIcon = evm.icon; eTitle = evm.label + ' — ' + evm.desc; }
+            }
+        } catch (e) {}
+        html += '<span class="tp-skyev' + (eOn ? ' tp-skyev-on' : '') + '" data-evbadge title="'
+            + eTitle + '">' + eIcon + '</span>';
+        return html;
+    }
+
+    /* Live-toggle the celestial badges when the reigning zodiac or the active
+       sky event changes (every 5 rounds / on event start+end). Keyed so the
+       DOM is only touched on an actual shift. */
+    var _lastSkyBadgeKey = '';
+    function _updatePlateSkyBadges() {
+        if (typeof state === 'undefined' || !state) return;
+        var key = (state.activeZodiac || '') + '|' + ((state.skyEvent && state.skyEvent.type) || '');
+        if (key === _lastSkyBadgeKey) return;
+        _lastSkyBadgeKey = key;
+        var evm = (typeof SKY_EVENTS !== 'undefined' && state.skyEvent) ? SKY_EVENTS[state.skyEvent.type] : null;
+        for (var entry of _plateObjs) {
+            var uid = entry[0], po = entry[1];
+            var u = _unitById.get(uid);
+            if (!u || !po.el) continue;
+            var zb = po.el.querySelector('[data-zbadge]');
+            if (zb) {
+                var zOn = false;
+                try {
+                    zOn = (typeof getZodiacBonus === 'function') ? !!getZodiacBonus(u).active
+                        : !!(state.activeZodiac && u.zodiac === state.activeZodiac);
+                } catch (e) {}
+                zb.classList.toggle('tp-zodiac-on', zOn);
+            }
+            var eb = po.el.querySelector('[data-evbadge]');
+            if (eb) {
+                var eOn = false;
+                try { eOn = (typeof getSkyEventBonus === 'function') ? !!getSkyEventBonus(u).active : false; } catch (e) {}
+                eb.classList.toggle('tp-skyev-on', eOn);
+                if (eOn && evm) { eb.textContent = evm.icon; eb.title = evm.label + ' — ' + evm.desc; }
+            }
+        }
     }
 
     function _createPlate(unit) {
@@ -6016,6 +6104,7 @@ const ThreeRenderer = (function () {
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
                 eyeHtml +
+                _plateSkyBadgesHtml(unit) +
             '</div>' +
             '<div class="tp-body">' +
                 typeHtml +
@@ -6109,6 +6198,7 @@ const ThreeRenderer = (function () {
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
+                _plateSkyBadgesHtml(su) +
             '</div>' +
             '<div class="tp-body">' +
                 typeHtml +
@@ -10371,23 +10461,11 @@ const ThreeRenderer = (function () {
         '      sct=mix(sct,vec3(1.0,0.50,0.45),step(0.97,hash11(h*3.3))*0.7);\n' +
         '      starAcc+=sct*bri; } }\n' +
         '  col+=starAcc*(1.0+0.5*night)*(1.0-0.6*wStorm);\n' +
-        // ── zodiac wheel nodes ──
-        '  for(int i=0;i<12;i++){ float fi=float(i); float a=fi/12.0*TAU;\n' +
-        '    vec3 zd=normalize(vec3(sin(a)*0.85,0.42,-cos(a)*0.85));\n' +
-        '    float dz=acos(clamp(dot(rd,zd),-1.0,1.0));\n' +
-        '    float zAct=step(abs(mod(uZodiac-fi+6.0,12.0)-6.0),0.5);\n' +
-        '    float node=smoothstep(0.03,0.0,dz); float glo=exp(-dz*10.0);\n' +
-        '    vec3 zc=mix(vec3(0.50,0.55,0.82),vec3(1.0,0.84,0.42),zAct);\n' +
-        '    col+=(node*(0.5+1.0*zAct)+glo*0.16*(0.3+zAct))*zc*(0.4+0.6*night); }\n' +
-        // ── active constellation ──
-        '  vec3 cDir=normalize(vec3(0.16,0.5,-0.82));\n' +
-        '  vec3 rgt=normalize(cross(vec3(0.0,1.0,0.0),cDir)); vec3 upv=normalize(cross(cDir,rgt));\n' +
-        '  for(int k=0;k<6;k++){ float fk=float(k);\n' +
-        '    vec2 off=(hash22(vec2(uZodiac*13.0+fk*1.7,fk*5.0))-0.5)*0.32;\n' +
-        '    vec3 cn=normalize(cDir+rgt*off.x+upv*off.y);\n' +
-        '    float dcc=acos(clamp(dot(rd,cn),-1.0,1.0)); float br=0.6+0.6*hash11(uZodiac*3.0+fk);\n' +
-        '    col+=smoothstep(0.012,0.0,dcc)*vec3(1.0,0.92,0.66)*br*(0.55+0.45*night);\n' +
-        '    col+=exp(-dcc*42.0)*vec3(0.8,0.85,1.0)*0.12*(0.4+0.6*night); }\n' +
+        // ── zodiac wheel + constellations ──
+        //  Rendered as real THREE geometry now (see _initZodiacWheel), so the
+        //  whole wheel can physically ROTATE the active sign into place and the
+        //  constellation lines can draw on during the sky cinematic. The old
+        //  in-shader node dots / random 6-star cluster lived here.
         // ── sun (a warm star, or a black sun during a solar eclipse) ──
         '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=1.0-night*0.85; float sunR=0.05;\n' +
         '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*5.0)*0.8+exp(-sa*1.3)*0.18;\n' +
@@ -10483,6 +10561,7 @@ const ThreeRenderer = (function () {
             _envGroup.add(_envDome, _envWall, _envGround);
             scene.add(_envGroup);
             _envInited = true;
+            _initZodiacWheel();
             console.log('[ThreeRenderer] firmament environment initialized');
         } catch (e) {
             console.warn('[ThreeRenderer] environment init failed', e);
@@ -10499,6 +10578,26 @@ const ThreeRenderer = (function () {
         if (typeof state !== 'undefined' && state && state.skyEvent && state.skyEvent.type) {
             var m = { bloodMoon: 1, solarEclipse: 2, lunarEclipse: 3 };
             ev = m[state.skyEvent.type] || 0;
+        }
+        // Hold a NEW celestial event out of the dome until the pan-up cinematic
+        // reveals it (playSkyEventReveal), so the player sees the black sun /
+        // blood moon actually arrive while looking at the sky instead of it
+        // having already faded in behind their back. Safety: if no reveal comes
+        // (auto-sim, animations off, banner skipped), release after 9s.
+        if (ev > 0) {
+            var _evType = state.skyEvent.type;
+            if (_skyEvShownType !== _evType) {
+                var _evNow = performance.now();
+                if (!_skyEvPendingSince) _skyEvPendingSince = _evNow;
+                if (_evNow - _skyEvPendingSince > 9000
+                    || (state && (state.devAutoSim || state.animationsDisabled))) {
+                    _skyEvShownType = _evType; _skyEvPendingSince = 0;
+                } else {
+                    ev = 0;
+                }
+            }
+        } else {
+            _skyEvShownType = ''; _skyEvPendingSince = 0;
         }
         var zi = 0;
         var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : window.AVAILABLE_ZODIACS;
@@ -10548,7 +10647,10 @@ const ThreeRenderer = (function () {
 
         var s = _envReadState(), S = _envSmooth, k = 0.05;
         S.night += ((s.night ? 1 : 0) - S.night) * k;
-        S.skyAmt += ((s.ev > 0 ? 1 : 0) - S.skyAmt) * k;
+        // While a sky-event reveal cinematic is running, ramp the event in
+        // noticeably faster so the transformation happens ON CAMERA.
+        var kEv = (performance.now() < _skyRevealBoostUntil) ? 0.16 : k;
+        S.skyAmt += ((s.ev > 0 ? 1 : 0) - S.skyAmt) * kEv;
         if (s.ev > 0) S.skyEvent = s.ev;
         S.zodiac += (s.zi - S.zodiac) * 0.08;
         S.storm += (s.w.storm - S.storm) * k;
@@ -10574,6 +10676,386 @@ const ThreeRenderer = (function () {
         // volumetric light shafts raking down onto the board
         _buildLightRays();
         _updateLightRays(_envUni.uTime.value, S.night, S.skyEvent, S.skyAmt);
+
+        // rotating zodiac wheel + constellations (real geometry in the dome)
+        _updateZodiacWheel(S, _envUni.uTime.value);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  ZODIAC CONSTELLATION WHEEL
+    //  Twelve authored constellations arranged on a great ring in the sky —
+    //  a real celestial wheel. The active sign burns gold with its star-lines
+    //  drawn in; the other eleven idle as faint blue star clusters. When the
+    //  sign changes, the whole wheel ROTATES the new constellation into the
+    //  prime slot (azimuth 0, i.e. straight ahead of an un-yawed camera) and
+    //  its connecting lines draw on star by star — driven by the between-round
+    //  sky cinematic (playZodiacReveal), with a 9s auto-fallback so the wheel
+    //  never desyncs when banners are skipped. Geometry is camera-anchored
+    //  like the dome, so it tilts/pans with the view and is always up there
+    //  when the player cranes the camera past the horizon.
+    // ════════════════════════════════════════════════════════════════════
+    var _skyEvShownType = '', _skyEvPendingSince = 0, _skyRevealBoostUntil = 0;
+
+    var _zwGroup = null, _zwSigns = [], _zwInited = false, _zwRimMat = null;
+    var _zwRot = 0, _zwShownIdx = -1, _zwReveal = null, _zwAutoAt = 0;
+    var _ZW_EL = 26 * Math.PI / 180;    // elevation of the wheel band above the horizon
+    var _ZW_SPREAD = 0.25;              // constellation half-size on the unit sphere
+    var _ZW_R_FACTOR = 0.92;            // wheel radius relative to the dome
+    var _ZW_ORDER = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo',
+                     'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
+    var _ZW_COL_LINE_DIM = null, _ZW_COL_LINE_HOT = null, _ZW_COL_STAR_DIM = null, _ZW_COL_STAR_HOT = null;
+
+    /* Simplified star maps (x right, y up, [-1..1]; third value = brightness)
+       traced loosely from the real constellations so each sign is readable. */
+    var _ZW_CONST = {
+        aries:       { stars: [[-0.9,-0.35,0.7],[-0.25,0.18,1.0],[0.35,0.42,0.85],[0.62,0.28,0.5],[0.72,0.02,0.45]],
+                       links: [[0,1],[1,2],[2,3],[3,4]] },
+        taurus:      { stars: [[-0.15,-0.05,1.0],[-0.42,0.02,0.6],[-0.6,0.18,0.55],[-0.35,-0.28,0.5],[-0.62,-0.42,0.6],[0.55,0.55,0.8],[0.7,-0.28,0.7]],
+                       links: [[2,1],[1,0],[4,3],[3,0],[0,5],[0,6]] },
+        gemini:      { stars: [[-0.28,0.85,0.95],[0.3,0.78,1.0],[-0.32,0.35,0.5],[0.35,0.3,0.55],[-0.4,-0.2,0.5],[0.42,-0.25,0.5],[-0.55,-0.75,0.6],[0.28,-0.8,0.6]],
+                       links: [[0,2],[2,4],[4,6],[1,3],[3,5],[5,7],[2,3]] },
+        cancer:      { stars: [[0.0,0.75,0.5],[0.02,0.2,0.6],[-0.45,-0.35,0.6],[0.5,-0.3,0.7],[-0.7,-0.75,0.5]],
+                       links: [[0,1],[1,2],[1,3],[2,4]] },
+        leo:         { stars: [[0.6,-0.35,1.0],[0.62,0.05,0.5],[0.55,0.3,0.75],[0.3,0.5,0.5],[0.05,0.62,0.5],[-0.02,0.35,0.55],[-0.45,0.18,0.65],[-0.42,-0.18,0.55],[-0.85,-0.05,0.85]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[2,6],[6,8],[8,7],[7,6],[0,7]] },
+        virgo:       { stars: [[0.15,-0.75,1.0],[0.0,-0.3,0.55],[-0.35,0.0,0.6],[-0.7,0.25,0.6],[-0.35,0.45,0.5],[0.1,0.3,0.6],[0.5,0.4,0.55],[0.85,0.2,0.5]],
+                       links: [[0,1],[1,2],[2,3],[2,4],[1,5],[5,6],[6,7]] },
+        libra:       { stars: [[0.0,0.7,0.7],[-0.5,0.25,0.8],[0.45,0.3,0.75],[-0.6,-0.45,0.55],[0.4,-0.55,0.6]],
+                       links: [[0,1],[0,2],[1,2],[1,3],[2,4]] },
+        scorpio:     { stars: [[-0.8,0.55,0.5],[-0.7,0.35,0.55],[-0.75,0.12,0.5],[-0.35,0.2,1.0],[-0.1,0.0,0.55],[0.05,-0.3,0.55],[0.1,-0.6,0.6],[0.35,-0.78,0.6],[0.65,-0.7,0.65],[0.8,-0.45,0.7],[0.68,-0.25,0.55]],
+                       links: [[0,3],[1,3],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10]] },
+        sagittarius: { stars: [[-0.6,-0.1,0.6],[-0.3,0.25,0.65],[0.05,0.4,0.6],[0.4,0.2,0.7],[0.5,-0.25,0.6],[0.1,-0.45,0.65],[-0.25,-0.35,0.6],[-0.85,0.3,0.55],[0.05,0.75,0.5]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[2,8],[8,3],[0,7],[7,1]] },
+        capricorn:   { stars: [[-0.85,0.3,0.7],[-0.35,-0.05,0.55],[0.15,-0.42,0.6],[0.5,-0.02,0.55],[0.8,0.35,0.75]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,0]] },
+        aquarius:    { stars: [[-0.7,0.5,0.6],[-0.35,0.62,0.7],[-0.05,0.45,0.6],[0.3,0.6,0.65],[0.5,0.3,0.5],[0.35,-0.05,0.55],[0.55,-0.4,0.6],[0.2,-0.55,0.5],[0.65,-0.75,0.55]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[6,8]] },
+        pisces:      { stars: [[-0.85,-0.15,0.6],[-0.7,0.05,0.5],[-0.55,-0.15,0.55],[-0.7,-0.35,0.5],[-0.3,-0.35,0.5],[0.1,-0.55,0.7],[0.4,-0.15,0.5],[0.6,0.2,0.5],[0.5,0.6,0.55],[0.75,0.55,0.6],[0.7,0.85,0.5]],
+                       links: [[0,1],[1,2],[2,3],[3,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,8]] }
+    };
+
+    function _zwSlotAngle(i) { return i / 12 * Math.PI * 2; }
+
+    function _zwActiveIdx() {
+        var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : (window.AVAILABLE_ZODIACS || _ZW_ORDER);
+        if (typeof state !== 'undefined' && state && state.activeZodiac && ZL) {
+            var ki = ZL.indexOf(state.activeZodiac);
+            if (ki >= 0) return ki;
+        }
+        return 0;
+    }
+
+    function _zwStarTexture() {
+        var c = document.createElement('canvas'); c.width = c.height = 64;
+        var ctx = c.getContext('2d');
+        var g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        g.addColorStop(0, 'rgba(255,255,255,1)');
+        g.addColorStop(0.18, 'rgba(255,255,255,0.9)');
+        g.addColorStop(0.42, 'rgba(255,255,255,0.28)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+        /* subtle 4-point flare */
+        ctx.globalCompositeOperation = 'lighter';
+        var g2 = ctx.createLinearGradient(0, 32, 64, 32);
+        g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(0.5, 'rgba(255,255,255,0.55)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g2; ctx.fillRect(0, 30, 64, 4);
+        var g3 = ctx.createLinearGradient(32, 0, 32, 64);
+        g3.addColorStop(0, 'rgba(255,255,255,0)'); g3.addColorStop(0.5, 'rgba(255,255,255,0.55)'); g3.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g3; ctx.fillRect(30, 0, 4, 64);
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
+    function _zwGlyphTexture(symbol) {
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.font = '150px "Cinzel", "Times New Roman", serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(255,215,130,0.9)'; ctx.shadowBlur = 26;
+        ctx.fillStyle = 'rgba(255,226,166,0.95)';
+        ctx.fillText(symbol, 128, 134);
+        /* faint enclosing ring so the glyph reads as a seal in the sky */
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,226,166,0.35)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(128, 128, 112, 0, Math.PI * 2); ctx.stroke();
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
+    function _initZodiacWheel() {
+        if (_zwInited || !scene || typeof THREE === 'undefined') return;
+        try {
+            _ZW_COL_LINE_DIM = new THREE.Color(0x3d4a78); _ZW_COL_LINE_HOT = new THREE.Color(0xffd98a);
+            _ZW_COL_STAR_DIM = new THREE.Color(0x93a5d8); _ZW_COL_STAR_HOT = new THREE.Color(0xffe2a6);
+
+            var starTex = _zwStarTexture();
+            var icons = (typeof ZODIAC_ICONS !== 'undefined') ? ZODIAC_ICONS : (window.ZODIAC_ICONS || {});
+            var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : (window.AVAILABLE_ZODIACS || _ZW_ORDER);
+
+            _zwGroup = new THREE.Group();
+            _zwGroup.frustumCulled = false;
+
+            /* ── the wheel rim: a faint ring running BELOW the constellations
+                  (through the hub dots), so the twelve signs ride on it like
+                  markers on a real wheel ── */
+            var rimPts = [];
+            var _rimEl = _ZW_EL - _ZW_SPREAD * 1.35;
+            var rimR = Math.cos(_rimEl), rimY = Math.sin(_rimEl);
+            for (var ri = 0; ri < 180; ri++) {
+                var ra = ri / 180 * Math.PI * 2;
+                rimPts.push(new THREE.Vector3(Math.sin(ra) * rimR, rimY, -Math.cos(ra) * rimR));
+            }
+            var rimGeo = new THREE.BufferGeometry().setFromPoints(rimPts);
+            _zwRimMat = new THREE.LineBasicMaterial({
+                color: 0x8090c8, transparent: true, opacity: 0.08,
+                blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+            });
+            var rim = new THREE.LineLoop(rimGeo, _zwRimMat);
+            rim.renderOrder = -997; rim.frustumCulled = false;
+            _zwGroup.add(rim);
+
+            var UPV = new THREE.Vector3(0, 1, 0);
+            for (var i = 0; i < 12; i++) {
+                var signKey = ZL[i] || _ZW_ORDER[i];
+                var def = _ZW_CONST[signKey] || _ZW_CONST[_ZW_ORDER[i]] || _ZW_CONST.aries;
+                var a = _zwSlotAngle(i);
+                var cd = new THREE.Vector3(Math.sin(a) * Math.cos(_ZW_EL), Math.sin(_ZW_EL), -Math.cos(a) * Math.cos(_ZW_EL));
+                var right = new THREE.Vector3().crossVectors(cd, UPV).normalize();
+                var up = new THREE.Vector3().crossVectors(right, cd).normalize();
+
+                /* star directions on the unit sphere */
+                var starDirs = [];
+                for (var sj = 0; sj < def.stars.length; sj++) {
+                    var st = def.stars[sj];
+                    starDirs.push(new THREE.Vector3().copy(cd)
+                        .addScaledVector(right, st[0] * _ZW_SPREAD)
+                        .addScaledVector(up, st[1] * _ZW_SPREAD).normalize());
+                }
+
+                /* connecting lines as thin additive quads (GL lines are stuck at
+                   1px), one geometry per sign so setDrawRange can DRAW them on
+                   link by link during the reveal */
+                var lk = def.links, quads = new Float32Array(lk.length * 6 * 3);
+                var qo = 0;
+                for (var li = 0; li < lk.length; li++) {
+                    var pa = starDirs[lk[li][0]], pb = starDirs[lk[li][1]];
+                    var dir = new THREE.Vector3().subVectors(pb, pa);
+                    var len = dir.length(); dir.normalize();
+                    var gap = Math.min(0.022, len * 0.22);
+                    var pa2 = new THREE.Vector3().copy(pa).addScaledVector(dir, gap);
+                    var pb2 = new THREE.Vector3().copy(pb).addScaledVector(dir, -gap);
+                    var mid = new THREE.Vector3().addVectors(pa2, pb2).multiplyScalar(0.5).normalize();
+                    var side = new THREE.Vector3().crossVectors(dir, mid).normalize().multiplyScalar(0.005);
+                    var v = [
+                        pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
+                        pa2.x + side.x, pa2.y + side.y, pa2.z + side.z,
+                        pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
+                        pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
+                        pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
+                        pb2.x - side.x, pb2.y - side.y, pb2.z - side.z
+                    ];
+                    quads.set(v, qo); qo += 18;
+                }
+                var lineGeo = new THREE.BufferGeometry();
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(quads, 3));
+                var lineMat = new THREE.MeshBasicMaterial({
+                    color: 0x3d4a78, transparent: true, opacity: 0.05,
+                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+                var lineMesh = new THREE.Mesh(lineGeo, lineMat);
+                lineMesh.renderOrder = -992; lineMesh.frustumCulled = false;
+                _zwGroup.add(lineMesh);
+
+                /* stars */
+                var starMat = new THREE.SpriteMaterial({
+                    map: starTex, transparent: true, opacity: 0.4, color: 0x93a5d8,
+                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                });
+                var stars = [];
+                for (var sk = 0; sk < starDirs.length; sk++) {
+                    var spr = new THREE.Sprite(starMat);
+                    spr.position.copy(starDirs[sk]);
+                    var bs = 0.02 + 0.03 * (def.stars[sk][2] || 0.5);
+                    spr.userData = { bs: bs, tw: 0.6 + ((i * 7 + sk * 13) % 10) * 0.22, ph: (i * 2.3 + sk * 1.7) % 6.28 };
+                    spr.scale.set(bs, bs, 1);
+                    spr.renderOrder = -990; spr.frustumCulled = false;
+                    _zwGroup.add(spr);
+                    stars.push(spr);
+                }
+
+                /* slot node dot on the rim (the wheel's hub markers) */
+                var dotMat = new THREE.SpriteMaterial({
+                    map: starTex, transparent: true, opacity: 0.3, color: 0x93a5d8,
+                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                });
+                var dot = new THREE.Sprite(dotMat);
+                dot.position.set(Math.sin(a) * rimR, rimY, -Math.cos(a) * rimR);
+                dot.scale.set(0.02, 0.02, 1);
+                dot.renderOrder = -991; dot.frustumCulled = false;
+                _zwGroup.add(dot);
+
+                /* zodiac glyph watermark hanging under the constellation */
+                var glyphMat = new THREE.SpriteMaterial({
+                    map: _zwGlyphTexture(icons[signKey] || '✦'), transparent: true, opacity: 0.06,
+                    color: 0xffd98a, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                });
+                var glyph = new THREE.Sprite(glyphMat);
+                glyph.position.copy(cd).addScaledVector(up, -_ZW_SPREAD * 0.62).normalize();
+                glyph.scale.set(0.15, 0.15, 1);
+                glyph.renderOrder = -996; glyph.frustumCulled = false;
+                _zwGroup.add(glyph);
+
+                _zwSigns.push({
+                    key: signKey, lineGeo: lineGeo, lineMat: lineMat, linkCount: lk.length,
+                    starMat: starMat, stars: stars, dotMat: dotMat, glyphMat: glyphMat, act: 0
+                });
+            }
+
+            scene.add(_zwGroup);
+            _zwInited = true;
+            console.log('[ThreeRenderer] zodiac constellation wheel initialized');
+        } catch (e) {
+            console.warn('[ThreeRenderer] zodiac wheel init failed', e);
+        }
+    }
+
+    function _zwStartReveal(toIdx, rotMs, drawMs) {
+        var toRot = _zwSlotAngle(toIdx);
+        var d = toRot - _zwRot;
+        var TAU = Math.PI * 2;
+        d = ((d + Math.PI) % TAU + TAU) % TAU - Math.PI;   // shortest path
+        if (Math.abs(d) < 1e-4) { d = 0; rotMs = 0; }
+        _zwReveal = {
+            t0: performance.now(), rotMs: rotMs, drawMs: drawMs,
+            fromRot: _zwRot, rotDelta: d,
+            fromIdx: _zwShownIdx, toIdx: toIdx
+        };
+        _zwAutoAt = 0;
+        return { rotMs: rotMs, drawMs: drawMs, totalMs: rotMs + drawMs };
+    }
+
+    function _updateZodiacWheel(S, tSec) {
+        if (!_zwInited || !_zwGroup) return;
+        var camo = ThreeCamera.getCamera();
+        if (camo) _zwGroup.position.copy(camo.position);
+        _zwGroup.scale.setScalar(_ENV_DOME_R * _ZW_R_FACTOR);
+
+        var activeIdx = _zwActiveIdx();
+        var nowMs = performance.now();
+        var inBattle = (typeof state !== 'undefined' && state && state.phase === 'battle');
+
+        if (_zwShownIdx < 0 || !inBattle) {
+            /* first frame / outside battle: park the wheel with no ceremony */
+            _zwShownIdx = activeIdx;
+            _zwRot = _zwSlotAngle(activeIdx);
+            _zwReveal = null; _zwAutoAt = 0;
+        } else if (!_zwReveal && activeIdx !== _zwShownIdx) {
+            /* sign changed — the sky cinematic normally fires playZodiacReveal;
+               if it never comes (banner skipped / autosim) turn the wheel anyway */
+            if (!_zwAutoAt) _zwAutoAt = nowMs + 9000;
+            if (nowMs >= _zwAutoAt || (state && (state.devAutoSim || state.animationsDisabled))) {
+                _zwStartReveal(activeIdx, 1800, 1600);
+            }
+        }
+
+        var inSign = _zwShownIdx, outSign = -1, outAct = 0, drawP = 1;
+        if (_zwReveal) {
+            var rv = _zwReveal, el = nowMs - rv.t0;
+            if (el < rv.rotMs) {
+                var tt = el / rv.rotMs;
+                var e = tt < 0.5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2;
+                _zwRot = rv.fromRot + rv.rotDelta * e;
+                inSign = rv.toIdx; drawP = 0;
+                outSign = rv.fromIdx; outAct = Math.max(0, 1 - tt * 2.2);
+            } else if (el < rv.rotMs + rv.drawMs) {
+                _zwRot = rv.fromRot + rv.rotDelta;
+                inSign = rv.toIdx;
+                drawP = rv.drawMs > 0 ? (el - rv.rotMs) / rv.drawMs : 1;
+                outSign = rv.fromIdx;
+            } else {
+                _zwRot = rv.fromRot + rv.rotDelta;
+                _zwShownIdx = rv.toIdx; _zwReveal = null; _zwAutoAt = 0;
+                inSign = _zwShownIdx;
+            }
+        }
+        _zwGroup.rotation.y = _zwRot;
+
+        var vis = 0.78 + 0.22 * S.night;   // the whole wheel reads a touch softer by day
+        for (var i = 0; i < _zwSigns.length; i++) {
+            var sg = _zwSigns[i];
+            var target = (i === inSign) ? drawP : (i === outSign ? outAct : 0);
+            sg.act += (target - sg.act) * 0.14;
+            var a2 = sg.act;
+
+            var visLinks = (i === inSign && drawP < 1) ? Math.ceil(drawP * sg.linkCount) : sg.linkCount;
+            sg.lineGeo.setDrawRange(0, 6 * visLinks);
+            sg.lineMat.opacity = (0.07 + 0.78 * a2) * vis;
+            sg.lineMat.color.copy(_ZW_COL_LINE_DIM).lerp(_ZW_COL_LINE_HOT, a2);
+
+            sg.starMat.opacity = (0.5 + 0.5 * a2) * vis;
+            sg.starMat.color.copy(_ZW_COL_STAR_DIM).lerp(_ZW_COL_STAR_HOT, a2);
+
+            sg.glyphMat.opacity = (0.06 + 0.5 * a2) * vis;
+
+            sg.dotMat.opacity = (0.3 + 0.6 * a2) * vis;
+            sg.dotMat.color.copy(_ZW_COL_STAR_DIM).lerp(_ZW_COL_STAR_HOT, a2);
+
+            /* twinkle + swell the blessed constellation's stars */
+            for (var sj = 0; sj < sg.stars.length; sj++) {
+                var sp = sg.stars[sj];
+                var pulse = 1 + 0.16 * a2 * Math.sin(tSec * sp.userData.tw * 2.2 + sp.userData.ph);
+                var bs = sp.userData.bs * (1 + 0.6 * a2) * pulse;
+                sp.scale.set(bs, bs, 1);
+            }
+        }
+        if (_zwRimMat) _zwRimMat.opacity = (0.05 + 0.05 * S.night);
+    }
+
+    /* ── public sky-cinematic API (used by the between-round announcement
+          cinematic in state.js) ─────────────────────────────────────────── */
+
+    /* Camera orientation (tilt/yaw in the gameplay camera's degrees) that
+       frames a sky subject: the zodiac prime slot, or the sun/moon a
+       celestial event transforms. tilt >90 cranes the gaze above the horizon. */
+    function getSkyShot(kind) {
+        var d;
+        if (kind === 'solarEclipse') d = [0.50, 0.40, -0.58];                       // the sun
+        else if (kind === 'bloodMoon' || kind === 'lunarEclipse') d = [-0.50, 0.42, 0.56]; // the moon
+        else d = [0, Math.sin(_ZW_EL) + 0.12, -Math.cos(_ZW_EL)];                   // zodiac prime slot
+        var L = Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) || 1;
+        var dx = d[0] / L, dy = d[1] / L, dz = d[2] / L;
+        return {
+            tilt: Math.acos(Math.max(-1, Math.min(1, -dy))) * 180 / Math.PI,
+            yaw: Math.atan2(-dx, -dz) * 180 / Math.PI
+        };
+    }
+
+    /* Rotate the wheel so the CURRENT active sign lands in the prime slot,
+       then draw its constellation lines on. Returns the phase durations so the
+       caller can sync the banner/holds. Safe no-op shape when uninitialized. */
+    function playZodiacReveal(opts) {
+        if (!_zwInited) return { rotMs: 0, drawMs: 0, totalMs: 0 };
+        opts = opts || {};
+        var rotMs = opts.rotMs != null ? opts.rotMs : 1800;
+        var drawMs = opts.drawMs != null ? opts.drawMs : 1600;
+        var target = _zwActiveIdx();
+        if (_zwShownIdx < 0) { _zwShownIdx = target; _zwRot = _zwSlotAngle(target); }
+        return _zwStartReveal(target, rotMs, drawMs);
+    }
+
+    /* Release a held celestial event into the dome with a fast on-camera ramp
+       (see the hold in _envReadState). */
+    function playSkyEventReveal(type, opts) {
+        _skyEvShownType = type
+            || (typeof state !== 'undefined' && state && state.skyEvent && state.skyEvent.type) || '';
+        _skyEvPendingSince = 0;
+        var ms = (opts && opts.rampMs) || 2200;
+        _skyRevealBoostUntil = performance.now() + ms;
+        return { totalMs: ms };
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -13594,6 +14076,7 @@ const ThreeRenderer = (function () {
         _updateInsideBuildingVisibility();
         _updatePlateVisibility();
         _updatePlateEffBadges();
+        _updatePlateSkyBadges();
         _syncNexusBars();
         _updateUnitHoverPulse();
         _syncSelectionIndicator();
@@ -13920,6 +14403,9 @@ const ThreeRenderer = (function () {
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
+        if (_zwGroup && scene) scene.remove(_zwGroup);
+        _zwGroup = null; _zwRimMat = null; _zwSigns.length = 0; _zwInited = false;
+        _zwReveal = null; _zwShownIdx = -1; _zwAutoAt = 0;
         if (renderer) { renderer.dispose(); renderer = null; }
         if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
         canvas = null; scene = null;
@@ -14000,6 +14486,8 @@ const ThreeRenderer = (function () {
         setHorizonFog,
 
         setLightRayStrength, getLightRayStrength,
+
+        getSkyShot, playZodiacReveal, playSkyEventReveal,
 
         get _scene() { return scene; }
     };
