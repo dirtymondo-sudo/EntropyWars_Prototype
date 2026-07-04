@@ -523,24 +523,26 @@ const ThreeRenderer = (function () {
     };
 
     const HL_COLORS = {
-        /* Move-destination BASE colours are now neutral — AP cost is conveyed by
-           the pip dots (uDots), not the colour. Colour is repurposed to encode
-           the TACTICAL consequence of standing on the tile (strike/hazard/etc,
-           see the tactical entries below; resolved in _getSharedHlMat). Walk tiles read as a
-           calm slate; jump/takeoff keep a faint teal so the move-TYPE cue (which
-           is non-redundant) survives when a tile has no tactical meaning. */
-        'move':            0x6f8296,
-        'move-jump':       0x33a8bb,
-        'move-takeoff':    0x33a8bb,
-        'move-2ap':        0x6f8296,
-        'move-3ap':        0x6f8296,
+        /* Move-tile colour system — five intuitive colours, nothing more:
+             blue    → you can walk here (pip dots = AP cost: 1 or 2)
+             teal    → jump / takeoff tile
+             gold    → 'strike': you can hit a visible enemy from here
+             crimson → 'hazard': ending here hurts you
+             green   → 'benefit': healing terrain
+           AP cost is conveyed ONLY by the pip dots; tactical tokens (appended
+           by ui.js) recolour the fill. Enemy reach is no longer striped onto
+           move tiles — hovering/clicking an enemy shows its range in red
+           (battle.js updateEnemyRangePreview → 'enemyRange' overlay). */
+        'move':            0x4da6ff,
+        'move-jump':       0x35d0c0,
+        'move-takeoff':    0x35d0c0,
+        'move-2ap':        0x4da6ff,
+        'move-3ap':        0x4da6ff,
         'move-edge':       0x991111,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
         'hazard':          0xff3a3a,   /* crimson— ending here damages you / bad status */
-        'slow':            0x4a78c8,   /* steel  — terrain costs extra movement to enter */
         'benefit':         0x33dd77,   /* green  — healing terrain / cover */
-        'exposed':         0xff7722,   /* orange — drawn as a hatched warning border (shader) */
         'attack':          0x3366ee,
         'attack enemy':    0xff2222,
         'spell-range':     0x8844ee,
@@ -605,7 +607,6 @@ const ThreeRenderer = (function () {
         'uniform float uTime;',
         'uniform float uEdgeGlow;',
         'uniform int uDots;',
-        'uniform float uExposed;',
         'varying vec2 vUv;',
         '',
         'void main() {',
@@ -667,30 +668,16 @@ const ThreeRenderer = (function () {
         '  float border = (borderHard * 1.0 + borderSoft * 0.5) * uEdgeGlow * pulse;',
         '  float glow = innerGlow * uEdgeGlow * 0.35;',
         '',
-        '  // EXPOSED warning: animated diagonal hazard-tape stripes hugging the',
-        '  // tile border, drawn in orange OVER whatever base colour the tile has,',
-        '  // so a tile can read "I can strike from here" (gold fill) AND "I would',
-        '  // be in an enemy\'s reach here" (orange border) at the same time.',
-        '  float exposedFx = 0.0;',
-        '  if (uExposed > 0.5) {',
-        '    float hatch = abs(fract((uv.x - uv.y) * 7.0 + uTime * 0.55) - 0.5) * 2.0;',
-        '    float stripe = smoothstep(0.45, 0.85, hatch);',
-        '    float band = 1.0 - smoothstep(0.0, 0.17, edge);',
-        '    exposedFx = stripe * band * (0.78 + 0.22 * sin(uTime * 3.0));',
-        '  }',
-        '',
         '  float alpha = (fill + border + glow + grid + brackets + dots) * uOpacity;',
-        '  alpha = max(alpha, exposedFx * 0.85);',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
         '  float bright = border * 0.5 + brackets * 0.65 + dots * 0.85;',
         '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.75));',
-        '  col = mix(col, vec3(1.0, 0.46, 0.12), clamp(exposedFx, 0.0, 0.85));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
     ].join('\n');
 
-    function _makeHlMaterial(color, opacity, edgeGlow, dotCount, exposed) {
+    function _makeHlMaterial(color, opacity, edgeGlow, dotCount) {
         var c = new THREE.Color(color);
         return new THREE.ShaderMaterial({
             uniforms: {
@@ -698,8 +685,7 @@ const ThreeRenderer = (function () {
                 uOpacity:  { value: opacity },
                 uTime:     _hlGlobalTime,
                 uEdgeGlow: { value: edgeGlow },
-                uDots:     { value: dotCount || 0 },
-                uExposed:  { value: exposed ? 1.0 : 0.0 }
+                uDots:     { value: dotCount || 0 }
             },
             vertexShader: _hlVertexShader,
             fragmentShader: _hlFragmentShader,
@@ -6493,22 +6479,25 @@ const ThreeRenderer = (function () {
         if (hlType.indexOf('attack enemy') === 0) matKey = 'attack enemy';
         if (_hlMatCache.has(matKey)) return _hlMatCache.get(matKey);
 
-        var color, opacity, edgeGlow, dotCount, exposed = 0;
+        var color, opacity, edgeGlow, dotCount;
         var baseTok = hlType.split(' ')[0];
 
         /* Tactical move highlight: base token (move / move-2ap / move-jump …)
            still drives the AP-cost pip dots; the appended tactical token drives
-           the COLOUR; an appended ' exposed' token drives the warning border.
-           Priority for the (mutually-exclusive) base fill: strike > hazard >
-           benefit > slow > neutral — offence opportunities pop loudest. */
+           the COLOUR. Priority for the (mutually-exclusive) base fill:
+           strike > hazard > benefit > neutral — offence pops loudest. Plain
+           2-AP tiles recede below 1-AP tiles so cost also reads at a glance. */
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
             dotCount = HL_DOT_COUNT[baseTok] || 0;
-            exposed = (hlType.indexOf(' exposed') !== -1) ? 1 : 0;
             if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 0.95; }
             else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.85; }
             else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.80; }
-            else if (hlType.indexOf(' slow') !== -1)    { color = HL_COLORS['slow'];    opacity = 0.55; edgeGlow = 0.70; }
-            else { color = HL_COLORS[baseTok] || HL_COLORS['move']; opacity = 0.44; edgeGlow = 0.55; } /* plain — recede */
+            else {
+                color = HL_COLORS[baseTok] || HL_COLORS['move'];
+                var _far = (baseTok === 'move-2ap' || baseTok === 'move-3ap');
+                opacity = _far ? 0.34 : 0.5;
+                edgeGlow = _far ? 0.4 : 0.6;
+            }
         } else {
             color = _getHlColor(matKey);
             opacity = _getHlOpacity(matKey);
@@ -6517,7 +6506,7 @@ const ThreeRenderer = (function () {
             dotCount = HL_DOT_COUNT[matKey] || 0;
         }
 
-        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount, exposed);
+        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount);
         mat._ew_shared = true;
         _hlMatCache.set(matKey, mat);
         return mat;
@@ -13996,6 +13985,36 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── Enemy threat-range + move-hover preview sync ─────────────────────
+       Cheap per-frame signature check that drives battle.js's
+       updateEnemyRangePreview (red danger-zone overlay for the hovered or
+       click-pinned enemy) and drops a stale move-hover arrow when the action
+       mode changes under it (ESC, menu buttons, remote actions…). The heavy
+       range computation only runs when the signature actually changes. */
+    var _lastEnemyRangeSig = '';
+    function _syncEnemyRangePreview() {
+        if (typeof state === 'undefined') return;
+
+        if (state._moveHoverActive
+            && state.actionMode !== 'move' && state.actionMode !== 'jump'
+            && typeof window._clearMoveHoverPreview === 'function') {
+            window._clearMoveHoverPreview();
+        }
+
+        if (typeof window.updateEnemyRangePreview !== 'function') return;
+        var hovId = _hoveredUnitId != null ? _hoveredUnitId : '';
+        var pinId = state._enemyActionTargetId || '';
+        var sig = hovId + '|' + pinId + '|' + (state.phase || '') + '|'
+                + (state.activePlayer || 0) + '|' + (state.round || 0);
+        var tgt = null;
+        if (hovId !== '') tgt = _unitById.get(hovId) || null;
+        if (!tgt && pinId !== '') tgt = _unitById.get(pinId) || null;
+        if (tgt) sig += '|' + tgt.id + ':' + tgt.x + ',' + tgt.y + ',' + (tgt.z || 0) + ',' + (tgt.hp || 0);
+        if (sig === _lastEnemyRangeSig) return;
+        _lastEnemyRangeSig = sig;
+        window.updateEnemyRangePreview(_hoveredUnitId);
+    }
+
     function renderFrame() {
         if (!active || !renderer || !scene) return;
 
@@ -14119,6 +14138,8 @@ const ThreeRenderer = (function () {
         _updatePreviewOverlayPulse();
 
         _updateActionPlanPulse();
+
+        _syncEnemyRangePreview();
 
         _updateAnimations();
 

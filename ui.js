@@ -2454,7 +2454,10 @@
             _ring2Set = _wasdMoveTiles2;
           } else if (!_wasdOrigin) {
 
-            const _canMove2 = (_selectedForHl.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES;
+            /* A second move costs a second AP — after e.g. a 2-AP spell leaves
+               1 AP, ring-2 tiles must NOT light up (2 pips) as reachable. */
+            const _canMove2 = (_selectedForHl.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
+              && (_selectedForHl.ap || 0) >= (typeof AP_COST_ACTION !== 'undefined' ? AP_COST_ACTION * 2 : 2);
             if (_canMove2) {
               _ring2Set = new Set();
               const _r1Set = new Set();
@@ -2543,18 +2546,16 @@
           }
 
           /* ─────────────────────────────────────────────────────────────────
-             TACTICAL TILE COLOURING
-             Move-tile COLOUR no longer re-encodes AP cost (the pip dots already
-             do that). Instead we append modifier tokens that tell the renderer
-             to tint each reachable tile by the CONSEQUENCE of standing on it:
-               strike  → from here you can attack/cast a visible enemy   (gold)
-               hazard  → ending here damages you / applies a bad status  (crimson)
-               benefit → healing terrain                                  (green)
-               slow    → terrain costs extra movement to enter            (steel)
-               exposed → standing here you'd be inside a visible enemy's
-                         reach — drawn as an orange warning border that
-                         layers ON TOP of the base colour.
-             Base-fill priority is strike > hazard > benefit > slow > neutral.
+             TACTICAL TILE COLOURING — deliberately minimal:
+               blue   → reachable tile (pip dots = AP cost)
+               teal   → jump / takeoff tile
+               gold   → 'strike': you can attack/cast a visible enemy from here
+               crimson→ 'hazard': ending here damages you / applies a bad status
+               green  → 'benefit': healing terrain
+             Enemy reach is NO LONGER hatched onto move tiles (the old orange
+             'exposed' stripes) — hover or click an enemy to see its range in
+             red instead (updateEnemyRangePreview in battle.js).
+             Base-fill priority is strike > hazard > benefit > neutral.
              ───────────────────────────────────────────────────────────────── */
           {
             const _self = _selectedForHl;
@@ -2584,20 +2585,6 @@
                 const _r = (typeof getEffectiveSpellRange === 'function')
                   ? getEffectiveSpellRange(_self, _sp) : (_sp.range || 0);
                 if (_r > _strikeReach) _strikeReach = _r;
-              }
-            }
-
-            // Threat field: tiles within (move + range) of any visible enemy.
-            const _threatKeys = new Set();
-            for (const _e of _visEnemies) {
-              const _eMove = (typeof getEffectiveMove === 'function') ? getEffectiveMove(_e) : (_e.move || 3);
-              const _eRange = (typeof getEffectiveRange === 'function') ? getEffectiveRange(_e) : 1;
-              const _reach = _eMove + _eRange;
-              for (let _dy = -_reach; _dy <= _reach; _dy++) {
-                for (let _dx = -_reach; _dx <= _reach; _dx++) {
-                  if (Math.abs(_dx) + Math.abs(_dy) > _reach) continue;
-                  _threatKeys.add(posKey(_e.x + _dx, _e.y + _dy));
-                }
               }
             }
 
@@ -2641,10 +2628,7 @@
               else {
                 const _rule = getTerrainRule(_terrAt(_tx, _ty, _tz));
                 if (_rule && _rule.healMultiplier > 1) _tok += ' benefit';
-                else if (typeof getTerrainMoveCost === 'function'
-                         && getTerrainMoveCost(_self, _tx, _ty, _tz) > 1) _tok += ' slow';
               }
-              if (_threatKeys.has(_pk)) _tok += ' exposed';
               if (_tok !== _cls) _hlCache.set(_pk, _tok);
             }
           }
@@ -8535,7 +8519,8 @@
             for (const t of ring1) _wasdMoveTiles1.add(posKey(t.x, t.y));
 
             _wasdMoveTiles2 = new Set();
-            const canMove2 = (unit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES;
+            const canMove2 = (unit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
+              && (unit.ap || 0) >= (typeof AP_COST_ACTION !== 'undefined' ? AP_COST_ACTION * 2 : 2);
             if (canMove2) {
                 const savedX = unit.x, savedY = unit.y;
 

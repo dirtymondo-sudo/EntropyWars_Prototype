@@ -297,6 +297,63 @@ anchor/footprint visibility, no walk/jump onto roofs, enter→hidden→emerge-on
 5 hits →1hp → 6th collapses → rubble + ruins, roof fall 24 vs inside crush 48,
 meteor/nuke demolish; AI auto-sim advanced rounds with 0 page errors.
 
+## Move-highlight UX rework: colors, AP accuracy, hover previews (2026-07-04) — battle.js, ui.js, three-renderer.js
+User asks: simpler/intuitive move colors (kill the striped orange "exposed"
+border), accurate AP pips (2-dot tiles showed with only 1 AP after a spell;
+some 1-AP jump/move tiles refused the click), enemy range on hover instead,
+and a hover path-arrow + destination hologram. **All 3 files → R2 together.**
+- **Color system now (three-renderer HL_COLORS + _getSharedHlMat):** blue
+  `0x4da6ff` = walkable (pips = AP: 1 or 2; plain 2-AP tiles recede at 0.34
+  opacity vs 0.5), teal = jump/takeoff, gold ' strike', crimson ' hazard',
+  green ' benefit'. The ' slow' (steel) tint and the whole hatched ' exposed'
+  shader path (uExposed uniform + stripe GLSL) were REMOVED — ui.js no longer
+  computes the enemy threat field per move tile.
+- **AP-accuracy bugs (the real causes):** (1) ring-2 "2-pip" highlighting and
+  the 2-AP walk+walk executor were gated ONLY on movesThisTurn — never on
+  having 2 AP — and `spendAP` clamps at 0, so with 1 AP the game showed AND
+  executed double moves. Gated now in ui.js `_canMove2`, ui.js WASD
+  `_initWasdState`, battle.js clickTile (`ap >= AP_COST_ACTION*2`). (2) In
+  clickTile move-mode the 2-AP walk+walk search ran BEFORE the standalone
+  1-AP jump check, so a 1-pip jump tile could be consumed as a 2-AP double
+  walk; and the jump branch passed the raw clicked z to doJump, whose exact-z
+  legality check rejects a different surface of the same column ("Invalid
+  jump target"). Jump now resolves before the 2-AP fallback with z picked
+  from getJumpTiles (nearest to clicked z). (3) STUCK-INPUT TRAP: doMove /
+  doJump returning false did NOT reset `state._actionExecuting` on the early
+  clickTile returns → one failed click silently locked ALL input (no
+  watchdog on that path). Move-mode returns are wrapped in `_execMove` now.
+  The 2-AP intermediate scan also skips `_jump/_takeoff` legs (matches the
+  ring-2 highlight, which always did).
+- **Enemy range on hover/click (battle.js `updateEnemyRangePreview`):**
+  hovering an enemy sprite — or click-pinning one (quick-action menu,
+  `_enemyActionTargetId`) — paints an 'enemyRange' overlay: bright red 0.5 =
+  getAttackTiles (real LOS) from where it stands, faint red 0.22 = danger
+  zone (Manhattan attack diamond from every getMoveTiles destination).
+  Driven by `_syncEnemyRangePreview` in three-renderer's renderFrame — a
+  per-frame SIGNATURE check (hovered id + pinned id + target x,y,z,hp) so
+  every set/clear site of `_enemyActionTargetId` is covered without hooks;
+  it also drops a stale move-hover arrow if actionMode changed under it.
+  Fog: preview refuses enemies outside computeVisibleTiles(viewer) — probes
+  must set `state.fogOfWar=false` (or pick a visible enemy) before asserting.
+- **Move/Jump hover preview (battle.js `_updateMoveHoverPreview`):** wired in
+  updateHoveredTarget (move/jump modes return early with a preview instead of
+  confirm-target logic). Reachable tile → `drawPathArrow3D` through the REAL
+  `findMovePath` waypoints (gold walk / teal jump legs) + `showGhostUnit`
+  caster hologram + 'moveHoverDest' tile mark; standalone jump tile → arced
+  teal `drawArrow3D`; 2-AP tile → combined path1+path2 arrow through the
+  cheapest intermediate (mirrors the executor). Dedups on
+  `state._moveHoverKey`; cleared in clearHoveredTarget, setActionMode,
+  and the renderFrame sync above.
+- **Verified** via scratchpad `verify_move_ux.js` (LOCAL_ASSETS=battle.js,
+  ui.js,three-renderer.js): 17/17 — ring2 hidden at 1 AP / shown at 3 AP, no
+  exposed/slow tokens, 2-AP click refused at 1 AP without sticking input,
+  jump-only click lands as a 1-AP jump (movesThisTurn untouched), hover
+  preview draws + clears (incl. stale-mode leak guard), enemy range paints on
+  API call AND on real synthesized mousemove, 0 page/shader errors. Probe
+  gotchas: page has FIVE canvases — dispatch synthetic mousemove to all of
+  them; the blitz/AI heartbeat resets `state.actionMode` between separate
+  page.evaluate calls, so assert selection+mode INSIDE the same evaluate.
+
 ## 3D collision + airborne targeting fixes (2026-07-03) — battle.js, hud.js, ai.js, three-renderer.js, three-camera.js
 User bugs: (1) units ending up on the SAME tile + SAME elevation; (2) targeting an
 airborne unit always hit the unit standing beneath it. Root causes + fixes (all 5

@@ -12048,6 +12048,220 @@
             return true;
         }
 
+        // ── Move/Jump hover preview ──────────────────────────────────────────
+        // With Move (or Jump) selected, hovering a reachable tile draws the walk
+        // route as a bending arrow along the actual path plus a hologram of the
+        // unit standing on the destination — the same visual language as the
+        // spell/attack approach previews. Dedups on the hovered tile so the
+        // pathfinding probe only recomputes when the cursor changes tiles.
+        function _clearMoveHoverPreview() {
+            state._moveHoverKey = null;
+            if (!state._moveHoverActive) return; // nothing drawn → skip renderer churn
+            state._moveHoverActive = false;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit('caster');
+                ThreeRenderer.clearOverlay('moveHoverDest');
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+        window._clearMoveHoverPreview = _clearMoveHoverPreview;
+
+        function _updateMoveHoverPreview(x, y) {
+            const unit = getSelectedUnit();
+            if (!unit || (state.actionMode !== 'move' && state.actionMode !== 'jump')
+                || state._actionExecuting
+                || (typeof window._isWasdActive === 'function' && window._isWasdActive())) {
+                _clearMoveHoverPreview();
+                return;
+            }
+            const k = state.actionMode + '|' + unit.id + '|' + x + ',' + y + '|' + unit.x + ',' + unit.y
+                + '|' + (unit.ap || 0) + '|' + (unit.movesThisTurn || 0);
+            if (state._moveHoverKey === k) return;
+            _clearMoveHoverPreview();
+            state._moveHoverKey = k;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                if (!isInside(x, y)) return;
+                if (x === unit.x && y === unit.y) return;
+                const _occ = unitAt(x, y);
+                if (_occ && _occ.id !== unit.id) return; // occupied → not a destination
+
+                const ghostTint = (typeof getFactionColor === 'function')
+                    ? (parseInt(String(getFactionColor(unit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+                    : 0x66ddff;
+                const actingY = ThreeRenderer.unitSurfaceY(unit);
+                const _isAir = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+
+                // Waypoint height: grounded units hug the tile tops; airborne
+                // flyers keep their clearance (same math as the approach previews).
+                const _wpY = (wx, wy) => {
+                    if (!_isAir) return ThreeRenderer.tileTopY(wx, wy);
+                    const ts = CONFIG.tileSize || BASE_TILE;
+                    const curGnd = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
+                    const clearance = (unit.z || 0) - curGnd;
+                    const gnd = typeof getHeightAt === 'function' ? getHeightAt(wx, wy) : 0;
+                    const elev = (typeof window._getElevationPx === 'function')
+                        ? window._getElevationPx(gnd + clearance) : (gnd + clearance) * ts;
+                    return Math.max(ts * 0.04, elev);
+                };
+                const _showDest = (routeColor, viaTile) => {
+                    const marks = [];
+                    if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3 });
+                    marks.push({ x: x, y: y, color: routeColor, opacity: 0.45 });
+                    ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
+                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                    state._moveHoverActive = true;
+                    scheduleBoardRender();
+                };
+
+                // 1) Reachable in one move → bending route arrow through the real path.
+                if (state.actionMode === 'move' && canUnitMove(unit)) {
+                    const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
+                    if (matches.length) {
+                        const unitZ = unit.z ?? 0;
+                        matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
+                        const dest = matches[0];
+                        const routeColor = (dest._jump || dest._takeoff) ? 0x66ffcc : 0xffcc44;
+                        const path = findMovePath(unit, x, y, dest.z);
+                        const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                        for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
+                        if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
+                        else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y), { flow: true });
+                        _showDest(routeColor, null);
+                        return;
+                    }
+                }
+
+                // 2) Standalone jump tile (shown in the move overlay too) → arcing leap arrow.
+                if (!_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
+                    const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
+                    if (jm.length) {
+                        ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x66ffcc, false, actingY,
+                            ThreeRenderer.tileTopY(x, y), { arc: 0.45, flow: true });
+                        _showDest(0x66ffcc, null);
+                        return;
+                    }
+                }
+
+                // 3) Two-action walk+walk destination (needs 2 AP + both moves left) —
+                //    mirrors the clickTile executor's cheapest-intermediate search.
+                if (state.actionMode === 'move' && canUnitMove(unit)
+                    && (unit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
+                    && (unit.ap || 0) >= AP_COST_ACTION * 2) {
+                    const r1 = getMoveTiles(unit);
+                    const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
+                    let best = null, bestCost = Infinity;
+                    for (const t1 of r1) {
+                        if (t1._jump || t1._takeoff) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? savedZ;
+                        const r2 = getMoveTiles(unit);
+                        if (r2.some(t2 => t2.x === x && t2.y === y) && (t1.cost || 0) < bestCost) {
+                            bestCost = t1.cost || 0;
+                            best = t1;
+                        }
+                    }
+                    unit.x = savedX; unit.y = savedY; unit.z = savedZ;
+                    if (best) {
+                        const path1 = findMovePath(unit, best.x, best.y, best.z ?? savedZ);
+                        unit.x = best.x; unit.y = best.y; unit.z = best.z ?? savedZ;
+                        const path2 = findMovePath(unit, x, y); // resolves its own destZ
+                        unit.x = savedX; unit.y = savedY; unit.z = savedZ;
+                        const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
+                        for (const p of path1) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
+                        for (const p of path2) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
+                        if (wps.length >= 2) {
+                            ThreeRenderer.drawPathArrow3D(wps, 0xffcc44);
+                            _showDest(0xffcc44, best);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        // ── Enemy threat-range preview ───────────────────────────────────────
+        // Hovering an enemy sprite (or click-selecting one via the quick-action
+        // menu) paints its reach in red: bright tiles it can attack from where
+        // it stands, faint tiles it could reach-and-hit after moving this turn.
+        // This replaces the old per-move-tile hatched "exposed" border — enemy
+        // range is now shown on demand instead of cluttering every move tile.
+        function _clearEnemyRangePreview() {
+            if (!state._enemyRangeActive) return;
+            state._enemyRangeActive = false;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    ThreeRenderer.clearOverlay('enemyRange');
+                }
+            } catch (e) { /* cosmetic */ }
+        }
+
+        function updateEnemyRangePreview(hoveredUnitId) {
+            try {
+                if (state.phase !== 'battle' || state.winner || state.devAutoSim
+                    || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) {
+                    _clearEnemyRangePreview();
+                    return;
+                }
+                const viewer = getViewerPlayer();
+                let target = null;
+                if (hoveredUnitId != null) {
+                    const hu = state.units.find(u => u.id === hoveredUnitId && !u.dead && !u._dying);
+                    if (hu && hu.player !== viewer) target = hu;
+                }
+                if (!target && state._enemyActionTargetId) {
+                    const pu = state.units.find(u => u.id === state._enemyActionTargetId && !u.dead && !u._dying);
+                    if (pu && pu.player !== viewer) target = pu;
+                }
+                if (!target
+                    || (typeof unitHasStatus === 'function' && unitHasStatus(target, 'invisible'))) {
+                    _clearEnemyRangePreview();
+                    return;
+                }
+                if (state.fogOfWar && typeof computeVisibleTiles === 'function') {
+                    const vis = computeVisibleTiles(viewer);
+                    if (!vis.has(posKey(target.x, target.y))) { _clearEnemyRangePreview(); return; }
+                }
+
+                // Bright: tiles the enemy can attack without moving (real range + LOS).
+                const nowKeys = new Set();
+                for (const t of getAttackTiles(target)) nowKeys.add(posKey(t.x, t.y));
+
+                // Faint: the full danger zone — anywhere it could stand this turn
+                // plus its attack reach from there.
+                const eRange = getEffectiveRange(target);
+                const laterKeys = new Set();
+                const stands = [{ x: target.x, y: target.y }];
+                try { for (const mt of getMoveTiles(target)) stands.push(mt); } catch (e) { /* keep the bright set */ }
+                for (const s of stands) {
+                    for (let dy = -eRange; dy <= eRange; dy++) {
+                        for (let dx = -eRange; dx <= eRange; dx++) {
+                            const man = Math.abs(dx) + Math.abs(dy);
+                            if (man < 1 || man > eRange) continue;
+                            const nx = s.x + dx, ny = s.y + dy;
+                            if (!isInside(nx, ny)) continue;
+                            laterKeys.add(posKey(nx, ny));
+                        }
+                    }
+                }
+
+                const tiles = [];
+                for (const pk of laterKeys) {
+                    if (nowKeys.has(pk)) continue;
+                    const c = pk.indexOf(',');
+                    tiles.push({ x: parseInt(pk.slice(0, c), 10), y: parseInt(pk.slice(c + 1), 10), color: 0xff3344, opacity: 0.22 });
+                }
+                for (const pk of nowKeys) {
+                    const c = pk.indexOf(',');
+                    tiles.push({ x: parseInt(pk.slice(0, c), 10), y: parseInt(pk.slice(c + 1), 10), color: 0xff3344, opacity: 0.5 });
+                }
+                if (!tiles.length) { _clearEnemyRangePreview(); return; }
+                ThreeRenderer.setOverlay('enemyRange', tiles, 0xff3344, 0.3);
+                state._enemyRangeActive = true;
+            } catch (e) { _clearEnemyRangePreview(); }
+        }
+        window.updateEnemyRangePreview = updateEnemyRangePreview;
+
         function getViewerPlayer() {
 
             if (window._NET && window._NET.online && window._NET.myPlayer) return window._NET.myPlayer;
@@ -17635,6 +17849,7 @@
             clearAoePreview();
             clearSpellRangePreview();
             clearAttackRangePreview();
+            _clearMoveHoverPreview();
 
             if (mode === 'attack') {
                 state.actionMenuView = 'attackTargets';
@@ -17802,6 +18017,13 @@
 
         function updateHoveredTarget(x, y) {
             if (state._actionExecuting) return false;
+
+            // Move/Jump mode: hovering a reachable tile previews the route
+            // (path arrow + destination hologram) instead of a confirm target.
+            if (state.actionMode === 'move' || state.actionMode === 'jump') {
+                _updateMoveHoverPreview(x, y);
+                return false;
+            }
             if (!actionModeNeedsTargetConfirm()) return false;
 
             if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
@@ -17872,6 +18094,7 @@
         }
 
         function clearHoveredTarget(x = null, y = null) {
+            if (state._moveHoverKey || state._moveHoverActive) _clearMoveHoverPreview();
             const current = state.pendingTarget;
             if (!current?.viaHover) return false;
             if (x != null && y != null && (current.x !== x || current.y !== y)) return false;
@@ -18258,6 +18481,19 @@
                     return;
                 }
 
+                /* A failed doMove/doJump returns false WITHOUT resetting
+                   _actionExecuting (success paths reset it later, async) — a
+                   stale-highlight click would otherwise leave the flag stuck
+                   true and lock out every subsequent click. */
+                const _execMove = (fn) => {
+                    const r = fn();
+                    if (r === false || r === 0) {
+                        state._actionExecuting = false;
+                        scheduleBoardRender();
+                    }
+                    return r;
+                };
+
                 const _r1Tiles = getMoveTiles(actingUnit);
                 const _r1Match = _r1Tiles.find(t => t.x === x && t.y === y);
                 if (_r1Match) {
@@ -18265,20 +18501,39 @@
                     if (_r1Match._takeoff && canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
                         const _toResult = doAltitudeChange(actingUnit, 'ascend');
                         if (_toResult !== 0) {
-                            return doMove(actingUnit, x, y, _r1Match.z);
+                            return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
                         }
                         state._actionExecuting = false;
                         return false;
                     }
-                    return doMove(actingUnit, x, y, state._clickedZ);
+                    return _execMove(() => doMove(actingUnit, x, y, state._clickedZ));
                 }
 
-                if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES) {
+                /* 1-AP standalone jump takes precedence over the 2-AP walk+walk
+                   fallback below: a tile highlighted as a jump (1 pip) must never
+                   be consumed as a double move. Resolve the landing z from the
+                   jump tile list — the raw clicked z can point at a different
+                   surface of the same column, which doJump would reject. */
+                if (typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))) {
+                    const _jMatches = getJumpTiles(actingUnit).filter(t => t.x === x && t.y === y);
+                    if (_jMatches.length > 0) {
+                        const _jzRef = state._clickedZ ?? (actingUnit.z ?? 0);
+                        _jMatches.sort((a, b) => Math.abs((a.z ?? 0) - _jzRef) - Math.abs((b.z ?? 0) - _jzRef));
+                        state.actionMode = 'jump';
+                        return _execMove(() => doJump(actingUnit, x, y, _jMatches[0].z));
+                    }
+                }
+
+                if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
+                    && (actingUnit.ap || 0) >= AP_COST_ACTION * 2) {
 
                     const savedX = actingUnit.x, savedY = actingUnit.y, savedZ = actingUnit.z;
                     let bestInterm = null;
                     let bestCost = Infinity;
                     for (const t1 of _r1Tiles) {
+                        /* Intermediates must be plain walks — mirrors the ring-2
+                           highlight in ui.js, which skips jump/takeoff legs. */
+                        if (t1._jump || t1._takeoff) continue;
                         actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
                         const r2 = getMoveTiles(actingUnit);
                         if (r2.some(t2 => t2.x === x && t2.y === y) && (t1.cost || 0) < bestCost) {
@@ -18406,7 +18661,7 @@
                         const _toResult = doAltitudeChange(actingUnit, 'ascend');
                         if (_toResult !== 0) {
 
-                            return doMove(actingUnit, x, y, _toMatch.z);
+                            return _execMove(() => doMove(actingUnit, x, y, _toMatch.z));
                         }
 
                         state._actionExecuting = false;
@@ -18414,22 +18669,11 @@
                     }
                 }
 
-                if (typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))) {
-                    const _jumpTiles = getJumpTiles(actingUnit);
-                    if (_jumpTiles.some(t => t.x === x && t.y === y)) {
-
-                        state.actionMode = 'jump';
-                        return doJump(actingUnit, x, y, state._clickedZ);
-                    }
-
-                    // Jump is now a deliberate, first-class action — not a one-click
-                    // walk+jump combo. The old move+jump / move+move+jump / jump+move+move
-                    // auto-bundles were removed: they fired doJump() synchronously while the
-                    // walk animation was still mid-flight, which is what made units snap
-                    // abruptly to a 3-AP jump tile. To move-then-jump now, walk first, then
-                    // pick the jump (jump tiles are shown in the move overlay and the Jump
-                    // action), so each leg animates cleanly on its own.
-                }
+                // Jump is a deliberate, first-class action — not a one-click
+                // walk+jump combo. Standalone jump tiles were already resolved
+                // ABOVE (before the 2-AP walk+walk fallback, so a 1-AP jump is
+                // never consumed as a 2-AP double move). To move-then-jump,
+                // walk first, then pick the jump — each leg animates cleanly.
 
                 state._actionExecuting = false;
                 if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
