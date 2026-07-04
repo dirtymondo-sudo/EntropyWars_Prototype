@@ -1046,6 +1046,324 @@ function GauntletReplaceModal({ st }) {
   );
 }
 
+/* ════════════════════════ THE HOROLOGE ════════════════════════
+   The action menu is a living watch. Blades (verbs) fan out from a clock
+   hub anchored bottom-left; the minute hand swings to aim at whatever
+   blade is hovered, and confirming an action strikes the hour — both
+   hands slam onto the blade's angle with a chime + tick cascade. The
+   second hand carries the faction's pulse: quartz-tick for Space, a
+   smooth sweep for Time, an erratic stutter for Chaos. */
+
+// Blade angles in degrees: 0 = 3 o'clock, negative = above the horizon
+// (offensive verbs), positive = below (utility). END TURN sits deepest.
+const HRLG_ANG = { attack: -40, combo: -25, abil: -10, move: 5, jump: 5, items: 20, more: 35, end: 50, cancel: 5 };
+const HRLG_REST = { min: 60, hour: 305 };   // idle 10:10 pose
+const _hrlgToClock = (a) => 90 + a;         // blade angle → watch angle (0 = 12 o'clock)
+const _hrlgNearest = (cur, target) => cur + (((target - cur) % 360 + 540) % 360 - 180);
+function _hrlgPol(r, deg) {
+  const rad = deg * Math.PI / 180;
+  return [100 + r * Math.sin(rad), 100 - r * Math.cos(rad)];
+}
+
+// Stylised flat world map etched into the dial (equirectangular ~300×150,
+// scaled into the inner disc). Decorative cartography, not geography.
+const HRLG_MAP = 'M28,32 L46,22 L72,20 L88,26 L84,34 L70,38 L66,50 L54,58 L46,72 L40,58 L30,46 Z'
+  + ' M92,12 L106,10 L110,20 L98,24 Z'
+  + ' M56,78 L70,74 L80,86 L78,104 L68,122 L60,106 L54,90 Z'
+  + ' M138,28 L154,20 L170,24 L166,34 L152,40 L142,38 Z'
+  + ' M138,48 L160,44 L176,52 L174,72 L162,92 L152,90 L142,68 Z'
+  + ' M172,22 L210,14 L248,20 L262,34 L252,48 L232,44 L216,56 L206,72 L198,58 L184,44 L172,36 Z'
+  + ' M232,74 L242,72 L246,80 L236,82 Z M250,84 L260,82 L262,90 L252,92 Z'
+  + ' M252,102 L272,98 L284,108 L276,120 L258,118 Z';
+
+// The watch itself. `api` is a plain object the parent owns; the hub fills
+// it with imperative hand controls (aim / rest / strike / wind) so blade
+// hover/click handlers can drive the hands without re-rendering the SVG.
+function HorologeHub({ factionKey, api }) {
+  const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
+  const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
+  const A = useRef({ min: HRLG_REST.min, hour: HRLG_REST.hour, sec: 0, paused: false });
+
+  const _setHand = (ref, deg) => { if (ref.current) ref.current.style.transform = 'rotate(' + deg + 'deg)'; };
+
+  api.aim = (deg) => { A.current.min = _hrlgNearest(A.current.min, deg); _setHand(minRef, A.current.min); };
+  api.rest = () => api.aim(HRLG_REST.min);
+  api.wind = (extra) => { A.current.min += extra; _setHand(minRef, A.current.min); };
+  api.strike = (deg) => {
+    const a = A.current;
+    a.min = _hrlgNearest(a.min, deg); a.hour = _hrlgNearest(a.hour, deg);
+    _setHand(minRef, a.min); _setHand(hourRef, a.hour);
+    // second hand swings onto the struck hour; the heartbeat resumes after
+    a.paused = true;
+    if (secRef.current) {
+      secRef.current.classList.remove('snap'); secRef.current.classList.add('aim');
+      a.sec = _hrlgNearest(a.sec, deg);
+      secRef.current.style.transform = 'rotate(' + a.sec + 'deg)';
+    }
+    setTimeout(() => { a.paused = false; }, 900);
+    [chimeARef.current, chimeBRef.current].forEach((el, k) => {
+      if (!el) return;
+      el.classList.remove('go', 'go2'); void el.offsetWidth; el.classList.add(k ? 'go2' : 'go');
+    });
+    // minute-track ticks light up radiating out from the struck angle
+    if (ticksRef.current) {
+      const start = Math.round((((deg % 360) + 360) % 360) / 6);
+      ticksRef.current.querySelectorAll('.hrlg-mtick').forEach(tk => {
+        const i = +tk.dataset.i;
+        const d = Math.min((i - start + 60) % 60, (start - i + 60) % 60);
+        setTimeout(() => { tk.classList.add('lit'); setTimeout(() => tk.classList.remove('lit'), 240); }, d * 12);
+      });
+    }
+  };
+
+  // rest pose on mount (hand transforms live outside React's render)
+  useEffect(() => {
+    _setHand(minRef, A.current.min); _setHand(hourRef, A.current.hour); _setHand(secRef, A.current.sec);
+  }, []);
+
+  // the heartbeat — faction-flavoured second hand
+  useEffect(() => {
+    let t = null, raf = null, alive = true;
+    const a = A.current;
+    const setSec = (deg, cls) => {
+      const el = secRef.current; if (!el) return;
+      el.classList.remove('snap', 'aim'); if (cls) el.classList.add(cls);
+      a.sec = deg; el.style.transform = 'rotate(' + deg + 'deg)';
+    };
+    if (factionKey === 'time') {          // silk sweep
+      let last = performance.now();
+      const loop = (now) => {
+        if (!alive) return;
+        if (!a.paused && secRef.current) {
+          a.sec += (now - last) * 0.006;
+          secRef.current.classList.remove('snap', 'aim');
+          secRef.current.style.transform = 'rotate(' + a.sec + 'deg)';
+        }
+        last = now; raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+    } else {
+      const chaos = factionKey === 'chaos';
+      const tick = () => {
+        if (!alive) return;
+        if (!a.paused) {
+          if (chaos) {                     // palsied stutter, occasionally backwards
+            const back = Math.random() < 0.16;
+            setSec(a.sec + (back ? -1 : 1) * (2 + Math.random() * 13), 'snap');
+          } else setSec(a.sec + 6, 'snap'); // quartz tick
+        }
+        t = setTimeout(tick, chaos ? 220 + Math.random() * 640 : 1000);
+      };
+      t = setTimeout(tick, chaos ? 300 : 1000);
+    }
+    return () => { alive = false; clearTimeout(t); if (raf) cancelAnimationFrame(raf); };
+  }, [factionKey]);
+
+  // static plate: bezel ticks, numerals, and the etched world map
+  const plate = useMemo(() => {
+    const ticks = [];
+    for (let i = 0; i < 60; i++) {
+      const maj = i % 5 === 0;
+      const [x1, y1] = _hrlgPol(maj ? 87 : 90.5, i * 6);
+      const [x2, y2] = _hrlgPol(95, i * 6);
+      ticks.push(h('line', {
+        key: i, x1, y1, x2, y2, className: 'hrlg-mtick', 'data-i': i,
+        stroke: 'var(--hfc)', strokeWidth: maj ? 1.5 : 0.7, opacity: maj ? 0.75 : 0.3,
+      }));
+    }
+    const numerals = [];
+    const ROM = { 0: 'XII', 3: 'III', 6: 'VI', 9: 'IX' };
+    for (let hr = 0; hr < 12; hr++) {
+      if (ROM[hr]) {
+        const [x, y] = _hrlgPol(76, hr * 30);
+        numerals.push(h('text', {
+          key: hr, x, y: y + 5, textAnchor: 'middle',
+          fontFamily: '"Cinzel", serif', fontWeight: 700, fontSize: 13.5,
+          fill: EW.ink, opacity: 0.92,
+        }, ROM[hr]));
+      } else {
+        const [x, y] = _hrlgPol(78, hr * 30);
+        numerals.push(h('path', {
+          key: hr,
+          d: 'M' + x + ',' + (y - 2.6) + ' L' + (x + 2) + ',' + y + ' L' + x + ',' + (y + 2.6) + ' L' + (x - 2) + ',' + y + ' Z',
+          fill: 'var(--hfc)', opacity: 0.7,
+        }));
+      }
+    }
+    // flat-earth chart: graticule + continents, clipped to the inner disc
+    const grid = [];
+    for (let gy = -42; gy <= 42; gy += 21) grid.push(h('line', {
+      key: 'la' + gy, x1: 44, y1: 100 + gy, x2: 156, y2: 100 + gy,
+      stroke: 'var(--hfc)', strokeWidth: 0.5, opacity: gy === 0 ? 0.16 : 0.08,
+    }));
+    for (let gx = -42; gx <= 42; gx += 21) grid.push(h('line', {
+      key: 'lo' + gx, x1: 100 + gx, y1: 44, x2: 100 + gx, y2: 156,
+      stroke: 'var(--hfc)', strokeWidth: 0.5, opacity: gx === 0 ? 0.12 : 0.08,
+    }));
+    return h(React.Fragment, null,
+      h('defs', null,
+        h('radialGradient', { id: 'hrlgFaceG', cx: '42%', cy: '36%' },
+          h('stop', { offset: '0%', stopColor: '#10141f' }),
+          h('stop', { offset: '70%', stopColor: '#080a12' }),
+          h('stop', { offset: '100%', stopColor: '#05060b' }),
+        ),
+        h('clipPath', { id: 'hrlgMapClip' }, h('circle', { cx: 100, cy: 100, r: 56 })),
+      ),
+      h('circle', { cx: 100, cy: 100, r: 96, fill: 'url(#hrlgFaceG)', stroke: 'var(--hfc-soft)', strokeWidth: 1 }),
+      h('circle', { cx: 100, cy: 100, r: 98, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.8, opacity: 0.5 }),
+      h('circle', { cx: 100, cy: 100, r: 57, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.6, opacity: 0.22 }),
+      h('g', { clipPath: 'url(#hrlgMapClip)' },
+        grid,
+        h('path', {
+          d: HRLG_MAP, transform: 'translate(44,72) scale(0.3733)',
+          fill: 'var(--hfc)', opacity: 0.13,
+          stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
+        }),
+      ),
+      h('g', { ref: ticksRef }, ticks),
+      h('g', null, numerals),
+    );
+  }, []);
+
+  return h('div', { className: 'hrlg-hub' },
+    h('svg', { viewBox: '0 0 200 200' },
+      plate,
+      h('g', { ref: hourRef, className: 'hrlg-hour' },
+        h('path', { d: 'M100,111 L96.9,100 L98.9,62 L100,56 L101.1,62 L103.1,100 Z', fill: 'var(--hfc)', stroke: 'rgba(255,255,255,0.5)', strokeWidth: 0.5 }),
+        h('path', { d: 'M99.3,96 L99.3,68 L100.7,68 L100.7,96 Z', fill: '#06070c', opacity: 0.8 }),
+      ),
+      h('g', { ref: minRef, className: 'hrlg-min' },
+        h('path', { d: 'M100,113 L97.8,100 L99.4,30 L100,24 L100.6,30 L102.2,100 Z', fill: EW.ink, stroke: 'rgba(255,255,255,0.35)', strokeWidth: 0.4 }),
+        h('path', { d: 'M99.4,95 L99.4,38 L100.6,38 L100.6,95 Z', fill: '#06070c', opacity: 0.8 }),
+      ),
+      h('g', { ref: secRef, className: 'hrlg-sec' },
+        h('line', { x1: 100, y1: 118, x2: 100, y2: 18, stroke: EW.bad, strokeWidth: 1.1 }),
+        h('circle', { cx: 100, cy: 113, r: 3.2, fill: 'none', stroke: EW.bad, strokeWidth: 1.1 }),
+      ),
+      h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0a0c15', stroke: 'var(--hfc)', strokeWidth: 1.3 }),
+      h('circle', { cx: 100, cy: 100, r: 1.7, fill: 'var(--hfc)' }),
+    ),
+    h('div', { ref: chimeARef, className: 'hrlg-chime' }),
+    h('div', { ref: chimeBRef, className: 'hrlg-chime' }),
+  );
+}
+
+// One blade of the fan. Costs render as diamond pips; unavailability
+// reasons render as a red tag on the blade itself.
+function HorologeBlade({ b, idx, active, fireId, onFire, onHover }) {
+  const dead = !b.available && b.id !== 'abil';
+  let costEl = null;
+  if (!dead && !b.sub) {
+    if (typeof b.cost === 'number') {
+      const pips = []; for (let i = 0; i < b.cost; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
+      costEl = h('span', { className: 'hrlg-cost' }, pips);
+    } else if (b.hint) {
+      costEl = h('span', { className: 'hrlg-cost' }, h('span', { className: 'hrlg-cfree' }, b.hint));
+    }
+  }
+  return h('div', {
+    className: 'hrlg-blade'
+      + (dead ? ' dead' : '')
+      + (active ? ' active' : '')
+      + (fireId === b.id ? ' fire' : '')
+      + (b.short ? ' short' : ''),
+    style: { '--a': b.ang + 'deg', animationDelay: (60 + idx * 55) + 'ms' },
+    onClick: dead ? undefined : () => onFire(b),
+    onMouseEnter: () => onHover(b, true),
+    onMouseLeave: () => onHover(b, false),
+  },
+    h('span', { className: 'hrlg-stem' }),
+    h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
+      h('span', { className: 'hrlg-glyph' }, b.icon),
+      h('span', { className: 'hrlg-blabel' }, b.label),
+      costEl,
+      b.sub && h('span', { className: 'hrlg-tag' }, b.sub),
+      h('span', { className: 'hrlg-flash' }),
+    ),
+  );
+}
+
+// Stateful shell for the whole menu — ActionMenu computes WHAT can be done
+// and hands it to this component, which owns HOW it looks and moves.
+// (Separate component so its hooks never sit behind ActionMenu's early
+// returns.)
+function HorologeMenu({ view, blades, fc, factionKey, roman, unitName, ap, maxAP, modeLabel, am, onAction, onEndTurn, onCancel }) {
+  const clockApi = useRef({}).current;
+  const rigRef = useRef(null);
+  const [fireId, setFireId] = useState(null);
+  const [hoverCost, setHoverCost] = useState(0);
+
+  // entering a sub-menu winds the minute hand a full revolution
+  const prevView = useRef(view);
+  useEffect(() => {
+    if (view !== prevView.current) {
+      if (view === 'sub' || view === 'quick') { if (clockApi.wind) clockApi.wind(360); }
+      else if (view === 'root') { if (clockApi.rest) clockApi.rest(); }
+      prevView.current = view;
+    }
+  }, [view]);
+
+  const hoverBlade = (b, on) => {
+    const dead = !b.available && b.id !== 'abil';
+    if (on) {
+      if (!dead && clockApi.aim) clockApi.aim(_hrlgToClock(b.ang));
+      setHoverCost(!dead && typeof b.cost === 'number' ? b.cost : 0);
+      if (b.id === 'attack' && b.available && typeof previewAttackRange === 'function') previewAttackRange();
+    } else {
+      if (clockApi.rest) clockApi.rest();
+      setHoverCost(0);
+      if (b.id === 'attack' && typeof clearAttackRangePreview === 'function') clearAttackRangePreview();
+    }
+  };
+
+  const fireBlade = (b) => {
+    if (!b.available && b.id !== 'abil') return;
+    if (clockApi.strike) clockApi.strike(_hrlgToClock(b.ang));
+    if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
+    setFireId(b.id); setTimeout(() => setFireId(null), 460);
+    if (rigRef.current && rigRef.current.animate) {
+      rigRef.current.animate(
+        [{ transform: 'translateX(0)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }],
+        { duration: 130, easing: 'ease-out' });
+    }
+    if (b.id === 'end') onEndTurn();
+    else if (b.id === 'cancel') onCancel();
+    else onAction(b);
+  };
+
+  const pips = [];
+  const shown = Math.min(maxAP, 8);
+  for (let i = 0; i < shown; i++) {
+    const on = i < ap;
+    const spend = on && hoverCost > 0 && i >= ap - hoverCost;
+    pips.push(h('span', { key: i, className: 'hrlg-pip' + (on ? ' on' : '') + (spend ? ' spend' : '') }));
+  }
+
+  return h('div', {
+    ref: rigRef, className: 'hrlg-rig',
+    style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' },
+  },
+    h(HorologeHub, { factionKey: factionKey, api: clockApi }),
+    h('div', { className: 'hrlg-core' },
+      h('span', { className: 'hrlg-roman' }, roman + ' · '),
+      h('span', { className: 'hrlg-name' }, unitName),
+    ),
+    h('div', { className: 'hrlg-ap' },
+      h('span', { className: 'hrlg-ap-lbl' }, 'AP'),
+      pips,
+      h('span', { className: 'hrlg-ap-num' }, ap + '/' + maxAP),
+    ),
+    modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
+    h('div', { className: 'hrlg-fan', key: view + '|' + (am || '') },
+      blades.map((b, i) => h(HorologeBlade, {
+        key: b.id, b: b, idx: i,
+        active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
+        fireId: fireId, onFire: fireBlade, onHover: hoverBlade,
+      })),
+    ),
+  );
+}
+
 function ActionMenu({ st }) {
   if (!st || st.phase !== 'battle') return null;
 
@@ -1215,153 +1533,44 @@ function ActionMenu({ st }) {
     if (typeof handleBackAction === 'function') handleBackAction();
   }
 
+  const modeLabels = {
+    move: 'MOVING — CLICK A TILE', jump: 'JUMPING — CLICK A TILE', combo: 'COMBO — CLICK A PARTNER',
+    inspect: 'INSPECT — CLICK A TILE', ward: 'WARD — CLICK A TILE', flair: 'FLAIR — CLICK A TILE',
+    trade: 'TRADE — CLICK AN ALLY', warpStone: 'WARP — CLICK A TILE',
+    attack: 'ATTACK — CLICK A TARGET',
+  };
+
+  // Which face the Horologe shows:
+  //  root — full blade fan (armed verb pulses while aiming move/attack/jump)
+  //  aim  — tile-target modes (combo/inspect/…): a lone CANCEL blade
+  //  sub / quick — a panel is open beside the clock: blades retract
+  const quickOpen = !!(st._enemyActionTargetId || st._tileActionTarget);
+  const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, ang: HRLG_ANG.cancel, short: true, hint: 'ESC' };
+  let view, blades = [], modeLabel = null;
   if (inTileTarget) {
-    const modeLabels = {
-      move: '⬆ Moving…', jump: '🦘 Jumping…', combo: '⚔ Combo…',
-      inspect: '🔍 Inspect…', ward: '👁 Ward…', flair: '🔥 Flair…',
-      trade: '🔄 Trade…', warpStone: '⚡ Warp…',
-    };
-    return h(ClipPanel, {
-      factionColor: fc,
-      style: {
-        position: 'absolute', bottom: 16, left: 16, width: 220, zIndex: 12,
-      },
-    },
-
-      h('div', { style: {
-        padding: '8px 12px', borderBottom: '1px solid ' + EW.panelEdge,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'linear-gradient(180deg, ' + fc + '10, transparent)',
-      }},
-        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 6 }},
-          h('span', { style: { fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 13, color: fc }}, roman),
-          h('span', { style: { fontFamily: '"Cinzel", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em' }}, unitName),
-        ),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 3, fontFamily: '"DotGothic16", monospace', fontSize: 8, letterSpacing: '0.14em' }},
-          h('span', { style: { color: EW.time, fontWeight: 600 }}, (unit.ap || 0) + '/' + maxAP),
-          h('span', { style: { color: EW.inkMute }}, 'AP'),
-        ),
-      ),
-
-      h('div', { style: {
-        padding: '6px 12px',
-        fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        letterSpacing: '0.1em', color: EW.inkMute,
-      }}, modeLabels[am] || am),
-
-      h('div', { style: { padding: '4px 6px 8px', borderTop: '1px solid ' + EW.panelEdge }},
-        h('div', {
-          className: 'rhud-back',
-          style: {
-            padding: '6px 10px', cursor: 'pointer',
-            fontFamily: '"DotGothic16", monospace', fontSize: 10,
-            letterSpacing: '0.14em', color: EW.inkMute,
-          },
-          onClick: onCancel,
-        }, '← Cancel'),
-      ),
-    );
+    view = 'aim';
+    modeLabel = modeLabels[am] || String(am).toUpperCase();
+    blades = [cancelBlade];
+  } else if (menuView !== 'root') {
+    view = 'sub';
+  } else if (quickOpen && !am) {
+    view = 'quick';
+  } else {
+    view = 'root';
+    if (am) modeLabel = modeLabels[am] || null;
+    blades = actions.map(a => ({ ...a, ang: HRLG_ANG[a.id] != null ? HRLG_ANG[a.id] : 4 }));
+    blades.sort((a, b) => a.ang - b.ang);
+    blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, ang: HRLG_ANG.end, short: true, hint: 'SPACE' });
   }
 
-  return h(ClipPanel, {
-    factionColor: fc,
-    style: {
-      position: 'absolute', bottom: 16, left: 16, width: 220, zIndex: 12,
-    },
-  },
-
-    h('div', { style: {
-      padding: '8px 12px', borderBottom: '1px solid ' + EW.panelEdge,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: 'linear-gradient(180deg, ' + fc + '10, transparent)',
-    }},
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 6 }},
-        h('span', { style: { fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 13, color: fc }}, roman),
-        h('span', { style: { fontFamily: '"Cinzel", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em' }}, unitName),
-      ),
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 3, fontFamily: '"DotGothic16", monospace', fontSize: 8, letterSpacing: '0.14em' }},
-        h('span', { style: { color: EW.time, fontWeight: 600 }}, (unit.ap || 0) + '/' + maxAP),
-        h('span', { style: { color: EW.inkMute }}, 'AP'),
-      ),
-    ),
-
-    h('div', { style: { padding: '4px 0' }},
-      actions.map(a =>
-        h(ActionRow, { key: a.id, a: a, accent: fc, active: am === a.id || a.selected, onClick: () => onAction(a) })
-      ),
-    ),
-
-    (() => {
-      const btnColor = EW.bad;
-      const btnLabel = '■ END TURN';
-      const btnHint = 'SPACE';
-      return h('div', { style: { padding: '4px 6px 8px', borderTop: '1px solid ' + EW.panelEdge, marginTop: 2 }},
-        h('div', {
-          className: 'rhud-end-turn',
-          style: {
-            padding: '7px 10px',
-            background: 'linear-gradient(180deg, ' + btnColor + '22, ' + btnColor + '08)',
-            border: '1px solid ' + btnColor + '66',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            cursor: 'pointer',
-          },
-          onClick: onEndTurn,
-        },
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 10,
-            letterSpacing: '0.18em', color: btnColor, fontWeight: 600,
-          }}, btnLabel),
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 8,
-            color: EW.inkDim, letterSpacing: '0.14em',
-          }}, btnHint),
-        ),
-      );
-    })(),
-  );
-}
-
-function ActionRow({ a, accent, active, onClick }) {
-
-  const visuallyDisabled = !a.available || (a.sub && a.id !== 'more');
-  const cls = 'rhud-row' + (visuallyDisabled ? ' rhud-disabled' : '');
-
-  let onEnter, onLeave;
-  if (a.id === 'attack' && a.available) {
-    onEnter = () => { if (typeof previewAttackRange === 'function') previewAttackRange(); };
-    onLeave = () => { if (typeof clearAttackRangePreview === 'function') clearAttackRangePreview(); };
-  }
-  return h('div', {
-    className: cls,
-    style: {
-      padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
-      cursor: a.available || a.id === 'abil' ? 'pointer' : 'default',
-      background: active ? 'linear-gradient(90deg, ' + accent + '1f, transparent)' : 'transparent',
-      borderLeft: active ? '2px solid ' + accent : '2px solid transparent',
-      opacity: visuallyDisabled ? 0.5 : 1,
-    },
-    onClick: a.available || a.id === 'abil' ? onClick : undefined,
-    onMouseEnter: onEnter,
-    onMouseLeave: onLeave,
-  },
-    h('span', { className: 'rhud-row-icon', style: {
-      width: 16, color: active ? accent : EW.inkMute, fontSize: 13, fontWeight: 600,
-      textAlign: 'center',
-    }}, a.icon),
-    h('span', { className: 'rhud-row-label', style: {
-      flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15,
-      color: active ? EW.ink : EW.inkMute, letterSpacing: '0.02em',
-    }}, a.label),
-    a.cost !== null && a.cost !== undefined && !a.sub && h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 8,
-      color: a.available ? (active ? accent : EW.inkMute) : EW.inkDim,
-      letterSpacing: '0.1em',
-    }}, typeof a.cost === 'number' ? a.cost + ' AP' : a.cost),
-    a.sub && h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 600,
-      color: EW.bad, letterSpacing: '0.06em',
-    }}, a.sub),
-  );
+  return h(HorologeMenu, {
+    view: view, blades: blades, fc: fc,
+    factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
+    roman: roman, unitName: unitName,
+    ap: unit.ap || 0, maxAP: maxAP,
+    modeLabel: modeLabel, am: am,
+    onAction: onAction, onEndTurn: onEndTurn, onCancel: onCancel,
+  });
 }
 
 function spellTagline(sp) {
@@ -2827,9 +3036,11 @@ function EnemyActionMenu({ st }) {
   };
 
   return h('div', {
+    className: 'hrlg-panel',
     style: {
-      position: 'absolute', bottom: 16, left: 252, width: 344, zIndex: 14,
+      position: 'absolute', bottom: 16, left: 210, width: 344, zIndex: 14,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
+      borderLeft: '2px solid ' + fc,
       clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
     },
   },
@@ -3724,8 +3935,9 @@ function TileActionMenu({ st }) {
   }, label);
 
   return h('div', {
+    className: 'hrlg-panel',
     style: {
-      position: 'absolute', bottom: 16, left: 252, width: 300, zIndex: 14,
+      position: 'absolute', bottom: 16, left: 210, width: 300, zIndex: 14,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
     },
@@ -3896,9 +4108,11 @@ function hideSpellTooltip() {
 
 function SubMenuPanel({ title, fc, count, wide, children }) {
   return h('div', {
+    className: 'hrlg-panel',
     style: {
-      position: 'absolute', bottom: 16, left: 252, width: wide ? 360 : 280, zIndex: 12,
+      position: 'absolute', bottom: 16, left: 210, width: wide ? 360 : 280, zIndex: 12,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
+      borderLeft: '2px solid ' + (fc || EW.panelEdgeHi),
       clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
     },
   },
@@ -4130,6 +4344,10 @@ const _HUD_PRESSABLE_SELECTOR = '.rhud-row, .rhud-move-card, .rhud-end-turn, .rh
 
 function _hudJuiceFindPressable(target, container) {
   if (!(target instanceof Element)) return null;
+  // Horologe blades own their confirm feedback (strike + flash + chime) and
+  // sit rotated via `transform` — the juice press animation would overwrite
+  // that rotation and yank the blade out from under the cursor mid-click.
+  if (target.closest && target.closest('.hrlg-blade')) return null;
   const explicit = target.closest(_HUD_PRESSABLE_SELECTOR);
   if (explicit && container.contains(explicit)) return explicit;
 
@@ -4578,6 +4796,160 @@ function _injectHudHideStyles() {
       border-radius: 0 !important;
     }
     .float-settings-panel .nine-slice-bg { display: none !important; }
+
+    /* ══════════════ THE HOROLOGE — clock action menu ══════════════ */
+    .hrlg-rig {
+      position: absolute; left: 8px; bottom: 8px; width: 560px; height: 485px;
+      z-index: 12; pointer-events: none; font-family: 'DotGothic16', monospace;
+    }
+    /* the watch */
+    .hrlg-hub {
+      position: absolute; left: 8px; bottom: 150px; width: 190px; height: 190px;
+      pointer-events: none; filter: drop-shadow(0 0 20px var(--hfc-soft));
+      animation: hrlgStamp 0.5s cubic-bezier(0.16,1.4,0.3,1) both;
+    }
+    .hrlg-hub svg { width: 100%; height: 100%; overflow: visible; display: block; }
+    @keyframes hrlgStamp {
+      0%   { opacity: 0; transform: scale(0.3) rotate(-70deg); }
+      70%  { opacity: 1; transform: scale(1.08) rotate(5deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0); }
+    }
+    /* hands — rotation is set imperatively; the transitions live here */
+    .hrlg-hour { transform-origin: 100px 100px; transition: transform 0.75s cubic-bezier(0.3,1.5,0.4,1); }
+    .hrlg-min  { transform-origin: 100px 100px; transition: transform 0.5s cubic-bezier(0.22,1.6,0.36,1); }
+    .hrlg-sec  { transform-origin: 100px 100px; }
+    .hrlg-sec.snap { transition: transform 0.13s cubic-bezier(0.3,2.1,0.4,1); }
+    .hrlg-sec.aim  { transition: transform 0.4s cubic-bezier(0.22,1.5,0.36,1); }
+    .hrlg-mtick { transition: stroke 0.12s, opacity 0.12s; }
+    .hrlg-mtick.lit { stroke: #fff !important; opacity: 1 !important; filter: drop-shadow(0 0 3px var(--hfc)); }
+    /* strike shockwave rings */
+    .hrlg-chime {
+      position: absolute; left: 50%; top: 50%; width: 190px; height: 190px;
+      margin: -95px 0 0 -95px; border: 1px solid var(--hfc); border-radius: 50%;
+      opacity: 0; pointer-events: none;
+    }
+    .hrlg-chime.go  { animation: hrlgChime 0.7s cubic-bezier(0.2,0.8,0.3,1) forwards; }
+    .hrlg-chime.go2 { animation: hrlgChime 0.9s 0.1s cubic-bezier(0.2,0.8,0.3,1) forwards; }
+    @keyframes hrlgChime {
+      0%   { opacity: 0.8; transform: scale(0.4); }
+      100% { opacity: 0;   transform: scale(1.3); }
+    }
+    /* unit name + AP pips under the watch */
+    .hrlg-core {
+      position: absolute; left: 8px; bottom: 122px; width: 190px; text-align: center;
+      pointer-events: none; white-space: nowrap;
+    }
+    .hrlg-roman { font-family: 'Cinzel', serif; font-style: italic; font-size: 11px; color: var(--hfc); }
+    .hrlg-name  { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.1em; color: #e6e9f2; }
+    .hrlg-ap {
+      position: absolute; left: 8px; bottom: 102px; width: 190px;
+      display: flex; align-items: center; justify-content: center; gap: 5px; pointer-events: none;
+    }
+    .hrlg-ap-lbl { font-size: 9px; letter-spacing: 0.24em; color: #555c70; }
+    .hrlg-ap-num { font-size: 9px; letter-spacing: 0.1em; color: #8a93a8; margin-left: 2px; }
+    .hrlg-pip {
+      width: 8px; height: 8px; transform: rotate(45deg);
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+    }
+    .hrlg-pip.on { background: var(--hfc); border-color: var(--hfc); box-shadow: 0 0 7px var(--hfc); }
+    .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
+    @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    /* aiming-state line ("MOVING — CLICK A TILE") */
+    .hrlg-mode {
+      position: absolute; left: 8px; bottom: 82px; width: 190px; text-align: center;
+      font-size: 8px; letter-spacing: 0.18em; color: var(--hfc); pointer-events: none;
+    }
+    /* the blade fan — pivots on the clock center so blades read as hands */
+    .hrlg-fan { position: absolute; left: 103px; bottom: 245px; width: 0; height: 0; pointer-events: none; }
+    .hrlg-blade {
+      position: absolute; left: 0; top: -19px; height: 38px; width: 322px;
+      transform-origin: 0 50%; transform: rotate(var(--a));
+      display: flex; align-items: center; pointer-events: auto; cursor: pointer;
+      opacity: 0; animation: hrlgErupt 0.45s cubic-bezier(0.16,1.3,0.3,1) both;
+      will-change: transform, opacity;
+    }
+    .hrlg-blade.short { width: 270px; }
+    @keyframes hrlgErupt {
+      0%   { opacity: 0; transform: rotate(var(--a)) translateX(-56px) scaleX(0.4); }
+      60%  { opacity: 1; transform: rotate(var(--a)) translateX(13px) scaleX(1.05); }
+      100% { opacity: 1; transform: rotate(var(--a)) translateX(0) scaleX(1); }
+    }
+    .hrlg-stem {
+      width: 24px; height: 1px; margin-left: 98px; flex: none;
+      background: linear-gradient(90deg, transparent, var(--hfc)); opacity: 0.7;
+    }
+    .hrlg-body {
+      position: relative; height: 100%; flex: 1;
+      display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px;
+      background: linear-gradient(100deg, #0a0c15 0%, #0a0c15 55%, rgba(10,12,21,0.55) 100%);
+      border: 1px solid var(--hfc-soft); border-left: 3px solid var(--hfc);
+      clip-path: polygon(10px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+      transform: skewX(-10deg);
+      transition: transform 0.15s cubic-bezier(0.2,1.5,0.4,1), border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .hrlg-body > * { transform: skewX(10deg); }
+    .hrlg-body.danger { border-left-color: #ff5e70; }
+    .hrlg-glyph {
+      font-size: 15px; color: var(--hfc); width: 18px; text-align: center; flex: none;
+      text-shadow: 0 0 10px var(--hfc-soft);
+    }
+    .hrlg-body.danger .hrlg-glyph { color: #ff5e70; text-shadow: 0 0 10px rgba(255,94,112,0.4); }
+    .hrlg-blabel {
+      flex: 1; font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px;
+      letter-spacing: 0.05em; color: #e6e9f2; line-height: 1; white-space: nowrap;
+    }
+    .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
+    .hrlg-cpip { width: 6px; height: 6px; transform: rotate(45deg); background: var(--hfc); box-shadow: 0 0 5px var(--hfc-soft); }
+    .hrlg-cfree { font-size: 8px; letter-spacing: 0.16em; color: #555c70; }
+    .hrlg-tag {
+      flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff7a8a;
+      border: 1px solid rgba(255,122,138,0.55); padding: 1px 4px;
+      background: rgba(255,0,0,0.06); white-space: nowrap;
+    }
+    /* hover: the blade juts toward the player and ignites */
+    .hrlg-blade:hover:not(.dead) .hrlg-body {
+      transform: skewX(-10deg) translateX(13px) scaleY(1.07);
+      border-color: var(--hfc);
+      background: linear-gradient(100deg, #131a2e 0%, #0c101f 65%, rgba(12,16,31,0.6) 100%);
+      box-shadow: -2px 0 18px var(--hfc-soft), inset 3px 0 0 var(--hfc);
+    }
+    .hrlg-blade:hover:not(.dead) .hrlg-body.danger {
+      border-color: #ff5e70;
+      box-shadow: -2px 0 18px rgba(255,94,112,0.33), inset 3px 0 0 #ff5e70;
+    }
+    .hrlg-blade:hover:not(.dead) .hrlg-blabel { color: var(--hfc); text-shadow: 0 0 12px var(--hfc-soft); }
+    .hrlg-blade:hover:not(.dead) .hrlg-body.danger .hrlg-blabel { color: #ff8a97; text-shadow: 0 0 12px rgba(255,94,112,0.4); }
+    /* armed verb keeps pulsing while aiming */
+    .hrlg-blade.active .hrlg-body { border-color: var(--hfc); animation: hrlgActive 1.5s ease-in-out infinite; }
+    @keyframes hrlgActive {
+      0%, 100% { box-shadow: -2px 0 12px var(--hfc-soft), inset 3px 0 0 var(--hfc); }
+      50%      { box-shadow: -2px 0 26px var(--hfc), inset 3px 0 0 var(--hfc); }
+    }
+    .hrlg-blade.dead { cursor: default; }
+    .hrlg-blade.dead .hrlg-stem { opacity: 0.18; }
+    .hrlg-blade.dead .hrlg-body {
+      background: #0a0b11; border-color: rgba(120,140,180,0.13); border-left-color: #555c70;
+      filter: grayscale(1); opacity: 0.5;
+    }
+    .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel { color: #555c70; text-shadow: none; }
+    /* confirm flash sweeping along the blade */
+    .hrlg-flash {
+      position: absolute; inset: 0; background: var(--hfc); mix-blend-mode: screen;
+      opacity: 0; pointer-events: none; clip-path: inherit;
+    }
+    .hrlg-blade.fire .hrlg-flash { animation: hrlgFire 0.4s ease-out; }
+    @keyframes hrlgFire {
+      0%   { opacity: 0.85; transform: translateX(0); }
+      100% { opacity: 0;    transform: translateX(26px); }
+    }
+    /* side panels (abilities / items / more / quick menus) slide out of the hub */
+    .hrlg-panel { animation: hrlgPanelIn 0.22s cubic-bezier(0.2,1.2,0.4,1) both; }
+    @keyframes hrlgPanelIn {
+      0%   { opacity: 0; transform: translateX(-16px); }
+      100% { opacity: 1; transform: none; }
+    }
+    @media (max-width: 1100px) { .hrlg-rig { transform: scale(0.85); transform-origin: bottom left; } }
+    @media (max-width: 760px)  { .hrlg-rig { transform: scale(0.68); transform-origin: bottom left; } }
   `;
   document.head.appendChild(style);
 }
