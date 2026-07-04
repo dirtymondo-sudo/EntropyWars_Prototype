@@ -1897,7 +1897,10 @@ window._mePlayCommunityMap = function(mapData) {
     if (typeof applyGameMode === 'function') applyGameMode('_custom_community');
     if (typeof CONFIG !== 'undefined') CONFIG.teamSize = teamSize;
 
-    state.controllers[1] = (typeof CTRL !== 'undefined') ? CTRL.HUMAN : 'human';
+    /* CTRL.HUMAN doesn't exist (undefined) — the correct key is CTRL.LOCAL
+       ('local'). With an undefined controller P1 was never treated as human
+       and the action menu never appeared. */
+    state.controllers[1] = (typeof CTRL !== 'undefined') ? CTRL.LOCAL : 'local';
     state.controllers[2] = (typeof CTRL !== 'undefined') ? CTRL.AI : 'ai';
     state.showPlayer2Builder = false;
     state.squadLeaderMode = false;

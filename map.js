@@ -1652,7 +1652,8 @@
         }
 
         async function skipBattleTrack() {
-            if (state.phase !== 'battle' || state.winner || !state.audioUnlocked) return false;
+            /* Works in battle AND in the map editor (pause-menu ⏭/⏮). */
+            if ((state.phase !== 'battle' && state.phase !== 'editor') || state.winner || !state.audioUnlocked) return false;
             playSfx('uiButtonConfirm');
             const nextKey = chooseBattleTrackKey([state.currentMusic, state.currentBattleTrackKey]);
             return await playMusic(nextKey);
@@ -1714,7 +1715,11 @@
         }
 
         function getWalkableSurfaces(x, y) {
-            const col = getColumn(x, y);
+            /* 'void' blocks are authored AIR (the gap fill between voxels on
+               editor/community maps) — not standable and not headroom-blocking.
+               Skipping them is what lets a unit walk UNDER a bridge/ceiling and
+               still climb onto its top surface. */
+            const col = getColumn(x, y).filter(b => !b.terrain || b.terrain.indexOf('void') !== 0);
             if (!col.length) return [0];
             const zSet = new Set(col.map(b => b.z));
             const surfaces = [];
@@ -1865,6 +1870,17 @@
             state._voxelVersion = (state._voxelVersion || 0) + 1;
         }
 
+        /* Authored (map-editor / community) voxel maps keep their vertical gaps:
+           the fill passes below pad missing z-levels with 'void' (air) instead of
+           solidifying with the column's base terrain. Before this, painting lava
+           at z0 and a bridge/ceiling block a few levels up solidified the whole
+           gap with lava at match time ("empty blocks get filled with lava"). */
+        function _authoredVoxelGapsArePreserved() {
+            return state.phase === 'editor'
+                || (typeof activeGameMode !== 'undefined'
+                    && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community'));
+        }
+
         function buildColumnsFromVoxels() {
             if (!state.boardVoxels?.length) return;
             const h = state.boardVoxels.length;
@@ -1895,10 +1911,11 @@
                         const topZ = sorted[sorted.length - 1].z;
                         const existingZ = new Set(sorted.map(b => b.z));
                         const filled = [];
-                        /* Editor: fill gaps with 'void' (air) so a block painted
-                           several levels above leaves a real gap; real maps solidify
-                           with the base terrain. (Matches fillVoxelsDown.) */
-                        const baseTerrain = (state.phase === 'editor') ? 'void' : sorted[0].terrain;
+                        /* Editor + custom/community maps: fill gaps with 'void'
+                           (air) so a block painted several levels above leaves a
+                           real gap; procedural/prebuilt maps solidify with the
+                           base terrain. (Matches fillVoxelsDown.) */
+                        const baseTerrain = _authoredVoxelGapsArePreserved() ? 'void' : sorted[0].terrain;
                         for (let z = 0; z <= topZ; z++) {
                             if (existingZ.has(z)) {
                                 filled.push(sorted.find(b => b.z === z));
@@ -1946,12 +1963,13 @@
                     const topZ = col[col.length - 1].z;
                     if (topZ <= 0) continue;
                     const existingZ = new Set(col.map(b => b.z));
-                    /* In the editor, fill the gap between authored voxels with 'void'
-                       (air) instead of the base terrain, so painting a block several
-                       levels up leaves an actual empty gap rather than a solid tower of
-                       the z0 terrain. The renderer skips void bands. Real (non-editor)
-                       maps still solidify with the base terrain as before. */
-                    const fillTerrain = (state.phase === 'editor') ? 'void' : (col[0].terrain || 'grass');
+                    /* Editor + custom/community maps: fill the gap between authored
+                       voxels with 'void' (air) instead of the base terrain, so
+                       painting a block several levels up leaves an actual empty gap
+                       rather than a solid tower of the z0 terrain. The renderer
+                       skips void bands; getWalkableSurfaces skips void blocks.
+                       Procedural/prebuilt maps still solidify as before. */
+                    const fillTerrain = _authoredVoxelGapsArePreserved() ? 'void' : (col[0].terrain || 'grass');
                     for (let z = 0; z <= topZ; z++) {
                         if (!existingZ.has(z)) {
                             col.push({ z, terrain: fillTerrain });
@@ -3142,7 +3160,7 @@
                 }
             }
 
-            if (activeGameMode === '_custom_editor') {
+            if (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community') {
                 state.boardTerrain = board;
                 _initObjectGrid();
                 _initHeightGrid();
@@ -6344,6 +6362,7 @@
         }
         function _meUndo() {
             if (_meUndoStack.length === 0) return;
+            if (typeof playSfx === 'function') playSfx('uiCursorMove', { allowBeforeUnlock: true });
             _meRedoStack.push(_meSnapshotState());
             _meRestoreSnapshot(_meUndoStack.pop());
             _meRefreshEditorView();
@@ -6351,6 +6370,7 @@
         }
         function _meRedo() {
             if (_meRedoStack.length === 0) return;
+            if (typeof playSfx === 'function') playSfx('uiCursorMove', { allowBeforeUnlock: true });
             _meUndoStack.push(_meSnapshotState());
             _meRestoreSnapshot(_meRedoStack.pop());
             _meRefreshEditorView();
@@ -7245,6 +7265,7 @@
                     <button class="me-hud-back" onclick="window._meBack()" title="Back">←</button>
                     <span class="me-hud-title">Map Editor</span>
                     <span class="me-hud-spacer"></span>
+                    <button class="me-hud-back" onclick="window.togglePauseMenu()" title="Settings &amp; Music (Esc)">⚙</button>
                     <button class="me-btn me-btn-play" onclick="window._mePlayTest()">▶ Play Test</button>
                 </div>
 
@@ -7376,6 +7397,10 @@
         function _meEnterDioramaEditor() {
             state.phase = 'editor';
             state.titleScreenVisible = false;
+            /* Entering the editor is itself a user gesture, so audio may start —
+               this lets the pause menu's music controls (Esc / ⚙) work here. */
+            state.audioUnlocked = true;
+            if (typeof syncMusicToState === 'function') syncMusicToState().catch(() => {});
             state.dioramaTiltDeg = state.dioramaTiltDeg ?? 50;
             state.dioramaYawDeg = state.dioramaYawDeg ?? 0;
             state.userZoomScale = 1;
@@ -7469,11 +7494,11 @@
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
                     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); _meUndo(); }
                     else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); _meRedo(); }
-                    /* R / Shift+R spins the selected object 15° (place first, then
+                    /* R / Shift+R spins the selected object 45° (place first, then
                        rotate — no pre-orienting). */
                     else if (e.key === 'r' || e.key === 'R') {
                         const kind = _meSelectedMonEntry() ? 'mon' : (_meSelectedObjEntry() ? 'obj' : null);
-                        if (kind) { e.preventDefault(); window._meRotateSelBy(kind, e.shiftKey ? -15 : 15); }
+                        if (kind) { e.preventDefault(); window._meRotateSelBy(kind, e.shiftKey ? -45 : 45); }
                     }
                 };
                 document.addEventListener('keydown', window._meKeyHandler);
@@ -7644,7 +7669,7 @@
                 }
 
                 html += `<div class="me-pal-cat me-pal-cat-gamemode">🎯 Rotate: ${label} <span style="opacity:0.6;font-weight:400">${coord}</span></div>`;
-                html += `<div class="me-rot-howto">Drag the dial to aim it, tap N/E/S/W, or press <b>R</b> / <b>Shift+R</b>. The gold arrow on the board shows which way it faces.</div>`;
+                html += `<div class="me-rot-howto">Drag the dial to aim it (snaps to 45°), tap N/E/S/W, or press <b>R</b> / <b>Shift+R</b>. The gold arrow on the board shows which way it faces.</div>`;
 
                 /* The dial: a big draggable compass that points the way the
                    object/monument faces — the single clearest "is it working" signal. */
@@ -7656,7 +7681,7 @@
                 html += `</div>`;
                 html += `<div class="me-rot-side">`;
                 html += `<div class="me-rot-degbig"><span id="meDialDeg">${rotVal}</span><span style="font-size:14px">°</span></div>`;
-                html += `<input type="range" class="me-rot-slider" min="0" max="359" step="1" value="${rotVal}" oninput="window._meRotateSel('${kind}', this.value)">`;
+                html += `<input type="range" class="me-rot-slider" min="0" max="315" step="45" value="${rotVal}" oninput="window._meRotateSel('${kind}', this.value)">`;
                 html += `<div class="me-pbtn-row">`;
                 html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',0)" title="Face North">↑ N</div>`;
                 html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',90)" title="Face East">→ E</div>`;
@@ -7664,7 +7689,7 @@
                 html += `<div class="me-pbtn" onclick="window._meRotateSel('${kind}',270)" title="Face West">← W</div>`;
                 html += `</div>`;
                 html += `<div class="me-pbtn-row">`;
-                for (const d of [-45,-15,15,45]) html += `<div class="me-pbtn" onclick="window._meRotateSelBy('${kind}',${d})">${d>0?'+':''}${d}°</div>`;
+                for (const d of [-90,-45,45,90]) html += `<div class="me-pbtn" onclick="window._meRotateSelBy('${kind}',${d})">${d>0?'+':''}${d}°</div>`;
                 html += `</div></div></div>`;
 
                 /* Object-only extras: mirror, leaves. */
@@ -7901,7 +7926,14 @@
             if (document.getElementById('meTintWheel')) requestAnimationFrame(_meTintUpdateMarker);
         }
 
+        /* Editor UI/board sound effects. playSfx already rate-limits (per-key
+           cooldown + ≤6 sounds per 200ms), so drag-painting doesn't machine-gun. */
+        function _meSfx(key) {
+            if (typeof playSfx === 'function') playSfx(key, { allowBeforeUnlock: true });
+        }
+
         window._mePickTerrain = function(key) {
+            _meSfx('uiCursorFocus');
             _meSelectedTerrain = key;
             _meTool = 'paint';
             _mePaletteTab = 'terrain';
@@ -7911,6 +7943,7 @@
         };
 
         window._mePickObject = function(key) {
+            _meSfx('uiCursorFocus');
             _meSelectedObject = key;
             _meTool = 'object';
             _mePaletteTab = 'objects';
@@ -7922,6 +7955,7 @@
         };
 
         window._mePickMonument = function(kind) {
+            _meSfx('uiCursorFocus');
             _meSelectedMonument = kind;
             _meMonFoot = null;
             _meMonMaxH = null;
@@ -7940,6 +7974,7 @@
         window._meSetTorchMount = function(m) { _meSelectedTorchMount = m; _meRenderPalette(); };
 
         window._meSetTab = function(tab) {
+            _meSfx('uiCursorMove');
             _mePaletteTab = tab;
             if (tab === 'monuments') _meTool = 'monument';
             else if (tab === 'objects' && _meTool !== 'object' && _meTool !== 'select') _meTool = 'object';
@@ -8169,7 +8204,12 @@
            buttons and the R keyboard shortcut, so objects and monuments rotate
            through exactly the same intuitive controls. ──────────────────────── */
         function _meSetRotValue(kind, deg, live) {
-            deg = ((Math.round(+deg) % 360) + 360) % 360;
+            /* Rotation snaps to 45° segments — freeform angles made it fiddly to
+               land on a clean heading (per user feedback). Every input path
+               (dial drag, slider, cardinal / nudge buttons, R key) funnels
+               through here, so they all snap. */
+            deg = Math.round(+deg / 45) * 45;
+            deg = ((deg % 360) + 360) % 360;
             if (kind === 'mon') {
                 const m = _meSelectedMonEntry(); if (!m) return;
                 m.rot = deg;
@@ -8217,6 +8257,7 @@
         };
         window._meDialUp = function(ev) {
             if (!_meDialDragging) return;
+            _meSfx('uiCursorMove');
             _meDialDragging = false;
             try { ev.currentTarget.releasePointerCapture(ev.pointerId); } catch (e) {}
             _meRenderPalette();   // settle: rebuild palette so all controls re-sync
@@ -8232,6 +8273,7 @@
         }
 
         window._meSetTool = function(t) {
+            _meSfx('uiButtonConfirm');
             _meTool = t;
             _meUpdateToolButtons();
 
@@ -8814,6 +8856,7 @@
             if (_meTool === 'paint') {
                 const tid = ME_TERRAIN_TO_ID[_meSelectedTerrain] || 1;
 
+                _meSfx('moveStep');
                 _meSetVoxel(x, y, _meSurfacePaintZ(x, y), tid);
                 const rule = TERRAIN_RULES[_meSelectedTerrain];
                 if (rule && !rule.passable) {
@@ -8848,6 +8891,7 @@
                            : _meIsTorchKey(_meSelectedObject) ? _meSelectedTorchMount
                            : null;
                 const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, rotOv !== null ? rotOv : _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
+                _meSfx('itemThrow');
                 _meObjects[py][px].push(entry);
                 if (_meGrid[py][px] === 0) _meGrid[py][px] = 1;
 
@@ -8876,6 +8920,7 @@
                     _meScrollPaletteToTop();
                 }
             } else if (_meTool === 'select') {
+                _meSfx('uiCursorFocus');
                 /* Pick whatever is under the click — a monument footprint wins
                    first, otherwise the nearest object (forgiving of the offset
                    between a tall sprite and its base tile). Clicking an empty
@@ -8906,6 +8951,7 @@
                     }
                 } else {
                     const md = ME_MON_BY_KIND[_meSelectedMonument] || { foot: 2, maxH: 3 };
+                    _meSfx('itemThrow');
                     _meMonuments.push({
                         kind: _meSelectedMonument,
                         x, y,
@@ -8926,6 +8972,7 @@
                 }
             } else if (_meTool === 'erase') {
 
+                if (_meGetVoxel(x, y, _meActiveZ)) _meSfx('block');
                 _meRemoveVoxel(x, y, _meActiveZ);
 
                 const col = _meGetColumn(x, y);
@@ -8937,11 +8984,13 @@
                 }
             } else if (_meTool === 'eraseObj') {
                 if (Array.isArray(_meObjects[y][x]) && _meObjects[y][x].length > 0) {
+                    _meSfx('block');
                     _meObjects[y][x].pop();
                     if (_meSelectedObjRef && _meSelectedObjRef.x === x && _meSelectedObjRef.y === y &&
                         _meSelectedObjRef.idx >= _meObjects[y][x].length) _meSelectedObjRef = null;
                 }
             } else if (_meTool === 'spawn1' || _meTool === 'spawn2') {
+                _meSfx('uiButtonConfirm');
                 const p = _meTool === 'spawn1' ? 1 : 2;
 
                 const exists = _meSpawns[p].findIndex(s => s.x === x && s.y === y);
@@ -8957,6 +9006,7 @@
                 }
             } else if (_meTool === 'elevUp') {
 
+                _meSfx('moveStep');
                 const col = _meGetColumn(x, y);
                 const topZ = col.length > 0 ? col[col.length - 1].z : -1;
                 const newZ = Math.min(ME_MAX_Z, topZ + 1);
@@ -8966,10 +9016,12 @@
 
                 const col = _meGetColumn(x, y);
                 if (col.length > 0) {
+                    _meSfx('block');
                     const topZ = col[col.length - 1].z;
                     _meRemoveVoxel(x, y, topZ);
                 }
             } else if (_meTool === 'elevSet') {
+                _meSfx('moveStep');
 
                 if (!_meVoxels) _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
                 const col = _meVoxels[y][x];
@@ -9870,6 +9922,7 @@
         }
 
         window._mePlayTest = function() {
+            if (typeof playSfx === 'function') playSfx('uiConfirm');
 
             if (_meSpawns[1].length === 0 || _meSpawns[2].length === 0) {
                 _meAutoPlaceSpawns();
@@ -9971,6 +10024,14 @@
                     const vRow = [];
                     for (let vx = 0; vx < _meW; vx++) {
                         const col = _meVoxels[vy]?.[vx] || [];
+                        if (col.length === 0) {
+                            /* Unpainted tiles: export the same z0 "for show" base
+                               the editor renders (see _meSyncToState), instead of
+                               an empty column — which drew NOTHING at match time
+                               (invisible holes with units floating on them). */
+                            vRow.push([{ z: 0, terrain: board[vy]?.[vx] || 'grass' }]);
+                            continue;
+                        }
                         vRow.push(col.map(b => {
                             var entry = {
                                 z: b.z,
@@ -9987,7 +10048,10 @@
             applyGameMode(customModeId);
             CONFIG.teamSize = teamSize;
 
-            state.controllers[1] = CTRL.HUMAN;
+            /* CTRL has no HUMAN key — CTRL.HUMAN was undefined, so Player 1 had
+               NO controller at match time: the engine never waited for human
+               input and the action menu never appeared ("play test breaks"). */
+            state.controllers[1] = CTRL.LOCAL;
             state.controllers[2] = CTRL.AI;
             state.showPlayer2Builder = false;
             state.squadLeaderMode = false;

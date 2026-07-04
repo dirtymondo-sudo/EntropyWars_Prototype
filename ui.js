@@ -5888,6 +5888,11 @@
 
         function _renderPauseMenu() {
             if (!_pauseOverlay) return;
+            /* In the map editor there is no match, so the scoreboard tab is
+               meaningless — land on Audio (the reason to pause in the editor is
+               almost always "change the song / volumes"). */
+            const _inEditor = state.phase === 'editor';
+            if (_inEditor && _pauseTab === 'scoreboard') _pauseTab = 'audio';
             const roundNum = state.round || 0;
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             const modeLabel = mpMode ? (mpMode.icon || '') + ' ' + (mpMode.label || '') : '⚔ Arena';
@@ -5921,10 +5926,10 @@
                         <div class="pause-title">PAUSED</div>
                         <button class="pause-close-btn" onclick="closePauseMenu()" title="Resume (ESC)">✕</button>
                     </div>
-                    <div class="pause-subtitle">${modeLabel} · ${_pauseRoundStr} · ${durationStr}</div>
+                    <div class="pause-subtitle">${_inEditor ? '🗺 Map Editor' : `${modeLabel} · ${_pauseRoundStr} · ${durationStr}`}</div>
                 </div>
                 <div class="pause-tabs">
-                    <button class="pause-tab${_pauseTab === 'scoreboard' ? ' active' : ''}" onclick="window._setPauseTab('scoreboard')">Match</button>
+                    ${_inEditor ? '' : `<button class="pause-tab${_pauseTab === 'scoreboard' ? ' active' : ''}" onclick="window._setPauseTab('scoreboard')">Match</button>`}
                     <button class="pause-tab${_pauseTab === 'audio' ? ' active' : ''}" onclick="window._setPauseTab('audio')">Audio</button>
                     <button class="pause-tab${_pauseTab === 'video' ? ' active' : ''}" onclick="window._setPauseTab('video')">Video</button>
                     <button class="pause-tab${_pauseTab === 'controls' ? ' active' : ''}" onclick="window._setPauseTab('controls')">Controls</button>
@@ -6222,8 +6227,48 @@
                         <span class="pm-vol-val">${sfxVol}%</span>
                     </div>
                 </div>
+
+                ${_buildPauseTrackList(currentKey)}
             </div>`;
         }
+
+        /* Full jukebox: every loaded music track as a clickable row, so the
+           player can jump straight to a specific song (battle, editor, or menu)
+           instead of shuffling with ⏮/⏭ until it comes up. */
+        function _buildPauseTrackList(currentKey) {
+            if (typeof audioTracks === 'undefined') return '';
+            const keys = Object.keys(audioTracks).filter(k => k !== 'victory' && k !== 'defeat');
+            if (!keys.length) return '';
+            let rows = '';
+            for (const k of keys) {
+                const active = k === currentKey;
+                rows += `<button class="pm-track-row${active ? ' active' : ''}" onclick="window._pausePlayTrack('${k}')"
+                    style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 10px;border:none;cursor:pointer;border-radius:6px;
+                    background:${active ? 'rgba(124,77,255,0.30)' : 'transparent'};color:${active ? '#fff' : 'rgba(220,215,240,0.85)'};font:inherit;font-size:12px">
+                    <span style="width:14px;text-align:center">${active ? '▶' : '♪'}</span>
+                    <span>${escapeHtml(_getTrackDisplayName(k))}</span>
+                </button>`;
+            }
+            return `
+            <div class="pm-track-list-wrap" style="margin-top:10px">
+                <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,160,255,0.85);margin:0 0 4px 2px">Song Select</div>
+                <div class="pm-track-list" style="max-height:180px;overflow-y:auto;border:1px solid rgba(255,255,255,0.10);border-radius:8px;padding:4px;background:rgba(0,0,0,0.25)">
+                    ${rows}
+                </div>
+            </div>`;
+        }
+
+        window._pausePlayTrack = function(key) {
+            if (typeof audioTracks === 'undefined' || !audioTracks[key]) return;
+            state.audioUnlocked = true;
+            /* Keep the battle shuffle continuing FROM the chosen song. */
+            if (key.startsWith('battleTheme')) {
+                state.currentBattleTrackKey = key;
+                state.lastBattleTrackKey = key;
+            }
+            if (typeof playMusic === 'function') playMusic(key);
+            setTimeout(() => _renderPauseMenu(), 250);
+        };
 
         window._pauseTogglePlay = function() {
             const key = state.currentMusic;
@@ -7439,7 +7484,8 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && state.phase === 'battle' && !state.winner) {
+            /* Esc pauses in battle AND in the map editor (settings + music). */
+            if (e.key === 'Escape' && ((state.phase === 'battle' && !state.winner) || state.phase === 'editor')) {
                 e.preventDefault();
                 togglePauseMenu();
             }

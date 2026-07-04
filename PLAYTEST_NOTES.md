@@ -1629,6 +1629,57 @@ st.autoPlayers={1:true,2:true}; st.devSimSpeed=4;` (devSimSpeed scales
 `executablePath: '/opt/pw-browsers/chromium'` (registry download blocked).
 With animations on, one 4v4 round on 12×12 takes >150s — use an 8×8 map card.
 
+## Map-editor Play Test overhaul (2026-07-04) — gaps, action menu, pause, 45° rot, SFX
+User reports: playtest fills empty blocks with lava (z0 lava spread into every
+authored gap), playtest "breaks" with no action menu, wanted pause/song-change in
+the editor, 45°-snapped rotation, and editor SFX. All fixed; files touched:
+**map.js, ui.js, profile.js** (all on R2 — re-upload together).
+
+1. **Gap fill (map.js).** `fillVoxelsDown` + `buildColumnsFromVoxels` filled
+   missing z-levels with `col[0].terrain` outside the editor phase → lava floor
+   solidified every bridge/overhang column at match time. New
+   `_authoredVoxelGapsArePreserved()` (phase 'editor' OR activeGameMode
+   `_custom_editor`/`_custom_community`) makes both passes fill with `'void'`
+   (renderer already skips void bands; solid-mode rendering unchanged).
+2. **Walk-under (map.js `getWalkableSurfaces`).** Now filters out `void` blocks
+   before computing surfaces → a grass floor under a z3 bridge yields surfaces
+   `[0,3]`: units can walk under AND stand on top. canOccupy3D still blocks
+   standing on impassable block tops (lava etc.) via the unfiltered getBlockAt.
+3. **Action menu / "playtest breaks" (map.js `_mePlayTest`, profile.js community
+   loader).** `state.controllers[1] = CTRL.HUMAN` — **CTRL has no HUMAN key**
+   (LOCAL/AI/REMOTE only) → P1 controller was `undefined`, engine never treated
+   P1 as human, React ActionMenu never rendered. Fixed to `CTRL.LOCAL`. (Same
+   bug class as the shot-clock note above — grep for CTRL.HUMAN when touching
+   controllers.) NOTE for probes: the React action menu renders **divs, not
+   <button>s** — assert on `reactHudRoot.textContent` containing 'END TURN'.
+4. **Unpainted tiles were invisible holes in playtest** — `_mePlayTest` exported
+   empty voxel columns; the renderer draws nothing for an empty column while
+   boardTerrain said 'grass'. Now exports the same `[{z:0, terrain}]` "for show"
+   base `_meSyncToState` uses, so playtest matches the editor view.
+5. **`_custom_community` maps** never entered the custom-board branch in
+   `applyGameMode` (checked `_custom_editor` only) → heights/voxels/objects/
+   monuments were dropped. Branch now accepts both ids.
+6. **Pause menu in editor (ui.js + map.js).** Esc (and a new ⚙ header button)
+   toggles the pause menu while `state.phase === 'editor'`; Match tab hidden
+   there (defaults to Audio), subtitle "🗺 Map Editor". New **Song Select**
+   jukebox in the Audio tab (`_buildPauseTrackList` + `window._pausePlayTrack`)
+   lists every music track; battle keys picked there also seed the shuffle bag.
+   `skipBattleTrack` now also works in the editor phase; `_meEnterDioramaEditor`
+   sets `audioUnlocked` + `syncMusicToState()`.
+7. **45° rotation snap (map.js `_meSetRotValue`).** All rotation inputs funnel
+   through it — dial drag, slider (now step 45), nudge buttons (now ±45/±90),
+   R/Shift+R (now ±45) — and it rounds to the nearest 45°.
+8. **Editor SFX (map.js `_meSfx`).** Palette picks `uiCursorFocus`, tools
+   `uiButtonConfirm`, tabs/undo/redo/dial `uiCursorMove`, paint/raise `moveStep`,
+   object/monument place `itemThrow`, erase `block`, spawns `uiButtonConfirm`,
+   Play Test `uiConfirm`. playSfx's built-in cooldowns stop drag-paint spam.
+- **Verified** via scratchpad `verify_editor.js` (LOCAL_ASSETS=map.js,ui.js,
+  hud.js,battle.js,state.js,audio.js,three-renderer.js,profile.js): 13/13 —
+  rot snap 137→135 / 10→0, pause+jukebox in editor (31 tracks, track switch),
+  battle starts with controllers {1:'local',2:'ai'}, bridge column gap = void,
+  surfaces [0,3], unpainted tile has z0 grass, action menu renders for P1,
+  0 page errors. Screenshot: bridge floats with lava glow visible beneath.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
