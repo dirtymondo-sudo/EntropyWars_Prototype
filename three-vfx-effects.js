@@ -5006,28 +5006,29 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         });
     }
 
-    /* saucer hull panels — horizontal bands map to concentric rings on the
-       lathe geometry, vertical seams become radial panel lines */
-    function _sigHullTex() {
-        return _sigTex('sig-hull', 256, function (ctx, S) {
-            ctx.fillStyle = '#b9c2cf';
-            ctx.fillRect(0, 0, S, S);
-            var rnd = _sigRand(0xF00F00);
-            for (var y = 0; y < S; y += 22) {
-                ctx.fillStyle = 'rgba(70,84,104,0.55)';
-                ctx.fillRect(0, y, S, 2);
-                ctx.fillStyle = 'rgba(255,255,255,0.18)';
-                ctx.fillRect(0, y + 2, S, 3);
-            }
-            for (var x = 0; x < S; x += 32) {
-                ctx.fillStyle = 'rgba(70,84,104,0.35)';
-                ctx.fillRect(x, 0, 2, S);
-            }
-            ctx.fillStyle = 'rgba(40,50,66,0.5)';
-            for (var i = 0; i < 90; i++) {
-                ctx.fillRect(Math.floor(rnd() * S), Math.floor(rnd() * S), 2, 2);
-            }
-        });
+    /* Pixel terrain-sprite cladding — the SAME recipe the 3D trees/turrets
+       use (NearestFilter R2 sprite + flat colour tint) so signature objects
+       read in the game's hand-pixelled style. Cached per (file, repeat). */
+    var _sigTerrainTexCache = {};
+    function _sigTerrainTex(file, repX, repY) {
+        var key = file + '|' + (repX || 1) + '|' + (repY || 1);
+        if (_sigTerrainTexCache[key]) return _sigTerrainTexCache[key];
+        var tex = _loadCachedTex(
+            'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/' + file);
+        tex.repeat.set(repX || 1, repY || 1);
+        _sigTerrainTexCache[key] = tex;
+        return tex;
+    }
+
+    /* ExtrudeGeometry emits UVs in raw shape-space px — rescale so a terrain
+       sprite tiles a sane number of times across the mesh */
+    function _sigScaleUVs(geo, sx, sy, ox, oy) {
+        var uv = geo.getAttribute('uv');
+        if (!uv) return;
+        for (var i = 0; i < uv.count; i++) {
+            uv.setXY(i, uv.getX(i) * sx + (ox || 0), uv.getY(i) * sy + (oy || 0));
+        }
+        uv.needsUpdate = true;
     }
 
     function _sigEaseOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
@@ -5375,6 +5376,8 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             bevelThickness: wid * 0.10, bevelSize: wid * 0.10, bevelSegments: 1,
         });
         bladeGeo.translate(0, 0, -wid * 0.08);
+        var bladePx = _cfg().tileSize || 128;
+        _sigScaleUVs(bladeGeo, 1 / bladePx, 1 / bladePx, 0.5 - (wid / bladePx) / 2, 0);
 
         var bladeMat = new THREE.MeshBasicMaterial({
             color: new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xdfe7f2),
@@ -5383,6 +5386,9 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         if (opts.hologram) {
             bladeMat.blending = THREE.AdditiveBlending;
             bladeMat.depthWrite = false;
+        } else {
+            /* pixel-sprite blade cladding (metal/gold/obsidian/... terrain) */
+            bladeMat.map = _sigTerrainTex(opts.bladeTex || 'metal.png', 1, 1);
         }
         var blade = new THREE.Mesh(bladeGeo, bladeMat);
         blade.renderOrder = 160;
@@ -5400,13 +5406,20 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             color: new THREE.Color(metalColor),
             transparent: true, opacity: 1, depthWrite: true,
         });
-        var guard = new THREE.Mesh(new THREE.BoxGeometry(wid * 2.6, len * 0.05, wid * 0.55), guardMat);
+        if (!opts.hologram) guardMat.map = _sigTerrainTex(opts.guardTex || 'metal.png', 1, 1);
+        var guardGeo = new THREE.BoxGeometry(wid * 2.6, len * 0.05, wid * 0.55);
+        _sigScaleUVs(guardGeo, 0.5, 0.5, 0.25, 0.25);
+        var guard = new THREE.Mesh(guardGeo, guardMat);
         guard.position.y = len; guard.renderOrder = 160;
         group.add(guard);
-        var grip = new THREE.Mesh(new THREE.CylinderGeometry(wid * 0.16, wid * 0.19, len * 0.22, 10), guardMat);
+        var gripGeo = new THREE.CylinderGeometry(wid * 0.16, wid * 0.19, len * 0.22, 10);
+        _sigScaleUVs(gripGeo, 0.5, 0.5, 0.25, 0.25);
+        var grip = new THREE.Mesh(gripGeo, guardMat);
         grip.position.y = len * 1.13; grip.renderOrder = 160;
         group.add(grip);
-        var pommel = new THREE.Mesh(new THREE.SphereGeometry(wid * 0.26, 10, 8), guardMat);
+        var pommelGeo = new THREE.SphereGeometry(wid * 0.26, 10, 8);
+        _sigScaleUVs(pommelGeo, 0.5, 0.5, 0.25, 0.25);
+        var pommel = new THREE.Mesh(pommelGeo, guardMat);
         pommel.position.y = len * 1.25; pommel.renderOrder = 160;
         group.add(pommel);
 
@@ -5465,6 +5478,8 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             glowColor: color,
             bladeColor: opts.bladeColor,
             guardColor: opts.guardColor,
+            bladeTex: opts.bladeTex,
+            guardTex: opts.guardTex,
             hologram: !!opts.hologram,
         });
         var group = new THREE.Group();
@@ -5570,29 +5585,40 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         group.rotation.y = rn(0, Math.PI * 2);
 
         var fist = new THREE.Group();
-        var mat = _sigMat(color);
-        mat.opacity = 0;
-        var edgeMat = new THREE.LineBasicMaterial({
-            color: new THREE.Color(0xffffff), transparent: true, opacity: 0,
+        /* stone-golem fist clad in the board's rock sprite (same recipe as
+           the 3D trees/boulders), gold knuckle plates, and a faint additive
+           aura shell in the spell colour so it still reads as summoned */
+        var rockMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.rockTex || 'rock.png', 1, 1),
+            color: new THREE.Color(opts.rockTint != null ? opts.rockTint : 0xd8d8d8),
+            transparent: true, opacity: 0, depthWrite: true,
         });
-        function block(w, h, d, x, y, z, rz) {
+        var plateMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.plateTex || 'gold.png', 1, 1),
+            color: new THREE.Color(opts.plateTint != null ? opts.plateTint : 0xffffff),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var auraMat = _sigMat(color);
+        function block(w, h, d, x, y, z, rz, useMat) {
             var geo = new THREE.BoxGeometry(w, h, d);
-            var m = new THREE.Mesh(geo, mat);
+            var m = new THREE.Mesh(geo, useMat || rockMat);
             m.position.set(x, y, z);
             if (rz) m.rotation.z = rz;
             m.renderOrder = 160;
             fist.add(m);
-            var edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat);
-            edges.position.copy(m.position);
-            edges.rotation.copy(m.rotation);
-            edges.renderOrder = 161;
-            fist.add(edges);
+            var aura = new THREE.Mesh(geo.clone(), auraMat);
+            aura.position.copy(m.position);
+            aura.rotation.copy(m.rotation);
+            aura.scale.set(1.12, 1.12, 1.12);
+            aura.renderOrder = 159;
+            fist.add(aura);
         }
-        /* blocky spectral fist, knuckles down: palm + folded fingers + thumb
-           + forearm stub rising to the sky */
+        /* blocky golem fist, knuckles down: palm + folded fingers (gold
+           knuckle plates) + thumb + forearm stub rising to the sky */
         block(90, 70, 100, 0, 35, 0);
         for (var f = 0; f < 4; f++) {
             block(19, 36, 44, -33 + f * 22, -16, 24);
+            block(21, 14, 14, -33 + f * 22, -28, 42, 0, plateMat);
         }
         block(24, 48, 36, -58, 26, 8, 0.35);
         block(64, 130, 70, 0, 130, 0);
@@ -5644,8 +5670,9 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
                 fist.position.y = groundY + (skyH * 0.7 - groundY) * _sigEaseInCubic(t3);
                 vis = 1 - t3;
             }
-            mat.opacity = 0.5 * vis;
-            edgeMat.opacity = 0.9 * vis;
+            rockMat.opacity = vis;
+            plateMat.opacity = vis;
+            auraMat.opacity = 0.18 * vis;
         });
     }
 
@@ -5664,8 +5691,10 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             new THREE.Vector2(0.45, 0.16),
             new THREE.Vector2(0.0, 0.18),
         ];
+        /* riveted-steel pixel cladding — the same metal sprite the turrets
+           wear, so the saucer sits in the board's art style */
         var hullMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0xb8c4d4), map: _sigHullTex(),
+            color: new THREE.Color(0xd0d4dc), map: _sigTerrainTex('metal.png', 3, 1),
             transparent: true, opacity: 1, depthWrite: true,
         });
         var hull = new THREE.Mesh(new THREE.LatheGeometry(pts, 40), hullMat);
@@ -5945,24 +5974,32 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
         /* stand-summon greatswords for the melee slash staples */
         dragonSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
-            glowColor: 0xff7733, circleColor: 0xff5522, bladeColor: 0xf2e0c8,
-            guardColor: 0xa33d10, sparkSprite: 'ember', moteSprite: 'ember',
+            glowColor: 0xff7733, circleColor: 0xff5522,
+            bladeTex: 'obsidian.png', bladeColor: 0xffffff,   /* lava-cracked black rock */
+            guardTex: 'metal.png', guardColor: 0xc08850,   /* bronze fittings */
+            sparkSprite: 'ember', moteSprite: 'ember',
             len: (_cfg().tileSize || 128) * 2.4,
         }); },
         guardSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
-            glowColor: 0x77aaff, circleColor: 0x99bbff, bladeColor: 0xdfe7f2,
-            guardColor: 0x8899bb, len: (_cfg().tileSize || 128) * 1.9,
+            glowColor: 0x77aaff, circleColor: 0x99bbff,
+            bladeTex: 'metal.png', bladeColor: 0xbfd4ff,      /* blued steel plates */
+            guardTex: 'metal.png', guardColor: 0x8f9db5,
+            len: (_cfg().tileSize || 128) * 1.9,
             shake: 'normal', flashPeak: 0.2,
         }); },
         sneakSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
-            glowColor: 0xbb55ff, circleColor: 0x8833cc, bladeColor: 0x666a7a,
-            guardColor: 0x333344, len: (_cfg().tileSize || 128) * 1.7,
+            glowColor: 0xbb55ff, circleColor: 0x8833cc,
+            bladeTex: 'obsidian.png', bladeColor: 0xaa88ee,   /* venom-purple obsidian */
+            guardTex: 'metal.png', guardColor: 0x5a4a70,
+            len: (_cfg().tileSize || 128) * 1.7,
             summonMs: 90, holdMs: 90, plungeMs: 80, lingerMs: 380, fadeMs: 200,
             moteSprite: 'void-mist', flashPeak: 0.16, shake: 'normal',
         }); },
         sentaiRedSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
-            glowColor: 0xff3344, circleColor: 0xff2233, bladeColor: 0xffffff,
-            guardColor: 0xcc2222, sparkSprite: 'spark-pink',
+            glowColor: 0xff3344, circleColor: 0xff2233,
+            bladeTex: 'metal.png', bladeColor: 0xffffff,
+            guardTex: 'metal.png', guardColor: 0xdd5555,
+            sparkSprite: 'spark-pink',
         }); },
         raceSyntheticBlade: function(tx, ty) { _sigStandSword3D(tx, ty, {
             hologram: true, glowColor: 0x33ffee, circleColor: 0x22ccff,
@@ -5974,14 +6011,18 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
         /* golden blade of judgment falling out of heaven + light pillar */
         judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
-            glowColor: 0xffcc55, circleColor: 0xffdd88, bladeColor: 0xfff2cc,
-            guardColor: 0xdaa520, len: (_cfg().tileSize || 128) * 3.0,
+            glowColor: 0xffcc55, circleColor: 0xffdd88,
+            bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
+            guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
+            len: (_cfg().tileSize || 128) * 3.0,
             hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
             sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
         }); },
         raceDivineJudgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'raceDivineJudgment_descent', {
-            glowColor: 0xffcc55, circleColor: 0xffdd88, bladeColor: 0xfff2cc,
-            guardColor: 0xdaa520, len: (_cfg().tileSize || 128) * 3.0,
+            glowColor: 0xffcc55, circleColor: 0xffdd88,
+            bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
+            guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
+            len: (_cfg().tileSize || 128) * 3.0,
             hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
             sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
         }); },

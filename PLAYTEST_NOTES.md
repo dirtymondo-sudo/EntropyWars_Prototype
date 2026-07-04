@@ -1788,12 +1788,21 @@ Toolkit (all exported on `window.ThreeVFXEffects` as `sig*`):
   `_sigLightPillar3D`, `_sigCrescentSlash3D`, `_sigScreenFlash(color,ms,peak)`
   (DOM overlay), `_sigSparks` (routes through the existing particle pool).
 - Hero builders: `_sigStandSword3D` (stand-summon greatsword: circle → blade
-  materializes → plunge → shockwave/crescents/sparks → embed → dissolve; fully
-  recolorable, `hologram:true` for energy blades), `_sigStandFist3D` (spectral
-  giant fist slam), `_sigUFO3D` (real 3D saucer: lathe hull + panel texture,
-  glass dome, chasing rim lights, tractor cone; swoops in, hovers, blasts off),
-  `_sigStormStrike3D`, `_sigJudgmentSword3D` (timing derived from the spell's
-  descentMs so the blade lands exactly with the damage).
+  materializes → plunge → shockwave/crescents/sparks → embed → dissolve;
+  `bladeTex`/`guardTex` pick the pixel sprite, `hologram:true` for energy
+  blades), `_sigStandFist3D` (stone-golem fist slam: rock.png blocks + gold
+  knuckle plates + additive aura shell), `_sigUFO3D` (real 3D saucer clad in
+  metal.png like the turrets: lathe hull, glass dome, chasing rim lights,
+  tractor cone; swoops in, hovers, blasts off), `_sigStormStrike3D`,
+  `_sigJudgmentSword3D` (timing derived from the spell's descentMs so the
+  blade lands exactly with the damage).
+- PIXEL AESTHETIC: hero objects are clad in the game's own R2 terrain sprites
+  via `_sigTerrainTex(file, repX, repY)` (NearestFilter + RepeatWrapping +
+  flat tint — the exact tree/turret recipe). Palettes used: obsidian.png =
+  lava-cracked dragon blade, gold.png = judgment blade, metal.png = steel
+  blades/fittings/saucer hull, rock.png = golem fist. Blade UVs are rescaled
+  to board texel density (1 sprite repeat per 128px) via `_sigScaleUVs` —
+  ExtrudeGeometry UVs are raw shape-space px and read as noise otherwise.
 - Infra: `_sigRun` (self-disposing rAF runner, caps 20 concurrent sig effects),
   `_sigTex` (cached procedural canvas textures), easings.
 
