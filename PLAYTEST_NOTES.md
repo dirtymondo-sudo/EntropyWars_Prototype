@@ -1775,6 +1775,46 @@ from v1):
   enemy quick "⌖Cyborg 100% 9t" with Dead Eye + dmg previews + reasons, tile
   "⬚Tall Grass", END TURN instant hide, 0 page errors.
 
+## Signature 3D spell cinematics (three-vfx-effects.js) — 2026-07-04
+A "SIGNATURE 3D SPELL CINEMATICS" section now lives in three-vfx-effects.js
+(just above `_spell3DGeometry`). It's an anime-style set-piece layer built from
+three.js geometry + procedural canvas textures (no new image assets, no new
+script files). **To give a spell a cinematic, add an entry to
+`_spell3DGeometry` choosing a builder + palette — do not write bespoke code.**
+
+Toolkit (all exported on `window.ThreeVFXEffects` as `sig*`):
+- `_sigMagicCircle3D(tx,ty,opts)` — spinning double rune disc (floor or sky via
+  `height`), `_sigShockRing3D`, `_sigSpeedBurst3D` (anime speed lines),
+  `_sigLightPillar3D`, `_sigCrescentSlash3D`, `_sigScreenFlash(color,ms,peak)`
+  (DOM overlay), `_sigSparks` (routes through the existing particle pool).
+- Hero builders: `_sigStandSword3D` (stand-summon greatsword: circle → blade
+  materializes → plunge → shockwave/crescents/sparks → embed → dissolve; fully
+  recolorable, `hologram:true` for energy blades), `_sigStandFist3D` (spectral
+  giant fist slam), `_sigUFO3D` (real 3D saucer: lathe hull + panel texture,
+  glass dome, chasing rim lights, tractor cone; swoops in, hovers, blasts off),
+  `_sigStormStrike3D`, `_sigJudgmentSword3D` (timing derived from the spell's
+  descentMs so the blade lands exactly with the damage).
+- Infra: `_sigRun` (self-disposing rAF runner, caps 20 concurrent sig effects),
+  `_sigTex` (cached procedural canvas textures), easings.
+
+Wired staples: dragonSlash/guardSlash/sneakSlash/sentaiRedSlash/
+raceSyntheticBlade (sword variants), reallyGoodPunch (fist), judgment +
+raceDivineJudgment (golden heaven sword + light pillar), thunder1 (sky rune
+circle + impact shock), meteor (rune circle during fall + impact ring/flash),
+divineIntervention, exorcism, mindShatter, fire2, heal1, raceCropCircle (3D
+saucer replaces the flat ufo sprite; ring/shaft sprites kept),
+raceAbductionBeam (saucer hovers over the existing 3D beam).
+
+Gotchas learned:
+- `fire('impact')` now SKIPS `_spell3DGeometry` when the spell also has a
+  descent mapping (descent pipeline already fires it — prevents double spawn).
+- Descent pipeline calls `_spell3DGeometry[spellId](tx,ty)` at descent START
+  (after telegraphMs); impact-synced extras must self-delay by descentMs.
+- Verified via standalone Playwright harness (stub CONFIG/state/ThreeVFX +
+  local three.min.js r128; game scripts load from R2 so local playtest can NOT
+  see repo edits): all effects fire through the real dispatcher with 0 errors
+  and scene children return to baseline (no leaks).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

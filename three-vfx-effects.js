@@ -643,11 +643,12 @@ EFFECTS['wallOfFire_tile'] = {
    raceCropCircle is a kind:'aoe' spell with no telegraph of its own. Mapping
    it as a "descent" routes it through the cinematic ground-view descent camera
    and the descent VFX pipeline (telegraph ring → body → impact bursts). The
-   "body" is a flying saucer that HOVERS high over the target; the BEAM (a
-   stepped column of rings + a psi-pulse shaft) is what travels DOWN from the
-   hull to the ground. When the beam lands (impact) the saucer fires off and
-   leaves. The actual crop-circle imprint in the ground is produced by the
-   spell's terrainDeform when damage resolves. */
+   saucer is a real 3D model (_sigUFO3D, spawned via _spell3DGeometry) that
+   swoops in and HOVERS high over the target; the BEAM (a stepped column of
+   ring sprites + a psi-pulse shaft + the saucer's own tractor cone) travels
+   DOWN from the hull to the ground. When the beam lands (impact) the saucer
+   blasts off. The actual crop-circle imprint in the ground is produced by
+   the spell's terrainDeform when damage resolves. */
 EFFECTS['raceCropCircle_descent'] = {
     descentMs: 1100,
     telegraphMs: 500,
@@ -657,17 +658,10 @@ EFFECTS['raceCropCircle_descent'] = {
     impactCenterEffect: 'raceCropCircle_impact_center',
     shape: 'square',
     layers: [
-        /* the saucer hangs HIGH over the target and holds while it fires —
-           it does NOT descend; only the beam below it travels down */
-        { anchor: 'floor', sprite: 'ufo', ml: 1150, z: 340,
-          w0: 256, w1: 256, h0: 256, h1: 256, opacity0: 0.95, opacity1: 0.9 },
-        /* once the beam has landed (impact), the saucer fires off and leaves */
-        { delayMs: 1100, anchor: 'floor', sprite: 'ufo', ml: 900, z: 340,
-          w0: 256, w1: 248, h0: 256, h1: 248, opacity0: 0.9, opacity1: 0,
-          vxRange: [300, 380], vyRange: [-220, -140], vzRange: [140, 220], drag: 0 },
-        /* soft green underglow on the hull while it hovers */
-        { anchor: 'floor', sprite: 'ufo-glow', ml: 1100, z: 312, delayMs: 80,
-          size0: 120, size1: 150, opacity0: 0.6, opacity1: 0.2 },
+        /* the saucer itself is a REAL 3D MODEL now — lathe hull, glass dome,
+           chasing rim lights, tractor cone — spawned at descent start via
+           _spell3DGeometry.raceCropCircle (see the SIGNATURE 3D section).
+           The stepped ring column + shaft below stay sprite-based. */
         /* THE BEAM — a stepped ring column that punches DOWN from the hull
            (just under the saucer at ~z300) to the ground; rising delays make
            the leading edge read as descending */
@@ -1007,7 +1001,10 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         if (_catOff('spells')) return;
         _spawnEffect(effectDef, { tx: params.tx, ty: params.ty });
 
-        if (_spell3DGeometry[spellId] && intent === 'impact') {
+        /* Descent-mapped spells already fire their bespoke 3D geometry from
+           the descent pipeline — don't double-fire it on the impact intent. */
+        if (_spell3DGeometry[spellId] && intent === 'impact'
+            && !(SPELL_MAP[spellId] && SPELL_MAP[spellId].descent)) {
             _spell3DGeometry[spellId](params.tx, params.ty);
         }
 
@@ -4839,6 +4836,1007 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         requestAnimationFrame(tick);
     }
 
+    /* ═══════════════════ SIGNATURE 3D SPELL CINEMATICS ═══════════════════
+       Over-the-top, anime-style 3D set-pieces for staple spells (FF15 /
+       Xenoblade / LoL-ult energy). Built entirely from three.js geometry and
+       procedural canvas textures — no new image assets, no new script files.
+
+       The toolkit here (magic circles, shock rings, speed-line bursts, light
+       pillars, crescent slashes, screen flash) is the BASE LAYER: future
+       spell cinematics should be composed from these pieces the same way the
+       hero effects (_sigStandSword3D, _sigStandFist3D, _sigUFO3D) are. Every
+       builder is parameterized by color/scale/timing so one builder covers a
+       whole family of spells — wire new spells in _spell3DGeometry below.
+
+       Conventions match the older bespoke spawners:
+       - world coords via _worldPos(tx, ty)   (x = px-x, z = px-y, y = up)
+       - MeshBasicMaterial only (unlit), additive blending + depthWrite:false
+         for glows, renderOrder >= 150 so VFX draw over board geometry
+       - every effect self-terminates and disposes its geometry/materials;
+         cached canvas textures are shared and intentionally never disposed */
+
+    var _sigTexCache = {};
+    function _sigTex(key, size, draw) {
+        if (_sigTexCache[key]) return _sigTexCache[key];
+        var cvs = document.createElement('canvas');
+        cvs.width = cvs.height = size;
+        draw(cvs.getContext('2d'), size);
+        var tex = new THREE.CanvasTexture(cvs);
+        _sigTexCache[key] = tex;
+        return tex;
+    }
+
+    /* deterministic PRNG so cached textures come out identical every run */
+    function _sigRand(seed) {
+        var s = seed >>> 0;
+        return function () {
+            s = (s * 1664525 + 1013904223) >>> 0;
+            return s / 4294967296;
+        };
+    }
+
+    function _sigMagicCircleTex() {
+        return _sigTex('sig-magic-circle', 512, function (ctx, S) {
+            var c = S / 2, rnd = _sigRand(0xC17C1E);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ffffff';
+            function ring(r, w, alpha) {
+                ctx.globalAlpha = alpha; ctx.lineWidth = w;
+                ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.stroke();
+            }
+            ring(238, 10, 0.9);
+            ring(222, 3, 0.8);
+            ring(150, 4, 0.7);
+            ring(80, 3, 0.55);
+            /* hexagram */
+            ctx.globalAlpha = 0.65; ctx.lineWidth = 4;
+            for (var tri = 0; tri < 2; tri++) {
+                ctx.beginPath();
+                for (var k = 0; k <= 3; k++) {
+                    var a = tri * Math.PI / 3 + k * (Math.PI * 2 / 3) - Math.PI / 2;
+                    var x = c + Math.cos(a) * 150, y = c + Math.sin(a) * 150;
+                    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            /* radial ticks between the outer rings */
+            ctx.globalAlpha = 0.8; ctx.lineWidth = 3;
+            for (var t = 0; t < 48; t++) {
+                var a2 = t * Math.PI * 2 / 48;
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(a2) * 224, c + Math.sin(a2) * 224);
+                ctx.lineTo(c + Math.cos(a2) * 234, c + Math.sin(a2) * 234);
+                ctx.stroke();
+            }
+            /* abstract rune scribbles around the mid band (no font needed) */
+            for (var g = 0; g < 24; g++) {
+                var ga = g * Math.PI * 2 / 24;
+                var gx = c + Math.cos(ga) * 186, gy = c + Math.sin(ga) * 186;
+                ctx.save();
+                ctx.translate(gx, gy); ctx.rotate(ga + Math.PI / 2);
+                ctx.globalAlpha = 0.75; ctx.lineWidth = 2.5;
+                for (var st = 0; st < 4; st++) {
+                    ctx.beginPath();
+                    ctx.moveTo((rnd() - 0.5) * 18, (rnd() - 0.5) * 22);
+                    ctx.lineTo((rnd() - 0.5) * 18, (rnd() - 0.5) * 22);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+            /* orbs on the hexagram points */
+            ctx.globalAlpha = 0.9;
+            for (var v = 0; v < 6; v++) {
+                var va = v * Math.PI / 3 - Math.PI / 2;
+                ctx.beginPath();
+                ctx.arc(c + Math.cos(va) * 150, c + Math.sin(va) * 150, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function _sigGlowTex() {
+        return _sigTex('sig-glow', 128, function (ctx, S) {
+            var g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+            g.addColorStop(0, 'rgba(255,255,255,1)');
+            g.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+            g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+        });
+    }
+
+    function _sigRingTex() {
+        return _sigTex('sig-ring', 256, function (ctx, S) {
+            var g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+            g.addColorStop(0.0, 'rgba(255,255,255,0)');
+            g.addColorStop(0.72, 'rgba(255,255,255,0)');
+            g.addColorStop(0.82, 'rgba(255,255,255,0.9)');
+            g.addColorStop(0.9, 'rgba(255,255,255,0.35)');
+            g.addColorStop(1.0, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+        });
+    }
+
+    function _sigBurstTex() {
+        return _sigTex('sig-burst', 256, function (ctx, S) {
+            var c = S / 2, rnd = _sigRand(0xB0057);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            for (var i = 0; i < 26; i++) {
+                var a = rnd() * Math.PI * 2;
+                var r0 = 18 + rnd() * 30, r1 = r0 + 40 + rnd() * 68;
+                ctx.globalAlpha = 0.5 + rnd() * 0.5;
+                ctx.lineWidth = 1.5 + rnd() * 3.5;
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
+                ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function _sigStreakTex() {
+        return _sigTex('sig-streak', 128, function (ctx, S) {
+            var g = ctx.createLinearGradient(0, 0, S, 0);
+            g.addColorStop(0, 'rgba(255,255,255,0)');
+            g.addColorStop(0.5, 'rgba(255,255,255,0.9)');
+            g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+        });
+    }
+
+    /* crescent arc — thick in the middle, tapering to points, for slashes */
+    function _sigCrescentTex() {
+        return _sigTex('sig-crescent', 256, function (ctx, S) {
+            var c = S / 2;
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            for (var i = 0; i < 40; i++) {
+                var t = i / 40;
+                var a0 = (-0.62 + 1.24 * t) * Math.PI;
+                ctx.globalAlpha = 0.85 * Math.sin(t * Math.PI);
+                ctx.lineWidth = 2 + 26 * Math.sin(t * Math.PI);
+                ctx.beginPath();
+                ctx.arc(c, c, 96, a0, a0 + 0.16);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* saucer hull panels — horizontal bands map to concentric rings on the
+       lathe geometry, vertical seams become radial panel lines */
+    function _sigHullTex() {
+        return _sigTex('sig-hull', 256, function (ctx, S) {
+            ctx.fillStyle = '#b9c2cf';
+            ctx.fillRect(0, 0, S, S);
+            var rnd = _sigRand(0xF00F00);
+            for (var y = 0; y < S; y += 22) {
+                ctx.fillStyle = 'rgba(70,84,104,0.55)';
+                ctx.fillRect(0, y, S, 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.18)';
+                ctx.fillRect(0, y + 2, S, 3);
+            }
+            for (var x = 0; x < S; x += 32) {
+                ctx.fillStyle = 'rgba(70,84,104,0.35)';
+                ctx.fillRect(x, 0, 2, S);
+            }
+            ctx.fillStyle = 'rgba(40,50,66,0.5)';
+            for (var i = 0; i < 90; i++) {
+                ctx.fillRect(Math.floor(rnd() * S), Math.floor(rnd() * S), 2, 2);
+            }
+        });
+    }
+
+    function _sigEaseOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+    function _sigEaseInCubic(t) { return t * t * t; }
+    function _sigEaseOutBack(t) {
+        var c1 = 1.70158, c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+    function _sigClamp01(t) { return t < 0 ? 0 : (t > 1 ? 1 : t); }
+
+    function _sigMat(color, opts) {
+        var m = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(color != null ? color : 0xffffff),
+            transparent: true,
+            opacity: 0,
+            blending: (opts && opts.normal) ? THREE.NormalBlending : THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+        });
+        if (opts && opts.map) m.map = opts.map;
+        return m;
+    }
+
+    function _sigCss(color) {
+        return '#' + ('00000' + (color != null ? color : 0xffffff).toString(16)).slice(-6);
+    }
+
+    /* self-terminating animation runner for signature groups. Caps the
+       number of concurrently live signature effects so multi-hit spam can't
+       flood the scene. */
+    var _sigActive = 0;
+    var _SIG_MAX_ACTIVE = 20;
+    function _sigRun(group, totalMs, tick) {
+        var scene = _getVFXScene();
+        if (!scene) return null;
+        if (_sigActive >= _SIG_MAX_ACTIVE) return null;
+        _sigActive++;
+        scene.add(group);
+        var entry = { done: false, group: group };
+        var t0 = performance.now();
+        function finish() {
+            if (entry.done) return;
+            entry.done = true;
+            _sigActive--;
+            scene.remove(group);
+            group.traverse(function (o) {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) {
+                    var mats = Array.isArray(o.material) ? o.material : [o.material];
+                    for (var i = 0; i < mats.length; i++) mats[i].dispose();
+                }
+            });
+        }
+        function loop() {
+            if (entry.done) return;
+            var el = performance.now() - t0;
+            if (el >= totalMs) { finish(); return; }
+            try { tick(el); } catch (e) { finish(); return; }
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+        entry.finish = finish;
+        return entry;
+    }
+
+    /* full-viewport anime impact flash (DOM overlay, additive) */
+    var _sigFlashEl = null;
+    function _sigScreenFlash(color, ms, peak) {
+        try {
+            if (typeof document === 'undefined') return;
+            if (_catOff('spells')) return;
+            if (!_sigFlashEl) {
+                _sigFlashEl = document.createElement('div');
+                var st = _sigFlashEl.style;
+                st.position = 'fixed';
+                st.left = '0'; st.top = '0'; st.right = '0'; st.bottom = '0';
+                st.pointerEvents = 'none';
+                st.zIndex = '9000';
+                st.mixBlendMode = 'screen';
+                st.opacity = '0';
+                document.body.appendChild(_sigFlashEl);
+            }
+            var el = _sigFlashEl;
+            el.style.background = (typeof color === 'string') ? color : _sigCss(color);
+            var t0 = performance.now();
+            var total = ms || 180;
+            var pk = peak != null ? peak : 0.3;
+            var attack = Math.min(50, total * 0.25);
+            function step() {
+                var t = performance.now() - t0;
+                if (t >= total) { el.style.opacity = '0'; return; }
+                var o = t < attack ? (t / attack) : (1 - (t - attack) / (total - attack));
+                el.style.opacity = String(pk * Math.max(0, o));
+                requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        } catch (e) { /* cosmetic only */ }
+    }
+
+    function _sigShake(kind) {
+        if (typeof window.shakeBoard === 'function') window.shakeBoard(kind || 'normal');
+    }
+
+    /* burst of sparks/motes through the existing particle pool so the look
+       stays consistent with the rest of the VFX */
+    function _sigSparks(tx, ty, sprite, n, opts) {
+        if (!_canSpawn()) return;
+        opts = opts || {};
+        var c = tilePx(tx, ty);
+        var z = unitSurfaceZ(tx, ty) + (opts.z != null ? opts.z : 6);
+        var vxy = opts.vxy != null ? opts.vxy : 220;
+        for (var i = 0; i < n; i++) {
+            _spawn({
+                x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: z,
+                vx: rn(-1, 1) * vxy,
+                vy: rn(-1, 1) * vxy,
+                vz: rn(opts.vz0 != null ? opts.vz0 : 60, opts.vz1 != null ? opts.vz1 : 320),
+                gravity: opts.gravity != null ? opts.gravity : 420,
+                drag: 1.2,
+                mode: 'billboard',
+                sprite: sprite || 'steel-spark',
+                ml: rn(280, 620),
+                size0: rn(6, 13), size1: 2,
+                opacity0: 1, opacity1: 0,
+            });
+        }
+    }
+
+    /* ── magic circle: spinning double rune-disc, grow → hold → fade ────── */
+    function _sigMagicCircle3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var radius = opts.radiusPx != null ? opts.radiusPx : ts * 1.15;
+        var growMs = opts.growMs != null ? opts.growMs : 220;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 700;
+        var fadeMs = opts.fadeMs != null ? opts.fadeMs : 260;
+        var total = growMs + holdMs + fadeMs;
+        var peakO = opts.opacity != null ? opts.opacity : 0.85;
+        var spin = opts.spin != null ? opts.spin : 0.0016;
+        var baseY = opts.height != null ? opts.height : 4;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + baseY, wp.z);
+        if (opts.tiltRad) group.rotation.x = opts.tiltRad;
+
+        var circleTex = _sigMagicCircleTex();
+        function disc(mat, order) {
+            var holder = new THREE.Group();
+            var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.renderOrder = order;
+            holder.add(mesh);
+            group.add(holder);
+            return holder;
+        }
+        var matA = _sigMat(opts.color != null ? opts.color : 0x88bbff, { map: circleTex });
+        var matB = _sigMat(opts.color2 != null ? opts.color2 : (opts.color != null ? opts.color : 0x88bbff), { map: circleTex });
+        var discA = disc(matA, opts.renderOrder != null ? opts.renderOrder : 156);
+        var discB = disc(matB, (opts.renderOrder != null ? opts.renderOrder : 156) + 1);
+
+        var glowMat = _sigMat(opts.color != null ? opts.color : 0x88bbff, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), glowMat);
+        glow.rotation.x = -Math.PI / 2;
+        glow.scale.set(radius * 1.1, radius * 1.1, 1);
+        glow.renderOrder = (opts.renderOrder != null ? opts.renderOrder : 156) - 1;
+        group.add(glow);
+
+        return _sigRun(group, total, function (el) {
+            var s, o;
+            if (el < growMs) {
+                var t = el / growMs;
+                s = Math.max(0.01, _sigEaseOutBack(t)); o = t;
+            } else if (el < growMs + holdMs) {
+                var t2 = (el - growMs) / holdMs;
+                s = 1 + 0.02 * Math.sin(t2 * Math.PI * 6); o = 1;
+            } else {
+                var t3 = (el - growMs - holdMs) / fadeMs;
+                s = 1 + t3 * 0.08; o = 1 - t3;
+            }
+            discA.rotation.y = el * spin;
+            discB.rotation.y = -el * spin * 1.6;
+            var sc = radius * s;
+            discA.scale.set(sc, sc, sc);
+            var sc2 = radius * 0.62 * s;
+            discB.scale.set(sc2, sc2, sc2);
+            matA.opacity = peakO * o;
+            matB.opacity = peakO * 0.8 * o;
+            glowMat.opacity = 0.35 * peakO * o;
+            if (opts.rise) group.position.y = wp.y + baseY + opts.rise * _sigClamp01(el / total);
+        });
+    }
+
+    /* ── expanding ground shockwave ring + air-ripple torus ─────────────── */
+    function _sigShockRing3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var r0 = opts.r0 != null ? opts.r0 : ts * 0.2;
+        var r1 = opts.r1 != null ? opts.r1 : ts * 1.6;
+        var ms = opts.ms != null ? opts.ms : 420;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + (opts.height != null ? opts.height : 6), wp.z);
+
+        var mat = _sigMat(opts.color, { map: _sigRingTex() });
+        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.renderOrder = 158;
+        group.add(mesh);
+
+        var tor = null, torMat = null;
+        if (opts.torus !== false) {
+            torMat = _sigMat(opts.color);
+            tor = new THREE.Mesh(new THREE.TorusGeometry(1, 0.045, 8, 40), torMat);
+            tor.rotation.x = -Math.PI / 2;
+            tor.renderOrder = 158;
+            group.add(tor);
+        }
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var e = _sigEaseOutCubic(t);
+            var r = r0 + (r1 - r0) * e;
+            mesh.scale.set(r, r, r);
+            mat.opacity = (opts.opacity != null ? opts.opacity : 0.9) * (1 - t);
+            if (tor) {
+                var tr = r * 0.8;
+                tor.scale.set(tr, tr, tr);
+                torMat.opacity = 0.5 * (1 - t);
+            }
+        });
+    }
+
+    /* ── anime speed-line impact burst ───────────────────────────────────── */
+    function _sigSpeedBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var ms = opts.ms != null ? opts.ms : 240;
+        var size = opts.size != null ? opts.size : ts * 1.5;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + (opts.height != null ? opts.height : ts * 0.45), wp.z);
+        var mat = _sigMat(opts.color, { map: _sigBurstTex() });
+        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+        /* tip toward the diorama camera so the starburst reads on screen */
+        mesh.rotation.x = opts.flat ? -Math.PI / 2 : -0.6;
+        mesh.renderOrder = 166;
+        group.add(mesh);
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var s = size * (0.55 + 0.9 * _sigEaseOutCubic(t));
+            mesh.scale.set(s, s, s);
+            mesh.rotation.z = t * 0.5;
+            mat.opacity = 0.95 * (1 - t) * (t < 0.12 ? t / 0.12 : 1);
+        });
+    }
+
+    /* ── vertical column of light (heaven pillar) ────────────────────────── */
+    function _sigLightPillar3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var h = opts.height != null ? opts.height : 720;
+        var r = opts.radius != null ? opts.radius : ts * 0.42;
+        var ms = opts.ms != null ? opts.ms : 900;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var geo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
+        var matOuter = _sigMat(opts.color != null ? opts.color : 0xffe9a8);
+        var outer = new THREE.Mesh(geo, matOuter);
+        outer.position.y = h / 2; outer.renderOrder = 157;
+        group.add(outer);
+        var matCore = _sigMat(opts.coreColor != null ? opts.coreColor : 0xffffff);
+        var core = new THREE.Mesh(geo.clone(), matCore);
+        core.position.y = h / 2; core.renderOrder = 158;
+        group.add(core);
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 160));
+            var fade = t > 0.65 ? 1 - (t - 0.65) / 0.35 : 1;
+            var breathe = 1 + 0.06 * Math.sin(el * 0.02);
+            outer.scale.set(r * grow * breathe, h, r * grow * breathe);
+            core.scale.set(r * 0.45 * grow, h, r * 0.45 * grow);
+            matOuter.opacity = 0.32 * grow * fade;
+            matCore.opacity = 0.5 * grow * fade;
+            group.rotation.y = el * 0.001;
+        });
+    }
+
+    /* ── crescent slash arc sweeping through the target ──────────────────── */
+    function _sigCrescentSlash3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var size = opts.size != null ? opts.size : ts * 1.7;
+        var ms = opts.ms != null ? opts.ms : 260;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + (opts.height != null ? opts.height : ts * 0.5), wp.z);
+        group.rotation.y = opts.yaw || 0;
+        var mat = _sigMat(opts.color, { map: _sigCrescentTex() });
+        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+        mesh.rotation.x = opts.pitch != null ? opts.pitch : -0.5;
+        mesh.renderOrder = 165;
+        group.add(mesh);
+        var sweep = opts.sweep != null ? opts.sweep : 2.4;
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var e = _sigEaseOutCubic(t);
+            mesh.rotation.z = (opts.roll || 0) + sweep * e * (opts.dir || 1);
+            var s = size * (0.7 + 0.5 * e);
+            mesh.scale.set(s, s, s);
+            mat.opacity = (t < 0.1 ? t / 0.1 : 1 - t * t);
+        });
+    }
+
+    /* ── 3D greatsword builder — origin at the blade TIP, blade grows +Y ── */
+    function _sigBuildSword(opts) {
+        opts = opts || {};
+        var len = opts.len || 260;
+        var wid = len * 0.13;
+        var half = wid / 2;
+        var group = new THREE.Group();
+
+        var shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.lineTo(half, len * 0.16);
+        shape.lineTo(half, len);
+        shape.lineTo(-half, len);
+        shape.lineTo(-half, len * 0.16);
+        shape.closePath();
+        var bladeGeo = new THREE.ExtrudeGeometry(shape, {
+            depth: wid * 0.16, bevelEnabled: true,
+            bevelThickness: wid * 0.10, bevelSize: wid * 0.10, bevelSegments: 1,
+        });
+        bladeGeo.translate(0, 0, -wid * 0.08);
+
+        var bladeMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xdfe7f2),
+            transparent: true, opacity: 1, depthWrite: true,
+        });
+        if (opts.hologram) {
+            bladeMat.blending = THREE.AdditiveBlending;
+            bladeMat.depthWrite = false;
+        }
+        var blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.renderOrder = 160;
+        group.add(blade);
+
+        /* additive shell hugging the blade = edge glow */
+        var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
+        var glowShell = new THREE.Mesh(bladeGeo.clone(), glowMat);
+        glowShell.scale.set(1.28, 1.05, 2.4);
+        glowShell.renderOrder = 159;
+        group.add(glowShell);
+
+        var metalColor = opts.guardColor != null ? opts.guardColor : 0xc9a227;
+        var guardMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(metalColor),
+            transparent: true, opacity: 1, depthWrite: true,
+        });
+        var guard = new THREE.Mesh(new THREE.BoxGeometry(wid * 2.6, len * 0.05, wid * 0.55), guardMat);
+        guard.position.y = len; guard.renderOrder = 160;
+        group.add(guard);
+        var grip = new THREE.Mesh(new THREE.CylinderGeometry(wid * 0.16, wid * 0.19, len * 0.22, 10), guardMat);
+        grip.position.y = len * 1.13; grip.renderOrder = 160;
+        group.add(grip);
+        var pommel = new THREE.Mesh(new THREE.SphereGeometry(wid * 0.26, 10, 8), guardMat);
+        pommel.position.y = len * 1.25; pommel.renderOrder = 160;
+        group.add(pommel);
+
+        var gemMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
+        var gem = new THREE.Mesh(new THREE.SphereGeometry(wid * 0.2, 8, 8), gemMat);
+        gem.position.set(0, len, wid * 0.32); gem.renderOrder = 162;
+        group.add(gem);
+
+        var holoBase = opts.hologram ? 0.42 : 1;
+        function setFade(f, glowBoost) {
+            bladeMat.opacity = holoBase * f;
+            glowMat.opacity = (0.42 + 0.4 * (glowBoost || 0)) * f;
+            guardMat.opacity = (opts.hologram ? 0.5 : 1) * f;
+            gemMat.opacity = (0.75 + 0.25 * (glowBoost || 0)) * f;
+        }
+        setFade(0);
+        return { group: group, setFade: setFade };
+    }
+
+    /* ── HERO: "stand summon" greatsword — materializes over the target
+       through a floating magic circle, hangs for a beat, then slams down
+       with crescent slashes, speed lines, shockwave and screen flash ────── */
+    function _sigStandSword3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var len = opts.len != null ? opts.len : ts * 2.1;
+        var hoverH = opts.hoverH != null ? opts.hoverH : ts * 2.4;
+        var color = opts.glowColor != null ? opts.glowColor : 0x88bbff;
+
+        var summonMs = opts.summonMs != null ? opts.summonMs : 160;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 220;
+        var plungeMs = opts.plungeMs != null ? opts.plungeMs : 110;
+        var lingerMs = opts.lingerMs != null ? opts.lingerMs : 620;
+        var fadeMs = opts.fadeMs != null ? opts.fadeMs : 300;
+        var total = summonMs + holdMs + plungeMs + lingerMs + fadeMs;
+        var embedTilt = opts.embedTilt != null ? opts.embedTilt : 0.16;
+        var embedY = -ts * 0.22;
+
+        /* summon circle floating just below where the blade appears */
+        _sigMagicCircle3D(tx, ty, {
+            color: opts.circleColor != null ? opts.circleColor : color,
+            radiusPx: ts * 1.05,
+            height: hoverH * 0.92,
+            growMs: Math.min(140, summonMs),
+            holdMs: summonMs + holdMs + plungeMs,
+            fadeMs: 240,
+            spin: 0.004,
+            opacity: 0.9,
+        });
+        _sigScreenFlash(_sigCss(color), 160, 0.14);
+
+        var sw = _sigBuildSword({
+            len: len,
+            glowColor: color,
+            bladeColor: opts.bladeColor,
+            guardColor: opts.guardColor,
+            hologram: !!opts.hologram,
+        });
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.rotation.y = opts.yaw != null ? opts.yaw : rn(0, Math.PI * 2);
+        sw.group.position.y = hoverH;
+        group.add(sw.group);
+
+        /* crossed vertical streak planes revealed during the plunge */
+        var streakMat = _sigMat(color, { map: _sigStreakTex() });
+        var streakA = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), streakMat);
+        streakA.position.y = hoverH * 0.5;
+        streakA.renderOrder = 163;
+        group.add(streakA);
+        var streakB = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), streakMat);
+        streakB.position.y = hoverH * 0.5;
+        streakB.rotation.y = Math.PI / 2;
+        streakB.renderOrder = 163;
+        group.add(streakB);
+        streakA.scale.set(ts * 0.5, hoverH, 1);
+        streakB.scale.set(ts * 0.5, hoverH, 1);
+
+        var impactFired = false;
+        _sigRun(group, total, function (el) {
+            if (el < summonMs) {
+                var t = el / summonMs;
+                var s = Math.max(0.01, _sigEaseOutBack(t));
+                sw.group.scale.set(s, s, s);
+                sw.group.position.y = hoverH + (1 - t) * ts * 0.5;
+                sw.group.rotation.y = (1 - t) * 2.4;
+                sw.setFade(Math.min(1, t * 1.6), 1 - t);
+                streakMat.opacity = 0;
+            } else if (el < summonMs + holdMs) {
+                var t2 = (el - summonMs) / holdMs;
+                sw.group.scale.set(1, 1, 1);
+                sw.group.position.y = hoverH + Math.sin(t2 * Math.PI) * ts * 0.18;
+                sw.group.rotation.y = 0;
+                sw.group.rotation.z = -0.10 * Math.sin(t2 * Math.PI);
+                sw.setFade(1, 0.5 + 0.5 * Math.sin(el * 0.02));
+                streakMat.opacity = 0;
+            } else if (el < summonMs + holdMs + plungeMs) {
+                var t3 = (el - summonMs - holdMs) / plungeMs;
+                var e = _sigEaseInCubic(t3);
+                sw.group.position.y = hoverH - (hoverH - embedY) * e;
+                sw.group.rotation.z = embedTilt * e;
+                sw.setFade(1, 1);
+                streakMat.opacity = 0.75 * t3;
+            } else {
+                if (!impactFired) {
+                    impactFired = true;
+                    _sigShake(opts.shake || 'hard');
+                    _sigScreenFlash('#ffffff', 130, opts.flashPeak != null ? opts.flashPeak : 0.3);
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                    _sigCrescentSlash3D(tx, ty, { color: color, yaw: group.rotation.y, dir: 1 });
+                    _sigCrescentSlash3D(tx, ty, { color: 0xffffff, yaw: group.rotation.y + 1.2, dir: -1, ms: 300, size: ts * 1.3 });
+                    _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', 22);
+                    if (_canSpawn()) {
+                        var cpx = tilePx(tx, ty);
+                        _spawn({
+                            x: cpx.x, y: cpx.y, z: unitSurfaceZ(tx, ty) + 1,
+                            mode: 'world', sprite: 'scorch',
+                            ml: lingerMs + fadeMs + 400,
+                            size0: ts * 0.7, size1: ts * 0.85,
+                            opacity0: 0.7, opacity1: 0,
+                        });
+                    }
+                }
+                var elL = el - summonMs - holdMs - plungeMs;
+                sw.group.rotation.z = embedTilt;
+                if (elL < lingerMs) {
+                    sw.group.position.y = embedY;
+                    streakMat.opacity = Math.max(0, 0.75 - elL / 180);
+                    sw.setFade(1, 0.5 + 0.5 * Math.sin(elL * 0.02));
+                } else {
+                    var t4 = (elL - lingerMs) / fadeMs;
+                    sw.group.position.y = embedY + t4 * ts * 0.5;
+                    sw.setFade(1 - t4, 0);
+                    streakMat.opacity = 0;
+                }
+            }
+        });
+
+        /* dissolve motes as the blade fades back out of existence */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigSparks(tx, ty, opts.moteSprite || 'psi-pulse', 10, { vxy: 40, vz0: 40, vz1: 140, gravity: -20 });
+        }, summonMs + holdMs + plungeMs + lingerMs);
+    }
+
+    /* ── HERO: spectral giant fist — slams down from the sky, holds pressed
+       into the ground, then springs back up and fades ────────────────────── */
+    function _sigStandFist3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0xffd24a;
+        var unit = ts * 0.011 * (opts.scale != null ? opts.scale : 1);
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.rotation.y = rn(0, Math.PI * 2);
+
+        var fist = new THREE.Group();
+        var mat = _sigMat(color);
+        mat.opacity = 0;
+        var edgeMat = new THREE.LineBasicMaterial({
+            color: new THREE.Color(0xffffff), transparent: true, opacity: 0,
+        });
+        function block(w, h, d, x, y, z, rz) {
+            var geo = new THREE.BoxGeometry(w, h, d);
+            var m = new THREE.Mesh(geo, mat);
+            m.position.set(x, y, z);
+            if (rz) m.rotation.z = rz;
+            m.renderOrder = 160;
+            fist.add(m);
+            var edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat);
+            edges.position.copy(m.position);
+            edges.rotation.copy(m.rotation);
+            edges.renderOrder = 161;
+            fist.add(edges);
+        }
+        /* blocky spectral fist, knuckles down: palm + folded fingers + thumb
+           + forearm stub rising to the sky */
+        block(90, 70, 100, 0, 35, 0);
+        for (var f = 0; f < 4; f++) {
+            block(19, 36, 44, -33 + f * 22, -16, 24);
+        }
+        block(24, 48, 36, -58, 26, 8, 0.35);
+        block(64, 130, 70, 0, 130, 0);
+        fist.scale.set(unit, unit, unit);
+        group.add(fist);
+
+        var skyH = opts.skyH != null ? opts.skyH : 700;
+        var groundY = ts * 0.42;
+        var dropMs = opts.dropMs != null ? opts.dropMs : 140;
+        var squashMs = 90;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 280;
+        var riseMs = opts.riseMs != null ? opts.riseMs : 260;
+        var total = dropMs + squashMs + holdMs + riseMs;
+
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: ts * 1.2, height: skyH * 0.55,
+            growMs: 100, holdMs: dropMs + holdMs, fadeMs: 220,
+            spin: 0.005, opacity: 0.7,
+        });
+
+        var impactFired = false;
+        _sigRun(group, total, function (el) {
+            var vis = 1;
+            if (el < dropMs) {
+                var t = el / dropMs;
+                fist.position.y = skyH - (skyH - groundY) * _sigEaseInCubic(t);
+                fist.scale.set(unit, unit, unit);
+                vis = Math.min(1, t * 3);
+            } else if (el < dropMs + squashMs) {
+                if (!impactFired) {
+                    impactFired = true;
+                    _sigShake('hard');
+                    _sigScreenFlash(_sigCss(color), 150, opts.flashPeak != null ? opts.flashPeak : 0.3);
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * 2.2, ms: 520 });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                    _sigSparks(tx, ty, 'dust-puff', 14, { vxy: 160, vz0: 20, vz1: 120, gravity: 160 });
+                    _sigSparks(tx, ty, opts.sparkSprite || 'spark-blue', 12);
+                }
+                var t2 = (el - dropMs) / squashMs;
+                var sq = Math.sin(t2 * Math.PI);
+                fist.position.y = groundY * (1 - 0.25 * sq);
+                fist.scale.set(unit * (1 + 0.12 * sq), unit * (1 - 0.18 * sq), unit * (1 + 0.12 * sq));
+            } else if (el < dropMs + squashMs + holdMs) {
+                var elH = el - dropMs - squashMs;
+                fist.position.y = groundY + Math.sin(elH * 0.09) * 1.5;
+                fist.scale.set(unit, unit, unit);
+            } else {
+                var t3 = (el - dropMs - squashMs - holdMs) / riseMs;
+                fist.position.y = groundY + (skyH * 0.7 - groundY) * _sigEaseInCubic(t3);
+                vis = 1 - t3;
+            }
+            mat.opacity = 0.5 * vis;
+            edgeMat.opacity = 0.9 * vis;
+        });
+    }
+
+    /* ── 3D flying saucer builder — real geometry instead of the flat ufo
+       sprite: lathe hull with procedural panel texture, glass dome, chasing
+       rim lights, additive underglow ─────────────────────────────────────── */
+    function _sigBuildUFO(radiusPx) {
+        var group = new THREE.Group();
+
+        var pts = [
+            new THREE.Vector2(0.0, -0.16),
+            new THREE.Vector2(0.35, -0.14),
+            new THREE.Vector2(0.75, -0.08),
+            new THREE.Vector2(1.0, 0.0),
+            new THREE.Vector2(0.78, 0.10),
+            new THREE.Vector2(0.45, 0.16),
+            new THREE.Vector2(0.0, 0.18),
+        ];
+        var hullMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xb8c4d4), map: _sigHullTex(),
+            transparent: true, opacity: 1, depthWrite: true,
+        });
+        var hull = new THREE.Mesh(new THREE.LatheGeometry(pts, 40), hullMat);
+        hull.renderOrder = 160;
+        group.add(hull);
+
+        var rimMat = _sigMat(0x9adcff);
+        var rim = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.03, 8, 48), rimMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.renderOrder = 161;
+        group.add(rim);
+
+        var domeMat = _sigMat(0x9adcff);
+        var dome = new THREE.Mesh(
+            new THREE.SphereGeometry(0.34, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+        dome.position.y = 0.14;
+        dome.renderOrder = 162;
+        group.add(dome);
+
+        var lights = [];
+        for (var i = 0; i < 10; i++) {
+            var lm = _sigMat(0xaaffcc);
+            var lite = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), lm);
+            var a = i * Math.PI * 2 / 10;
+            lite.position.set(Math.cos(a) * 0.88, -0.02, Math.sin(a) * 0.88);
+            lite.renderOrder = 162;
+            group.add(lite);
+            lights.push(lm);
+        }
+
+        var glowMat = _sigMat(0x66ff99, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), glowMat);
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = -0.17;
+        glow.scale.set(0.8, 0.8, 0.8);
+        glow.renderOrder = 159;
+        group.add(glow);
+
+        group.scale.set(radiusPx, radiusPx, radiusPx);
+        return {
+            group: group, lights: lights,
+            hullMat: hullMat, rimMat: rimMat, domeMat: domeMat, glowMat: glowMat,
+        };
+    }
+
+    /* ── HERO: saucer flight sequence — swoops in banking, hovers with
+       bobbing spin + chasing rim lights (+ optional tractor beam), then
+       blasts off with a motion-stretch streak ───────────────────────────── */
+    function _sigUFO3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.05;
+        var hoverH = opts.hoverH != null ? opts.hoverH : ts * 2.7;
+        var enterMs = opts.enterMs != null ? opts.enterMs : 420;
+        var hoverMs = opts.hoverMs != null ? opts.hoverMs : 1200;
+        var exitMs = opts.exitMs != null ? opts.exitMs : 480;
+        var total = enterMs + hoverMs + exitMs;
+
+        var ufo = _sigBuildUFO(R);
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.add(ufo.group);
+
+        var enterDir = rn(0, Math.PI * 2);
+        var exitDir = enterDir + Math.PI + rn(-0.8, 0.8);
+        var enterDist = ts * 9;
+
+        var beamMat = null, beam = null;
+        if (opts.beam) {
+            beamMat = _sigMat(opts.beamColor != null ? opts.beamColor : 0x55ff99);
+            beam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 1, 1, 24, 1, true), beamMat);
+            beam.renderOrder = 157;
+            group.add(beam);
+        }
+
+        _sigRun(group, total, function (el) {
+            for (var i = 0; i < ufo.lights.length; i++) {
+                ufo.lights[i].opacity = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(el * 0.006 - i * 0.63));
+            }
+            ufo.group.rotation.y = el * 0.0022;
+            ufo.group.scale.set(R, R, R);
+            var fade = 1;
+            if (el < enterMs) {
+                var t = el / enterMs, e = _sigEaseOutCubic(t);
+                var d = enterDist * (1 - e);
+                ufo.group.position.set(
+                    Math.cos(enterDir) * d,
+                    hoverH + (1 - e) * ts * 2.2,
+                    Math.sin(enterDir) * d);
+                ufo.group.rotation.z = 0.30 * (1 - e) * Math.cos(enterDir);
+                ufo.group.rotation.x = -0.30 * (1 - e) * Math.sin(enterDir);
+                if (beamMat) beamMat.opacity = 0;
+            } else if (el < enterMs + hoverMs) {
+                var t2 = (el - enterMs) / hoverMs;
+                ufo.group.position.set(
+                    Math.sin(el * 0.003) * 4,
+                    hoverH + Math.sin(el * 0.004) * 7,
+                    Math.cos(el * 0.0025) * 4);
+                ufo.group.rotation.z = 0;
+                ufo.group.rotation.x = 0;
+                if (beam) {
+                    var bh = hoverH - R * 0.16;
+                    beam.position.y = bh / 2;
+                    beam.scale.set(R * 0.85, bh, R * 0.85);
+                    var ripple = 0.75 + 0.25 * Math.sin(el * 0.02);
+                    beamMat.opacity = 0.22 * ripple * Math.min(1, t2 * 4)
+                        * (t2 > 0.85 ? (1 - t2) / 0.15 : 1);
+                }
+            } else {
+                var t3 = (el - enterMs - hoverMs) / exitMs, e3 = _sigEaseInCubic(t3);
+                var d3 = enterDist * 1.2 * e3;
+                if (beamMat) beamMat.opacity = 0;
+                ufo.group.position.set(
+                    Math.cos(exitDir) * d3,
+                    hoverH + e3 * ts * 3,
+                    Math.sin(exitDir) * d3);
+                ufo.group.rotation.z = -0.4 * e3 * Math.cos(exitDir);
+                /* motion-stretch streak as it blasts off */
+                ufo.group.scale.set(R * (1 + e3 * 0.6), R * (1 - e3 * 0.3), R * (1 + e3 * 0.6));
+                fade = 1 - Math.max(0, (t3 - 0.55) / 0.45);
+            }
+            ufo.hullMat.opacity = fade;
+            ufo.rimMat.opacity = 0.5 * fade;
+            ufo.domeMat.opacity = 0.4 * fade;
+            ufo.glowMat.opacity = (0.5 + 0.2 * Math.sin(el * 0.01)) * fade;
+        });
+    }
+
+    /* ── storm strike: rune circle in the sky, then shock ring + flash when
+       the lightning lands (delayMs = the spell's descentMs) ─────────────── */
+    function _sigStormStrike3D(tx, ty, opts) {
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var color = opts.color != null ? opts.color : 0x88bbff;
+        var delayMs = opts.delayMs != null ? opts.delayMs : 600;
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: opts.radiusPx != null ? opts.radiusPx : ts * 1.5,
+            height: opts.skyH != null ? opts.skyH : 560,
+            growMs: 140, holdMs: Math.max(160, delayMs - 140), fadeMs: 300,
+            spin: 0.006, opacity: 0.75,
+        });
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigShockRing3D(tx, ty, { color: color, r1: ts * 2.0, ms: 380 });
+            _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+            _sigScreenFlash(_sigCss(color), 140, opts.flashPeak != null ? opts.flashPeak : 0.28);
+        }, delayMs);
+    }
+
+    /* ── heavenly greatsword for judgment-type descents: timing is derived
+       from the spell's own descentMs so the blade lands exactly when the
+       damage does, then a pillar of light erupts ─────────────────────────── */
+    function _sigJudgmentSword3D(tx, ty, descentEffectId, opts) {
+        var def = EFFECTS[descentEffectId] || {};
+        var dm = def.descentMs || 700;
+        var o = opts || {};
+        o.summonMs = Math.max(80, Math.round(dm * 0.3));
+        o.holdMs = Math.max(80, Math.round(dm * 0.5));
+        o.plungeMs = Math.max(60, Math.round(dm * 0.2));
+        _sigStandSword3D(tx, ty, o);
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigLightPillar3D(tx, ty, {
+                color: o.pillarColor != null ? o.pillarColor : 0xffe9a8,
+                coreColor: 0xfff6d8, ms: 1000, height: 780,
+            });
+        }, dm);
+    }
+
     var _spell3DGeometry = {
 
         bubble:              function(tx, ty, r) { _spawnBubbleDome(tx, ty, r); },
@@ -4910,10 +5908,28 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
         overgrowth:          function(tx, ty, r) { _spawnOvergrowthTree3D(tx, ty, r); },
 
-        raceAbductionBeam:   function(tx, ty) { _spawnAbductionBeam3D(tx, ty); },
+        raceAbductionBeam:   function(tx, ty) {
+            _spawnAbductionBeam3D(tx, ty);
+            _sigUFO3D(tx, ty, { enterMs: 280, hoverMs: 1250, exitMs: 450,
+                hoverH: (_cfg().tileSize || 128) * 3.1 });
+        },
 
         nuke:                function(tx, ty, r) { _spawnNukeCloud3D(tx, ty, r); },
-        meteor:              function(tx, ty, r, dm, tm) { _spawnMeteorSphere3D(tx, ty, dm, tm); },
+        meteor:              function(tx, ty, r, dm, tm) {
+            _spawnMeteorSphere3D(tx, ty, dm, tm);
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xff7733, radiusPx: ts0 * (r != null ? r * 0.8 + 1 : 1.6),
+                growMs: 180, holdMs: Math.max(200, (dm || 700) - 180), fadeMs: 320,
+                spin: 0.003,
+            });
+            window.setTimeout(function() {
+                if (_suppressed()) return;
+                _sigShockRing3D(tx, ty, { color: 0xffaa55, r1: ts0 * 2.4, ms: 520 });
+                _sigSpeedBurst3D(tx, ty, { color: 0xffcc88 });
+                _sigScreenFlash('#ffd9a8', 200, 0.32);
+            }, dm || 700);
+        },
 
         raceMushroomRing:    function(tx, ty, r) { _spawnMushroomRing3D(tx, ty, r); },
         sharedWardOfThorns:  function(tx, ty) { _spawnWardOfThorns3D(tx, ty); },
@@ -4922,6 +5938,99 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         sharedGlacialTomb:   function(tx, ty) { _spawnGlacialTombShard3D(tx, ty); },
 
         shootout:            function(tx, ty, r) { _spawnBulletRainArea3D(tx, ty, r != null ? r : 1, 680); },
+
+        /* ── signature anime cinematics (SIGNATURE 3D toolkit above). These
+           are the staples; new spells should pick a builder + palette here
+           rather than getting bespoke code. ─────────────────────────────── */
+
+        /* stand-summon greatswords for the melee slash staples */
+        dragonSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+            glowColor: 0xff7733, circleColor: 0xff5522, bladeColor: 0xf2e0c8,
+            guardColor: 0xa33d10, sparkSprite: 'ember', moteSprite: 'ember',
+            len: (_cfg().tileSize || 128) * 2.4,
+        }); },
+        guardSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+            glowColor: 0x77aaff, circleColor: 0x99bbff, bladeColor: 0xdfe7f2,
+            guardColor: 0x8899bb, len: (_cfg().tileSize || 128) * 1.9,
+            shake: 'normal', flashPeak: 0.2,
+        }); },
+        sneakSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+            glowColor: 0xbb55ff, circleColor: 0x8833cc, bladeColor: 0x666a7a,
+            guardColor: 0x333344, len: (_cfg().tileSize || 128) * 1.7,
+            summonMs: 90, holdMs: 90, plungeMs: 80, lingerMs: 380, fadeMs: 200,
+            moteSprite: 'void-mist', flashPeak: 0.16, shake: 'normal',
+        }); },
+        sentaiRedSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+            glowColor: 0xff3344, circleColor: 0xff2233, bladeColor: 0xffffff,
+            guardColor: 0xcc2222, sparkSprite: 'spark-pink',
+        }); },
+        raceSyntheticBlade: function(tx, ty) { _sigStandSword3D(tx, ty, {
+            hologram: true, glowColor: 0x33ffee, circleColor: 0x22ccff,
+            bladeColor: 0x66ffee, guardColor: 0x2288aa, moteSprite: 'plasma',
+        }); },
+
+        /* ORA — spectral giant fist */
+        reallyGoodPunch: function(tx, ty) { _sigStandFist3D(tx, ty, { color: 0xffd24a }); },
+
+        /* golden blade of judgment falling out of heaven + light pillar */
+        judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
+            glowColor: 0xffcc55, circleColor: 0xffdd88, bladeColor: 0xfff2cc,
+            guardColor: 0xdaa520, len: (_cfg().tileSize || 128) * 3.0,
+            hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
+            sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
+        }); },
+        raceDivineJudgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'raceDivineJudgment_descent', {
+            glowColor: 0xffcc55, circleColor: 0xffdd88, bladeColor: 0xfff2cc,
+            guardColor: 0xdaa520, len: (_cfg().tileSize || 128) * 3.0,
+            hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
+            sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
+        }); },
+        divineIntervention: function(tx, ty) {
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffdd88, radiusPx: (_cfg().tileSize || 128) * 1.4,
+                holdMs: 900, spin: 0.0022, rise: 30,
+            });
+            _sigLightPillar3D(tx, ty, { color: 0xffe9a8, ms: 1200, height: 820 });
+        },
+
+        /* storm rune circle in the sky, shock + flash when the bolt lands */
+        thunder1: function(tx, ty) {
+            var _t1def = EFFECTS['thunder1_descent'] || {};
+            _sigStormStrike3D(tx, ty, { color: 0x99ccff, delayMs: _t1def.descentMs || 600 });
+        },
+
+        exorcism: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, { color: 0xffee99, radiusPx: ts0 * 1.1, holdMs: 500, spin: 0.005 });
+            _sigLightPillar3D(tx, ty, { color: 0xfff2bb, ms: 700, height: 520, radius: ts0 * 0.3 });
+        },
+        mindShatter: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigShockRing3D(tx, ty, { color: 0xcc66ff, r1: ts0 * 1.8 });
+            _sigSpeedBurst3D(tx, ty, { color: 0xdd99ff });
+            _sigScreenFlash('#cc88ff', 150, 0.2);
+        },
+        fire2: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigShockRing3D(tx, ty, { color: 0xffaa44, r1: ts0 * 1.5, ms: 360 });
+            _sigScreenFlash('#ffbb66', 120, 0.14);
+        },
+        heal1: function(tx, ty) {
+            _sigMagicCircle3D(tx, ty, {
+                color: 0x66ff99, radiusPx: (_cfg().tileSize || 128) * 0.95,
+                holdMs: 800, spin: 0.001, opacity: 0.55, rise: 40,
+            });
+        },
+
+        /* the crop-circle saucer is a real 3D model now (descent pipeline
+           calls this at descent start; beam rings/shaft stay sprite-based) */
+        raceCropCircle: function(tx, ty) {
+            _sigUFO3D(tx, ty, {
+                enterMs: 380, hoverMs: 1150, exitMs: 470,
+                hoverH: (_cfg().tileSize || 128) * 2.8,
+                beam: true, beamColor: 0x55ff99,
+            });
+        },
     };
 
     function _fireAura(spellId, params) {
@@ -5087,6 +6196,17 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         fireTeleportLegacy: fireTeleportLegacy,
         fireZone: fireZone,
         fireCombo: fireCombo,
+
+        sigMagicCircle3D: _sigMagicCircle3D,
+        sigShockRing3D: _sigShockRing3D,
+        sigSpeedBurst3D: _sigSpeedBurst3D,
+        sigLightPillar3D: _sigLightPillar3D,
+        sigCrescentSlash3D: _sigCrescentSlash3D,
+        sigStandSword3D: _sigStandSword3D,
+        sigStandFist3D: _sigStandFist3D,
+        sigUFO3D: _sigUFO3D,
+        sigStormStrike3D: _sigStormStrike3D,
+        sigScreenFlash: _sigScreenFlash,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentTelegraphMs: getDescentTelegraphMs,
