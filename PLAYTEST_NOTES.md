@@ -1775,6 +1775,43 @@ from v1):
   enemy quick "⌖Cyborg 100% 9t" with Dead Eye + dmg previews + reasons, tile
   "⬚Tall Grass", END TURN instant hide, 0 page errors.
 
+### v3 (2026-07-04) — no-wrap ladder, verb order, type badges, red crown, pushers, vitals (hud.js only)
+User feedback on v2: wrap-around confusing, verb order scrambled, BACK too
+subtle, special actions buried in More, type badges missing from spells, wanted
+HP/MP under the watch. All shipped; ONLY hud.js changed:
+1. **No wrap.** `_hrlgOffset(i, sel)` is now plain `i - sel` (ladder, not loop);
+   `cycle()` clamps at 0/len-1 and plays a 4px translateY bump on the rig at the
+   ends. `_hrlgSlot(off, rowH)` shows a symmetric window (±2 rows, op .5/.22)
+   and takes a row pitch (44 normal, 58 for badge rows). `▲/▼ N MORE` markers
+   (`.hrlg-more-ind`, inline `top` from ±2.55·rowH) + `⭥ sel/len` readout in
+   `.hrlg-scroll-hint` show off-window items.
+2. **Root order is declaration order** — Move › Attack › Abilities › Combo ›
+   Items › More › END TURN. HRLG_ANG + the angle sort are DELETED.
+3. **Crown = big red arrowed BACK** (◀ in the cap, "◀ BACK" label, #ff5e70
+   family). Same live/pulse behavior.
+4. **Bezel pushers** (`.hrlg-pusher`): ActionMenu builds `pushers[]` (Channel
+   Nexus ⬡ cyan / Detonate 💣 red / Enter Building 🛗 amber) ONLY when usable
+   right now; HorologeMenu mounts up to 3 at bezel angles −33°/−63°/+33°
+   (slot math inline, hub center 103,240 in rig coords), root view only. They
+   pulse + ring-ping; click strikes the clock hands onto the pusher's angle
+   then fires. Actions stay duplicated in More.
+5. **Move+action-aware greying**: Attack uses `attackHasReachableTarget` →
+   stays lit with an amber MOVE→ATK note; Abilities root blade greys (new
+   `.ghost` class = grey but clickable via forceLive) when `abilSub` set.
+6. **Type badges on spell blades**: `badges[]` on the blade item → `.tall`
+   blade (54px) with a second `.hrlg-badges` row: spellType chip
+   (typeBadgeStyleFor), PHYSICAL/MAGIC/UTILITY (spellDeliveryBadge),
+   ⚔ MELEE / ⤢ RANGED (spellRangeBadge), plain RNG n + T·tier.
+7. **Vitals** `.hrlg-vitals` HP/MP bars (green/amber/red HP tint, cyan MP)
+   between the AP row (b102) and the mode line (moved b82→b56).
+8. **Keyboard**: ArrowUp/Down cycles, Enter fires center blade (disabled in
+   aim views); listeners guard INPUT/TEXTAREA/SELECT focus.
+- Verified via scratchpad menu_visual_test.js (LOCAL_ASSETS=hud.js): 9 down-
+  scrolls stop on END TURN (no wrap), 9 up-scrolls stop on Move, ArrowDown×2
+  = Abilities, badge row text "HUMAN PHYSICAL ⚔ MELEE RNG 1 T·I", crown click
+  → root, forced st.bombs → 1 DETONATE pusher at 11 o'clock, vitals 913/913 +
+  250/250, mode label intact, 0 page errors.
+
 ## Signature 3D spell cinematics (three-vfx-effects.js) — 2026-07-04
 A "SIGNATURE 3D SPELL CINEMATICS" section now lives in three-vfx-effects.js
 (just above `_spell3DGeometry`). It's an anime-style set-piece layer built from

@@ -1109,9 +1109,6 @@ function GauntletReplaceModal({ st }) {
    second hand carries the faction's pulse: quartz-tick for Space, a
    smooth sweep for Time, an erratic stutter for Chaos. */
 
-// Blade angles in degrees: 0 = 3 o'clock, negative = above the horizon
-// (offensive verbs), positive = below (utility). END TURN sits deepest.
-const HRLG_ANG = { attack: -40, combo: -25, abil: -10, move: 5, jump: 5, items: 20, more: 35, end: 50, cancel: 5 };
 const HRLG_REST = { min: 60, hour: 305 };   // idle 10:10 pose
 const _hrlgToClock = (a) => 90 + a;         // blade angle → watch angle (0 = 12 o'clock)
 const _hrlgNearest = (cur, target) => cur + (((target - cur) % 360 + 540) % 360 - 180);
@@ -1306,31 +1303,29 @@ function HorologeHub({ factionKey, api }) {
 // ── Carousel slots ──────────────────────────────────────────────
 // The menu is a vertical drum of STRAIGHT blades stacked against the
 // clock: the SELECTED blade sits level with the clock center, bigger
-// and fully lit; one neighbour peeks above it and two below,
-// progressively faded (Persona-style cycling list). Each row's left
-// edge hugs the bezel's curve — the center row rides the equator and
-// naturally protrudes the furthest. Off-window rows park invisible so
-// a wrap-around never sweeps a lit blade through the stack.
-const HRLG_ROW = 44;    // vertical pitch of the stack
+// and fully lit; two neighbours peek above and two below, progressively
+// faded (Persona-style cycling list). Each row's left edge hugs the
+// bezel's curve — the center row rides the equator and naturally
+// protrudes the furthest. The drum is a LADDER with a hard top and
+// bottom — it does NOT wrap around; scrolling past an end bumps.
+const HRLG_ROW = 44;    // vertical pitch of the stack (spell rows pass taller)
 const HRLG_HUG = 97;    // circle radius the blade edges follow
 const HRLG_TUCK = 14;   // how far each blade tucks under the bezel
-function _hrlgSlot(off) {
+function _hrlgSlot(off, rowH) {
   const c = Math.max(-3, Math.min(4, off));
-  const ty = c * HRLG_ROW;   // css downward+
+  const ty = c * (rowH || HRLG_ROW);   // css downward+
   const x = Math.sqrt(Math.max(HRLG_HUG * HRLG_HUG - ty * ty, 0));
   const base = { tx: x - HRLG_TUCK, ty };
-  if (off === -1) return { ...base, op: 0.45, s: 0.88, z: 3 };
+  if (off === -2) return { ...base, op: 0.22, s: 0.82, z: 2 };
+  if (off === -1) return { ...base, op: 0.5,  s: 0.9,  z: 4 };
   if (off === 0)  return { ...base, op: 1,    s: 1.12, z: 6 };
   if (off === 1)  return { ...base, op: 0.5,  s: 0.9,  z: 4 };
-  if (off === 2)  return { ...base, op: 0.26, s: 0.82, z: 2 };
+  if (off === 2)  return { ...base, op: 0.22, s: 0.82, z: 2 };
   return { ...base, op: 0, s: 0.8, z: 1 };
 }
-// Signed shortest wrap distance from the selected index to index i.
-function _hrlgOffset(i, sel, n) {
-  let d = (i - sel) % n; if (d < 0) d += n;
-  if (d > n / 2) d -= n;
-  return d;
-}
+// Signed distance from the selected index to index i — plain ladder
+// distance, NO wrap: the list has a fixed first and last entry.
+function _hrlgOffset(i, sel) { return i - sel; }
 
 // One blade of the drum. EVERY menu — root verbs, abilities, items,
 // targets, quick actions — renders through this, so they all read as
@@ -1341,10 +1336,14 @@ function _hrlgOffset(i, sel, n) {
 //   note             amber chip (MOVE→CAST)        sub    red reason tag
 //   check            pending-confirm ✓             hint   key hint (SPACE)
 //   iconColor        glyph tint override           forceLive  clickable though !available
-function HorologeBlade({ b, idx, off, active, fireId, onFire, onFocus, onHover }) {
-  const dead = !b.available && !b.forceLive;
+//   badges           second-line chips [{label,style,title,plain}] — the blade
+//                    grows taller and shows them under the name (type badges!)
+function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onHover }) {
+  const dead = !b.available && !b.forceLive;         // truly inert
+  const ghost = !b.available;                        // greyed look (may still be clickable)
+  const tall = !!(b.badges && b.badges.length);
   const center = off === 0;
-  const slot = _hrlgSlot(off);
+  const slot = _hrlgSlot(off, rowH);
   const right = [];
   if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
@@ -1358,9 +1357,16 @@ function HorologeBlade({ b, idx, off, active, fireId, onFire, onFocus, onHover }
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
   if (b.sub) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  const badgeRow = tall && h('div', { className: 'hrlg-badges' },
+    b.badges.map((bd, k) => bd.plain
+      ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
+      : h('span', { key: k, style: bd.style, title: bd.title || undefined }, bd.label)),
+  );
   return h('div', {
     className: 'hrlg-blade'
       + (dead ? ' dead' : '')
+      + (ghost && !dead ? ' ghost' : '')
+      + (tall ? ' tall' : '')
       + (center ? ' center' : ' dim')
       + (active ? ' active' : '')
       + (fireId === b.id ? ' fire' : ''),
@@ -1378,8 +1384,18 @@ function HorologeBlade({ b, idx, off, active, fireId, onFire, onFocus, onHover }
   },
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
-      h('span', { className: 'hrlg-blabel' }, b.label),
-      right,
+      tall
+        ? h('div', { className: 'hrlg-2line' },
+            h('div', { className: 'hrlg-line1' },
+              h('span', { className: 'hrlg-blabel' }, b.label),
+              right,
+            ),
+            badgeRow,
+          )
+        : h(React.Fragment, null,
+            h('span', { className: 'hrlg-blabel' }, b.label),
+            right,
+          ),
       h('span', { className: 'hrlg-flash' }),
     ),
   );
@@ -1389,11 +1405,15 @@ function HorologeBlade({ b, idx, off, active, fireId, onFire, onFocus, onHover }
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, modeLabel, am, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
+
+  // spell blades carry a badge row → taller rows, wider pitch
+  const tall = blades.some(b => b.badges && b.badges.length);
+  const rowH = tall ? 58 : HRLG_ROW;
 
   // ── Carousel selection: tracked by blade ID so the drum keeps its
   // heading when availability re-sorts costs or AP ticks re-render us.
@@ -1468,10 +1488,21 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
   };
   const selBlade = carousel ? blades[selIdx] : blades[0];
 
+  // No wrap-around: the drum stops hard at the first and last entry.
+  // Scrolling past an end gives a physical "bump" so the stop reads as
+  // intentional, not broken.
   const cycle = (dir) => {
     if (!carousel) return;
-    const n = blades.length;
-    focusBlade(blades[(((selIdx + dir) % n) + n) % n]);
+    const next = selIdx + dir;
+    if (next < 0 || next >= blades.length) {
+      if (rigRef.current && rigRef.current.animate) {
+        rigRef.current.animate(
+          [{ transform: 'translateY(0)' }, { transform: 'translateY(' + (dir > 0 ? 4 : -4) + 'px)' }, { transform: 'translateY(0)' }],
+          { duration: 130, easing: 'ease-out' });
+      }
+      return;
+    }
+    focusBlade(blades[next]);
   };
 
   // Scroll on the menu cycles the drum — and must NEVER fall through to the
@@ -1491,6 +1522,27 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
+
+  // ↑/↓ cycle the drum, ENTER fires the centered blade — full keyboard
+  // play without stealing keys the game already uses (WASD/SPACE/ESC).
+  const fireSelRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        cycleRef.current(e.key === 'ArrowDown' ? 1 : -1);
+      } else if (e.key === 'Enter') {
+        if (fireSelRef.current) fireSelRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // ENTER only confirms while browsing menus — never while aiming on the
+  // board (there the click on a tile is the confirm; ESC/crown backs out).
+  fireSelRef.current = (view === 'aim') ? null : () => { if (selBlade) fireBlade(selBlade); };
 
   const pips = [];
   const shown = Math.min(maxAP, 8);
@@ -1514,19 +1566,51 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     onCancel();
   };
 
+  // how many entries sit beyond the visible window (2 above, 2 below)
+  const hiddenUp = carousel ? Math.max(0, selIdx - 2) : 0;
+  const hiddenDn = carousel ? Math.max(0, blades.length - 1 - selIdx - 2) : 0;
+
   return h('div', {
     ref: rigRef, className: 'hrlg-rig',
     style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' },
   },
     h('div', { className: 'hrlg-fan', key: viewKey },
       blades.map((b, i) => h(HorologeBlade, {
-        key: b.id, b: b, idx: i,
-        off: carousel ? _hrlgOffset(i, selIdx, blades.length) : 0,
+        key: b.id, b: b, idx: i, rowH: rowH,
+        off: carousel ? _hrlgOffset(i, selIdx) : 0,
         active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
         fireId: fireId, onFire: fireBlade, onFocus: focusBlade, onHover: hoverBlade,
       })),
+      hiddenUp > 0 && h('div', { className: 'hrlg-more-ind', style: { top: (-(2.55 * rowH) - 14) + 'px' } }, '▲ ' + hiddenUp + ' MORE'),
+      hiddenDn > 0 && h('div', { className: 'hrlg-more-ind', style: { top: (2.55 * rowH) + 'px' } }, '▼ ' + hiddenDn + ' MORE'),
     ),
     h(HorologeHub, { factionKey: factionKey, api: clockApi }),
+    /* special-action pushers — extra stopwatch buttons riding the bezel.
+       Only mounted when the action is actually usable RIGHT NOW, and they
+       pulse so the player can't miss the opportunity. Root view only —
+       they'd distract while browsing sub-menus or aiming. */
+    view === 'root' && (pushers || []).slice(0, 3).map((p, i) => {
+      const slot = [[-33, 107], [-63, 105], [33, 107]][i];
+      const a = slot[0] * Math.PI / 180;
+      return h('div', {
+        key: p.id, className: 'hrlg-pusher',
+        title: p.title || p.label,
+        style: {
+          '--pc': p.color, '--pc-soft': p.color + '66', '--pc-faint': p.color + '22',
+          '--pang': slot[0] + 'deg',
+          left: (103 + slot[1] * Math.sin(a)) + 'px',
+          top: (240 - slot[1] * Math.cos(a)) + 'px',
+        },
+        onClick: () => {
+          if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+          if (clockApi.strike) clockApi.strike(slot[0]);   // hands slam onto the pusher
+          p.fire();
+        },
+      },
+        h('span', { className: 'hrlg-pusher-cap' }, h('span', { className: 'hrlg-pusher-glyph' }, p.glyph)),
+        h('span', { className: 'hrlg-pusher-lbl' }, p.label),
+      );
+    }),
     // Where-am-I tab riding the top of the clock: names the open menu
     // (ABILITIES / ITEMS / the clicked enemy…) in the same blade material.
     title && h('div', { className: 'hrlg-view-tab', key: 'tab|' + viewKey },
@@ -1541,9 +1625,9 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
       title: backable ? 'Back (ESC)' : undefined,
       onClick: backable ? pressCrown : undefined,
     },
-      h('span', { className: 'hrlg-crown-cap' }),
+      h('span', { className: 'hrlg-crown-cap' }, h('span', { className: 'hrlg-crown-arrow' }, '◀')),
       h('span', { className: 'hrlg-crown-stem' }),
-      backable && h('span', { className: 'hrlg-crown-label' }, 'BACK'),
+      backable && h('span', { className: 'hrlg-crown-label' }, '◀ BACK'),
     ),
     h('div', { className: 'hrlg-core' },
       h('span', { className: 'hrlg-roman' }, roman + ' · '),
@@ -1555,8 +1639,30 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
       h('span', { className: 'hrlg-ap-num' }, ap + '/'),
       h('span', { className: 'hrlg-ap-num' + (maxAP > baseAP ? ' bonus' : '') }, maxAP),
     ),
+    /* HP/MP vitals under the watch — the acting unit's pools at a glance,
+       right where the player's eyes already are while picking an action. */
+    maxHp > 0 && h('div', { className: 'hrlg-vitals' },
+      (() => {
+        const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+        const hpCol = hpPct <= 30 ? EW.bad : hpPct <= 60 ? EW.warn : EW.good;
+        return h('div', { className: 'hrlg-vbar' },
+          h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: hpCol, boxShadow: '0 0 6px ' + hpCol + '66' } }),
+          h('span', { className: 'hrlg-vlbl' }, 'HP'),
+          h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
+        );
+      })(),
+      maxMp > 0 && (() => {
+        const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
+        return h('div', { className: 'hrlg-vbar mp' },
+          h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: EW.space, boxShadow: '0 0 6px ' + EW.space + '66' } }),
+          h('span', { className: 'hrlg-vlbl' }, 'MP'),
+          h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
+        );
+      })(),
+    ),
     modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
-    carousel && blades.length > 4 && h('div', { className: 'hrlg-scroll-hint' }, '⭥ scroll'),
+    carousel && blades.length > 3 && h('div', { className: 'hrlg-scroll-hint' },
+      '⭥ ' + (selIdx + 1) + '/' + blades.length),
   );
 }
 
@@ -1634,10 +1740,27 @@ function _hrlgSpellBlades(unit, st) {
     const cc = _HRLG_CAT[cat] || _HRLG_CAT.damage;
     const powerStat = spellPowerStat(sp);
 
+    // ── badge row: the spell's TYPE (anomaly/tech/…) is critical intel —
+    // it drives strong/weak matchups — so it rides ON the blade, plus the
+    // delivery class (PHYSICAL/MAGIC/UTILITY) and range class chips.
+    const badges = [];
+    if (sp.spellType) badges.push({
+      label: sp.spellType.toUpperCase(),
+      style: typeBadgeStyleFor(sp.spellType, { fontSize: 7, padding: '1px 5px' }),
+      title: 'Spell type — drives type advantage',
+    });
+    const _db = spellDeliveryBadge(sp, cat);
+    badges.push({ label: _db.label, style: typeBadgeStyle(_db.color, { fontSize: 7, padding: '1px 5px' }) });
+    const _rb = spellRangeBadge(sp);
+    badges.push({ label: _rb.glyph + ' ' + _rb.label, style: typeBadgeStyle(_rb.color, { fontSize: 7, padding: '1px 5px' }), title: _rb.title });
+    if (sp.range > 0) badges.push({ plain: true, label: 'RNG ' + sp.range });
+    if (sp.tier) badges.push({ plain: true, label: 'T·' + sp.tier });
+
     return {
       id: 'sp:' + (sp.name || i),
       icon: cc.icon, iconColor: cc.color,
       label: sp.name,
+      badges: badges,
       available: canCast,
       selected: am === 'spell' && st.selectedTool === sp.name,
       power: powerStat ? { v: powerStat.value, color: powerStat.color } : null,
@@ -1987,10 +2110,15 @@ function ActionMenu({ st, hidden }) {
     moveAction = { id: 'move', label: 'Move', icon: '↑', cost: 1, available: false, sub: mvReason };
   }
 
+  // Attack stays live if the unit can STEP into range and still swing this
+  // turn (move→attack) — only grey it when even that won't reach anything.
+  const atkNow = !!apc.hasAttack;
+  const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit));
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
-    available: !!apc.hasAttack,
-    sub: apc.hasAttack ? null : 'No target',
+    available: atkReach,
+    note: !atkNow && atkReach ? 'MOVE→ATK' : null,
+    sub: atkReach ? null : 'No target',
   };
 
   const hasSpells = typeof canCastAnySpellWithTargets === 'function' ? canCastAnySpellWithTargets(unit) : false;
@@ -2033,8 +2161,11 @@ function ActionMenu({ st, hidden }) {
   }
   const abilAction = {
     id: 'abil', label: 'Abilities', icon: '✦', cost: '—',
-    available: hasSpells || hasAnySpells,
-    forceLive: true,   // clickable even when greyed, so the list explains itself
+    // abilSub is only set when nothing is castable (even via move→cast),
+    // so it doubles as the grey-out signal; forceLive keeps the blade
+    // clickable so the list can explain WHY each spell is blocked.
+    available: hasSpells || (hasAnySpells && !abilSub),
+    forceLive: true,
     selected: menuView === 'spells',
     sub: abilSub,
   };
@@ -2069,7 +2200,40 @@ function ActionMenu({ st, hidden }) {
     selected: menuView === 'more',
   };
 
+  // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
+  // Items › More (END TURN docks at the very bottom of the ladder).
   const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, moreAction];
+
+  // ── special-action pushers: situational one-shots surfaced as extra
+  // stopwatch buttons on the bezel (they also stay listed under More).
+  // Only built when usable right now — presence == opportunity.
+  const pushers = [];
+  if (typeof getNexusAtUnit === 'function') {
+    const _nex = getNexusAtUnit(unit);
+    if (_nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player)
+        && (unit.ap || 0) >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
+      pushers.push({
+        id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: '#5fd6ff',
+        title: 'Channel this Nexus (1 AP)',
+        fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
+      });
+    }
+  }
+  if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
+    pushers.push({
+      id: 'detonate', glyph: '💣', label: 'DETONATE', color: '#ff5e70',
+      title: 'Detonate your planted bomb',
+      fire: () => { if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); },
+    });
+  }
+  if (typeof getEnterableBuilding === 'function' && getEnterableBuilding(unit)
+      && (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1)) {
+    pushers.push({
+      id: 'lift', glyph: '🛗', label: 'ENTER', color: '#f2c468',
+      title: 'Enter Building — ride the lift to the roof (ends turn)',
+      fire: () => { if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit()); },
+    });
+  }
 
   const tileTargetModes = ['combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone'];
   const isWasdWalking = am === 'move' && typeof _wasdOrigin !== 'undefined' && _wasdOrigin && !_wasdCommitted;
@@ -2164,8 +2328,7 @@ function ActionMenu({ st, hidden }) {
   } else {
     view = 'root'; viewKey = 'root|' + (am || '');
     if (am) modeLabel = modeLabels[am] || null;
-    blades = actions.map(a => ({ ...a, ang: HRLG_ANG[a.id] != null ? HRLG_ANG[a.id] : 4 }));
-    blades.sort((a, b) => a.ang - b.ang);
+    blades = actions.map(a => ({ ...a }));   // declared order IS the drum order
     blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: 'SPACE' });
   }
   if (built) { blades = built.blades; title = built.title; }
@@ -2175,7 +2338,8 @@ function ActionMenu({ st, hidden }) {
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
     roman: roman, unitName: unitName, unitKey: unit.id,
     ap: unit.ap || 0, maxAP: maxAP,
-    modeLabel: modeLabel, am: am,
+    hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
+    modeLabel: modeLabel, am: am, pushers: pushers,
     onAction: onAction, onEndTurn: onEndTurn, onCancel: onCancel,
   });
 }
@@ -4285,24 +4449,30 @@ function _injectHudHideStyles() {
       70%  { opacity: 1; transform: scale(1.08) rotate(5deg); }
       100% { opacity: 1; transform: scale(1) rotate(0); }
     }
-    /* the crown — stopwatch pusher on top of the bezel: the universal BACK */
+    /* the crown — stopwatch pusher on top of the bezel: the universal BACK.
+       Big, RED, arrowed — impossible to miss when a sub-menu is open. */
     .hrlg-crown {
-      position: absolute; left: 81px; bottom: 337px; width: 44px; height: 34px;
-      z-index: 9; display: flex; flex-direction: column-reverse; align-items: center;
-      pointer-events: none; opacity: 0.28; cursor: default;
+      position: absolute; left: 72px; bottom: 336px; width: 62px; height: 46px;
+      z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      pointer-events: none; opacity: 0.25; cursor: default;
       transition: opacity 0.18s ease, transform 0.14s cubic-bezier(0.3,1.5,0.4,1);
     }
-    .hrlg-crown-stem { width: 10px; height: 7px; background: linear-gradient(90deg, var(--hfc-soft), var(--hfc), var(--hfc-soft)); }
+    .hrlg-crown-stem { width: 12px; height: 8px; background: linear-gradient(90deg, rgba(255,94,112,0.35), #ff5e70, rgba(255,94,112,0.35)); }
     .hrlg-crown-cap {
-      width: 22px; height: 11px; border-radius: 4px 4px 1px 1px;
-      background: linear-gradient(180deg, #1c2436, #0a0c15);
-      border: 1px solid var(--hfc);
-      box-shadow: 0 0 8px var(--hfc-faint), inset 0 1px 0 rgba(255,255,255,0.18);
+      width: 38px; height: 22px; border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, #3d141d, #14060a);
+      border: 1px solid #ff5e70;
+      box-shadow: 0 0 12px rgba(255,94,112,0.4), inset 0 1px 0 rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hrlg-crown-arrow {
+      font-size: 12px; line-height: 1; color: #ff8a97;
+      text-shadow: 0 0 8px rgba(255,94,112,0.8);
     }
     .hrlg-crown-label {
-      position: absolute; left: 50%; top: -13px; transform: translateX(-50%);
-      font-size: 8px; letter-spacing: 0.22em; color: var(--hfc);
-      text-shadow: 0 0 8px var(--hfc-soft); white-space: nowrap;
+      position: absolute; left: 50%; top: -14px; transform: translateX(-50%);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: #ff8a97;
+      text-shadow: 0 0 10px rgba(255,94,112,0.7); white-space: nowrap;
     }
     .hrlg-crown.live {
       opacity: 1; pointer-events: auto; cursor: pointer;
@@ -4310,10 +4480,60 @@ function _injectHudHideStyles() {
     }
     @keyframes hrlgCrownPulse {
       0%, 100% { filter: brightness(1); }
-      50%      { filter: brightness(1.45); }
+      50%      { filter: brightness(1.5); }
     }
-    .hrlg-crown.live:hover  { transform: translateY(-2px); }
+    .hrlg-crown.live:hover  { transform: translateY(-2px) scale(1.06); }
     .hrlg-crown.live:active { transform: translateY(3px); }
+    /* ── special-action pushers: extra chronograph buttons on the bezel.
+       Mounted only while their action is usable; they pulse + ping. */
+    .hrlg-pusher {
+      position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px;
+      z-index: 10; pointer-events: auto; cursor: pointer;
+      animation: hrlgPusherIn 0.4s cubic-bezier(0.16,1.4,0.3,1) backwards;
+    }
+    .hrlg-pusher::before {   /* stem rooting the button to the bezel */
+      content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 30px;
+      margin: -15px 0 0 -5px;
+      transform: rotate(var(--pang)) translateY(24px);
+      background: linear-gradient(90deg, var(--pc-faint), var(--pc-soft), var(--pc-faint));
+    }
+    .hrlg-pusher::after {    /* expanding ring ping — "you can do this NOW" */
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      border: 1px solid var(--pc); opacity: 0; pointer-events: none;
+      animation: hrlgPusherPing 2.4s ease-out infinite;
+    }
+    @keyframes hrlgPusherPing {
+      0%   { opacity: 0.7; transform: scale(1); }
+      45%  { opacity: 0;   transform: scale(1.85); }
+      100% { opacity: 0;   transform: scale(1.85); }
+    }
+    @keyframes hrlgPusherIn {
+      0%   { opacity: 0; transform: scale(0.3); }
+      70%  { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .hrlg-pusher-cap {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #202a40, #0a0c15 70%);
+      border: 1px solid var(--pc);
+      box-shadow: 0 0 10px var(--pc-soft), inset 0 1px 0 rgba(255,255,255,0.14);
+      animation: hrlgPusherPulse 1.3s ease-in-out infinite;
+      transition: transform 0.14s cubic-bezier(0.3,1.5,0.4,1);
+    }
+    @keyframes hrlgPusherPulse {
+      0%, 100% { box-shadow: 0 0 6px var(--pc-soft), inset 0 1px 0 rgba(255,255,255,0.14); }
+      50%      { box-shadow: 0 0 16px var(--pc), 0 0 30px var(--pc-soft), inset 0 1px 0 rgba(255,255,255,0.14); }
+    }
+    .hrlg-pusher-glyph { font-size: 17px; line-height: 1; color: var(--pc); text-shadow: 0 0 10px var(--pc-soft); }
+    .hrlg-pusher:hover .hrlg-pusher-cap  { transform: scale(1.12); }
+    .hrlg-pusher:active .hrlg-pusher-cap { transform: scale(0.92); }
+    .hrlg-pusher-lbl {
+      position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 2px;
+      font-size: 8px; font-weight: 700; letter-spacing: 0.16em; color: var(--pc);
+      text-shadow: 0 0 8px var(--pc-soft), 0 1px 2px rgba(0,0,0,0.9);
+      white-space: nowrap; pointer-events: none;
+    }
     /* hands — rotation is set imperatively; the transitions live here */
     .hrlg-hour { transform-origin: 100px 100px; transition: transform 0.75s cubic-bezier(0.3,1.5,0.4,1); }
     .hrlg-min  { transform-origin: 100px 100px; transition: transform 0.5s cubic-bezier(0.22,1.6,0.36,1); }
@@ -4359,15 +4579,45 @@ function _injectHudHideStyles() {
     .hrlg-pip.bonus.on { background: #6ee2a8; border-color: #6ee2a8; box-shadow: 0 0 8px #6ee2a8; }
     .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
     @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    /* HP/MP vitals under the watch — mirrors the top-left panel */
+    .hrlg-vitals {
+      position: absolute; left: 22px; bottom: 70px; width: 162px;
+      display: flex; flex-direction: column; gap: 3px; pointer-events: none; z-index: 9;
+    }
+    .hrlg-vbar {
+      position: relative; height: 12px; background: rgba(0,0,0,0.68);
+      border: 1px solid rgba(255,255,255,0.1); overflow: hidden;
+      clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+      display: flex; align-items: center;
+    }
+    .hrlg-vbar.mp { height: 10px; }
+    .hrlg-vfill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      transition: width 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+    .hrlg-vlbl {
+      position: relative; font-size: 7px; letter-spacing: 0.18em; margin-left: 4px;
+      color: rgba(255,255,255,0.75); text-shadow: 0 1px 1px rgba(0,0,0,0.9);
+    }
+    .hrlg-vnum {
+      position: relative; margin-left: auto; margin-right: 4px; font-size: 8px;
+      color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.7);
+    }
     /* aiming-state line ("MOVING — CLICK A TILE") */
     .hrlg-mode {
-      position: absolute; left: 8px; bottom: 82px; width: 190px; text-align: center;
+      position: absolute; left: 8px; bottom: 56px; width: 190px; text-align: center;
       font-size: 8px; letter-spacing: 0.18em; color: var(--hfc); pointer-events: none;
     }
-    /* scroll affordance beside the AP row */
+    /* drum position readout beside the AP row (no wrap — N of M) */
     .hrlg-scroll-hint {
       position: absolute; left: 205px; bottom: 104px; pointer-events: none;
       font-size: 8px; letter-spacing: 0.2em; color: #555c70; opacity: 0.85;
+    }
+    /* off-window overflow markers riding the drum's top/bottom edge */
+    .hrlg-more-ind {
+      position: absolute; left: 100px; pointer-events: none; white-space: nowrap;
+      font-size: 8px; letter-spacing: 0.2em; color: var(--hfc); opacity: 0.85;
+      text-shadow: 0 0 8px var(--hfc-soft);
     }
     /* ── the blade DRUM ─────────────────────────────────────────────
        STRAIGHT horizontal blades stacked against the clock; each row's
@@ -4416,6 +4666,11 @@ function _injectHudHideStyles() {
       letter-spacing: 0.05em; color: #e6e9f2; line-height: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* two-line blade: name + chips on top, TYPE / delivery / range badges below */
+    .hrlg-blade.tall { height: 54px; top: -27px; }
+    .hrlg-2line { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+    .hrlg-line1 { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .hrlg-badges { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     .hrlg-cpip { width: 6px; height: 6px; transform: rotate(45deg); background: var(--hfc); box-shadow: 0 0 5px var(--hfc-soft); }
     .hrlg-cfree { font-size: 8px; letter-spacing: 0.16em; color: #555c70; flex: none; white-space: nowrap; }
@@ -4495,11 +4750,14 @@ function _injectHudHideStyles() {
       50%      { box-shadow: -2px 0 26px var(--hfc), inset 3px 0 0 var(--hfc); }
     }
     .hrlg-blade.dead.center { cursor: default; }
-    .hrlg-blade.dead .hrlg-body {
+    /* .dead = inert; .ghost = greyed but still clickable (opens the list so
+       it can explain itself). Both share the same washed-out look. */
+    .hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body {
       background: #0a0b11; border-color: rgba(120,140,180,0.13); border-left-color: #555c70;
       filter: grayscale(1); opacity: 0.68;
     }
-    .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel { color: #555c70; text-shadow: none; }
+    .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
+    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #555c70; text-shadow: none; }
     /* confirm flash sweeping along the blade */
     .hrlg-flash {
       position: absolute; inset: 0; background: var(--hfc); mix-blend-mode: screen;
