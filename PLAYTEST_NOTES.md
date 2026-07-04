@@ -771,6 +771,27 @@ Debug access: **`window.GAME._camera`** (added). Tilt/yaw readouts:
   dialogue still show on the board). The round-start subtitle/log is now
   `⚡ Round N — Fight!` (was "Blitz!"); the bottom subtitle bar mirrors the
   latest combat-log line (`_renderDialogueBox`), so that one string drives both.
+- **Subtitle-bar player prompts (2026-07):** the bottom subtitle bar is now a
+  Pokemon-style prompt box. `_computePlayerPrompt()` (battle.js, above
+  `_renderDialogueBox`) returns a gold `▶ …` line whenever the LOCAL player has
+  a pending choice — root action menu ("X is up — select an action"), move/jump
+  tile picks, attack/spell/item/trade two-click confirms (shows the pending
+  target's name), every spell kind via `_spellTargetPromptText` (skyThrow's
+  grab→throw phase-2 included, keyed off `unit._skyThrowGrab`), the
+  `spellOrientation` H/V pick, combo partner→target, WASD-walk (ENTER confirm),
+  and ward/flair/inspect/trade/warpStone/ping. Priority in `_renderDialogueBox`:
+  `battleDialogueQueue` > fresh combat-log line (2.6s beat, `DLG_LOG_HOLD_MS`,
+  then a timer hands the bar to the prompt) > prompt > stale-log mirror (AI
+  turns unchanged). A prompt that changes while the log stays put (= direct
+  menu input) takes the bar immediately. Gating mirrors the HUD action menu:
+  blitz-active unit is ours + local (`getViewerPlayer`), `canUnitAct`, no
+  `_actionExecuting`/`_dying`/`uiDialog`/winner/autoPlayers. `renderIfDirty`
+  (state.js) now calls `_renderDialogueBox` every battle render since
+  action-mode changes don't dirty the log. Prompt CSS = `.dlg-prompt*` in
+  styles-hud.css. Verified: scratchpad `probe_prompt.js` (10/10 UI checks:
+  root/move/back/attack-confirm/abilities/spell-target/items/log-beat-then-
+  prompt/AI-turn-mirror) + 280s TDM playtest soak, 0 page errors — both need
+  `USE_ASSET_CACHE=1 LOCAL_ASSETS=battle.js,state.js,styles-hud.css`.
 - **camera._busy lifecycle (STALL TRAP):** `_waitForAnimationsThen` polls
   `camera.isBusy()` (8s max per wait). `boardCameraResetTimer` is a SHARED
   slot that any pan/reset/focus cancels — never park a busy-release there or

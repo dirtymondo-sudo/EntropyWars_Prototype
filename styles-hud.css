@@ -3077,6 +3077,30 @@
             color: #d4a0ff;
             text-shadow: 0 0 10px rgba(212,160,255,0.3), 0 2px 8px rgba(0,0,0,0.85);
         }
+        /* ── Player-prompt ("what do I do next?") styling ── */
+        .battle-subtitle-text .dlg-prompt { color: #ffe9b0; }
+        .battle-subtitle-text .dlg-prompt strong {
+            color: #ffd97a;
+            text-shadow: 0 0 8px rgba(255,217,122,0.25), 0 2px 8px rgba(0,0,0,0.85);
+        }
+        .battle-subtitle-text .dlg-prompt-cursor {
+            display: inline-block;
+            color: #ffd97a;
+            text-shadow: 0 0 8px rgba(255,217,122,0.5);
+            animation: dlgPromptBlink 1.1s ease-in-out infinite;
+        }
+        .battle-subtitle-text .dlg-prompt-hint {
+            display: inline-block;
+            margin-left: 8px;
+            color: #8d96ab;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0.06em;
+        }
+        @keyframes dlgPromptBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
         @keyframes subtitleFadeIn {
             0% { opacity: 0; transform: translateY(8px); }
             100% { opacity: 1; transform: translateY(0); }

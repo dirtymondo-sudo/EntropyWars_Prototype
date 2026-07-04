@@ -4134,6 +4134,10 @@
                 if (typeof ensureBattleHUD === 'function') ensureBattleHUD();
                 const _famUnit = (typeof _getHudActiveUnit === 'function') ? _getHudActiveUnit() : getSelectedUnit();
                 if (typeof renderHudActions === 'function') renderHudActions(_famUnit);
+                // Keep the subtitle prompt in sync with action-mode/menu state —
+                // those changes don't always dirty the log, which used to be the
+                // only path into _renderDialogueBox.
+                if (typeof _renderDialogueBox === 'function') _renderDialogueBox(null);
             }
             if (dirty.status) {
                 dirty.status = false;

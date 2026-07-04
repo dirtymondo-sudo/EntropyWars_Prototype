@@ -10462,7 +10462,152 @@
             return true;
         }
 
+        // ── Player-prompt subtitle ──────────────────────────────────────────
+        // Pokemon-style "what do I do next?" line for the bottom dialogue bar.
+        // _computePlayerPrompt() returns HTML whenever the LOCAL player has a
+        // choice to make (root action menu, tile targeting, spell/item target
+        // picks, multi-step casts like Sky Throw's grab→throw, orientation
+        // picks, combo partner→target, confirm clicks…), else null so the bar
+        // falls back to mirroring the combat log like before.
+        function _promptBarHtml(text, hint) {
+            return '<span class="dlg-prompt-cursor">▶</span> <span class="dlg-prompt">' + text + '</span>'
+                + (hint ? ' <span class="dlg-prompt-hint">' + hint + '</span>' : '');
+        }
+
+        // Per-kind targeting instructions for the selected spell. Falls back
+        // to SPELL_KIND_META flags so new kinds still get a sensible line.
+        function _spellTargetPromptText(spell, esc) {
+            const nm = '<strong>' + esc(spell.name) + '</strong>';
+            switch (spell.kind || '') {
+                case 'heal':          return 'Select an ally to heal with ' + nm + '.';
+                case 'shield':        return 'Select an ally to shield with ' + nm + '.';
+                case 'buff':          return 'Select an ally to empower with ' + nm + '.';
+                case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
+                case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
+                case 'swap':          return nm + ': select a unit to swap places with.';
+                case 'pull':          return nm + ': select an enemy to pull in.';
+                case 'teleport':      return nm + ': select a destination tile.';
+                case 'dash':          return nm + ': select a tile to dash to.';
+                case 'warpRune':      return nm + ': select a tile to place the warp rune on.';
+                case 'bomb':          return nm + ': select a tile to place the bomb on.';
+                case 'deployObject':
+                case 'deployPair':
+                case 'deployTurret':  return nm + ': select a tile to deploy on.';
+                case 'buildBridge':   return nm + ': select where to build.';
+                case 'terrainCreate': return nm + ': select a tile to reshape.';
+                case 'plantTree':     return nm + ': select a tile to plant on.';
+                case 'line':
+                case 'linePush':
+                case 'splitBeam':     return nm + ': select a tile to aim at — the beam fires in that direction.';
+                case 'skyDrop':       return nm + ': select an enemy to grab, carry skyward and drop.';
+                case 'skyThrow':      return nm + ': select an enemy to grab.';
+                case 'skySlam':       return nm + ': select an enemy to dive onto.';
+                case 'leapStrike':    return nm + ': select an enemy to leap at.';
+                case 'summonWeather': return nm + ': select a tile to call the weather down on.';
+                case 'remoteView':    return nm + ': select any tile to scry — the fog there is revealed.';
+            }
+            const meta = _kindMeta(spell);
+            if (meta.allyOnly)     return 'Select an ally for ' + nm + '.';
+            if (meta.tileTargeted) return nm + ': select a target tile.';
+            if (meta.offensive)    return 'Select an enemy target for ' + nm + '.';
+            return 'Select a target for ' + nm + '.';
+        }
+
+        function _computePlayerPrompt() {
+            try {
+                if (state.phase !== 'battle' || state.winner) return null;
+                if (state.uiDialog) return null;
+                if (state._actionExecuting) return null;
+                if (state.devAutoSim) return null;
+                if ((state.units || []).some(u => u._dying)) return null;
+                if (state.autoPlayers?.[state.activePlayer]) return null;
+
+                // Same controllability gate as the HUD action menu: prompt only
+                // when the blitz-active unit is ours, local, and can still act.
+                const activeId = state._blitzActiveUnitId || state.selectedUnitId;
+                const unit = (state.units || []).find(u => u.id === activeId);
+                if (!unit || unit.dead) return null;
+                if (unit.player !== state.activePlayer) return null;
+                if (unit.player !== getViewerPlayer()) return null;
+                if (!canUnitAct(unit)) return null;
+
+                const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s));
+                const am = state.actionMode;
+                const menuView = state.actionMenuView || 'root';
+
+                // Label for the two-click confirm step (attack/spell/item/trade)
+                const pt = state.pendingTarget;
+                let ptLabel = null;
+                if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+                    const tu = unitAt(pt.x, pt.y);
+                    ptLabel = '<strong>' + (tu ? esc(unitDisplayName(tu)) : coordLabel(pt.x, pt.y)) + '</strong>';
+                }
+
+                if (am === 'move') {
+                    const wasdWalking = typeof _wasdOrigin !== 'undefined' && _wasdOrigin
+                        && typeof _wasdCommitted !== 'undefined' && !_wasdCommitted;
+                    if (wasdWalking) return _promptBarHtml('Walk with WASD / arrow keys.', 'ENTER confirm · ESC cancel');
+                    return _promptBarHtml('Select a highlighted tile to move to.', 'ESC cancel');
+                }
+                if (am === 'jump') return _promptBarHtml('Select a highlighted tile to jump to.', 'ESC cancel');
+                if (am === 'attack') {
+                    if (ptLabel) return _promptBarHtml('Attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
+                    return _promptBarHtml('Select an enemy to attack.', 'ESC cancel');
+                }
+                if (am === 'combo') {
+                    if (!state.comboPartner) return _promptBarHtml('Combo: select an adjacent ally to team up with.', 'ESC cancel');
+                    const combo = (typeof getComboForUnits === 'function') ? getComboForUnits(unit, state.comboPartner) : null;
+                    return _promptBarHtml('<strong>' + esc(combo?.name || 'Combo') + '</strong> ready — select an enemy target.', 'ESC cancel');
+                }
+                if (am === 'spell') {
+                    if (menuView === 'spellOrientation') {
+                        return _promptBarHtml('Choose the placement orientation: ↔ Horizontal or ↕ Vertical.', 'ESC cancel');
+                    }
+                    if (unit._skyThrowGrab) {
+                        const grabbed = (state.units || []).find(u => u.id === unit._skyThrowGrab.id);
+                        return _promptBarHtml('Select a tile to throw <strong>' + esc(unitDisplayName(grabbed)) + '</strong> to!');
+                    }
+                    const spell = (unit.spells || []).find(s => s && s.name === state.selectedTool)
+                        || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
+                    if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
+                    if (ptLabel) return _promptBarHtml('<strong>' + esc(spell.name) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
+                }
+                if (am === 'item') {
+                    const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[state.selectedTool] : null;
+                    const iName = '<strong>' + esc(rule?.name || 'Item') + '</strong>';
+                    if (ptLabel) return _promptBarHtml(iName + ' → ' + ptLabel + ' — click to confirm.', 'ESC cancel');
+                    if (rule?.baneType) return _promptBarHtml('Select an enemy to hit with ' + iName + '.', 'ESC cancel');
+                    return _promptBarHtml('Select a unit to use ' + iName + ' on.', 'ESC cancel');
+                }
+                if (am === 'trade') {
+                    if (ptLabel) return _promptBarHtml('Trade with ' + ptLabel + ' — click to confirm.', 'ESC cancel');
+                    return _promptBarHtml('Select an adjacent ally to trade items with.', 'ESC cancel');
+                }
+                if (am === 'inspect')   return _promptBarHtml('Select a tile to inspect.', 'ESC cancel');
+                if (am === 'ward')      return _promptBarHtml('Select a tile to place the Ward on.', 'ESC cancel');
+                if (am === 'flair')     return _promptBarHtml('Select a tile to throw the Flair to.', 'ESC cancel');
+                if (am === 'warpStone') return _promptBarHtml('Select a destination tile to warp to.', 'ESC cancel');
+                if (am === 'ping')      return _promptBarHtml('Select a tile to ping for your team.', 'ESC cancel');
+
+                // No action mode → the player is browsing a menu (or the root list).
+                if (menuView === 'spells') return _promptBarHtml('Select an ability to cast.', 'ESC back');
+                if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
+                if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
+                if (menuView === 'more')   return _promptBarHtml('Select an option.', 'ESC back');
+                return _promptBarHtml('<strong>' + esc(unitDisplayName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
+            } catch (err) {
+                return null; // a broken prompt must never take the game down
+            }
+        }
+
         let _lastDialogueHtml = '';
+        let _dlgLogKey = '';        // identity of the newest dialogue-worthy log line
+        let _dlgLogShownAt = 0;     // when that line first hit the bar
+        let _dlgLogConsumed = false;// true once a prompt has reclaimed the bar from it
+        let _dlgSwapTimer = null;   // pending log→prompt handoff
+        let _dlgLastPromptHtml = null;
+        const DLG_LOG_HOLD_MS = 2600;
         function _renderDialogueBox(col) {
 
             const bar = document.getElementById('battleSubtitleBar');
@@ -10490,12 +10635,52 @@
                 }
             }
 
-            if (lastEntry) {
-                const raw = _logMsg(lastEntry).replace(/<[^>]+>/g, '');
-                const colorized = formatCombatLogLine(raw);
-                if (colorized !== _lastDialogueHtml) {
-                    textEl.innerHTML = colorized;
-                    _lastDialogueHtml = colorized;
+            // Priority: fresh combat-log lines get a Pokemon-style beat on the
+            // bar ("X takes 45 damage!"), then the player prompt reclaims it.
+            // A prompt that changes while the log stays put is a direct answer
+            // to player input (opened a menu, picked a spell, cycled a target)
+            // and takes the bar immediately.
+            const now = Date.now();
+            const rawMsg = lastEntry ? _logMsg(lastEntry).replace(/<[^>]+>/g, '') : '';
+            const logKey = lastEntry ? entries.length + '|' + rawMsg : '';
+            const logChanged = logKey !== _dlgLogKey;
+            if (logChanged) {
+                _dlgLogKey = logKey;
+                _dlgLogShownAt = lastEntry ? now : 0;
+                _dlgLogConsumed = false;
+            }
+
+            const promptHtml = _computePlayerPrompt();
+            const promptChanged = promptHtml !== _dlgLastPromptHtml;
+            if (promptHtml && _dlgLastPromptHtml && promptChanged && !logChanged) {
+                _dlgLogConsumed = true;
+            }
+            _dlgLastPromptHtml = promptHtml;
+
+            const logAge = now - _dlgLogShownAt;
+            const showLog = !!lastEntry
+                && (!promptHtml || (!_dlgLogConsumed && logAge < DLG_LOG_HOLD_MS));
+
+            if (_dlgSwapTimer) { clearTimeout(_dlgSwapTimer); _dlgSwapTimer = null; }
+
+            let html = '';
+            if (showLog) {
+                html = formatCombatLogLine(rawMsg);
+                if (promptHtml) {
+                    // hand the bar to the prompt once the log line's beat is over
+                    _dlgSwapTimer = setTimeout(() => {
+                        _dlgSwapTimer = null;
+                        _renderDialogueBox(null);
+                    }, Math.max(80, DLG_LOG_HOLD_MS - logAge + 40));
+                }
+            } else if (promptHtml) {
+                html = promptHtml;
+            }
+
+            if (html) {
+                if (html !== _lastDialogueHtml) {
+                    textEl.innerHTML = html;
+                    _lastDialogueHtml = html;
                 }
                 bar.classList.add('visible');
             } else {
