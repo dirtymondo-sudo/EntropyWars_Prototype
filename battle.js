@@ -3267,32 +3267,13 @@
             let idx = 0;
 
             // End-of-round resolution is read like a map report, not an action:
-            // remember the player's live framing so we can drop into a high,
-            // strategic top-down view for the burn/poison/etc ticks and then
-            // restore their normal angle before the next turn begins.
-            // Return to the player's RESTING orientation after the ticks (not
-            // camera._tt — by now that holds the overview's framing, which would
-            // "restore" to the wrong angle). The next turn re-frames from here
-            // too, so this just keeps the overview readable between units.
-            // NOTE: don't capture camera._tz here — showEndOfRoundOverview()
-            // has already retargeted it to the pulled-back overview zoom, so
-            // "restoring" it left the camera stranded miles out after every
-            // round. Restore to the player's actual gameplay zoom instead,
-            // re-read at fire time so a wheel-zoom made DURING the sequence
-            // sticks.
-            const _eorPrevView = (!state.cameraDisabled)
-                ? { tilt: camera._restTilt, yaw: camera._restYaw,
-                    zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom() } : null;
+            // dive from the tactical overview onto each afflicted unit in turn,
+            // then glide back UP to the overview so the next beat (field
+            // effects, detonations, turrets, storms) starts from the same
+            // establishing shot every round. The camera never re-angles — every
+            // move rides the player's resting tilt/yaw (see eorFocusCamera).
             function _restoreEorView() {
-                if (_eorPrevView && !state.cameraDisabled) {
-                    const _uz = getUserZoomScale();
-                    camera.moveTo({
-                        tilt: _eorPrevView.tilt, yaw: _eorPrevView.yaw,
-                        zoom: isUserZoomEngaged() ? _uz : _eorPrevView.zoom,
-                        duration: 320, easing: 'easeInOut',
-                        _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
-                    });
-                }
+                if (!state.cameraDisabled) showEndOfRoundOverview();
             }
 
             function processNext() {
@@ -3317,20 +3298,10 @@
                 const isVisible = _isUnitVisibleToViewer(unit, viewer);
 
                 if (isVisible && !state.cameraDisabled) {
-                    // Pan-and-zoom in on the unit taking damage at the player's
-                    // resting tilt — no tilt swing, so the whole EOR tour reads as
-                    // one smooth glide across the board rather than a series of
-                    // re-angled cuts. A zoom the player dialed in by hand (wheel)
-                    // wins over the tour's framing — auto moves must never yank
-                    // an engaged user zoom back out.
-                    const _uz = getUserZoomScale();
-                    camera.moveTo({
-                        x: unit.x, y: unit.y,
-                        zoom: isUserZoomEngaged() ? _uz : getDefaultZoom() * 1.25,
-                        tilt: camera._restTilt, yaw: camera._restYaw,
-                        duration: 400, easing: 'easeInOut',
-                        _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
-                    });
+                    // Dive onto the unit taking the burn/poison/drowning tick —
+                    // shared EOR framing (resting tilt/yaw + the one tour zoom),
+                    // so this reads as a glide across the board, not a cut.
+                    eorFocusCamera(unit.x, unit.y, { duration: 400 });
                 }
 
                 const dlgMsgs = [];
@@ -3390,6 +3361,7 @@
             if (state.cameraDisabled) {
                 processNext();
             } else {
+                _eorPhaseLabel('End of Round — Status Effects');
                 window.setTimeout(processNext, 460);
             }
         }
@@ -3589,6 +3561,22 @@
 
             const viewer = getViewerPlayer();
 
+            // Frame the beat BEFORE its floats fire: one affected unit → dive
+            // onto it; several across the board → hold the tactical overview so
+            // every "+HP"/"-HP" reads at once. Same resting angle either way.
+            const _visEvents = events.filter(e => !e.unit.dead && _isUnitVisibleToViewer(e.unit, viewer));
+            let _fieldCamLead = 0;
+            if (_visEvents.length && !state.cameraDisabled) {
+                _eorPhaseLabel('End of Round — Field Effects');
+                if (_visEvents.length === 1) {
+                    eorFocusCamera(_visEvents[0].unit.x, _visEvents[0].unit.y);
+                } else {
+                    showEndOfRoundOverview();
+                }
+                _fieldCamLead = 420;
+            }
+
+            function _showFieldEffects() {
             const allMsgs = [];
             for (const evt of events) {
                 if (evt.unit.dead) continue;
@@ -3624,6 +3612,10 @@
                 scheduleBoardRender();
                 if (onDone) onDone();
             }, delay);
+            }
+
+            if (_fieldCamLead > 0) window.setTimeout(_showFieldEffects, _fieldCamLead);
+            else _showFieldEffects();
         }
 
         const REGEN_PERCENT = 0.05;
@@ -3669,6 +3661,7 @@
             // Frame the whole board from the tactical overhead so every unit's
             // regen "+HP/+MP" reads at once (a storm follow may have pulled the
             // camera off to one side just before this).
+            _eorPhaseLabel('End of Round — Recovery');
             showEndOfRoundOverview();
 
             for (const h of healed) {
@@ -3732,6 +3725,21 @@
                 return;
             }
 
+            // Frame the epicentre BEFORE the ground starts shaking — the quake
+            // used to rattle the board and drop its damage wherever the camera
+            // happened to be parked, often with the struck units off-screen.
+            let _eqFocus = eq.blowback ? { x: eq.blowback.cx, y: eq.blowback.cy } : null;
+            if (!_eqFocus && eq.hits.length) {
+                const _u0 = state.units.find(u => u.id === eq.hits[0].unitId);
+                if (_u0) _eqFocus = { x: _u0.x, y: _u0.y };
+            }
+            let _eqCamLead = 0;
+            if (_eqFocus && !state.cameraDisabled) {
+                eorFocusCamera(_eqFocus.x, _eqFocus.y, { duration: 420 });
+                _eqCamLead = 440;
+            }
+
+            window.setTimeout(() => {
             shakeBoard('hard');
 
             const viewer = getViewerPlayer();
@@ -3752,6 +3760,7 @@
             window.setTimeout(() => {
                 if (onDone) onDone();
             }, delay);
+            }, _eqCamLead);
         }
 
         // ── Seed effect core ───────────────────────────────────────────────────
@@ -7630,6 +7639,63 @@
             });
         }
 
+        // ── End-of-round camera director ──
+        // Every end-of-round beat frames its subject with the SAME move: pan to
+        // the point at the player's resting tactical tilt/yaw and ONE shared
+        // focus zoom. The beats differ only in WHERE they look, never in how —
+        // that is what makes the whole resolution read as a single smooth
+        // camera tour (overview → dive to subject → back to overview) instead
+        // of a series of mismatched cuts. An engaged user wheel-zoom always
+        // wins over the tour's framing.
+        const EOR_FOCUS_ZOOM_MULT = 1.3;
+        function getEorFocusZoom() {
+            if (isUserZoomEngaged()) return getUserZoomScale();
+            return Math.max(0.15, Math.min(10.0, getDefaultZoom() * EOR_FOCUS_ZOOM_MULT));
+        }
+        function eorFocusCamera(x, y, opts = {}) {
+            if (_skipVisuals() || state.cameraDisabled) return;
+            camera.moveTo({
+                x, y,
+                zoom: opts.zoom ?? getEorFocusZoom(),
+                tilt: camera._restTilt, yaw: camera._restYaw,
+                duration: opts.duration ?? 420, easing: 'easeInOut',
+                _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
+            });
+        }
+
+        // ── End-of-round phase chip ──
+        // A small fixed ribbon naming the beat currently resolving ("Status
+        // Effects", "Turret Fire", "Storms"…) so the between-round tour always
+        // tells the player WHAT they are looking at. Lazily created, inline-
+        // styled (no stylesheet dependency), pointer-transparent. Hidden by
+        // the round banner and again once the buffered round-start events have
+        // finished playing.
+        let _eorChipEl = null;
+        function _eorPhaseLabel(text) {
+            if (_skipVisuals() || state.winner) return;
+            if (!_eorChipEl || !_eorChipEl.isConnected) {
+                _eorChipEl = document.createElement('div');
+                _eorChipEl.id = 'eorPhaseChip';
+                _eorChipEl.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:960;'
+                    + 'background:rgba(10,12,20,0.78);color:#e8d9a8;border:1px solid rgba(220,190,130,0.35);'
+                    + 'border-radius:999px;padding:5px 18px;font-family:DotGothic16,monospace;font-size:13px;'
+                    + 'letter-spacing:0.14em;text-transform:uppercase;pointer-events:none;white-space:nowrap;'
+                    + 'opacity:0;transition:opacity 220ms ease;box-shadow:0 2px 14px rgba(0,0,0,0.45)';
+                (document.getElementById('game-viewport') || document.body).appendChild(_eorChipEl);
+            }
+            _eorChipEl.textContent = text;
+            requestAnimationFrame(() => { if (_eorChipEl) _eorChipEl.style.opacity = '1'; });
+        }
+        function _eorPhaseLabelHide() {
+            if (_eorChipEl) _eorChipEl.style.opacity = '0';
+        }
+        // state.js beats (detonations, storms, buffered round events) reach
+        // these through globals — expose them explicitly for clarity.
+        window.eorFocusCamera = eorFocusCamera;
+        window.getEorFocusZoom = getEorFocusZoom;
+        window._eorPhaseLabel = _eorPhaseLabel;
+        window._eorPhaseLabelHide = _eorPhaseLabelHide;
+
         function getOffensiveCameraTimings(sourceUnit, target, opts = {}) {
             const distance = Math.max(1, Math.abs((sourceUnit?.x ?? 0) - (target?.x ?? 0)) + Math.abs((sourceUnit?.y ?? 0) - (target?.y ?? 0)));
 
@@ -8615,6 +8681,8 @@
                 return;
             }
 
+            _eorPhaseLabel('End of Round — Turret Fire');
+
             let idx = 0;
             function fireNext() {
                 if (state.winner) { if (onDone) onDone(); return; }
@@ -8628,17 +8696,25 @@
 
                 const isVisible = !state.fogOfWar
                     || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(s.target.x, s.target.y));
-                if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
-                    const camZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
-                        ? getUserZoomScale() : getDefaultZoom();
-                    camera.moveTo({
-                        x: (s.turret.x + s.target.x) / 2, y: (s.turret.y + s.target.y) / 2,
-                        zoom: camZoom, duration: 350, _fogAllowed: true
-                    });
+                // A turret's volley is staged like a unit taking its own turn:
+                // Beat 1 — the camera drops onto the TURRET (its "activation"),
+                // holds while the sight laser locks; Beat 2 — it swings to the
+                // middle of the sight line as the blast fires, so turret, beam
+                // and impact all read in one frame. Both beats use the shared
+                // EOR framing (resting tilt/yaw, one tour zoom) — action-cam
+                // pacing without leaving the tactical view.
+                const _turretCam = isVisible && !state.cameraDisabled && typeof camera !== 'undefined';
+                if (_turretCam) {
+                    eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
+                    if (_turretCam) {
+                        eorFocusCamera(
+                            (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
+                            { duration: 400 });
+                    }
                     playSfx('turret');
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
@@ -8654,7 +8730,8 @@
                             hitTiles: [{ x: s.target.x, y: s.target.y }]
                         });
                     }
-                    // Land the damage as the blast connects (beam charge + flash).
+                    // Land the damage as the blast connects (beam charge + flash
+                    // while the camera is still gliding onto the sight line).
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
                         applyShot(s);
@@ -8662,9 +8739,9 @@
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(450));
-                    }, actionMs(280));
-                }, actionMs(420));
+                        window.setTimeout(fireNext, actionMs(520));
+                    }, actionMs(300));
+                }, _turretCam ? actionMs(760) : actionMs(420));
             }
             fireNext();
         }
@@ -15119,6 +15196,10 @@
         }
 
         function showRoundBanner(roundNum, onDone) {
+            // The round banner takes over the screen — the end-of-round phase
+            // chip's job is done (buffered round-START groups re-show it with
+            // their own labels as they play).
+            _eorPhaseLabelHide();
             if (_skipVisuals()) { if (onDone) onDone(); return; }
             let overlay = document.getElementById('roundBannerOverlay');
             if (!overlay) {
@@ -15190,8 +15271,32 @@
 
                     _roundAdvanceInProgress = true;
 
-                    // Establish a tactical overhead of the whole battlefield
-                    // before resolving the end-of-round beats below.
+                    // ═══ END-OF-ROUND SEQUENCE — canonical order, every round ═══
+                    // One camera language throughout: every beat frames its
+                    // subject at the player's resting tactical tilt/yaw via
+                    // eorFocusCamera / showEndOfRoundOverview; only the sky
+                    // cinematic (zodiac / celestial event) deliberately cranes
+                    // the gaze up at the firmament, and it hands the camera
+                    // back down itself. The order is FIXED:
+                    //   1. Establishing shot — pull back to the tactical overview.
+                    //   2. Status ticks — dive onto each burning/poisoned/drowning
+                    //      unit, then back up to the overview.
+                    //   3. Field effects — zones, seeds, spawn-zone regen/scorch
+                    //      (single subject → dive; several → overview).
+                    //   4. Delayed detonations — dive onto each blast.
+                    //   5. Turret volleys — each turret gets its own action beat:
+                    //      camera on the turret, then down the sight line as it fires.
+                    //   6. Storms — focus the vortex, glide with it as it hunts,
+                    //      watch it strike.
+                    //   7. Recovery — overview while every unit's regen ticks.
+                    //   8. Round banner ("Round N").
+                    //   9. Buffered round-start events — terrain damage (lava,
+                    //      drowning), weather ticks, respawns — each group gets a
+                    //      labelled camera dive.
+                    //  10. Announcements — new weather (camera on the spawn tiles),
+                    //      zodiac shift / celestial events (sky cinematic).
+                    //  11. Pending earthquake — frame the epicentre, then shake.
+                    //  12. First unit's activation pan — back to gameplay.
                     showEndOfRoundOverview();
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
@@ -15589,8 +15694,20 @@
                         renderBoard();
                         const baseZoom = getUserZoomScale();
                         const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        // Fold the return-to-tactical-view into the activation
+                        // pan: every turn handoff lands at the resting tilt/yaw
+                        // (the player's remembered pre-cine framing if a shot is
+                        // still pending), so the camera can never carry a craned
+                        // cinematic angle from the previous unit's action into
+                        // the next unit's turn.
+                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        camera._preCineView = null;
+                        camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
+                            tilt: _retTilt,
+                            yaw: _retYaw,
                             holdMs: 99999,
                             persist: true,
                             transitionMs: 750,
@@ -15617,8 +15734,17 @@
                         renderBoard();
                         const baseZoom = getUserZoomScale();
                         const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        // Same turn-handoff rule as the AI branch above: the
+                        // activation pan always settles at the resting tactical
+                        // orientation, never at a leftover action angle.
+                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        camera._preCineView = null;
+                        camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
+                            tilt: _retTilt,
+                            yaw: _retYaw,
                             holdMs: 99999,
                             persist: true,
                             transitionMs: 750,

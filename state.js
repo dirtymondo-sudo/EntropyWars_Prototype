@@ -926,9 +926,33 @@
             renderBattleUpdate();
         }
 
+        // Where a buffered event group happened on the board — the tile the
+        // round-start camera should dive to before the group's floats/flashes
+        // fire. First event with a usable position wins.
+        function _reGroupFocal(group) {
+            for (const evt of group.events) {
+                if ((evt.type === 'floatingText' || evt.type === 'hitEffect')
+                    && Number.isFinite(evt.x) && Number.isFinite(evt.y)) {
+                    return { x: evt.x, y: evt.y };
+                }
+                if (evt.type === 'flash' && evt.unitId != null) {
+                    const u = state.units.find(un => un.id === evt.unitId);
+                    if (u) return { x: u.x, y: u.y };
+                }
+                if (evt.type === 'deathBanner' && evt.deadUnit
+                    && Number.isFinite(evt.deadUnit.x) && Number.isFinite(evt.deadUnit.y)) {
+                    return { x: evt.deadUnit.x, y: evt.deadUnit.y };
+                }
+            }
+            return null;
+        }
+
         function playBufferedRoundEvents(onDone) {
             const groups = _roundEventBuffer;
             _roundEventBuffer = [];
+            const _hideChip = () => {
+                if (typeof _eorPhaseLabelHide === 'function') _eorPhaseLabelHide();
+            };
             if (!groups.length || state.devAutoSim) {
                 if (onDone) onDone();
                 return;
@@ -942,10 +966,29 @@
             let idx = 0;
             function playNext() {
                 if (state.winner || idx >= nonEmpty.length) {
+                    _hideChip();
                     if (onDone) onDone();
                     return;
                 }
                 const group = nonEmpty[idx++];
+
+                // Dive the camera onto the group's subject (a unit drowning in
+                // deep water, burning on lava, a fresh respawn…) before its
+                // floats fire — same shared framing as every end-of-round beat.
+                // Skip the pan for tiles the viewer can't see under fog.
+                const focal = _reGroupFocal(group);
+                const camOk = focal && !state.cameraDisabled
+                    && typeof eorFocusCamera === 'function'
+                    && !(typeof _skipVisuals === 'function' && _skipVisuals())
+                    && (!state.fogOfWar
+                        || typeof _isTileVisibleToViewer !== 'function'
+                        || _isTileVisibleToViewer(focal.x, focal.y));
+                if (camOk) {
+                    if (typeof _eorPhaseLabel === 'function' && group.label) _eorPhaseLabel(group.label);
+                    eorFocusCamera(focal.x, focal.y, { duration: 380 });
+                }
+
+                window.setTimeout(() => {
                 _rePlayGroup(group);
 
                 let delayMs = actionMs(420);
@@ -956,6 +999,7 @@
                 else if (hasShake) delayMs = actionMs(700);
                 else if (hasDmg) delayMs = actionMs(550);
                 window.setTimeout(playNext, delayMs);
+                }, camOk ? 360 : 0);
             }
             playNext();
         }
@@ -1027,8 +1071,15 @@
 
                 const isVisible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(ds.x, ds.y));
                 if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
-                    const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
-                    camera.moveTo({ x: ds.x, y: ds.y, zoom: _detZoom, duration: 350, _fogAllowed: true });
+                    // Shared end-of-round framing (resting tactical angle, one
+                    // tour zoom) so the detonation dive matches every other beat.
+                    if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
+                    if (typeof eorFocusCamera === 'function') {
+                        eorFocusCamera(ds.x, ds.y, { duration: 380 });
+                    } else {
+                        const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
+                        camera.moveTo({ x: ds.x, y: ds.y, zoom: _detZoom, duration: 350, _fogAllowed: true });
+                    }
                 }
 
                 const _spellIdForVfx = ds.spellId || _delayedSpellIdFromName(ds.spellName);
@@ -1436,6 +1487,23 @@
             if ((kind === 'zodiac' || kind === 'sky') && _canPlaySkyCinematic()) {
                 playSkyCinematic(title, subtitle, kind, onDone);
                 return;
+            }
+            // A weather callout pans the camera to where the weather actually
+            // formed (stashed by spawnWeather) so the banner and the board tell
+            // the same story — same tactical framing as every other EOR beat.
+            if (kind === 'weather' && state._lastWeatherSpawnTiles && state._lastWeatherSpawnTiles.length) {
+                const _wxTiles = state._lastWeatherSpawnTiles;
+                state._lastWeatherSpawnTiles = null;
+                if (!state.cameraDisabled && !_skipVisuals() && typeof eorFocusCamera === 'function') {
+                    const _wcx = _wxTiles.reduce((s, t) => s + t.x, 0) / _wxTiles.length;
+                    const _wcy = _wxTiles.reduce((s, t) => s + t.y, 0) / _wxTiles.length;
+                    // Frame a touch wider than the tour zoom so a multi-tile
+                    // weather system fits in one look.
+                    const _wxZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
+                        ? getUserZoomScale()
+                        : (typeof getDefaultZoom === 'function' ? getDefaultZoom() * 1.1 : undefined);
+                    eorFocusCamera(_wcx, _wcy, { zoom: _wxZoom, duration: 520 });
+                }
             }
             _flashAnnouncementBanner(title, subtitle, kind, actionMs(2200), onDone, shake);
         }
@@ -2108,6 +2176,11 @@
             };
             addLog(`${def.icon} ${def.label} forms on the battlefield! ${def.desc}`);
 
+            // Remember WHERE the weather formed so the announcement banner can
+            // frame it — a storm callout with the storm off-screen tells the
+            // player nothing (see showAnnouncementBanner).
+            state._lastWeatherSpawnTiles = tiles.map(t => ({ x: t.x, y: t.y }));
+
             if (def.instant) {
                 queueAnnouncement(`${def.icon} ${def.label}`, def.desc, 'weather', { shake: 'hard' });
 
@@ -2345,7 +2418,12 @@
             if (_cam && _focus && !_skipVisuals() && !state.cameraDisabled
                 && typeof getDefaultZoom === 'function') {
                 _followLeadMs = 320;
-                const _stormZoom = getDefaultZoom() * 1.35;
+                if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Storms');
+                // Shared end-of-round tour zoom (honors an engaged user zoom);
+                // falls back to the old local framing if battle.js hasn't
+                // exposed the helper yet.
+                const _stormZoom = (typeof getEorFocusZoom === 'function')
+                    ? getEorFocusZoom() : getDefaultZoom() * 1.35;
                 // Ride the player's resting tilt so the whole end-of-round tour
                 // (overview → DoT pans → storm follow → regen) stays at one
                 // consistent angle instead of swinging the camera each beat.

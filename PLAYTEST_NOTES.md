@@ -1558,6 +1558,56 @@ state.js and hud.js:
    autoPlayers, force `_blitzActiveUnitId`) and allow ≥3.5s for the 2s hold —
    rAF ticks are slow under swiftshader.
 
+## End-of-round camera director + turn-handoff angle reset (2026-07-04)
+User ask: turn-switch pans must always settle at a normal tactical view; the
+end-of-round sequence must be one clean, fixed-order camera tour (pan to DoT
+victims, turrets get their own action beat, follow the storm vortex, keep the
+zodiac/celestial sky crane, frame everything relevant).
+
+**Architecture (battle.js, near `showEndOfRoundOverview`):**
+- `eorFocusCamera(x, y, {zoom, duration})` — THE one move every EOR beat uses:
+  pan to the point at `camera._restTilt/_restYaw` (the player's resting 2.5D
+  angle) and one shared tour zoom. Never re-angles.
+- `getEorFocusZoom()` = `getDefaultZoom() * 1.3` (EOR_FOCUS_ZOOM_MULT), user
+  wheel-zoom always wins.
+- `_eorPhaseLabel(text)` / `_eorPhaseLabelHide()` — small top-center chip
+  (`#eorPhaseChip`, inline-styled, lazily created) naming the current beat
+  ("End of Round — Status Effects / Turret Fire / Storms / …"; buffered
+  round-start groups show their own labels). Hidden by `showRoundBanner` and
+  at the end of `playBufferedRoundEvents`.
+- All four are exported on `window` — state.js beats (detonations, storms,
+  buffered events, weather announcement) call them via `typeof` guards.
+
+**Canonical EOR order** (documented in `maybeAdvanceTurn`, fixed every round):
+overview → status ticks (dive per unit, back to overview) → field effects
+(zones/seeds/spawn-zones; 1 unit → dive, several → overview) → delayed
+detonations (dive each) → turret volleys (per shot: camera on the TURRET
+760ms like a unit activation, then glide to the sight-line midpoint as the
+beam fires) → homing storms (focus vortex → glide with it → strikes land) →
+regen overview → Round banner → buffered round-start groups (terrain
+lava/drowning, weather ticks, respawns — each gets a labelled dive via
+`_reGroupFocal`, fog-gated) → announcements (weather spawns pan to the
+stashed `state._lastWeatherSpawnTiles`; zodiac/sky events keep the
+`playSkyCinematic` crane-up — untouched) → pending earthquake (frame
+epicentre 440ms BEFORE the shake) → first unit's activation pan.
+
+**Turn-handoff fix:** `_continueBlitzWithUnit_impl`'s AI and REMOTE branches
+now pass `tilt/yaw` (pre-cine view if pending, else rest) into the activation
+`focusBoardCameraOnTiles` and consume `_preCineView` — previously only human
+`selectUnit` did this, so enemy streak → next AI unit could inherit a craned
+cinematic pitch. This does NOT touch the in-action cine cam (see the
+"REVERTED — DO NOT REDO" section above; the action shot itself is untouched).
+
+**Testing local camera edits** (R2 serves the live scripts, repo edits don't
+load by default): `USE_ASSET_CACHE=1 LOCAL_ASSETS=battle.js,state.js` with the
+asset cache route hook. Smoke recipe that exercises EOR with ANIMATIONS ON:
+start a VS-CPU match, then `st.controllers={1:'ai',2:'ai'};
+st.autoPlayers={1:true,2:true}; st.devSimSpeed=4;` (devSimSpeed scales
+`actionMs` WITHOUT devAutoSim's visual skipping) and kick
+`maybeTriggerComputerTurn()`. Playwright here needs
+`executablePath: '/opt/pw-browsers/chromium'` (registry download blocked).
+With animations on, one 4v4 round on 12×12 takes >150s — use an 8×8 map card.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
