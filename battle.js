@@ -17338,6 +17338,28 @@
             get renderBattleSelectionUI() { return renderBattleSelectionUI; },
             get clearSpellRangePreview() { return clearSpellRangePreview; },
             get clearAttackRangePreview() { return clearAttackRangePreview; },
+
+            get walkAnimActive() { return _walkAnimActive; },
+            /* One composite "the board is visually live" flag for the HUD —
+               the same signals _waitForAnimationsThen watches. While true the
+               action menu + sub/quick panels hide so input can't race an
+               animation (walks, spells, projectiles, deaths, camera travel). */
+            boardBusy() {
+                try {
+                    if (_walkAnimActive || state._walkAnimActive) return true;
+                    if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
+                    if (state.units.some(u => u._dying)) return true;
+                    if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
+                        (state.healFlashIds && state.healFlashIds.size > 0)) return true;
+                    if (projectileLayerEl && projectileLayerEl.childElementCount > 0) return true;
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
+                        && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
+                    if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
+                        && ThreeVFX.hasActiveParticles()) return true;
+                    if (camera.isBusy()) return true;
+                } catch (_) {}
+                return false;
+            },
         };
 
         (function initCameraDebugOverlay() {
@@ -19244,6 +19266,16 @@
         let _walkAnimActive = false;
         let _walkAnimUnitId = null;
 
+        /* Mirror the walk flag onto state and ping the React HUD so the
+           action menu drops the INSTANT a walk starts (and returns the
+           moment it ends) — online.js sets state._walkAnimActive the same
+           way for remote walks. */
+        function _setWalkAnimActive(on) {
+            _walkAnimActive = on;
+            state._walkAnimActive = on;
+            try { window.dispatchEvent(new Event('ew-state-change')); } catch (_) {}
+        }
+
         function _dioGhostTransform(tiltDeg, yawDeg, elevPx) {
             const tz = elevPx ? `translateZ(${elevPx}px) ` : '';
             return `${tz}rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
@@ -19288,11 +19320,11 @@
                     return;
                 }
 
-                _walkAnimActive = true;
+                _setWalkAnimActive(true);
                 const stepMs = Math.max(140, Math.min(220, 200 - path.length * 5));
                 const totalMs = stepMs * path.length + 120;
                 setTimeout(() => {
-                    _walkAnimActive = false;
+                    _setWalkAnimActive(false);
                     _walkAnimUnitId = null;
                     if (onComplete) onComplete();
                 }, totalMs);
@@ -19302,7 +19334,7 @@
                 if (onComplete) onComplete();
                 return;
             }
-            _walkAnimActive = true;
+            _setWalkAnimActive(true);
 
             const sprite = getBattleMapSpriteUrl(unit);
             const tileSize = CONFIG.tileSize || 64;
@@ -19370,7 +19402,7 @@
 
                     setTimeout(() => {
                         ghost.remove();
-                        _walkAnimActive = false;
+                        _setWalkAnimActive(false);
                         _walkAnimUnitId = null;
 
                         markDirty('board');

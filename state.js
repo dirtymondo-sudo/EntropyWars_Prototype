@@ -4823,6 +4823,13 @@
             _boardWheelParent.addEventListener('wheel', (e) => {
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
                 if (state.thirdPersonCamera) return;
+                /* Scrolling over the Horologe action menu cycles its blade
+                   drum, and over a sub/quick panel it scrolls the list — never
+                   zoom the camera from there. (The menu handles its own wheel
+                   with preventDefault; panels keep native scrolling, so no
+                   preventDefault here.) */
+                if (e.target && e.target.closest &&
+                    e.target.closest('.hrlg-rig, .hrlg-panel, .hrlg-hub, .hrlg-crown')) return;
                 e.preventDefault();
                 const step = 0.1;
                 const delta = e.deltaY > 0 ? -step : step;

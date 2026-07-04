@@ -1680,6 +1680,101 @@ the editor, 45°-snapped rotation, and editor SFX. All fixed; files touched:
   surfaces [0,3], unpainted tile has z0 grass, action menu renders for P1,
   0 page errors. Screenshot: bridge floats with lava glow visible beneath.
 
+## Horologe action-menu carousel redesign (2026-07-04) — hud.js, battle.js, state.js
+User asks: cohesive Persona-style menu, selected button centered+bigger with
+neighbours fading out, scroll-wheel cycling, no gap to the clock, instant hide
+during walk/spell/camera animations, camera zoom disabled over the menu, crown
+"stopwatch" BACK button, submenus matching the main style, bonus AP in green.
+All shipped; files touched: **hud.js, battle.js, state.js** (re-upload together).
+
+1. **Carousel drum (hud.js `HorologeMenu`/`HorologeBlade`).** Root blades no
+   longer fan at fixed HRLG_ANG angles; `_hrlgSlot(offset)` maps the wrap-around
+   offset from the selected index to angle/opacity/scale: center = 3° o1 s1.13,
+   one faded blade above (-17°), two below (21°/36°), everything else parks at
+   o0. Selection tracked by blade ID (`selId`) so cost/AP re-renders don't jump
+   the drum; resets per `unitKey` (unit id). Blade slide-out starts at
+   margin-left 88px, UNDER the clock bezel (hub z-index 8 > fan z 2) — no gap.
+2. **Wheel = cycle, never zoom.** Native non-passive `wheel` listener on
+   `.hrlg-rig` (React onWheel can be passive) preventDefaults + stopPropagations
+   with a 90ms notch throttle; state.js's board-zoom wheel handler early-returns
+   for targets inside `.hrlg-rig/.hrlg-panel/.hrlg-hub/.hrlg-crown` (no
+   preventDefault → panel lists still scroll natively). Clicking a dim
+   neighbour rotates it to center (deliberate: no accidental END TURN); only a
+   center click fires. The minute hand winds 30°/notch.
+3. **Instant hide (hud.js `useMenusHidden` + battle.js `GAME.boardBusy()`).**
+   `boardBusy()` mirrors `_waitForAnimationsThen`'s signals: walk flag,
+   cinematic, `_dying`, hit/heal flashes, projectile layer, ThreeRenderer
+   .hasActiveAnims(), ThreeVFX.hasActiveParticles(), camera.isBusy().
+   `_setWalkAnimActive()` mirrors the walk flag onto `state._walkAnimActive`
+   (online.js already does this for remote walks) and dispatches
+   `ew-state-change` so the hide is same-frame. useMenusHidden re-renders only
+   on hidden↔shown transitions (110ms boolean poll + 180ms linger to stop
+   strobing). Confirm-clicks (target row 2nd click, enemy quick-cast, END TURN)
+   call `window._hrlgNoteAction(ms)` → hides before engine flags even flip.
+   ALL four menus (ActionMenu, SubMenu, EnemyActionMenu, TileActionMenu) take a
+   `hidden` prop from ReactHUD.
+4. **Crown BACK (hud.js).** `.hrlg-crown` stopwatch pusher at 12 o'clock; `live`
+   whenever view≠root or an actionMode is armed; click = handleBackAction + the
+   minute hand unwinds. The '← Back' rows were REMOVED from every submenu;
+   panels instead get a ‹ chip in the header (`.hrlg-panel-back`) + footer hint.
+5. **Panel chrome unified.** `.hrlg-panel` CSS now owns the material (blade
+   gradient, faction spine via `--hfc` inline vars, angled clip, `.hrlg-panel-
+   head/-foot/-stem`); SubMenuPanel, EnemyActionMenu and TileActionMenu all use
+   it — pass `'--hfc': fc` etc. inline when adding a new panel.
+6. **Bonus AP.** Pips past base 3 (`UNIT_MAX_AP`) get `.bonus` → green #6ee2a8;
+   the max number renders as its own span, green when maxAP>3 (x/4, x/5).
+7. **CSS gotcha:** blade entrance anim must be `animation-fill-mode: backwards`
+   NOT `both` — a filling animation overrides the transform/opacity transitions
+   and the drum snaps instead of gliding. Erupt keyframes end on `var(--o)`.
+8. **Playtest-harness gotchas (verify scripts in scratchpad):** headless Chrome
+   intensive-timer-throttling clamps setInterval to ~1Hz after ~5min — launch
+   with `--disable-background-timer-throttling --disable-backgrounding-occluded-
+   windows --disable-renderer-backgrounding`. Do NOT spam maybeAdvanceTurn while
+   waiting for the menu: each call re-enters `_continueBlitzWithUnit` → banner/
+   camera busy loops forever and the menu (correctly) stays hidden. Just wait;
+   assert on `GAME.boardBusy()===false && document.querySelector('.hrlg-rig')`.
+- **Verified** via scratchpad verify_menu.js/verify_menu2.js with
+  LOCAL_ASSETS=hud.js,battle.js,state.js: carousel cycles (Attack→Combo→…→END
+  TURN wrap), zoom unchanged after wheel-over-menu, Abilities/Items/More panels
+  + enemy/tile quick menus all in horologe chrome with live crown, crown returns
+  to root, menu hides ≤1 frame after doMove/END TURN and returns ~1.9s later
+  when the board settles, AP shows ◆◆◆ gold + ◆◆ green and "5/5" with green max,
+  0 page errors.
+
+### v2 (same day) — straight drum + EVERY menu is the carousel (hud.js only)
+User feedback on v1: rotated blades "look like eyelashes"; submenus were still
+"plain boring boxes". v2 (only hud.js changed; battle.js/state.js unchanged
+from v1):
+1. **Straight stack hugging the bezel.** Blades no longer rotate. `_hrlgSlot`
+   maps carousel offset → `--tx/--ty` translate: rows stack at 44px pitch and
+   each row's left edge follows the circle (`tx = √(97² − ty²) − 14`), so the
+   selected center row rides the equator and protrudes furthest. Same
+   fade/scale slots (1 above, center big, 2 below).
+2. **One carousel for EVERYTHING.** SubMenu, SubMenuPanel, TargetRow,
+   EnemyActionMenu, TileActionMenu components are DELETED. ActionMenu now
+   builds blade lists per view via `_hrlgSpellBlades/_hrlgItemBlades/
+   _hrlgMoreBlades/_hrlgSwitchBlades/_hrlgPingBlades/_hrlgOrientationBlades/
+   _hrlgTargetBlades/_hrlgEnemyBlades/_hrlgTileBlades` — all render through
+   HorologeMenu/HorologeBlade. The quick-menu executor + 3D move-arrow
+   previews moved to module scope (`_fireEnemyAction`, `_showMoveArrowPreview`,
+   `_clearMoveArrowPreview`, `_predictTargetShove`, `_actionPlanArrowColor`);
+   `_computeEnemyActions`/`_computeTileActions` unchanged.
+3. **View tab.** `.hrlg-view-tab` — a skewed banner riding the top-right of
+   the bezel — names the open view (✦ ABILITIES 6/6, ⌖ CYBORG 100% 9t,
+   ⬚ Tall Grass F10·h6·1t) so you always know where you are.
+4. **Blade item model** (HorologeBlade): `power{v,color}`, `mp`, `cost` (AP
+   pips), `count`, `meta{text,color}`, `note` (amber MOVE→CAST), `sub` (red
+   reason), `check` (pending ✓), `hint`, `iconColor`, `forceLive`, and
+   per-item `fire/hoverIn/hoverOut` (tooltips + range/arrow previews).
+   Target pickers keep the two-click confirm: first click centers + ✓,
+   second fires (with instant menu-hide).
+5. **Rich detail lives in the hover tooltip** (showSpellTooltip) — center-
+   hover a spell blade to see desc/range/status like the old cards.
+- Verified same harness: root drum straight + hugging (tx 83/72/27 at
+  ty 0/±44/±88), items "❖Items2", more "…More8" (Guard centered, 2 AP hint),
+  enemy quick "⌖Cyborg 100% 9t" with Dead Eye + dmg previews + reasons, tile
+  "⬚Tall Grass", END TURN instant hide, 0 page errors.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

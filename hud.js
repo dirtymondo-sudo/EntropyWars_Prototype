@@ -121,6 +121,61 @@ function useGameState() {
   return [G.state, tick];
 }
 
+/* ── Menu visibility gate ─────────────────────────────────────────
+   The action menu (and every sub/quick panel) must VANISH the instant
+   the board goes live — walk animations, spell VFX, camera travel,
+   projectiles, deaths — and only return once the dust settles. This
+   mirrors the exact signals the engine's own _waitForAnimationsThen
+   turn loop watches, surfaced via GAME.boardBusy(). */
+function _hudBoardBusy(st) {
+  if (!st) return false;
+  if (st._walkAnimActive) return true;          // set by battle.js + online.js walks
+  const G = window.GAME;
+  try {
+    if (G && typeof G.boardBusy === 'function') return !!G.boardBusy();
+    // Fallbacks for an older battle.js that doesn't export boardBusy yet:
+    if (st.units && st.units.some(u => u._dying)) return true;
+    if (G && G._camera && typeof G._camera.isBusy === 'function' && G._camera.isBusy()) return true;
+    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
+        && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
+    if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
+        && ThreeVFX.hasActiveParticles()) return true;
+  } catch (_) {}
+  return false;
+}
+
+/* Confirm-click hold: any handler that fires an animated action calls
+   window._hrlgNoteAction() in the same tick — the menus drop on the very
+   next render (forced via ew-state-change), before the engine's own busy
+   flags even flip. Zero-delay "your input registered" feedback. */
+window._hrlgNoteAction = function (ms) {
+  window._hrlgHoldUntil = performance.now() + (ms || 450);
+  try { window.dispatchEvent(new Event('ew-state-change')); } catch (_) {}
+};
+
+// True while menus should hide. Re-renders only on hidden↔shown
+// transitions; a light 110ms boolean poll catches animations that start
+// or end without dispatching a state-change event.
+function useMenusHidden(st) {
+  const [, setN] = useState(0);
+  const ref = useRef({ lastBusy: 0, hidden: false });
+  const now = performance.now();
+  if (_hudBoardBusy(st)) ref.current.lastBusy = now;
+  const LINGER = 180;   // debounce so back-to-back anims don't strobe the menu
+  const hidden = (now - ref.current.lastBusy < LINGER) || (window._hrlgHoldUntil || 0) > now;
+  ref.current.hidden = hidden;
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const t = performance.now();
+      if (_hudBoardBusy(window.GAME && window.GAME.state)) ref.current.lastBusy = t;
+      const next = (t - ref.current.lastBusy < LINGER) || (window._hrlgHoldUntil || 0) > t;
+      if (next !== ref.current.hidden) setN(n => n + 1);
+    }, 110);
+    return () => clearInterval(iv);
+  }, []);
+  return hidden;
+}
+
 function ClipPanel({ children, style, factionColor, corner = 14, ...props }) {
   const fc = factionColor || EW.space;
   return h('div', {
@@ -1248,36 +1303,83 @@ function HorologeHub({ factionKey, api }) {
   );
 }
 
-// One blade of the fan. Costs render as diamond pips; unavailability
-// reasons render as a red tag on the blade itself.
-function HorologeBlade({ b, idx, active, fireId, onFire, onHover }) {
-  const dead = !b.available && b.id !== 'abil';
-  let costEl = null;
-  if (!dead && !b.sub) {
-    if (typeof b.cost === 'number') {
-      const pips = []; for (let i = 0; i < b.cost; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
-      costEl = h('span', { className: 'hrlg-cost' }, pips);
-    } else if (b.hint) {
-      costEl = h('span', { className: 'hrlg-cost' }, h('span', { className: 'hrlg-cfree' }, b.hint));
-    }
+// ── Carousel slots ──────────────────────────────────────────────
+// The menu is a vertical drum of STRAIGHT blades stacked against the
+// clock: the SELECTED blade sits level with the clock center, bigger
+// and fully lit; one neighbour peeks above it and two below,
+// progressively faded (Persona-style cycling list). Each row's left
+// edge hugs the bezel's curve — the center row rides the equator and
+// naturally protrudes the furthest. Off-window rows park invisible so
+// a wrap-around never sweeps a lit blade through the stack.
+const HRLG_ROW = 44;    // vertical pitch of the stack
+const HRLG_HUG = 97;    // circle radius the blade edges follow
+const HRLG_TUCK = 14;   // how far each blade tucks under the bezel
+function _hrlgSlot(off) {
+  const c = Math.max(-3, Math.min(4, off));
+  const ty = c * HRLG_ROW;   // css downward+
+  const x = Math.sqrt(Math.max(HRLG_HUG * HRLG_HUG - ty * ty, 0));
+  const base = { tx: x - HRLG_TUCK, ty };
+  if (off === -1) return { ...base, op: 0.45, s: 0.88, z: 3 };
+  if (off === 0)  return { ...base, op: 1,    s: 1.12, z: 6 };
+  if (off === 1)  return { ...base, op: 0.5,  s: 0.9,  z: 4 };
+  if (off === 2)  return { ...base, op: 0.26, s: 0.82, z: 2 };
+  return { ...base, op: 0, s: 0.8, z: 1 };
+}
+// Signed shortest wrap distance from the selected index to index i.
+function _hrlgOffset(i, sel, n) {
+  let d = (i - sel) % n; if (d < 0) d += n;
+  if (d > n / 2) d -= n;
+  return d;
+}
+
+// One blade of the drum. EVERY menu — root verbs, abilities, items,
+// targets, quick actions — renders through this, so they all read as
+// one instrument. Item fields beyond the basics:
+//   power {v,color}  colored damage/heal chip      mp     MP cost chip
+//   cost             AP cost as diamond pips       count  stack (×2)
+//   meta {text,color} dim right-side info (hp%/dist)
+//   note             amber chip (MOVE→CAST)        sub    red reason tag
+//   check            pending-confirm ✓             hint   key hint (SPACE)
+//   iconColor        glyph tint override           forceLive  clickable though !available
+function HorologeBlade({ b, idx, off, active, fireId, onFire, onFocus, onHover }) {
+  const dead = !b.available && !b.forceLive;
+  const center = off === 0;
+  const slot = _hrlgSlot(off);
+  const right = [];
+  if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓'));
+  if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
+  if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));
+  if (!dead && typeof b.cost === 'number' && !b.sub) {
+    const pips = []; for (let i = 0; i < b.cost; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
+    right.push(h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
   }
+  if (b.count) right.push(h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
+  if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
+  if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
+  if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
+  if (b.sub) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
   return h('div', {
     className: 'hrlg-blade'
       + (dead ? ' dead' : '')
+      + (center ? ' center' : ' dim')
       + (active ? ' active' : '')
-      + (fireId === b.id ? ' fire' : '')
-      + (b.short ? ' short' : ''),
-    style: { '--a': b.ang + 'deg', animationDelay: (60 + idx * 55) + 'ms' },
-    onClick: dead ? undefined : () => onFire(b),
-    onMouseEnter: () => onHover(b, true),
-    onMouseLeave: () => onHover(b, false),
+      + (fireId === b.id ? ' fire' : ''),
+    style: {
+      '--tx': slot.tx + 'px', '--ty': slot.ty + 'px', '--o': slot.op, '--s': slot.s,
+      zIndex: slot.z,
+      pointerEvents: slot.op === 0 ? 'none' : 'auto',
+      animationDelay: (40 + idx * 40) + 'ms',
+    },
+    // Center blade confirms; a visible neighbour rotates itself into the
+    // center first — no accidental END TURNs, and it matches the drum feel.
+    onClick: center ? (dead ? undefined : (e) => onFire(b, e)) : () => onFocus(b),
+    onMouseEnter: center ? (e) => onHover(b, true, e) : undefined,
+    onMouseLeave: center ? (e) => onHover(b, false, e) : undefined,
   },
-    h('span', { className: 'hrlg-stem' }),
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
-      h('span', { className: 'hrlg-glyph' }, b.icon),
+      h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
       h('span', { className: 'hrlg-blabel' }, b.label),
-      costEl,
-      b.sub && h('span', { className: 'hrlg-tag' }, b.sub),
+      right,
       h('span', { className: 'hrlg-flash' }),
     ),
   );
@@ -1287,38 +1389,58 @@ function HorologeBlade({ b, idx, active, fireId, onFire, onHover }) {
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, blades, fc, factionKey, roman, unitName, ap, maxAP, modeLabel, am, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, modeLabel, am, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
 
-  // entering a sub-menu winds the minute hand a full revolution
-  const prevView = useRef(view);
-  useEffect(() => {
-    if (view !== prevView.current) {
-      if (view === 'sub' || view === 'quick') { if (clockApi.wind) clockApi.wind(360); }
-      else if (view === 'root') { if (clockApi.rest) clockApi.rest(); }
-      prevView.current = view;
-    }
-  }, [view]);
+  // ── Carousel selection: tracked by blade ID so the drum keeps its
+  // heading when availability re-sorts costs or AP ticks re-render us.
+  const [selId, setSelId] = useState(null);
+  const carousel = blades.length > 1;
+  let selIdx = carousel ? blades.findIndex(b => b.id === selId) : 0;
+  if (selIdx < 0) {
+    // default heading: the item the engine pre-targeted (pending ✓), else
+    // the first live entry (attack if it's up); nothing left to do →
+    // END TURN takes the center for a one-click finish
+    selIdx = blades.findIndex(b => b.check);
+    if (selIdx < 0) selIdx = blades.findIndex(b => b.available && b.id !== 'end');
+    if (selIdx < 0) selIdx = blades.findIndex(b => b.id === 'end');
+    if (selIdx < 0) selIdx = 0;
+  }
 
-  const hoverBlade = (b, on) => {
-    const dead = !b.available && b.id !== 'abil';
+  // a fresh unit or a different menu view takes the wheel → reset the drum
+  useEffect(() => { setSelId(null); }, [unitKey, viewKey]);
+
+  // entering a sub-menu winds the minute hand a full revolution
+  const prevView = useRef(viewKey);
+  useEffect(() => {
+    if (viewKey !== prevView.current) {
+      if (view === 'root') { if (clockApi.rest) clockApi.rest(); }
+      else if (clockApi.wind) clockApi.wind(360);
+      prevView.current = viewKey;
+    }
+  }, [viewKey]);
+
+  const hoverBlade = (b, on, e) => {
+    const dead = !b.available && !b.forceLive;
     if (on) {
-      if (!dead && clockApi.aim) clockApi.aim(_hrlgToClock(b.ang));
+      if (!dead && clockApi.aim) clockApi.aim(90);   // point at the center blade
       setHoverCost(!dead && typeof b.cost === 'number' ? b.cost : 0);
-      if (b.id === 'attack' && b.available && typeof previewAttackRange === 'function') previewAttackRange();
+      if (b.hoverIn) b.hoverIn(e && e.nativeEvent || e);
+      else if (b.id === 'attack' && b.available && typeof previewAttackRange === 'function') previewAttackRange();
     } else {
       if (clockApi.rest) clockApi.rest();
       setHoverCost(0);
-      if (b.id === 'attack' && typeof clearAttackRangePreview === 'function') clearAttackRangePreview();
+      if (b.hoverOut) b.hoverOut();
+      else if (b.id === 'attack' && typeof clearAttackRangePreview === 'function') clearAttackRangePreview();
     }
   };
 
   const fireBlade = (b) => {
-    if (!b.available && b.id !== 'abil') return;
-    if (clockApi.strike) clockApi.strike(_hrlgToClock(b.ang));
+    if (!b.available && !b.forceLive) return;
+    if (clockApi.strike) clockApi.strike(90);
     if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
     setFireId(b.id); setTimeout(() => setFireId(null), 460);
     if (rigRef.current && rigRef.current.animate) {
@@ -1326,24 +1448,103 @@ function HorologeMenu({ view, blades, fc, factionKey, roman, unitName, ap, maxAP
         [{ transform: 'translateX(0)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }],
         { duration: 130, easing: 'ease-out' });
     }
+    // Ending the turn kicks off camera + banner travel — drop the menu NOW
+    // so the click visibly registered (it re-appears with the next unit).
+    if (b.id === 'end' && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(700);
     if (b.id === 'end') onEndTurn();
     else if (b.id === 'cancel') onCancel();
+    else if (b.fire) b.fire();
     else onAction(b);
   };
 
+  // rotate a clicked/scrolled neighbour into the center slot
+  const focusBlade = (b) => {
+    if (!b || b.id === selBlade?.id) return;
+    setSelId(b.id);
+    if (typeof playSfx === 'function') playSfx('uiCursorMove');
+    if (clockApi.wind) clockApi.wind(30);   // the minute hand ticks with the drum
+    if (typeof clearAttackRangePreview === 'function') clearAttackRangePreview();
+    setHoverCost(0);
+  };
+  const selBlade = carousel ? blades[selIdx] : blades[0];
+
+  const cycle = (dir) => {
+    if (!carousel) return;
+    const n = blades.length;
+    focusBlade(blades[(((selIdx + dir) % n) + n) % n]);
+  };
+
+  // Scroll on the menu cycles the drum — and must NEVER fall through to the
+  // board's camera-zoom wheel. React can't guarantee a non-passive wheel
+  // listener, so bind natively on the rig root with passive:false.
+  const cycleRef = useRef(cycle); cycleRef.current = cycle;
+  useEffect(() => {
+    const el = rigRef.current; if (!el) return;
+    let lastT = 0;
+    const onWheel = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const now = performance.now();
+      if (now - lastT < 90) return;   // one notch per gesture-step
+      lastT = now;
+      cycleRef.current(e.deltaY > 0 ? 1 : -1);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   const pips = [];
   const shown = Math.min(maxAP, 8);
+  const baseAP = 3;   // UNIT_MAX_AP — pips past this are level-up bonus AP
   for (let i = 0; i < shown; i++) {
     const on = i < ap;
     const spend = on && hoverCost > 0 && i >= ap - hoverCost;
-    pips.push(h('span', { key: i, className: 'hrlg-pip' + (on ? ' on' : '') + (spend ? ' spend' : '') }));
+    pips.push(h('span', {
+      key: i,
+      className: 'hrlg-pip' + (on ? ' on' : '') + (spend ? ' spend' : '') + (i >= baseAP ? ' bonus' : ''),
+    }));
   }
+
+  // the crown — a stopwatch pusher on top of the clock; the one, always-
+  // visible BACK control for every sub/quick/aiming state.
+  const backable = view !== 'root' || !!am;
+  const pressCrown = () => {
+    if (!backable) return;
+    if (typeof playSfx === 'function') playSfx('uiBack');
+    if (clockApi.wind) clockApi.wind(-360);   // unwind what the sub-menu wound
+    onCancel();
+  };
 
   return h('div', {
     ref: rigRef, className: 'hrlg-rig',
     style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' },
   },
+    h('div', { className: 'hrlg-fan', key: viewKey },
+      blades.map((b, i) => h(HorologeBlade, {
+        key: b.id, b: b, idx: i,
+        off: carousel ? _hrlgOffset(i, selIdx, blades.length) : 0,
+        active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
+        fireId: fireId, onFire: fireBlade, onFocus: focusBlade, onHover: hoverBlade,
+      })),
+    ),
     h(HorologeHub, { factionKey: factionKey, api: clockApi }),
+    // Where-am-I tab riding the top of the clock: names the open menu
+    // (ABILITIES / ITEMS / the clicked enemy…) in the same blade material.
+    title && h('div', { className: 'hrlg-view-tab', key: 'tab|' + viewKey },
+      title.node || h(React.Fragment, null,
+        title.icon && h('span', { className: 'hrlg-view-tab-icon' }, title.icon),
+        h('span', { className: 'hrlg-view-tab-text' }, title.text),
+        title.count && h('span', { className: 'hrlg-view-tab-count' }, title.count),
+      ),
+    ),
+    h('div', {
+      className: 'hrlg-crown' + (backable ? ' live' : ''),
+      title: backable ? 'Back (ESC)' : undefined,
+      onClick: backable ? pressCrown : undefined,
+    },
+      h('span', { className: 'hrlg-crown-cap' }),
+      h('span', { className: 'hrlg-crown-stem' }),
+      backable && h('span', { className: 'hrlg-crown-label' }, 'BACK'),
+    ),
     h('div', { className: 'hrlg-core' },
       h('span', { className: 'hrlg-roman' }, roman + ' · '),
       h('span', { className: 'hrlg-name' }, unitName),
@@ -1351,21 +1552,389 @@ function HorologeMenu({ view, blades, fc, factionKey, roman, unitName, ap, maxAP
     h('div', { className: 'hrlg-ap' },
       h('span', { className: 'hrlg-ap-lbl' }, 'AP'),
       pips,
-      h('span', { className: 'hrlg-ap-num' }, ap + '/' + maxAP),
+      h('span', { className: 'hrlg-ap-num' }, ap + '/'),
+      h('span', { className: 'hrlg-ap-num' + (maxAP > baseAP ? ' bonus' : '') }, maxAP),
     ),
     modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
-    h('div', { className: 'hrlg-fan', key: view + '|' + (am || '') },
-      blades.map((b, i) => h(HorologeBlade, {
-        key: b.id, b: b, idx: i,
-        active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
-        fireId: fireId, onFire: fireBlade, onHover: hoverBlade,
-      })),
-    ),
+    carousel && blades.length > 4 && h('div', { className: 'hrlg-scroll-hint' }, '⭥ scroll'),
   );
 }
 
-function ActionMenu({ st }) {
+/* ═══ Carousel item builders ══════════════════════════════════════
+   EVERY menu view — abilities, items, more, switch, pings, targets,
+   the enemy/tile quick menus — builds plain blade items and renders
+   through the SAME Horologe drum as the root verbs. One instrument,
+   one look, one interaction (scroll to cycle, click center to fire,
+   crown/ESC to back out). Rich spell detail lives in the hover
+   tooltip, not a side panel. */
+
+const _HRLG_CAT = {
+  damage: { icon: '⚔', color: '#ee6655' },
+  heal:   { icon: '♥', color: '#55cc66' },
+  buff:   { icon: '▲', color: '#55aaff' },
+  debuff: { icon: '▼', color: '#cc77dd' },
+  utility:{ icon: '◎', color: '#ccaa55' },
+};
+
+function _hrlgSpellBlades(unit, st) {
+  const am = st.actionMode;
+  const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+  const mpPenalty = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence') ? 999 : 0;
+  const tierOrder = { 'I': 1, 'II': 2, 'III': 3 };
+
+  const _isAvail = (sp) => {
+    const cost = sp.cost || 0;
+    const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
+    if (!canAfford) return false;
+    const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
+    // No target where it stands, but it could step into range and still cast
+    // this turn → keep it usable (move-then-cast), don't grey it out.
+    const canReach = !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+    return hasTarget || canReach;
+  };
+  // Memoize availability — _isAvail can run a move-into-range probe, and a
+  // sort comparator would otherwise call it O(n log n) times per spell.
+  const _availCache = new Map();
+  const _availOf = (sp) => {
+    if (!_availCache.has(sp)) _availCache.set(sp, _isAvail(sp));
+    return _availCache.get(sp);
+  };
+  spells.sort((a, b) => {
+    const aAvail = _availOf(a) ? 0 : 1;
+    const bAvail = _availOf(b) ? 0 : 1;
+    if (aAvail !== bAvail) return aAvail - bAvail;
+    return (tierOrder[a.tier] || 0) - (tierOrder[b.tier] || 0);
+  });
+
+  let castableCount = 0;
+  const blades = spells.map((sp, i) => {
+    const cost = sp.cost || 0;
+    const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const isSilenced = mpPenalty > 0;
+    const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
+    const canAfford = !isSilenced && tierOk && unit.mp >= cost && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
+    const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
+    const canReach = canAfford && !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+    const canCast = canAfford && (hasTarget || canReach);
+    const needsMove = canCast && !hasTarget && canReach;
+    if (canAfford) castableCount++;
+
+    const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(unit, sp) : 0;
+    let reason = '';
+    if (!canCast) {
+      if (isSilenced) reason = 'Silenced';
+      else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; reason = 'Req Lv.' + trl; }
+      else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
+      else if (unit.mp < cost) reason = 'No MP';
+      else if ((unit.ap || 0) < apCost) reason = 'No AP';
+      else if (!hasTarget) reason = 'No target';
+    }
+
+    const cat = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
+    const cc = _HRLG_CAT[cat] || _HRLG_CAT.damage;
+    const powerStat = spellPowerStat(sp);
+
+    return {
+      id: 'sp:' + (sp.name || i),
+      icon: cc.icon, iconColor: cc.color,
+      label: sp.name,
+      available: canCast,
+      selected: am === 'spell' && st.selectedTool === sp.name,
+      power: powerStat ? { v: powerStat.value, color: powerStat.color } : null,
+      mp: cost, cost: apCost,
+      note: needsMove ? 'MOVE→CAST' : null,
+      sub: reason || null,
+      fire: () => { hideSpellTooltip(); if (canCast && typeof setTool === 'function') setTool('spell', sp.name); },
+      hoverIn: (e) => { showSpellTooltip(sp, e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); },
+      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '✦', label: 'No abilities', available: false });
+
+  return { title: { icon: '✦', text: 'Abilities', count: castableCount + '/' + spells.length }, blades };
+}
+
+function _hrlgItemBlades(unit, st) {
+  const am = st.actionMode;
+  const heldKeys = typeof ITEM_RULES !== 'undefined'
+    ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
+  // Greyed-out (currently unusable) items sink to the bottom so usable ones lead.
+  if (typeof canUseItemNow === 'function') {
+    heldKeys.sort((a, b) => (canUseItemNow(unit, a) ? 0 : 1) - (canUseItemNow(unit, b) ? 0 : 1));
+  }
+  const blades = heldKeys.map(itemKey => {
+    const count = unit.items?.[itemKey] || 0;
+    const rules = typeof ITEM_RULES !== 'undefined' ? ITEM_RULES[itemKey] : null;
+    const canUse = typeof canUseItemNow === 'function' ? canUseItemNow(unit, itemKey) : true;
+    let reason = '';
+    if (!canUse) {
+      if (itemKey === 'healPotion') reason = 'HP full';
+      else if (itemKey === 'manaPotion') reason = 'No ally needs MP';
+      else reason = 'Can\'t use';
+    }
+    return {
+      id: 'it:' + itemKey,
+      icon: rules?.icon || '❖',
+      label: rules?.name || itemKey,
+      available: canUse,
+      selected: am === 'item' && st.selectedTool === itemKey,
+      count: '×' + count,
+      sub: reason || null,
+      fire: () => { if (canUse && typeof chooseItemAction === 'function') chooseItemAction(itemKey); },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '❖', label: 'No items', available: false });
+  return { title: { icon: '❖', text: 'Items', count: heldKeys.length + '' }, blades };
+}
+
+// The More list items keep their existing "emoji label" convention —
+// split the leading glyph off so it lands in the blade's icon slot.
+function _hrlgMoreBlade(item, i, am) {
+  const m = /^(\S+)\s+(.*)$/.exec(item.label || '');
+  return {
+    id: 'more:' + i + ':' + (item.label || ''),
+    icon: m ? m[1] : '·',
+    label: m ? m[2] : (item.label || ''),
+    available: !item.dim,
+    selected: !!item.active,
+    sub: item.dim ? (item.sub || 'Unavailable') : null,
+    hint: !item.dim ? item.sub : null,
+    fire: item.onClick,
+  };
+}
+
+function _hrlgSwitchBlades(unit, st) {
+  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
+  const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+  const canPay = (unit.ap || 0) >= switchCost;
+  const blades = reserves.map(r => {
+    const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
+    return {
+      id: 'sw:' + r.id,
+      icon: '⇄',
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls),
+      available: canPay,
+      cost: switchCost,
+      meta: { text: hpPct + '%', color: hpPct <= 30 ? EW.bad : EW.good },
+      sub: canPay ? null : 'No AP',
+      fire: () => { if (canPay && typeof doSwitch === 'function') doSwitch(unit, r.id); },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '⇄', label: 'No reserves left', available: false });
+  return { title: { icon: '🔄', text: 'Switch', count: reserves.length + '' }, blades };
+}
+
+function _hrlgPingBlades() {
+  const pingKeys = typeof PING_TYPES !== 'undefined' ? Object.keys(PING_TYPES) : [];
+  const blades = pingKeys.map(pk => {
+    const pt = PING_TYPES[pk];
+    return {
+      id: 'ping:' + pk, icon: pt.icon, iconColor: pt.color || undefined,
+      label: pt.label, available: true,
+      fire: () => { if (typeof setTool === 'function') setTool('ping', pk); },
+    };
+  });
+  return { title: { icon: '📍', text: 'Ping', count: pingKeys.length + '' }, blades };
+}
+
+function _hrlgOrientationBlades(st) {
+  const mk = (dir, icon, label) => ({
+    id: 'or:' + dir, icon, label, available: true,
+    fire: () => { if (typeof setSpellOrientation === 'function') setSpellOrientation(dir); },
+  });
+  return {
+    title: { icon: '✦', text: st.selectedTool || 'Orientation' },
+    blades: [mk('horizontal', '↔', 'Horizontal'), mk('vertical', '↕', 'Vertical')],
+  };
+}
+
+// Attack / spell target pickers. First click centers + marks ✓ (the
+// engine pre-marks the nearest target), second click confirms and the
+// menus drop instantly.
+function _hrlgTargetBlades(unit, st, mode) {
+  let targets = [], titleText = 'Targets', titleIcon = '⌖';
+  let spell = null;
+  if (mode === 'attack') {
+    /* Terrain cubes are destroyed by right-click-HOLDING them on the board
+       (see beginTileDemolishHold in battle.js) — listing every smashable
+       column here buried the real targets under "Smash Terrain" rows. */
+    targets = (typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [])
+      .filter(t => t.kind !== 'terrain');
+    titleText = 'Attack'; titleIcon = '×';
+  } else {
+    spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
+    targets = spell && typeof _getSpellValidTargets === 'function' ? _getSpellValidTargets(unit, spell) : [];
+    titleText = st.selectedTool || 'Spell'; titleIcon = '✦';
+  }
+  const isOffensive = mode === 'attack' || (spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind));
+
+  const blades = targets.map((t, i) => {
+    const isPending = st.pendingTarget && st.pendingTarget.x === t.x && st.pendingTarget.y === t.y;
+    let label = '', hpVal = 0, hpMax = 0, tUnit = t.unit || null;
+    if (tUnit) {
+      label = typeof unitDisplayName === 'function' ? unitDisplayName(tUnit) : (tUnit.name || tUnit.cls);
+      hpVal = tUnit.hp; hpMax = tUnit.maxHp;
+    } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
+    else if (t.kind === 'turret') { label = '🔧 Turret'; hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
+    else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
+    else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
+    else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
+    else if (t.kind === 'building') {
+      label = '🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(t.building) : 'Building');
+      hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
+    } else { label = typeof coordLabel === 'function' ? coordLabel(t.x, t.y) : (t.x + ',' + t.y); }
+
+    let typeAdv = '';
+    if (tUnit && isOffensive && typeof getTypeEffectSummary === 'function') {
+      const adv = getTypeEffectSummary(unit.types || [], tUnit.types || []);
+      typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
+    }
+    const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
+    const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
+
+    return {
+      id: 'tg:' + i + ':' + t.x + ',' + t.y,
+      icon: typeAdv || '⌖',
+      iconColor: typeAdv === '▲' ? EW.good : typeAdv === '▼' ? EW.bad : undefined,
+      label: label,
+      available: true,
+      check: !!isPending,
+      meta: { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't', color: hpPct != null && hpPct <= 30 ? EW.bad : undefined },
+      // Pass the target's own elevation so an airborne unit (or the upper
+      // unit of a stack) is hit — not whoever stands on the ground below.
+      // Second (confirming) click fires the action → hide the menus NOW.
+      fire: () => {
+        if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
+        if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, tz);
+      },
+    };
+  });
+  if (!blades.length) {
+    blades.push({
+      id: 'none', icon: titleIcon, available: false,
+      label: (mode === 'attack' && typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit))
+        ? 'Click an enemy to move + attack' : 'No targets in range',
+    });
+  }
+  return { title: { icon: titleIcon, text: titleText, count: targets.length + '' }, blades };
+}
+
+function _hrlgMoreBlades(unit, st) {
+  const am = st.actionMode;
+  const moreItems = [];
+
+  if ((unit.ap || 0) >= 2) {
+    moreItems.push({ label: '🛡 Guard', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
+  }
+
+  if (typeof _isGauntlet === 'function' && _isGauntlet()) {
+    const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
+    const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+    const canSwitch = reserves.length > 0 && (unit.ap || 0) >= switchCost;
+    moreItems.push({
+      label: '🔄 Switch',
+      sub: reserves.length === 0 ? 'No reserves' : `${switchCost} AP`,
+      dim: !canSwitch,
+      onClick: () => { if (canSwitch && typeof chooseActionMenu === 'function') chooseActionMenu('switch'); },
+    });
+  }
+
+  const apc = typeof getActionPanelCache === 'function' ? getActionPanelCache(unit) : {};
+  if (apc.hasInspect) {
+    moreItems.push({ label: '🔍 Inspect', onClick: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); }, active: am === 'inspect' });
+  }
+  if (apc.hasInspect && (unit.ap || 0) >= 1) {
+    moreItems.push({ label: '🔍 Inspect Here', sub: '1 AP', onClick: () => { if (typeof doInspect === 'function' && typeof getSelectedUnit === 'function') doInspect(getSelectedUnit(), unit.x, unit.y); } });
+  }
+
+  if (apc.canTrade) {
+    moreItems.push({ label: '🔄 Trade', onClick: () => { if (typeof setActionMode === 'function') setActionMode('trade'); }, active: am === 'trade' });
+  }
+
+  if (typeof unitHasWard === 'function' && unitHasWard(unit) && !unit._usedWard) {
+    moreItems.push({ label: '👁 Ward', onClick: () => { if (typeof setActionMode === 'function') setActionMode('ward'); }, active: am === 'ward' });
+  }
+
+  moreItems.push({ label: '📍 Ping', onClick: () => { if (typeof chooseActionMenu === 'function') chooseActionMenu('pings'); } });
+
+  if (typeof canFly === 'function' && canFly(unit)) {
+    if (typeof canChangeAltitude === 'function') {
+      const _groundZ = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
+      const _unitZ = unit.z ?? 0;
+      const _isAirborne = _unitZ > _groundZ;
+      if (_isAirborne) {
+        const canDesc = canChangeAltitude(unit, 'descend');
+        if (canDesc.ok) moreItems.push({ label: '⬇ Land', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'land'); } });
+      } else {
+        const canAsc = canChangeAltitude(unit, 'ascend');
+        if (canAsc.ok) moreItems.push({ label: '⬆ Take Off', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'ascend'); } });
+      }
+    }
+  } else if (typeof canReshapeTile === 'function') {
+    const canRaise = canReshapeTile(unit, 'raise');
+    if (canRaise.ok) moreItems.push({ label: '🔺 Raise', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'raise'); } });
+    const canLower = canReshapeTile(unit, 'lower');
+    if (canLower.ok) moreItems.push({ label: '🔻 Lower', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'lower'); } });
+  }
+
+  if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
+    moreItems.push({ label: '💣 Detonate', onClick: () => { if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); } });
+  }
+
+  if (typeof getNexusAtUnit === 'function') {
+    const nex = getNexusAtUnit(unit);
+    if (nex && (!nex.nexus.owner || nex.nexus.owner !== unit.player) && (unit.ap || 0) >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
+      moreItems.push({ label: '⬡ Channel', sub: '1 AP', onClick: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); } });
+    }
+  }
+
+  /* 🛗 Enter Building: standing beside a building rides its lift — ends the
+     turn, unit hides inside and emerges on the roof next turn. */
+  if (typeof getEnterableBuilding === 'function') {
+    const ent = getEnterableBuilding(unit);
+    if (ent) {
+      const enoughAp = (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1);
+      moreItems.push({
+        label: '🛗 Enter Building',
+        sub: enoughAp ? 'Ends turn' : 'No AP',
+        dim: !enoughAp,
+        onClick: () => {
+          if (!enoughAp) return;
+          if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit());
+        }
+      });
+    }
+  }
+
+  /* Recall: teleport back to spawn zone */
+  if (typeof RECALL_AP_COST !== 'undefined' && typeof RECALL_COOLDOWN_ROUNDS !== 'undefined') {
+    const spotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit);
+    const canRecall = (unit.ap || 0) >= RECALL_AP_COST && (unit._recallCooldown || 0) <= 0 && !spotted;
+    const cdLeft = unit._recallCooldown || 0;
+    const sub = cdLeft > 0 ? `CD: ${cdLeft}` : (spotted ? 'Spotted' : `${RECALL_AP_COST} AP`);
+    moreItems.push({
+      label: '🔵 Recall',
+      sub,
+      dim: !canRecall,
+      onClick: () => {
+        if (!canRecall) return;
+        if (typeof doRecall === 'function' && typeof getSelectedUnit === 'function') doRecall(getSelectedUnit());
+      }
+    });
+  }
+
+  if (!unit._skippedTurn && !st._skippedUnit && (unit.ap || 0) >= (typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3)) {
+    moreItems.push({ label: '⏭ Skip', onClick: () => { if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); } });
+  }
+
+  const blades = moreItems.map((it, i) => _hrlgMoreBlade(it, i, am));
+  if (!blades.length) blades.push({ id: 'none', icon: '…', label: 'Nothing else here', available: false });
+  return { title: { icon: '…', text: 'More', count: moreItems.length + '' }, blades };
+}
+
+function ActionMenu({ st, hidden }) {
   if (!st || st.phase !== 'battle') return null;
+  if (hidden) return null;   // board is animating — input already registered
 
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
   const activeId = st._blitzActiveUnitId || st.selectedUnitId;
@@ -1465,6 +2034,7 @@ function ActionMenu({ st }) {
   const abilAction = {
     id: 'abil', label: 'Abilities', icon: '✦', cost: '—',
     available: hasSpells || hasAnySpells,
+    forceLive: true,   // clickable even when greyed, so the list explains itself
     selected: menuView === 'spells',
     sub: abilSub,
   };
@@ -1540,33 +2110,70 @@ function ActionMenu({ st }) {
     attack: 'ATTACK — CLICK A TARGET',
   };
 
-  // Which face the Horologe shows:
-  //  root — full blade fan (armed verb pulses while aiming move/attack/jump)
-  //  aim  — tile-target modes (combo/inspect/…): a lone CANCEL blade
-  //  sub / quick — a panel is open beside the clock: blades retract
-  const quickOpen = !!(st._enemyActionTargetId || st._tileActionTarget);
-  const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, ang: HRLG_ANG.cancel, short: true, hint: 'ESC' };
-  let view, blades = [], modeLabel = null;
+  // Which face the Horologe shows. EVERYTHING is the same drum — root
+  // verbs, sub-menus, target pickers, quick menus — differing only in
+  // which blade list is loaded and the view tab naming it:
+  //  root  — the six verbs + END TURN
+  //  sub   — a submenu's items (abilities / items / more / …)
+  //  quick — the clicked enemy's / tile's actions
+  //  aim   — board-targeting in progress: a lone CANCEL blade
+  const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, hint: 'ESC' };
+  let view = 'root', viewKey = 'root', blades = [], modeLabel = null, title = null;
+  let built = null;
   if (inTileTarget) {
-    view = 'aim';
+    view = 'aim'; viewKey = 'aim|' + am;
     modeLabel = modeLabels[am] || String(am).toUpperCase();
     blades = [cancelBlade];
+  } else if (menuView === 'spells' && am === 'spell' && st.selectedTool) {
+    // tile-targeted / free-aim spell armed from the abilities drum
+    view = 'aim'; viewKey = 'aim|spell';
+    title = { icon: '✦', text: 'Abilities' };
+    modeLabel = (st.selectedTool + ' — CLICK A TARGET').toUpperCase();
+    blades = [cancelBlade];
+  } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
+    view = 'aim'; viewKey = 'aim|item';
+    title = { icon: '❖', text: 'Items' };
+    const itName = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[st.selectedTool]?.name) || st.selectedTool;
+    modeLabel = (itName + ' — CLICK A TARGET').toUpperCase();
+    blades = [cancelBlade];
+  } else if (menuView === 'spells') {
+    built = _hrlgSpellBlades(unit, st); view = 'sub'; viewKey = 'spells';
+  } else if (menuView === 'items') {
+    built = _hrlgItemBlades(unit, st); view = 'sub'; viewKey = 'items';
+  } else if (menuView === 'more') {
+    built = _hrlgMoreBlades(unit, st); view = 'sub'; viewKey = 'more';
+  } else if (menuView === 'switch') {
+    built = _hrlgSwitchBlades(unit, st); view = 'sub'; viewKey = 'switch';
+  } else if (menuView === 'pings') {
+    built = _hrlgPingBlades(); view = 'sub'; viewKey = 'pings';
+  } else if (menuView === 'spellOrientation') {
+    built = _hrlgOrientationBlades(st); view = 'sub'; viewKey = 'orient';
+  } else if (menuView === 'attackTargets') {
+    built = _hrlgTargetBlades(unit, st, 'attack'); view = 'sub'; viewKey = 'atkTargets';
+    modeLabel = 'ATTACK — PICK A TARGET';
+  } else if (menuView === 'spellTargets') {
+    built = _hrlgTargetBlades(unit, st, 'spell'); view = 'sub'; viewKey = 'spTargets';
+    modeLabel = ((st.selectedTool || 'SPELL') + ' — PICK A TARGET').toUpperCase();
   } else if (menuView !== 'root') {
-    view = 'sub';
-  } else if (quickOpen && !am) {
-    view = 'quick';
+    view = 'sub'; viewKey = 'sub|' + menuView;   // unknown view: bare clock + crown
+  } else if (st._enemyActionTargetId && !am) {
+    built = _hrlgEnemyBlades(unit, st); view = 'quick'; viewKey = 'enemy|' + st._enemyActionTargetId;
+  } else if (st._tileActionTarget && !am) {
+    built = _hrlgTileBlades(unit, st); view = 'quick';
+    viewKey = 'tile|' + st._tileActionTarget.x + ',' + st._tileActionTarget.y;
   } else {
-    view = 'root';
+    view = 'root'; viewKey = 'root|' + (am || '');
     if (am) modeLabel = modeLabels[am] || null;
     blades = actions.map(a => ({ ...a, ang: HRLG_ANG[a.id] != null ? HRLG_ANG[a.id] : 4 }));
     blades.sort((a, b) => a.ang - b.ang);
-    blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, ang: HRLG_ANG.end, short: true, hint: 'SPACE' });
+    blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: 'SPACE' });
   }
+  if (built) { blades = built.blades; title = built.title; }
 
   return h(HorologeMenu, {
-    view: view, blades: blades, fc: fc,
+    view: view, viewKey: viewKey, title: title, blades: blades, fc: fc,
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
-    roman: roman, unitName: unitName,
+    roman: roman, unitName: unitName, unitKey: unit.id,
     ap: unit.ap || 0, maxAP: maxAP,
     modeLabel: modeLabel, am: am,
     onAction: onAction, onEndTurn: onEndTurn, onCancel: onCancel,
@@ -1696,642 +2303,6 @@ function spellPowerStat(sp) {
   if (sp.dotDamage) return { value: sp.dotDamage, unit: 'DOT', color: '#ee6655' };
   if (sp.heal) return { value: sp.heal, unit: 'HP', color: '#55cc66' };
   if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
-  return null;
-}
-
-function SubMenu({ st }) {
-  if (!st || st.phase !== 'battle') return null;
-
-  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const activeId = st._blitzActiveUnitId || st.selectedUnitId;
-  const unit = (st.units || []).find(u => u.id === activeId);
-  if (!unit || unit.dead) return null;
-
-  const humanTurn = !st.autoPlayers?.[st.activePlayer];
-  const canControl = humanTurn && unit.player === st.activePlayer
-    && (typeof canUnitAct === 'function' ? canUnitAct(unit) : true)
-    && !st.winner;
-  if (!canControl) return null;
-  if (st.units.some(u => u._dying)) return null;
-  if (st.battleDialogueQueue && st.battleDialogueQueue.length > 0) return null;
-
-  const menuView = st.actionMenuView || 'root';
-  const am = st.actionMode;
-
-  if (menuView === 'root' && am !== 'attack') return null;
-
-  const fc = getFactionColor(unit);
-
-  if (menuView === 'spells') {
-    if (am === 'spell' && st.selectedTool) {
-
-      const allSp = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
-      const selSp = allSp.find(s => s.name === st.selectedTool);
-      const selDesc = selSp ? spellTagline(selSp) : '';
-      const selVal = selSp && typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(selSp) : '';
-      const selRng = selSp ? (selSp.range || 0) : 0;
-      const selAoe = selSp ? (selSp.aoeRadius || 0) : 0;
-      let selRangeStr = selRng > 0 ? selRng + ' range' : 'self';
-      if (selAoe > 0) selRangeStr += ' · ' + selAoe + ' aoe';
-      const selRangeBadge = selSp ? spellRangeBadge(selSp) : null;
-      return h(SubMenuPanel, { title: st.selectedTool + ' · Click target', fc: fc },
-        selDesc && h('div', { style: {
-          padding: '4px 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          color: EW.inkMute, letterSpacing: '0.02em', lineHeight: '1.4',
-        }}, selDesc),
-        (selVal || selRng) && h('div', { style: {
-          padding: '0 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkDim, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8,
-        }},
-          selVal && h('span', { style: { color: '#ee6655', fontWeight: 700 }}, selVal),
-          h('span', null, selRangeStr),
-          selRangeBadge && h('span', {
-            title: selRangeBadge.title,
-            style: {
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              color: selRangeBadge.color, fontWeight: 700, letterSpacing: '0.08em',
-              border: '1px solid ' + selRangeBadge.color + '66', borderRadius: '9px',
-              padding: '0 6px', background: selRangeBadge.color + '14',
-            },
-          }, selRangeBadge.glyph + ' ' + selRangeBadge.label),
-        ),
-        h(SubMenuRow, { label: '← Cancel', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-      );
-    }
-
-    const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
-    const allAbilities = spells;
-    const tierOrder = { 'I': 1, 'II': 2, 'III': 3 };
-
-    const mpPenalty = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence') ? 999 : 0;
-
-    const _isAvail = (sp) => {
-      const cost = sp.cost || 0;
-      const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
-      if (!canAfford) return false;
-      const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
-      // No target where it stands, but it could step into range and still cast
-      // this turn → keep it usable (move-then-cast), don't grey it out.
-      const canReach = !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
-      return hasTarget || canReach;
-    };
-    // Memoize availability — _isAvail can run a move-into-range probe, and a
-    // sort comparator would otherwise call it O(n log n) times per spell.
-    const _availCache = new Map();
-    const _availOf = (sp) => {
-      if (!_availCache.has(sp)) _availCache.set(sp, _isAvail(sp));
-      return _availCache.get(sp);
-    };
-    allAbilities.sort((a, b) => {
-      const aAvail = _availOf(a) ? 0 : 1;
-      const bAvail = _availOf(b) ? 0 : 1;
-      if (aAvail !== bAvail) return aAvail - bAvail;
-      return (tierOrder[a.tier] || 0) - (tierOrder[b.tier] || 0);
-    });
-
-    return h(SubMenuPanel, {
-      title: 'Abilities',
-      fc: fc,
-      wide: true,
-      count: allAbilities.filter(sp => {
-        const cost = sp.cost || 0;
-        const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
-        return canAfford;
-      }).length + '/' + allAbilities.length,
-    },
-      allAbilities.map((sp, i) => {
-        const cost = sp.cost || 0;
-        const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
-        const isSilenced = mpPenalty > 0;
-        const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
-        const canAfford = !isSilenced && tierOk && unit.mp >= cost && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
-        const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
-        // No target in range from here, but reachable by stepping into range and
-        // still casting this turn → castable via move-then-cast (not greyed).
-        const canReach = canAfford && !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
-        const canCast = canAfford && (hasTarget || canReach);
-        const needsMove = canCast && !hasTarget && canReach;
-        const active = am === 'spell' && st.selectedTool === sp.name;
-
-        const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(unit, sp) : 0;
-        let spellReason = '';
-        if (!canCast) {
-          if (isSilenced) spellReason = 'Silenced';
-          else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; spellReason = 'Req Lv.' + trl; }
-          else if (cdLeft > 0) spellReason = '⏳ CD ' + cdLeft;
-          else if (unit.mp < cost) spellReason = 'No MP';
-          else if ((unit.ap || 0) < apCost) spellReason = 'No AP';
-          else if (!hasTarget) spellReason = 'No target';
-        }
-
-        const elemColors = {
-          divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly,
-          tech: EW.tech, human: EW.human, alien: EW.alien,
-        };
-        const tc = elemColors[sp.spellType] || EW.inkMute;
-
-        const cat = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
-        const catConfig = {
-          damage: { icon: '⚔', label: 'DMG', color: '#ee6655', bg: 'rgba(238,102,85,' },
-          heal:   { icon: '♥', label: 'HEAL', color: '#55cc66', bg: 'rgba(85,204,102,' },
-          buff:   { icon: '▲', label: 'BUFF', color: '#55aaff', bg: 'rgba(85,170,255,' },
-          debuff: { icon: '▼', label: 'DEBUF', color: '#cc77dd', bg: 'rgba(204,119,221,' },
-          utility:{ icon: '◎', label: 'UTIL', color: '#ccaa55', bg: 'rgba(204,170,85,' },
-        };
-        const cc = catConfig[cat] || catConfig.damage;
-
-        const val = typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '';
-
-        const rng = sp.range || 0;
-        const aoeR = sp.aoeRadius || 0;
-        let rangeStr = rng > 0 ? rng + 'rng' : 'self';
-        if (aoeR > 0) rangeStr += ' · ' + aoeR + 'aoe';
-
-        const isPhysical = sp.damageType === 'physical';
-
-        const powerStat = spellPowerStat(sp);
-        const targetMode = spellTargetMode(sp);
-        const delivery = spellDeliveryBadge(sp, cat);
-        const rangeBadge = spellRangeBadge(sp);
-        const desc = sp.desc || spellTagline(sp);
-        const accent = active ? cc.color : tc;
-
-        // Small color-coded stat chip: big number + tiny unit label (PWR / MP / AP).
-        const statChip = (v, u, col) => h('span', {
-          style: { display: 'inline-flex', alignItems: 'baseline', gap: 2, flexShrink: 0, fontFamily: '"DotGothic16", monospace' },
-        },
-          h('span', { style: { fontSize: 13, fontWeight: 700, color: col, letterSpacing: '0.01em' }}, v),
-          h('span', { style: { fontSize: 8, fontWeight: 700, color: col, opacity: 0.78, letterSpacing: '0.05em' }}, u),
-        );
-
-        return h('div', {
-          key: sp.name || i,
-          className: 'rhud-move-slot' + (active ? ' is-focused' : '') + (canCast ? '' : ' is-disabled'),
-          style: { position: 'relative', margin: '5px 8px' },
-        },
-
-          // Soft radial bloom that lives BEHIND the card (outside its clip), so the
-          // glow reads as a cloud of light rather than a hard rim.
-          h('div', { className: 'rhud-move-glow', 'aria-hidden': 'true' }),
-
-          h('div', {
-          className: 'rhud-move-card' + (canCast ? '' : ' rhud-disabled') + (active ? ' rhud-move-card-active' : ''),
-          style: {
-            position: 'relative', zIndex: 1, overflow: 'hidden',
-            cursor: canCast ? 'pointer' : 'default',
-            opacity: canCast ? 1 : 0.5,
-            background: 'linear-gradient(135deg, rgba(13,15,24,0.96) 0%, rgba(9,11,18,0.93) 100%)',
-            border: '1px solid ' + (active ? 'rgba(255,224,150,0.9)' : 'rgba(120,140,180,0.16)'),
-            borderLeft: '3px solid ' + (active ? '#ffcf7a' : (canCast ? accent : EW.inkDim)),
-            clipPath: 'polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px)',
-          },
-          onClick: canCast ? () => { hideSpellTooltip(); if (typeof setTool === 'function') setTool('spell', sp.name); } : undefined,
-          onMouseEnter: (e) => { showSpellTooltip(sp, e.nativeEvent || e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); },
-          onMouseMove: (e) => { moveSpellTooltip(e.nativeEvent || e); },
-          onMouseLeave: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); },
-        },
-
-          // ── Header bar: NAME + red PWR / blue MP / gold AP ──
-          h('div', { style: {
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '6px 11px 6px 12px',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 100%)',
-            borderBottom: '1px solid rgba(120,140,180,0.12)',
-          }},
-            h('span', { style: {
-              flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15, fontWeight: 700,
-              color: canCast ? EW.ink : EW.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}, sp.name),
-            powerStat && statChip(powerStat.value, powerStat.unit, powerStat.color),
-            statChip(cost, 'MP', EW.space),
-            statChip(apCost, 'AP', EW.time),
-          ),
-
-          // ── Body: element badge (ALIEN…) + description ──
-          h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
-            h('span', { style: typeBadgeStyleFor(sp.spellType) }, (sp.spellType || '').toUpperCase()),
-            desc && h('span', { style: {
-              flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
-              color: canCast ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
-            }}, desc),
-          ),
-
-          // ── Footer: targeting mode · range  +  delivery pill / reason ──
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, padding: '2px 11px 8px' }},
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: EW.inkMute,
-            }}, targetMode),
-            rangeStr && h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8, letterSpacing: '0.06em', color: EW.inkDim,
-            }}, '· ' + rangeStr),
-            h('span', {
-              title: rangeBadge.title,
-              style: {
-                display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
-                fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
-                color: rangeBadge.color, border: '1px solid ' + rangeBadge.color + '66',
-                borderRadius: '9px', padding: '0 6px', background: rangeBadge.color + '14',
-              },
-            }, rangeBadge.glyph + ' ' + rangeBadge.label),
-            h('span', { style: { flex: 1 }}),
-            spellReason
-              ? h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-                  color: EW.bad, flexShrink: 0,
-                }}, spellReason)
-              : needsMove
-              ? h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.1em',
-                  color: '#1a1206', background: '#ffcc44', border: '1px solid #ffcc44',
-                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
-                  boxShadow: '0 0 7px #ffcc4470',
-                }}, 'MOVE → CAST')
-              : h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
-                  color: '#fff', background: delivery.color, border: '1px solid ' + delivery.color,
-                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
-                  boxShadow: '0 0 7px ' + delivery.color + '70',
-                }}, delivery.label),
-          ),
-          )
-        );
-      }),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'items') {
-    if (am === 'item' && st.selectedTool) {
-      return h(SubMenuPanel, { title: st.selectedTool + ' · Click target', fc: fc },
-        h(SubMenuRow, { label: '← Cancel', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-      );
-    }
-    const heldKeys = typeof ITEM_RULES !== 'undefined'
-      ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
-    // Greyed-out (currently unusable) items sink to the bottom so usable ones lead.
-    if (typeof canUseItemNow === 'function') {
-      heldKeys.sort((a, b) => (canUseItemNow(unit, a) ? 0 : 1) - (canUseItemNow(unit, b) ? 0 : 1));
-    }
-    return h(SubMenuPanel, { title: 'Items', fc: fc },
-      heldKeys.map(itemKey => {
-        const count = unit.items?.[itemKey] || 0;
-        const rules = typeof ITEM_RULES !== 'undefined' ? ITEM_RULES[itemKey] : null;
-        const canUse = typeof canUseItemNow === 'function' ? canUseItemNow(unit, itemKey) : true;
-        const active = am === 'item' && st.selectedTool === itemKey;
-
-        let itemReason = '';
-        if (!canUse) {
-          if (itemKey === 'healPotion') itemReason = 'HP full';
-          else if (itemKey === 'manaPotion') itemReason = 'No ally needs MP';
-          else itemReason = 'Can\'t use';
-        }
-        return h('div', {
-          key: itemKey,
-          className: 'rhud-row' + (canUse ? '' : ' rhud-disabled'),
-          style: {
-            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
-            cursor: canUse ? 'pointer' : 'default',
-            background: active ? 'linear-gradient(90deg, ' + EW.time + '1a, transparent)' : 'transparent',
-            borderLeft: active ? '2px solid ' + EW.time : '2px solid transparent',
-            opacity: canUse ? 1 : 0.5,
-          },
-          onClick: canUse ? () => { if (typeof chooseItemAction === 'function') chooseItemAction(itemKey); } : undefined,
-        },
-          h('span', { className: 'rhud-row-icon', style: { fontSize: 12, width: 14, textAlign: 'center' }}, '❖'),
-          h('span', { className: 'rhud-row-label', style: {
-            flex: 1, fontFamily: '"Cinzel", serif', fontSize: 14,
-            color: active ? EW.ink : EW.inkMute, letterSpacing: '0.02em',
-          }}, rules?.name || itemKey),
-          itemReason
-            ? h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 600,
-                color: EW.bad, letterSpacing: '0.04em',
-              }}, itemReason)
-            : h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 8,
-                color: EW.inkMute, letterSpacing: '0.06em',
-              }}, '×' + count),
-        );
-      }),
-      heldKeys.length === 0 && h('div', { style: {
-        padding: '6px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        color: EW.inkDim, letterSpacing: '0.1em',
-      }}, 'No items'),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'more') {
-    const moreItems = [];
-
-    if ((unit.ap || 0) >= 2) {
-      moreItems.push({ label: '🛡 Guard', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
-    }
-
-    if (typeof _isGauntlet === 'function' && _isGauntlet()) {
-      const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
-      const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
-      const canSwitch = reserves.length > 0 && (unit.ap || 0) >= switchCost;
-      moreItems.push({
-        label: '🔄 Switch',
-        sub: reserves.length === 0 ? 'No reserves' : `${switchCost} AP`,
-        dim: !canSwitch,
-        onClick: () => { if (canSwitch && typeof chooseActionMenu === 'function') chooseActionMenu('switch'); },
-      });
-    }
-
-    const apc = typeof getActionPanelCache === 'function' ? getActionPanelCache(unit) : {};
-    if (apc.hasInspect) {
-      moreItems.push({ label: '🔍 Inspect', onClick: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); }, active: am === 'inspect' });
-    }
-    if (apc.hasInspect && (unit.ap || 0) >= 1) {
-      moreItems.push({ label: '🔍 Inspect Here', sub: '1 AP', onClick: () => { if (typeof doInspect === 'function' && typeof getSelectedUnit === 'function') doInspect(getSelectedUnit(), unit.x, unit.y); } });
-    }
-
-    if (apc.canTrade) {
-      moreItems.push({ label: '🔄 Trade', onClick: () => { if (typeof setActionMode === 'function') setActionMode('trade'); }, active: am === 'trade' });
-    }
-
-    if (typeof unitHasWard === 'function' && unitHasWard(unit) && !unit._usedWard) {
-      moreItems.push({ label: '👁 Ward', onClick: () => { if (typeof setActionMode === 'function') setActionMode('ward'); }, active: am === 'ward' });
-    }
-
-    moreItems.push({ label: '📍 Ping', onClick: () => { if (typeof chooseActionMenu === 'function') chooseActionMenu('pings'); } });
-
-    if (typeof canFly === 'function' && canFly(unit)) {
-      if (typeof canChangeAltitude === 'function') {
-        const _groundZ = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
-        const _unitZ = unit.z ?? 0;
-        const _isAirborne = _unitZ > _groundZ;
-        if (_isAirborne) {
-          const canDesc = canChangeAltitude(unit, 'descend');
-          if (canDesc.ok) moreItems.push({ label: '⬇ Land', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'land'); } });
-        } else {
-          const canAsc = canChangeAltitude(unit, 'ascend');
-          if (canAsc.ok) moreItems.push({ label: '⬆ Take Off', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'ascend'); } });
-        }
-      }
-    } else if (typeof canReshapeTile === 'function') {
-      const canRaise = canReshapeTile(unit, 'raise');
-      if (canRaise.ok) moreItems.push({ label: '🔺 Raise', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'raise'); } });
-      const canLower = canReshapeTile(unit, 'lower');
-      if (canLower.ok) moreItems.push({ label: '🔻 Lower', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'lower'); } });
-    }
-
-    if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
-      moreItems.push({ label: '💣 Detonate', onClick: () => { if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); } });
-    }
-
-    if (typeof getNexusAtUnit === 'function') {
-      const nex = getNexusAtUnit(unit);
-      if (nex && (!nex.nexus.owner || nex.nexus.owner !== unit.player) && (unit.ap || 0) >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
-        moreItems.push({ label: '⬡ Channel', sub: '1 AP', onClick: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); } });
-      }
-    }
-
-    /* 🛗 Enter Building: standing beside a building rides its lift — ends the
-       turn, unit hides inside and emerges on the roof next turn. */
-    if (typeof getEnterableBuilding === 'function') {
-      const ent = getEnterableBuilding(unit);
-      if (ent) {
-        const enoughAp = (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1);
-        moreItems.push({
-          label: '🛗 Enter Building',
-          sub: enoughAp ? 'Ends turn' : 'No AP',
-          dim: !enoughAp,
-          onClick: () => {
-            if (!enoughAp) return;
-            if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit());
-          }
-        });
-      }
-    }
-
-    /* Recall: teleport back to spawn zone */
-    if (typeof RECALL_AP_COST !== 'undefined' && typeof RECALL_COOLDOWN_ROUNDS !== 'undefined') {
-      const spotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit);
-      const canRecall = (unit.ap || 0) >= RECALL_AP_COST && (unit._recallCooldown || 0) <= 0 && !spotted;
-      const cdLeft = unit._recallCooldown || 0;
-      const sub = cdLeft > 0 ? `CD: ${cdLeft}` : (spotted ? 'Spotted' : `${RECALL_AP_COST} AP`);
-      moreItems.push({
-        label: '🔵 Recall',
-        sub,
-        dim: !canRecall,
-        onClick: () => {
-          if (!canRecall) return;
-          if (typeof doRecall === 'function' && typeof getSelectedUnit === 'function') doRecall(getSelectedUnit());
-        }
-      });
-    }
-
-    if (!unit._skippedTurn && !st._skippedUnit && (unit.ap || 0) >= (typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3)) {
-      moreItems.push({ label: '⏭ Skip', onClick: () => { if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); } });
-    }
-
-    return h(SubMenuPanel, { title: 'More Actions', fc: fc },
-      moreItems.map((item, i) =>
-        h('div', {
-          key: i,
-          className: 'rhud-row',
-          style: {
-            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
-            cursor: 'pointer',
-            background: item.active ? 'linear-gradient(90deg, ' + EW.time + '1a, transparent)' : 'transparent',
-            borderLeft: item.active ? '2px solid ' + EW.time : '2px solid transparent',
-          },
-          onClick: item.onClick,
-        },
-          h('span', { className: 'rhud-row-label', style: {
-            flex: 1, fontFamily: '"Cinzel", serif', fontSize: 14,
-            color: EW.inkMute, letterSpacing: '0.02em',
-          }}, item.label),
-          item.sub && h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 8,
-            color: EW.inkDim, letterSpacing: '0.06em',
-          }}, item.sub),
-        ),
-      ),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'switch') {
-    const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
-    const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
-    return h(SubMenuPanel, { title: 'Switch In Reserve', fc: fc, count: reserves.length + '' },
-      reserves.map((r, i) => {
-        const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
-        const statusKeys = (typeof getActiveStatusKeys === 'function')
-          ? getActiveStatusKeys(r).filter(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.category === 'status')
-          : [];
-        return h('div', {
-          key: r.id,
-          className: 'rhud-row',
-          style: { padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
-          onClick: () => {
-            if (typeof doSwitch === 'function') doSwitch(unit, r.id);
-          },
-        },
-          h(UnitSprite, { unit: r, size: 22 }),
-          h('div', { style: { flex: 1, minWidth: 0 }},
-            h('div', { style: {
-              fontFamily: '"Cinzel", serif', fontSize: 13, color: EW.ink,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}, typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls)),
-            h('div', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 7,
-              color: EW.inkMute, letterSpacing: '0.06em',
-            }}, (r.cls || '').toUpperCase() + (statusKeys.length ? ' · ' + statusKeys.map(k => STATUS_DEFS[k]?.short || k).join(' ') : '')),
-          ),
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 9,
-            color: hpPct <= 30 ? EW.bad : EW.good, fontWeight: 600,
-          }}, hpPct + '%'),
-        );
-      }),
-      reserves.length === 0 && h('div', { style: {
-        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9, color: EW.inkMute,
-      }}, 'No reserves left.'),
-      h('div', { style: {
-        padding: '4px 12px 6px', fontFamily: '"DotGothic16", monospace', fontSize: 7,
-        color: EW.inkDim, letterSpacing: '0.06em', borderTop: '1px solid ' + EW.panelEdge,
-      }}, `Costs ${switchCost} AP · reserve enters with leftover AP · stat buffs reset`),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'attackTargets') {
-    /* Terrain cubes are destroyed by right-click-HOLDING them on the board
-       (see beginTileDemolishHold in battle.js) — listing every smashable
-       column here buried the real targets under "Smash Terrain" rows. */
-    const targets = (typeof _getAttackValidTargets === 'function' ? _getAttackValidTargets(unit) : [])
-      .filter(t => t.kind !== 'terrain');
-    return h(SubMenuPanel, { title: 'Attack Targets', fc: fc, count: targets.length + '' },
-      targets.map((t, i) => {
-        const isPending = st.pendingTarget && st.pendingTarget.x === t.x && st.pendingTarget.y === t.y;
-        let label = '', hpVal = 0, hpMax = 1, tUnit = null, typeAdv = '';
-        if (t.kind === 'unit') {
-          tUnit = t.unit;
-          label = typeof unitDisplayName === 'function' ? unitDisplayName(tUnit) : (tUnit.name || tUnit.cls);
-          hpVal = tUnit.hp; hpMax = tUnit.maxHp;
-          if (typeof getTypeEffectSummary === 'function') {
-            const adv = getTypeEffectSummary(unit.types || [], tUnit.types || []);
-            typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
-          }
-        } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
-        else if (t.kind === 'turret') { label = '🔧 Turret'; hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
-        else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
-        else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
-        else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
-        else if (t.kind === 'terrain') { label = '🔨 Smash Terrain'; }
-        else if (t.kind === 'building') {
-          label = '🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(t.building) : 'Building');
-          hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
-        }
-
-        return h(TargetRow, {
-          key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
-          hpVal: hpVal, hpMax: hpMax, dist: t.dist,
-          isPending: isPending,
-          // Pass the target's own elevation so an airborne unit (or the upper
-          // unit of a stack) is hit — not whoever stands on the ground below.
-          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, (tUnit && tUnit.z != null) ? tUnit.z : undefined); },
-        });
-      }),
-      targets.length === 0 && h('div', { style: {
-        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        color: EW.inkDim, letterSpacing: '0.1em',
-      }}, (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit))
-            ? 'Click an enemy to move into range, then attack'
-            : 'No targets in range'),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'spellTargets') {
-    const spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
-    const targets = spell && typeof _getSpellValidTargets === 'function' ? _getSpellValidTargets(unit, spell) : [];
-    const isOffensive = spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind);
-    const spellName = spell ? spell.name : (st.selectedTool || 'Spell');
-
-    return h(SubMenuPanel, { title: spellName + ' Targets', fc: fc, count: targets.length + '' },
-      targets.map((t, i) => {
-        const isPending = st.pendingTarget && st.pendingTarget.x === t.x && st.pendingTarget.y === t.y;
-        const tUnit = t.unit;
-        const label = tUnit
-          ? (typeof unitDisplayName === 'function' ? unitDisplayName(tUnit) : (tUnit.name || tUnit.cls))
-          : (typeof coordLabel === 'function' ? coordLabel(t.x, t.y) : (t.x + ',' + t.y));
-        let typeAdv = '';
-        if (tUnit && isOffensive && typeof getTypeEffectSummary === 'function') {
-          const adv = getTypeEffectSummary(unit.types || [], tUnit.types || []);
-          typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
-        }
-
-        return h(TargetRow, {
-          key: i, tUnit: tUnit, label: label, typeAdv: typeAdv,
-          hpVal: tUnit ? tUnit.hp : 0, hpMax: tUnit ? tUnit.maxHp : 1,
-          dist: t.dist, isPending: isPending,
-          // Pass the target's own elevation so an airborne unit (or the upper
-          // unit of a stack) is hit — not whoever stands on the ground below.
-          onClick: () => { if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(t.x, t.y, (tUnit && tUnit.z != null) ? tUnit.z : undefined); },
-        });
-      }),
-      targets.length === 0 && h('div', { style: {
-        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        color: EW.inkDim, letterSpacing: '0.1em',
-      }}, 'No targets in range'),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'pings') {
-    const pingKeys = typeof PING_TYPES !== 'undefined' ? Object.keys(PING_TYPES) : [];
-    return h(SubMenuPanel, { title: 'Ping', fc: fc },
-      pingKeys.map(pk => {
-        const pt = PING_TYPES[pk];
-        return h('div', {
-          key: pk,
-          className: 'rhud-row',
-          style: {
-            padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
-            cursor: 'pointer',
-            borderLeft: '2px solid ' + (pt.color || EW.inkMute),
-          },
-          onClick: () => { if (typeof setTool === 'function') setTool('ping', pk); },
-        },
-          h('span', { className: 'rhud-row-icon', style: { fontSize: 12, width: 14 }}, pt.icon),
-          h('span', { className: 'rhud-row-label', style: {
-            flex: 1, fontFamily: '"Cinzel", serif', fontSize: 14,
-            color: EW.inkMute, letterSpacing: '0.02em',
-          }}, pt.label),
-        );
-      }),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
-  if (menuView === 'spellOrientation') {
-    return h(SubMenuPanel, { title: (st.selectedTool || 'Spell') + ' · Orientation', fc: fc },
-      h('div', {
-        className: 'rhud-row',
-        style: { padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
-        onClick: () => { if (typeof setSpellOrientation === 'function') setSpellOrientation('horizontal'); },
-      },
-        h('span', { className: 'rhud-row-label', style: { fontFamily: '"Cinzel", serif', fontSize: 14, color: EW.inkMute }}, '↔ Horizontal'),
-      ),
-      h('div', {
-        className: 'rhud-row',
-        style: { padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' },
-        onClick: () => { if (typeof setSpellOrientation === 'function') setSpellOrientation('vertical'); },
-      },
-        h('span', { className: 'rhud-row-label', style: { fontFamily: '"Cinzel", serif', fontSize: 14, color: EW.inkMute }}, '↕ Vertical'),
-      ),
-      h(SubMenuRow, { label: '← Back', onClick: () => { if (typeof handleBackAction === 'function') handleBackAction(); } }),
-    );
-  }
-
   return null;
 }
 
@@ -2829,622 +2800,464 @@ function _actionSortClass(action) {
   return cls === 'damage' ? 0 : cls === 'debuff' ? 1 : 2;
 }
 
-function EnemyActionMenu({ st }) {
-  if (!st || st.phase !== 'battle') return null;
-  const targetId = st._enemyActionTargetId;
-  if (!targetId) return null;
 
-  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const activeId = st._blitzActiveUnitId || st.selectedUnitId;
-  const actingUnit = (st.units || []).find(u => u.id === activeId && !u.dead);
-  const targetUnit = (st.units || []).find(u => u.id === targetId && !u.dead);
-  if (!actingUnit || !targetUnit) return null;
-  if (actingUnit.player !== viewer) return null;
+/* ── Quick-menu machinery (module scope — used by the blade builders) ── */
 
-  const humanTurn = !st.autoPlayers?.[st.activePlayer];
-  const canControl = humanTurn && actingUnit.player === st.activePlayer
-    && (typeof canUnitAct === 'function' ? canUnitAct(actingUnit) : true)
-    && !st.winner;
-  if (!canControl) return null;
+// Predict where a spell will SHOVE its target so we can preview it: a push
+// spell flings the target away from the cast tile, a pull drags it toward the
+// caster. Walks tile-by-tile and stops at the board edge / an obstacle / an
+// occupied tile, mirroring the engine's displacement loop. Returns the landing
+// tile + mode, or null when the spell doesn't move the target (or can't).
+function _predictTargetShove(spell, target, castX, castY) {
+  if (!spell || !target) return null;
+  const k = spell.kind;
+  const isGrapple = spell.id === 'grapple' || spell.id === 'raceGrapple';
+  const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance || isGrapple;
+  const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
+                  || !!spell.pushDistance || !!spell.displaceDistance);
+  if (!isPull && !isPush) return null;
 
-  if (st.actionMode) return null;
+  let dx, dy, dist, mode;
+  if (isPull) {
+    dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
+    dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
+  } else {
+    dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+    dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
+  }
+  if (dx === 0 && dy === 0) return null;
 
-  if (st.actionMenuView && st.actionMenuView !== 'root') return null;
+  let px = target.x, py = target.y;
+  for (let i = 0; i < dist; i++) {
+    const nx = px + dx, ny = py + dy;
+    if (typeof isInside === 'function' && !isInside(nx, ny)) break;
+    if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
+    if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
+    px = nx; py = ny;
+  }
+  if (px === target.x && py === target.y) return null;
+  return { x: px, y: py, mode };
+}
 
-  if ((st.units || []).some(u => u._dying)) return null;
+function _actionPlanArrowColor(action) {
+  if (!action) return 0xff4444;
+  if (action.id === 'attack' || action.id === 'combo') return 0xff4444;
 
-  const fc = getFactionColor(actingUnit);
-  const tc = getTypeColor(targetUnit);
+  const spType = (action.spellType || '').toLowerCase();
+  const cssColor = TYPE_COLORS[spType] || '';
+  if (cssColor) {
+
+    return parseInt(cssColor.replace('#', ''), 16) || 0xff4444;
+  }
+  return 0xff4444;
+}
+
+function _clearMoveArrowPreview() {
+  if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+  ThreeRenderer.clearArrows3D();
+  ThreeRenderer.clearGhostUnit();
+  ThreeRenderer.clearOverlay('movePreview');
+  ThreeRenderer.clearOverlay('actionPlanTarget');
+  ThreeRenderer.clearOverlay('actionPlanAoe');
+  ThreeRenderer.clearOverlay('actionPlanShove');
+}
+
+function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
+  _clearMoveArrowPreview();
+  if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+  const tx = targetUnit.x, ty = targetUnit.y;
+
+  const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
+
+  const targetY = ThreeRenderer.unitSurfaceY(targetUnit);
+
+  // Team-tinted hologram + a colour for the strike arrow that matches the action.
+  const ghostTint = (typeof getFactionColor === 'function')
+    ? (parseInt(String(getFactionColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+    : 0x66ddff;
+  const arrowColor = _actionPlanArrowColor(action);
+  // Casting position (where the strike/shove is measured from): the move
+  // destination when repositioning, else the unit's current tile.
+  let castX = actingUnit.x, castY = actingUnit.y;
+
+  // A height approach (take off / land / raise) casts from the caster's own tile,
+  // so there's no walk arrow to draw — fall through to the direct caster→target arrow.
+  if (mt && !mt._heightApproach) {
+
+    let destY;
+    if (typeof canFly === 'function' && canFly(actingUnit) &&
+        typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)) {
+
+      const ts = CONFIG.tileSize || BASE_TILE;
+      const curGnd = typeof getHeightAt === 'function' ? getHeightAt(actingUnit.x, actingUnit.y) : 0;
+      const clearance = (actingUnit.z || 0) - curGnd;
+      const destGnd = typeof getHeightAt === 'function' ? getHeightAt(mt.x, mt.y) : 0;
+      const destZ = destGnd + clearance;
+      const destElev = (typeof window._getElevationPx === 'function')
+        ? window._getElevationPx(destZ) : destZ * ts;
+      destY = Math.max(ts * 0.04, destElev);
+    } else {
+      destY = ThreeRenderer.tileTopY(mt.x, mt.y);
+    }
+    castX = mt.x; castY = mt.y;
+
+    // One continuous bending walk-route arrow through any waypoint, plus tile
+    // markers so the destination reads even head-on.
+    const routeColor = mt._jump ? 0x66ffcc : 0xffcc44;
+    if (mt.via) {
+      const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
+      ThreeRenderer.drawPathArrow3D([
+        { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
+        { x: mt.via.x, y: mt.via.y, yOverride: viaY },
+        { x: mt.x, y: mt.y, yOverride: destY },
+      ], routeColor);
+
+      ThreeRenderer.setOverlay('movePreview', [
+        { x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 },
+        { x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 },
+      ], routeColor, 0.45);
+    } else {
+      ThreeRenderer.drawPathArrow3D([
+        { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
+        { x: mt.x, y: mt.y, yOverride: destY },
+      ], routeColor);
+
+      ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
+    }
+
+    // Hologram of the caster standing where it will end up.
+    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
+
+    // Arced strike arrow lobbing from the move destination onto the target.
+    ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
+  } else {
+
+    // Arced strike arrow straight from the unit's current tile onto the target.
+    ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
+  }
+
+  ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+
+  if (action && action.spell && typeof getSpellAoeFootprint === 'function') {
+    const sp = action.spell;
+    const hasAoe = sp.aoeRadius || sp.crossRadius || sp.kind === 'cross' || sp.kind === 'aoe'
+                 || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush';
+    if (hasAoe) {
+      const aoeTiles = getSpellAoeFootprint(sp, tx, ty, actingUnit);
+      if (aoeTiles && aoeTiles.length > 0) {
+        const overlayTiles = aoeTiles.map(t => ({
+          x: t.x, y: t.y,
+          color: (t.x === tx && t.y === ty) ? 0xff4444 : 0xcc2222,
+          opacity: (t.x === tx && t.y === ty) ? 0.5 : 0.35,
+        }));
+        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, 0xff3333, 0.35);
+      }
+    }
+  }
+
+  // Displacement preview: show a ghost of the target where it will be shoved,
+  // with a bent arrow tracing the knockback/pull — so the player sees exactly
+  // what the spell will DO in this scenario, not just where it aims.
+  if (action && action.spell) {
+    const shove = _predictTargetShove(action.spell, targetUnit, castX, castY);
+    if (shove) {
+      const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
+      const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
+      ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
+      ThreeRenderer.drawArrow3D(tx, ty, shove.x, shove.y, shoveColor, false, targetY, shY,
+        { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
+      ThreeRenderer.setOverlay('actionPlanShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
+    }
+  }
+}
+
+// Execute one quick-menu action against the clicked enemy — including the
+// one-click move/jump/take-off + strike combos. Ported verbatim from the old
+// EnemyActionMenu card click handler.
+function _fireEnemyAction(actingUnit, targetUnit, a) {
+  if (!a.available) return;
+  hideSpellTooltip();
+  _clearMoveArrowPreview();
+  // Quick-cast fires (or walks-then-fires) immediately — drop the menus
+  // in this same tick so the click visibly registered.
+  if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(550);
+  const isMove = !!a.moveTile;
+
+  const _executeAction = (actionId, spell, tx, ty, tz) => {
+
+    const target = tz != null
+      ? (state.units || []).find(u => !u.dead && u.x === tx && u.y === ty && u.z === tz)
+      : (state.units || []).find(u => !u.dead && u.x === tx && u.y === ty);
+    if (!target && actionId !== 'combo') {
+      if (typeof addLog === 'function') addLog('Target is no longer there.');
+      state._actionExecuting = false;
+      state.actionMode = null;
+      state.selectedTool = null;
+      if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+      if (typeof renderIfDirty === 'function') renderIfDirty();
+      return;
+    }
+    state._actionExecuting = true;
+    if (actionId === 'attack') {
+      if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty, tz);
+    } else if (actionId === 'grappleAttack' && spell) {
+      // Fire the grapple to reel the target into melee, then swing once the
+      // reel settles. `target` is the live unit object, so its x/y reflect
+      // the post-pull tile by the time the strike fires.
+      state.selectedTool = spell.name;
+      state.actionMode = 'spell';
+      const _combTarget = target;
+      let _grCd = 0;
+      if (typeof doSpell === 'function') _grCd = doSpell(actingUnit, tx, ty, tz) || 0;
+      if (_grCd) {
+        window.setTimeout(() => {
+          if (!_combTarget || _combTarget.dead) return;
+          if (typeof doAttack === 'function') doAttack(actingUnit, _combTarget.x, _combTarget.y, _combTarget.z);
+        }, _grCd + 140);
+      }
+    } else if (actionId.startsWith('spell:') && spell) {
+
+      state.selectedTool = spell.name;
+      state.actionMode = 'spell';
+      // Self-centered casts (barrage novae like Meow, auras, self-buffs)
+      // originate ON the caster — the clicked enemy is only how the player
+      // picked the spell, not where it's aimed. Cast on our own tile (after
+      // any move-into-range above) so the engine's caster-range gate, which
+      // measures distance to the *target* tile, doesn't reject a range-0
+      // nova as "out of range" — exactly as the spellbook flow does when
+      // you click your own tile.
+      const _selfCast = typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell);
+      if (typeof doSpell === 'function') {
+        if (_selfCast) doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z);
+        else doSpell(actingUnit, tx, ty, tz);
+      }
+    } else if (actionId.startsWith('item:')) {
+
+      const _itemKey = actionId.substring(5);
+      state.selectedTool = _itemKey;
+      state.actionMode = 'item';
+      if (typeof doItem === 'function') doItem(actingUnit, tx, ty);
+    } else if (actionId === 'combo') {
+      if (typeof setActionMode === 'function') setActionMode('combo');
+
+      const partners = typeof getComboPartners === 'function' ? getComboPartners(actingUnit) : [];
+      if (partners.length > 0) {
+        state.comboPartner = partners[0];
+        if (typeof doComboAttack === 'function') doComboAttack(actingUnit, partners[0], tx, ty);
+      }
+    }
+
+    state._enemyActionTargetId = null;
+    state.pendingTarget = null;
+    if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+    if (typeof renderIfDirty === 'function') renderIfDirty();
+    if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  };
+
+  state._enemyActionTargetId = null;
+
+  if (isMove) {
+
+    const mt = a.moveTile;
+    const _pendingActionId = a.id;
+    const _pendingSpell = a.spell || null;
+    const _targetX = targetUnit.x, _targetY = targetUnit.y, _targetZ = targetUnit.z;
+
+    if (mt._jump) {
+      // Jump-then-cast (e.g. leap up to get above the target, then leap-strike).
+      const jumpResult = typeof doJump === 'function' ? doJump(actingUnit, mt.x, mt.y, mt.z) : false;
+      if (jumpResult === false) {
+        if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+        state._actionExecuting = false;
+        state.actionMode = null;
+        state.selectedTool = null;
+        if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+        return;
+      }
+      // doJump returns true (not a duration); wait for the jump arc (~650ms) to land.
+      setTimeout(() => {
+        _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+      }, 680);
+    } else if (mt._heightApproach) {
+      // Take off / land (flyers) or raise the ground underfoot (non-flyers) in
+      // place, then cast — mirrors the engine's _moveThenCast height branch.
+      let hr;
+      if (mt._heightApproach === 'raise') {
+        hr = typeof doReshape === 'function' ? doReshape(actingUnit, 'raise') : 0;
+      } else {
+        hr = typeof doAltitudeChange === 'function'
+          ? doAltitudeChange(actingUnit, mt._heightApproach === 'takeoff' ? 'ascend' : 'descend') : 0;
+      }
+      if (hr === 0 || hr === false) {
+        if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+        state._actionExecuting = false;
+        state.actionMode = null;
+        state.selectedTool = null;
+        if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+        return;
+      }
+      setTimeout(() => {
+        _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+      }, 560);
+    } else if (mt.via) {
+
+      const moveResult1 = typeof doMove === 'function' ? doMove(actingUnit, mt.via.x, mt.via.y, mt.via.z) : false;
+      if (moveResult1 === false) {
+        if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+        state._actionExecuting = false;
+        state.actionMode = null;
+        state.selectedTool = null;
+        if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+        return;
+      }
+      const walkDelay1 = typeof moveResult1 === 'number' ? moveResult1 : 450;
+      setTimeout(() => {
+        const moveResult2 = typeof doMove === 'function' ? doMove(actingUnit, mt.x, mt.y, mt.z) : false;
+        if (moveResult2 === false) {
+          if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+          state._actionExecuting = false;
+          state.actionMode = null;
+          state.selectedTool = null;
+          if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+          if (typeof renderIfDirty === 'function') renderIfDirty();
+          return;
+        }
+        const walkDelay2 = typeof moveResult2 === 'number' ? moveResult2 : 450;
+        setTimeout(() => {
+          _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+        }, walkDelay2);
+      }, walkDelay1);
+    } else {
+
+      const moveResult = typeof doMove === 'function' ? doMove(actingUnit, mt.x, mt.y, mt.z) : false;
+      if (moveResult === false) {
+        if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+        state._actionExecuting = false;
+        state.actionMode = null;
+        state.selectedTool = null;
+        if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+        return;
+      }
+
+      const walkDelay = typeof moveResult === 'number' ? moveResult : 450;
+      setTimeout(() => {
+        _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+      }, walkDelay);
+    }
+  } else {
+
+    _executeAction(a.id, a.spell || null, targetUnit.x, targetUnit.y, targetUnit.z);
+  }
+}
+
+// The clicked enemy's whole playbook as drum blades: live damage estimate,
+// costs, one-click move+strike combos, unavailability reasons. The view tab
+// carries the target's sprite / name / HP so you always know who you're
+// lining up against.
+function _hrlgEnemyBlades(actingUnit, st) {
+  const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
+  if (!targetUnit) return { title: null, blades: [] };
   const actions = _computeEnemyActions(actingUnit, targetUnit);
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
-  const hpPct = targetUnit.maxHp > 0 ? Math.max(0, (targetUnit.hp / targetUnit.maxHp) * 100) : 0;
+  const hpPct = targetUnit.maxHp > 0 ? Math.max(0, Math.round((targetUnit.hp / targetUnit.maxHp) * 100)) : 0;
 
-  const dismiss = () => {
-    state._enemyActionTargetId = null;
-    _clearMoveArrowPreview();
-    if (typeof markDirty === 'function') { markDirty('hud'); }
-    if (typeof renderIfDirty === 'function') { renderIfDirty(); }
-  };
+  const blades = actions.map((a, i) => {
+    const isMove = !!a.moveTile;
+    const _mvVerb = isMove
+      ? (a.moveTile._heightApproach === 'takeoff' ? 'TAKE OFF'
+        : a.moveTile._heightApproach === 'land' ? 'LAND'
+        : a.moveTile._heightApproach === 'raise' ? 'RAISE'
+        : a.moveTile._jump ? 'JUMP' : 'MOVE')
+      : null;
 
-  // Predict where a spell will SHOVE its target so we can preview it: a push
-  // spell flings the target away from the cast tile, a pull drags it toward the
-  // caster. Walks tile-by-tile and stops at the board edge / an obstacle / an
-  // occupied tile, mirroring the engine's displacement loop. Returns the landing
-  // tile + mode, or null when the spell doesn't move the target (or can't).
-  const _predictTargetShove = (spell, target, castX, castY) => {
-    if (!spell || !target) return null;
-    const k = spell.kind;
-    const isGrapple = spell.id === 'grapple' || spell.id === 'raceGrapple';
-    const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance || isGrapple;
-    const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
-                    || !!spell.pushDistance || !!spell.displaceDistance);
-    if (!isPull && !isPush) return null;
+    let power = null;
+    if (a.preview && a.preview.min != null && a.preview.max != null) power = { v: a.preview.min + '–' + a.preview.max, color: '#ee6655' };
+    else if (a.preview && a.preview.amount) power = { v: '~' + a.preview.amount, color: '#ee6655' };
+    else if (a.powerLabel) power = { v: a.powerLabel, color: '#ee6655' };
 
-    let dx, dy, dist, mode;
-    if (isPull) {
-      dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
-      dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
-    } else {
-      dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
-      dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
-    }
-    if (dx === 0 && dy === 0) return null;
-
-    let px = target.x, py = target.y;
-    for (let i = 0; i < dist; i++) {
-      const nx = px + dx, ny = py + dy;
-      if (typeof isInside === 'function' && !isInside(nx, ny)) break;
-      if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
-      if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
-      px = nx; py = ny;
-    }
-    if (px === target.x && py === target.y) return null;
-    return { x: px, y: py, mode };
-  };
-
-  const _showMoveArrowPreview = (mt, action) => {
-    _clearMoveArrowPreview();
-    if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
-    const tx = targetUnit.x, ty = targetUnit.y;
-
-    const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
-
-    const targetY = ThreeRenderer.unitSurfaceY(targetUnit);
-
-    // Team-tinted hologram + a colour for the strike arrow that matches the action.
-    const ghostTint = (typeof getFactionColor === 'function')
-      ? (parseInt(String(getFactionColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
-      : 0x66ddff;
-    const arrowColor = _actionPlanArrowColor(action);
-    // Casting position (where the strike/shove is measured from): the move
-    // destination when repositioning, else the unit's current tile.
-    let castX = actingUnit.x, castY = actingUnit.y;
-
-    // A height approach (take off / land / raise) casts from the caster's own tile,
-    // so there's no walk arrow to draw — fall through to the direct caster→target arrow.
-    if (mt && !mt._heightApproach) {
-
-      let destY;
-      if (typeof canFly === 'function' && canFly(actingUnit) &&
-          typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)) {
-
-        const ts = CONFIG.tileSize || BASE_TILE;
-        const curGnd = typeof getHeightAt === 'function' ? getHeightAt(actingUnit.x, actingUnit.y) : 0;
-        const clearance = (actingUnit.z || 0) - curGnd;
-        const destGnd = typeof getHeightAt === 'function' ? getHeightAt(mt.x, mt.y) : 0;
-        const destZ = destGnd + clearance;
-        const destElev = (typeof window._getElevationPx === 'function')
-          ? window._getElevationPx(destZ) : destZ * ts;
-        destY = Math.max(ts * 0.04, destElev);
-      } else {
-        destY = ThreeRenderer.tileTopY(mt.x, mt.y);
-      }
-      castX = mt.x; castY = mt.y;
-
-      // One continuous bending walk-route arrow through any waypoint, plus tile
-      // markers so the destination reads even head-on.
-      const routeColor = mt._jump ? 0x66ffcc : 0xffcc44;
-      if (mt.via) {
-        const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
-        ThreeRenderer.drawPathArrow3D([
-          { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
-          { x: mt.via.x, y: mt.via.y, yOverride: viaY },
-          { x: mt.x, y: mt.y, yOverride: destY },
-        ], routeColor);
-
-        ThreeRenderer.setOverlay('movePreview', [
-          { x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 },
-          { x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 },
-        ], routeColor, 0.45);
-      } else {
-        ThreeRenderer.drawPathArrow3D([
-          { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
-          { x: mt.x, y: mt.y, yOverride: destY },
-        ], routeColor);
-
-        ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
-      }
-
-      // Hologram of the caster standing where it will end up.
-      ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
-
-      // Arced strike arrow lobbing from the move destination onto the target.
-      ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
-    } else {
-
-      // Arced strike arrow straight from the unit's current tile onto the target.
-      ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
+    let typeAdv = '';
+    if (a.typeNote) {
+      if (a.typeNote.includes('Strong') || a.typeNote.includes('strong') || a.typeNote.includes('super effective')) typeAdv = '▲';
+      else if (a.typeNote.includes('Weak') || a.typeNote.includes('weak') || a.typeNote.includes('not very')) typeAdv = '▼';
     }
 
-    ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+    return {
+      id: 'ea:' + a.id + ':' + i,
+      icon: a.icon, label: a.label,
+      available: a.available,
+      power: power,
+      mp: a.mpCost || null,
+      cost: a.available ? a.apCost : null,
+      meta: typeAdv ? { text: typeAdv, color: typeAdv === '▲' ? EW.good : EW.bad } : null,
+      note: isMove ? '↳ ' + _mvVerb : null,
+      sub: !a.available ? (a.reason || 'Unavailable') : null,
+      fire: () => _fireEnemyAction(actingUnit, targetUnit, a),
+      hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
+      hoverOut: () => { hideSpellTooltip(); _clearMoveArrowPreview(); },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '⚔', label: 'No actions available', available: false });
 
-    if (action && action.spell && typeof getSpellAoeFootprint === 'function') {
-      const sp = action.spell;
-      const hasAoe = sp.aoeRadius || sp.crossRadius || sp.kind === 'cross' || sp.kind === 'aoe'
-                   || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush';
-      if (hasAoe) {
-        const aoeTiles = getSpellAoeFootprint(sp, tx, ty, actingUnit);
-        if (aoeTiles && aoeTiles.length > 0) {
-          const overlayTiles = aoeTiles.map(t => ({
-            x: t.x, y: t.y,
-            color: (t.x === tx && t.y === ty) ? 0xff4444 : 0xcc2222,
-            opacity: (t.x === tx && t.y === ty) ? 0.5 : 0.35,
-          }));
-          ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, 0xff3333, 0.35);
-        }
-      }
-    }
-
-    // Displacement preview: show a ghost of the target where it will be shoved,
-    // with a bent arrow tracing the knockback/pull — so the player sees exactly
-    // what the spell will DO in this scenario, not just where it aims.
-    if (action && action.spell) {
-      const shove = _predictTargetShove(action.spell, targetUnit, castX, castY);
-      if (shove) {
-        const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
-        const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
-        ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
-        ThreeRenderer.drawArrow3D(tx, ty, shove.x, shove.y, shoveColor, false, targetY, shY,
-          { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
-        ThreeRenderer.setOverlay('actionPlanShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
-      }
-    }
-  };
-
-  const _actionPlanArrowColor = (action) => {
-    if (!action) return 0xff4444;
-    if (action.id === 'attack' || action.id === 'combo') return 0xff4444;
-
-    const spType = (action.spellType || '').toLowerCase();
-    const cssColor = TYPE_COLORS[spType] || '';
-    if (cssColor) {
-
-      return parseInt(cssColor.replace('#', ''), 16) || 0xff4444;
-    }
-    return 0xff4444;
-  };
-
-  const _clearMoveArrowPreview = () => {
-    if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
-    ThreeRenderer.clearArrows3D();
-    ThreeRenderer.clearGhostUnit();
-    ThreeRenderer.clearOverlay('movePreview');
-    ThreeRenderer.clearOverlay('actionPlanTarget');
-    ThreeRenderer.clearOverlay('actionPlanAoe');
-    ThreeRenderer.clearOverlay('actionPlanShove');
-  };
-
-  return h('div', {
-    className: 'hrlg-panel',
-    style: {
-      position: 'absolute', bottom: 16, left: 210, width: 344, zIndex: 14,
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      borderLeft: '2px solid ' + fc,
-      clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
-    },
-  },
-
-    h('div', { style: {
-      padding: '8px 12px', borderBottom: '1px solid ' + EW.panelEdge,
-      display: 'flex', alignItems: 'center', gap: 8,
-    }},
-      h(UnitSprite, { unit: targetUnit, size: 28 }),
-      h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }},
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-          h('span', { style: {
-            fontFamily: '"Cinzel", serif', fontSize: 14, fontWeight: 600,
-            color: EW.ink, letterSpacing: '0.02em',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}, targetName),
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 7,
-            letterSpacing: '0.1em', color: tc, padding: '0px 3px',
-            background: tc + '1f', border: '1px solid ' + tc + '44',
-            flexShrink: 0,
-          }}, (getTypeName(targetUnit) || '').toUpperCase()),
-        ),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-          h('div', { style: { flex: 1, height: 3, background: 'rgba(255,255,255,0.06)' }},
-            h('div', { style: {
-              height: '100%', width: hpPct + '%',
-              background: hpPct <= 30 ? EW.bad : EW.good,
-            }}),
-          ),
-          h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 7,
-            color: EW.inkDim, letterSpacing: '0.04em', flexShrink: 0,
-          }}, targetUnit.hp + '/' + targetUnit.maxHp),
-        ),
-      ),
-      h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkDim, letterSpacing: '0.06em', flexShrink: 0,
-      }}, dist + 't'),
-    ),
-
-    h('div', { style: { padding: '4px 0', maxHeight: 280, overflowY: 'auto' }},
-      actions.map((a, i) => {
-        const isAvail = a.available;
-        const isMove = !!a.moveTile;
-        const _mvVerb = isMove
-          ? (a.moveTile._heightApproach === 'takeoff' ? 'take off'
-            : a.moveTile._heightApproach === 'land' ? 'land'
-            : a.moveTile._heightApproach === 'raise' ? 'raise'
-            : a.moveTile._jump ? 'jump' : null)
-          : null;
-        const moveCostLabel = isMove ? (_mvVerb ? _mvVerb + ' + ' : a.moveTile.moveCost + ' mv + ') : '';
-        const costLabel = a.mpCost
-          ? moveCostLabel + a.mpCost + 'mp · ' + a.apCost + 'ap'
-          : moveCostLabel + a.apCost + 'ap';
-
-        let dmgText = '';
-        if (a.preview) {
-          if (a.preview.min != null && a.preview.max != null) {
-            dmgText = a.preview.min + '–' + a.preview.max;
-          } else if (a.preview.amount) {
-            dmgText = '~' + a.preview.amount;
-          }
-        } else if (a.powerLabel) {
-          dmgText = a.powerLabel;
-        }
-
-        let typeAdv = '';
-        if (a.typeNote) {
-          if (a.typeNote.includes('Strong') || a.typeNote.includes('strong') || a.typeNote.includes('super effective')) typeAdv = '▲';
-          else if (a.typeNote.includes('Weak') || a.typeNote.includes('weak') || a.typeNote.includes('not very')) typeAdv = '▼';
-        }
-
-        const spType = a.spellType || '';
-        const spTypeColor = spType ? (TYPE_COLORS[(spType || '').toLowerCase()] || EW.inkMute) : EW.inkMute;
-
-        const handleClick = () => {
-          if (!isAvail) return;
-          hideSpellTooltip();
-          _clearMoveArrowPreview();
-
-          const _executeAction = (actionId, spell, tx, ty, tz) => {
-
-            const target = tz != null
-              ? (state.units || []).find(u => !u.dead && u.x === tx && u.y === ty && u.z === tz)
-              : (state.units || []).find(u => !u.dead && u.x === tx && u.y === ty);
-            if (!target && actionId !== 'combo') {
-              if (typeof addLog === 'function') addLog('Target is no longer there.');
-              state._actionExecuting = false;
-              state.actionMode = null;
-              state.selectedTool = null;
-              if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-              if (typeof renderIfDirty === 'function') renderIfDirty();
-              return;
-            }
-            state._actionExecuting = true;
-            if (actionId === 'attack') {
-              if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty, tz);
-            } else if (actionId === 'grappleAttack' && spell) {
-              // Fire the grapple to reel the target into melee, then swing once the
-              // reel settles. `target` is the live unit object, so its x/y reflect
-              // the post-pull tile by the time the strike fires.
-              state.selectedTool = spell.name;
-              state.actionMode = 'spell';
-              const _combTarget = target;
-              let _grCd = 0;
-              if (typeof doSpell === 'function') _grCd = doSpell(actingUnit, tx, ty, tz) || 0;
-              if (_grCd) {
-                window.setTimeout(() => {
-                  if (!_combTarget || _combTarget.dead) return;
-                  if (typeof doAttack === 'function') doAttack(actingUnit, _combTarget.x, _combTarget.y, _combTarget.z);
-                }, _grCd + 140);
-              }
-            } else if (actionId.startsWith('spell:') && spell) {
-
-              state.selectedTool = spell.name;
-              state.actionMode = 'spell';
-              // Self-centered casts (barrage novae like Meow, auras, self-buffs)
-              // originate ON the caster — the clicked enemy is only how the player
-              // picked the spell, not where it's aimed. Cast on our own tile (after
-              // any move-into-range above) so the engine's caster-range gate, which
-              // measures distance to the *target* tile, doesn't reject a range-0
-              // nova as "out of range" — exactly as the spellbook flow does when
-              // you click your own tile.
-              const _selfCast = typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell);
-              if (typeof doSpell === 'function') {
-                if (_selfCast) doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z);
-                else doSpell(actingUnit, tx, ty, tz);
-              }
-            } else if (actionId.startsWith('item:')) {
-
-              const _itemKey = actionId.substring(5);
-              state.selectedTool = _itemKey;
-              state.actionMode = 'item';
-              if (typeof doItem === 'function') doItem(actingUnit, tx, ty);
-            } else if (actionId === 'combo') {
-              if (typeof setActionMode === 'function') setActionMode('combo');
-
-              const partners = typeof getComboPartners === 'function' ? getComboPartners(actingUnit) : [];
-              if (partners.length > 0) {
-                state.comboPartner = partners[0];
-                if (typeof doComboAttack === 'function') doComboAttack(actingUnit, partners[0], tx, ty);
-              }
-            }
-
-            state._enemyActionTargetId = null;
-            state.pendingTarget = null;
-            if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-            if (typeof renderIfDirty === 'function') renderIfDirty();
-            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
-          };
-
-          state._enemyActionTargetId = null;
-
-          if (isMove) {
-
-            const mt = a.moveTile;
-            const _pendingActionId = a.id;
-            const _pendingSpell = a.spell || null;
-            const _targetX = targetUnit.x, _targetY = targetUnit.y, _targetZ = targetUnit.z;
-
-            if (mt._jump) {
-              // Jump-then-cast (e.g. leap up to get above the target, then leap-strike).
-              const jumpResult = typeof doJump === 'function' ? doJump(actingUnit, mt.x, mt.y, mt.z) : false;
-              if (jumpResult === false) {
-                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
-                state._actionExecuting = false;
-                state.actionMode = null;
-                state.selectedTool = null;
-                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-                if (typeof renderIfDirty === 'function') renderIfDirty();
-                return;
-              }
-              // doJump returns true (not a duration); wait for the jump arc (~650ms) to land.
-              setTimeout(() => {
-                _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
-              }, 680);
-            } else if (mt._heightApproach) {
-              // Take off / land (flyers) or raise the ground underfoot (non-flyers) in
-              // place, then cast — mirrors the engine's _moveThenCast height branch.
-              let hr;
-              if (mt._heightApproach === 'raise') {
-                hr = typeof doReshape === 'function' ? doReshape(actingUnit, 'raise') : 0;
-              } else {
-                hr = typeof doAltitudeChange === 'function'
-                  ? doAltitudeChange(actingUnit, mt._heightApproach === 'takeoff' ? 'ascend' : 'descend') : 0;
-              }
-              if (hr === 0 || hr === false) {
-                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
-                state._actionExecuting = false;
-                state.actionMode = null;
-                state.selectedTool = null;
-                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-                if (typeof renderIfDirty === 'function') renderIfDirty();
-                return;
-              }
-              setTimeout(() => {
-                _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
-              }, 560);
-            } else if (mt.via) {
-
-              const moveResult1 = typeof doMove === 'function' ? doMove(actingUnit, mt.via.x, mt.via.y, mt.via.z) : false;
-              if (moveResult1 === false) {
-                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
-                state._actionExecuting = false;
-                state.actionMode = null;
-                state.selectedTool = null;
-                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-                if (typeof renderIfDirty === 'function') renderIfDirty();
-                return;
-              }
-              const walkDelay1 = typeof moveResult1 === 'number' ? moveResult1 : 450;
-              setTimeout(() => {
-                const moveResult2 = typeof doMove === 'function' ? doMove(actingUnit, mt.x, mt.y, mt.z) : false;
-                if (moveResult2 === false) {
-                  if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
-                  state._actionExecuting = false;
-                  state.actionMode = null;
-                  state.selectedTool = null;
-                  if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-                  if (typeof renderIfDirty === 'function') renderIfDirty();
-                  return;
-                }
-                const walkDelay2 = typeof moveResult2 === 'number' ? moveResult2 : 450;
-                setTimeout(() => {
-                  _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
-                }, walkDelay2);
-              }, walkDelay1);
-            } else {
-
-              const moveResult = typeof doMove === 'function' ? doMove(actingUnit, mt.x, mt.y, mt.z) : false;
-              if (moveResult === false) {
-                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
-                state._actionExecuting = false;
-                state.actionMode = null;
-                state.selectedTool = null;
-                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-                if (typeof renderIfDirty === 'function') renderIfDirty();
-                return;
-              }
-
-              const walkDelay = typeof moveResult === 'number' ? moveResult : 450;
-              setTimeout(() => {
-                _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
-              }, walkDelay);
-            }
-          } else {
-
-            _executeAction(a.id, a.spell || null, targetUnit.x, targetUnit.y, targetUnit.z);
-          }
-        };
-
-        const sp = a.spell || null;
-        const cat = sp && typeof classifySpell === 'function' ? classifySpell(sp) : null;
-
-        // Element / kind badge (top-left) — spell type for spells, action kind otherwise.
-        let badgeText, badgeColor;
-        if (spType) { badgeText = spType.toUpperCase(); badgeColor = spTypeColor; }
-        else if (a.id === 'attack') { badgeText = 'ATTACK'; badgeColor = fc; }
-        else if (a.id === 'combo') { badgeText = 'COMBO'; badgeColor = EW.time; }
-        else if (a.id && a.id.indexOf('item:') === 0) { badgeText = 'BANE'; badgeColor = '#e0944a'; }
-        else { badgeText = 'ACTION'; badgeColor = EW.inkMute; }
-
-        let cardDesc;
-        if (sp) cardDesc = sp.desc || spellTagline(sp);
-        else if (a.id === 'attack') cardDesc = 'Basic weapon strike on the target.';
-        else if (a.id === 'combo') cardDesc = 'Linked assault — team up with a nearby ally.';
-        else if (a.id && a.id.indexOf('item:') === 0) cardDesc = 'Hurl a bane weapon' + (a.typeNote ? ' — ' + a.typeNote : '.');
-        else cardDesc = '';
-
-        const tMode = sp ? spellTargetMode(sp) : 'Single Target';
-        const dlv = sp ? spellDeliveryBadge(sp, cat)
-                  : (a.id === 'combo' ? { label: 'COMBO', color: EW.time }
-                  : { label: 'PHYSICAL', color: '#e0944a' });
-
-        // Power chip — prefer the live damage estimate vs THIS target.
-        let powerChip = null;
-        if (a.preview && a.preview.min != null && a.preview.max != null) powerChip = { value: a.preview.min + '–' + a.preview.max, unit: 'PWR', color: '#ee6655' };
-        else if (a.preview && a.preview.amount) powerChip = { value: '~' + a.preview.amount, unit: 'PWR', color: '#ee6655' };
-        else if (sp) powerChip = spellPowerStat(sp);
-
-        const statChip = (v, u, col) => h('span', {
-          style: { display: 'inline-flex', alignItems: 'baseline', gap: 2, flexShrink: 0, fontFamily: '"DotGothic16", monospace' },
-        },
-          h('span', { style: { fontSize: 13, fontWeight: 700, color: col, letterSpacing: '0.01em' }}, v),
-          h('span', { style: { fontSize: 8, fontWeight: 700, color: col, opacity: 0.78, letterSpacing: '0.05em' }}, u),
-        );
-
-        const cardAccent = isAvail
-          ? (a.id === 'combo' ? EW.time : (spTypeColor !== EW.inkMute ? spTypeColor : fc))
-          : EW.inkDim;
-
-        return h('div', {
-          key: a.id,
-          className: 'rhud-move-slot' + (isAvail ? '' : ' is-disabled'),
-          style: { position: 'relative', margin: '5px 8px' },
-        },
-
-          h('div', { className: 'rhud-move-glow', 'aria-hidden': 'true' }),
-
-          h('div', {
-          className: 'rhud-move-card' + (isAvail ? '' : ' rhud-disabled'),
-          style: {
-            position: 'relative', zIndex: 1, overflow: 'hidden',
-            cursor: isAvail ? 'pointer' : 'default',
-            opacity: isAvail ? 1 : 0.45,
-            background: 'linear-gradient(135deg, rgba(13,15,24,0.96) 0%, rgba(9,11,18,0.93) 100%)',
-            border: '1px solid rgba(120,140,180,0.16)',
-            borderLeft: '3px solid ' + cardAccent,
-            clipPath: 'polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px)',
-          },
-          onClick: isAvail ? handleClick : undefined,
-          onMouseEnter: (e) => { if (a.spell) showSpellTooltip(a.spell, e.nativeEvent || e); if (isAvail && typeof _showMoveArrowPreview === 'function') _showMoveArrowPreview(a.moveTile, a); },
-          onMouseMove: (e) => { if (a.spell) moveSpellTooltip(e.nativeEvent || e); },
-          onMouseLeave: () => { hideSpellTooltip(); if (isAvail && typeof _clearMoveArrowPreview === 'function') _clearMoveArrowPreview(); },
-        },
-
-          // ── Header: icon + NAME + type-advantage + power / MP / AP ──
-          h('div', { style: {
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '6px 11px',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 100%)',
-            borderBottom: '1px solid rgba(120,140,180,0.12)',
-          }},
-            h('span', { style: { fontSize: 12, fontWeight: 700, flexShrink: 0,
-              color: isAvail ? (a.id === 'combo' ? EW.time : fc) : EW.inkDim }}, a.icon),
-            h('span', { style: {
-              flex: 1, fontFamily: '"Cinzel", serif', fontSize: 15, fontWeight: 700,
-              color: isAvail ? EW.ink : EW.inkMute, letterSpacing: '0.03em', textTransform: 'uppercase',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}, a.label),
-            typeAdv && h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 12, fontWeight: 700,
-              color: typeAdv === '▲' ? EW.good : EW.bad, flexShrink: 0,
-            }}, typeAdv),
-            powerChip && statChip(powerChip.value, powerChip.unit, powerChip.color),
-            a.mpCost ? statChip(a.mpCost, 'MP', EW.space) : null,
-            statChip(a.apCost, 'AP', EW.time),
-          ),
-
-          // ── Body: kind badge + description ──
-          h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 11px 4px' }},
-            h('span', { style: spType
-              ? typeBadgeStyleFor(spType)
-              : typeBadgeStyle(badgeColor) }, badgeText),
-            cardDesc && h('span', { style: {
-              flex: 1, fontFamily: '"DotGothic16", monospace', fontSize: 9, lineHeight: '1.45',
-              color: isAvail ? EW.inkMute : EW.inkDim, letterSpacing: '0.01em',
-            }}, cardDesc),
-          ),
-
-          // ── Footer: target mode · move-first + delivery / reason ──
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, padding: '2px 11px 8px' }},
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
-              textTransform: 'uppercase', color: EW.inkMute,
-            }}, tMode),
-            isMove && h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
-              color: EW.warn, flexShrink: 0,
-            }}, '· ↳ ' + (_mvVerb ? _mvVerb.toUpperCase() : 'MOVE ' + a.moveTile.moveCost + 'mv')),
-            h('span', { style: { flex: 1 }}),
-            (!isAvail && a.reason)
-              ? h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-                  color: EW.bad, flexShrink: 0,
-                }}, a.reason)
-              : h('span', { style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
-                  color: '#fff', background: dlv.color, border: '1px solid ' + dlv.color,
-                  borderRadius: '9px', padding: '1px 9px', flexShrink: 0,
-                  boxShadow: '0 0 7px ' + dlv.color + '70',
-                }}, dlv.label),
-          ),
-          )
-        );
-      }),
-      actions.length === 0 && h('div', { style: {
-        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        color: EW.inkDim, letterSpacing: '0.1em',
-      }}, 'No actions available'),
-    ),
-
-    h('div', { style: {
-      padding: '4px 12px 8px', borderTop: '1px solid ' + EW.panelEdge,
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    }},
-      h('span', {
-        className: 'rhud-back',
-        style: {
-          cursor: 'pointer',
-          fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          letterSpacing: '0.14em', color: EW.inkMute,
-        },
-        onClick: dismiss,
-      }, '← DISMISS'),
-      h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkDim, letterSpacing: '0.14em',
-      }}, 'CLICK TO CONFIRM'),
-    ),
-  );
+  const title = { node: h(React.Fragment, null,
+    h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
+    h('span', { className: 'hrlg-view-tab-text' }, targetName),
+    h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
+    h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
+  ) };
+  return { title, blades };
 }
+
+// The clicked tile's actions (move here / cast here / smash / inspect …)
+// as drum blades, grouped movement → spells → attack → other with the
+// unavailable ones sinking within each group.
+function _hrlgTileBlades(actingUnit, st) {
+  const target = st._tileActionTarget;
+  if (!target) return { title: null, blades: [] };
+  const tx = target.x, ty = target.y;
+  const actions = _computeTileActions(actingUnit, tx, ty);
+  const dist = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+
+  const terrain = typeof getTerrainAt === 'function' ? getTerrainAt(tx, ty) : 'grass';
+  const tRule = typeof getTerrainRule === 'function' ? getTerrainRule(terrain) : { label: terrain };
+  const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
+  const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
+
+  const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
+  const ordered = [
+    ...actions.filter(a => a.category === 'movement').sort(_availFirst),
+    ...actions.filter(a => a.category === 'spells').sort(_availFirst),
+    ...actions.filter(a => a.category === 'attack').sort(_availFirst),
+    ...actions.filter(a => a.category === 'actions' || a.category === 'utility').sort(_availFirst),
+  ];
+
+  const blades = ordered.map((a, i) => ({
+    id: 'ta:' + a.id + ':' + i,
+    icon: a.icon,
+    iconColor: a.category === 'attack' ? '#ee6655' : undefined,
+    label: a.label,
+    available: a.available,
+    mp: a.mpCost || null,
+    cost: a.available && a.apCost ? a.apCost : null,
+    sub: !a.available ? (a.reason || 'Unavailable') : null,
+    fire: () => { hideSpellTooltip(); if (a.available && a.handler) a.handler(); },
+    hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); },
+    hoverOut: () => hideSpellTooltip(),
+  }));
+  if (!blades.length) blades.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
+
+  const title = { node: h(React.Fragment, null,
+    h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
+    h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
+    h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
+  ) };
+  return { title, blades };
+}
+
 
 function _computeTileActions(actingUnit, tx, ty) {
   if (!actingUnit || actingUnit.dead) return [];
@@ -3794,218 +3607,6 @@ function _computeTileActions(actingUnit, tx, ty) {
   return actions.filter(a => a.available || (a.reason && a.reason !== 'No AP' && a.reason !== 'No MP' && a.reason !== 'Silenced' && a.reason !== 'Level req'));
 }
 
-function TileActionMenu({ st }) {
-  if (!st || st.phase !== 'battle') return null;
-  const target = st._tileActionTarget;
-  if (!target) return null;
-
-  const tx = target.x, ty = target.y;
-  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const activeId = st._blitzActiveUnitId || st.selectedUnitId;
-  const actingUnit = (st.units || []).find(u => u.id === activeId && !u.dead);
-  if (!actingUnit || actingUnit.player !== viewer) return null;
-
-  const humanTurn = !st.autoPlayers?.[st.activePlayer];
-  const canControl = humanTurn && actingUnit.player === st.activePlayer
-    && (typeof canUnitAct === 'function' ? canUnitAct(actingUnit) : true)
-    && !st.winner;
-  if (!canControl) return null;
-
-  if (st.actionMode) return null;
-
-  if (st.actionMenuView && st.actionMenuView !== 'root') return null;
-
-  if ((st.units || []).some(u => u._dying)) return null;
-
-  const fc = getFactionColor(actingUnit);
-  const actions = _computeTileActions(actingUnit, tx, ty);
-  const dist = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
-
-  const terrain = typeof getTerrainAt === 'function' ? getTerrainAt(tx, ty) : 'grass';
-  const tRule = typeof getTerrainRule === 'function' ? getTerrainRule(terrain) : { label: terrain };
-  const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
-  const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
-
-  const tileObjects = [];
-  const seeds = (st.plantedSeeds || []).filter(s => s.x === tx && s.y === ty);
-  seeds.forEach(s => { const t = s.type || 'seed'; tileObjects.push((t === 'heal' ? '🌱' : t === 'poison' ? '☠️' : '🪱') + ' ' + t + ' seed'); });
-  const bombs = (st.bombs || []).filter(b => b.x === tx && b.y === ty);
-  if (bombs.length) tileObjects.push('💣 Bomb ×' + bombs.length);
-  const wards = (st.wards || []).filter(w => w.x === tx && w.y === ty);
-  if (wards.length) tileObjects.push('👁 Ward (P' + wards[0].owner + ')');
-  const turret = (st.turrets || []).find(t => t && t.x === tx && t.y === ty && t.hp > 0);
-  if (turret) tileObjects.push('🗼 Turret ' + turret.hp + '/' + turret.maxHp);
-  const bldgInfo = typeof getBuildingAt === 'function' ? getBuildingAt(tx, ty) : null;
-  if (bldgInfo) tileObjects.push('🏢 ' + (typeof buildingDisplayName === 'function' ? buildingDisplayName(bldgInfo) : 'Building') + ' · ' + bldgInfo.hp + '/' + bldgInfo.maxHp + ' hits');
-  const deploy = (st._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0);
-  // An enemy decoy must read like an ordinary unit — naming it here would give it
-  // away the moment the player inspects the tile. The player's own decoys still show.
-  if (deploy && !(deploy.isDecoy && deploy.ownerPlayer !== viewer)) {
-    tileObjects.push('📦 ' + (deploy.spellName || 'Object'));
-  }
-  const corpses = (st.units || []).filter(u => u.dead && u.x === tx && u.y === ty);
-  corpses.forEach(c => tileObjects.push('💀 ' + (c.name || c.cls)));
-  const visHG = (st.hourglasses || []).filter(hg => hg.carriedBy === null && hg.x === tx && hg.y === ty && hg.visibleTo[viewer]);
-  if (visHG.length) tileObjects.push('⏳ Hourglass');
-
-  const dismiss = () => {
-    state._tileActionTarget = null;
-    if (typeof markDirty === 'function') { markDirty('hud'); }
-    if (typeof renderIfDirty === 'function') { renderIfDirty(); }
-  };
-
-  // Within each group, float greyed-out (unavailable) actions to the bottom so
-  // the player doesn't have to scan past things they can't do. Stable sort keeps
-  // the existing relative order among entries with the same availability.
-  const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
-  const movementActions = actions.filter(a => a.category === 'movement').sort(_availFirst);
-  const spellActions = actions.filter(a => a.category === 'spells').sort(_availFirst);
-  const attackActions = actions.filter(a => a.category === 'attack').sort(_availFirst);
-  const otherActions = actions.filter(a => a.category === 'actions' || a.category === 'utility').sort(_availFirst);
-
-  const renderRow = (a) => {
-    const isAvail = a.available;
-    const spType = a.spellType || '';
-    const spTypeColor = spType ? (TYPE_COLORS[(spType).toLowerCase()] || EW.inkMute) : '';
-    const costParts = [];
-    if (a.apCost) costParts.push(a.apCost + 'ap');
-    if (a.mpCost) costParts.push(a.mpCost + 'mp');
-    const costLabel = costParts.join(' · ') || '';
-
-    return h('div', {
-      key: a.id,
-      className: 'rhud-row' + (isAvail ? '' : ' rhud-disabled'),
-      style: {
-        padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 8,
-        cursor: isAvail ? 'pointer' : 'default',
-        opacity: isAvail ? 1 : 0.38,
-        borderLeft: '2px solid transparent',
-      },
-      onClick: isAvail && a.handler ? () => { hideSpellTooltip(); if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); a.handler(); } : undefined,
-      onMouseEnter: (e) => { if (a.spell) showSpellTooltip(a.spell, e.nativeEvent || e); },
-      onMouseMove: (e) => { if (a.spell) moveSpellTooltip(e.nativeEvent || e); },
-      onMouseLeave: () => { hideSpellTooltip(); },
-    },
-      h('span', { style: {
-        width: 14, textAlign: 'center', fontSize: 12, fontWeight: 600,
-        color: isAvail ? (a.category === 'attack' ? '#ee6655' : fc) : EW.inkDim,
-      }}, a.icon),
-      h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }},
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-          h('span', { style: {
-            fontFamily: '"Cinzel", serif', fontSize: 13,
-            color: isAvail ? EW.ink : EW.inkDim, letterSpacing: '0.02em',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}, a.label),
-          spType && h('span', { style: typeBadgeStyleFor(spType, { fontSize: 7, padding: '1px 4px' }) },
-            spType.toUpperCase()),
-        ),
-
-        ((!isAvail && a.reason) || a.spell) && h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-          !isAvail && a.reason && h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 600,
-            color: EW.bad, letterSpacing: '0.06em',
-          }}, a.reason),
-          isAvail && a.spell && h('span', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 8,
-            color: EW.inkDim, letterSpacing: '0.02em', lineHeight: '1.3',
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-          }}, spellTagline(a.spell)),
-        ),
-
-        a.powerLabel && h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: '#ee6655', letterSpacing: '0.04em', flexShrink: 0,
-        }}, a.powerLabel),
-      ),
-      costLabel && h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkMute, letterSpacing: '0.06em', flexShrink: 0, minWidth: 36, textAlign: 'right',
-      }}, costLabel),
-    );
-  };
-
-  const divider = (label) => h('div', {
-    style: {
-      padding: '4px 12px 2px', fontFamily: '"DotGothic16", monospace',
-      fontSize: 8, letterSpacing: '0.14em', color: EW.inkDim,
-      borderTop: '1px solid ' + EW.panelEdge, marginTop: 2,
-    },
-  }, label);
-
-  return h('div', {
-    className: 'hrlg-panel',
-    style: {
-      position: 'absolute', bottom: 16, left: 210, width: 300, zIndex: 14,
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
-    },
-  },
-
-    h('div', { style: {
-      padding: '8px 12px', borderBottom: '1px solid ' + EW.panelEdge,
-      display: 'flex', flexDirection: 'column', gap: 2,
-    }},
-      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }},
-        h('span', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 14, fontWeight: 600,
-          color: EW.ink, letterSpacing: '0.02em',
-        }}, tRule.label || terrain),
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkDim, letterSpacing: '0.06em',
-        }}, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
-      ),
-      tRule.moveCost > 1 && h('div', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.warn, letterSpacing: '0.04em',
-      }}, 'Move cost ×' + tRule.moveCost),
-      tRule.blocksRanged && h('div', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.bad, letterSpacing: '0.04em',
-      }}, 'Blocks ranged'),
-      tileObjects.length > 0 && h('div', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkMute, letterSpacing: '0.02em', lineHeight: '1.4',
-      }}, tileObjects.join(' · ')),
-    ),
-
-    h('div', { style: { padding: '2px 0', maxHeight: 320, overflowY: 'auto' }},
-      movementActions.length > 0 && movementActions.map(renderRow),
-      spellActions.length > 0 && divider('SPELLS'),
-      spellActions.length > 0 && spellActions.map(renderRow),
-      attackActions.length > 0 && divider('ATTACK'),
-      attackActions.length > 0 && attackActions.map(renderRow),
-      otherActions.length > 0 && divider('OTHER'),
-      otherActions.length > 0 && otherActions.map(renderRow),
-      actions.length === 0 && h('div', { style: {
-        padding: '8px 12px', fontFamily: '"DotGothic16", monospace', fontSize: 9,
-        color: EW.inkDim, letterSpacing: '0.1em',
-      }}, 'No actions available for this tile'),
-    ),
-
-    h('div', { style: {
-      padding: '4px 12px 8px', borderTop: '1px solid ' + EW.panelEdge,
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    }},
-      h('span', {
-        className: 'rhud-back',
-        style: {
-          cursor: 'pointer',
-          fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          letterSpacing: '0.14em', color: EW.inkMute,
-        },
-        onClick: dismiss,
-      }, '← DISMISS'),
-      h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkDim, letterSpacing: '0.14em',
-      }}, 'CLICK TO ACT'),
-    ),
-  );
-}
-
 let _spellTooltip = { visible: false, spell: null, x: 0, y: 0 };
 let _tooltipEl = null;
 
@@ -4106,137 +3707,11 @@ function hideSpellTooltip() {
   if (_tooltipEl) _tooltipEl.style.opacity = '0';
 }
 
-function SubMenuPanel({ title, fc, count, wide, children }) {
-  return h('div', {
-    className: 'hrlg-panel',
-    style: {
-      position: 'absolute', bottom: 16, left: 210, width: wide ? 360 : 280, zIndex: 12,
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      borderLeft: '2px solid ' + (fc || EW.panelEdgeHi),
-      clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
-    },
-  },
-
-    h('div', { style: {
-      padding: '8px 12px', borderBottom: '1px solid ' + EW.panelEdge,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }},
-      h('span', { style: {
-        fontFamily: '"Cinzel", serif', fontSize: 13,
-        letterSpacing: '0.2em', textTransform: 'uppercase', color: EW.ink,
-      }}, title),
-      count && h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkMute, letterSpacing: '0.14em',
-      }}, count),
-    ),
-
-    h('div', { style: {
-      padding: '4px 0', maxHeight: wide ? 440 : 340,
-      // overflowY:'auto' alone makes the browser compute overflow-x to 'auto'
-      // too. The hover "pop" (transform: scale(1.02) on .rhud-target/.rhud-row)
-      // makes a row a few px wider than the panel, which would then spawn a
-      // horizontal scrollbar → the scrollbar steals layout space → the row
-      // reflows out from under the cursor → :hover drops → scale reverts →
-      // scrollbar vanishes → re-hover … an infinite flicker loop that made
-      // targets nearly impossible to click. Pin overflow-x hidden and reserve
-      // the vertical scrollbar gutter so a hover-scale can never toggle either
-      // scrollbar and reflow the list.
-      overflowY: 'auto', overflowX: 'hidden', scrollbarGutter: 'stable',
-    }}, children),
-
-    h('div', { style: {
-      padding: '4px 12px 8px', borderTop: '1px solid ' + EW.panelEdge,
-      display: 'flex', justifyContent: 'space-between',
-    }},
-      h('span', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 8,
-        color: EW.inkDim, letterSpacing: '0.14em',
-      }}, '↑↓ NAVIGATE · ↵ SELECT'),
-    ),
-  );
-}
-
-function SubMenuRow({ label, onClick }) {
-  return h('div', {
-    className: 'rhud-back',
-    style: {
-      padding: '6px 12px', cursor: 'pointer',
-      fontFamily: '"DotGothic16", monospace', fontSize: 9,
-      letterSpacing: '0.14em', color: EW.inkMute,
-    },
-    onClick: onClick,
-  }, label);
-}
-
-function TargetRow({ tUnit, label, typeAdv, hpVal, hpMax, dist, isPending, onClick }) {
-  const tc = tUnit ? getTypeColor(tUnit) : EW.inkMute;
-  const fc = tUnit ? getFactionColor(tUnit) : EW.inkMute;
-  const hpPct = hpMax > 0 ? Math.max(0, (hpVal / hpMax) * 100) : 0;
-  const typeName = tUnit ? getTypeName(tUnit) : '';
-  const confirmMark = isPending ? ' ✓' : '';
-
-  return h('div', {
-    className: 'rhud-target',
-    style: {
-      padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 8,
-      cursor: 'pointer',
-      background: isPending ? 'linear-gradient(90deg, ' + EW.time + '1a, transparent)' : 'transparent',
-      borderLeft: isPending ? '2px solid ' + EW.time : '2px solid transparent',
-    },
-    onClick: onClick,
-  },
-
-    tUnit
-      ? h(UnitSprite, { unit: tUnit, size: 26 })
-      : h('div', { style: {
-          width: 26, height: 36, flexShrink: 0,
-          background: 'rgba(255,255,255,0.04)', border: '1px solid ' + EW.panelEdge,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: '"DotGothic16", monospace', fontSize: 10, color: EW.inkDim,
-        }}, '?'),
-
-    h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }},
-
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-        typeAdv && h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 10, fontWeight: 700,
-          color: typeAdv === '▲' ? EW.good : EW.bad,
-        }}, typeAdv),
-        h('span', { className: 'rhud-target-name', style: {
-          fontFamily: '"Cinzel", serif', fontSize: 13,
-          color: isPending ? EW.ink : EW.inkMute, letterSpacing: '0.02em',
-          lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}, label + confirmMark),
-        typeName && h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 7,
-          letterSpacing: '0.1em', color: tc, padding: '0px 3px',
-          background: tc + '1f', border: '1px solid ' + tc + '44',
-          flexShrink: 0,
-        }}, typeName.toUpperCase()),
-      ),
-
-      hpMax > 0 && h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 }},
-        h('div', { style: { flex: 1, height: 3, background: 'rgba(255,255,255,0.06)' }},
-          h('div', { style: {
-            height: '100%', width: hpPct + '%',
-            background: hpPct <= 30 ? EW.bad : EW.good,
-          }}),
-        ),
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 7,
-          color: EW.inkDim, letterSpacing: '0.04em', flexShrink: 0,
-        }}, hpVal + '/' + hpMax),
-      ),
-    ),
-
-    h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 8,
-      color: EW.inkDim, letterSpacing: '0.06em', flexShrink: 0,
-    }}, dist + 't'),
-  );
-}
-
+// Every sub/quick panel wears the Horologe's own material: the blade
+// gradient, a faction spine, the same angled cuts — and a "stem" tying it
+// back to the clock so it reads as part of one instrument. `onBack`
+// (default handleBackAction) drives the header ‹ chip; the clock's crown
+// and ESC do the same thing.
 function FrameCorners() {
   const c = EW.panelEdgeHi;
   const s = { position: 'absolute', width: 20, height: 20 };
@@ -4250,6 +3725,7 @@ function FrameCorners() {
 
 function ReactHUD() {
   const [st, tick] = useGameState();
+  const menusHidden = useMenusHidden(st);
   if (!st || st.phase !== 'battle') return null;
 
   const sel = typeof getSelectedUnit === 'function' ? getSelectedUnit() : null;
@@ -4285,17 +3761,10 @@ function ReactHUD() {
       h(MatchMeta, { st }),
     ),
     h(CombatLog, { st }),
+    // ONE menu system: the Horologe drum renders the root verbs, every
+    // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
-      h(ActionMenu, { st }),
-    ),
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(SubMenu, { st }),
-    ),
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(EnemyActionMenu, { st }),
-    ),
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(TileActionMenu, { st }),
+      h(ActionMenu, { st, hidden: menusHidden }),
     ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(PartyRoster, { st }),
@@ -4802,10 +4271,12 @@ function _injectHudHideStyles() {
       position: absolute; left: 8px; bottom: 8px; width: 560px; height: 485px;
       z-index: 12; pointer-events: none; font-family: 'DotGothic16', monospace;
     }
-    /* the watch */
+    /* the watch — sits ABOVE the blade drum so blades slide out from
+       under the bezel (no gap, no floating buttons). pointer-events on:
+       scrolling over the watch cycles the drum instead of zooming. */
     .hrlg-hub {
       position: absolute; left: 8px; bottom: 150px; width: 190px; height: 190px;
-      pointer-events: none; filter: drop-shadow(0 0 20px var(--hfc-soft));
+      z-index: 8; pointer-events: auto; filter: drop-shadow(0 0 20px var(--hfc-soft));
       animation: hrlgStamp 0.5s cubic-bezier(0.16,1.4,0.3,1) both;
     }
     .hrlg-hub svg { width: 100%; height: 100%; overflow: visible; display: block; }
@@ -4814,6 +4285,35 @@ function _injectHudHideStyles() {
       70%  { opacity: 1; transform: scale(1.08) rotate(5deg); }
       100% { opacity: 1; transform: scale(1) rotate(0); }
     }
+    /* the crown — stopwatch pusher on top of the bezel: the universal BACK */
+    .hrlg-crown {
+      position: absolute; left: 81px; bottom: 337px; width: 44px; height: 34px;
+      z-index: 9; display: flex; flex-direction: column-reverse; align-items: center;
+      pointer-events: none; opacity: 0.28; cursor: default;
+      transition: opacity 0.18s ease, transform 0.14s cubic-bezier(0.3,1.5,0.4,1);
+    }
+    .hrlg-crown-stem { width: 10px; height: 7px; background: linear-gradient(90deg, var(--hfc-soft), var(--hfc), var(--hfc-soft)); }
+    .hrlg-crown-cap {
+      width: 22px; height: 11px; border-radius: 4px 4px 1px 1px;
+      background: linear-gradient(180deg, #1c2436, #0a0c15);
+      border: 1px solid var(--hfc);
+      box-shadow: 0 0 8px var(--hfc-faint), inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+    .hrlg-crown-label {
+      position: absolute; left: 50%; top: -13px; transform: translateX(-50%);
+      font-size: 8px; letter-spacing: 0.22em; color: var(--hfc);
+      text-shadow: 0 0 8px var(--hfc-soft); white-space: nowrap;
+    }
+    .hrlg-crown.live {
+      opacity: 1; pointer-events: auto; cursor: pointer;
+      animation: hrlgCrownPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes hrlgCrownPulse {
+      0%, 100% { filter: brightness(1); }
+      50%      { filter: brightness(1.45); }
+    }
+    .hrlg-crown.live:hover  { transform: translateY(-2px); }
+    .hrlg-crown.live:active { transform: translateY(3px); }
     /* hands — rotation is set imperatively; the transitions live here */
     .hrlg-hour { transform-origin: 100px 100px; transition: transform 0.75s cubic-bezier(0.3,1.5,0.4,1); }
     .hrlg-min  { transform-origin: 100px 100px; transition: transform 0.5s cubic-bezier(0.22,1.6,0.36,1); }
@@ -4847,11 +4347,16 @@ function _injectHudHideStyles() {
     }
     .hrlg-ap-lbl { font-size: 9px; letter-spacing: 0.24em; color: #555c70; }
     .hrlg-ap-num { font-size: 9px; letter-spacing: 0.1em; color: #8a93a8; margin-left: 2px; }
+    .hrlg-ap-num + .hrlg-ap-num { margin-left: 0; }
+    /* bonus (level-up) AP reads GREEN — both the extra pips and the /4, /5 max */
+    .hrlg-ap-num.bonus { color: #6ee2a8; text-shadow: 0 0 7px rgba(110,226,168,0.55); }
     .hrlg-pip {
       width: 8px; height: 8px; transform: rotate(45deg);
       background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
     }
     .hrlg-pip.on { background: var(--hfc); border-color: var(--hfc); box-shadow: 0 0 7px var(--hfc); }
+    .hrlg-pip.bonus { border-color: rgba(110,226,168,0.5); }
+    .hrlg-pip.bonus.on { background: #6ee2a8; border-color: #6ee2a8; box-shadow: 0 0 8px #6ee2a8; }
     .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
     @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
     /* aiming-state line ("MOVING — CLICK A TILE") */
@@ -4859,33 +4364,45 @@ function _injectHudHideStyles() {
       position: absolute; left: 8px; bottom: 82px; width: 190px; text-align: center;
       font-size: 8px; letter-spacing: 0.18em; color: var(--hfc); pointer-events: none;
     }
-    /* the blade fan — pivots on the clock center so blades read as hands */
-    .hrlg-fan { position: absolute; left: 103px; bottom: 245px; width: 0; height: 0; pointer-events: none; }
+    /* scroll affordance beside the AP row */
+    .hrlg-scroll-hint {
+      position: absolute; left: 205px; bottom: 104px; pointer-events: none;
+      font-size: 8px; letter-spacing: 0.2em; color: #555c70; opacity: 0.85;
+    }
+    /* ── the blade DRUM ─────────────────────────────────────────────
+       STRAIGHT horizontal blades stacked against the clock; each row's
+       left edge follows the bezel's curve (the center row rides the
+       equator and protrudes furthest). The selected blade is larger and
+       fully lit; neighbours fade above/below. Scrolling shifts every
+       blade to its next slot — --tx/--ty/--o/--s animate via
+       transform/opacity transitions. */
+    .hrlg-fan { position: absolute; left: 103px; bottom: 245px; width: 0; height: 0; pointer-events: none; z-index: 2; }
     .hrlg-blade {
-      position: absolute; left: 0; top: -19px; height: 38px; width: 322px;
-      transform-origin: 0 50%; transform: rotate(var(--a));
+      position: absolute; left: 0; top: -19px; height: 38px; width: 264px;
+      transform: translate(var(--tx), var(--ty));
+      opacity: var(--o, 1);
       display: flex; align-items: center; pointer-events: auto; cursor: pointer;
-      opacity: 0; animation: hrlgErupt 0.45s cubic-bezier(0.16,1.3,0.3,1) both;
+      /* 'backwards' (NOT 'both'): once the eruption ends the animation must
+         release transform/opacity, or the drum's scroll-glide (a transition
+         on those same properties) would snap instead of slide. */
+      animation: hrlgErupt 0.4s cubic-bezier(0.16,1.3,0.3,1) backwards;
+      transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), opacity 0.22s ease;
       will-change: transform, opacity;
     }
-    .hrlg-blade.short { width: 270px; }
     @keyframes hrlgErupt {
-      0%   { opacity: 0; transform: rotate(var(--a)) translateX(-56px) scaleX(0.4); }
-      60%  { opacity: 1; transform: rotate(var(--a)) translateX(13px) scaleX(1.05); }
-      100% { opacity: 1; transform: rotate(var(--a)) translateX(0) scaleX(1); }
-    }
-    .hrlg-stem {
-      width: 24px; height: 1px; margin-left: 98px; flex: none;
-      background: linear-gradient(90deg, transparent, var(--hfc)); opacity: 0.7;
+      0%   { opacity: 0; transform: translate(calc(var(--tx) - 52px), var(--ty)) scaleX(0.6); }
+      60%  { opacity: var(--o, 1); transform: translate(calc(var(--tx) + 10px), var(--ty)) scaleX(1.03); }
+      100% { opacity: var(--o, 1); transform: translate(var(--tx), var(--ty)) scaleX(1); }
     }
     .hrlg-body {
-      position: relative; height: 100%; flex: 1;
-      display: flex; align-items: center; gap: 8px; padding: 0 12px 0 14px;
+      position: relative; height: 100%; flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 7px; padding: 0 14px 0 15px;
       background: linear-gradient(100deg, #0a0c15 0%, #0a0c15 55%, rgba(10,12,21,0.55) 100%);
       border: 1px solid var(--hfc-soft); border-left: 3px solid var(--hfc);
       clip-path: polygon(10px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
-      transform: skewX(-10deg);
-      transition: transform 0.15s cubic-bezier(0.2,1.5,0.4,1), border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      transform: skewX(-10deg) scale(var(--s, 1));
+      transform-origin: 0 50%;
+      transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), border-color 0.15s, background 0.15s, box-shadow 0.15s;
     }
     .hrlg-body > * { transform: skewX(10deg); }
     .hrlg-body.danger { border-left-color: #ff5e70; }
@@ -4895,41 +4412,92 @@ function _injectHudHideStyles() {
     }
     .hrlg-body.danger .hrlg-glyph { color: #ff5e70; text-shadow: 0 0 10px rgba(255,94,112,0.4); }
     .hrlg-blabel {
-      flex: 1; font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px;
-      letter-spacing: 0.05em; color: #e6e9f2; line-height: 1; white-space: nowrap;
+      flex: 1; min-width: 0; font-family: 'Cinzel', serif; font-weight: 700; font-size: 14px;
+      letter-spacing: 0.05em; color: #e6e9f2; line-height: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     .hrlg-cpip { width: 6px; height: 6px; transform: rotate(45deg); background: var(--hfc); box-shadow: 0 0 5px var(--hfc-soft); }
-    .hrlg-cfree { font-size: 8px; letter-spacing: 0.16em; color: #555c70; }
+    .hrlg-cfree { font-size: 8px; letter-spacing: 0.16em; color: #555c70; flex: none; white-space: nowrap; }
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff7a8a;
       border: 1px solid rgba(255,122,138,0.55); padding: 1px 4px;
       background: rgba(255,0,0,0.06); white-space: nowrap;
     }
-    /* hover: the blade juts toward the player and ignites */
-    .hrlg-blade:hover:not(.dead) .hrlg-body {
-      transform: skewX(-10deg) translateX(13px) scaleY(1.07);
+    /* right-side detail chips shared by every blade list */
+    .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+    .hrlg-chip {
+      flex: none; font-size: 8px; letter-spacing: 0.08em; color: #7fc9e8;
+      border: 1px solid rgba(95,214,255,0.35); background: rgba(95,214,255,0.08);
+      padding: 1px 4px; white-space: nowrap;
+    }
+    .hrlg-meta { flex: none; font-size: 8px; letter-spacing: 0.06em; color: #8a93a8; white-space: nowrap; }
+    .hrlg-note {
+      flex: none; font-size: 7px; font-weight: 700; letter-spacing: 0.1em;
+      color: #1a1206; background: #ffcc44; padding: 1px 5px; white-space: nowrap;
+      box-shadow: 0 0 6px rgba(255,204,68,0.4);
+    }
+    .hrlg-check {
+      flex: none; font-size: 12px; font-weight: 700; color: #ffe096;
+      text-shadow: 0 0 8px rgba(255,224,150,0.8);
+    }
+    /* ── view tab: names the open menu, riding the top of the clock ── */
+    .hrlg-view-tab {
+      position: absolute; left: 128px; bottom: 320px; max-width: 320px; height: 24px;
+      display: flex; align-items: center; gap: 6px; padding: 0 16px 0 11px;
+      background: linear-gradient(100deg, #0c101f 0%, rgba(10,12,21,0.88) 100%);
+      border: 1px solid var(--hfc-soft); border-left: 3px solid var(--hfc);
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+      transform: skewX(-10deg);
+      box-shadow: -2px 0 14px var(--hfc-faint);
+      pointer-events: none; z-index: 9;
+      animation: hrlgTabIn 0.3s cubic-bezier(0.16,1.3,0.3,1) backwards;
+    }
+    .hrlg-view-tab > * { transform: skewX(10deg); }
+    @keyframes hrlgTabIn {
+      0%   { opacity: 0; transform: skewX(-10deg) translateX(-24px); }
+      100% { opacity: 1; transform: skewX(-10deg) translateX(0); }
+    }
+    .hrlg-view-tab-icon { color: var(--hfc); font-size: 11px; flex: none; text-shadow: 0 0 8px var(--hfc-soft); }
+    .hrlg-view-tab-text {
+      font-family: 'Cinzel', serif; font-weight: 700; font-size: 12px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .hrlg-view-tab-count { font-size: 8px; letter-spacing: 0.1em; color: #8a93a8; flex: none; white-space: nowrap; }
+    /* the selected (center) blade is the lit, armed one */
+    .hrlg-blade.center .hrlg-body {
+      background: linear-gradient(100deg, #121828 0%, #0c101f 60%, rgba(12,16,31,0.6) 100%);
       border-color: var(--hfc);
-      background: linear-gradient(100deg, #131a2e 0%, #0c101f 65%, rgba(12,16,31,0.6) 100%);
-      box-shadow: -2px 0 18px var(--hfc-soft), inset 3px 0 0 var(--hfc);
+      box-shadow: -2px 0 16px var(--hfc-faint), inset 3px 0 0 var(--hfc);
     }
-    .hrlg-blade:hover:not(.dead) .hrlg-body.danger {
+    .hrlg-blade.center .hrlg-blabel { color: #fff; text-shadow: 0 0 12px var(--hfc-soft); }
+    .hrlg-blade.center .hrlg-body.danger { box-shadow: -2px 0 16px rgba(255,94,112,0.22), inset 3px 0 0 #ff5e70; }
+    /* hover on the center blade: it juts toward the player and ignites */
+    .hrlg-blade.center:hover:not(.dead) .hrlg-body {
+      transform: skewX(-10deg) scale(var(--s, 1)) translateX(11px);
+      background: linear-gradient(100deg, #16203a 0%, #0e1326 65%, rgba(14,19,38,0.6) 100%);
+      box-shadow: -2px 0 22px var(--hfc-soft), inset 3px 0 0 var(--hfc);
+    }
+    .hrlg-blade.center:hover:not(.dead) .hrlg-body.danger {
       border-color: #ff5e70;
-      box-shadow: -2px 0 18px rgba(255,94,112,0.33), inset 3px 0 0 #ff5e70;
+      box-shadow: -2px 0 22px rgba(255,94,112,0.33), inset 3px 0 0 #ff5e70;
     }
-    .hrlg-blade:hover:not(.dead) .hrlg-blabel { color: var(--hfc); text-shadow: 0 0 12px var(--hfc-soft); }
-    .hrlg-blade:hover:not(.dead) .hrlg-body.danger .hrlg-blabel { color: #ff8a97; text-shadow: 0 0 12px rgba(255,94,112,0.4); }
+    .hrlg-blade.center:hover:not(.dead) .hrlg-blabel { color: var(--hfc); }
+    .hrlg-blade.center:hover:not(.dead) .hrlg-body.danger .hrlg-blabel { color: #ff8a97; }
+    /* faded neighbours invite a click (which rotates them into the center) */
+    .hrlg-blade.dim:hover { opacity: calc(var(--o, 1) + 0.25); }
+    .hrlg-blade.dim:hover .hrlg-body { border-color: var(--hfc); }
     /* armed verb keeps pulsing while aiming */
     .hrlg-blade.active .hrlg-body { border-color: var(--hfc); animation: hrlgActive 1.5s ease-in-out infinite; }
     @keyframes hrlgActive {
       0%, 100% { box-shadow: -2px 0 12px var(--hfc-soft), inset 3px 0 0 var(--hfc); }
       50%      { box-shadow: -2px 0 26px var(--hfc), inset 3px 0 0 var(--hfc); }
     }
-    .hrlg-blade.dead { cursor: default; }
-    .hrlg-blade.dead .hrlg-stem { opacity: 0.18; }
+    .hrlg-blade.dead.center { cursor: default; }
     .hrlg-blade.dead .hrlg-body {
       background: #0a0b11; border-color: rgba(120,140,180,0.13); border-left-color: #555c70;
-      filter: grayscale(1); opacity: 0.5;
+      filter: grayscale(1); opacity: 0.68;
     }
     .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel { color: #555c70; text-shadow: none; }
     /* confirm flash sweeping along the blade */
@@ -4941,12 +4509,6 @@ function _injectHudHideStyles() {
     @keyframes hrlgFire {
       0%   { opacity: 0.85; transform: translateX(0); }
       100% { opacity: 0;    transform: translateX(26px); }
-    }
-    /* side panels (abilities / items / more / quick menus) slide out of the hub */
-    .hrlg-panel { animation: hrlgPanelIn 0.22s cubic-bezier(0.2,1.2,0.4,1) both; }
-    @keyframes hrlgPanelIn {
-      0%   { opacity: 0; transform: translateX(-16px); }
-      100% { opacity: 1; transform: none; }
     }
     @media (max-width: 1100px) { .hrlg-rig { transform: scale(0.85); transform-origin: bottom left; } }
     @media (max-width: 760px)  { .hrlg-rig { transform: scale(0.68); transform-origin: bottom left; } }
