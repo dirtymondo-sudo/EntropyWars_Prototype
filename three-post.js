@@ -754,8 +754,6 @@ const ThreePost = (function () {
     var WARD_LIGHT_DISTANCE   = 384;
     var WARD_LIGHT_DECAY      = 1.5;
 
-    var WARD_GLOW_SIZE = 96;
-
     function rebuildWardLights(wards, tileTopYFn, tileSize) {
         if (!_scene) return;
         var ts = tileSize || 128;
@@ -797,21 +795,11 @@ const ThreePost = (function () {
             pl._ew_wardLight = true;
             _wardLightGroup.add(pl);
 
-            var glowGeo = new THREE.PlaneGeometry(WARD_GLOW_SIZE, WARD_GLOW_SIZE);
-            var glowMat = new THREE.MeshBasicMaterial({
-                color: 0xffaa44,
-                transparent: true,
-                opacity: isNight ? 0.7 : 0.35,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
-            var glowMesh = new THREE.Mesh(glowGeo, glowMat);
-            glowMesh.position.set(worldX, worldY, worldZ);
-            glowMesh._ew_billboard = true;
-            _wardLightGroup.add(glowMesh);
-
-            _wardLights.push({ light: pl, mesh: glowMesh, x: w.x, y: w.y });
+            // Light only — no glow plane here. The old untextured additive quad
+            // read as a glowing BOX floating on the ward; the visible halo is
+            // now the renderer's radial glow sprite on the ward torch itself
+            // (see _buildWardTorch in three-renderer.js).
+            _wardLights.push({ light: pl, mesh: null, x: w.x, y: w.y });
         }
     }
 

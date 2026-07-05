@@ -3740,8 +3740,7 @@ const ThreeRenderer = (function () {
         flame.position.y = flameY;
         g.add(flame);
 
-        /* soft camera-facing halo around the flame (skipped for wards —
-           ThreePost's ward light already draws its own glow plane there) */
+        /* soft camera-facing halo around the flame */
         if (!opts.noGlow && typeof _hzGlowCore === 'function') {
             var glow = _hzGlowCore(ts * 0.16 * s, 0xffc06a, 0xff8a30);
             glow.position.y = flameY + flameH * 0.42;
@@ -3818,16 +3817,19 @@ const ThreeRenderer = (function () {
     }
 
     /* Vision-ward torch (deployable) — same model, no own point light because
-       ThreePost.rebuildWardLights already lights + haloes every ward.
-       Takes the ward OBJECT: a ward placed against a cube face (w.wallD4:
-       0=N 1=E 2=S 3=W, the neighbouring wall it hangs on) renders wall-mounted
-       Minecraft-style exactly like the editor's wall torches. */
+       ThreePost.rebuildWardLights already lights every ward. The soft radial
+       flame halo (_hzGlowCore) IS kept here: ThreePost used to draw its own
+       glow plane over wards, but that untextured additive quad read as a
+       glowing box, so the halo now comes from the torch model like every
+       other torch. Takes the ward OBJECT: a ward placed against a cube face
+       (w.wallD4: 0=N 1=E 2=S 3=W, the neighbouring wall it hangs on) renders
+       wall-mounted Minecraft-style exactly like the editor's wall torches. */
     function _buildWardTorch(w) {
         var x = w.x, y = w.y;
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
-        var parts = _makeTorchModel({ scale: 0.85, noGlow: true });
+        var parts = _makeTorchModel({ scale: 0.85 });
         g.add(parts.model);
         if (w.wallD4 != null) {
             var d4 = ((Math.round(w.wallD4) % 4) + 4) % 4;
@@ -5481,6 +5483,29 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ── Unit self-glow ──────────────────────────────────────────────────
+       Emissive intensity for a unit's sprite material (emissiveMap = the
+       sprite art, set in _buildUnitEntry): a faint lift by day, a real
+       torch-lit presence at night so units never read as black cutouts.
+       AP-spent units glow at half strength to keep the grey-out readable. */
+    var UNIT_SELFGLOW_DAY   = 0.15;
+    var UNIT_SELFGLOW_NIGHT = 0.85;
+    function _unitSelfGlowIntensity(unit) {
+        var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+        var base = (cycle === 'night') ? UNIT_SELFGLOW_NIGHT : UNIT_SELFGLOW_DAY;
+        if (unit && unit.ap <= 0) base *= 0.5;
+        return base;
+    }
+    /* Per-frame: keeps every unit's emissive current across mid-match
+       day↔night flips and AP changes without a structural rebuild. */
+    function _updateUnitSelfGlow() {
+        unitEntries.forEach(function (entry, uid) {
+            var spr = entry.sprite;
+            if (!spr || !spr.material || !spr.material.emissiveMap) return;
+            spr.material.emissiveIntensity = _unitSelfGlowIntensity(_findUnit(uid));
+        });
+    }
+
     /* ── Unit facing (gameplay yaw) ──────────────────────────────────────
        Unit sprites no longer billboard to the camera: the slab is yawed to
        the unit's gameplay facing (unit.facing, a normalized board-space
@@ -5535,11 +5560,24 @@ const ThreeRenderer = (function () {
             }
 
             // Lambert (not Basic) so units react to the sun / hemisphere /
-            // point lights like the rest of the board geometry does.
+            // point lights like the rest of the board geometry does. Units are
+            // also their OWN light source: the per-unit point light in
+            // three-post.js hovers directly above the sprite, so a vertical
+            // plane catches almost none of it (grazing incidence) — it lights
+            // the ground, never the unit. The self-glow is done with an
+            // emissive term instead, using the sprite art itself as the
+            // emissive map so the unit stays readable at night in its own
+            // colours. Intensity is day/night aware, kept current per-frame by
+            // _updateUnitSelfGlow.
             var spriteMat = new THREE.MeshLambertMaterial({
                 map: spriteTex, transparent: true, alphaTest: 0.1,
                 side: THREE.DoubleSide, depthWrite: true
             });
+            if (spriteTex) {
+                spriteMat.emissive = new THREE.Color(0xffffff);
+                spriteMat.emissiveMap = spriteTex;
+                spriteMat.emissiveIntensity = _unitSelfGlowIntensity(unit);
+            }
             if (unit.ap <= 0) spriteMat.color = new THREE.Color(0.5, 0.5, 0.5);
 
             var nw = 128, nh = 128;
@@ -8655,10 +8693,14 @@ const ThreeRenderer = (function () {
         var now = performance.now();
         var cam = ThreeCamera.getCamera();
         var ts = CONFIG.tileSize || BASE_TILE;
-        // Keep the x-ray silhouette this far in FRONT of the slab (its full
-        // extrude depth + a small margin) so the unit's own back cap never
-        // occludes it (which would self-paint the hologram — see _buildUnitEntry).
-        var silOff = (UNIT_SPRITE_DEPTH_PX * (ts / 128)) + ts * 0.02;
+        // Keep the x-ray silhouette in FRONT of the unit's WHOLE slab. The slab
+        // is yawed to gameplay facing, so viewed from the side its geometry
+        // reaches up to half the sprite WIDTH toward the camera — offsetting by
+        // just the extrude depth let the unit's own side walls / caps occlude
+        // the ghost and paint the hologram onto the slab's sides. The offset is
+        // per-unit (half its sprite width + extrude depth + margin), computed
+        // inside the loop from group._ew_spriteW.
+        var silDepth = UNIT_SPRITE_DEPTH_PX * (ts / 128);
         for (var i = 0; i < unitGroup.children.length; i++) {
             var g = unitGroup.children[i];
             var uid = g._ew_unitId;
@@ -8685,8 +8727,11 @@ const ThreeRenderer = (function () {
                 if (ch._ew_facingSprite || ch._ew_facingIndicator) {
                     ch.rotation.y = yaw;
                 } else if (ch._ew_silhouette && cam) {
-                    // Face the camera and sit just in front of the unit's slab.
+                    // Face the camera and sit in front of the unit's entire
+                    // slab (half sprite width covers the worst case: the slab
+                    // edge-on to the camera).
                     var syaw = Math.atan2(cam.position.x - g.position.x, cam.position.z - g.position.z);
+                    var silOff = (g._ew_spriteW || ts) * 0.5 + silDepth + ts * 0.02;
                     ch.rotation.y = syaw;
                     ch.position.x = Math.sin(syaw) * silOff;
                     ch.position.z = Math.cos(syaw) * silOff;
@@ -10062,6 +10107,9 @@ const ThreeRenderer = (function () {
             idleMap: mat.map
         });
         mat.map = sheetTex;
+        // Keep the self-glow sampling the same pixels as the diffuse map,
+        // otherwise the emissive term keeps ghosting the idle pose.
+        if (mat.emissiveMap) mat.emissiveMap = sheetTex;
         mat.color.setRGB(1, 1, 1);   // show the sheet's true colours
         mat.needsUpdate = true;
         return true;
@@ -10076,6 +10124,7 @@ const ThreeRenderer = (function () {
         if (tw.sprite && tw.sprite._ew_shell) tw.sprite._ew_shell.visible = true;
         if (tw.mat) {
             tw.mat.map = tw.idleMap;
+            if (tw.mat.emissiveMap) tw.mat.emissiveMap = tw.idleMap;
             var unit = _findUnit(uid);
             if (unit && unit.ap <= 0) tw.mat.color.setRGB(0.5, 0.5, 0.5);
             else tw.mat.color.setRGB(1, 1, 1);
@@ -10326,6 +10375,7 @@ const ThreeRenderer = (function () {
         _updateFlashTweens();
         _updateWiggleTweens();
         _updateSpriteAnimTweens();
+        _updateUnitSelfGlow();
     }
 
     function _clearAnimations() {
