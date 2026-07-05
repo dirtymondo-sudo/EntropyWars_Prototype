@@ -455,14 +455,12 @@ const RACE_MODELS_3D = {
     },
   },
   // Male Agent (Men in Black). Cast/attack = the cowboy quick-draw clip.
-  // ⚠ The GLB currently in the agent folder (…_texture.glb) is the UNRIGGED
-  // texture-stage export (no bones/skin) — it renders as a static 3D figure
-  // and the clips can't animate it. Re-export the model from Meshy's
-  // rig/animate stage ("with skin") into this folder, point `model` at it,
-  // and the shared clips below will just work.
+  // Base = the rigged Character_output export (verified: same bone set as the
+  // shared clip rig; its own animations[0] is just a 0.03s stub, so the real
+  // idle comes from the shared library like everything else).
   'men in black': {
     male: {
-      model: `${_AGENT_3D}/Meshy_AI_Men_in_Black_CIA_age_0705080827_texture.glb`,
+      model: `${_AGENT_3D}/Meshy_AI_Men_in_Black_CIA_age_biped_Character_output.glb`,
       clips: {
         idle:  ANIM_CLIPS_3D.idle,
         walk:  ANIM_CLIPS_3D.walk,
