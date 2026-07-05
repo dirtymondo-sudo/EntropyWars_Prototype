@@ -434,6 +434,7 @@ const ANIM_CLIPS_3D = {
 
 const _HARB_3D = `${_S}/Races/Homosapien/Male/harbinger`;
 const _AGENT_3D = `${_S}/Races/Homosapien/Male/agent`;
+const _PSY_3D = `${_S}/Races/Homosapien/Female/psychic`;
 const RACE_MODELS_3D = {
   // Male Harbinger (Fortune Teller) — the 3D-unit pilot character. Its base
   // GLB is the rigged Idle export, so the idle clip rides along with the
@@ -471,6 +472,24 @@ const RACE_MODELS_3D = {
       yawOffset: 0,
       moveTimeScale: 2.0,
       castTimeScale: 5.0,   // quick-draw clip is 7.33s; show the draw+shot fast
+      deathTimeScale: 1.6,
+    },
+  },
+  // Female Psychic (Telepath). Her own Thoughtful_Walk from the shared
+  // library; cast/attack borrows the harbinger's charged-spell-cast clip.
+  'telepath': {
+    female: {
+      model: `${_PSY_3D}/Meshy_AI_psychic_female_with_d_biped_Character_output.glb`,
+      clips: {
+        idle:  ANIM_CLIPS_3D.idle,
+        walk:  `${_ANIM_3D}/Meshy_AI_psychic_female_with_d_biped_Animation_Thoughtful_Walk_withSkin.glb`,
+        cast:  ANIM_CLIPS_3D.cast,
+        death: ANIM_CLIPS_3D.death,
+      },
+      heightRatio: 1.0,
+      yawOffset: 0,
+      moveTimeScale: 3.0,   // Thoughtful_Walk is a slow 4.77s cycle
+      castTimeScale: 2.2,
       deathTimeScale: 1.6,
     },
   },
