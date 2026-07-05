@@ -4349,6 +4349,10 @@
             if (state.phase !== 'battle' || state.winner) return;
             if (state.autoPlayers?.[state.activePlayer]) return;
 
+            // Backing out always empties the repeat queue — queued follow-up
+            // attacks/casts must never fire after the player cancels.
+            state._repeatQueue = null;
+
             if (state._enemyActionTargetId) {
                 playSfx('uiBack');
                 state._enemyActionTargetId = null;

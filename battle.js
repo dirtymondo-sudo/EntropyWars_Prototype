@@ -6965,6 +6965,26 @@
                 // only the remembered RESTING pitch is clamped — see REST_TILT_MAX.
                 if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = Math.min(opts.tilt, REST_TILT_MAX); }
                 if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
+                // Manual orbit steers the active unit: while the player drags
+                // the camera around during their own unit's turn, the unit
+                // pivots to keep facing the way the camera looks (third-person
+                // style; ThreeCamera's view dir for yaw is (-sin, -cos), and
+                // the renderer's turn-rate limiter keeps the pivot smooth).
+                // Only live player input (_userPanning) qualifies — resets and
+                // cinematic framing never spin the character.
+                if (opts.yaw !== undefined && state._userPanning
+                    && state.phase === 'battle' && !state.winner && !state._actionExecuting
+                    && typeof getSelectedUnit === 'function') {
+                    const _fu = getSelectedUnit();
+                    if (_fu && !_fu.dead && state._blitzActiveUnitId === _fu.id
+                        && state.activePlayer === _fu.player
+                        && !state.autoPlayers?.[_fu.player]
+                        && !_fu._dying) {
+                        const _fyr = this.yaw * (Math.PI / 180);
+                        setUnitFacing(_fu, -Math.sin(_fyr), -Math.cos(_fyr));
+                        if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                    }
+                }
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
                 this._elevRelease = false;
@@ -12028,9 +12048,9 @@
         // instead of greying it). Probing temporarily relocates the unit so we
         // reuse the REAL attack-range/LOS logic (_getAttackValidTargets),
         // restoring its position in a finally block.
-        function attackHasReachableTarget(unit) {
+        function attackHasReachableTarget(unit, opts) {
             if (!unit) return false;
-            if (_getAttackValidTargets(unit).length > 0) return true; // in range now
+            if (_getAttackValidTargets(unit, opts).length > 0) return true; // in range now
             const steps = _attackMoveBudget(unit);
             if (steps <= 0) return false;
             const sx = unit.x, sy = unit.y, sz = unit.z;
@@ -12039,7 +12059,7 @@
                 for (const t of ring1) {
                     if (unitAt(t.x, t.y, t.z)) continue;
                     unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
-                    if (_getAttackValidTargets(unit).length > 0) return true;
+                    if (_getAttackValidTargets(unit, opts).length > 0) return true;
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
                 if (steps >= 2) {
@@ -12050,7 +12070,7 @@
                         for (const t2 of r2) {
                             if (unitAt(t2.x, t2.y, t2.z)) continue;
                             unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                            if (_getAttackValidTargets(unit).length > 0) return true;
+                            if (_getAttackValidTargets(unit, opts).length > 0) return true;
                         }
                         unit.x = sx; unit.y = sy; unit.z = sz;
                     }
@@ -17527,7 +17547,54 @@
 
             enforceUnitSeparation('endUnitIfDone:' + (unit.name || unit.id));
 
+            // Queued repeats: extra clicks on the same target while the swing/
+            // cast was still animating queued more of the same action — fire
+            // the next one now, back-to-back, instead of handing the drum back
+            // between repetitions. Every repeat re-validates from scratch (AP,
+            // target still standing/in range, cooldown), so a kill or shove
+            // mid-chain just drains the queue silently.
+            const _rq = state._repeatQueue;
+            if (_rq && _rq.unitId === unit.id && _rq.queued > 0 && !unit.dead && !state.winner) {
+                if (!canUnitAct(unit)) {
+                    state._repeatQueue = null;
+                } else {
+                    _rq.queued--;
+                    state._actionExecuting = true;
+                    const _rqDrop = () => {
+                        state._repeatQueue = null;
+                        state._actionExecuting = false;
+                        renderBattleUpdate();
+                        endUnitIfDone(unit);
+                    };
+                    window.setTimeout(() => {
+                        // The player cancelled (handleBackAction nulls the
+                        // queue) between the schedule and this beat → abort.
+                        if (state._repeatQueue !== _rq) { state._actionExecuting = false; renderBattleUpdate(); return; }
+                        if (state.phase !== 'battle' || state.winner || unit.dead
+                            || !canUnitAct(unit) || state._blitzActiveUnitId !== unit.id) { _rqDrop(); return; }
+                        if (_rq.mode === 'attack') {
+                            if (!_getAttackValidTargets(unit).some(t => t.x === _rq.x && t.y === _rq.y)) { _rqDrop(); return; }
+                            state.actionMode = 'attack';
+                            state.actionMenuView = 'attackTargets';
+                            state.pendingTarget = null;
+                            doAttack(unit, _rq.x, _rq.y, _rq.z);
+                        } else if (_rq.mode === 'spell' && _rq.tool) {
+                            const _sp = (unit.spells || []).find(s => s.name === _rq.tool)
+                                || (unit._raceAbilities || []).find(s => s.name === _rq.tool);
+                            if (!_sp || !canAffordSpell(unit, _sp)) { _rqDrop(); return; }
+                            state.selectedTool = _rq.tool;
+                            state.actionMode = 'spell';
+                            state.actionMenuView = 'spells';
+                            state.pendingTarget = null;
+                            doSpell(unit, _rq.x, _rq.y, _rq.z);
+                        } else { _rqDrop(); }
+                    }, actionMs(500));
+                    return;   // the chained action re-enters endUnitIfDone when it lands
+                }
+            }
+
             if (!unitFinished(unit) && !unit.dead) return;
+            state._repeatQueue = null;
             _stopShotClock();
             state.actionMode = null;
             state.actionMenuView = 'root';
@@ -18082,8 +18149,13 @@
             }
         }
 
-        function _getAttackValidTargets(unit) {
+        function _getAttackValidTargets(unit, opts) {
             if (!unit) return [];
+            /* combatOnly: skip pure scenery (trees / smashable terrain). Used by
+               the Attack-button lighting so the button greys out when the only
+               thing in reach is choppable — chopping stays available through the
+               target menu / right-click-hold, it just doesn't light the verb. */
+            const _combatOnly = !!(opts && opts.combatOnly);
             const targets = [];
             const effRange = getEffectiveRange(unit);
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
@@ -18148,8 +18220,9 @@
 
             // 🪓 Trees: any unit can chop an in-range tree with its basic attack
             // (banks lumber / clears cover — see the chop branch in doAttack).
-            // Listing them here is what lights up the Attack button and puts them
-            // in the target menu; it also makes move-then-attack reach them.
+            // Listing them here is what puts them in the target menu; it also
+            // makes move-then-attack reach them.
+            if (!_combatOnly)
             for (let ty = 0; ty < bh(); ty++) {
                 for (let tx = 0; tx < bw(); tx++) {
                     if (!_tileHasTree(tx, ty)) continue;
@@ -18189,6 +18262,7 @@
             // 🔨 Raised terrain: an exposed raised column (a cardinal neighbor
             // sits lower) can be smashed down one level with a basic attack —
             // the counterplay to reshape pillars and tower camping.
+            if (!_combatOnly)
             for (let ty = 0; ty < bh(); ty++) {
                 for (let tx = 0; tx < bw(); tx++) {
                     if (!_tileIsSmashable(tx, ty)) continue;
@@ -18209,10 +18283,36 @@
             return targets;
         }
 
+        /* Repeat queue: clicking the SAME target again while the action is
+           still animating queues another repetition (bounded by AP), executed
+           back-to-back by endUnitIfDone — "3 super-effective basic attacks"
+           without waiting out each swing. Returns true when the click was
+           consumed as a queue attempt. */
+        function _tryQueueRepeat(unit, x, y) {
+            const rq = state._repeatQueue;
+            if (!rq || !unit || rq.unitId !== unit.id) return false;
+            if (state.phase !== 'battle' || state.winner || unit.dead) return false;
+            if (rq.x !== x || rq.y !== y) return false;
+            let apCost = AP_COST_ACTION;
+            if (rq.mode === 'spell') {
+                const sp = (unit.spells || []).find(s => s.name === rq.tool)
+                    || (unit._raceAbilities || []).find(s => s.name === rq.tool);
+                if (!sp || sp.cooldownRounds > 0) { playErrorSfx(); return true; } // cooldown → can't recast this turn
+                apCost = getSpellApCost(sp);
+            } else if (rq.mode !== 'attack') return false;
+            // AP guard is approximate (the in-flight action may or may not have
+            // spent its AP yet) — the chain re-validates before every repeat.
+            if ((rq.queued + 1) * apCost > (unit.ap || 0)) { playErrorSfx(); return true; }
+            rq.queued++;
+            playSfx('uiCursorFocus');
+            showFloatingTextForUnit(unit, '⟳ ×' + (rq.queued + 1) + ' QUEUED', 'buff', { durationMs: 900 });
+            return true;
+        }
+
         function selectTargetFromMenu(x, y, z) {
             const unit = getSelectedUnit();
             if (!unit) return;
-            if (state._actionExecuting) return;
+            if (state._actionExecuting) { _tryQueueRepeat(unit, x, y); return; }
             if (!canUnitAct(unit)) {
 
                 state.actionMode = null;
@@ -18239,6 +18339,11 @@
 
                 const execZ = (z !== undefined && z !== null) ? z : state._clickedZ;
                 if (execZ !== undefined && execZ !== null) state._clickedZ = execZ;
+                // Arm the repeat queue: further clicks on this target while the
+                // action animates stack repetitions (see _tryQueueRepeat).
+                state._repeatQueue = (state.actionMode === 'attack' || state.actionMode === 'spell')
+                    ? { unitId: unit.id, mode: state.actionMode, tool: state.selectedTool, x, y, z: execZ, queued: 0 }
+                    : null;
                 if (state.actionMode === 'attack') { doAttack(unit, x, y, execZ); }
                 else if (state.actionMode === 'spell') { doSpell(unit, x, y, execZ); }
                 scheduleBoardRender();
@@ -18295,6 +18400,29 @@
             clearSpellRangePreview();
             clearAttackRangePreview();
             _clearMoveHoverPreview();
+
+            /* Tile-pick framing: entering move/jump must land the camera on a
+               board-readable tactical pitch EVERY time. The live tilt legally
+               roams 0–135 (straight down → sky gaze) in free look, and nothing
+               used to correct it here — picking tiles while craned at the sky
+               (or dead-vertical) left the reachable overlay unreadable. Settle
+               pitch to the remembered resting angle and centre on the unit;
+               yaw is left alone (re-orienting the board mid-click is worse
+               than any pitch problem). */
+            if ((mode === 'move' || mode === 'jump') && !state.cameraDisabled
+                && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
+                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+                if (Math.abs((camera.tilt ?? _pickTilt) - _pickTilt) > 8 || camera._cineShotId != null) {
+                    camera._preCineView = null;
+                    camera._cineShotId = null;
+                    camera._releaseCineSubject(420);
+                    camera.moveTo({
+                        x: unit.x, y: unit.y,
+                        tilt: _pickTilt,
+                        duration: 380, easing: 'easeInOut', _fogAllowed: true
+                    });
+                }
+            }
 
             if (mode === 'attack') {
                 state.actionMenuView = 'attackTargets';
@@ -18626,7 +18754,7 @@
 
             if (state.autoPlayers?.[state.activePlayer]) return;
 
-            if (state._actionExecuting) return;
+            if (state._actionExecuting) { _tryQueueRepeat(getSelectedUnit(), x, y); return; }
 
             if (isCinematicActive()) return;
 
@@ -22002,6 +22130,9 @@
                     playErrorSfx();
                     return;
                 }
+                // Facing: using an item turns the user toward its target
+                // (same contract as doAttack/doSpell; self-use is a no-op).
+                setUnitFacing(unit, x - unit.x, y - unit.y);
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
 
@@ -22041,6 +22172,7 @@
                     playErrorSfx();
                     return;
                 }
+                setUnitFacing(unit, x - unit.x, y - unit.y);
                 focusUnitPanel(target.id);
                 playSfx('manaRegen');
 
@@ -22176,6 +22308,7 @@
                     playErrorSfx();
                     return;
                 }
+                setUnitFacing(unit, x - unit.x, y - unit.y);
                 focusUnitPanel(target.id);
                 const _baneCam = playOffensiveActionCamera(unit, target, {
                     sourceHold: 900, targetHold: 900,
@@ -22583,13 +22716,25 @@
 
                 const _prevView = state.actionMenuView;
                 if (!unitFinished(unit) && !unit.dead && (_prevView === 'spells' || _prevView === 'spellTargets')) {
-                    state.actionMode = null;
-                    state.actionMenuView = 'spells';
+                    // AP left and the SAME spell is still castable (no cooldown,
+                    // affordable) → stay ARMED on it: the spellbook stays open on
+                    // this spell and the very next click is already a target pick,
+                    // so re-casting costs zero re-navigation. Otherwise fall back
+                    // to the open spellbook.
+                    if (canAffordSpell(unit, spell) && !unitHasStatus(unit, 'silence')) {
+                        state.actionMode = 'spell';
+                        state.actionMenuView = 'spells';
+                        state.selectedTool = spell.name;
+                    } else {
+                        state.actionMode = null;
+                        state.actionMenuView = 'spells';
+                        state.selectedTool = null;
+                    }
                 } else {
                     state.actionMode = null;
                     state.actionMenuView = 'root';
+                    state.selectedTool = null;
                 }
-                state.selectedTool = null;
                 state.pendingTarget = null;
 
                 if (!unit.dead) _softResetCameraToUnit(unit);

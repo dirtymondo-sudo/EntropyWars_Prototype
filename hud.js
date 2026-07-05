@@ -2219,7 +2219,7 @@ function ActionMenu({ st, hidden }) {
   // Attack stays live if the unit can STEP into range and still swing this
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
-  const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit));
+  const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
@@ -2397,7 +2397,10 @@ function ActionMenu({ st, hidden }) {
   if (inTileTarget) {
     view = 'aim'; viewKey = 'aim|' + am;
     modeLabel = modeLabels[am] || String(am).toUpperCase();
-    blades = [cancelBlade];
+    // Move/jump picking shows NO blade at all — the fan sat right over the
+    // reachable tiles on the left half of the board, and the crown (◀ BACK)
+    // already cancels. Other tile modes keep the lone CANCEL blade.
+    blades = (am === 'move' || am === 'jump') ? [] : [cancelBlade];
   } else if (menuView === 'spells' && am === 'spell' && st.selectedTool) {
     // tile-targeted / free-aim spell armed from the abilities drum
     view = 'aim'; viewKey = 'aim|spell';
@@ -2680,6 +2683,25 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
           if (!bestTile || dFromTile > bestDist) {
             bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z };
+            bestDist = dFromTile;
+          }
+        }
+      }
+    }
+
+    // Jump counts as movement for the range approach too (1 AP, exactly like
+    // a step): a leap over the gap/ledge that blocks the walk ring can be
+    // what puts the target in range. Preferred over the 2-step walk below —
+    // it's cheaper.
+    if (!bestTile && apAfter1Move >= actionApCost
+        && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+      for (const t of getJumpTiles(actingUnit)) {
+        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        const dFromTile = distFrom(t.x, t.y, t.z);
+        if (dFromTile >= 1 && dFromTile <= requiredRange) {
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty)) continue;
+          if (!bestTile || dFromTile > bestDist) {
+            bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
             bestDist = dFromTile;
           }
         }
@@ -3055,33 +3077,79 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     }
   }
 
-  // "Move Towards" — a plain one-click step toward the clicked enemy, for
-  // when nothing in this menu can reach them and you just want to close the
-  // distance without backing out through the menus to select MOVE.
-  if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
-      && canUnitMove(actingUnit) && unitAP >= 1 && dist > 1) {
+  // "Move Towards" — a one-click step toward the clicked enemy, for when
+  // nothing in this menu can reach them and you just want to close the
+  // distance without backing out through the menus. Jump / take-off / raise
+  // all count as movement here: if a plain step can't make progress (cliff,
+  // chasm, grounded flyer) the action falls through to whichever 1-AP
+  // mobility verb actually gets the unit closer, instead of stranding it.
+  if (unitAP >= 1 && dist > 1) {
     const mtMovesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
-    if (mtMovesLeft > 0) {
-      let towardTile = null;
-      let towardDist = dist;
+    let towardTile = null;
+    let towardDist = dist;
+    let towardLabel = 'Move Towards';
+    let towardIcon = '➜';
+    if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+        && canUnitMove(actingUnit) && mtMovesLeft > 0) {
       for (const t of getMoveTiles(actingUnit)) {
         if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
         const d = distFrom(t.x, t.y, t.z);
         if (d < towardDist) { towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; }
       }
-      if (towardTile) {
-        actions.push({
-          id: 'moveTowards',
-          label: 'Move Towards',
-          icon: '➜',
-          apCost: 1,
-          moveTile: towardTile,
-          preview: null,
-          typeNote: '',
-          available: true,
-        });
+    }
+    // A leap that lands strictly closer than the best walk step wins (same
+    // 1 AP) — this is what carries the approach across gaps and up ledges
+    // that stopped the plain step after one tile.
+    if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+      for (const t of getJumpTiles(actingUnit)) {
+        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        const d = distFrom(t.x, t.y, t.z);
+        if (d < towardDist) {
+          towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
+          towardDist = d;
+          towardLabel = 'Jump Towards';
+          towardIcon = '↷';
+        }
       }
+    }
+    if (!towardTile) {
+      // No step or leap makes progress. Offer the 1-AP height verb that
+      // unblocks movement instead of nothing: a grounded flyer takes off;
+      // a walker facing a too-tall wall raises the ground underfoot.
+      if (typeof canFly === 'function' && canFly(actingUnit)
+          && typeof isUnitAirborne === 'function' && !isUnitAirborne(actingUnit)
+          && (typeof canChangeAltitude !== 'function' || canChangeAltitude(actingUnit, 'ascend'))) {
+        towardTile = { moveCost: 1, x: actingUnit.x, y: actingUnit.y, z: actingUnit.z, _heightApproach: 'takeoff' };
+        towardLabel = 'Take Off (unblock path)';
+        towardIcon = '⬆';
+      } else if (typeof canReshapeTile === 'function' && canReshapeTile(actingUnit, 'raise')
+          && typeof getHeightAt === 'function') {
+        // Only offer the raise when the direct neighbour toward the target
+        // really is a wall the unit can't climb — raising for its own sake
+        // would just burn AP.
+        const stepX = actingUnit.x + Math.sign(tx - actingUnit.x);
+        const stepY = actingUnit.y + Math.sign(ty - actingUnit.y);
+        const wallH = getHeightAt(stepX, stepY);
+        const selfH = actingUnit.z ?? getHeightAt(actingUnit.x, actingUnit.y);
+        if (wallH - selfH >= 2) {
+          towardTile = { moveCost: 1, x: actingUnit.x, y: actingUnit.y, z: actingUnit.z, _heightApproach: 'raise' };
+          towardLabel = 'Raise Ground (climb)';
+          towardIcon = '🔺';
+        }
+      }
+    }
+    if (towardTile) {
+      actions.push({
+        id: 'moveTowards',
+        label: towardLabel,
+        icon: towardIcon,
+        apCost: 1,
+        moveTile: towardTile,
+        preview: null,
+        typeNote: '',
+        available: true,
+      });
     }
   }
 
@@ -3656,6 +3724,22 @@ function _computeTileActions(actingUnit, tx, ty) {
             state._tileActionTarget = null;
             if (typeof setActionMode === 'function') setActionMode('move');
             if (typeof doMove === 'function') doMove(actingUnit, tx, ty, moveTile.z);
+          },
+        });
+      }
+    } else if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+      // Not walkable this turn — but a jump counts as movement too. If the
+      // clicked tile is a legal landing spot, offer the leap directly instead
+      // of showing no movement option at all (same 1 AP as a step).
+      const jumpTile = getJumpTiles(actingUnit).find(t => t.x === tx && t.y === ty);
+      if (jumpTile && !(typeof unitAt === 'function' && unitAt(tx, ty, jumpTile.z))) {
+        actions.push({
+          id: 'jump', label: 'Jump here', icon: '↷', category: 'movement',
+          apCost: 1, available: true,
+          handler: () => {
+            state._tileActionTarget = null;
+            if (typeof setActionMode === 'function') setActionMode('jump');
+            if (typeof doJump === 'function') doJump(actingUnit, tx, ty, jumpTile.z);
           },
         });
       }

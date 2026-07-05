@@ -26,6 +26,49 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Combat-UI batch 2 (2026-07-05, later session) — battle.js, hud.js, state.js, ui.js
+Token bumped `20260705c` → `20260705d`. Verified by driving a full VS-CPU arena
+match with the harness + `USE_ASSET_CACHE=1 LOCAL_ASSETS=battle.js,hud.js,state.js,ui.js`
+(serves the repo-local edits instead of the deployed R2 copies — use this to
+test edits pre-upload; needs `PW_CHROMIUM=/opt/pw-browsers/chromium` in this sandbox).
+- **Items face the target (battle.js doItem)**: heal/mana potions and bane
+  throws now `setUnitFacing(unit, x-ux, y-uy)` after validation, same contract
+  as doAttack/doSpell (self-use = zero vector = no-op).
+- **Move/jump pick forces tactical pitch (battle.js setActionMode)**: entering
+  'move'/'jump' tweens tilt to `min(_restTilt, REST_TILT_MAX)` + centres on the
+  unit when live tilt deviates >8° (sky-gaze/straight-down free look no longer
+  leaves the reachable overlay unreadable). Yaw deliberately untouched.
+- **No CANCEL blade while picking move/jump (hud.js)**: aim view for
+  'move'/'jump' has `blades = []` (label + crown ◀ BACK only); other tile modes
+  keep the lone CANCEL blade. Empty blade list is safe in HorologeMenu.
+- **Repeat queue (battle.js)**: `state._repeatQueue` armed at the confirm
+  click; extra clicks on the SAME target while `_actionExecuting` queue more
+  repetitions (`_tryQueueRepeat`, "⟳ ×N QUEUED" float, AP-bounded); the chain
+  fires in `endUnitIfDone` (500ms beat, re-validates AP/target/cooldown each
+  rep). Cleared by handleBackAction, turn end, or any failed validation.
+- **Spell stays armed after cast (battle.js doSpell finishAction)**: with AP
+  left and the same spell still affordable + off cooldown, the menu re-arms
+  `actionMode='spell'` + `selectedTool=spell.name` → next click is already a
+  target pick. Falls back to the open spellbook, then root.
+- **Active unit rotates with manual camera orbit (battle.js camera.snap)**:
+  middle-drag orbit (`state._userPanning` + opts.yaw) sets the active local
+  unit's facing to the camera view dir `(-sin yaw, -cos yaw)`. Gameplay facing
+  (attack arcs) — intentional, FFT-style end-facing control.
+- **Move-to counts jump/take-off/raise as movement (hud.js)**: quick-menu
+  "Move Towards" now also scans `getJumpTiles` (picks whichever lands closer,
+  1 AP, `moveTile._jump`), and when NOTHING improves offers "Take Off" (grounded
+  flyer) or "Raise Ground" (wall ≥2 higher toward target) via `_heightApproach`.
+  `findMoveIntoRange` (attack/bane/self-aoe range approach) tries jump tiles
+  between the 1-step and 2-step walk rings. Tile quick menu offers "Jump here"
+  when the clicked tile is jump- but not walk-reachable. Spell cards already
+  used the engine's jump/height-aware `findSpellApproachTile`.
+- **Attack button = real targets only (state.js getActionPanelCache +
+  battle.js)**: trees and smashable terrain no longer set `hasAttack`;
+  `_getAttackValidTargets(unit, {combatOnly:true})` /
+  `attackHasReachableTarget(unit, {combatOnly:true})` skip them for button
+  lighting (hud root blade passes it too). They REMAIN in the attack target
+  menu and right-click chop — only the verb's lit state changed.
+
 ## Action-menu + camera/input fixes (2026-07-05) — hud.js, battle.js, state.js, three-camera.js
 All four files must go to R2 together. NOT in-browser verified (user chose to
 verify visually after upload) — syntax-checked only.

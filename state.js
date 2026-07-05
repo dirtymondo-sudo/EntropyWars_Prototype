@@ -4353,25 +4353,13 @@
                     if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y)) { hasAttack = true; break; }
                 }
             }
-            // 🪓 An in-range tree can always be chopped with a basic attack, so it
-            // keeps the Attack button lit too. Scan the small range diamond only.
-            if (!hasAttack && typeof _tileHasTree === 'function') {
-                outer:
-                for (let dy = -effRange; dy <= effRange; dy++) {
-                    for (let dx = -effRange; dx <= effRange; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
-                        const tx = unit.x + dx, ty = unit.y + dy;
-                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
-                        if (!_tileHasTree(tx, ty)) continue;
-                        if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
-                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
-                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break outer; }
-                    }
-                }
-            }
+            // 🪓 Trees / 🔨 smashable terrain do NOT light the Attack button any
+            // more — they stay attackable through the target menu and the
+            // right-click chop hold, but a verb lit purely by scenery reads as
+            // "there's something to fight" when there isn't. Only enemies,
+            // towers, turrets, deployables, seeds and buildings light it.
             // 🏢 An in-range building can always be sieged with a basic attack —
-            // keeps the Attack button lit exactly like trees do.
+            // keeps the Attack button lit.
             if (!hasAttack && typeof getBuildingAt === 'function') {
                 bOuter:
                 for (let dy = -effRange; dy <= effRange; dy++) {
@@ -4387,28 +4375,13 @@
                     }
                 }
             }
-            // 🔨 An in-range smashable terrain column (exposed raised tile) also
-            // keeps the Attack button lit — same diamond scan as trees.
-            if (!hasAttack && typeof _tileIsSmashable === 'function') {
-                tOuter:
-                for (let dy = -effRange; dy <= effRange; dy++) {
-                    for (let dx = -effRange; dx <= effRange; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        if (Math.abs(dx) + Math.abs(dy) > effRange) continue;
-                        const tx = unit.x + dx, ty = unit.y + dy;
-                        if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
-                        if (!_tileIsSmashable(tx, ty)) continue;
-                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
-                        if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break tOuter; }
-                    }
-                }
-            }
             // Nothing attackable from where the unit stands, but it may be able to
             // step into range and still afford the swing (move-then-attack). Keep
             // the Attack button enabled in that case so it matches the quick-action
             // (click-an-enemy) menu, which already offers the move-then-attack.
+            // combatOnly: a merely-reachable tree/column must not re-light it.
             if (!hasAttack && typeof attackHasReachableTarget === 'function') {
-                hasAttack = attackHasReachableTarget(unit);
+                hasAttack = attackHasReachableTarget(unit, { combatOnly: true });
             }
             _actionPanelCache = {
                 key: key,
