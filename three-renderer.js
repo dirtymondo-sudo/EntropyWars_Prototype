@@ -5699,8 +5699,10 @@ const ThreeRenderer = (function () {
             inner.add(m);
             wrap.add(inner);
 
+            var hasSkin = false;
             m.traverse(function (n) {
                 if (!n.isMesh) return;
+                if (n.isSkinnedMesh) hasSkin = true;
                 n.frustumCulled = false;   // animated poses leave the bind-pose bounds
                 n.castShadow = true;
                 n.receiveShadow = false;
@@ -5731,7 +5733,16 @@ const ThreeRenderer = (function () {
             });
 
             // Mixer + retargeted clips: every clip GLB carries the same rig,
-            // so its first animation binds to this clone by node name.
+            // so its first animation binds to this clone by node name. An
+            // UNRIGGED model (no skin/bones — e.g. a raw Meshy texture-stage
+            // export) can't be driven by clips at all: skip the mixer and the
+            // clip downloads, render it as a static figure, and let the
+            // classic sprite death tween handle its removal.
+            if (!hasSkin) {
+                console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
+                _removeUnitSpritePlaceholder(entry);
+                return;
+            }
             var mixer = new THREE.AnimationMixer(m);
             entry.mixer = mixer;
             entry.actions = {};
@@ -5811,6 +5822,18 @@ const ThreeRenderer = (function () {
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
         unitEntries.forEach(function (entry, uid) {
+            // AP-spent grey for ANY model entry (even an unrigged static one);
+            // hit flashes / death own the tint while they're live.
+            if (entry.modelMats && entry.modelMats.length
+                && !_flashTweens.has(uid) && !_deathTweens.has(uid)) {
+                var unitG = _findUnit(uid);
+                var grey = (unitG && unitG.ap <= 0) ? 0.5 : 1;
+                for (var gi = 0; gi < entry.modelMats.length; gi++) {
+                    if (entry.modelMats[gi].color.r !== grey) {
+                        entry.modelMats[gi].color.setRGB(grey, grey, grey);
+                    }
+                }
+            }
             if (!entry.mixer) return;
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
             var want;
@@ -5823,15 +5846,6 @@ const ThreeRenderer = (function () {
             entry.mixer.update(dt);
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
-            if (entry.modelMats.length && !_flashTweens.has(uid) && !_deathTweens.has(uid)) {
-                var unit = _findUnit(uid);
-                var grey = (unit && unit.ap <= 0) ? 0.5 : 1;
-                for (var i = 0; i < entry.modelMats.length; i++) {
-                    if (entry.modelMats[i].color.r !== grey) {
-                        entry.modelMats[i].color.setRGB(grey, grey, grey);
-                    }
-                }
-            }
         });
     }
 

@@ -414,23 +414,66 @@ function getRaceSpriteAnimations(race, gender) {
 // the fallback when GLTFLoader is unavailable. Set window.EW_DISABLE_3D_UNITS
 // = true (console) to force sprites for A/B comparison.
 // ───────────────────────────────────────────────────────────────────────────
+// Shared animation clip library — Assets/Sprites/Races/animations/ on R2.
+// One GLB per clip, all exported on the SAME Meshy biped rig (identical bone
+// names), so any character rigged on that skeleton can borrow any clip from
+// here: no per-character walk/idle/death exports needed. NOTE: a character's
+// `model` GLB must be a RIGGED export (Meshy rig/animate stage, "with skin" —
+// it has bones + skin weights). The raw generate/texture stage GLBs are
+// static meshes with no skeleton; they still render (unanimated statue) but
+// no clip can drive them.
+const _ANIM_3D = `${_S}/Races/animations`;
+const ANIM_CLIPS_3D = {
+  idle:   `${_ANIM_3D}/Meshy_AI_Animation_Idle_11_withSkin.glb`,             // 1.93s loop
+  walk:   `${_ANIM_3D}/Meshy_AI_Animation_Walking_withSkin.glb`,             // 1.07s loop
+  run:    `${_ANIM_3D}/Meshy_AI_Animation_Running_withSkin.glb`,             // loop
+  cast:   `${_ANIM_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,  // 2.70s
+  shoot:  `${_ANIM_3D}/Meshy_AI_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb`, // 7.33s
+  death:  `${_ANIM_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,          // 2.53s
+};
+
 const _HARB_3D = `${_S}/Races/Homosapien/Male/harbinger`;
+const _AGENT_3D = `${_S}/Races/Homosapien/Male/agent`;
 const RACE_MODELS_3D = {
-  // Male Harbinger (Fortune Teller) — the 3D-unit pilot character.
+  // Male Harbinger (Fortune Teller) — the 3D-unit pilot character. Its base
+  // GLB is the rigged Idle export, so the idle clip rides along with the
+  // mesh in one download; the other clips come from the shared library.
   'fortune teller': {
     male: {
       model: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
       clips: {
         idle:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
-        walk:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Walking_withSkin.glb`,
-        cast:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Charged_Spell_Cast_withSkin.glb`,
-        death: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Knock_Down_withSkin.glb`,
+        walk:  ANIM_CLIPS_3D.walk,
+        cast:  ANIM_CLIPS_3D.cast,
+        death: ANIM_CLIPS_3D.death,
       },
       heightRatio: 1.0,
       yawOffset: 0,
       moveTimeScale: 2.0,   // walk cycle is 1.07s; tweens cross a tile in ~150ms
       castTimeScale: 2.2,   // charged-cast clip is 2.7s; action window is ~1.2s
       deathTimeScale: 1.6,  // knock-down clip is 2.53s; death window is 1.6s
+    },
+  },
+  // Male Agent (Men in Black). Cast/attack = the cowboy quick-draw clip.
+  // ⚠ The GLB currently in the agent folder (…_texture.glb) is the UNRIGGED
+  // texture-stage export (no bones/skin) — it renders as a static 3D figure
+  // and the clips can't animate it. Re-export the model from Meshy's
+  // rig/animate stage ("with skin") into this folder, point `model` at it,
+  // and the shared clips below will just work.
+  'men in black': {
+    male: {
+      model: `${_AGENT_3D}/Meshy_AI_Men_in_Black_CIA_age_0705080827_texture.glb`,
+      clips: {
+        idle:  ANIM_CLIPS_3D.idle,
+        walk:  ANIM_CLIPS_3D.walk,
+        cast:  ANIM_CLIPS_3D.shoot,
+        death: ANIM_CLIPS_3D.death,
+      },
+      heightRatio: 1.0,
+      yawOffset: 0,
+      moveTimeScale: 2.0,
+      castTimeScale: 5.0,   // quick-draw clip is 7.33s; show the draw+shot fast
+      deathTimeScale: 1.6,
     },
   },
 };

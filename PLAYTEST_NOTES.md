@@ -34,6 +34,18 @@ teller (Harbinger)** — Meshy exports under
 - Base GLB = the Idle export (mesh+skin+texture+idle clip, ~7MB); walk / cast /
   death clips retarget from their own GLBs (same rig → same bone names, so one
   clip set can drive ANY character rigged on the Meshy biped skeleton).
+- Shared clip library (2026-07): `Assets/Sprites/Races/animations/` — one GLB
+  per clip (idle/walk/run/cast/cowboy-shoot/knock-down), all on the same rig;
+  registered as `ANIM_CLIPS_3D` in sprites.js. Characters reference these
+  instead of per-character animation exports. Second registered race: male
+  'men in black' (agent) — cast/attack = cowboy quick-draw. ⚠ Its current GLB
+  (`…_texture.glb`) is the UNRIGGED Meshy texture-stage export (0 skins/bones,
+  verified) — renders as a static 3D figure, clips can't bind. The renderer
+  detects rigless models, skips the mixer + clip downloads, and warns. Fix =
+  re-export from Meshy's rig/animate stage ("with skin") and point `model` at
+  it. Also: `Box3.setFromObject` LIES about skinned GLB size (Meshy geometry
+  is authored at 1/100 with bones scaling ×100) — `_skinnedBBox` measures via
+  boneTransform(); naive h=0.017 vs real h=1.70.
 - Loader/mixer/state machine live in three-renderer.js (`_loadUnitGLB`,
   `_attachUnitModel`, `_updateUnitModels`). State priority: death (Knock_Down,
   clamped + fade, 1600ms) > cast one-shot (also plays for basic attacks) >
