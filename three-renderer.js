@@ -5499,12 +5499,20 @@ const ThreeRenderer = (function () {
     /* Per-frame: keeps every unit's emissive current across mid-match
        day↔night flips and AP changes without a structural rebuild. */
     function _updateUnitSelfGlow() {
+        // The blitz-active unit "breathes" light: a slow sinusoidal boost on
+        // its emissive so whoever is up to act reads at a glance, day or
+        // night. Pure intensity — the hit-flash tween owns .color, so the two
+        // never fight.
+        var _pulseUid = (state && state.phase === 'battle') ? state._blitzActiveUnitId : null;
+        var _pulse = 0.10 + 0.08 * Math.sin(performance.now() * 0.005);
         unitEntries.forEach(function (entry, uid) {
             var spr = entry.sprite;
             var hasModel = entry.modelMats && entry.modelMats.length;
             var hasSprite = spr && spr.material && spr.material.emissiveMap;
             if (!hasSprite && !hasModel) return;
-            var inten = _unitSelfGlowIntensity(_findUnit(uid));
+            var u = _findUnit(uid);
+            var inten = _unitSelfGlowIntensity(u);
+            if (uid === _pulseUid && u && !u.dead && !_deathTweens.has(uid)) inten += _pulse;
             if (hasSprite) spr.material.emissiveIntensity = inten;
             if (hasModel) {
                 for (var i = 0; i < entry.modelMats.length; i++) {
@@ -5660,6 +5668,11 @@ const ThreeRenderer = (function () {
         var wrap = new THREE.Group();
         wrap._ew_facingSprite = true;    // gameplay-facing pass owns wrap.rotation.y
         wrap._ew_baseY = 0;
+        // Yaw-then-pitch order: the motion-lean pass (see _updateUnitModels)
+        // drives rotation.x, and with 'YXZ' that pitch happens in the model's
+        // OWN yawed frame — so the lean always tips toward where the unit is
+        // running, not around the world X axis.
+        wrap.rotation.order = 'YXZ';
         wrap.rotation.y = _unitFacingYaw(unit);
         entry.group.add(wrap);
         entry.model = wrap;
@@ -5868,7 +5881,48 @@ const ThreeRenderer = (function () {
                     }
                 }
             }
+            // ── Motion lean + landing bounce (rigged AND static models) ──
+            // Runners bank forward like a sprinter: a touch while walking,
+            // harder during a dash/charge, and a lunge-lean during strike
+            // leaps. The wrap's Euler order is YXZ, so rotation.x pitches in
+            // the model's own yawed frame (always toward the run direction).
+            if (entry.model) {
+                var leanTarget = 0;
+                if (!_deathTweens.has(uid)) {
+                    if (_displaceTweens.has(uid)) leanTarget = entry._ew_sprinting ? 0.20 : 0.09;
+                    else if (_strikeTweens.has(uid)) leanTarget = 0.15;
+                    else if (_walkTweens.has(uid)) leanTarget = 0.09;
+                }
+                var lean = entry.model._ew_lean || 0;
+                lean += (leanTarget - lean) * Math.min(1, dt * 10);
+                if (Math.abs(lean) < 0.001 && leanTarget === 0) lean = 0;
+                entry.model._ew_lean = lean;
+                entry.model.rotation.x = lean;
+
+                // Landing bounce: a quick squash-and-recover armed by the jump
+                // tween the frame it touches down (classic squash & stretch —
+                // the clips themselves can't react to variable arc timing).
+                if (entry._ew_landAt) {
+                    var lb = (now - entry._ew_landAt) / 200;
+                    if (lb >= 1 || _deathTweens.has(uid)) {
+                        entry._ew_landAt = 0;
+                        entry.model.scale.set(1, 1, 1);
+                    } else {
+                        var lbS = Math.sin(lb * Math.PI);
+                        entry.model.scale.set(1 + 0.07 * lbS, 1 - 0.11 * lbS, 1 + 0.07 * lbS);
+                    }
+                }
+            }
             if (!entry.mixer) return;
+            // Catch-all: if the dash tween vanished without completing (scene
+            // teardown, snapshot restore), drop the sprint boost here.
+            if (entry._ew_sprinting && !_displaceTweens.has(uid)) {
+                entry._ew_sprinting = false;
+                if (entry.actions && entry.actions.walk) {
+                    entry.actions.walk.timeScale =
+                        ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
+                }
+            }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
             var want;
             if (_deathTweens.has(uid)) want = 'death';
@@ -9272,6 +9326,38 @@ const ThreeRenderer = (function () {
         return z * ts * ELEV_STEP_RATIO;
     }
 
+    /* Small radial dust burst at a tile's surface — landing thumps, dash
+       skids, strike-leap impacts. Rides the ThreeVFX particle pool (its
+       coordinate space is board pixels + surface-height z, same convention
+       as three-vfx-effects' tilePx/unitSurfaceZ). No-op when VFX is off. */
+    function _spawnGroundPuff(tx, ty, count, opts) {
+        var V = window.ThreeVFX;
+        if (!V || typeof V.spawn !== 'function' || !V.isActive || !V.isActive()) return;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var gap = CONFIG.tileGap || 0;
+        var pad = CONFIG.boardPadding || 2;
+        var px = pad + tx * (ts + gap) + ts / 2;
+        var py = pad + ty * (ts + gap) + ts / 2;
+        var pz = _tileSurfaceY(tx, ty) + 3;
+        var vxy = opts.vxy || 100;
+        for (var i = 0; i < count; i++) {
+            V.spawn({
+                x: px + (Math.random() * 2 - 1) * ts * 0.12,
+                y: py + (Math.random() * 2 - 1) * ts * 0.12,
+                z: pz,
+                vx: (Math.random() * 2 - 1) * vxy,
+                vy: (Math.random() * 2 - 1) * vxy,
+                vz: 15 + Math.random() * 45,
+                gravity: 60, drag: 1.4,
+                mode: 'billboard', sprite: 'dust-puff',
+                ml: 260 + Math.random() * 240,
+                size0: 8 + Math.random() * 6, size1: 22 + Math.random() * 12,
+                opacity0: 0.4, opacity1: 0
+            });
+        }
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs) {
         var fromZ = unit.z || 0;
         var toZ = (typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0;
@@ -9279,17 +9365,34 @@ const ThreeRenderer = (function () {
         // read as a real glide instead of snapping. The caller's duration acts as
         // a per-move floor (short 1-tile shoves stay punchy).
         var _dpDist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
-        var _dpScaled = Math.max(_dpDist, 1) * 110;
+        // 150ms/tile: matches the normal walk-tween pace so dashes/charges
+        // stay readable — at the old 110 the action was over before it read.
+        var _dpScaled = Math.max(_dpDist, 1) * 150;
         var _dpDur = Math.max(durationMs || 0, _dpScaled, 200);
         _displaceTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ,
             toX: toX, toY: toY, toZ: toZ,
             startTime: performance.now(),
-            durationMs: _dpDur
+            durationMs: _dpDur,
+            sprint: _dpDist >= 2
         });
 
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
+
+        // Multi-tile dashes/charges SPRINT: the run clip takes over from any
+        // cast one-shot still posing the model (otherwise the unit slides
+        // frozen mid-cast — the strike already read at cast time), with a
+        // slight urgency bump over the walk pace (150ms/tile matches the walk
+        // tween, so moveTimeScale is already close). One-tile shoves/
+        // knockbacks keep their hit-reaction/cast pose. Restored in
+        // _updateDisplaceTweens when the dash lands.
+        if (_dpDist >= 2 && entry && entry.mixer && entry.actions && entry.actions.walk) {
+            entry._ew_oneShot = null;
+            entry._ew_sprinting = true;
+            entry.actions.walk.timeScale =
+                ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * 1.15;
+        }
     }
 
     function _updateDisplaceTweens() {
@@ -9323,7 +9426,21 @@ const ThreeRenderer = (function () {
                 ue.group.position.set(wx, wy - sink, wz);
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
             }
-            if (t >= 1) toRemove.push(uid);
+            if (t >= 1) {
+                if (ue && ue._ew_sprinting) {
+                    ue._ew_sprinting = false;
+                    if (ue.actions && ue.actions.walk) {
+                        ue.actions.walk.timeScale =
+                            ((ue.modelDef && ue.modelDef.moveTimeScale) || 1);
+                    }
+                }
+                // Dash arrival kicks up a dust skid (fog-safe: only when the
+                // unit is actually visible to the viewer).
+                if (tw.sprint && ue && ue.group && ue.group.visible) {
+                    _spawnGroundPuff(tw.toX, tw.toY, 6, { vxy: 130 });
+                }
+                toRemove.push(uid);
+            }
         }
         for (var r = 0; r < toRemove.length; r++) _displaceTweens.delete(toRemove[r]);
     }
@@ -9383,11 +9500,26 @@ const ThreeRenderer = (function () {
                     var squash = 1 - 0.08 * Math.sin(t * Math.PI);
                     spriteMesh.scale.set(squash, stretch, 1);
                 }
+                // Rigged models get the same squash & stretch, gentler (the
+                // jump clip already sells most of the motion).
+                if (ue.model) {
+                    var mSt = 1 + 0.06 * Math.sin(t * Math.PI);
+                    var mSq = 1 - 0.04 * Math.sin(t * Math.PI);
+                    ue.model.scale.set(mSq, mSt, mSq);
+                }
             }
 
             if (t >= 1) {
 
                 if (ue && ue.sprite) ue.sprite.scale.set(1, 1, 1);
+                if (ue && ue.model) {
+                    ue.model.scale.set(1, 1, 1);
+                    // Arm the touchdown squash (played by _updateUnitModels).
+                    ue._ew_landAt = performance.now();
+                }
+                if (ue && ue.group && ue.group.visible) {
+                    _spawnGroundPuff(tw.toX, tw.toY, 5, { vxy: 100 });
+                }
 
                 if (ue) _updateSubmersionClip(ue, tw.toX, tw.toY, toSY, ts);
                 if (ue && ue.group) {
@@ -9486,6 +9618,9 @@ const ThreeRenderer = (function () {
 
             if (phase >= 1 && !tw.impactFired) {
                 tw.impactFired = true;
+                if (ue && ue.group && ue.group.visible) {
+                    _spawnGroundPuff(tw.toX, tw.toY, 6, { vxy: 150 });
+                }
                 if (tw.onImpact) try { tw.onImpact(); } catch(e) { console.warn('[ThreeRenderer] strikeLeap onImpact error:', e); }
             }
 
