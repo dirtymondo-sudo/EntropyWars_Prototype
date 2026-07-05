@@ -1311,30 +1311,33 @@ function HorologeHub({ factionKey, api }) {
 
 // ── Carousel slots ──────────────────────────────────────────────
 // The menu is a vertical drum of STRAIGHT blades stacked against the
-// clock: the SELECTED blade sits level with the clock center, bigger
-// and fully lit; two neighbours peek above and two below, progressively
-// faded (Persona-style cycling list). Each row's left edge hugs the
-// bezel's curve — the center row rides the equator and naturally
-// protrudes the furthest. The drum is a LADDER with a hard top and
-// bottom — it does NOT wrap around; scrolling past an end bumps.
+// clock. A sliding FOCUS WINDOW of HRLG_FOCUS_WIN rows is fully lit
+// and clickable (one click fires); the SELECTED row inside it (the
+// keyboard/wheel cursor) is bigger and brightest. One extra row peeks
+// past each window edge, faded — clicking a faded row rotates it into
+// the window (Persona-style). Each row's left edge hugs the bezel's
+// curve. The drum is a LADDER with a hard top and bottom — it does
+// NOT wrap around; scrolling past an end bumps.
 const HRLG_ROW = 44;    // vertical pitch of the stack (spell rows pass taller)
 const HRLG_HUG = 97;    // circle radius the blade edges follow
 const HRLG_TUCK = 14;   // how far each blade tucks under the bezel
-function _hrlgSlot(off, rowH) {
-  const c = Math.max(-3, Math.min(4, off));
-  const ty = c * (rowH || HRLG_ROW);   // css downward+
-  const x = Math.sqrt(Math.max(HRLG_HUG * HRLG_HUG - ty * ty, 0));
+const HRLG_FOCUS_WIN = 4;   // rows that stay fully lit + directly clickable
+function _hrlgSlot(off, rowH, focused, sel) {
+  const rh = rowH || HRLG_ROW;
+  const c = Math.max(-4.5, Math.min(5.5, off));
+  const ty = c * rh;   // css downward+
+  // Rows past the bezel circle's vertical reach ride a fixed chord so the
+  // faded overflow rows don't dive underneath the clock face.
+  const tyC = Math.min(Math.abs(ty), HRLG_HUG * 0.92);
+  const x = Math.sqrt(Math.max(HRLG_HUG * HRLG_HUG - tyC * tyC, 0));
   const base = { tx: x - HRLG_TUCK, ty };
-  if (off === -2) return { ...base, op: 0.22, s: 0.82, z: 2 };
-  if (off === -1) return { ...base, op: 0.5,  s: 0.9,  z: 4 };
-  if (off === 0)  return { ...base, op: 1,    s: 1.12, z: 6 };
-  if (off === 1)  return { ...base, op: 0.5,  s: 0.9,  z: 4 };
-  if (off === 2)  return { ...base, op: 0.22, s: 0.82, z: 2 };
+  if (sel)     return { ...base, op: 1, s: 1.12, z: 7 };
+  if (focused) return { ...base, op: 1, s: 1.0,  z: 5 };
+  // distance past the nearest window edge: 1 row peeks, the rest are gone
+  const dEdge = Math.abs(off) - (HRLG_FOCUS_WIN - 1) / 2;
+  if (dEdge <= 1.05) return { ...base, op: 0.35, s: 0.85, z: 3 };
   return { ...base, op: 0, s: 0.8, z: 1 };
 }
-// Signed distance from the selected index to index i — plain ladder
-// distance, NO wrap: the list has a fixed first and last entry.
-function _hrlgOffset(i, sel) { return i - sel; }
 
 // One blade of the drum. EVERY menu — root verbs, abilities, items,
 // targets, quick actions — renders through this, so they all read as
@@ -1347,12 +1350,11 @@ function _hrlgOffset(i, sel) { return i - sel; }
 //   iconColor        glyph tint override           forceLive  clickable though !available
 //   badges           second-line chips [{label,style,title,plain}] — the blade
 //                    grows taller and shows them under the name (type badges!)
-function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onHover }) {
+function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire, onFocus, onHover }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
   const tall = !!(b.badges && b.badges.length);
-  const center = off === 0;
-  const slot = _hrlgSlot(off, rowH);
+  const slot = _hrlgSlot(off, rowH, focused, sel);
   const right = [];
   if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
@@ -1378,7 +1380,8 @@ function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onH
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
       + (tall ? ' tall' : '')
-      + (center ? ' center' : ' dim')
+      + (focused ? ' center' : ' dim')
+      + (sel ? ' sel' : '')
       + (active ? ' active' : '')
       + (fireId === b.id ? ' fire' : ''),
     style: {
@@ -1387,11 +1390,12 @@ function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onH
       pointerEvents: slot.op === 0 ? 'none' : 'auto',
       animationDelay: (40 + idx * 40) + 'ms',
     },
-    // Center blade confirms; a visible neighbour rotates itself into the
-    // center first — no accidental END TURNs, and it matches the drum feel.
-    onClick: center ? (dead ? undefined : (e) => onFire(b, e)) : () => onFocus(b),
-    onMouseEnter: center ? (e) => onHover(b, true, e) : undefined,
-    onMouseLeave: center ? (e) => onHover(b, false, e) : undefined,
+    // Any focus-window blade confirms with one click; a faded overflow row
+    // rotates itself into the window first — no accidental END TURNs, and
+    // it matches the drum feel.
+    onClick: focused ? (dead ? undefined : (e) => onFire(b, e)) : () => onFocus(b),
+    onMouseEnter: focused ? (e) => onHover(b, true, e) : undefined,
+    onMouseLeave: focused ? (e) => onHover(b, false, e) : undefined,
   },
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
@@ -1416,7 +1420,7 @@ function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onH
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
@@ -1440,6 +1444,21 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     if (selIdx < 0) selIdx = blades.findIndex(b => b.id === 'end');
     if (selIdx < 0) selIdx = 0;
   }
+
+  // ── Sliding focus window: HRLG_FOCUS_WIN rows fully lit + one-click,
+  // the selection cursor moves inside it and drags it along at the edges
+  // (classic scrolling list). Tracked in a ref (not state) so it can be
+  // reconciled during render without an extra pass.
+  const WIN = Math.min(HRLG_FOCUS_WIN, blades.length);
+  const winRef = useRef(0);
+  const winKeyRef = useRef(null);
+  const _wk = unitKey + '|' + viewKey;
+  if (winKeyRef.current !== _wk) { winKeyRef.current = _wk; winRef.current = 0; }
+  let winStart = winRef.current;
+  if (winStart > blades.length - WIN) winStart = Math.max(0, blades.length - WIN);
+  if (selIdx < winStart) winStart = selIdx;
+  else if (selIdx > winStart + WIN - 1) winStart = selIdx - WIN + 1;
+  winRef.current = winStart;
 
   // a fresh unit or a different menu view takes the wheel → reset the drum
   useEffect(() => { setSelId(null); }, [unitKey, viewKey]);
@@ -1471,6 +1490,9 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
 
   const fireBlade = (b) => {
     if (!b.available && !b.forceLive) return;
+    // firing a window row also moves the cursor there, so ENTER / the desc
+    // bar keep tracking the blade the player actually used
+    if (b.id !== 'end' && b.id !== 'cancel') setSelId(b.id);
     if (clockApi.strike) clockApi.strike(90);
     if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
     setFireId(b.id); setTimeout(() => setFireId(null), 460);
@@ -1594,9 +1616,11 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     onCancel();
   };
 
-  // how many entries sit beyond the visible window (2 above, 2 below)
-  const hiddenUp = carousel ? Math.max(0, selIdx - 2) : 0;
-  const hiddenDn = carousel ? Math.max(0, blades.length - 1 - selIdx - 2) : 0;
+  // how many entries sit beyond the focus window
+  const hiddenUp = carousel ? winStart : 0;
+  const hiddenDn = carousel ? Math.max(0, blades.length - winStart - WIN) : 0;
+  // vertical spot for the ▲/▼ overflow arrows, just past the peeking row
+  const _arrowTy = ((WIN - 1) / 2 + 1.55) * rowH;
 
   return h('div', {
     ref: rigRef, className: 'hrlg-rig',
@@ -1605,12 +1629,27 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     h('div', { className: 'hrlg-fan', key: viewKey },
       blades.map((b, i) => h(HorologeBlade, {
         key: b.id, b: b, idx: i, rowH: rowH,
-        off: carousel ? _hrlgOffset(i, selIdx) : 0,
+        // rows are laid out relative to the WINDOW (its middle rides the
+        // clock equator), so the lit rows hold still while content scrolls
+        off: carousel ? (i - winStart - (WIN - 1) / 2) : 0,
+        focused: !carousel || (i >= winStart && i < winStart + WIN),
+        sel: !carousel || i === selIdx,
         active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
         fireId: fireId, onFire: fireBlade, onFocus: focusBlade, onHover: hoverBlade,
       })),
-      hiddenUp > 0 && h('div', { className: 'hrlg-more-ind', style: { top: (-(2.55 * rowH) - 14) + 'px' } }, '▲ ' + hiddenUp + ' MORE'),
-      hiddenDn > 0 && h('div', { className: 'hrlg-more-ind', style: { top: (2.55 * rowH) + 'px' } }, '▼ ' + hiddenDn + ' MORE'),
+      // clickable overflow arrows: more options above / below the window
+      hiddenUp > 0 && h('div', {
+        className: 'hrlg-more-ind up',
+        onClick: () => cycleRef.current(-1),
+        title: hiddenUp + ' more above — scroll or click',
+        style: { top: (-_arrowTy - 16) + 'px' },
+      }, '▲ ' + hiddenUp + ' MORE'),
+      hiddenDn > 0 && h('div', {
+        className: 'hrlg-more-ind dn',
+        onClick: () => cycleRef.current(1),
+        title: hiddenDn + ' more below — scroll or click',
+        style: { top: (_arrowTy + 2) + 'px' },
+      }, '▼ ' + hiddenDn + ' MORE'),
     ),
     h(HorologeHub, { factionKey: factionKey, api: clockApi }),
     /* special-action pushers — extra stopwatch buttons riding the bezel.
@@ -1687,6 +1726,31 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
           h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
         );
       })(),
+    ),
+    /* 3 item slots under the vitals — one-click item use straight from the
+       clock (the Items submenu still lists everything) */
+    items && h('div', { className: 'hrlg-items' },
+      [0, 1, 2].map(i => {
+        const it = items[i];
+        if (!it) return h('div', { key: 'empty' + i, className: 'hrlg-item-slot empty' },
+          h('span', { className: 'hrlg-item-glyph' }, '·'));
+        return h('div', {
+          key: it.key,
+          className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
+          title: it.name + ' ×' + it.count
+            + (it.desc ? ' — ' + it.desc : '')
+            + (it.canUse ? '' : ' (can’t use right now)'),
+          onClick: () => {
+            if (!it.canUse) return;
+            if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            if (clockApi.strike) clockApi.strike(150);
+            onItem(it.key);
+          },
+        },
+          h('span', { className: 'hrlg-item-glyph' }, it.icon),
+          h('span', { className: 'hrlg-item-count' }, '×' + it.count),
+        );
+      }),
     ),
     modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
     carousel && blades.length > 3 && h('div', { className: 'hrlg-scroll-hint' },
@@ -2277,7 +2341,11 @@ function ActionMenu({ st, hidden }) {
     });
   }
 
-  const tileTargetModes = ['combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone'];
+  // 'move'/'jump' collapse the drum too: while picking a destination tile the
+  // full verb ladder used to stay up and cover the reachable tiles on the left
+  // half of the board. Aim view = lone CANCEL blade + "MOVING — CLICK A TILE".
+  // (WASD walking keeps the ladder — the keyboard IS the picker there.)
+  const tileTargetModes = ['move', 'jump', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone'];
   const isWasdWalking = am === 'move' && typeof _wasdOrigin !== 'undefined' && _wasdOrigin && !_wasdCommitted;
   const inTileTarget = am && tileTargetModes.includes(am) && menuView === 'root' && !isWasdWalking;
 
@@ -2375,6 +2443,27 @@ function ActionMenu({ st, hidden }) {
   }
   if (built) { blades = built.blades; title = built.title; }
 
+  // ── clock-HUD item slots: the unit's held items ride under the watch
+  // vitals as 3 one-click slots. Clicking one either uses the item on the
+  // spot (scanner/panacea/warp stone) or arms its target picker — the same
+  // chooseItemAction the Items submenu rows fire, and the submenu keeps
+  // listing everything.
+  const hudItems = [];
+  if (typeof ITEM_RULES !== 'undefined') {
+    for (const k of Object.keys(ITEM_RULES)) {
+      const n = unit.items?.[k] || 0;
+      if (n <= 0) continue;
+      hudItems.push({
+        key: k, icon: ITEM_RULES[k].icon || '❖', name: ITEM_RULES[k].name || k,
+        desc: ITEM_RULES[k].desc || '', count: n,
+        canUse: typeof canUseItemNow === 'function' ? canUseItemNow(unit, k) : true,
+        selected: am === 'item' && st.selectedTool === k,
+      });
+      if (hudItems.length >= 3) break;
+    }
+  }
+  const onItem = (key) => { if (typeof chooseItemAction === 'function') chooseItemAction(key); };
+
   return h(HorologeMenu, {
     view: view, viewKey: viewKey, title: title, blades: blades, fc: fc,
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
@@ -2382,6 +2471,7 @@ function ActionMenu({ st, hidden }) {
     ap: unit.ap || 0, maxAP: maxAP,
     hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
     modeLabel: modeLabel, am: am, pushers: pushers,
+    items: hudItems, onItem: onItem,
     onAction: onAction, onEndTurn: onEndTurn, onCancel: onCancel,
   });
 }
@@ -4700,6 +4790,34 @@ function _injectHudHideStyles() {
       position: relative; margin-left: auto; margin-right: 4px; font-size: 8px;
       color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.7);
     }
+    /* ── 3 item slots under the watch vitals — one-click item use ── */
+    .hrlg-items {
+      position: absolute; left: 22px; bottom: 12px; width: 162px;
+      display: flex; justify-content: center; gap: 8px;
+      z-index: 9; pointer-events: auto;
+    }
+    .hrlg-item-slot {
+      position: relative; width: 34px; height: 34px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.66); border: 1px solid var(--hfc-soft);
+      clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+    .hrlg-item-slot:hover:not(.empty):not(.off) {
+      border-color: var(--hfc); box-shadow: 0 0 10px var(--hfc-soft);
+      transform: translateY(-1px);
+    }
+    .hrlg-item-slot.armed {
+      border-color: var(--hfc);
+      box-shadow: 0 0 12px var(--hfc-soft), inset 0 0 8px var(--hfc-faint);
+    }
+    .hrlg-item-slot.off { cursor: default; filter: grayscale(1); opacity: 0.45; }
+    .hrlg-item-slot.empty { cursor: default; opacity: 0.28; border-style: dashed; }
+    .hrlg-item-glyph { font-size: 16px; line-height: 1; }
+    .hrlg-item-count {
+      position: absolute; right: 2px; bottom: 0; font-size: 8px; color: #cfd6e4;
+      text-shadow: 0 1px 2px #000, 0 0 3px #000; letter-spacing: 0.04em;
+    }
     /* aiming-state line ("MOVING — CLICK A TILE") */
     .hrlg-mode {
       position: absolute; left: 8px; bottom: 56px; width: 190px; text-align: center;
@@ -4710,12 +4828,22 @@ function _injectHudHideStyles() {
       position: absolute; left: 205px; bottom: 104px; pointer-events: none;
       font-size: 8px; letter-spacing: 0.2em; color: #555c70; opacity: 0.85;
     }
-    /* off-window overflow markers riding the drum's top/bottom edge */
+    /* off-window overflow ARROWS riding the drum's top/bottom edge — they
+       are buttons now: a click steps the list one row in that direction */
     .hrlg-more-ind {
-      position: absolute; left: 100px; pointer-events: none; white-space: nowrap;
-      font-size: 8px; letter-spacing: 0.2em; color: var(--hfc); opacity: 0.85;
-      text-shadow: 0 0 8px var(--hfc-soft);
+      position: absolute; left: 100px; pointer-events: auto; cursor: pointer;
+      white-space: nowrap; font-size: 10px; letter-spacing: 0.2em;
+      color: var(--hfc); opacity: 0.9; text-shadow: 0 0 8px var(--hfc-soft);
+      padding: 3px 12px 3px 9px; z-index: 8;
+      background: rgba(10,12,21,0.78); border: 1px solid var(--hfc-soft);
+      clip-path: polygon(6px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+      animation: hrlgMorePulse 1.6s ease-in-out infinite;
     }
+    .hrlg-more-ind:hover {
+      opacity: 1; color: #fff; border-color: var(--hfc);
+      text-shadow: 0 0 12px var(--hfc); animation: none;
+    }
+    @keyframes hrlgMorePulse { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.55; } }
     /* ── the blade DRUM ─────────────────────────────────────────────
        STRAIGHT horizontal blades stacked against the clock; each row's
        left edge follows the bezel's curve (the center row rides the
@@ -4818,7 +4946,17 @@ function _injectHudHideStyles() {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
     }
     .hrlg-view-tab-count { font-size: 8px; letter-spacing: 0.1em; color: #8a93a8; flex: none; white-space: nowrap; }
-    /* the selected (center) blade is the lit, armed one */
+    /* the CURSOR row (keyboard/wheel selection) pops hardest inside the
+       focus window — every .center row is lit and one-click live, but the
+       .sel row carries the strongest glow + the 1.12 scale */
+    .hrlg-blade.center.sel .hrlg-body {
+      background: linear-gradient(100deg, #16203a 0%, #0e1326 65%, rgba(14,19,38,0.6) 100%);
+      box-shadow: -2px 0 22px var(--hfc-soft), inset 3px 0 0 var(--hfc);
+    }
+    .hrlg-blade.center.sel .hrlg-body.danger {
+      box-shadow: -2px 0 22px rgba(255,94,112,0.3), inset 3px 0 0 #ff5e70;
+    }
+    /* every focus-window blade is lit and armed */
     .hrlg-blade.center .hrlg-body {
       background: linear-gradient(100deg, #121828 0%, #0c101f 60%, rgba(12,16,31,0.6) 100%);
       border-color: var(--hfc);

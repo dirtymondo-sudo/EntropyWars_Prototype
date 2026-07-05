@@ -4895,6 +4895,7 @@
             let _panStartTy = 0;
             let _panStartZoom = 1;
             let _panMoved = false;
+            let _panStartT = 0;
 
             let _panStartFocalPx = 0;
             let _panStartFocalPy = 0;
@@ -4918,6 +4919,7 @@
                     _panActive = true;
                     _panMoved = false;
                     state._userPanning = true;
+                    _panStartT = performance.now();
                     _panStartX = e.clientX;
                     _panStartY = e.clientY;
                     if (typeof camera !== 'undefined') {
@@ -5005,6 +5007,23 @@
                             transitionMs: 500
                         });
                     }
+                }
+
+                // A clean single right-CLICK on the board (no drag, quick
+                // release) mirrors the action-menu BACK button: step out of the
+                // open submenu / target-aim mode. Routed through
+                // handleBackAction(), which can never end the turn (unlike the
+                // crown, which doubles as END TURN at the root menu) — and only
+                // when there is actually something to back out of, so a stray
+                // right-click at the root menu does nothing at all.
+                if (e.button === 2 && !_panMoved && state.phase === 'battle'
+                    && (performance.now() - _panStartT) < 450
+                    && typeof handleBackAction === 'function') {
+                    const backable = (state.actionMenuView && state.actionMenuView !== 'root')
+                        || state.actionMode || state.selectedTool || state.pendingTarget
+                        || state._enemyActionTargetId || state._tileActionTarget
+                        || state.showUnitInfo;
+                    if (backable) handleBackAction();
                 }
             });
 

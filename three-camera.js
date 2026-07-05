@@ -150,16 +150,17 @@ const ThreeCamera = (function () {
             targetLookY = focalY;
             targetLookZ = focalZ;
         } else {
-            /* ── default floor collision (free-look, board view) ──
-               Clamp ONLY the eye so it rides just above the ground it is orbiting;
-               the look target is rebuilt from the preserved view direction, so a
-               floored free-look camera keeps craning its gaze up to reveal the sky
-               dome instead of being yanked back down to stare at the board. */
-            const floorY = Math.max(0, focalY) + groundClearance;
-            if (targetPosY < floorY) targetPosY = floorY;
-            targetLookX = targetPosX + dist * dirX;
-            targetLookY = targetPosY + dist * dirY;
-            targetLookZ = targetPosZ + dist * dirZ;
+            /* ── default free-look (board view): pure orbit, no floor clamp ──
+               The eye is allowed to ride BELOW the floor / the focal unit when
+               the player cranes past the horizon (tilt > 90°). The old clamp
+               pinned the eye to the ground and re-aimed the gaze up the view
+               ray, which slid the camera away from the focal point — "looking
+               up made the camera drift off my character". Orbiting freely
+               keeps the focal (the player's unit) dead-centred; briefly seeing
+               the board's underside is the intended trade-off. */
+            targetLookX = focalX;
+            targetLookY = focalY;
+            targetLookZ = focalZ;
         }
 
         const now = performance.now() / 1000;

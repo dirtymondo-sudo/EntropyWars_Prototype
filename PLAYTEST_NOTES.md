@@ -26,6 +26,41 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Action-menu + camera/input fixes (2026-07-05) — hud.js, battle.js, state.js, three-camera.js
+All four files must go to R2 together. NOT in-browser verified (user chose to
+verify visually after upload) — syntax-checked only.
+- **Horologe drum focus window (hud.js)**: sliding 4-row window
+  (`HRLG_FOCUS_WIN`) — all 4 rows fully lit (`center` class) and fire on ONE
+  click; the keyboard/wheel cursor row adds `.sel` (1.12 scale, strongest
+  glow). One faded row peeks past each window edge; clicking it rotates it in.
+  Clickable pulsing ▲/▼ "N MORE" arrows (`hrlg-more-ind`) step the list.
+  `_hrlgSlot` signature is now `(off, rowH, focused, sel)`; rows are laid out
+  relative to the WINDOW (its middle rides the clock equator). END TURN stays
+  hidden behind the ▼ arrow until scrolled to (or via the crown).
+- **Move/jump hide the menu (hud.js)**: 'move'/'jump' joined `tileTargetModes`
+  → picking a destination collapses the drum to the aim view (lone CANCEL +
+  "MOVING — CLICK A TILE"). WASD-walking keeps the ladder (keyboard IS the picker).
+- **Clock item slots (hud.js)**: 3 one-click item slots (`.hrlg-items`) under
+  the HP/MP vitals (bottom:12 of the rig); fire `chooseItemAction` — instant
+  items (scanner/panacea/warpStone) use immediately, others arm the target
+  picker. The Items submenu still lists everything.
+- **Right-click (battle.js + state.js)**: demolish-hold drag tolerance 6→14px
+  (`DEMOLISH_DRAG_CANCEL_PX`) and the "OUT OF RANGE"/"NO AP" nag no longer
+  fires on mousedown — it's deferred 400ms (`DEMOLISH_NAG_DELAY_MS`,
+  `_demolishNag`) and any pointer movement (a pan) cancels it silently. A
+  clean stationary right-CLICK (<450ms, no drag — handled in state.js pan
+  mouseup) calls `handleBackAction()`: backs out of submenus / target-aim
+  modes, NEVER ends the turn, and no-ops at the root menu.
+- **Camera under the floor (three-camera.js)**: the free-look floor clamp in
+  `sync()` is REMOVED — pure orbit, so tilting past 90° lets the eye ride
+  below the board while the focal unit stays dead-centred (the old clamp slid
+  the camera away from the character when looking up). The cinematic
+  `_cineKeepSubject` branch is unchanged.
+- **DoT ticks wait for the camera (battle.js)**: `processEndOfRoundStatuses`
+  now applies each burn/poison/drowning tick via a deferred `_applyTick`
+  (430ms) AFTER its `eorFocusCamera` dive lands, so the floating damage /
+  wiggle / sfx play on-screen instead of mid-pan.
+
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
 Races registered in `RACE_MODELS_3D` (sprites.js) render on the battle board as
 skinned GLB models instead of extruded sprite slabs. Entries are built by

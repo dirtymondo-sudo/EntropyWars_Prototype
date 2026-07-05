@@ -3313,12 +3313,22 @@
 
                 const isVisible = _isUnitVisibleToViewer(unit, viewer);
 
-                if (isVisible && !state.cameraDisabled) {
+                const willDive = isVisible && !state.cameraDisabled;
+                if (willDive) {
                     // Dive onto the unit taking the burn/poison/drowning tick —
                     // shared EOR framing (resting tilt/yaw + the one tour zoom),
                     // so this reads as a glide across the board, not a cut.
                     eorFocusCamera(unit.x, unit.y, { duration: 400 });
                 }
+
+                // The tick's floating damage, wiggle and sfx must wait for that
+                // dive to LAND — firing them while the camera was still mid-pan
+                // meant the burn/poison hit was half-over by the time the unit
+                // was on screen. _applyTick runs the actual status resolution;
+                // it is deferred past the camera travel when a dive happened.
+                const _applyTick = () => {
+                if (state.winner) { if (onDone) onDone(); return; }
+                if (unit.dead) { processNext(); return; }
 
                 const dlgMsgs = [];
                 for (const key of activeKeys) {
@@ -3370,6 +3380,9 @@
 
                 const delay = dlgMsgs.length > 0 ? (1200 + dlgMsgs.length * 350) : 400;
                 window.setTimeout(processNext, delay);
+                };
+                if (willDive) window.setTimeout(_applyTick, 430);
+                else _applyTick();
             }
 
             // Let the tactical overhead (shown as the round ends) read for a
@@ -17960,12 +17973,54 @@
             return el;
         }
 
+        /* Pointer-drift tolerance while right-click is held. Anything past this
+           is read as a camera-pan gesture, which cancels the demolish hold —
+           and suppresses the "OUT OF RANGE"/"NO AP" nag below. Was 6px, which
+           misread tiny press jitters as intent and let a pan that STARTED on a
+           destroyable tile flash "OUT OF RANGE" every time. */
+        const DEMOLISH_DRAG_CANCEL_PX = 14;
+        /* The failure nag only shows after the button has been HELD still this
+           long on the destroyable tile — a quick click or a pan never nags. */
+        const DEMOLISH_NAG_DELAY_MS = 400;
+        let _demolishNag = null;
+
+        function _cancelDemolishNag() {
+            const n = _demolishNag;
+            if (!n) return;
+            _demolishNag = null;
+            window.clearTimeout(n.timer);
+            document.removeEventListener('mousemove', n.onMove, true);
+            document.removeEventListener('mouseup', n.onEnd, true);
+        }
+
         function beginTileDemolishHold(x, y, clientX, clientY) {
             cancelTileDemolishHold();
+            _cancelDemolishNag();
             const v = _demolishValidate(x, y);
             if (!v) return false;
             if (typeof v === 'string') {
-                showFloatingTextAtTile(x, y, v, 'damage');
+                /* Don't nag on the mousedown itself: right-click doubles as the
+                   camera-pan gesture, so simply starting a pan over a tree or
+                   cube used to spam "OUT OF RANGE" across the map. Arm a quiet
+                   timer instead — it only speaks if the player deliberately
+                   holds the button still on the tile. */
+                const nag = {
+                    startCX: clientX, startCY: clientY,
+                    timer: window.setTimeout(() => {
+                        _cancelDemolishNag();
+                        showFloatingTextAtTile(x, y, v, 'damage');
+                    }, DEMOLISH_NAG_DELAY_MS),
+                    onMove: (e) => {
+                        if (Math.abs(e.clientX - nag.startCX) > DEMOLISH_DRAG_CANCEL_PX
+                            || Math.abs(e.clientY - nag.startCY) > DEMOLISH_DRAG_CANCEL_PX) {
+                            _cancelDemolishNag();
+                        }
+                    },
+                    onEnd: () => _cancelDemolishNag(),
+                };
+                document.addEventListener('mousemove', nag.onMove, true);
+                document.addEventListener('mouseup', nag.onEnd, true);
+                _demolishNag = nag;
                 return false;
             }
             const el = _demolishEnsureEl();
@@ -17978,7 +18033,8 @@
                 startCX: clientX, startCY: clientY,
                 raf: 0,
                 onMove: (e) => {
-                    if (Math.abs(e.clientX - hold.startCX) > 6 || Math.abs(e.clientY - hold.startCY) > 6) {
+                    if (Math.abs(e.clientX - hold.startCX) > DEMOLISH_DRAG_CANCEL_PX
+                        || Math.abs(e.clientY - hold.startCY) > DEMOLISH_DRAG_CANCEL_PX) {
                         cancelTileDemolishHold();
                     }
                 },
