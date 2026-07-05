@@ -1,4 +1,4 @@
-const _S = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites';
+const _S = 'https://cdn.entropywars.net/Assets/Sprites';
 
 const RACE_PATH_RULES = {
   'werewolf':   { folder: 'Werewolf',   capGender: false },
@@ -984,7 +984,7 @@ const ICON_GOLD = `${_S}/icon_gold.png`;
 const OBJ_INN = `${_S}/inn.png`;
 const OBJ_SHOP = `${_S}/itemshop.png`;
 
-const _T = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain';
+const _T = 'https://cdn.entropywars.net/Assets/Sprites/terrain';
 const _O = `${_T}/objects`;
 
 /* Inline SVG thumbnail for the lamp-post object (editor palette only — the real
@@ -1074,7 +1074,7 @@ const OBJECT_SPRITES = {
     tree_4:       { url: `${_O}/tree_4.png` },
     tree_5:       { url: `${_O}/tree_5.png` },
     tree_6:       { url: `${_O}/tree_6.png` },
-    tower_cube: { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/dragon-green.png' },
+    tower_cube: { url: 'https://cdn.entropywars.net/Assets/Sprites/dragon-green.png' },
     /* Cosmetic grass tuft — rendered in-game as 3D billboard blades by
        _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
        thumbnail; we reuse the grass_2 terrain sprite the blades are textured with. */
@@ -1273,12 +1273,12 @@ const FOG_CLOUD_SPRITES = [
 ];
 
 const WEATHER_SPRITES = {
-    thunderstorm: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/object_thundercloud.png',
-    bloodRain: typeof ICON_BLOOD_RAIN !== 'undefined' ? ICON_BLOOD_RAIN : 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/weather_bloodrain.png'
+    thunderstorm: 'https://cdn.entropywars.net/Assets/Sprites/object_thundercloud.png',
+    bloodRain: typeof ICON_BLOOD_RAIN !== 'undefined' ? ICON_BLOOD_RAIN : 'https://cdn.entropywars.net/Assets/Sprites/weather_bloodrain.png'
 };
 
 const TORNADO_FRAME_COUNT = 99;
-const TORNADO_FRAME_BASE = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/tornado/f.';
+const TORNADO_FRAME_BASE = 'https://cdn.entropywars.net/Assets/Sprites/Effects/tornado/f.';
 const TORNADO_FRAMES = [];
 const TORNADO_IMAGES = [];
 for (let i = 0; i < TORNADO_FRAME_COUNT; i++) {
@@ -1299,7 +1299,7 @@ function _terrainSvg(inner) {
 
 const SEED_TILE_SPRITES = {
     heal: [ HEALING_SEED_SPRITE_URL ],
-    scorched: [ 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/scorched.png' ],
+    scorched: [ 'https://cdn.entropywars.net/Assets/Sprites/terrain/scorched.png' ],
     poison: [ POISON_SEED_SPRITE_URL ],
     leech: [ LEECH_SEED_SPRITE_URL ],
     warp: [
@@ -1356,13 +1356,13 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
             _terrainSvg('<rect width="64" height="64" fill="rgba(175,215,238,0.22)"/><path d="M0 30 Q20 24 40 32 Q56 38 64 28" fill="none" stroke="rgba(215,238,252,0.38)" stroke-width="1.5"/><circle cx="34" cy="18" r="5" fill="rgba(235,248,255,0.15)"/>'),
         ],
         well: [
-            'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/object_well.png'
+            'https://cdn.entropywars.net/Assets/Sprites/object_well.png'
         ],
         beanstalk: [
-            'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/object_beanstalk.png'
+            'https://cdn.entropywars.net/Assets/Sprites/object_beanstalk.png'
         ],
         cave_entrance: [
-            'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/object_caveentrance .png'
+            'https://cdn.entropywars.net/Assets/Sprites/object_caveentrance .png'
         ],
         tower_base: [
             _terrainSvg('<rect width="64" height="64" fill="rgba(90,85,100,0.12)"/><rect x="4" y="4" width="56" height="56" rx="2" fill="rgba(100,95,110,0.08)" stroke="rgba(120,115,130,0.12)" stroke-width="0.5"/>')

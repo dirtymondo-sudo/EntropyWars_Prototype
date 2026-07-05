@@ -993,7 +993,7 @@ const ThreeRenderer = (function () {
     var _projIdCounter = 0;
     var PROJ_SIZE = 32;
 
-    var _R2_PROJ = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/';
+    var _R2_PROJ = 'https://cdn.entropywars.net/Assets/Sprites/projectiles/';
     var _PROJ_SPRITES = {
         'attack':           { url: _R2_PROJ + 'proj_human.png',        glow: 0xeec040 },
         'damage':           { url: _R2_PROJ + 'proj_tech.png',         glow: 0xdd7755 },
@@ -1023,11 +1023,11 @@ const ThreeRenderer = (function () {
         'proj-bane-anomaly':{ url: _R2_PROJ + 'proj_anomaly_bane.png', glow: 0xdc3c82 },
         'proj-bane-alien':  { url: _R2_PROJ + 'proj_alien_bane.png',   glow: 0x32aa50 },
 
-        'proj-spider':      { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spider_1.png',    glow: 0x3cdcc8 },
-        'proj-spiderweb':   { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spiderweb_1.png', glow: 0xb4b4dc },
+        'proj-spider':      { url: 'https://cdn.entropywars.net/Assets/Sprites/spider_1.png',    glow: 0x3cdcc8 },
+        'proj-spiderweb':   { url: 'https://cdn.entropywars.net/Assets/Sprites/spiderweb_1.png', glow: 0xb4b4dc },
         'proj-knife':       { url: _R2_PROJ + 'proj_knife.png',         glow: 0xc0c0cc },
 
-        'proj-football':    { url: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/football.png',    glow: 0x8b5e3c },
+        'proj-football':    { url: 'https://cdn.entropywars.net/Assets/Sprites/football.png',    glow: 0x8b5e3c },
     };
 
     var floatTextGroup = null;
@@ -1075,7 +1075,7 @@ const ThreeRenderer = (function () {
     var _hitFxIdCounter = 0;
     var HIT_FX_SIZE = 48;
 
-    var _R2_FX = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/';
+    var _R2_FX = 'https://cdn.entropywars.net/Assets/Sprites/Effects/';
 
     var _HIT_FX_SHEETS = {
         'hit04':        { url: _R2_FX + 'hit04.png',        cols: 5, rows: 2, frames: 10 },
@@ -1294,7 +1294,7 @@ const ThreeRenderer = (function () {
         var ck = fluidKey + '_l' + layerNum;
         if (_fluidTextures[ck]) return _fluidTextures[ck];
 
-        var base = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
+        var base = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
         var url = (layerNum === 1)
             ? base + fluidKey + '.png'
             : base + 'waves_1.png';
@@ -2589,7 +2589,7 @@ const ThreeRenderer = (function () {
     var _treeWoodTex = null, _treeForestTex = null;
     function _getTreeWoodTex() {
         if (_treeWoodTex) return _treeWoodTex;
-        _treeWoodTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/wood.png');
+        _treeWoodTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/wood.png');
         if (_treeWoodTex) {
             _treeWoodTex.wrapS = THREE.RepeatWrapping;
             _treeWoodTex.wrapT = THREE.RepeatWrapping;
@@ -2601,7 +2601,7 @@ const ThreeRenderer = (function () {
         if (_treeForestTex) return _treeForestTex;
         /* Tree canopies/tops are textured with the dedicated leaves.png sprite
            (was forest.png — the old grass/forest tile). */
-        _treeForestTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/leaves.png');
+        _treeForestTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/leaves.png');
         if (_treeForestTex) {
             _treeForestTex.wrapS = THREE.RepeatWrapping;
             _treeForestTex.wrapT = THREE.RepeatWrapping;
@@ -2614,7 +2614,7 @@ const ThreeRenderer = (function () {
     var _rockClusterTex = null;
     function _getBoulderTexture() {
         if (_rockClusterTex) return _rockClusterTex;
-        _rockClusterTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/rock.png');
+        _rockClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/rock.png');
         if (_rockClusterTex) {
             _rockClusterTex.wrapS = THREE.RepeatWrapping;
             _rockClusterTex.wrapT = THREE.RepeatWrapping;
@@ -2627,7 +2627,7 @@ const ThreeRenderer = (function () {
     var _crystalClusterTex = null;
     function _getCrystalTexture() {
         if (_crystalClusterTex) return _crystalClusterTex;
-        _crystalClusterTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/crystal.png');
+        _crystalClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/crystal.png');
         if (_crystalClusterTex) {
             _crystalClusterTex.wrapS = THREE.RepeatWrapping;
             _crystalClusterTex.wrapT = THREE.RepeatWrapping;
@@ -2714,7 +2714,7 @@ const ThreeRenderer = (function () {
     function _getTeslaTex(file, repX, repY) {
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_teslaTexCache[key]) return _teslaTexCache[key];
-        var t = textureLoader.load('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/' + file);
+        var t = textureLoader.load('https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -2800,9 +2800,9 @@ const ThreeRenderer = (function () {
        async load flips _objectsDirty so the real meshes swap in once ready; until
        then each tile falls back to the procedural tree.
        ────────────────────────────────────────────────────────────────────── */
-    var _R2_FOLIAGE        = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/foilage/';
+    var _R2_FOLIAGE        = 'https://cdn.entropywars.net/Assets/foilage/';
     var _FOLIAGE_OBJ_BASE  = _R2_FOLIAGE + 'OBJ/';
-    var _FOLIAGE_TERRAIN_TEX = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/';
+    var _FOLIAGE_TERRAIN_TEX = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
 
     /* Map the 6 logical tree keys onto distinct bucket models so a forest reads
        as a varied mix of full-canopy and bare trees. Tweak to experiment. */
@@ -3253,7 +3253,7 @@ const ThreeRenderer = (function () {
     var _fractalTex = null;
     function _getFractalTex() {
         if (_fractalTex) return _fractalTex;
-        _fractalTex = getTexture('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/fractal.png');
+        _fractalTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/fractal.png');
         if (_fractalTex) {
             _fractalTex.wrapS = THREE.RepeatWrapping;
             _fractalTex.wrapT = THREE.RepeatWrapping;
@@ -3626,7 +3626,7 @@ const ThreeRenderer = (function () {
         if (_torchRopeTex) return _torchRopeTex;
         var url = (typeof ROPE_SPRITE_URL !== 'undefined')
             ? ROPE_SPRITE_URL
-            : 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/rope.png';
+            : 'https://cdn.entropywars.net/Assets/Sprites/rope.png';
         var t = textureLoader.load(url, function () { _objectsDirty = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
@@ -9731,7 +9731,7 @@ const ThreeRenderer = (function () {
     var _tetherTweens = [];
     var _tetherIdCounter = 0;
 
-    var _R2_TETHER = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/';
+    var _R2_TETHER = 'https://cdn.entropywars.net/Assets/Sprites/';
     var _TETHER_SPRITES = {
         'rope': { url: _R2_TETHER + 'rope.png', glow: 0xa08250 },
         'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c }
@@ -12064,7 +12064,7 @@ const ThreeRenderer = (function () {
     // Models load once, are cached + cloned, and swap in asynchronously: each
     // builder returns an (initially empty) Group and registers a callback that
     // fills it once the mesh arrives, flipping _objectsDirty to re-render.
-    var _R2_MISC = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/misc/';
+    var _R2_MISC = 'https://cdn.entropywars.net/Assets/misc/';
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -13835,7 +13835,7 @@ const ThreeRenderer = (function () {
         if (!_spiderwebZoneTex) {
             var webUrl = (typeof SPIDERWEB_SPRITE !== 'undefined')
                 ? SPIDERWEB_SPRITE
-                : 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spiderweb_1.png';
+                : 'https://cdn.entropywars.net/Assets/Sprites/spiderweb_1.png';
             _spiderwebZoneTex = getTexture(webUrl);
         }
         for (var i = 0; i < tiles.length; i++) {

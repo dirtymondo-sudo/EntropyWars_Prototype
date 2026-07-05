@@ -4367,10 +4367,10 @@
         }
 
         const HIT_EFFECT_URLS = {
-            hit04: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit04.png',
-            hit02: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit02.png',
-            hit11: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit11.png',
-            spell_hit_01: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/spell_hit_01.png'
+            hit04: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit04.png',
+            hit02: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit02.png',
+            hit11: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit11.png',
+            spell_hit_01: 'https://cdn.entropywars.net/Assets/Sprites/Effects/spell_hit_01.png'
         };
 
         const HIT_EFFECT_8FRAME = { spell_hit_01: true };
@@ -22754,7 +22754,7 @@
                         opacity: 0;
                     `;
                     const guImg = document.createElement('img');
-                    guImg.src = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/ufo.png';
+                    guImg.src = 'https://cdn.entropywars.net/Assets/Sprites/ufo.png';
                     guImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
                     guEl.appendChild(guImg);
 
@@ -23601,7 +23601,7 @@
                             opacity: 0;
                         `;
                         const ufoImg = document.createElement('img');
-                        ufoImg.src = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/ufo.png';
+                        ufoImg.src = 'https://cdn.entropywars.net/Assets/Sprites/ufo.png';
                         ufoImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
                         ufoEl.appendChild(ufoImg);
 

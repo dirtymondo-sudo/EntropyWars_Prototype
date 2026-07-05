@@ -1,4 +1,4 @@
-        const _R2_BASE = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets';
+        const _R2_BASE = 'https://cdn.entropywars.net/Assets';
         const _R2_MUSIC = {
             titleTheme:      `${_R2_BASE}/music/ff7.ogg`,
             mainTheme:       `${_R2_BASE}/music/maintheme_v2.mp3`,

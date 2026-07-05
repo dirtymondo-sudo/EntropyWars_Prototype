@@ -3028,32 +3028,32 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
     function _getBoulderTexture() {
         if (_boulderTexCache) return _boulderTexCache;
-        _boulderTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/rock.png');
+        _boulderTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/rock.png');
         return _boulderTexCache;
     }
     function _getRocks4Texture() {
         if (_rocks4TexCache) return _rocks4TexCache;
-        _rocks4TexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/rocks_4.png');
+        _rocks4TexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/rocks_4.png');
         return _rocks4TexCache;
     }
     function _getIceTexture() {
         if (_iceTexCache) return _iceTexCache;
-        _iceTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/ice.png');
+        _iceTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/ice.png');
         return _iceTexCache;
     }
     function _getWoodTexture() {
         if (_woodTexCache) return _woodTexCache;
-        _woodTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/wood.png');
+        _woodTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/wood.png');
         return _woodTexCache;
     }
     function _getForestTexture() {
         if (_forestTexCache) return _forestTexCache;
-        _forestTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/forest.png');
+        _forestTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/forest.png');
         return _forestTexCache;
     }
     function _getBulletTexture() {
         if (_bulletTexCache) return _bulletTexCache;
-        _bulletTexCache = _loadCachedTex('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/bullet.png');
+        _bulletTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/projectiles/bullet.png');
         return _bulletTexCache;
     }
 
@@ -5039,7 +5039,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_sigTerrainTexCache[key]) return _sigTerrainTexCache[key];
         var tex = _loadCachedTex(
-            'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/' + file);
+            'https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
         tex.repeat.set(repX || 1, repY || 1);
         _sigTerrainTexCache[key] = tex;
         return tex;

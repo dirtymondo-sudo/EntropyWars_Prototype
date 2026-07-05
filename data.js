@@ -2992,7 +2992,7 @@ const ITEM_RULES = {
     humanBane: {
         name: 'Human Bane',
         icon: '🗡️',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_human_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_human_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Human types.',
         baneType: 'human',
@@ -3002,7 +3002,7 @@ const ITEM_RULES = {
     divineBane: {
         name: 'Divine Bane',
         icon: '🌑',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_divine_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_divine_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Divine types.',
         baneType: 'divine',
@@ -3012,7 +3012,7 @@ const ITEM_RULES = {
     unholyBane: {
         name: 'Unholy Bane',
         icon: '✝️',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_unholy_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_unholy_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Unholy types.',
         baneType: 'unholy',
@@ -3022,7 +3022,7 @@ const ITEM_RULES = {
     techBane: {
         name: 'Tech Bane',
         icon: '⚡',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_tech_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_tech_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Tech types.',
         baneType: 'tech',
@@ -3032,7 +3032,7 @@ const ITEM_RULES = {
     anomalyBane: {
         name: 'Anomaly Bane',
         icon: '🔮',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_anomaly_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_anomaly_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Anomaly types.',
         baneType: 'anomaly',
@@ -3042,7 +3042,7 @@ const ITEM_RULES = {
     alienBane: {
         name: 'Alien Bane',
         icon: '☄️',
-        sprite: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_alien_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_alien_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Alien types.',
         baneType: 'alien',
@@ -7505,7 +7505,7 @@ const STATUS_DEFS = {
         stack: 'max',
         dot: 24,
         spriteName: 'burn',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/burn.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
         iconSrc: createStatusIconDataUri('🔥', '#4a1f16', '#ffd3a8', '#ff7b4d'),
         onRoundEnd(unit) {
             applyDamageToUnit(unit, 24, `Burn sears ${unitDisplayName(unit)}: `, {
@@ -7527,7 +7527,7 @@ const STATUS_DEFS = {
         stack: 'max',
         dot: 32,
         spriteName: 'poison',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/poison.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/poison.png',
         iconSrc: createStatusIconDataUri('☠', '#1c3421', '#d8ffd7', '#68d36f'),
         onRoundEnd(unit) {
             applyDamageToUnit(unit, 32, `Poison harms ${unitDisplayName(unit)}: `, {
@@ -7548,7 +7548,7 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'max',
         spriteName: 'silence',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/silence.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/silence.png',
         iconSrc: createStatusIconDataUri('🔇', '#303543', '#f0f4ff', '#9aa8c7')
     },
     stun: {
@@ -7562,7 +7562,7 @@ const STATUS_DEFS = {
         stack: 'max',
         blockMove: true,
         spriteName: 'stun',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/stun.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/stun.png',
         iconSrc: createStatusIconDataUri('⚡', '#3e2218', '#ffe6da', '#ff9c71')
     },
     stagger: {
@@ -7576,7 +7576,7 @@ const STATUS_DEFS = {
         stack: 'max',
         apDrain: 1,
         spriteName: 'stagger',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/stagger.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/stagger.png',
         iconSrc: createStatusIconDataUri('💫', '#3e2e18', '#fff2da', '#ffb871'),
         onRoundEnd(unit) {
             const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : (unit.maxAp || 2);
@@ -7595,7 +7595,7 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'replace',
         spriteName: 'marked',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/marked.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/marked.png',
         iconSrc: createStatusIconDataUri('🎯', '#4b1a24', '#ffe4e8', '#ff6d8d')
     },
     lasered: {
@@ -7622,7 +7622,7 @@ const STATUS_DEFS = {
         stack: 'max',
         awrSet: 0,
         spriteName: 'jammed',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/jammed.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/jammed.png',
         iconSrc: createStatusIconDataUri('📵', '#2c183d', '#f6e6ff', '#c789ff')
     },
     drowning: {
@@ -7636,7 +7636,7 @@ const STATUS_DEFS = {
         stack: 'replace',
         moveDelta: -1,
         spriteName: 'drowning',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/drowning.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/drowning.png',
         iconSrc: createStatusIconDataUri('🌊', '#0a2540', '#c8e8ff', '#4a9eff'),
         onRoundEnd(unit) {
             if (unitIsDeepWaterAdapted(unit)) return;
@@ -7670,7 +7670,7 @@ const STATUS_DEFS = {
         stack: 'replace',
         moveDelta: -1,
         spriteName: 'burn',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/burn.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
         iconSrc: createStatusIconDataUri('🌋', '#4a1f16', '#ffd3a8', '#ff4500'),
         onRoundEnd(unit) {
             if (unitIsLavaAdapted(unit)) return;
@@ -7695,7 +7695,7 @@ const STATUS_DEFS = {
         stack: 'max',
         invulnerable: true,
         spriteName: 'protect',
-        spriteSrc: 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Status/protect.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/protect.png',
         iconSrc: createStatusIconDataUri('🛡', '#1b344d', '#ddf2ff', '#5fc7ff')
     },
 

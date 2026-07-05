@@ -1913,7 +1913,7 @@
           ring.style.borderRadius = '50%';
 
           ring.style.transform = `translateZ(${Math.round(z)}px)`;
-          const domeTexUrl = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/concrete_floor.png';
+          const domeTexUrl = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png';
           ring.style.backgroundImage = `url("${domeTexUrl}")`;
           ring.style.backgroundSize = `${ringD}px ${ringD}px`;
           ring.style.imageRendering = 'pixelated';
@@ -1935,7 +1935,7 @@
         cap.style.top = (radius - capR) + 'px';
         cap.style.borderRadius = '50%';
         cap.style.background = '';
-        const domeTexUrl2 = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/concrete_floor.png';
+        const domeTexUrl2 = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png';
         cap.style.backgroundImage = `url("${domeTexUrl2}")`;
         cap.style.backgroundSize = `${capR * 2}px ${capR * 2}px`;
         cap.style.imageRendering = 'pixelated';

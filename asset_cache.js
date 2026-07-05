@@ -14,7 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const CACHEABLE_HOSTS = new Set([
-  'pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev',
+  'cdn.entropywars.net',
   'cdnjs.cloudflare.com',
   'cdn.jsdelivr.net',
   'cdn.socket.io',

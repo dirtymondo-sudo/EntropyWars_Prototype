@@ -2114,13 +2114,13 @@
         }
 
         .title-sprite.sprite-steve {
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/sprite-steve.png');
+            background-image: url('https://cdn.entropywars.net/Assets/Sprites/sprite-steve.png');
             background-position: 0 0;
             animation-duration: 1.0s;
         }
 
         .title-sprite.sprite-death {
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/sprite-death.png');
+            background-image: url('https://cdn.entropywars.net/Assets/Sprites/sprite-death.png');
             background-position: 0 0;
             width: 180px;
             height: 180px;
@@ -2129,7 +2129,7 @@
         }
 
         .title-sprite.sprite-king {
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/sprite-king.png');
+            background-image: url('https://cdn.entropywars.net/Assets/Sprites/sprite-king.png');
             background-position: 0 0;
             width: 170px;
             height: 170px;

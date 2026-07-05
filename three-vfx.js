@@ -252,7 +252,7 @@ const ThreeVFX = (function () {
             [0,0,255,200,0],[0.35,0,255,200,0],[0.48,0,255,220,0.55],[0.60,180,100,255,0.5],[0.72,255,200,80,0.4],[0.85,255,255,255,0.15],[1,255,255,255,0]]},
     };
 
-    var _R2 = 'https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/';
+    var _R2 = 'https://cdn.entropywars.net/Assets/Sprites/';
     var _imageDefs = {
         'bat-1':           _R2 + 'Races/vampire/bat1.png',
         'bat-2':           _R2 + 'Races/vampire/bat2.png',
