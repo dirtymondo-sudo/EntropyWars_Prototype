@@ -73,6 +73,13 @@ function backfillProfile(p) {
       unlockedUnits: starters,
       freeTokens: (typeof window !== 'undefined' && typeof window.ACCT_FREE_TOKENS === 'number') ? window.ACCT_FREE_TOKENS : 1,
     };
+  } else if (typeof window !== 'undefined' && Array.isArray(window.ACCT_STARTER_UNITS)) {
+    // Starters are a floor: when the starter list grows, existing local
+    // profiles pick up the new defaults too (server accounts get the same
+    // union server-side and overwrite this mirror on login).
+    for (const r of window.ACCT_STARTER_UNITS) {
+      if (!p.account.unlockedUnits.includes(r)) p.account.unlockedUnits.push(r);
+    }
   }
   // One-time heal for profiles created BEFORE the account system: their account
   // block was seeded with 0 free tokens, so grant the founding token once. The

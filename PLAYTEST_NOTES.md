@@ -26,28 +26,84 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
-## Rigged 3D unit models (2026-07 — fortune teller pilot)
+## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
 Races registered in `RACE_MODELS_3D` (sprites.js) render on the battle board as
-skinned GLB models instead of extruded sprite slabs. Pilot: **male fortune
-teller (Harbinger)** — Meshy exports under
-`Assets/Sprites/Races/Homosapien/Male/harbinger/` on R2.
-- Base GLB = the Idle export (mesh+skin+texture+idle clip, ~7MB); walk / cast /
-  death clips retarget from their own GLBs (same rig → same bone names, so one
-  clip set can drive ANY character rigged on the Meshy biped skeleton).
+skinned GLB models instead of extruded sprite slabs. Entries are built by
+`_mk3d(folder, prefix, {slot: MeshyClipName}, opts)` — URLs are
+`Races/<folder>/Meshy_AI_<prefix>_biped_Animation_<Clip>_withSkin.glb` (+
+`..._biped_Character_output.glb` as the base model).
 - ⚠ NO shared clip library (tried and reverted 2026-07): Meshy auto-rigs each
-  character with a UNIQUE rest pose (psychic vs fortune-teller rig: bone rest
-  positions off by up to 21.6 units, rest rotations ~60°) and clips bake
-  absolute bone transforms — a clip only fits the character it was exported
-  from; anything else = mangled mesh. Every race folder carries its OWN
-  `Meshy_AI_Animation_<Name>_withSkin.glb` set next to its
+  character with a UNIQUE rest pose and clips bake absolute bone transforms —
+  a clip only fits the character it was exported from; anything else =
+  mangled mesh. Every race folder carries its OWN clip set next to its
   `..._Character_output.glb` (the rigged model; `_generate`/`_texture` GLBs
-  are boneless — never wire them; the renderer detects rigless models and
-  renders them static with a console warn).
-- Registered so far: male 'fortune teller' (harbinger), male 'men in black'
-  (agent — cowboy quick-draw for cast/attack; no Idle export yet, idle =
-  Walking at idleTimeScale 0.35 stopgap), female 'telepath' (psychic — own
-  Idle_4 / Thoughtful_Walk / Charged_Spell_Cast / Knock_Down, all verified
-  same-rig 0.000 diff).
+  are boneless — never wire them; the renderer renders rigless models static
+  with a console warn).
+- **Animation slots + spell categories (2026-07-05)**: clip slots are
+  `idle / walk / jump / hit / death / cast / castMagic / castSupport /
+  castRanged / castMelee / castThrow` (role guide comment above
+  RACE_MODELS_3D in sprites.js). `classifySpellAnimKind(spell)` (sprites.js)
+  buckets any spell → magic | support | ranged | melee | throw; battle.js
+  triggerCastAnim stores it in `state._castAnimKind[unitId]`, and
+  triggerAttackAnim stores melee/ranged (reach > 1 tile) in
+  `state._attackAnimKind[unitId]`; the renderer's `_syncCombatAnims` resolves
+  fallback chains (throw → castThrow → castRanged → cast; support →
+  castSupport → castMagic → cast; everything ends at `cast`, then the old
+  lunge/glow tween). Hit flashes also fire the `hit` flinch clip; jump tweens
+  play `jump` (falls back walk → idle). One-shot slots = death, hit, cast*.
+  Per-def time scales: moveTimeScale (walk), jumpTimeScale, hitTimeScale,
+  castTimeScale (all cast*), deathTimeScale, idleTimeScale.
+- **Meshy library clip durations (constant across characters)**: Walking
+  1.07s, Running 0.67s, Regular_Jump 1.93s, Hit_Reaction(_1) 1.67s, Dead 3.0s
+  (stays down — preferred death), Knock_Down 2.53s, Charged_Spell_Cast 2.7s,
+  mage_soell_cast 2.3s (staff wave — castSupport),
+  Cowboy_Quick_Draw_Shooting 7.33s (needs castTimeScale 5.0), Idle_N ~5–8s.
+- **Wired characters (folder → Meshy prefix)** — every registry URL
+  HEAD-verified live on R2 2026-07-05 (149/149 across 18 races):
+  - fortune teller M → Homosapien/Male/harbinger → `male_fortune_teller` (NEW model; old `Fortune_teller_with_r` files were deleted from R2)
+  - fortune teller F → Homosapien/Female/harbinger → `hot_attractive_fortun`
+  - men in black F → Homosapien/Female/agent → `beautiful_attractive_` (trailing _ is real)
+  - men in black M → Homosapien/Male/agent → `men_in_black_male_ag` (NEW model; no hit clip)
+  - wizard/witch F → Homosapien/Female/blackmage → `young_female_witch`
+  - mad scientist F → Homosapien/Female/engineer → `female_hot_asian_scie`
+  - mad scientist M → Homosapien/Male/engineer → `mad_scientist`
+  - cowboy F → Homosapien/Female/gunslinger → `hot_attractive_cowgir`
+  - cowboy M → Homosapien/Male/gunslinger → `gunslinger_cowboy`
+  - knight F → Homosapien/Female/knight → `hot_attractive_female` (castMelee=Thrust_Slash, cast=Triple_Combo_Attack; spare Idle_8)
+  - pirate F → Homosapien/Female/pirate (duplicated in …/raider) → `hot_female_pirate` (Idle_6)
+  - pirate M → Homosapien/Male/pirate (duplicated in …/raider) → `dashingly_handsome_sw` (hit=Face_Punch_Reaction, flintlock quick-draw)
+  - homosapien/freelancer M → Homosapien/Male/freelancer → `normal_man` (no cast/hit clips; also the future werewolf DAY-form model)
+  - telepath F → Homosapien/Female/psychic → `psychic_female_with_d` model + GENERIC `Meshy_AI_Animation_*` clip names (predates prefixed convention): Idle_4 / Running (2026-07-05) / Hit_Reaction (2026-07-05) / Charged_Spell_Cast / Knock_Down; spare Thoughtful_Walk
+  - fairy F → Fairy/female → `young_fairy` (richest set; spare emotes Mirror_Viewing, Wave_for_Help_1)
+  - bigfoot M → bigfoot/male → `bigfoot` (heightRatio 1.15)
+  - grey M → grey/male → `grey_alien` (spare Idle_15)
+  - quarterback → quarterback/ (no gender dir) → `football_quarterback` (Right_Hand_Sword_Slash = his THROW motion for castThrow/cast; Face_Punch_Reaction = hit; still NO death export → fade fallback)
+  - atlantean F → atlantean/female → `hot_attractive_atlant` (idle = Swim_Idle)
+  - werewolf M → Werewolf/male → `werewolf` (hit=Face_Punch_Reaction, castMelee=Right_Hand_Sword_Slash; spare Idle_11, Knock_Down)
+  - catgirl F → catgirl/female → `young_female_catgirl` (jump=Backflip_Jump, castRanged=quick-draw @5.0, castMelee=Left_Hook_from_Guard @2.0 via castTimeScales; spare Right_Hand_Sword_Slash, Hit_Reaction)
+  - ki fighter F → kifighter/female → `attractive_beautiful_` (trailing _; jump=Backflip_Jump, cast=Punch_Combo_5, castMelee=Kung_Fu_Punch, castMagic/castSupport=mage_soell_cast_3 — note the _3; spare Punch_Forward_…)
+  - vampire F → vampire/female → `beautiful_attractive_` (same prompt as MIB F, different rig; castSupport=mage_soell_cast_1 — note the _1; bat-swarm form still particle-based, renderer skips models for it)
+- **NOT wired (no model on R2 yet)**: male telepath.
+- **Per-slot cast speeds**: `castTimeScales: {slot: scale}` on a registry
+  entry overrides `castTimeScale` for individual cast slots (catgirl mixes a
+  7.33s quick-draw @5.0 with a short hook @2.0).
+- **R2 discovery technique**: the bucket (`ewmusicsfx`, public endpoint
+  `pub-c56e…r2.dev`) has NO object listing (r2.dev 404s on '/'; Cloudflare
+  MCP only does bucket-level ops; account has no workers). But HEAD per
+  object works, and Meshy names are `Meshy_AI_<prompt trunc ≤21 chars>_biped_
+  <stage>.glb` — so probe candidate prefixes against
+  `_biped_Character_output.glb`, then sweep the clip-name list. That is how
+  all 17 prefixes above were found.
+- **Verification probe**: `node probe_3d_wiring.js` (repo; LOCAL_ASSETS
+  harness) — starts a VS-CPU TDM, reassigns 8 live units to the new races,
+  waits for GLBs, asserts attached models + expected action sets, fires
+  cast-kind/hit triggers, checks classifySpellAnimKind + default unlocks.
+  28/28 on 2026-07-05.
+- **Default unlocks**: ACCT_STARTER_UNITS (data.js + the server.js copy) now
+  also includes telepath, quarterback, ki fighter, cowboy, atlantean, pirate.
+  Starters act as a FLOOR: server getOrBackfillEconomy unions new starters
+  into existing accounts on read; profile.js backfillProfile does the same
+  for offline/local profiles.
 - Two slots may share one clip GLB (agent idle=walk): _attachUnitModel clones
   the clip so the actions get independent loop/timeScale settings.
 - Gotcha: `Box3.setFromObject` LIES about skinned GLB size (Meshy geometry is

@@ -4250,12 +4250,18 @@
                 dx: dx / mag,
                 dy: dy / mag
             };
+            // Tag melee vs ranged so rigged 3D models pick the right clip
+            // (castMelee vs castRanged — see sprites.js animation role guide).
+            if (!state._attackAnimKind) state._attackAnimKind = {};
+            state._attackAnimKind[unit.id] =
+                (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
             state.attackAnimIds.add(unit.id);
             if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
             if (!_v2) scheduleBoardRender();
             window.setTimeout(() => {
                 state.attackAnimIds.delete(unit.id);
                 delete state._attackAnimDir[unit.id];
+                if (state._attackAnimKind) delete state._attackAnimKind[unit.id];
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
             }, 350);
@@ -4271,6 +4277,12 @@
                 (Array.isArray(spell.hitDamages) && spell.hitDamages.length) || spell.damageType));
             if (!state._castAnimDamaging) state._castAnimDamaging = {};
             state._castAnimDamaging[unit.id] = _damaging;
+            // Spell → animation category for rigged 3D models (magic /
+            // support / ranged / melee / throw). classifySpellAnimKind lives
+            // in sprites.js next to the RACE_MODELS_3D role guide.
+            if (!state._castAnimKind) state._castAnimKind = {};
+            state._castAnimKind[unit.id] = (typeof classifySpellAnimKind === 'function')
+                ? classifySpellAnimKind(spell) : 'magic';
 
             // The cast sprite-sheet / glow used to start HERE, immediately — but
             // the projectile / particle effect doesn't launch until the camera's
@@ -4295,12 +4307,14 @@
             delete state._pendingCastSprite[unit.id];
             if (unit.dead || _skipVisuals()) {
                 if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                if (state._castAnimKind) delete state._castAnimKind[unit.id];
                 return;
             }
             const _v2 = window._v2UnitSystemActive?.();
             const _start = () => {
                 if (unit.dead) {
                     if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                    if (state._castAnimKind) delete state._castAnimKind[unit.id];
                     return;
                 }
                 state.castAnimIds.add(unit.id);
@@ -4309,6 +4323,7 @@
                 window.setTimeout(() => {
                     state.castAnimIds.delete(unit.id);
                     if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
+                    if (state._castAnimKind) delete state._castAnimKind[unit.id];
                     if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                     if (!_v2) scheduleBoardRender();
                 }, 500);

@@ -5759,14 +5759,23 @@ const ThreeRenderer = (function () {
                         if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
                     }
                     var act = mixer.clipAction(clip);
-                    if (name === 'cast' || name === 'death') {
+                    // One-shot slots: death, hit flinch, and every cast
+                    // variant (cast / castMagic / castSupport / castRanged /
+                    // castMelee / castThrow — see sprites.js role guide).
+                    if (name === 'death' || name === 'hit' || name.indexOf('cast') === 0) {
                         act.setLoop(THREE.LoopOnce, 0);
                         act.clampWhenFinished = true;
-                        act.timeScale = (name === 'cast')
-                            ? (def.castTimeScale || 1) : (def.deathTimeScale || 1);
+                        act.timeScale = (name === 'death') ? (def.deathTimeScale || 1)
+                                      : (name === 'hit')   ? (def.hitTimeScale || 2.8)
+                                      // def.castTimeScales = {slot: scale} overrides
+                                      // per cast slot (e.g. quick-draw 5.0 + a punch 2.0
+                                      // in the same character); castTimeScale is the default.
+                                      : ((def.castTimeScales && def.castTimeScales[name])
+                                         || def.castTimeScale || 1);
                     } else {
                         act.setLoop(THREE.LoopRepeat, Infinity);
                         if (name === 'walk') act.timeScale = def.moveTimeScale || 1;
+                        else if (name === 'jump') act.timeScale = def.jumpTimeScale || 3.2;
                         else if (name === 'idle' && def.idleTimeScale) act.timeScale = def.idleTimeScale;
                     }
                     entry.actions[name] = act;
@@ -5792,7 +5801,9 @@ const ThreeRenderer = (function () {
        restarts the clip even if it is already the current one (repeat casts). */
     function _playUnitModelAnim(entry, name, force) {
         var acts = entry.actions || {};
-        var next = acts[name] || ((name === 'walk') ? acts.idle : null);
+        var next = acts[name]
+            || ((name === 'walk') ? acts.idle : null)
+            || ((name === 'jump') ? (acts.walk || acts.idle) : null);
         if (!next) return false;
         var prev = entry._ew_curAnim ? acts[entry._ew_curAnim] : null;
         if (prev === next && !force) { entry._ew_curAnim = name; return true; }
@@ -5804,14 +5815,24 @@ const ThreeRenderer = (function () {
         return true;
     }
 
-    /* One-shot action clip (cast — also used for basic attacks). Owns the
-       animation for the clip's (time-scaled) duration, capped so long clips
-       can't stall the action feel; the state machine then falls back to
-       idle/walk. Returns false for sprite units so callers can chain to the
-       sprite-sheet path. */
+    /* One-shot action clip (cast variants / hit — cast* also plays for basic
+       attacks). `name` may be an ARRAY of slot names tried in order (fallback
+       chain, e.g. ['castMagic','cast']). Owns the animation for the clip's
+       (time-scaled) duration, capped so long clips can't stall the action
+       feel; the state machine then falls back to idle/walk. Returns false for
+       sprite units so callers can chain to the sprite-sheet path. */
     function _maybeStartModelAnim(uid, name) {
         var ue = _getUnitEntry(uid);
-        if (!ue || !ue.mixer || !ue.actions || !ue.actions[name]) return false;
+        if (!ue || !ue.mixer || !ue.actions) return false;
+        if (Array.isArray(name)) {
+            var picked = null;
+            for (var ni = 0; ni < name.length; ni++) {
+                if (ue.actions[name[ni]]) { picked = name[ni]; break; }
+            }
+            if (!picked) return false;
+            name = picked;
+        }
+        if (!ue.actions[name]) return false;
         var act = ue.actions[name];
         var clip = act.getClip();
         var scale = Math.abs(act.timeScale) || 1;
@@ -5848,8 +5869,9 @@ const ThreeRenderer = (function () {
             var want;
             if (_deathTweens.has(uid)) want = 'death';
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
+            else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
             else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
-                     || _jumpTweens.has(uid) || _strikeTweens.has(uid)) want = 'walk';
+                     || _strikeTweens.has(uid)) want = 'walk';
             else want = 'idle';
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             entry.mixer.update(dt);
@@ -10367,9 +10389,13 @@ const ThreeRenderer = (function () {
                             durationMs: LUNGE_MS
                         });
                     }
-                    // Rigged model units play their cast clip for attacks; sprite
-                    // races play the attack sheet (if any) on top of the lunge.
-                    if (!_maybeStartModelAnim(uid, 'cast')) _maybeStartSpriteAnim(uid, 'attack');
+                    // Rigged model units play a cast-variant clip for attacks
+                    // (melee vs ranged, tagged by battle.js triggerAttackAnim);
+                    // sprite races play the attack sheet on top of the lunge.
+                    var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
+                    var _atkChain = (_ak === 'ranged')
+                        ? ['castRanged', 'cast'] : ['castMelee', 'cast'];
+                    if (!_maybeStartModelAnim(uid, _atkChain)) _maybeStartSpriteAnim(uid, 'attack');
                 }
             }
             _prevAttackIds = new Set(state.attackAnimIds);
@@ -10383,7 +10409,16 @@ const ThreeRenderer = (function () {
                     // race has a sheet we own the sprite for the cast and skip
                     // the default glow/pulse tween (which would tint it).
                     var _dmg = state._castAnimDamaging && state._castAnimDamaging[uid];
-                    if (!_maybeStartModelAnim(uid, 'cast')
+                    // Spell category → clip fallback chain (kind tagged by
+                    // battle.js triggerCastAnim via classifySpellAnimKind).
+                    var _ck = state._castAnimKind ? state._castAnimKind[uid] : null;
+                    var _castChain =
+                        (_ck === 'support') ? ['castSupport', 'castMagic', 'cast'] :
+                        (_ck === 'ranged')  ? ['castRanged', 'cast'] :
+                        (_ck === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
+                        (_ck === 'melee')   ? ['castMelee', 'cast'] :
+                        (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
+                    if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
                             startTime: performance.now(),
@@ -10417,6 +10452,9 @@ const ThreeRenderer = (function () {
                 if (!_prevHitFlashIds.has(uid) && !_flashTweens.has(uid)) {
                     var _hk = (state.hitFlashKindById && state.hitFlashKindById[uid]) || 'hit';
                     _flashTweens.set(uid, { startTime: performance.now(), durationMs: FLASH_MS, kind: _hk });
+                    // Rigged models flinch (hit-reaction clip) alongside the
+                    // flash — unless the unit is dying (death clip owns it).
+                    if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
                 }
             }
             _prevHitFlashIds = new Set(state.hitFlashIds);

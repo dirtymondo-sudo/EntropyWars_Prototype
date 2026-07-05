@@ -33,6 +33,7 @@ const ACCT_PVP_MODES = new Set(['arena', 'tdm', 'ffa', 'domination', 'hotspot', 
 const ACCT_STARTER_UNITS = [
     'men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
     'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy',
+    'telepath', 'quarterback', 'ki fighter', 'cowboy', 'atlantean', 'pirate', 'vampire',
 ];
 const AVAILABLE_RACES = new Set(['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher']);
 
@@ -70,6 +71,18 @@ async function getOrBackfillEconomy(player) {
             [JSON.stringify(unlocked), freeTokens, player.id]
         );
         console.log(`[ECON] backfilled starters for ${player.id}`);
+    } else {
+        // Starters are a floor, not just a new-account seed: when the starter
+        // list grows, existing accounts pick up the new defaults on next read.
+        const missing = ACCT_STARTER_UNITS.filter(r => !unlocked.includes(r));
+        if (missing.length > 0) {
+            unlocked = unlocked.concat(missing);
+            await d1.execute(
+                "UPDATE players SET unlocked_units = ?1 WHERE id = ?2",
+                [JSON.stringify(unlocked), player.id]
+            );
+            console.log(`[ECON] granted new starters (${missing.join(', ')}) to ${player.id}`);
+        }
     }
     return { gold, unlockedUnits: unlocked, freeTokens };
 }

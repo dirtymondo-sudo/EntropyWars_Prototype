@@ -424,64 +424,265 @@ function getRaceSpriteAnimations(race, gender) {
 // Also: a `model` GLB must be the RIGGED export ("Character output" or any
 // "withSkin" — it has bones + skin weights). The generate/texture stage
 // GLBs are boneless static meshes that nothing can animate.
-const _HARB_3D = `${_S}/Races/Homosapien/Male/harbinger`;
-const _AGENT_3D = `${_S}/Races/Homosapien/Male/agent`;
+//
+// ── ANIMATION ROLE GUIDE (Meshy library clip → game slot) ──────────────────
+// Standard slot set every character should aim for. Meshy file names are
+// `Meshy_AI_<character>_biped_Animation_<Clip>_withSkin.glb`; durations are
+// library-wide constants (same for every character):
+//   idle        Idle_N (any numbered idle; ~5–8s loops)
+//   walk        Running (0.67s — preferred; board tweens are fast) or
+//               Walking (1.07s) at a higher moveTimeScale
+//   jump        Regular_Jump (1.93s) — plays during jump arcs
+//   hit         Hit_Reaction / Hit_Reaction_1 (1.67s) — damage flinch
+//   death       Dead (3.0s, stays down — preferred) or Knock_Down (2.53s)
+//   cast        REQUIRED generic fallback for every action animation
+//   castMagic   Charged_Spell_Cast (2.7s) — damaging magic (damageType:'magic')
+//   castSupport mage_soell_cast (2.3s) — heals/buffs/debuffs (staff wave)
+//   castRanged  Cowboy_Quick_Draw_Shooting (7.33s) — guns/rifles/ray-guns and
+//               any physical ranged hit; also basic attacks beyond melee reach
+//   castMelee   sword slash / punch clips (none uploaded yet) — adjacent
+//               physical strikes; falls back to `cast` + the engine lunge
+//   castThrow   throw/pitch clips (none uploaded yet) — lobbed projectiles
+//               (Quarterback footballs, grenades); falls back → castRanged
+// Which slot plays for a given spell is decided by classifySpellAnimKind()
+// below (called from battle.js triggerCastAnim). Missing slots fall back
+// per-chain, ultimately to `cast`, then to the plain lunge/glow tween.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Spell/ability → animation category. Returns 'magic' | 'support' |
+// 'ranged' | 'melee' | 'throw'. Keep this the single source of truth so
+// secondary jobs stay consistent: a Warrior who learns Fireball still plays
+// castMagic; a Black Mage swinging a wrench plays castMelee.
+function classifySpellAnimKind(spell) {
+  if (!spell) return 'melee';
+  const text = ((spell.id || '') + ' ' + (spell.name || '') + ' '
+              + (spell.projectileOverride || '')).toLowerCase();
+  // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
+  // matter the damage type — the QB "just throws".
+  if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
+  const damaging = !!(spell.type === 'damage' || spell.dmg ||
+      (Array.isArray(spell.hitDamages) && spell.hitDamages.length));
+  if (!damaging) return 'support';           // heals, buffs, debuffs, terrain
+  if (spell.damageType === 'magic') return 'magic';
+  if (spell.damageType === 'physical') {
+    if (/shot|shoot|gun|bullet|snipe|rifle|pistol|revolver|arrow|barrage|quick.?draw|dead.?eye/.test(text)
+        || (spell.range || 1) >= 3) return 'ranged';
+    return 'melee';
+  }
+  return 'magic';                            // damaging, untyped → magic burst
+}
+
+// Registry entry builder. `anims` maps slot → Meshy library clip name; URLs
+// become `<folder>/Meshy_AI_<prefix>_biped_Animation_<Clip>_withSkin.glb`.
+// Defaults tuned to the library durations above (board action windows:
+// move ~150ms/tile, cast ~1.2s, death 1.6s). Override per character via opts.
+function _mk3d(folder, prefix, anims, opts) {
+  const F = `${_S}/Races/${folder}`;
+  const clips = {};
+  for (const slot in anims) {
+    clips[slot] = `${F}/Meshy_AI_${prefix}_biped_Animation_${anims[slot]}_withSkin.glb`;
+  }
+  return Object.assign({
+    model: `${F}/Meshy_AI_${prefix}_biped_Character_output.glb`,
+    clips,
+    heightRatio: 1.0,     // renderer measures true skinned bounds — don't touch
+    yawOffset: 0,
+    moveTimeScale: 1.3,   // Running 0.67s → ~0.52s/cycle
+    castTimeScale: 2.0,   // Charged 2.7s → 1.35s; soell 2.3s → 1.15s
+    deathTimeScale: 1.9,  // Dead 3.0s → ~1.58s (death window is 1.6s)
+    hitTimeScale: 2.8,    // Hit_Reaction 1.67s → ~0.6s flinch
+    jumpTimeScale: 3.2,   // Regular_Jump 1.93s → ~0.6s
+  }, opts || {});
+}
+
+// Full uploaded-clip inventory per character lives in PLAYTEST_NOTES.md
+// ("Rigged 3D unit models"). Slots not listed for a character below simply
+// don't exist in its R2 folder yet — fallback chains cover them.
 const _PSY_3D = `${_S}/Races/Homosapien/Female/psychic`;
 const RACE_MODELS_3D = {
-  // Male Harbinger (Fortune Teller) — the 3D-unit pilot character. Its base
-  // GLB is its rigged Idle export, so the idle clip rides along with the
-  // mesh in one download.
+  // ── Homosapien sub-races (Races/Homosapien/<Gender>/<job folder>/) ──
   'fortune teller': {
-    male: {
-      model: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
-      clips: {
-        idle:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
-        walk:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Walking_withSkin.glb`,
-        cast:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Charged_Spell_Cast_withSkin.glb`,
-        death: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Knock_Down_withSkin.glb`,
-      },
-      heightRatio: 1.0,
-      yawOffset: 0,
-      moveTimeScale: 2.0,   // walk cycle is 1.07s; tweens cross a tile in ~150ms
-      castTimeScale: 2.2,   // charged-cast clip is 2.7s; action window is ~1.2s
-      deathTimeScale: 1.6,  // knock-down clip is 2.53s; death window is 1.6s
-    },
+    // "male_fortune_teller" — new 2026-07 model (replaced Fortune_teller_with_r).
+    male: _mk3d('Homosapien/Male/harbinger', 'male_fortune_teller', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }),
+    female: _mk3d('Homosapien/Female/harbinger', 'hot_attractive_fortun', {
+      idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }),
   },
-  // Male Agent (Men in Black). Idle = his Alert clip (4.03s watchful loop);
-  // cast/attack = his cowboy quick-draw.
   'men in black': {
-    male: {
-      model: `${_AGENT_3D}/Meshy_AI_Men_in_Black_CIA_age_biped_Character_output.glb`,
-      clips: {
-        idle:  `${_AGENT_3D}/Meshy_AI_Animation_Alert_withSkin.glb`,
-        walk:  `${_AGENT_3D}/Meshy_AI_Animation_Walking_withSkin.glb`,
-        cast:  `${_AGENT_3D}/Meshy_AI_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb`,
-        death: `${_AGENT_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
-      },
-      heightRatio: 1.0,
-      yawOffset: 0,
-      moveTimeScale: 2.0,
-      castTimeScale: 5.0,   // quick-draw clip is 7.33s; show the draw+shot fast
-      deathTimeScale: 1.6,
-    },
+    female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),   // quick-draw is 7.33s; show draw+shot fast
+    // New male model (the old Men_in_Black_CIA_age files were deleted).
+    male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
   },
-  // Female Psychic (Telepath) — her own clip set (verified same-rig).
+  // Female Psychic (Telepath) — pilot wiring + the 2026-07-05 Running/Hit
+  // uploads (generic Meshy_AI_Animation_* names, no character prefix — her
+  // folder predates the prefixed convention). Thoughtful_Walk stays on R2 as
+  // a spare if the run doesn't suit her.
   'telepath': {
     female: {
       model: `${_PSY_3D}/Meshy_AI_psychic_female_with_d_biped_Character_output.glb`,
       clips: {
         idle:  `${_PSY_3D}/Meshy_AI_Animation_Idle_4_withSkin.glb`,
-        walk:  `${_PSY_3D}/Meshy_AI_psychic_female_with_d_biped_Animation_Thoughtful_Walk_withSkin.glb`,
+        walk:  `${_PSY_3D}/Meshy_AI_Animation_Running_withSkin.glb`,
+        hit:   `${_PSY_3D}/Meshy_AI_Animation_Hit_Reaction_withSkin.glb`,
         cast:  `${_PSY_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,
         death: `${_PSY_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
       heightRatio: 1.0,
       yawOffset: 0,
-      moveTimeScale: 3.0,   // Thoughtful_Walk is a slow 4.77s cycle
+      moveTimeScale: 1.3,   // Running 0.67s
       castTimeScale: 2.2,
-      deathTimeScale: 1.6,
+      hitTimeScale: 2.8,
+      deathTimeScale: 1.6,  // Knock_Down 2.53s
     },
   },
+  // Female Black Mage (Witch).
+  'wizard': {
+    female: _mk3d('Homosapien/Female/blackmage', 'young_female_witch', {
+      idle: 'Idle_9', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      castSupport: 'mage_soell_cast',
+    }),
+  },
+  // Engineers (Mad Scientist) — their "gun" cast is the ray-gun quick-draw.
+  'mad scientist': {
+    female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
+      idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+    male: _mk3d('Homosapien/Male/engineer', 'mad_scientist', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+  },
+  // Gunslingers.
+  'cowboy': {
+    female: _mk3d('Homosapien/Female/gunslinger', 'hot_attractive_cowgir', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+    male: _mk3d('Homosapien/Male/gunslinger', 'gunslinger_cowboy', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+  },
+  // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
+  // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
+  'knight': {
+    female: _mk3d('Homosapien/Female/knight', 'hot_attractive_female', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Triple_Combo_Attack', castMelee: 'Thrust_Slash',
+    }, { castTimeScale: 2.2 }),
+  },
+  // Female Pirate — flintlock = quick-draw. (Same files are duplicated in
+  // …/Female/raider; the pirate/ copies are wired.)
+  'pirate': {
+    female: _mk3d('Homosapien/Female/pirate', 'hot_female_pirate', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+    // "Dashingly handsome swashbuckler" — same file set mirrored in
+    // …/Male/raider.
+    male: _mk3d('Homosapien/Male/pirate', 'dashingly_handsome_sw', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
+    }, { castTimeScale: 5.0 }),
+  },
+  // Homosapien (Freelancer) — also the model to reuse for the werewolf DAY
+  // form once the werewolf night model is wired (day form is sprite-only for
+  // now). No cast/hit exports yet — engine lunge/glow tweens cover actions.
+  'homosapien': {
+    male: _mk3d('Homosapien/Male/freelancer', 'normal_man', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', death: 'Dead',
+    }),
+  },
+
+  // ── Non-homosapien races (Races/<race folder>/<gender>/) ──
+  'fairy': {
+    female: _mk3d('Fairy/female', 'young_fairy', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      castSupport: 'mage_soell_cast',
+      // spare emotes on R2: Mirror_Viewing, Wave_for_Help_1 (future victory/emote slots)
+    }),
+  },
+  'bigfoot': {
+    male: _mk3d('bigfoot/male', 'bigfoot', {
+      idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }, { heightRatio: 1.15 }),   // reads bigger than the humans on the board
+  },
+  'grey': {
+    male: _mk3d('grey/male', 'grey_alien', {
+      idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      // spare on R2: Idle_15 (alt idle)
+    }),
+  },
+  // Quarterback — Right_Hand_Sword_Slash doubles as his throwing motion
+  // (footballs classify as 'throw'); Face_Punch_Reaction is the hit flinch.
+  // Still no death export → death falls back to the sprite-style fade.
+  'quarterback': {
+    male: _mk3d('quarterback', 'football_quarterback', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      cast: 'Right_Hand_Sword_Slash', castThrow: 'Right_Hand_Sword_Slash',
+    }, { castTimeScale: 2.2 }),
+  },
+  // Female Atlantean — Swim_Idle as her resting loop (aquatic flavor).
+  'atlantean': {
+    female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
+      idle: 'Swim_Idle', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }),
+  },
+  // Werewolf (night form; day form will reuse the homosapien freelancer
+  // model once the renderer swaps models per cycle phase — sprite for now).
+  'werewolf': {
+    male: _mk3d('Werewolf/male', 'werewolf', {
+      idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Right_Hand_Sword_Slash', castMelee: 'Right_Hand_Sword_Slash',
+      // spare on R2: Idle_11, Knock_Down
+    }, { castTimeScale: 2.2 }),
+  },
+  // Catgirl — gun for ranged (native Gunslinger), left hook for melee,
+  // backflip jump. Spare on R2: Right_Hand_Sword_Slash, Hit_Reaction, Regular_Jump.
+  'catgirl': {
+    female: _mk3d('catgirl/female', 'young_female_catgirl', {
+      idle: 'Idle_5', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
+      castRanged: 'Cowboy_Quick_Draw_Shooting', castMelee: 'Left_Hook_from_Guard',
+    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 } }),
+  },
+  // Female Ki Fighter — punch combo as the generic cast, kung-fu punch for
+  // melee, mage_soell_cast_3 (note the _3) for ki blasts / support, backflip
+  // jump. Spare on R2: Punch_Forward_… (exact name unconfirmed).
+  'ki fighter': {
+    female: _mk3d('kifighter/female', 'attractive_beautiful_', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Punch_Combo_5', castMelee: 'Kung_Fu_Punch',
+      castMagic: 'mage_soell_cast_3', castSupport: 'mage_soell_cast_3',
+    }, { castTimeScale: 2.2 }),
+  },
+  // Female Vampire (humanoid form only — bat-swarm form keeps its particle
+  // build, the renderer skips models for it).
+  'vampire': {
+    female: _mk3d('vampire/female', 'beautiful_attractive_', {
+      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      castSupport: 'mage_soell_cast_1',
+    }),
+  },
+  // Still missing from R2 (prefix unknown — need the Character_output file
+  // name per folder to wire): male telepath, male pirate.
 };
 
 function getRace3DModel(race, gender) {
@@ -498,9 +699,11 @@ function getRace3DModel(race, gender) {
 // turn-clock flanks (hud.js UnitSprite) instead of the full-body map sprite.
 // Same exact-gender rule as the model/sheet registries.
 // ───────────────────────────────────────────────────────────────────────────
+// Only the male harbinger has a portrait.png on R2 so far. To add one:
+// upload a 128×128 portrait.png into the race's folder and list it here.
 const RACE_PORTRAITS = {
   'fortune teller': {
-    male: `${_HARB_3D}/portrait.png`,
+    male: `${_S}/Races/Homosapien/Male/harbinger/portrait.png`,
   },
 };
 

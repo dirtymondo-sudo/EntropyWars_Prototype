@@ -8024,7 +8024,9 @@ const ACCT_STARTING_GOLD     = 0;     // wallet balance for a brand-new account
 const ACCT_FREE_TOKENS       = 1;     // free-unlock tokens granted at account creation
 const ACCT_MATCH_GOLD_CAP    = 5000;  // server-side sanity cap on banked gold per match (anti-cheat)
 
-// New accounts own these 12 race keys (each playable in its default job).
+// New accounts own these race keys (each playable in its default job).
+// 2026-07-05: expanded to cover every race with a rigged 3D model wired (or
+// planned) in sprites.js RACE_MODELS_3D.
 const ACCT_STARTER_UNITS = [
   'men in black',   // Agent
   'wizard',         // Black Mage
@@ -8038,6 +8040,13 @@ const ACCT_STARTER_UNITS = [
   'marksman',       // Sniper
   'knight',         // Warrior
   'fairy',          // White Mage
+  'telepath',       // Psychic (human)
+  'quarterback',    // QB — throws footballs
+  'ki fighter',     // Ki Fighter
+  'cowboy',         // Gunslinger (human)
+  'atlantean',      // Atlantean
+  'pirate',         // Raider (human)
+  'vampire',        // Vampire
 ];
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
