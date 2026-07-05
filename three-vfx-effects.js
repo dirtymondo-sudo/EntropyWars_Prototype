@@ -893,6 +893,16 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         SPELL_MAP[spId].bolt = _BOLT_WIRING[spId];
     }
 
+    /* ── SIGNATURE ARSENAL WIRING ─────────────────────────────────────────
+       Cannonball rides the bolt pipeline purely so the 3D carronade learns
+       both caster and target — _fireBoltMapped intercepts it before any
+       generic bolt is drawn. The bite spells below previously had no impact
+       mapping at all, so the jaws hook could never fire; give them one. */
+    if (!SPELL_MAP['raceCannonball']) SPELL_MAP['raceCannonball'] = {};
+    SPELL_MAP['raceCannonball'].bolt = '_bolt_rock';
+    if (!SPELL_MAP['raceFeralDive']) SPELL_MAP['raceFeralDive'] = { impact: 'racePounce_impact' };
+    if (!SPELL_MAP['raceLoveBite']) SPELL_MAP['raceLoveBite'] = { impact: 'raceInfectiousBite_impact' };
+
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
         window.VFX3D_SPELL_MAP = SPELL_MAP;
@@ -1630,6 +1640,21 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var ts = (_cfg().tileSize || 128);
         var fromTx = params.fromX, fromTy = params.fromY;
         var toTx = params.toX, toTy = params.toY;
+
+        /* ── SIGNATURE WEAPON RIGS — the bolt intent is the one place that
+           knows both caster and target, so the 3D cannon/guns hook in here.
+           The cannon replaces the bolt entirely (it flies its own iron ball
+           and detonates on landing); the guns are summoned alongside the
+           bolt, which stays on as tracer + impact. ─────────────────────── */
+        if (spellId === 'raceCannonball') {
+            try {
+                _sigCannonShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs, aoeRadius: 1 });
+                return;
+            } catch (e) { /* fall through to the generic bolt */ }
+        }
+        if (_SIG_GUN_FOR[spellId]) {
+            try { _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
+        }
 
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
@@ -5086,7 +5111,12 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             if (entry.done) return;
             var el = performance.now() - t0;
             if (el >= totalMs) { finish(); return; }
-            try { tick(el); } catch (e) { finish(); return; }
+            try { tick(el); } catch (e) {
+                /* don't die silently — a sig effect vanishing one frame in is
+                   otherwise undebuggable */
+                try { console.warn('[SIG3D] tick error, killing effect:', e && e.message ? e.message : e); } catch (e2) {}
+                finish(); return;
+            }
             requestAnimationFrame(loop);
         }
         requestAnimationFrame(loop);
@@ -5356,28 +5386,61 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         });
     }
 
-    /* ── 3D greatsword builder — origin at the blade TIP, blade grows +Y ── */
+    /* ── runic strip texture — faint glowing script down the fuller ─────── */
+    function _sigRuneStripTex() {
+        return _sigTex('sig-rune-strip', 128, function (ctx, S) {
+            var rnd = _sigRand(0x51A5E5);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            for (var g = 0; g < 9; g++) {
+                var gy = 10 + g * 13;
+                ctx.globalAlpha = 0.55 + rnd() * 0.45;
+                ctx.lineWidth = 2 + rnd() * 2;
+                for (var st = 0; st < 3; st++) {
+                    ctx.beginPath();
+                    ctx.moveTo(S / 2 + (rnd() - 0.5) * 26, gy + (rnd() - 0.5) * 9);
+                    ctx.lineTo(S / 2 + (rnd() - 0.5) * 26, gy + (rnd() - 0.5) * 9);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ── 3D greatsword builder — origin at the blade TIP, blade grows +Y ──
+       v2 "apocalyptic anime greatsword": long distal taper with a swelling
+       profile (widest ~60% up), ground edge bevels, glowing energy fuller
+       with runic script, swept twin-quillon crossguard, wrapped two-hand
+       grip with rings, faceted counterweight pommel. Clad in the SAME R2
+       pixel terrain sprites as the trees/turrets so it sits in the board's
+       art style. Returns {group, setFade, hiltY} — hiltY is the natural
+       grip pivot for slash animation. */
     function _sigBuildSword(opts) {
         opts = opts || {};
         var len = opts.len || 260;
-        var wid = len * 0.13;
-        var half = wid / 2;
+        var half = len * 0.052;              /* slim semi-realistic blade */
         var group = new THREE.Group();
 
+        /* blade profile: needle tip → long sweep out → widest at ~58% →
+           gentle taper back in → shoulder notch → ricasso into the guard */
         var shape = new THREE.Shape();
         shape.moveTo(0, 0);
-        shape.lineTo(half, len * 0.16);
-        shape.lineTo(half, len);
-        shape.lineTo(-half, len);
-        shape.lineTo(-half, len * 0.16);
-        shape.closePath();
+        shape.quadraticCurveTo(half * 0.5, len * 0.09, half * 0.86, len * 0.26);
+        shape.quadraticCurveTo(half * 1.06, len * 0.58, half * 0.88, len * 0.93);
+        shape.lineTo(half * 0.52, len * 0.955);
+        shape.lineTo(half * 0.52, len);
+        shape.lineTo(-half * 0.52, len);
+        shape.lineTo(-half * 0.52, len * 0.955);
+        shape.lineTo(-half * 0.88, len * 0.93);
+        shape.quadraticCurveTo(-half * 1.06, len * 0.58, -half * 0.86, len * 0.26);
+        shape.quadraticCurveTo(-half * 0.5, len * 0.09, 0, 0);
         var bladeGeo = new THREE.ExtrudeGeometry(shape, {
-            depth: wid * 0.16, bevelEnabled: true,
-            bevelThickness: wid * 0.10, bevelSize: wid * 0.10, bevelSegments: 1,
+            depth: half * 0.30, bevelEnabled: true, curveSegments: 8,
+            bevelThickness: half * 0.30, bevelSize: half * 0.34, bevelSegments: 2,
         });
-        bladeGeo.translate(0, 0, -wid * 0.08);
+        bladeGeo.translate(0, 0, -half * 0.15);
         var bladePx = _cfg().tileSize || 128;
-        _sigScaleUVs(bladeGeo, 1 / bladePx, 1 / bladePx, 0.5 - (wid / bladePx) / 2, 0);
+        _sigScaleUVs(bladeGeo, 1 / bladePx, 1 / bladePx, 0.5 - (half / bladePx), 0);
 
         var bladeMat = new THREE.MeshBasicMaterial({
             color: new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xdfe7f2),
@@ -5394,12 +5457,31 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         blade.renderOrder = 160;
         group.add(blade);
 
-        /* additive shell hugging the blade = edge glow */
+        /* tight additive shell hugging the blade = edge glow (no longer a
+           fat 2.4x balloon — reads as a honed, humming edge) */
         var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
         var glowShell = new THREE.Mesh(bladeGeo.clone(), glowMat);
-        glowShell.scale.set(1.28, 1.05, 2.4);
+        glowShell.scale.set(1.14, 1.015, 1.7);
         glowShell.renderOrder = 159;
         group.add(glowShell);
+
+        /* energy fuller — a thin glowing groove up the middle of both faces,
+           plus a strip of runic script that brightens with glowBoost */
+        var fullerMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
+        var runeMat = _sigMat(0xffffff, { map: _sigRuneStripTex() });
+        for (var bf = 0; bf < 2; bf++) {
+            var zf = (bf === 0 ? 1 : -1) * half * 0.52;
+            var fuller = new THREE.Mesh(new THREE.PlaneGeometry(half * 0.28, len * 0.66), fullerMat);
+            fuller.position.set(0, len * 0.52, zf);
+            if (bf === 1) fuller.rotation.y = Math.PI;
+            fuller.renderOrder = 161;
+            group.add(fuller);
+            var runes = new THREE.Mesh(new THREE.PlaneGeometry(half * 0.9, len * 0.5), runeMat);
+            runes.position.set(0, len * 0.55, zf * 1.04);
+            if (bf === 1) runes.rotation.y = Math.PI;
+            runes.renderOrder = 162;
+            group.add(runes);
+        }
 
         var metalColor = opts.guardColor != null ? opts.guardColor : 0xc9a227;
         var guardMat = new THREE.MeshBasicMaterial({
@@ -5407,36 +5489,87 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             transparent: true, opacity: 1, depthWrite: true,
         });
         if (!opts.hologram) guardMat.map = _sigTerrainTex(opts.guardTex || 'metal.png', 1, 1);
-        var guardGeo = new THREE.BoxGeometry(wid * 2.6, len * 0.05, wid * 0.55);
-        _sigScaleUVs(guardGeo, 0.5, 0.5, 0.25, 0.25);
-        var guard = new THREE.Mesh(guardGeo, guardMat);
-        guard.position.y = len; guard.renderOrder = 160;
-        group.add(guard);
-        var gripGeo = new THREE.CylinderGeometry(wid * 0.16, wid * 0.19, len * 0.22, 10);
-        _sigScaleUVs(gripGeo, 0.5, 0.5, 0.25, 0.25);
-        var grip = new THREE.Mesh(gripGeo, guardMat);
-        grip.position.y = len * 1.13; grip.renderOrder = 160;
-        group.add(grip);
-        var pommelGeo = new THREE.SphereGeometry(wid * 0.26, 10, 8);
-        _sigScaleUVs(pommelGeo, 0.5, 0.5, 0.25, 0.25);
-        var pommel = new THREE.Mesh(pommelGeo, guardMat);
-        pommel.position.y = len * 1.25; pommel.renderOrder = 160;
-        group.add(pommel);
+        /* dark leather-wrapped grip — wood sprite tinted near-black stands in
+           for leather until a real leather sprite lands on the R2 */
+        var wrapMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(opts.gripColor != null ? opts.gripColor : 0x3a2c22),
+            transparent: true, opacity: 1, depthWrite: true,
+        });
+        if (!opts.hologram) wrapMat.map = _sigTerrainTex('wood.png', 1, 1);
 
+        /* swept crossguard: hub block + two down-swept quillons with tips */
+        var hubGeo = new THREE.BoxGeometry(half * 1.5, len * 0.045, half * 0.9);
+        _sigScaleUVs(hubGeo, 0.5, 0.5, 0.25, 0.25);
+        var hub = new THREE.Mesh(hubGeo, guardMat);
+        hub.position.y = len * 1.005; hub.renderOrder = 160;
+        group.add(hub);
+        for (var q = 0; q < 2; q++) {
+            var sgn = q === 0 ? 1 : -1;
+            var quGeo = new THREE.BoxGeometry(half * 2.3, len * 0.028, half * 0.42);
+            _sigScaleUVs(quGeo, 0.5, 0.5, 0.25, 0.25);
+            var qu = new THREE.Mesh(quGeo, guardMat);
+            qu.position.set(sgn * half * 1.75, len * 0.99, 0);
+            qu.rotation.z = sgn * -0.34;      /* swept down toward the blade */
+            qu.renderOrder = 160;
+            group.add(qu);
+            var tipGeo = new THREE.SphereGeometry(half * 0.26, 8, 6);
+            _sigScaleUVs(tipGeo, 0.5, 0.5, 0.25, 0.25);
+            var qtip = new THREE.Mesh(tipGeo, guardMat);
+            qtip.position.set(sgn * half * 2.85, len * 0.99 - half * 1.0 * 0.34, 0);
+            qtip.renderOrder = 160;
+            group.add(qtip);
+        }
+
+        /* two-hand grip with wrap rings */
+        var gripGeo = new THREE.CylinderGeometry(half * 0.30, half * 0.36, len * 0.20, 10);
+        _sigScaleUVs(gripGeo, 0.5, 0.5, 0.25, 0.25);
+        var grip = new THREE.Mesh(gripGeo, wrapMat);
+        grip.position.y = len * 1.115; grip.renderOrder = 160;
+        group.add(grip);
+        for (var wr = 0; wr < 3; wr++) {
+            var ringGeo = new THREE.TorusGeometry(half * 0.36, half * 0.075, 6, 12);
+            _sigScaleUVs(ringGeo, 0.5, 0.5, 0.25, 0.25);
+            var ring = new THREE.Mesh(ringGeo, guardMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = len * (1.055 + wr * 0.055);
+            ring.renderOrder = 160;
+            group.add(ring);
+        }
+
+        /* faceted counterweight pommel + spike */
+        var pomGeo = new THREE.SphereGeometry(half * 0.5, 6, 5);
+        _sigScaleUVs(pomGeo, 0.5, 0.5, 0.25, 0.25);
+        var pommel = new THREE.Mesh(pomGeo, guardMat);
+        pommel.position.y = len * 1.235; pommel.renderOrder = 160;
+        group.add(pommel);
+        var spikeGeo = new THREE.ConeGeometry(half * 0.24, half * 0.9, 6);
+        _sigScaleUVs(spikeGeo, 0.5, 0.5, 0.25, 0.25);
+        var spike = new THREE.Mesh(spikeGeo, guardMat);
+        spike.position.y = len * 1.235 + half * 0.85;
+        spike.renderOrder = 160;
+        group.add(spike);
+
+        /* guard gem — soul core, front and back */
         var gemMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
-        var gem = new THREE.Mesh(new THREE.SphereGeometry(wid * 0.2, 8, 8), gemMat);
-        gem.position.set(0, len, wid * 0.32); gem.renderOrder = 162;
-        group.add(gem);
+        for (var gz = 0; gz < 2; gz++) {
+            var gem = new THREE.Mesh(new THREE.SphereGeometry(half * 0.34, 8, 8), gemMat);
+            gem.position.set(0, len * 1.005, (gz === 0 ? 1 : -1) * half * 0.62);
+            gem.renderOrder = 162;
+            group.add(gem);
+        }
 
         var holoBase = opts.hologram ? 0.42 : 1;
         function setFade(f, glowBoost) {
             bladeMat.opacity = holoBase * f;
-            glowMat.opacity = (0.42 + 0.4 * (glowBoost || 0)) * f;
+            glowMat.opacity = (0.30 + 0.42 * (glowBoost || 0)) * f;
+            fullerMat.opacity = (0.5 + 0.5 * (glowBoost || 0)) * f;
+            runeMat.opacity = (0.35 + 0.6 * (glowBoost || 0)) * f;
             guardMat.opacity = (opts.hologram ? 0.5 : 1) * f;
+            wrapMat.opacity = (opts.hologram ? 0.4 : 1) * f;
             gemMat.opacity = (0.75 + 0.25 * (glowBoost || 0)) * f;
         }
         setFade(0);
-        return { group: group, setFade: setFade };
+        return { group: group, setFade: setFade, hiltY: len * 1.15, bladeGeo: bladeGeo };
     }
 
     /* ── HERO: "stand summon" greatsword — materializes over the target
@@ -5570,8 +5703,10 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         }, summonMs + holdMs + plungeMs + lingerMs);
     }
 
-    /* ── HERO: spectral giant fist — slams down from the sky, holds pressed
-       into the ground, then springs back up and fades ────────────────────── */
+    /* ── HERO: spectral giant fist — v2: a sculpted stone-golem fist (round
+       knuckles, curled segmented fingers, muscled forearm — no more shoebox)
+       that COCKS BACK in the sky, then slams down with speed lines, holds
+       pressed into the ground, and springs back up and fades ─────────────── */
     function _sigStandFist3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return;
@@ -5586,7 +5721,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
         var fist = new THREE.Group();
         /* stone-golem fist clad in the board's rock sprite (same recipe as
-           the 3D trees/boulders), gold knuckle plates, and a faint additive
+           the 3D trees/boulders), gold knuckle caps, and a faint additive
            aura shell in the spell colour so it still reads as summoned */
         var rockMat = new THREE.MeshBasicMaterial({
             map: _sigTerrainTex(opts.rockTex || 'rock.png', 1, 1),
@@ -5599,55 +5734,85 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             transparent: true, opacity: 0, depthWrite: true,
         });
         var auraMat = _sigMat(color);
-        function block(w, h, d, x, y, z, rz, useMat) {
-            var geo = new THREE.BoxGeometry(w, h, d);
+        function part(geo, x, y, z, rx, ry, rz, useMat, sx, sy, sz) {
             var m = new THREE.Mesh(geo, useMat || rockMat);
             m.position.set(x, y, z);
-            if (rz) m.rotation.z = rz;
+            m.rotation.set(rx || 0, ry || 0, rz || 0);
+            if (sx) m.scale.set(sx, sy || sx, sz || sx);
             m.renderOrder = 160;
             fist.add(m);
-            var aura = new THREE.Mesh(geo.clone(), auraMat);
+            var aura = new THREE.Mesh(geo, auraMat);
             aura.position.copy(m.position);
             aura.rotation.copy(m.rotation);
-            aura.scale.set(1.12, 1.12, 1.12);
+            aura.scale.copy(m.scale).multiplyScalar(1.1);
             aura.renderOrder = 159;
             fist.add(aura);
+            return m;
         }
-        /* blocky golem fist, knuckles down: palm + folded fingers (gold
-           knuckle plates) + thumb + forearm stub rising to the sky */
-        block(90, 70, 100, 0, 35, 0);
+        /* palm — a rounded slab: box core + squashed sphere shells so the
+           silhouette reads as flesh-over-stone, not a crate */
+        part(new THREE.BoxGeometry(82, 62, 78), 0, 34, 0);
+        part(new THREE.SphereGeometry(40, 9, 7), 0, 40, -30, 0, 0, 0, null, 1.15, 0.85, 0.7);
+        part(new THREE.SphereGeometry(38, 9, 7), 0, 22, 26, 0, 0, 0, null, 1.12, 0.8, 0.75);
+        /* four curled fingers, knuckles DOWN (this fist punches the earth):
+           each finger = round knuckle + two angled segments folding under */
         for (var f = 0; f < 4; f++) {
-            block(19, 36, 44, -33 + f * 22, -16, 24);
-            block(21, 14, 14, -33 + f * 22, -28, 42, 0, plateMat);
+            var fx = -31 + f * 21;
+            var fw = (f === 0 || f === 3) ? 0.88 : 1;      /* pinky/index slimmer */
+            part(new THREE.SphereGeometry(12.5 * fw, 8, 7), fx, 0, 30);
+            part(new THREE.CylinderGeometry(9.5 * fw, 11 * fw, 30, 8), fx, -14, 38, 0.55);
+            part(new THREE.SphereGeometry(10 * fw, 8, 6), fx, -25, 46);
+            part(new THREE.CylinderGeometry(8 * fw, 9.5 * fw, 26, 8), fx, -28, 32, 1.85);
+            /* gold knuckle cap riding the first knuckle */
+            part(new THREE.SphereGeometry(9 * fw, 8, 6), fx, -3, 36, 0, 0, 0, plateMat, 1, 0.7, 1);
         }
-        block(24, 48, 36, -58, 26, 8, 0.35);
-        block(64, 130, 70, 0, 130, 0);
+        /* thumb clamped across the folded fingers */
+        part(new THREE.SphereGeometry(13, 8, 7), -50, 22, 18);
+        part(new THREE.CylinderGeometry(9, 11.5, 34, 8), -52, 4, 34, 0.9, 0, 0.5);
+        part(new THREE.SphereGeometry(9.5, 8, 6), -50, -8, 48);
+        /* wrist + muscled forearm rising to the sky: cuff ring, tapered
+           bulge, twin tendon ridges */
+        part(new THREE.CylinderGeometry(34, 40, 26, 10), 0, 76, 0);
+        part(new THREE.TorusGeometry(37, 7, 8, 14), 0, 90, 0, Math.PI / 2, 0, 0, plateMat);
+        part(new THREE.CylinderGeometry(44, 34, 110, 10), 0, 150, 0);
+        part(new THREE.CylinderGeometry(12, 9, 96, 7), -24, 152, 14, 0, 0, 0.06);
+        part(new THREE.CylinderGeometry(12, 9, 96, 7), 24, 152, -12, 0, 0, -0.06);
         fist.scale.set(unit, unit, unit);
         group.add(fist);
 
         var skyH = opts.skyH != null ? opts.skyH : 700;
         var groundY = ts * 0.42;
-        var dropMs = opts.dropMs != null ? opts.dropMs : 140;
+        var windMs = opts.windMs != null ? opts.windMs : 200;
+        var dropMs = opts.dropMs != null ? opts.dropMs : 130;
         var squashMs = 90;
         var holdMs = opts.holdMs != null ? opts.holdMs : 280;
         var riseMs = opts.riseMs != null ? opts.riseMs : 260;
-        var total = dropMs + squashMs + holdMs + riseMs;
+        var total = windMs + dropMs + squashMs + holdMs + riseMs;
 
         _sigMagicCircle3D(tx, ty, {
             color: color, radiusPx: ts * 1.2, height: skyH * 0.55,
-            growMs: 100, holdMs: dropMs + holdMs, fadeMs: 220,
+            growMs: 100, holdMs: windMs + dropMs + holdMs, fadeMs: 220,
             spin: 0.005, opacity: 0.7,
         });
 
         var impactFired = false;
         _sigRun(group, total, function (el) {
             var vis = 1;
-            if (el < dropMs) {
-                var t = el / dropMs;
-                fist.position.y = skyH - (skyH - groundY) * _sigEaseInCubic(t);
+            if (el < windMs) {
+                /* wind-up: fade in high, cock back and coil upward slightly */
+                var tw = el / windMs;
+                var ew = _sigEaseOutCubic(tw);
+                fist.position.y = skyH * (0.86 + 0.14 * ew);
+                fist.rotation.x = -0.5 * ew;
                 fist.scale.set(unit, unit, unit);
-                vis = Math.min(1, t * 3);
-            } else if (el < dropMs + squashMs) {
+                vis = Math.min(1, tw * 2.2);
+            } else if (el < windMs + dropMs) {
+                var t = (el - windMs) / dropMs;
+                fist.position.y = skyH - (skyH - groundY) * _sigEaseInCubic(t);
+                fist.rotation.x = -0.5 * (1 - t);
+                fist.scale.set(unit, unit * (1 + 0.25 * t), unit);   /* speed-stretch */
+                vis = 1;
+            } else if (el < windMs + dropMs + squashMs) {
                 if (!impactFired) {
                     impactFired = true;
                     _sigShake('hard');
@@ -5655,18 +5820,20 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
                     _sigShockRing3D(tx, ty, { color: color, r1: ts * 2.2, ms: 520 });
                     _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
                     _sigSparks(tx, ty, 'dust-puff', 14, { vxy: 160, vz0: 20, vz1: 120, gravity: 160 });
+                    _sigSparks(tx, ty, 'rock-debris', 10, { vxy: 240, vz0: 60, vz1: 260, gravity: 420 });
                     _sigSparks(tx, ty, opts.sparkSprite || 'spark-blue', 12);
                 }
-                var t2 = (el - dropMs) / squashMs;
+                var t2 = (el - windMs - dropMs) / squashMs;
                 var sq = Math.sin(t2 * Math.PI);
+                fist.rotation.x = 0;
                 fist.position.y = groundY * (1 - 0.25 * sq);
                 fist.scale.set(unit * (1 + 0.12 * sq), unit * (1 - 0.18 * sq), unit * (1 + 0.12 * sq));
-            } else if (el < dropMs + squashMs + holdMs) {
-                var elH = el - dropMs - squashMs;
+            } else if (el < windMs + dropMs + squashMs + holdMs) {
+                var elH = el - windMs - dropMs - squashMs;
                 fist.position.y = groundY + Math.sin(elH * 0.09) * 1.5;
                 fist.scale.set(unit, unit, unit);
             } else {
-                var t3 = (el - dropMs - squashMs - holdMs) / riseMs;
+                var t3 = (el - windMs - dropMs - squashMs - holdMs) / riseMs;
                 fist.position.y = groundY + (skyH * 0.7 - groundY) * _sigEaseInCubic(t3);
                 vis = 1 - t3;
             }
@@ -5674,6 +5841,1425 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             plateMat.opacity = vis;
             auraMat.opacity = 0.18 * vis;
         });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SIGNATURE ARSENAL — real 3D weapon/anatomy rigs for spell cinematics.
+       Everything here follows the tree/turret recipe: R2 pixel terrain
+       sprites (NearestFilter) wrapped on sculpted geometry + tight additive
+       glow accents, aiming for apocalyptic-dramatic-anime-semi-real.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* Caster lookup — melee/gun cinematics want to know which direction the
+       attack came from. The blitz engine tracks the acting unit; fall back
+       to the nearest living unit that isn't standing ON the target tile. */
+    function _sigCasterPos(tx, ty) {
+        try {
+            if (typeof state === 'undefined' || !state.units) return null;
+            var u = null;
+            if (state._blitzActiveUnitId != null) {
+                for (var i = 0; i < state.units.length; i++) {
+                    if (state.units[i] && state.units[i].id === state._blitzActiveUnitId) { u = state.units[i]; break; }
+                }
+            }
+            if (!u || u.dead || (u.x === tx && u.y === ty)) {
+                var best = null, bd = 1e9;
+                for (var j = 0; j < state.units.length; j++) {
+                    var v = state.units[j];
+                    if (!v || v.dead || (v.x === tx && v.y === ty)) continue;
+                    var d = Math.abs(v.x - tx) + Math.abs(v.y - ty);
+                    if (d < bd) { bd = d; best = v; }
+                }
+                u = best;
+            }
+            return u ? { x: u.x, y: u.y } : null;
+        } catch (e) { return null; }
+    }
+    /* rotation.y that points a +Z-facing object from the caster toward the
+       target tile (random if no caster can be found) */
+    function _sigYawToward(tx, ty) {
+        var c = _sigCasterPos(tx, ty);
+        if (!c) return rn(0, Math.PI * 2);
+        var dx = tx - c.x, dz = ty - c.y;
+        if (!dx && !dz) return rn(0, Math.PI * 2);
+        return Math.atan2(dx, dz);
+    }
+
+    /* ── HERO: SLASH COMBO — the sword no longer falls out of the sky. A
+       spectral greatsword materializes beside the target and rips through
+       a chain of real swings: wind-up → arc swipe (with lagging afterimage
+       blades + crescent trail + sparks) → snap reposition → next swing,
+       ending on a heavier finisher with shockwave/flash. Each swing pivots
+       the blade around its grip like a giant invisible swordsman.
+       opts.slashes: [{dYaw, dir, tilt, heavy}] — angles are relative to the
+       caster→target direction so combos rake across the victim. ─────────── */
+    function _sigSlashCombo3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.glowColor != null ? opts.glowColor : 0x88bbff;
+        var len = opts.len != null ? opts.len : ts * 1.6;
+        var baseYaw = opts.yaw != null ? opts.yaw : _sigYawToward(tx, ty);
+        var slashes = opts.slashes || [
+            { dYaw: 0.5, dir: 1, tilt: 0.5 },
+            { dYaw: -0.6, dir: -1, tilt: -0.45 },
+            { dYaw: 1.35, dir: 1, tilt: 0.08, heavy: true },
+        ];
+        var summonMs = opts.summonMs != null ? opts.summonMs : 150;
+        var windMs = opts.windMs != null ? opts.windMs : 75;
+        var swingMs = opts.swingMs != null ? opts.swingMs : 95;
+        var recoverMs = opts.recoverMs != null ? opts.recoverMs : 55;
+        var fadeMs = opts.fadeMs != null ? opts.fadeMs : 260;
+        var hubH = opts.hubH != null ? opts.hubH : ts * 1.35;
+
+        var sw = _sigBuildSword({
+            len: len, glowColor: color,
+            bladeColor: opts.bladeColor, guardColor: opts.guardColor,
+            bladeTex: opts.bladeTex, guardTex: opts.guardTex,
+            hologram: !!opts.hologram,
+        });
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+
+        /* one holder+pivot per slash; the single sword hops between pivots */
+        var holders = [];
+        var phases = [];
+        var t = summonMs;
+        for (var i = 0; i < slashes.length; i++) {
+            var sl = slashes[i];
+            var holder = new THREE.Group();
+            holder.rotation.order = 'YXZ';
+            holder.rotation.y = baseYaw + (sl.dYaw || 0);
+            holder.rotation.x = sl.tilt || 0;
+            holder.visible = false;
+            group.add(holder);
+            var pivot = new THREE.Group();
+            pivot.position.y = hubH;
+            holder.add(pivot);
+            /* two afterimage blades lagging behind the swing */
+            var ghostMatA = _sigMat(color);
+            var ghostMatB = _sigMat(color);
+            var gpA = new THREE.Group(); gpA.position.y = hubH; holder.add(gpA);
+            var gpB = new THREE.Group(); gpB.position.y = hubH; holder.add(gpB);
+            var gA = new THREE.Mesh(sw.bladeGeo, ghostMatA);
+            gA.position.y = -sw.hiltY; gA.renderOrder = 158; gpA.add(gA);
+            var gB = new THREE.Mesh(sw.bladeGeo, ghostMatB);
+            gB.position.y = -sw.hiltY; gB.renderOrder = 157; gpB.add(gB);
+
+            var heavy = !!sl.heavy;
+            var wMs = windMs * (heavy ? 1.35 : 1);
+            var sMs = swingMs * (heavy ? 1.45 : 1);
+            var rMs = recoverMs + (heavy ? 170 : 0);
+            phases.push({
+                idx: i, holder: holder, pivot: pivot,
+                gpA: gpA, gpB: gpB, gmA: ghostMatA, gmB: ghostMatB,
+                dir: sl.dir || 1, heavy: heavy,
+                a0: (sl.dir || 1) * 1.6, a1: -(sl.dir || 1) * 1.35,
+                t0: t, tSwing: t + wMs, tHit: t + wMs + sMs, t1: t + wMs + sMs + rMs,
+                hitFired: false,
+            });
+            holders.push(holder);
+            t = phases[phases.length - 1].t1;
+        }
+        var fadeAt = t;
+        var total = t + fadeMs;
+
+        /* the sword starts on the first pivot */
+        phases[0].pivot.add(sw.group);
+        sw.group.position.y = -sw.hiltY;
+        var cur = 0;
+        phases[0].holder.visible = true;
+        phases[0].pivot.rotation.z = phases[0].a0;
+
+        /* upright summon glyph + a breath of light where the blade appears */
+        _sigMagicCircle3D(tx, ty, {
+            color: opts.circleColor != null ? opts.circleColor : color,
+            radiusPx: ts * 0.85, height: hubH * 0.75,
+            tiltRad: Math.PI / 2, growMs: Math.min(130, summonMs),
+            holdMs: Math.max(120, t - summonMs - 200), fadeMs: 220,
+            spin: 0.006, opacity: 0.8,
+        });
+        _sigScreenFlash(_sigCss(color), 140, 0.10);
+
+        _sigRun(group, total, function (el) {
+            /* advance to the phase owning this time slice */
+            while (cur < phases.length - 1 && el >= phases[cur].t1) {
+                var prevP = phases[cur];
+                prevP.holder.visible = false;
+                cur++;
+                var np = phases[cur];
+                np.holder.visible = true;
+                np.pivot.add(sw.group);
+                sw.group.position.y = -sw.hiltY;
+                np.pivot.rotation.z = np.a0;
+            }
+            var p = phases[cur];
+
+            if (el < summonMs) {
+                var tS = el / summonMs;
+                var sc = Math.max(0.01, _sigEaseOutBack(tS));
+                sw.group.scale.set(sc, sc, sc);
+                sw.setFade(Math.min(1, tS * 1.7), 1 - tS);
+                p.pivot.rotation.z = p.a0 + 0.6 * (1 - tS) * p.dir;
+                p.gmA.opacity = 0; p.gmB.opacity = 0;
+                return;
+            }
+            sw.group.scale.set(1, 1, 1);
+
+            if (el >= fadeAt) {
+                var tF = (el - fadeAt) / fadeMs;
+                sw.setFade(1 - tF, 0);
+                p.gmA.opacity = 0; p.gmB.opacity = 0;
+                sw.group.position.y = -sw.hiltY + tF * ts * 0.4;
+                return;
+            }
+
+            if (el < p.tSwing) {
+                /* wind-up: draw back past the start angle, glow charging */
+                var tw = _sigClamp01((el - p.t0) / (p.tSwing - p.t0));
+                var ew = _sigEaseOutCubic(tw);
+                p.pivot.rotation.z = p.a0 + 0.35 * ew * p.dir;
+                sw.setFade(1, 0.3 + 0.5 * tw);
+                p.gmA.opacity = 0; p.gmB.opacity = 0;
+            } else if (el < p.tHit) {
+                /* the swing — accelerating rip through the target */
+                var tSw = _sigClamp01((el - p.tSwing) / (p.tHit - p.tSwing));
+                var e = Math.pow(tSw, 2.1);
+                var start = p.a0 + 0.35 * p.dir;
+                var ang = start + (p.a1 - start) * e;
+                p.pivot.rotation.z = ang;
+                /* afterimages trail the blade, brightest mid-swing */
+                var vel = Math.sin(Math.min(1, tSw * 1.15) * Math.PI);
+                p.gpA.rotation.z = ang + 0.24 * p.dir * vel;
+                p.gpB.rotation.z = ang + 0.5 * p.dir * vel;
+                p.gmA.opacity = 0.5 * vel;
+                p.gmB.opacity = 0.26 * vel;
+                sw.setFade(1, 1);
+            } else {
+                /* impact + recover */
+                if (!p.hitFired) {
+                    p.hitFired = true;
+                    var hYaw = p.holder.rotation.y;
+                    _sigCrescentSlash3D(tx, ty, {
+                        color: color, yaw: hYaw, dir: p.dir,
+                        size: ts * (p.heavy ? 2.2 : 1.6),
+                        ms: p.heavy ? 300 : 230,
+                        roll: p.holder.rotation.x * 0.6,
+                    });
+                    _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', p.heavy ? 22 : 10);
+                    if (p.heavy) {
+                        _sigShake(opts.shake || 'hard');
+                        _sigScreenFlash('#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
+                        _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
+                        _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                        _sigCrescentSlash3D(tx, ty, {
+                            color: 0xffffff, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
+                        });
+                        if (_canSpawn()) {
+                            var cpx = tilePx(tx, ty);
+                            _spawn({
+                                x: cpx.x, y: cpx.y, z: unitSurfaceZ(tx, ty) + 1,
+                                mode: 'world', sprite: 'scorch',
+                                ml: 900, size0: ts * 0.6, size1: ts * 0.8,
+                                opacity0: 0.6, opacity1: 0,
+                            });
+                        }
+                    } else {
+                        _sigShake('soft');
+                    }
+                }
+                var tR = _sigClamp01((el - p.tHit) / (p.t1 - p.tHit));
+                /* small elastic overshoot as the cut stops dead */
+                p.pivot.rotation.z = p.a1 - 0.12 * p.dir * Math.sin(tR * Math.PI);
+                p.gmA.opacity = Math.max(0, 0.5 * (1 - tR * 2.2));
+                p.gmB.opacity = Math.max(0, 0.26 * (1 - tR * 2.2));
+                sw.setFade(1, Math.max(0.2, 1 - tR));
+            }
+        });
+
+        /* dissolve motes as the blade fades back out of existence */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigSparks(tx, ty, opts.moteSprite || 'psi-pulse', 10, { vxy: 40, vz0: 40, vz1: 140, gravity: -20 });
+        }, fadeAt);
+    }
+
+    /* ── crest texture for the knight shield — radiant cross ────────────── */
+    function _sigCrestTex() {
+        return _sigTex('sig-crest', 128, function (ctx, S) {
+            var c = S / 2;
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.28;
+            for (var r = 0; r < 12; r++) {
+                var a = r * Math.PI / 6;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(a) * 18, c + Math.sin(a) * 18);
+                ctx.lineTo(c + Math.cos(a) * 52, c + Math.sin(a) * 52);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 0.95;
+            ctx.fillRect(c - 7, c - 44, 14, 88);
+            ctx.fillRect(c - 30, c - 20, 60, 14);
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ── 3D heater shield builder — crest faces +Z. Steel face, gold trim
+       ring behind, dome boss, rivets, glowing crest emblem. ─────────────── */
+    function _sigBuildShield(opts) {
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var W = (opts.w != null ? opts.w : ts * 0.95) * (opts.scale || 1);
+        var H = W * 1.3;
+        var group = new THREE.Group();
+
+        function heaterShape(s) {
+            var sh = new THREE.Shape();
+            sh.moveTo(-W * 0.5 * s, H * 0.42 * s);
+            sh.quadraticCurveTo(0, H * 0.55 * s, W * 0.5 * s, H * 0.42 * s);
+            sh.quadraticCurveTo(W * 0.56 * s, -H * 0.05 * s, 0, -H * 0.55 * s);
+            sh.quadraticCurveTo(-W * 0.56 * s, -H * 0.05 * s, -W * 0.5 * s, H * 0.42 * s);
+            return sh;
+        }
+        var faceMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.faceTex || 'metal.png', 1, 1),
+            color: new THREE.Color(opts.faceColor != null ? opts.faceColor : 0xb9c4d6),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var trimMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.trimTex || 'gold.png', 1, 1),
+            color: new THREE.Color(opts.trimColor != null ? opts.trimColor : 0xffe28a),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var faceGeo = new THREE.ExtrudeGeometry(heaterShape(1), {
+            depth: W * 0.07, bevelEnabled: true, curveSegments: 8,
+            bevelThickness: W * 0.03, bevelSize: W * 0.035, bevelSegments: 2,
+        });
+        _sigScaleUVs(faceGeo, 1 / W, 1 / W, 0.5, 0.5);
+        var face = new THREE.Mesh(faceGeo, faceMat);
+        face.renderOrder = 160;
+        group.add(face);
+        var trimGeo = new THREE.ExtrudeGeometry(heaterShape(1.1), {
+            depth: W * 0.05, bevelEnabled: true, curveSegments: 8,
+            bevelThickness: W * 0.02, bevelSize: W * 0.025, bevelSegments: 1,
+        });
+        _sigScaleUVs(trimGeo, 1 / W, 1 / W, 0.5, 0.5);
+        var trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.z = -W * 0.045;
+        trim.renderOrder = 159;
+        group.add(trim);
+        /* dome boss */
+        var boss = new THREE.Mesh(new THREE.SphereGeometry(W * 0.15, 10, 8), trimMat);
+        boss.scale.z = 0.55;
+        boss.position.z = W * 0.09;
+        boss.renderOrder = 161;
+        group.add(boss);
+        /* rivets around the face */
+        var rivetGeo = new THREE.SphereGeometry(W * 0.035, 6, 5);
+        var rivetPts = [
+            [-0.38, 0.36], [0, 0.46], [0.38, 0.36],
+            [-0.44, 0.0], [0.44, 0.0],
+            [-0.26, -0.3], [0.26, -0.3], [0, -0.48],
+        ];
+        for (var rv = 0; rv < rivetPts.length; rv++) {
+            var rvm = new THREE.Mesh(rivetGeo, trimMat);
+            rvm.position.set(rivetPts[rv][0] * W, rivetPts[rv][1] * H, W * 0.075);
+            rvm.renderOrder = 161;
+            group.add(rvm);
+        }
+        /* glowing crest */
+        var crestMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0xffd875, { map: _sigCrestTex() });
+        var crest = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.85, W * 0.85), crestMat);
+        crest.position.z = W * 0.115;
+        crest.renderOrder = 162;
+        group.add(crest);
+
+        function setFade(f, glowBoost) {
+            faceMat.opacity = f;
+            trimMat.opacity = f;
+            crestMat.opacity = (0.5 + 0.5 * (glowBoost || 0)) * f;
+        }
+        setFade(0);
+        return { group: group, setFade: setFade, w: W, h: H };
+    }
+
+    /* ── HERO: SHIELD BASH — a spectral tower shield summons in front of the
+       target, braces, and RAMS through it with a shockwave ──────────────── */
+    function _sigShieldBash3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.glowColor != null ? opts.glowColor : 0xffd875;
+        var yaw = opts.yaw != null ? opts.yaw : _sigYawToward(tx, ty);
+
+        var sh = _sigBuildShield({ glowColor: color, scale: opts.scale || 1 });
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.rotation.y = yaw;
+        sh.group.position.set(0, ts * 0.62, -ts * 0.85);
+        group.add(sh.group);
+
+        var summonMs = 130, braceMs = 100, ramMs = 70, holdMs = 170, fadeMs = 240;
+        var total = summonMs + braceMs + ramMs + holdMs + fadeMs;
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: ts * 0.8, height: ts * 0.6,
+            tiltRad: Math.PI / 2, growMs: 110, holdMs: summonMs + braceMs, fadeMs: 200,
+            spin: 0.005, opacity: 0.8,
+        });
+        var impactFired = false;
+        _sigRun(group, total, function (el) {
+            if (el < summonMs) {
+                var t = el / summonMs;
+                var s = Math.max(0.01, _sigEaseOutBack(t));
+                sh.group.scale.set(s, s, s);
+                sh.setFade(Math.min(1, t * 1.8), 1 - t);
+                sh.group.position.z = -ts * 0.85;
+            } else if (el < summonMs + braceMs) {
+                var t2 = (el - summonMs) / braceMs;
+                sh.group.scale.set(1, 1, 1);
+                sh.group.position.z = -ts * (0.85 + 0.18 * _sigEaseOutCubic(t2));
+                sh.group.rotation.x = -0.08 * t2;
+                sh.setFade(1, 0.4);
+            } else if (el < summonMs + braceMs + ramMs) {
+                var t3 = (el - summonMs - braceMs) / ramMs;
+                sh.group.position.z = -ts * 1.03 + ts * 1.2 * _sigEaseInCubic(t3);
+                sh.group.rotation.x = -0.08 * (1 - t3);
+                sh.setFade(1, 1);
+            } else {
+                if (!impactFired) {
+                    impactFired = true;
+                    _sigShake(opts.shake || 'normal');
+                    _sigScreenFlash(_sigCss(color), 130, opts.flashPeak != null ? opts.flashPeak : 0.2);
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.5 });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                    _sigSparks(tx, ty, 'steel-spark', 16);
+                }
+                var elH = el - summonMs - braceMs - ramMs;
+                if (elH < holdMs) {
+                    sh.group.position.z = ts * 0.17 - 2 + Math.sin(elH * 0.09) * 2;
+                    sh.setFade(1, 0.5);
+                } else {
+                    var t4 = (elH - holdMs) / fadeMs;
+                    sh.group.position.z = ts * 0.17 - t4 * ts * 0.3;
+                    sh.setFade(1 - t4, 0);
+                }
+            }
+        });
+    }
+
+    /* ── HERO: SHIELD FORTRESS — a ring of shields rises from the earth and
+       locks around the tile, then sinks away (fortify / Castle Fortress /
+       Oath of Valor). ─────────────────────────────────────────────────── */
+    function _sigShieldRing3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.glowColor != null ? opts.glowColor : 0xffd875;
+        var n = opts.count != null ? opts.count : 4;
+        var radius = (opts.radiusTiles != null ? opts.radiusTiles : 0.72) * ts;
+        var riseMs = 240, stagger = 80, holdMs = opts.holdMs != null ? opts.holdMs : 850, sinkMs = 300;
+        var total = riseMs + stagger * (n - 1) + holdMs + sinkMs;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var startYaw = rn(0, Math.PI * 2);
+        var shields = [];
+        for (var i = 0; i < n; i++) {
+            var a = startYaw + i * Math.PI * 2 / n;
+            var holder = new THREE.Group();
+            holder.rotation.y = a;
+            group.add(holder);
+            var sh = _sigBuildShield({ glowColor: color, scale: opts.scale != null ? opts.scale : 0.7 });
+            sh.group.position.set(0, -sh.h * 0.6, radius);
+            holder.add(sh.group);
+            shields.push({ sh: sh, t0: i * stagger, clinked: false });
+        }
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: radius * 1.35, growMs: 160,
+            holdMs: total - 500, fadeMs: 300, spin: 0.0022, opacity: 0.7,
+        });
+
+        _sigRun(group, total, function (el) {
+            group.rotation.y = el * 0.00045;
+            for (var i2 = 0; i2 < shields.length; i2++) {
+                var s2 = shields[i2];
+                var lt = el - s2.t0;
+                if (lt < 0) { s2.sh.setFade(0); continue; }
+                if (lt < riseMs) {
+                    var tr = lt / riseMs;
+                    var e = _sigEaseOutBack(tr);
+                    s2.sh.group.position.y = -s2.sh.h * 0.6 + (s2.sh.h * 0.6 + ts * 0.55) * e;
+                    s2.sh.setFade(Math.min(1, tr * 2), 1 - tr);
+                } else if (el < total - sinkMs) {
+                    if (!s2.clinked) {
+                        s2.clinked = true;
+                        _sigSparks(tx, ty, 'divine-sparkle', 4, { vxy: 90, vz0: 30, vz1: 120, gravity: 60 });
+                    }
+                    s2.sh.group.position.y = ts * 0.55 + Math.sin(el * 0.004 + i2) * 2;
+                    s2.sh.setFade(1, 0.3 + 0.3 * Math.sin(el * 0.006 + i2 * 1.7));
+                } else {
+                    var tk = (el - (total - sinkMs)) / sinkMs;
+                    s2.sh.group.position.y = ts * 0.55 - tk * ts * 0.7;
+                    s2.sh.setFade(1 - tk, 0);
+                }
+            }
+        });
+    }
+
+    /* ── HERO: SPECTRAL JAWS — two flesh-and-fang jaw arcs materialize
+       around the victim and SNAP shut. Gums wear the R2 flesh sprite, fangs
+       are marble-clad (bone sprite still wanted — see PLAYTEST_NOTES).
+       Used by werewolf maulings and every other bite in the roster. ─────── */
+    function _sigJawsBite3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var scale = opts.scale != null ? opts.scale : 1;
+        var R = ts * 0.58 * scale;
+        var color = opts.glowColor != null ? opts.glowColor : 0xff3333;
+        var gumTint = opts.gumTint != null ? opts.gumTint : 0x8a2020;
+        var toothTint = opts.toothTint != null ? opts.toothTint : 0xf2ead8;
+
+        var gumMatU = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.gumTex || 'flesh.png', 1, 1),
+            color: new THREE.Color(gumTint), transparent: true, opacity: 0, depthWrite: true,
+        });
+        var hideMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.hideTex || 'flesh_3.png', 1, 1),
+            color: new THREE.Color(opts.hideTint != null ? opts.hideTint : 0x2f1d1a),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var toothMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.toothTex || 'marble.png', 1, 1),
+            color: new THREE.Color(toothTint), transparent: true, opacity: 0, depthWrite: true,
+        });
+        var mawMat = _sigMat(color);
+
+        function buildJaw(isUpper) {
+            var jaw = new THREE.Group();
+            var gum = new THREE.Mesh(new THREE.TorusGeometry(R, R * 0.26, 8, 14, Math.PI), gumMatU);
+            gum.rotation.x = -Math.PI / 2;
+            gum.scale.y = 0.55;
+            jaw.add(gum);
+            /* snarling outer hide ridge over the gums */
+            var hide = new THREE.Mesh(new THREE.TorusGeometry(R * 1.08, R * 0.2, 7, 14, Math.PI), hideMat);
+            hide.rotation.x = -Math.PI / 2;
+            hide.scale.y = 0.5;
+            hide.position.y = (isUpper ? 1 : -1) * R * 0.16;
+            jaw.add(hide);
+            /* fangs along the arc — big canines at the corners */
+            var nT = 7;
+            for (var k = 0; k < nT; k++) {
+                var a = (0.09 + 0.82 * (k / (nT - 1))) * Math.PI;
+                var px = Math.cos(a) * R;
+                var pz = -Math.sin(a) * R;
+                var canine = (k === 0 || k === nT - 1);
+                var th = R * (canine ? 0.62 : 0.36) * (0.9 + 0.2 * Math.sin(k * 2.7));
+                var tr = R * (canine ? 0.14 : 0.10);
+                var tooth = new THREE.Mesh(new THREE.ConeGeometry(tr, th, 6), toothMat);
+                tooth.position.set(px, (isUpper ? -1 : 1) * th * 0.42, pz);
+                tooth.rotation.x = isUpper ? Math.PI : 0;
+                tooth.rotation.z = (isUpper ? 1 : -1) * Math.cos(a) * 0.22;
+                jaw.add(tooth);
+            }
+            /* glowing maw behind the fangs */
+            var maw = new THREE.Mesh(new THREE.CircleGeometry(R * 0.92, 12), mawMat);
+            maw.rotation.x = -Math.PI / 2;
+            maw.position.y = (isUpper ? 1 : -1) * R * 0.05;
+            jaw.add(maw);
+            for (var jj = 0; jj < jaw.children.length; jj++) jaw.children[jj].renderOrder = 160;
+            maw.renderOrder = 159;
+            return jaw;
+        }
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.rotation.y = opts.yaw != null ? opts.yaw : _sigYawToward(tx, ty);
+        var mouthY = ts * 0.55 * scale;
+        var upper = buildJaw(true);
+        var lower = buildJaw(false);
+        group.add(upper); group.add(lower);
+
+        var openMs = 130, snapMs = 65, clenchMs = opts.clenchMs != null ? opts.clenchMs : 260, fadeMs = 240;
+        var total = openMs + snapMs + clenchMs + fadeMs;
+        var gapOpen = R * 1.15, gapShut = R * 0.22;
+
+        _sigMagicCircle3D(tx, ty, {
+            color: opts.circleColor != null ? opts.circleColor : 0x881111,
+            radiusPx: ts * 0.95 * scale, growMs: 100, holdMs: openMs + snapMs + clenchMs,
+            fadeMs: 200, spin: 0.006, opacity: 0.7,
+        });
+
+        var snapped = false;
+        _sigRun(group, total, function (el) {
+            var vis = 1, gap, bite;
+            if (el < openMs) {
+                var t = el / openMs;
+                vis = Math.min(1, t * 2.2);
+                gap = gapOpen * _sigEaseOutCubic(t);
+                bite = 0.55 * _sigEaseOutCubic(t);
+            } else if (el < openMs + snapMs) {
+                var t2 = (el - openMs) / snapMs;
+                var e = _sigEaseInCubic(t2);
+                gap = gapOpen + (gapShut - gapOpen) * e;
+                bite = 0.55 * (1 - e) - 0.05 * e;
+            } else if (el < openMs + snapMs + clenchMs) {
+                if (!snapped) {
+                    snapped = true;
+                    _sigShake(opts.shake || 'normal');
+                    _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.16);
+                    _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.3 * scale, ms: 360 });
+                    _sigSpeedBurst3D(tx, ty, { color: 0xffffff, ms: 200 });
+                    _sigSparks(tx, ty, opts.sparkSprite || 'blood-fleck', 16, { vxy: 170, vz0: 40, vz1: 200, gravity: 380 });
+                }
+                var elC = el - openMs - snapMs;
+                gap = gapShut + Math.sin(elC * 0.11) * R * 0.03;   /* worrying the prey */
+                bite = -0.05 + Math.sin(elC * 0.07) * 0.02;
+            } else {
+                var t4 = (el - openMs - snapMs - clenchMs) / fadeMs;
+                gap = gapShut + (gapOpen * 0.4) * t4;
+                bite = 0.25 * t4;
+                vis = 1 - t4;
+                group.position.y = wp.y + t4 * ts * 0.3;
+            }
+            upper.position.y = mouthY + gap * 0.5;
+            lower.position.y = mouthY - gap * 0.5;
+            upper.rotation.x = -bite;
+            lower.rotation.x = bite * 0.7;
+            gumMatU.opacity = vis;
+            hideMat.opacity = vis;
+            toothMat.opacity = vis;
+            mawMat.opacity = 0.30 * vis;
+        });
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigSparks(tx, ty, 'void-mist', 6, { vxy: 50, vz0: 20, vz1: 90, gravity: -30 });
+        }, openMs + snapMs + clenchMs);
+    }
+
+    /* ── claw-gouge texture — three ragged parallel rips ────────────────── */
+    function _sigClawMarkTex() {
+        return _sigTex('sig-clawmark', 256, function (ctx, S) {
+            var rnd = _sigRand(0xC1A45);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineCap = 'round';
+            for (var i = 0; i < 3; i++) {
+                var ox = 62 + i * 46 + (rnd() - 0.5) * 10;
+                for (var pass = 0; pass < 14; pass++) {
+                    var t = pass / 14;
+                    ctx.globalAlpha = 0.8 * Math.sin(t * Math.PI);
+                    ctx.lineWidth = 2 + 13 * Math.sin(t * Math.PI);
+                    ctx.beginPath();
+                    var y0 = 26 + t * 190;
+                    ctx.moveTo(ox - 24 + t * 46 + (rnd() - 0.5) * 5, y0);
+                    ctx.lineTo(ox - 24 + (t + 0.075) * 46 + (rnd() - 0.5) * 5, y0 + 15);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ── build a "claw fan": 4 curved talons on an invisible wrist. Each
+       talon is a tapered knuckle segment + hooked tip cone, marble-clad
+       (pearl/bone placeholder) with an additive edge sheen. ──────────────── */
+    function _sigBuildClawFan(ts, opts) {
+        opts = opts || {};
+        var scale = opts.scale != null ? opts.scale : 1;
+        var color = opts.glowColor != null ? opts.glowColor : 0xff88cc;
+        var clawMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.clawTex || 'marble.png', 1, 1),
+            color: new THREE.Color(opts.clawTint != null ? opts.clawTint : 0xf6eee2),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var sheenMat = _sigMat(color);
+        var fan = new THREE.Group();
+        for (var i = 0; i < 4; i++) {
+            var lenMul = (i === 0 || i === 3) ? 0.78 : 1;
+            var L = ts * 0.72 * scale * lenMul;
+            var talon = new THREE.Group();
+            var seg1 = new THREE.Mesh(new THREE.CylinderGeometry(L * 0.055, L * 0.11, L * 0.5, 7), clawMat);
+            seg1.position.y = -L * 0.25;
+            talon.add(seg1);
+            var seg2Holder = new THREE.Group();
+            seg2Holder.position.y = -L * 0.5;
+            seg2Holder.rotation.x = 0.55;          /* the hook of the claw */
+            var seg2 = new THREE.Mesh(new THREE.ConeGeometry(L * 0.055, L * 0.52, 7), clawMat);
+            seg2.rotation.x = Math.PI;             /* point down */
+            seg2.position.y = -L * 0.26;
+            seg2Holder.add(seg2);
+            var sheen = new THREE.Mesh(new THREE.ConeGeometry(L * 0.075, L * 0.56, 7), sheenMat);
+            sheen.rotation.x = Math.PI;
+            sheen.position.y = -L * 0.26;
+            sheen.renderOrder = 159;
+            seg2Holder.add(sheen);
+            talon.add(seg2Holder);
+            talon.position.x = (i - 1.5) * ts * 0.17 * scale;
+            talon.rotation.z = (i - 1.5) * -0.07;  /* slight splay */
+            fan.add(talon);
+        }
+        fan.traverse(function (o) { if (o.isMesh && o.renderOrder === 0) o.renderOrder = 160; });
+        function setFade(f, boost) {
+            clawMat.opacity = f;
+            sheenMat.opacity = (0.30 + 0.5 * (boost || 0)) * f;
+        }
+        setFade(0);
+        return { group: fan, setFade: setFade };
+    }
+
+    /* ── HERO: CLAW COMBO — spectral talons rake the target in quick
+       alternating swipes, each leaving a triple crescent trail; ends with
+       lingering glowing gouge-marks. opts.swipes / scale / colors. ───────── */
+    function _sigClawCombo3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.glowColor != null ? opts.glowColor : 0xff88cc;
+        var scale = (opts.scale != null ? opts.scale : 1) * 1.25;
+        var nSwipes = opts.swipes != null ? opts.swipes : 3;
+        var baseYaw = opts.yaw != null ? opts.yaw : _sigYawToward(tx, ty);
+        var windMs = 55, swipeMs = opts.swipeMs != null ? opts.swipeMs : 70, gapMs = 45;
+        var perSwipe = windMs + swipeMs + gapMs;
+        var fadeMs = 200;
+        var markMs = opts.markMs != null ? opts.markMs : 700;
+        var total = nSwipes * perSwipe + fadeMs + markMs;
+        var hubH = ts * (1.05 * scale);
+        var radius = ts * 0.95 * scale;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+
+        var swipes = [];
+        for (var i = 0; i < nSwipes; i++) {
+            var dir = (i % 2 === 0) ? 1 : -1;
+            var holder = new THREE.Group();
+            holder.rotation.order = 'YXZ';
+            holder.rotation.y = baseYaw + (i - (nSwipes - 1) / 2) * 0.55;
+            holder.rotation.x = dir * 0.35;
+            holder.visible = false;
+            group.add(holder);
+            var pivot = new THREE.Group();
+            pivot.position.y = hubH;
+            holder.add(pivot);
+            var fan = _sigBuildClawFan(ts, { scale: scale, glowColor: color, clawTint: opts.clawTint, clawTex: opts.clawTex });
+            fan.group.position.y = -radius;
+            pivot.add(fan.group);
+            swipes.push({
+                holder: holder, pivot: pivot, fan: fan, dir: dir,
+                t0: i * perSwipe, hitFired: false,
+            });
+        }
+        /* lingering gouge decal, revealed by the last swipe */
+        var markMat = _sigMat(color, { map: _sigClawMarkTex() });
+        var mark = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15 * scale, ts * 1.15 * scale), markMat);
+        mark.position.y = ts * 0.55;
+        mark.rotation.x = -0.5;
+        mark.rotation.z = baseYaw * 0.3;
+        mark.renderOrder = 164;
+        group.add(mark);
+
+        _sigRun(group, total, function (el) {
+            for (var k = 0; k < swipes.length; k++) {
+                var s = swipes[k];
+                var lt = el - s.t0;
+                if (lt < 0 || lt > perSwipe + 60) { s.holder.visible = false; continue; }
+                s.holder.visible = true;
+                var a0 = s.dir * 1.5, a1 = -s.dir * 1.4;
+                if (lt < windMs) {
+                    var tw = lt / windMs;
+                    s.pivot.rotation.z = a0 + 0.3 * s.dir * _sigEaseOutCubic(tw);
+                    s.fan.setFade(Math.min(1, tw * 2.5), 0.4);
+                } else if (lt < windMs + swipeMs) {
+                    var tSw = (lt - windMs) / swipeMs;
+                    var e = Math.pow(tSw, 2);
+                    s.pivot.rotation.z = (a0 + 0.3 * s.dir) + (a1 - a0 - 0.3 * s.dir) * e;
+                    s.fan.setFade(1, 1);
+                } else {
+                    if (!s.hitFired) {
+                        s.hitFired = true;
+                        var hYaw = s.holder.rotation.y;
+                        /* triple crescent — one per lead talon */
+                        for (var c3 = -1; c3 <= 1; c3++) {
+                            _sigCrescentSlash3D(tx, ty, {
+                                color: c3 === 0 ? 0xffffff : color,
+                                yaw: hYaw + c3 * 0.16, dir: s.dir,
+                                size: ts * (1.15 + 0.2 * (1 - Math.abs(c3))) * scale,
+                                ms: 200, height: ts * (0.5 + c3 * 0.09),
+                            });
+                        }
+                        _sigSparks(tx, ty, opts.sparkSprite || 'blood-fleck', 8, { vxy: 190, vz0: 30, vz1: 170, gravity: 320 });
+                        _sigShake('soft');
+                        if (k === swipes.length - 1) {
+                            _sigSpeedBurst3D(tx, ty, { color: color, ms: 220 });
+                            _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.12);
+                            if (opts.heavyFinish) {
+                                _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.5 * scale });
+                                _sigShake('normal');
+                            }
+                        }
+                    }
+                    var tG = (lt - windMs - swipeMs) / gapMs;
+                    s.pivot.rotation.z = a1 - 0.1 * s.dir * Math.sin(Math.min(1, tG) * Math.PI);
+                    s.fan.setFade(Math.max(0, 1 - tG), 0.3);
+                }
+            }
+            /* gouge marks flare in as the combo ends, then bleed out */
+            var mT0 = nSwipes * perSwipe - 40;
+            if (el > mT0) {
+                var mt = _sigClamp01((el - mT0) / (total - mT0));
+                markMat.opacity = 0.85 * Math.sin(Math.min(1, mt * 1.4) * Math.PI);
+                mark.scale.set(1 + mt * 0.12, 1 + mt * 0.12, 1);
+            } else {
+                markMat.opacity = 0;
+            }
+        });
+    }
+
+    /* which spectral firearm each gun spell summons (see _fireBoltMapped) */
+    var _SIG_GUN_FOR = {
+        deadEye: 'revolver',
+        ricochet1: 'revolver',
+        raceHighNoon: 'revolver',
+        doubleShot: 'shotgun',        /* "Double Pump" */
+        headshot: 'sniper',
+        precisionShot: 'sniper',
+        kneecapShot: 'sniper',
+    };
+
+    /* world-space vector → the coordinate frame _spawn() expects */
+    function _sigWorldToSpawn(v) {
+        var cfg = _cfg();
+        var pad = cfg.boardPadding || 2;
+        return { x: v.x + pad, y: v.z + pad, z: v.y - 3 };
+    }
+
+    /* ── HERO: PIRATE CANNON — a full iron carronade on a wooden carriage
+       materializes beside the caster, its fuse burns down, and it hurls a
+       spinning iron ball on a real ballistic arc into a 3×3 fireball.
+       Wired through the bolt intent so it knows caster AND target. ──────── */
+    function _sigCannonShot3D(fromTx, fromTy, toTx, toTy, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var fw = _worldPos(fromTx, fromTy);
+        var tw = _worldPos(toTx, toTy);
+        var ts = fw.ts;
+
+        var ironMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('metal_3.png', 1, 1),
+            color: new THREE.Color(0x596069),      /* cast iron (placeholder tint) */
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var woodMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('wood_planks.png', 1, 1),
+            color: new THREE.Color(0x9a744c),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var brassMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gold.png', 1, 1),
+            color: new THREE.Color(0xd9b25e),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+
+        var root = new THREE.Group();
+        root.position.set(fw.x, fw.y, fw.z);
+        root.scale.setScalar(opts.scale != null ? opts.scale : 1.35);   /* reads from the diorama cam */
+        var dx = tw.x - fw.x, dz = tw.z - fw.z;
+        var yaw = Math.atan2(dx, dz);
+        root.rotation.y = yaw;
+
+        function m(geo, mat, x, y, z, rx, ry, rz) {
+            var mm = new THREE.Mesh(geo, mat);
+            mm.position.set(x, y, z);
+            mm.rotation.set(rx || 0, ry || 0, rz || 0);
+            mm.renderOrder = 160;
+            return mm;
+        }
+        /* barrel assembly pivots at the trunnions for elevation */
+        var barrel = new THREE.Group();
+        barrel.position.y = ts * 0.16;
+        barrel.add(m(new THREE.SphereGeometry(ts * 0.075, 8, 7), ironMat, 0, 0, -ts * 0.34));                    /* cascabel */
+        barrel.add(m(new THREE.CylinderGeometry(ts * 0.105, ts * 0.125, ts * 0.5, 12), ironMat, 0, 0, -ts * 0.04, Math.PI / 2));
+        barrel.add(m(new THREE.CylinderGeometry(ts * 0.082, ts * 0.10, ts * 0.42, 12), ironMat, 0, 0, ts * 0.40, Math.PI / 2));
+        barrel.add(m(new THREE.TorusGeometry(ts * 0.092, ts * 0.022, 8, 16), brassMat, 0, 0, ts * 0.585));       /* muzzle ring */
+        barrel.add(m(new THREE.TorusGeometry(ts * 0.122, ts * 0.02, 8, 16), brassMat, 0, 0, -ts * 0.235));       /* breech ring */
+        barrel.add(m(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.36, 8), ironMat, 0, 0, -ts * 0.02, 0, 0, Math.PI / 2)); /* trunnion */
+        var muzzle = new THREE.Object3D();
+        muzzle.position.set(0, 0, ts * 0.62);
+        barrel.add(muzzle);
+        barrel.rotation.x = -(opts.elev != null ? opts.elev : 0.30);
+        root.add(barrel);
+        /* carriage: cheeks, axle, wheels */
+        root.add(m(new THREE.BoxGeometry(ts * 0.055, ts * 0.20, ts * 0.5), woodMat, -ts * 0.135, ts * 0.06, -ts * 0.04));
+        root.add(m(new THREE.BoxGeometry(ts * 0.055, ts * 0.20, ts * 0.5), woodMat, ts * 0.135, ts * 0.06, -ts * 0.04));
+        root.add(m(new THREE.BoxGeometry(ts * 0.22, ts * 0.05, ts * 0.4), woodMat, 0, ts * 0.0, -ts * 0.05));
+        root.add(m(new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, ts * 0.5, 8), ironMat, 0, ts * 0.02, ts * 0.10, 0, 0, Math.PI / 2));
+        for (var wsd = 0; wsd < 2; wsd++) {
+            var wx = (wsd === 0 ? -1 : 1) * ts * 0.245;
+            root.add(m(new THREE.CylinderGeometry(ts * 0.145, ts * 0.145, ts * 0.045, 12), woodMat, wx, ts * 0.02, ts * 0.10, 0, 0, Math.PI / 2));
+            root.add(m(new THREE.TorusGeometry(ts * 0.145, ts * 0.018, 8, 16), ironMat, wx, ts * 0.02, ts * 0.10, 0, Math.PI / 2));
+            root.add(m(new THREE.SphereGeometry(ts * 0.035, 8, 6), brassMat, wx, ts * 0.02, ts * 0.10));
+        }
+        /* the cannonball */
+        var ballMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('obsidian.png', 1, 1),
+            color: new THREE.Color(0x33363d),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var ball = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 10, 8), ballMat);
+        ball.renderOrder = 161;
+        var ballGlow = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.15, 10, 8), _sigMat(0xff8833));
+        ball.add(ballGlow);
+        scene.add(ball);   /* flies in world space, cleaned up manually */
+
+        /* muzzle flash cross-planes */
+        var flashMat = _sigMat(0xffcc66, { map: _sigBurstTex() });
+        var flashA = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), flashMat);
+        var flashB = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), flashMat);
+        flashB.rotation.z = Math.PI / 4;
+        flashA.renderOrder = 165; flashB.renderOrder = 165;
+        muzzle.add(flashA); muzzle.add(flashB);
+        var ringMat = _sigMat(0xddccaa);
+        var smokeRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.12, 8, 20), ringMat);
+        smokeRing.renderOrder = 164;
+        muzzle.add(smokeRing);
+
+        var matMs = 110, fuseMs = 90;
+        var fireAt = matMs + fuseMs;
+        var flyMs = Math.max(200, (opts.flyMs || 480) - fireAt);
+        var lingerMs = 520, fadeMs = 300;
+        var total = fireAt + flyMs + lingerMs + fadeMs;
+
+        _sigMagicCircle3D(fromTx, fromTy, {
+            color: 0xffaa44, radiusPx: ts * 0.8, growMs: 100,
+            holdMs: fireAt + 250, fadeMs: 220, spin: 0.005, opacity: 0.75,
+        });
+
+        var mzWorld = new THREE.Vector3();
+        var ballFrom = null;
+        var ballTo = new THREE.Vector3(tw.x, tw.y + ts * 0.18, tw.z);
+        var arcH = 0;
+        var fired = false, landed = false;
+        var trailAcc = 0, lastEl = 0;
+
+        _sigRun(root, total, function (el) {
+            var dt = el - lastEl; lastEl = el;
+            var vis;
+            if (el < matMs) {
+                var t = el / matMs;
+                var s = Math.max(0.01, _sigEaseOutBack(t));
+                root.scale.set(s, s, s);
+                vis = Math.min(1, t * 2);
+            } else {
+                root.scale.set(1, 1, 1);
+                vis = 1;
+            }
+            if (el >= total - fadeMs) {
+                vis = Math.max(0, 1 - (el - (total - fadeMs)) / fadeMs);
+            }
+            ironMat.opacity = vis; woodMat.opacity = vis; brassMat.opacity = vis;
+
+            /* burning fuse sparks at the breech */
+            if (el > matMs && el < fireAt && _canSpawn()) {
+                trailAcc += dt;
+                if (trailAcc > 30) {
+                    trailAcc = 0;
+                    root.updateMatrixWorld(true);
+                    var bp = new THREE.Vector3(0, ts * 0.22, -ts * 0.36).applyMatrix4(root.matrixWorld);
+                    var sp = _sigWorldToSpawn(bp);
+                    _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'ember',
+                             ml: 200, size0: 8, size1: 2, vz: 30, opacity0: 1, opacity1: 0 });
+                }
+            }
+
+            if (!fired && el >= fireAt) {
+                fired = true;
+                root.updateMatrixWorld(true);
+                muzzle.getWorldPosition(mzWorld);
+                ballFrom = mzWorld.clone();
+                var d2 = Math.sqrt(Math.pow(ballTo.x - ballFrom.x, 2) + Math.pow(ballTo.z - ballFrom.z, 2));
+                arcH = d2 * 0.20 + ts * 0.55;
+                ballMat.opacity = 1;
+                _sigShake('soft');
+                _sigScreenFlash('#ffcc88', 110, 0.12);
+                var mzs = _sigWorldToSpawn(mzWorld);
+                if (_canSpawn()) {
+                    _spawn({ x: mzs.x, y: mzs.y, z: mzs.z, mode: 'billboard', sprite: 'muzzle-flash',
+                             ml: 180, size0: ts * 0.8, size1: ts * 0.25, opacity0: 1, opacity1: 0 });
+                    for (var sm = 0; sm < 5; sm++) {
+                        _spawn({ x: mzs.x + rn(-6, 6), y: mzs.y + rn(-6, 6), z: mzs.z, mode: 'billboard',
+                                 sprite: 'smoke', ml: rn(500, 900), size0: rn(18, 30), size1: rn(60, 90),
+                                 vx: Math.sin(yaw) * rn(40, 90), vy: Math.cos(yaw) * rn(40, 90), vz: rn(15, 45),
+                                 drag: 0.7, opacity0: 0.6, opacity1: 0 });
+                    }
+                }
+            }
+            if (fired) {
+                var elF = el - fireAt;
+                /* recoil the whole carriage back along the firing line */
+                var rec = Math.max(0, 1 - elF / 260);
+                var recD = ts * 0.24 * Math.sin(Math.min(1, elF / 90) * Math.PI * 0.5) * rec;
+                root.position.set(fw.x - Math.sin(yaw) * recD, fw.y, fw.z - Math.cos(yaw) * recD);
+                var fT = elF / 110;
+                if (fT < 1) {
+                    var fs = ts * (0.55 + 0.5 * fT);
+                    flashA.scale.set(fs, fs, 1); flashB.scale.set(fs, fs, 1);
+                    flashMat.opacity = 0.95 * (1 - fT);
+                    var rs = ts * (0.10 + 0.55 * fT);
+                    smokeRing.scale.set(rs, rs, rs);
+                    ringMat.opacity = 0.5 * (1 - fT);
+                } else { flashMat.opacity = 0; ringMat.opacity = 0; }
+
+                /* ballistic ball flight */
+                var bt = _sigClamp01(elF / flyMs);
+                if (!landed) {
+                    ball.position.set(
+                        ballFrom.x + (ballTo.x - ballFrom.x) * bt,
+                        ballFrom.y + (ballTo.y - ballFrom.y) * bt + arcH * 4 * bt * (1 - bt),
+                        ballFrom.z + (ballTo.z - ballFrom.z) * bt
+                    );
+                    ball.rotation.x += dt * 0.02;
+                    ball.rotation.y += dt * 0.013;
+                    ballGlow.material.opacity = 0.22 + 0.1 * Math.sin(el * 0.03);
+                    trailAcc += dt;
+                    if (trailAcc > 34 && _canSpawn()) {
+                        trailAcc = 0;
+                        var bs = _sigWorldToSpawn(ball.position);
+                        _spawn({ x: bs.x, y: bs.y, z: bs.z, mode: 'billboard', sprite: 'ember',
+                                 ml: 260, size0: 9, size1: 2, opacity0: 0.9, opacity1: 0 });
+                        _spawn({ x: bs.x, y: bs.y, z: bs.z, mode: 'billboard', sprite: 'smoke',
+                                 ml: 420, size0: 12, size1: 30, vz: 10, opacity0: 0.35, opacity1: 0 });
+                    }
+                    if (bt >= 1) {
+                        landed = true;
+                        ball.visible = false;
+                        _spawnExplosionRing3D(toTx, toTy, opts.aoeRadius != null ? opts.aoeRadius : 1, {});
+                        _sigShockRing3D(toTx, toTy, { color: 0xffaa44, r1: ts * 1.9 });
+                        _sigSpeedBurst3D(toTx, toTy, { color: 0xffcc88 });
+                        _sigSparks(toTx, toTy, 'ember', 20);
+                        _sigSparks(toTx, toTy, 'rock-debris', 10, { vxy: 220, vz0: 60, vz1: 260, gravity: 420 });
+                        _sigShake('hard');
+                        _sigScreenFlash('#ffaa55', 150, 0.24);
+                        if (_canSpawn()) {
+                            var cpx2 = tilePx(toTx, toTy);
+                            _spawn({ x: cpx2.x, y: cpx2.y, z: unitSurfaceZ(toTx, toTy) + 1,
+                                     mode: 'world', sprite: 'scorch', ml: 1600,
+                                     size0: ts * 0.9, size1: ts * 1.05, opacity0: 0.85, opacity1: 0 });
+                        }
+                    }
+                }
+            }
+        });
+        /* the ball lives outside the rig group — dispose it when the run ends */
+        window.setTimeout(function () {
+            scene.remove(ball);
+            ball.geometry.dispose(); ballMat.dispose();
+            ballGlow.geometry.dispose(); ballGlow.material.dispose();
+        }, total + 60);
+    }
+
+    /* ── SPECTRAL FIREARMS — giant stand-summoned guns for the gunslinger /
+       sniper kits. One rig per (kind, caster tile); multi-hit spells reuse
+       the live rig and just squeeze the trigger again (Double Pump cycles
+       its pump between shells, the revolver's cylinder rolls, the sniper
+       paints an aim-laser before its hit). Gunmetal = metal.png tinted dark
+       (a dedicated gunmetal sprite would be even better). ────────────────── */
+    var _sigGunRigs = {};
+
+    function _sigBuildGun(kind, ts) {
+        var steelMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('metal.png', 1, 1),
+            color: new THREE.Color(0x7d8798), transparent: true, opacity: 0, depthWrite: true,
+        });
+        var woodMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('wood.png', 1, 1),
+            color: new THREE.Color(0x6e4a2e), transparent: true, opacity: 0, depthWrite: true,
+        });
+        var brassMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gold.png', 1, 1),
+            color: new THREE.Color(0xd9b25e), transparent: true, opacity: 0, depthWrite: true,
+        });
+        var gun = new THREE.Group();
+        function m2(geo, mat, x, y, z, rx, ry, rz) {
+            var mm = new THREE.Mesh(geo, mat);
+            mm.position.set(x, y, z);
+            mm.rotation.set(rx || 0, ry || 0, rz || 0);
+            mm.renderOrder = 160;
+            gun.add(mm);
+            return mm;
+        }
+        var muzzleZ, drum = null, pump = null, lens = null;
+        if (kind === 'revolver') {
+            muzzleZ = ts * 0.74;
+            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.045, ts * 0.62, 10), steelMat, 0, ts * 0.055, ts * 0.42, Math.PI / 2);
+            m2(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.44, 8), steelMat, 0, ts * 0.005, ts * 0.36, Math.PI / 2);
+            m2(new THREE.BoxGeometry(ts * 0.02, ts * 0.045, ts * 0.02), steelMat, 0, ts * 0.105, ts * 0.70);
+            m2(new THREE.BoxGeometry(ts * 0.075, ts * 0.13, ts * 0.28), steelMat, 0, ts * 0.02, ts * 0.02);
+            drum = m2(new THREE.CylinderGeometry(ts * 0.082, ts * 0.082, ts * 0.17, 12), steelMat, 0, ts * 0.045, ts * 0.10, Math.PI / 2);
+            for (var ch = 0; ch < 6; ch++) {
+                var ca = ch * Math.PI / 3;
+                var bore = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.175, 6),
+                    new THREE.MeshBasicMaterial({ color: 0x14161a, transparent: true, opacity: 0, depthWrite: true }));
+                bore.position.set(Math.cos(ca) * ts * 0.05, ts * 0.045 + Math.sin(ca) * ts * 0.05, ts * 0.10);
+                bore.rotation.x = Math.PI / 2;
+                bore.renderOrder = 161;
+                gun.add(bore);
+                bore._ew_isBore = true;
+            }
+            m2(new THREE.BoxGeometry(ts * 0.055, ts * 0.03, ts * 0.24), steelMat, 0, ts * 0.115, ts * 0.06);
+            m2(new THREE.BoxGeometry(ts * 0.03, ts * 0.07, ts * 0.035), brassMat, 0, ts * 0.10, -ts * 0.135, -0.6);
+            m2(new THREE.BoxGeometry(ts * 0.06, ts * 0.20, ts * 0.10), woodMat, 0, -ts * 0.115, -ts * 0.135, 0.42);
+            var tg = m2(new THREE.TorusGeometry(ts * 0.045, ts * 0.011, 6, 12), brassMat, 0, -ts * 0.055, ts * 0.02, 0, Math.PI / 2);
+            tg.renderOrder = 160;
+        } else if (kind === 'shotgun') {
+            muzzleZ = ts * 0.95;
+            m2(new THREE.CylinderGeometry(ts * 0.036, ts * 0.038, ts * 0.95, 10), steelMat, 0, ts * 0.05, ts * 0.45, Math.PI / 2);
+            m2(new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, ts * 0.72, 8), steelMat, 0, -ts * 0.012, ts * 0.36, Math.PI / 2);
+            m2(new THREE.SphereGeometry(ts * 0.012, 6, 5), brassMat, 0, ts * 0.09, ts * 0.92);
+            pump = m2(new THREE.CylinderGeometry(ts * 0.052, ts * 0.052, ts * 0.24, 10), woodMat, 0, ts * 0.015, ts * 0.42, Math.PI / 2);
+            m2(new THREE.BoxGeometry(ts * 0.075, ts * 0.115, ts * 0.32), steelMat, 0, ts * 0.02, -ts * 0.05);
+            m2(new THREE.PlaneGeometry(ts * 0.10, ts * 0.05), brassMat, ts * 0.039, ts * 0.03, -ts * 0.02, 0, Math.PI / 2);
+            m2(new THREE.BoxGeometry(ts * 0.06, ts * 0.11, ts * 0.34), woodMat, 0, -ts * 0.035, -ts * 0.36, 0.16);
+            var tg2 = m2(new THREE.TorusGeometry(ts * 0.045, ts * 0.011, 6, 12), brassMat, 0, -ts * 0.05, -ts * 0.10, 0, Math.PI / 2);
+            tg2.renderOrder = 160;
+        } else { /* sniper */
+            muzzleZ = ts * 1.25;
+            m2(new THREE.CylinderGeometry(ts * 0.026, ts * 0.030, ts * 1.15, 10), steelMat, 0, ts * 0.03, ts * 0.62, Math.PI / 2);
+            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.042, ts * 0.11, 8), steelMat, 0, ts * 0.03, ts * 1.19, Math.PI / 2);
+            m2(new THREE.BoxGeometry(ts * 0.065, ts * 0.10, ts * 0.40), steelMat, 0, ts * 0.015, -ts * 0.02);
+            /* scope */
+            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.042, ts * 0.34, 10), steelMat, 0, ts * 0.125, ts * 0.04, Math.PI / 2);
+            m2(new THREE.TorusGeometry(ts * 0.046, ts * 0.012, 6, 12), steelMat, 0, ts * 0.125, ts * 0.215);
+            m2(new THREE.BoxGeometry(ts * 0.022, ts * 0.05, ts * 0.03), steelMat, 0, ts * 0.075, ts * 0.10);
+            m2(new THREE.BoxGeometry(ts * 0.022, ts * 0.05, ts * 0.03), steelMat, 0, ts * 0.075, -ts * 0.03);
+            lens = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.035, 10), _sigMat(0x77e0ff));
+            lens.position.set(0, ts * 0.125, ts * 0.222);
+            lens.renderOrder = 162;
+            gun.add(lens);
+            /* bolt handle */
+            m2(new THREE.CylinderGeometry(ts * 0.010, ts * 0.010, ts * 0.07, 6), steelMat, ts * 0.055, ts * 0.04, -ts * 0.08, 0, 0, Math.PI / 2);
+            m2(new THREE.SphereGeometry(ts * 0.018, 6, 5), brassMat, ts * 0.095, ts * 0.04, -ts * 0.08);
+            /* stock + cheek riser */
+            m2(new THREE.BoxGeometry(ts * 0.055, ts * 0.10, ts * 0.36), woodMat, 0, -ts * 0.025, -ts * 0.38, 0.14);
+            m2(new THREE.BoxGeometry(ts * 0.05, ts * 0.045, ts * 0.16), woodMat, 0, ts * 0.055, -ts * 0.33);
+            /* bipod */
+            m2(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.30, 6), steelMat, ts * 0.05, -ts * 0.10, ts * 0.75, 0.35, 0, 0.5);
+            m2(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.30, 6), steelMat, -ts * 0.05, -ts * 0.10, ts * 0.75, 0.35, 0, -0.5);
+        }
+        var muzzle = new THREE.Object3D();
+        muzzle.position.set(0, kind === 'sniper' ? ts * 0.03 : ts * 0.05, muzzleZ);
+        gun.add(muzzle);
+
+        function setFade(f) {
+            steelMat.opacity = f; woodMat.opacity = f; brassMat.opacity = f;
+            gun.traverse(function (o) {
+                if (o._ew_isBore) o.material.opacity = f;
+            });
+            if (lens) lens.material.opacity = 0.6 * f;
+        }
+        setFade(0);
+        return { group: gun, setFade: setFade, muzzle: muzzle, drum: drum, pump: pump, lens: lens,
+                 pumpBaseZ: pump ? pump.position.z : 0, steelMat: steelMat };
+    }
+
+    function _sigGunRig3D(kind, fromTx, fromTy, toTx, toTy, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var key = kind + '@' + Math.round(fromTx) + ',' + Math.round(fromTy) + (opts.sky ? '#sky' : '') + (opts.key || '');
+        var live = _sigGunRigs[key];
+        if (live && !live.dead) { live.retarget(toTx, toTy); live.queueShot(); return; }
+
+        var fw = _worldPos(fromTx, fromTy);
+        var ts = fw.ts;
+        var color = opts.glowColor != null ? opts.glowColor : (kind === 'sniper' ? 0x77e0ff : 0xffcc66);
+
+        var root = new THREE.Group();
+        var aim = new THREE.Group();
+        aim.rotation.order = 'YXZ';
+        root.add(aim);
+        var g = _sigBuildGun(kind, ts);
+        /* these are giant STAND weapons — big enough to read from the
+           diorama camera, floating over their summoner */
+        g.group.scale.setScalar(opts.modelScale != null ? opts.modelScale : 2.2);
+        aim.add(g.group);
+
+        /* flat summon disc spinning under the floating weapon (an upright
+           glyph reads edge-on from the diorama camera) */
+        var glyphMat = _sigMat(color, { map: _sigMagicCircleTex() });
+        var glyph = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15, ts * 1.15), glyphMat);
+        glyph.rotation.x = -Math.PI / 2;
+        glyph.position.y = -ts * 0.38;
+        glyph.renderOrder = 156;
+        root.add(glyph);
+
+        /* muzzle flash cross */
+        var flashMat = _sigMat(0xffd98a, { map: _sigBurstTex() });
+        var fA = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), flashMat);
+        var fB = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), flashMat);
+        fB.rotation.z = Math.PI / 4;
+        fA.renderOrder = 165; fB.renderOrder = 165;
+        g.muzzle.add(fA); g.muzzle.add(fB);
+
+        /* sniper aim laser + tracer */
+        var laser = null, laserMat = null, tracer = null, tracerMat = null;
+        if (kind === 'sniper') {
+            laserMat = _sigMat(0xff4455);
+            laser = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, 1), laserMat);
+            laser.renderOrder = 163;
+            aim.add(laser);
+            tracerMat = _sigMat(0xbbf0ff);
+            tracer = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.06, 1), tracerMat);
+            tracer.renderOrder = 164;
+            aim.add(tracer);
+        }
+
+        var rig = {
+            dead: false,
+            shotsQueued: 1,
+            shotsFired: 0,
+            nextShotAt: opts.sky ? 140 : (kind === 'sniper' ? 260 : 95),
+            interval: opts.interval != null ? opts.interval : (kind === 'shotgun' ? 300 : kind === 'sniper' ? 480 : 170),
+            lastActivity: 0,
+            recoil: 0,
+            pumpT: -1,
+            drumSpin: 0,
+            dist: 1,
+            ejected: 0,
+            targetTx: toTx, targetTy: toTy,
+        };
+        if (opts.shots) rig.shotsQueued = opts.shots;
+
+        function aimAt(ttx, tty) {
+            rig.targetTx = ttx; rig.targetTy = tty;
+            var twp = _worldPos(ttx, tty);
+            var ax = twp.x - root.position.x, az = twp.z - root.position.z;
+            var ay = (twp.y + ts * 0.4) - root.position.y;
+            var dh = Math.sqrt(ax * ax + az * az) || 1;
+            rig.dist = Math.sqrt(dh * dh + ay * ay);
+            if (opts.sky) {
+                aim.rotation.y = opts.skyYaw != null ? opts.skyYaw : rn(0, Math.PI * 2);
+                aim.rotation.x = 1.15;   /* rain fire down on the tile below */
+            } else {
+                aim.rotation.y = Math.atan2(ax, az);
+                aim.rotation.x = -Math.atan2(ay, dh);
+            }
+        }
+        if (opts.sky) {
+            var swp = _worldPos(toTx, toTy);
+            root.position.set(swp.x, swp.y + ts * 2.9, swp.z);
+        } else {
+            var dxr = 0, dzr = 0;
+            var twp0 = _worldPos(toTx, toTy);
+            var ddx = twp0.x - fw.x, ddz = twp0.z - fw.z;
+            var dl = Math.sqrt(ddx * ddx + ddz * ddz) || 1;
+            dxr = ddx / dl; dzr = ddz / dl;
+            root.position.set(fw.x + dxr * ts * 0.45, fw.y + ts * 1.15, fw.z + dzr * ts * 0.45);
+        }
+        aimAt(toTx, toTy);
+
+        rig.retarget = aimAt;
+        rig.queueShot = function () {
+            rig.shotsQueued++;
+        };
+
+        var flashT = -1;
+        var shells = [];
+        var shellGeo = new THREE.BoxGeometry(ts * 0.018, ts * 0.018, ts * 0.05);
+        var shellMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gold.png', 1, 1),
+            color: new THREE.Color(0xE8C15A), transparent: true, opacity: 1, depthWrite: true,
+        });
+
+        function ejectShell(el) {
+            rig.ejected++;
+            var sh = new THREE.Mesh(shellGeo, shellMat);
+            sh.renderOrder = 161;
+            var basePos = new THREE.Vector3(ts * 0.05, ts * 0.04, kind === 'revolver' ? ts * 0.10 : -ts * 0.03);
+            sh.position.copy(basePos);
+            aim.add(sh);
+            shells.push({
+                mesh: sh, t0: el,
+                vx: rn(0.10, 0.22) * ts, vy: rn(0.18, 0.28) * ts, vz: rn(-0.06, 0.02) * ts,
+                rx: rn(-8, 8), rz: rn(-8, 8),
+            });
+        }
+
+        function fireShot(el) {
+            rig.shotsFired++;
+            rig.lastActivity = el;
+            rig.recoil = 1;
+            flashT = el;
+            rig.drumSpin = kind === 'revolver' ? 1 : 0;
+            if (kind === 'shotgun') rig.pumpT = el + 110;
+            else ejectShell(el);
+            root.updateMatrixWorld(true);
+            var mz = new THREE.Vector3();
+            g.muzzle.getWorldPosition(mz);
+            var sp = _sigWorldToSpawn(mz);
+            if (_canSpawn()) {
+                _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'muzzle-flash',
+                         ml: 150, size0: ts * (kind === 'sniper' ? 0.75 : 0.55), size1: ts * 0.15,
+                         opacity0: 1, opacity1: 0 });
+                _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'smoke',
+                         ml: 500, size0: 14, size1: 40, vz: 20, drag: 0.6, opacity0: 0.4, opacity1: 0 });
+            }
+            if (kind === 'sniper') {
+                _sigScreenFlash('#cfefff', 90, 0.10);
+                _sigShake('soft');
+            }
+        }
+
+        var linger = opts.sky ? 260 : 620;
+        var fadeMs = 200;
+        var CAP = 5200;
+        var fadeStart = -1;
+        var lastEl = 0;
+
+        var entry = _sigRun(root, CAP, function (el) {
+            var dt = el - lastEl; lastEl = el;
+
+            /* materialize */
+            var matF = _sigClamp01(el / 100);
+            var f = matF;
+            if (fadeStart >= 0) f = Math.max(0, 1 - (el - fadeStart) / fadeMs);
+            g.setFade(f);
+            glyphMat.opacity = 0.55 * f * (0.7 + 0.3 * Math.sin(el * 0.006));
+            glyph.rotation.z = el * 0.004;
+            shellMat.opacity = f;
+
+            /* fire queued shots */
+            if (fadeStart < 0 && rig.shotsFired < rig.shotsQueued && el >= rig.nextShotAt
+                && (kind !== 'shotgun' || rig.pumpT < 0 || el > rig.pumpT + 220)) {
+                fireShot(el);
+                rig.nextShotAt = el + rig.interval;
+                if (opts.sky && opts.shots && rig.shotsFired < opts.shots) rig.shotsQueued = opts.shots;
+            }
+            rig.lastActivity = Math.max(rig.lastActivity, 0);
+
+            /* recoil */
+            rig.recoil = Math.max(0, rig.recoil - dt * 0.006);
+            var basePitch = aim.rotation.x;
+            g.group.position.z = -ts * (kind === 'sniper' ? 0.14 : 0.10) * rig.recoil;
+            g.group.rotation.x = -0.10 * rig.recoil;
+
+            /* muzzle flash cross */
+            if (flashT >= 0) {
+                var fT = (el - flashT) / 90;
+                if (fT < 1) {
+                    var fs = ts * (kind === 'sniper' ? 0.7 : 0.5) * (0.6 + 0.6 * fT);
+                    fA.scale.set(fs, fs, 1); fB.scale.set(fs, fs, 1);
+                    flashMat.opacity = 0.95 * (1 - fT) * f;
+                } else flashMat.opacity = 0;
+            }
+
+            /* revolver cylinder roll */
+            if (g.drum) {
+                rig.drumSpin = Math.max(0, rig.drumSpin - dt * 0.004);
+                g.drum.rotation.z += dt * 0.02 * rig.drumSpin;
+            }
+            /* shotgun pump cycle */
+            if (g.pump && rig.pumpT >= 0 && el >= rig.pumpT) {
+                var pT = (el - rig.pumpT) / 200;
+                if (pT < 1) {
+                    g.pump.position.z = g.pumpBaseZ - ts * 0.16 * Math.sin(pT * Math.PI);
+                    if (pT > 0.45 && rig.ejected < rig.shotsFired) ejectShell(el);
+                } else {
+                    g.pump.position.z = g.pumpBaseZ;
+                }
+            }
+            /* sniper aim laser (visible until the first round leaves) + tracer */
+            if (laser) {
+                if (rig.shotsFired === 0 && fadeStart < 0) {
+                    laser.visible = true;
+                    laser.scale.y = rig.dist;
+                    laser.position.set(0, ts * 0.03, ts * 1.25 + rig.dist / 2);
+                    laser.rotation.x = Math.PI / 2;
+                    laserMat.opacity = (0.22 + 0.14 * Math.sin(el * 0.02)) * f;
+                    if (g.lens) g.lens.material.opacity = (0.5 + 0.45 * Math.sin(el * 0.02)) * f;
+                } else {
+                    laserMat.opacity = Math.max(0, laserMat.opacity - dt * 0.004);
+                }
+                if (flashT >= 0) {
+                    var trT = (el - flashT) / 110;
+                    if (trT < 1) {
+                        tracer.visible = true;
+                        tracer.scale.y = rig.dist;
+                        tracer.position.set(0, ts * 0.03, ts * 1.25 + rig.dist / 2);
+                        tracer.rotation.x = Math.PI / 2;
+                        tracerMat.opacity = 0.8 * (1 - trT) * f;
+                    } else tracerMat.opacity = 0;
+                }
+            }
+            /* tumbling shell casings */
+            for (var si = shells.length - 1; si >= 0; si--) {
+                var s = shells[si];
+                var st = (el - s.t0) / 1000;
+                if (st > 0.55) { s.mesh.visible = false; shells.splice(si, 1); continue; }
+                s.mesh.position.x += s.vx * dt / 1000;
+                s.mesh.position.y += (s.vy - ts * 2.4 * st) * dt / 1000;
+                s.mesh.position.z += s.vz * dt / 1000;
+                s.mesh.rotation.x += s.rx * dt / 1000;
+                s.mesh.rotation.z += s.rz * dt / 1000;
+            }
+
+            /* retire the rig once every queued shot is out and it's idle */
+            if (fadeStart < 0 && rig.shotsFired >= rig.shotsQueued
+                && el > rig.lastActivity + linger) {
+                fadeStart = el;
+            }
+            if ((fadeStart >= 0 && el > fadeStart + fadeMs) || el > CAP - 50) {
+                rig.dead = true;
+                delete _sigGunRigs[key];
+                if (entry) entry.finish();
+            }
+        });
+        if (!entry) return;
+        rig.entry = entry;
+        _sigGunRigs[key] = rig;
+    }
+
+    /* ── TESLA COIL deploy cinematic — the persistent coil model itself is
+       drawn by three-renderer (deployed objects); this is the summon: rune
+       circle, charge pillar, crawling arcs off the toroid, spark rain. ───── */
+    function _sigTeslaCoil3D(tx, ty) {
+        var ts = _cfg().tileSize || 128;
+        _sigMagicCircle3D(tx, ty, {
+            color: 0x66ccff, radiusPx: ts * 0.85, growMs: 140,
+            holdMs: 700, fadeMs: 260, spin: 0.006, opacity: 0.85,
+        });
+        _sigLightPillar3D(tx, ty, { color: 0x99ddff, coreColor: 0xffffff, ms: 520, height: ts * 1.6, radius: ts * 0.16 });
+        _sigSparks(tx, ty, 'spark-blue', 14, { vxy: 140, vz0: 60, vz1: 260, gravity: 300 });
+        _sigScreenFlash('#aaddff', 120, 0.10);
+        if (window.ThreeLightning) {
+            var cfg = _cfg();
+            var pad = cfg.boardPadding || 2;
+            var c = tilePx(tx, ty);
+            var topZ = unitSurfaceZ(tx, ty) + 3 + ts * 0.62;
+            for (var i = 0; i < 5; i++) {
+                (function (idx) {
+                    window.setTimeout(function () {
+                        if (_suppressed()) return;
+                        var a = rn(0, Math.PI * 2);
+                        var r = ts * rn(0.45, 0.85);
+                        ThreeLightning.bolt(
+                            { x: c.x - pad, y: topZ, z: c.y - pad },
+                            { x: c.x - pad + Math.cos(a) * r, y: unitSurfaceZ(tx, ty) + 6, z: c.y - pad + Math.sin(a) * r },
+                            { segments: 7, jitter: 0.5, branchChance: 0.25, branchDepth: 1,
+                              coreWidth: 2.5, glowWidth: 7, durationMs: 150 + rn(0, 90),
+                              color: 0xbbe6ff, glowColor: 0x4499ff });
+                    }, 140 + idx * 130);
+                })(i);
+            }
+        }
     }
 
     /* ── 3D flying saucer builder — real geometry instead of the flat ufo
@@ -5898,14 +7484,18 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             expandMs: 400, holdMs: 600, fadeMs: 500,
         }); },
         raceContainmentField: function(tx, ty) { _spawnContainmentField3D(tx, ty); },
-        raceShieldWall:      function(tx, ty, r) { _spawnDome3D(tx, ty, r, {
-            outerColor: 0xa0a0c3, innerColor: 0xccccee, wireColor: 0xbbbbdd,
-            segments: 16, rings: 8, wireSegments: 8, wireRings: 4,
-            radiusScale: 0.4, heightRatio: 0.7,
-            outerOpacity: 0.3, innerOpacity: 0.18, wireOpacity: 0.35,
-            wireRotSpeed: 0.0002,
-            expandMs: 300, holdMs: 500, fadeMs: 400,
-        }); },
+        raceShieldWall:      function(tx, ty, r) {
+            _spawnDome3D(tx, ty, r, {
+                outerColor: 0xa0a0c3, innerColor: 0xccccee, wireColor: 0xbbbbdd,
+                segments: 16, rings: 8, wireSegments: 8, wireRings: 4,
+                radiusScale: 0.4, heightRatio: 0.7,
+                outerOpacity: 0.3, innerOpacity: 0.18, wireOpacity: 0.35,
+                wireRotSpeed: 0.0002,
+                expandMs: 300, holdMs: 500, fadeMs: 400,
+            });
+            /* Castle Fortress — a real ring of tower shields locks in */
+            _sigShieldRing3D(tx, ty, { glowColor: 0xbbccff, count: 6, radiusTiles: 0.85, holdMs: 950, scale: 0.75 });
+        },
         raceBoneWall:        function(tx, ty, r) { _spawnDome3D(tx, ty, r, {
             outerColor: 0x998866, innerColor: 0xccaa77, wireColor: 0xbbaa88,
             segments: 10, rings: 6, wireSegments: 5, wireRings: 3,
@@ -5914,7 +7504,9 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             wireRotSpeed: 0.0001,
             expandMs: 350, holdMs: 400, fadeMs: 400,
         }); },
-        raceTeslaTrap:       function(tx, ty) { _spawnContainmentField3D(tx, ty); },
+        /* Tesla Coil — the persistent coil model is drawn by three-renderer;
+           this is the electric summon cinematic */
+        raceTeslaTrap:       function(tx, ty) { _sigTeslaCoil3D(tx, ty); },
         raceTotemDrop:       function(tx, ty, r) { _spawnDome3D(tx, ty, r, {
             outerColor: 0xcc6633, innerColor: 0xff9944, wireColor: 0xee8833,
             segments: 8, rings: 6, wireSegments: 6, wireRings: 3,
@@ -5966,48 +7558,129 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         sentaiGreenArrow:    function(tx, ty) { _spawnGreenArrow3D(tx, ty); },
         sharedGlacialTomb:   function(tx, ty) { _spawnGlacialTombShard3D(tx, ty); },
 
-        shootout:            function(tx, ty, r) { _spawnBulletRainArea3D(tx, ty, r != null ? r : 1, 680); },
+        shootout:            function(tx, ty, r) {
+            _spawnBulletRainArea3D(tx, ty, r != null ? r : 1, 680);
+            /* twin spectral revolvers hang over the kill-box, fanning the
+               hammer down into it while the lead rains */
+            var _soYaw = rn(0, Math.PI * 2);
+            _sigGunRig3D('revolver', tx, ty, tx, ty, { sky: true, shots: 3, interval: 140, skyYaw: _soYaw, key: 'A' });
+            _sigGunRig3D('revolver', tx, ty, tx, ty, { sky: true, shots: 3, interval: 155, skyYaw: _soYaw + Math.PI, key: 'B' });
+        },
 
         /* ── signature anime cinematics (SIGNATURE 3D toolkit above). These
            are the staples; new spells should pick a builder + palette here
            rather than getting bespoke code. ─────────────────────────────── */
 
-        /* stand-summon greatswords for the melee slash staples */
-        dragonSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+        /* SLASH COMBOS — the greatswords now actually SWING: chained arc
+           slashes with afterimages and a heavy finisher (the sky-drop plunge
+           survives only on the judgment descents, where falling is the point) */
+        dragonSlash: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
             glowColor: 0xff7733, circleColor: 0xff5522,
             bladeTex: 'obsidian.png', bladeColor: 0xffffff,   /* lava-cracked black rock */
-            guardTex: 'metal.png', guardColor: 0xc08850,   /* bronze fittings */
+            guardTex: 'metal.png', guardColor: 0xc08850,      /* bronze fittings */
             sparkSprite: 'ember', moteSprite: 'ember',
-            len: (_cfg().tileSize || 128) * 2.4,
-        }); },
-        guardSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
-            glowColor: 0x77aaff, circleColor: 0x99bbff,
-            bladeTex: 'metal.png', bladeColor: 0xbfd4ff,      /* blued steel plates */
-            guardTex: 'metal.png', guardColor: 0x8f9db5,
             len: (_cfg().tileSize || 128) * 1.9,
+            slashes: [
+                { dYaw: 0.55, dir: 1, tilt: 0.55 },
+                { dYaw: -0.55, dir: -1, tilt: -0.5 },
+                { dYaw: 1.4, dir: 1, tilt: 0.1, heavy: true },
+            ],
+            ringTiles: 1.9, flashPeak: 0.3,
+        }); },
+        guardSlash: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
+            glowColor: 0x77aaff, circleColor: 0x99bbff,
+            bladeTex: 'metal.png', bladeColor: 0xbfd4ff,      /* blued steel */
+            guardTex: 'metal.png', guardColor: 0x8f9db5,
+            len: (_cfg().tileSize || 128) * 1.6,
+            slashes: [
+                { dYaw: 0.4, dir: 1, tilt: 0.4 },
+                { dYaw: -1.1, dir: -1, tilt: -0.15, heavy: true },
+            ],
             shake: 'normal', flashPeak: 0.2,
         }); },
-        sneakSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+        sneakSlash: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
             glowColor: 0xbb55ff, circleColor: 0x8833cc,
             bladeTex: 'obsidian.png', bladeColor: 0xaa88ee,   /* venom-purple obsidian */
             guardTex: 'metal.png', guardColor: 0x5a4a70,
-            len: (_cfg().tileSize || 128) * 1.7,
-            summonMs: 90, holdMs: 90, plungeMs: 80, lingerMs: 380, fadeMs: 200,
-            moteSprite: 'void-mist', flashPeak: 0.16, shake: 'normal',
+            len: (_cfg().tileSize || 128) * 1.35,
+            summonMs: 90, windMs: 50, swingMs: 65, recoverMs: 40, fadeMs: 180,
+            slashes: [
+                { dYaw: 0.7, dir: 1, tilt: 0.6 },
+                { dYaw: -0.7, dir: -1, tilt: -0.6 },
+                { dYaw: Math.PI, dir: 1, tilt: 0.15, heavy: true },
+            ],
+            moteSprite: 'void-mist', flashPeak: 0.16, shake: 'normal', ringTiles: 1.3,
         }); },
-        sentaiRedSlash: function(tx, ty) { _sigStandSword3D(tx, ty, {
+        sentaiRedSlash: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
             glowColor: 0xff3344, circleColor: 0xff2233,
             bladeTex: 'metal.png', bladeColor: 0xffffff,
             guardTex: 'metal.png', guardColor: 0xdd5555,
             sparkSprite: 'spark-pink',
+            slashes: [   /* the classic sentai X-cross */
+                { dYaw: 0.0, dir: 1, tilt: 0.65 },
+                { dYaw: 0.0, dir: -1, tilt: -0.65, heavy: true },
+            ],
         }); },
-        raceSyntheticBlade: function(tx, ty) { _sigStandSword3D(tx, ty, {
+        raceSyntheticBlade: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
             hologram: true, glowColor: 0x33ffee, circleColor: 0x22ccff,
             bladeColor: 0x66ffee, guardColor: 0x2288aa, moteSprite: 'plasma',
+            windMs: 55, swingMs: 70, recoverMs: 40,
+            slashes: [
+                { dYaw: 0.5, dir: 1, tilt: 0.45 },
+                { dYaw: -0.5, dir: -1, tilt: -0.45 },
+                { dYaw: 1.2, dir: 1, tilt: 0.0, heavy: true },
+            ],
         }); },
 
         /* ORA — spectral giant fist */
         reallyGoodPunch: function(tx, ty) { _sigStandFist3D(tx, ty, { color: 0xffd24a }); },
+
+        /* KNIGHT / WARRIOR — tower shields */
+        shieldBash: function(tx, ty) { _sigShieldBash3D(tx, ty, { glowColor: 0xffd875 }); },
+        fortify: function(tx, ty) { _sigShieldRing3D(tx, ty, { glowColor: 0x88bbff, count: 4, holdMs: 800 }); },
+        raceOathOfValor: function(tx, ty) { _sigShieldRing3D(tx, ty, { glowColor: 0xffd875, count: 3, scale: 0.55, holdMs: 650, radiusTiles: 0.6 }); },
+
+        /* WEREWOLF — spectral jaws + rending claws */
+        racePounce: function(tx, ty) { _sigJawsBite3D(tx, ty, { scale: 1.05, glowColor: 0xff3333 }); },
+        raceFeralDive: function(tx, ty) { _sigJawsBite3D(tx, ty, { scale: 1.1, glowColor: 0xff5522, shake: 'hard', flashPeak: 0.2 }); },
+        raceSavageRend: function(tx, ty) {
+            /* claw, claw, BITE — mirrors the 3-hit combo in the spell desc */
+            _sigClawCombo3D(tx, ty, {
+                swipes: 2, glowColor: 0xff4444, clawTint: 0xe8ddc8,
+                sparkSprite: 'blood-fleck', swipeMs: 65, markMs: 500,
+            });
+            window.setTimeout(function () {
+                if (_suppressed()) return;
+                _sigJawsBite3D(tx, ty, { scale: 0.95, glowColor: 0xff3333, clenchMs: 200 });
+            }, 300);
+        },
+        raceInfectiousBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 0.85, glowColor: 0x88ee44, gumTint: 0x5a6a20, toothTint: 0xdfe8c0,
+            circleColor: 0x447722, sparkSprite: 'acid-green',
+        }); },
+        raceGhoulishBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 0.9, glowColor: 0x77dd66, gumTint: 0x4a5a28, toothTint: 0xd8d2b0,
+            circleColor: 0x336622, sparkSprite: 'acid-green',
+        }); },
+
+        /* CATGIRL — nine scratches in three triple-swipes; and a kitten-
+           sized love bite */
+        raceNinefoldScratch: function(tx, ty) { _sigClawCombo3D(tx, ty, {
+            swipes: 3, glowColor: 0xff88cc, clawTint: 0xfaf2e8,
+            sparkSprite: 'spark-pink', swipeMs: 60, heavyFinish: true,
+        }); },
+        raceLoveBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 0.6, glowColor: 0xff77bb, gumTint: 0xbb4477, toothTint: 0xffffff,
+            hideTint: 0x77364a, circleColor: 0xcc5599, sparkSprite: 'spark-pink',
+            flashPeak: 0.08, clenchMs: 180,
+        }); },
+
+        /* HALF-DEMON — one massive raking demon claw */
+        raceDemonicClaw: function(tx, ty) { _sigClawCombo3D(tx, ty, {
+            swipes: 1, scale: 1.55, glowColor: 0xdd2222, clawTint: 0x3a3038,
+            clawTex: 'obsidian.png', sparkSprite: 'blood-fleck',
+            swipeMs: 95, markMs: 950, heavyFinish: true, flashPeak: 0.2,
+        }); },
 
         /* golden blade of judgment falling out of heaven + light pillar */
         judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
@@ -6245,6 +7918,14 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         sigCrescentSlash3D: _sigCrescentSlash3D,
         sigStandSword3D: _sigStandSword3D,
         sigStandFist3D: _sigStandFist3D,
+        sigSlashCombo3D: _sigSlashCombo3D,
+        sigShieldBash3D: _sigShieldBash3D,
+        sigShieldRing3D: _sigShieldRing3D,
+        sigJawsBite3D: _sigJawsBite3D,
+        sigClawCombo3D: _sigClawCombo3D,
+        sigCannonShot3D: _sigCannonShot3D,
+        sigGunRig3D: _sigGunRig3D,
+        sigTeslaCoil3D: _sigTeslaCoil3D,
         sigUFO3D: _sigUFO3D,
         sigStormStrike3D: _sigStormStrike3D,
         sigScreenFlash: _sigScreenFlash,

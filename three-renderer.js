@@ -2703,6 +2703,84 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── Deployed-object 3D model: TESLA COIL (raceTeslaTrap) ─────────────
+       Real coil geometry instead of the flat colored marker plane: iron
+       plinth, copper primary winding, wound secondary column, aluminium
+       toroid with a spark-gap electrode, and an owner-colored corona so you
+       can read whose trap it is at a glance. Same pixel-sprite recipe as
+       the trees/turrets (gold.png tinted copper stands in until a dedicated
+       copper sprite lands on the R2). */
+    var _teslaTexCache = {};
+    function _getTeslaTex(file, repX, repY) {
+        var key = file + '|' + (repX || 1) + '|' + (repY || 1);
+        if (_teslaTexCache[key]) return _teslaTexCache[key];
+        var t = textureLoader.load('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/terrain/' + file);
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.NearestFilter;
+        t.minFilter = THREE.NearestFilter;
+        t.repeat.set(repX || 1, repY || 1);
+        _teslaTexCache[key] = t;
+        return t;
+    }
+    function _buildTeslaCoil3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var g = new THREE.Group();
+        function tmat(file, tint, rx, ry) {
+            return new THREE.MeshBasicMaterial({
+                map: _getTeslaTex(file, rx, ry),
+                color: new THREE.Color(tint), depthWrite: true,
+            });
+        }
+        var ironMat = tmat('metal_3.png', 0x868c98);
+        var copperMat = tmat('gold.png', 0xc07a3e);
+        var windMat = tmat('gold.png', 0xd89a52, 1, 6);   /* vertical repeat = winding stripes */
+        var alumMat = tmat('aluminium.png', 0xdde2ea);
+        function add(geo, m, px, py, pz, rx) {
+            var mesh = new THREE.Mesh(geo, m);
+            mesh.position.set(px, py, pz);
+            if (rx) mesh.rotation.x = rx;
+            g.add(mesh);
+            return mesh;
+        }
+        /* plinth + feet */
+        add(new THREE.BoxGeometry(ts * 0.34, ts * 0.07, ts * 0.34), ironMat, 0, ts * 0.035, 0);
+        for (var ft = 0; ft < 4; ft++) {
+            add(new THREE.BoxGeometry(ts * 0.05, ts * 0.03, ts * 0.05), ironMat,
+                (ft % 2 ? 1 : -1) * ts * 0.155, ts * 0.015, (ft < 2 ? 1 : -1) * ts * 0.155);
+        }
+        /* copper primary winding on the plinth */
+        add(new THREE.CylinderGeometry(ts * 0.125, ts * 0.155, ts * 0.09, 12), copperMat, 0, ts * 0.115, 0);
+        add(new THREE.TorusGeometry(ts * 0.14, ts * 0.018, 6, 16), copperMat, 0, ts * 0.155, 0, Math.PI / 2);
+        /* wound secondary column */
+        add(new THREE.CylinderGeometry(ts * 0.055, ts * 0.055, ts * 0.42, 10), windMat, 0, ts * 0.37, 0);
+        /* cage struts */
+        for (var st = 0; st < 3; st++) {
+            var sa = st * Math.PI * 2 / 3 + 0.5;
+            add(new THREE.CylinderGeometry(ts * 0.011, ts * 0.011, ts * 0.46, 6), ironMat,
+                Math.cos(sa) * ts * 0.115, ts * 0.36, Math.sin(sa) * ts * 0.115);
+        }
+        /* collar, toroid, spark-gap electrode */
+        add(new THREE.CylinderGeometry(ts * 0.075, ts * 0.06, ts * 0.05, 10), alumMat, 0, ts * 0.60, 0);
+        add(new THREE.TorusGeometry(ts * 0.145, ts * 0.05, 8, 18), alumMat, 0, ts * 0.655, 0, Math.PI / 2);
+        add(new THREE.ConeGeometry(ts * 0.02, ts * 0.09, 6), copperMat, 0, ts * 0.72, 0);
+        add(new THREE.SphereGeometry(ts * 0.028, 8, 6), alumMat, 0, ts * 0.775, 0);
+        /* owner-colored corona so the trap reads at a glance */
+        var coronaMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(ownerPlayer === 1 ? 0x55aaff : 0xff5555),
+            transparent: true, opacity: 0.32,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        var corona = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.20, 10, 8), coronaMat);
+        corona.position.y = ts * 0.655;
+        g.add(corona);
+        g.rotation.y = (x * 7 + y * 13) % 6;
+        g.scale.setScalar(1.3);   /* stand about unit-height so it reads on the board */
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
+    }
+
     /* ──────────────────────────────────────────────────────────────────────
        FOLIAGE OBJ MODELS — default trees (originally the Entropy Vale experiment)
        Swaps the procedural cone+sphere trees for real 3D meshes pulled from the
@@ -4350,6 +4428,16 @@ const ThreeRenderer = (function () {
                         }
                         continue;
                     }
+                }
+
+                /* Tesla Coil trap — full 3D coil model instead of a marker */
+                if (dObj.spellId === 'raceTeslaTrap') {
+                    var teslaG = _buildTeslaCoil3D(dx, dy, dObj.ownerPlayer);
+                    teslaG._ew_deployable = true;
+                    teslaG._ew_depX = dx; teslaG._ew_depY = dy;
+                    objectGroup.add(teslaG);
+                    deployableMeshes.set(dKey, teslaG);
+                    continue;
                 }
 
                 /* Non-decoy objects: colored marker */

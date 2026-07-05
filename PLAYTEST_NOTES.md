@@ -1861,6 +1861,82 @@ Gotchas learned:
   see repo edits): all effects fire through the real dispatcher with 0 errors
   and scene children return to baseline (no leaks).
 
+## Signature Arsenal — real 3D weapon/anatomy rigs (2026-07-05) — three-vfx-effects.js, three-renderer.js
+Full rework of the "goofy" sword/fist plus 8 new weapon rigs, all built with the
+tree/turret recipe (R2 pixel terrain sprites, NearestFilter, flat tint +
+additive glow accents). Everything lives in the SIGNATURE ARSENAL section of
+`three-vfx-effects.js` (search that phrase); the persistent Tesla coil model is
+in `three-renderer.js` (`_buildTeslaCoil3D`, called from the deployed-objects
+render loop).
+
+What exists now:
+- **Greatsword v2** (`_sigBuildSword`): slim tapered blade w/ profile curve,
+  edge-grind bevels, glowing energy fuller + runic strip, swept twin-quillon
+  guard, wrapped grip w/ rings, faceted pommel. Judgment descents still plunge.
+- **`_sigSlashCombo3D`** — THE sword fix: chained real swings (wind-up →
+  accelerating arc w/ 2 lagging afterimage blades → crescent + sparks →
+  reposition), heavier finisher w/ shock ring + flash. Wired: dragonSlash (3
+  cuts), guardSlash (2), sneakSlash (3 fast), sentaiRedSlash (X-cross),
+  raceSyntheticBlade (holo 3). Slash yaws derive from caster→target direction
+  via `_sigYawToward` (blitz active unit, falls back to nearest unit).
+- **Fist v2** (reallyGoodPunch): sculpted knuckles/curled fingers/muscled
+  forearm + wind-up cock-back before the slam.
+- **Shield** (`_sigBuildShield` heater + gold trim + boss + crest):
+  `_sigShieldBash3D` (summon→brace→RAM) on shieldBash; `_sigShieldRing3D`
+  (rising ring of shields) on fortify / raceShieldWall / raceOathOfValor.
+- **Jaws** (`_sigJawsBite3D`): flesh.png gums, marble.png fangs, snap-shut +
+  clench-tremor. Wired: racePounce, raceFeralDive, raceInfectiousBite,
+  raceGhoulishBite, raceLoveBite (pink, tiny), and raceSavageRend =
+  claw-claw-BITE (2 claw swipes then jaws, per its desc).
+- **Claws** (`_sigClawCombo3D`): 4-talon fan, triple-crescent rake, lingering
+  gouge decal. Wired: raceNinefoldScratch (3 swipes), raceDemonicClaw (1 huge).
+- **Cannon** (`_sigCannonShot3D`): carronade on wooden carriage, fuse embers,
+  muzzle blast + smoke ring, recoil, ballistic obsidian ball w/ ember trail,
+  3×3 explosion. Wired via a `raceCannonball` **bolt** mapping that
+  `_fireBoltMapped` intercepts (bolt is the only intent that knows caster AND
+  target) — the generic bolt is skipped entirely.
+- **Guns** (`_sigGunRig3D`, kinds `revolver|shotgun|sniper`): giant spectral
+  stand-weapons floating over the caster on a spinning summon disc; muzzle
+  flash cross + recoil + tumbling brass shells; revolver cylinder rolls;
+  shotgun cycles its pump between shells; sniper paints an aim-laser + scope
+  glint then a tracer. Multi-hit spells REUSE the live rig (registry keyed by
+  kind+caster tile) and just fire again. Wired via `_SIG_GUN_FOR`: deadEye/
+  ricochet1/raceHighNoon→revolver, doubleShot→shotgun, headshot/precisionShot/
+  kneecapShot→sniper. shootout additionally hangs two sky revolvers over the
+  bullet-rain box.
+- **Tesla Coil**: `_sigTeslaCoil3D` deploy cinematic (rune circle, charge
+  pillar, ThreeLightning arcs off the toroid) + PERSISTENT board model in
+  three-renderer (plinth/copper primary/wound secondary/toroid + owner-colored
+  corona) replacing the flat marker for `raceTeslaTrap` deployed objects.
+
+New SPELL_MAP wiring (after `_BOLT_WIRING`): raceCannonball.bolt,
+raceFeralDive.impact (reuses racePounce_impact), raceLoveBite.impact (reuses
+raceInfectiousBite_impact) — without an impact mapping `_spell3DGeometry`
+never fires.
+
+Texture placeholders (swap when real sprites land on the R2, all call sites
+take a `*Tex` opt): BONE/enamel (fangs+talons use marble.png), LEATHER (grips
+use wood.png tinted dark), GUNMETAL (guns use metal.png tinted 0x7d8798),
+COPPER (tesla windings use gold.png tinted 0xc07a3e), CAST IRON (cannon uses
+metal_3.png tinted), FUR (jaw hide uses flesh_3.png tinted dark).
+
+Testing recipe that WORKS (models verified rendering in-game, 0 errors):
+`USE_ASSET_CACHE=1 LOCAL_ASSETS=three-vfx-effects.js,three-renderer.js` makes
+the Playwright harness serve REPO edits in place of the R2 copies. Trigger
+effects from the console: `ThreeVFXEffects.fire('impact','dragonSlash',{tx,ty})`,
+`fire('bolt','raceCannonball',{fromX,fromY,toX,toY,flyMs:600})`,
+`fire('aura','raceTeslaTrap',{tx,ty})`, or the exported `sig*3D` functions
+directly (all accept long-hold opts — e.g. `clenchMs:8000` — to pose for
+screenshots; swiftshader screenshots are SLOW, transient effects finish during
+capture, so pose-and-hold is the only reliable way to screenshot them).
+Anchor test effects on the ACTIVE unit's tile (`st._blitzActiveUnitId`) — it's
+the tile the camera actually frames. `_sigRun` now console.warns tick
+exceptions instead of silently killing the effect.
+
+Tuning knobs if models read too small/big on other maps: gun `modelScale`
+(default 2.2) in `_sigGunRig3D`, cannon `scale` (1.35), claw fan ×1.25, tesla
+renderer model `g.scale.setScalar(1.3)`.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
