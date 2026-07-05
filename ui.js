@@ -3657,7 +3657,7 @@
             // 'none' → gear/status/faction armor only, without folding the DEF
             // stat in again (we add unit.def explicitly here for the display).
             const effDef = (unit.def || 0) + getEffectiveArmor(unit, 'none');
-            const effMDef = (unit.mdef || 0);
+            const effMDef = (unit.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0);
             const effMov = getEffectiveMove(unit);
             const effRng = getEffectiveRange(unit);
             const effAwr = getEffectiveAwr(unit);
@@ -7837,7 +7837,7 @@
             if (baseDmg <= 0) return 0;
 
             if (isEnemyUnit(caster, target)) {
-                baseDmg += getEffectiveAttackBonus(caster);
+                baseDmg += getEffectiveAttackBonus(caster, spell.damageType === 'magic' ? 'magic' : 'physical');
                 baseDmg = Math.max(1, Math.round(baseDmg * getTypeDamageMultiplier(caster, target, spell.spellType || null)));
 
                 if (typeof getUnitStandingHeight === 'function') {

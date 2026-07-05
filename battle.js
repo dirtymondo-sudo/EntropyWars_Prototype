@@ -2925,14 +2925,29 @@
             delete unit.status[key];
         }
 
+        // ── DEF/MDEF & ATK/INT axis split ─────────────────────────────────────
+        // Status/stage modifiers live on four axes. armorDelta + DEF stages soak
+        // PHYSICAL damage only; mdefDelta + MDEF stages soak MAGIC only.
+        // atkDelta + ATK stages boost physical damage; intDelta + INT stages
+        // boost magic damage (see applyDamageToUnit / getEffectiveArmor).
         function getStatusArmorDelta(unit) {
             return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.armorDelta || 0), 0)
                 + getStatStageDelta(unit, 'def');
         }
 
+        function getStatusMdefDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.mdefDelta || 0), 0)
+                + getStatStageDelta(unit, 'mdef');
+        }
+
         function getStatusAtkDelta(unit) {
             return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.atkDelta || 0), 0)
                 + getStatStageDelta(unit, 'atk');
+        }
+
+        function getStatusIntDelta(unit) {
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.intDelta || 0), 0)
+                + getStatStageDelta(unit, 'int');
         }
 
         // ── Stat-stage buffs (statStageBoost) ─────────────────────────────────
@@ -2942,7 +2957,8 @@
         // (Overclock, Inspired, Discord, Glare, …) — is clamped to ±STAT_STAGE_CAP.
         // The nameplate badge shows the stage count ("ATK+2" = 2 stages = +28 pts),
         // so what the player reads is exactly what the math does.
-        const STAT_STAGE_STEP = { atk: 14, def: 9, spd: 3, int: 12 };
+        const STAT_STAGE_STEP = { atk: 14, def: 9, mdef: 9, spd: 3, int: 12 };
+        const STAT_STAGE_KEYS = ['atk', 'def', 'mdef', 'spd', 'int'];
         const STAT_STAGE_DURATION = 3;
         const STAT_STAGE_CAP = 5;
 
@@ -2971,13 +2987,13 @@
             if (!target || target.dead || !boost) return;
             // Fresh application (no live carrier): clear any stale magnitudes.
             if (!unitHasStatus(target, 'statUp') && !unitHasStatus(target, 'statDown')) {
-                target.statStages = { atk: 0, def: 0, spd: 0, int: 0 };
+                target.statStages = { atk: 0, def: 0, mdef: 0, spd: 0, int: 0 };
             } else if (!target.statStages) {
-                target.statStages = { atk: 0, def: 0, spd: 0, int: 0 };
+                target.statStages = { atk: 0, def: 0, mdef: 0, spd: 0, int: 0 };
             }
             const st = target.statStages;
             const parts = [];
-            for (const stat of ['atk', 'def', 'spd', 'int']) {
+            for (const stat of STAT_STAGE_KEYS) {
                 const n = boost[stat] || 0;
                 if (!n) continue;
                 const before = st[stat] || 0;
@@ -2991,11 +3007,11 @@
                 parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${after === STAT_STAGE_CAP || after === -STAT_STAGE_CAP ? ' (max)' : ''}`);
             }
             if (!parts.length) return;
-            const anyPos = ['atk', 'def', 'spd', 'int'].some(s => (st[s] || 0) > 0);
-            const anyNeg = ['atk', 'def', 'spd', 'int'].some(s => (st[s] || 0) < 0);
+            const anyPos = STAT_STAGE_KEYS.some(s => (st[s] || 0) > 0);
+            const anyNeg = STAT_STAGE_KEYS.some(s => (st[s] || 0) < 0);
             if (anyPos) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
             if (anyNeg) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
-            const net = ['atk', 'def', 'spd', 'int'].reduce((s, k) => s + (boost[k] || 0), 0);
+            const net = STAT_STAGE_KEYS.reduce((s, k) => s + (boost[k] || 0), 0);
             if (typeof showFloatingTextForUnit === 'function') {
                 showFloatingTextForUnit(target, parts.join(' '), net >= 0 ? 'buff' : 'debuff', { durationMs: 1200 });
             }
@@ -8412,7 +8428,11 @@
                 ? (typeEffectOverride === 'super' ? "It's super effective!" : '')
                 : (sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '');
             if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
-                finalDamage += getEffectiveAttackBonus(sourceUnit);
+                // ATK/INT split: physical damage rides the ATK axis (Overclock,
+                // Inspired, Discord…); magic damage rides the INT axis (Dark
+                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
+                // streak bonuses apply to both.
+                finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
                 const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
                 finalDamage = Math.max(1, Math.round(finalDamage * _typeMult));
 
@@ -17243,6 +17263,8 @@
             SKY_RACES, UNDERGROUND_RACES, unitFinished,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove, getEffectiveAwr,
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
+            getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
+            getStatStageCount, applyStatStageBoost,
             getUnitLevel, getXPProgressPct,
 
             canUnitAct, canUnitMove,
@@ -22991,7 +23013,7 @@
                         actionMs(800)
                     );
 
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else if (_useVfx3dHealAllAura) {
                     const _allyStagger = actionMs(80);
                     const _healLandingDelay = actionMs(280);
@@ -23029,7 +23051,7 @@
                         Math.max(0, (allies.length - 1)) * _allyStagger + _healLandingDelay + actionMs(300),
                         actionMs(800)
                     );
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else {
 
                     _vfxHeal(unit.x, unit.y);
@@ -23043,7 +23065,9 @@
                             totalHealed += healed;
                         }
                     }
-                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`);
+                    addLog(totalHealed > 0
+                        ? `${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`
+                        : `${unitDisplayName(unit)} casts ${spell.name}, bolstering ${allies.length} allies.`);
                 }
 
                 // Unified team support for healAll: cleanse debuffs + apply a stat

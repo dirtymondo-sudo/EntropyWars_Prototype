@@ -6166,6 +6166,8 @@ const ThreeRenderer = (function () {
 
             var atkD = (typeof getStatusAtkDelta === 'function') ? getStatusAtkDelta(unit) : 0;
             var defD = (typeof getStatusArmorDelta === 'function') ? getStatusArmorDelta(unit) : 0;
+            var intD = (typeof getStatusIntDelta === 'function') ? getStatusIntDelta(unit) : 0;
+            var mdefD = (typeof getStatusMdefDelta === 'function') ? getStatusMdefDelta(unit) : 0;
             var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
             var hgBuff = unit.hourglassBuff || 0;
             var totalAtk = atkD + hgBuff + (unit._streakAtkBonus || 0) + (unit._lastStandAtkBonus || 0);
@@ -6175,6 +6177,10 @@ const ThreeRenderer = (function () {
             else if (totalAtk < 0) badges.push('<span class="tp-sbadge tp-stat-dn">ATK' + totalAtk + '</span>');
             if (totalDef > 0) badges.push('<span class="tp-sbadge tp-stat-up">DEF+' + totalDef + '</span>');
             else if (totalDef < 0) badges.push('<span class="tp-sbadge tp-stat-dn">DEF' + totalDef + '</span>');
+            if (intD > 0) badges.push('<span class="tp-sbadge tp-stat-up">INT+' + intD + '</span>');
+            else if (intD < 0) badges.push('<span class="tp-sbadge tp-stat-dn">INT' + intD + '</span>');
+            if (mdefD > 0) badges.push('<span class="tp-sbadge tp-stat-up">MDEF+' + mdefD + '</span>');
+            else if (mdefD < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MDEF' + mdefD + '</span>');
             if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
             else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
             if (badges.length) statusHtml = '<div class="tp-status-row">' + badges.join('') + '</div>';

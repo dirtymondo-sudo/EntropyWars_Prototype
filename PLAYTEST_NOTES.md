@@ -135,6 +135,37 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   point (sync() multiplies by tileSize). Set `x/y/zoom/tilt/yaw` AND their `_t*` +
   `_smooth*` twins, wait ~1s, then screenshot.
 
+## Buff/debuff rebalance — DEF/MDEF + ATK/INT axis split (2026-07-05) — data.js, battle.js, state.js, ui.js, ai.js, three-renderer.js
+Spells predating the DEF/MDEF split were rebalanced so every stat axis has a
+roughly equal buff/debuff roster (Pokemon/SMT-style). Key engine facts:
+- **Stat stages now include `mdef`** (`STAT_STAGE_STEP = {atk:14, def:9, mdef:9,
+  spd:3, int:12}`, cap ±5, 3-turn `statUp`/`statDown` carriers). Spells apply
+  them via `statStageBoost: {mdef: -2}` etc. — works on kinds `buff`, `debuff`,
+  `healAll` (whole team), `warCry` (aura).
+- **Axis split**: status `armorDelta` + DEF stages soak PHYSICAL damage only;
+  status `mdefDelta` + MDEF stages soak MAGIC only (`getEffectiveArmor`).
+  `atkDelta` + ATK stages boost physical damage only; `intDelta` + INT stages
+  boost magic damage only (`getEffectiveAttackBonus(unit, 'magic'|'physical')`,
+  applied in `applyDamageToUnit` by damageType). Env/faction/streak bonuses and
+  gear armor stay universal. `guarding` now carries both armorDelta+mdefDelta.
+- **Repurposed spells (same ids, new behavior)**: `shieldBash`→**Phalanx**
+  (Warrior team-wide +1 DEF, kind healAll heal:0), `radiantBolt`→**Veil of
+  Light** (White Mage team-wide +1 MDEF), `taser`→**Neuralyzer** (Agent, -2 INT),
+  `psychosis`→ pure -2 MDEF debuff (Psychic), `sonicCharge`→**Harmonize**
+  (Harbinger ally +2 INT), `mark1`→**Suppressing Fire** (Agent/Sniper -2 ATK).
+  New spells: `tinFoilHat` (Engineer ally +2 MDEF), `darkPact` (Black Mage self
+  +2 INT). `lullaby` also applies new `drowsy` status (stageMod {int:-1});
+  `fiveGTower` aura is now MDEF-only (-8, magic branch of getEffectiveArmor).
+- **healAll with heal:0** logs "bolstering N allies"; AI scores team stat buffs
+  in ai.js healAll branch (skips recast while caster has statUp). Nameplates
+  (three-renderer.js) now show INT±/MDEF± badges next to ATK/DEF/MOV.
+- Verified in-browser via LOCAL_ASSETS harness: stage deltas hit the right axis
+  only (+18 magic / 0 phys etc.), Phalanx bolsters whole team, Psychosis lands
+  -2 MDEF through the real doSpell path, no page errors during AI soak.
+- NOTE: spell `cost` fields are auto-normalized at load (a balance pass over
+  SPELL_LIBRARY recomputes MP costs from a power formula ~data.js:7065), so the
+  authored `cost:` is a suggestion, not the live number.
+
 ## Online-experience pass (2026-07-03) — online.js, battle.js, ui.js, index.html, server.js
 Four upgrades verified end-to-end with a two-browser probe (29/29) + a two-socket
 server test (21/21). Client files → R2: **online.js, battle.js, ui.js**;

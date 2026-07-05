@@ -3174,8 +3174,8 @@ const SPELL_LIBRARY = [
     },
     {
         id: 'mark1',
-        spellType: 'alien',
-        name: 'Mark',
+        spellType: 'tech',
+        name: 'Suppressing Fire',
         type: 'debuff',
         cost: 20,
         equipCost: 15,
@@ -3185,12 +3185,8 @@ const SPELL_LIBRARY = [
         school: 'Tactics',
         classRestrictions: ['Agent', 'Sniper'],
         jobPreference: ['Agent', 'Gunslinger'],
-        statusEffects: [{
-            id: 'marked',
-            duration: 2,
-            bonusDamage: 40
-        }],
-        desc: 'Mark an enemy, causing the next physical hit to deal +40 bonus damage.'
+        statStageBoost: { atk: -2 },
+        desc: 'Rake the target\'s position with disciplined covering fire. Pinned down and rattled, they fight at -2 ATK for 3 turns.'
     },
     {
         id: 'heal1',
@@ -3254,22 +3250,20 @@ const SPELL_LIBRARY = [
     {
         id: 'shieldBash',
         spellType: 'human',
-        name: 'Shield Bash',
-        type: 'damage',
-        cost: 20,
+        name: 'Phalanx',
+        type: 'buff',
+        cost: 45,
         equipCost: 15,
-        dmg: 80,
-        range: 1,
-        kind: 'damage',
-        damageType: 'physical',
-        tier: 'I',
+        apCost: 1,
+        heal: 0,
+        range: 0,
+        kind: 'healAll',
+        tier: 'II',
         school: 'Warrior',
         classRestriction: 'Warrior',
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Close-range bash that stuns the target, preventing them from acting next turn.'
+        jobPreference: ['Warrior'],
+        statStageBoost: { def: 1 },
+        desc: 'Bellow the old legion drill — SHIELDS UP! Your entire team locks formation, gaining +1 DEF for 3 turns.'
     },
     {
         id: 'dragonSlash',
@@ -3292,20 +3286,20 @@ const SPELL_LIBRARY = [
     {
         id: 'radiantBolt',
         spellType: 'divine',
-        name: 'Radiant Bolt',
-        type: 'damage',
-        cost: 25,
+        name: 'Veil of Light',
+        type: 'buff',
+        cost: 45,
         equipCost: 15,
-        dmg: 128,
-        range: 3,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 'I',
+        apCost: 1,
+        heal: 0,
+        range: 0,
+        kind: 'healAll',
+        tier: 'II',
         school: 'White Mage',
         classRestriction: 'White Mage',
         jobPreference: ['White Mage'],
-        unholyBonus: 48,
-        desc: 'A bolt of purifying light. Deals bonus damage (+48) to Unholy and Anomaly type targets.'
+        statStageBoost: { mdef: 1 },
+        desc: 'Drape your entire team in a shimmering curtain of holy light: +1 MDEF for 3 turns. Enemy spells break against it like waves.'
     },
     {
         id: 'revive1',
@@ -3417,6 +3411,23 @@ const SPELL_LIBRARY = [
         }],
         desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns, and leaves scorched terrain behind.'
     },
+    {
+        id: 'darkPact',
+        spellType: 'unholy',
+        name: 'Dark Pact',
+        type: 'buff',
+        cost: 25,
+        equipCost: 15,
+        apCost: 1,
+        range: 0,
+        kind: 'buff',
+        tier: 'II',
+        school: 'Black Mage',
+        classRestriction: 'Black Mage',
+        jobPreference: ['Black Mage'],
+        statStageBoost: { int: 2 },
+        desc: 'Whisper a bargain to something that whispers back. +2 INT for 3 turns — your next spells hit like the debt is due.'
+    },
 
     {
         id: 'doubleShot',
@@ -3513,22 +3524,17 @@ const SPELL_LIBRARY = [
     {
         id: 'taser',
         spellType: 'tech',
-        name: 'Taser',
-        type: 'damage',
-        cost: 30,
-        equipCost: 20,
-        dmg: 176,
-        range: 2,
-        kind: 'damage',
-        damageType: 'physical',
-        tier: 'II',
+        name: 'Neuralyzer',
+        type: 'debuff',
+        cost: 20,
+        equipCost: 10,
+        range: 3,
+        kind: 'debuff',
+        tier: 'I',
         school: 'Agent',
         classRestriction: 'Agent',
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Heavy close-range shock that deals strong damage and stuns the target.'
+        statStageBoost: { int: -2 },
+        desc: 'Look right here, please. A blinding flash scrambles the target\'s mind: -2 INT for 3 turns — weaker spells, sloppier ailments.'
     },
 
     {
@@ -3619,21 +3625,16 @@ const SPELL_LIBRARY = [
         id: 'psychosis',
         spellType: 'alien',
         name: 'Psychosis',
-        type: 'damage',
-        cost: 25,
-        equipCost: 20,
-        dmg: 208,
-        range: 3,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 'II',
+        type: 'debuff',
+        cost: 20,
+        equipCost: 15,
+        range: 4,
+        kind: 'debuff',
+        tier: 'I',
         school: 'Psychic',
         classRestriction: 'Psychic',
-        statusEffects: [{
-            id: 'silence',
-            duration: 1
-        }],
-        desc: 'Assault a target\'s mind with raw psychic force. May silence the victim.'
+        statStageBoost: { mdef: -2 },
+        desc: 'Unravel the target\'s sense of what is real. Their fractured mind lies open: -2 MDEF against all magic for 3 turns.'
     },
 
     {
@@ -3821,7 +3822,7 @@ const SPELL_LIBRARY = [
             id: 'overclock',
             duration: 2
         }],
-        desc: 'Supercharge an allied unit for 2 turns: +2 ATK, +1 Move. Tech-type units also gain +1 Range.'
+        desc: 'Supercharge an allied unit for 2 turns: +16 ATK, +1 Move. Tech-type units also gain +1 Range.'
     },
     {
         id: 'plasmaGun',
@@ -3870,7 +3871,7 @@ const SPELL_LIBRARY = [
         school: 'Harbinger',
         classRestriction: 'Harbinger',
         auraRadius: 3,
-        desc: 'Rally all allies within 3 tiles. Grants Inspired for 2 turns: +3 ATK, +2 DEF. The Harbinger receives a weaker version (+1 ATK, +1 DEF).'
+        desc: 'Rally all allies within 3 tiles. Grants Inspired for 2 turns: +24 ATK, +10 DEF. The Harbinger receives a weaker version (+8 ATK, +5 DEF).'
     },
     {
         id: 'discordance',
@@ -3888,7 +3889,7 @@ const SPELL_LIBRARY = [
             id: 'discord',
             duration: 2
         }],
-        desc: 'Disharmonize an enemy for 2 turns: -3 ATK, -2 DEF, and their spells cost +2 MP. More interactive than a hard stun.'
+        desc: 'Disharmonize an enemy for 2 turns: -24 ATK, -10 DEF, and their spells cost +10 MP. More interactive than a hard stun.'
     },
     {
         id: 'encore',
@@ -3921,8 +3922,11 @@ const SPELL_LIBRARY = [
         statusEffects: [{
             id: 'slow',
             duration: 2
+        }, {
+            id: 'drowsy',
+            duration: 2
         }],
-        desc: 'Sing a soothing melody that lulls an enemy, dealing magic damage and slowing them for 2 turns.'
+        desc: 'Sing a soothing melody that lulls an enemy: magic damage, slowed for 2 turns, and a drowsy, dulled mind (-1 INT).'
     },
 
     {
@@ -4133,7 +4137,7 @@ const SPELL_LIBRARY = [
             id: 'jackOfAll',
             duration: 3
         }],
-        desc: 'Self-buff: +16 ATK, +5 DEF, +1 MOVE, +1 Range for 3 turns. Modest but universal.'
+        desc: 'Self-buff: +16 ATK, +12 INT, +5 DEF & MDEF, +1 MOVE, +1 Range for 3 turns. Modest but universal.'
     },
     {
         id: 'improvise',
@@ -4335,8 +4339,24 @@ const SPELL_LIBRARY = [
         turretDmg: 0,
         turretRange: 4,
         auraDebuff: true,
-        auraDefReduction: 2,
-        desc: 'Deploy a 5G radio tower (3 hits to destroy). Reduces DEF by 2 for all enemies within 4 tiles. Max 1 per Engineer.'
+        auraDefReduction: 8,
+        desc: 'Deploy a 5G radio tower (3 hits to destroy). Its signal scrambles thought — enemies within 4 tiles lose 8 MDEF while it stands. Max 1 per Engineer.'
+    },
+    {
+        id: 'tinFoilHat',
+        spellType: 'tech',
+        name: 'Tin Foil Hat',
+        type: 'buff',
+        cost: 20,
+        equipCost: 10,
+        apCost: 1,
+        range: 2,
+        kind: 'buff',
+        tier: 'I',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        statStageBoost: { mdef: 2 },
+        desc: 'Fit an ally with a precision-folded foil helmet: +2 MDEF for 3 turns. They called it a conspiracy theory. They were wrong.'
     },
 
     {
@@ -4430,23 +4450,18 @@ const SPELL_LIBRARY = [
     {
         id: 'sonicCharge',
         spellType: 'anomaly',
-        name: 'Sonic Charge',
-        type: 'damage',
+        name: 'Harmonize',
+        type: 'buff',
         cost: 30,
-        equipCost: 20,
-        dmg: 112,
-        range: 4,
-        kind: 'dash',
-        damageType: 'magic',
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'buff',
         tier: 'II',
         school: 'Harbinger',
         classRestriction: 'Harbinger',
-        dashDamage: 40,
-        statusEffects: [{
-            id: 'discord',
-            duration: 1
-        }],
-        desc: 'Ride a shockwave of sound up to 4 tiles. Path enemies take 40 damage. Primary target suffers Discord.'
+        statStageBoost: { int: 2 },
+        desc: 'Attune an ally to the resonant frequency of the battlefield: +2 INT for 3 turns — stronger spells, truer ailments.'
     },
 
 
@@ -7750,6 +7765,19 @@ const STATUS_DEFS = {
         moveDelta: -2,
         iconSrc: createStatusIconDataUri('🐢', '#2f2a40', '#efe7ff', '#b89cff')
     },
+    drowsy: {
+        icon: '💤',
+        glyph: '💤',
+        short: 'DRZ',
+        label: 'Drowsy',
+        colorText: 'drowsy',
+        kind: 'debuff',
+        category: 'debuff',
+        stack: 'max',
+        // Stage-based: -1 INT stage while active (see getStatStageCount).
+        stageMod: { int: -1 },
+        iconSrc: createStatusIconDataUri('💤', '#2a2440', '#e8e2ff', '#9a8ad4')
+    },
 
     overclock: {
         icon: '⚙️',
@@ -7814,7 +7842,10 @@ const STATUS_DEFS = {
         kind: 'buff',
         category: 'buff',
         stack: 'max',
+        // Guard braces against everything: armorDelta soaks physical hits,
+        // mdefDelta soaks magic.
         armorDelta: 15,
+        mdefDelta: 15,
         iconSrc: createStatusIconDataUri('🛡', '#1a2a3a', '#c8e8ff', '#5a9ad4')
     },
 
@@ -7902,7 +7933,9 @@ const STATUS_DEFS = {
         category: 'buff',
         stack: 'max',
         atkDelta: 16,
+        intDelta: 12,
         armorDelta: 5,
+        mdefDelta: 5,
         moveDelta: 1,
         rangeDelta: 1,
         iconSrc: createStatusIconDataUri('🃏', '#2a2a3a', '#e8e0ff', '#9a8ad4')

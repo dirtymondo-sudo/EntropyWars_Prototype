@@ -1455,6 +1455,12 @@
             const total = allies.reduce((s, a) => s + Math.min(hBase, a.maxHp - a.hp), 0);
             let s = total * (hurt.length >= 2 ? 1.5 : 0.5);
             if (unit.cls === 'White Mage') s *= 2.0;
+            // Team-wide stat buffs (Phalanx, Veil of Light): worth casting once
+            // enemies are in sight, but don't re-stack while a buff is live.
+            if (spell.statStageBoost && v.visibleEnemies.length > 0 && !g.unitHasStatus(unit, 'statUp')) {
+                const stages = Object.values(spell.statStageBoost).reduce((n, st) => n + Math.abs(st || 0), 0);
+                s += allies.length * stages * 14;
+            }
             return s;
         }
 

@@ -3029,7 +3029,12 @@
         // damageType: 'physical' (default) folds DEF into armor, 'magic' folds
         // MDEF in, anything else (e.g. 'dot', 'none') adds no defense-stat soak
         // so callers that only want gear/status armor can pass 'none'.
+        // DEF/MDEF axis split: DEF-axis statuses & stages (Glare, Guard Break,
+        // Inspired, Phalanx…) only soak physical hits; MDEF-axis statuses &
+        // stages (Veil of Light, Tin Foil Hat, Psychosis, 5G Tower…) only soak
+        // magic. Gear armor and everything else stays universal.
         function getEffectiveArmor(unit, damageType) {
+            const dt = damageType || 'physical';
             const baseArmor = unit?.armor || 0;
             const sleepMod = getSleepAffinityModifier(unit).armor || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).armor || 0;
@@ -3037,8 +3042,9 @@
             const spaceArmor = (!unit || unit.faction !== 'space' || !hasFactionSynergy(unit.player, 'space')) ? 0 : Math.max(1, Math.round((unit.def || 0) * 0.20));
             const timeArmor = (!unit || unit.faction !== 'time' || !hasFactionSynergy(unit.player, 'time')) ? 0 : 1;
 
+            // 5G towers broadcast a mind-scrambling signal: MDEF-only penalty.
             let fiveGPenalty = 0;
-            if (unit && state.turrets) {
+            if (dt === 'magic' && unit && state.turrets) {
                 for (const t of state.turrets) {
                     if (t.hp > 0 && t.auraDebuff && t.owner !== unit.player) {
                         const dist = Math.abs(unit.x - t.x) + Math.abs(unit.y - t.y);
@@ -3048,7 +3054,10 @@
                     }
                 }
             }
-            let armor = Math.max(0, baseArmor + spaceArmor + timeArmor + sleepMod + terrainMod + weatherMod + getStatusArmorDelta(unit) - fiveGPenalty);
+            const statusDelta = dt === 'magic'
+                ? (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0)
+                : getStatusArmorDelta(unit);
+            let armor = Math.max(0, baseArmor + spaceArmor + timeArmor + sleepMod + terrainMod + weatherMod + statusDelta - fiveGPenalty);
 
             armor += (unit._bossBuffDef || 0);
             const sky = getSkyEventBonus(unit);
@@ -3056,7 +3065,6 @@
             armor = Math.max(0, Math.round(armor * getZodiacBonus(unit).mult));
 
             // Fold the relevant defense stat into the flat damage soak.
-            const dt = damageType || 'physical';
             if (dt === 'physical') {
                 armor += Math.floor((unit?.def || 0) * DEFENSE_DAMAGE_REDUCTION);
             } else if (dt === 'magic') {
@@ -3083,14 +3091,21 @@
             return Math.max(0.1, Math.min(0.75, (basePct + bonus) * skyMult * weatherHealMult));
         }
 
-        function getEffectiveAttackBonus(unit) {
+        // axis: 'physical' (default) counts ATK-axis statuses/stages (Overclock,
+        // Inspired, Discord…); 'magic' counts INT-axis statuses/stages instead
+        // (Dark Pact, Harmonize, Neuralyzer, Drowsy…). Environmental, faction
+        // and streak bonuses feed both axes.
+        function getEffectiveAttackBonus(unit, axis) {
             const sleepMod = getSleepAffinityModifier(unit).atk || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).atk || 0;
             const weatherMod = getWeatherStatMod(unit).atk || 0;
             const synergy = (!unit || unit.faction !== 'chaos' || !hasFactionSynergy(unit.player, 'chaos')) ? 0 : 16;
             const streakBonus = getStreakAtkBonus(unit);
             const floorBonus = getSectionBuffs(unit).atk || 0;
-            let bonus = synergy + sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + getStatusAtkDelta(unit);
+            const statusDelta = (axis === 'magic' && typeof getStatusIntDelta === 'function')
+                ? getStatusIntDelta(unit)
+                : getStatusAtkDelta(unit);
+            let bonus = synergy + sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + statusDelta;
             const sky = getSkyEventBonus(unit);
             if (sky.atkMult !== 1) bonus = Math.round(bonus * sky.atkMult);
             bonus = Math.round(bonus * getZodiacBonus(unit).mult);
@@ -3102,7 +3117,9 @@
             const sleepMod = getSleepAffinityModifier(unit).int || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).int || 0;
             const weatherMod = getWeatherStatMod(unit).int || 0;
-            const stageMod = (typeof getStatStageDelta === 'function') ? getStatStageDelta(unit, 'int') : 0;
+            // INT-axis statuses (intDelta) + INT stages, via the shared getter.
+            const stageMod = (typeof getStatusIntDelta === 'function') ? getStatusIntDelta(unit)
+                : (typeof getStatStageDelta === 'function') ? getStatStageDelta(unit, 'int') : 0;
             return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod + stageMod) * getZodiacBonus(unit).mult));
         }
 
@@ -3156,6 +3173,7 @@
                 sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
+                drowsy: 0.9,
                 glare: 0.9,
                 discord: 0.9
             };
