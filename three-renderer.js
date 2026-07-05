@@ -5666,12 +5666,16 @@ const ThreeRenderer = (function () {
         entry.modelDef = def;
         entry.modelMats = [];
 
-        // Invisible pick pillar (see contract note above).
+        // Invisible pick pillar (see contract note above). Height tracks the
+        // model's rendered height (ts * UNIT_SPRITE_SIZE_RATIO * heightRatio)
+        // so tall units (bigfoot, werewolf) stay clickable at the head and
+        // short ones (fairy, grey) don't carry an oversized hit cylinder.
+        var _pickH = ts * UNIT_SPRITE_SIZE_RATIO * (def.heightRatio || 1) * 0.95;
         var pick = new THREE.Mesh(
-            new THREE.CylinderGeometry(ts * 0.26, ts * 0.26, ts * 0.95, 8),
+            new THREE.CylinderGeometry(ts * 0.26, ts * 0.26, _pickH, 8),
             new THREE.MeshBasicMaterial({ visible: false })
         );
-        pick.position.y = ts * 0.475;
+        pick.position.y = _pickH * 0.5;
         pick._ew_shadowFlagged = true;
         wrap.add(pick);
 

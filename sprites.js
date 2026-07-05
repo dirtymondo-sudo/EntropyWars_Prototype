@@ -485,7 +485,16 @@ function _mk3d(folder, prefix, anims, opts) {
   return Object.assign({
     model: `${F}/Meshy_AI_${prefix}_biped_Character_output.glb`,
     clips,
-    heightRatio: 1.0,     // renderer measures true skinned bounds — don't touch
+    // Relative on-board size. The renderer NORMALIZES every model to the same
+    // rendered height (ts * UNIT_SPRITE_SIZE_RATIO * heightRatio), so a raw
+    // Meshy bigfoot and fairy come out identical unless heightRatio differs.
+    // Scale is RELATIVE, anchored to the male fortune teller = 1.0 (a normal
+    // adult human male). Set per character via opts.heightRatio: humans ~1.0
+    // (females a touch shorter ~0.94), small creatures < 1 (fairy 0.6, grey
+    // 0.78), big ones > 1 (bigfoot 1.4, werewolf 1.3). Nameplate top + the
+    // click pillar both derive from heightRatio, so plates float and clicks
+    // land at the right height automatically.
+    heightRatio: 1.0,
     yawOffset: 0,
     moveTimeScale: 1.3,   // Running 0.67s → ~0.52s/cycle
     castTimeScale: 2.0,   // Charged 2.7s → 1.35s; soell 2.3s → 1.15s
@@ -503,25 +512,26 @@ const RACE_MODELS_3D = {
   // ── Homosapien sub-races (Races/Homosapien/<Gender>/<job folder>/) ──
   'fortune teller': {
     // "male_fortune_teller" — new 2026-07 model (replaced Fortune_teller_with_r).
+    // ★ HEIGHT ANCHOR: heightRatio 1.0 = this character. All others scale from here.
     male: _mk3d('Homosapien/Male/harbinger', 'male_fortune_teller', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }),
+    }, { heightRatio: 1.0 }),
     female: _mk3d('Homosapien/Female/harbinger', 'hot_attractive_fortun', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }),
+    }, { heightRatio: 0.95 }),
   },
   'men in black': {
     female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),   // quick-draw is 7.33s; show draw+shot fast
+    }, { castTimeScale: 5.0, heightRatio: 0.95 }),   // quick-draw is 7.33s; show draw+shot fast
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.02 }),   // tall agent
   },
   // Female Psychic (Telepath) — pilot wiring + the 2026-07-05 Running/Hit
   // uploads (generic Meshy_AI_Animation_* names, no character prefix — her
@@ -537,7 +547,7 @@ const RACE_MODELS_3D = {
         cast:  `${_PSY_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,
         death: `${_PSY_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
-      heightRatio: 1.0,
+      heightRatio: 0.95,    // female human, a touch shorter than the anchor
       yawOffset: 0,
       moveTimeScale: 1.3,   // Running 0.67s
       castTimeScale: 2.2,
@@ -551,29 +561,29 @@ const RACE_MODELS_3D = {
       idle: 'Idle_9', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast',
-    }),
+    }, { heightRatio: 0.94 }),
   },
   // Engineers (Mad Scientist) — their "gun" cast is the ray-gun quick-draw.
   'mad scientist': {
     female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.93 }),
     male: _mk3d('Homosapien/Male/engineer', 'mad_scientist', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
   },
   // Gunslingers.
   'cowboy': {
     female: _mk3d('Homosapien/Female/gunslinger', 'hot_attractive_cowgir', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.95 }),
     male: _mk3d('Homosapien/Male/gunslinger', 'gunslinger_cowboy', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
   },
   // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
   // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
@@ -581,7 +591,7 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/knight', 'hot_attractive_female', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Triple_Combo_Attack', castMelee: 'Thrust_Slash',
-    }, { castTimeScale: 2.2 }),
+    }, { castTimeScale: 2.2, heightRatio: 0.96 }),   // armored, sturdy
   },
   // Female Pirate — flintlock = quick-draw. (Same files are duplicated in
   // …/Female/raider; the pirate/ copies are wired.)
@@ -589,13 +599,13 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/pirate', 'hot_female_pirate', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.95 }),
     // "Dashingly handsome swashbuckler" — same file set mirrored in
     // …/Male/raider.
     male: _mk3d('Homosapien/Male/pirate', 'dashingly_handsome_sw', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.02 }),
   },
   // Homosapien (Freelancer) — also the model to reuse for the werewolf DAY
   // form once the werewolf night model is wired (day form is sprite-only for
@@ -603,7 +613,7 @@ const RACE_MODELS_3D = {
   'homosapien': {
     male: _mk3d('Homosapien/Male/freelancer', 'normal_man', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', death: 'Dead',
-    }),
+    }, { heightRatio: 1.0 }),
   },
 
   // ── Non-homosapien races (Races/<race folder>/<gender>/) ──
@@ -613,20 +623,20 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast',
       // spare emotes on R2: Mirror_Viewing, Wave_for_Help_1 (future victory/emote slots)
-    }),
+    }, { heightRatio: 0.6 }),   // tiny winged sprite
   },
   'bigfoot': {
     male: _mk3d('bigfoot/male', 'bigfoot', {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 1.15 }),   // reads bigger than the humans on the board
+    }, { heightRatio: 1.4 }),   // towering cryptid
   },
   'grey': {
     male: _mk3d('grey/male', 'grey_alien', {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       // spare on R2: Idle_15 (alt idle)
-    }),
+    }, { heightRatio: 0.78 }),   // short classic grey alien
   },
   // Quarterback — Right_Hand_Sword_Slash doubles as his throwing motion
   // (footballs classify as 'throw'); Face_Punch_Reaction is the hit flinch.
@@ -635,14 +645,14 @@ const RACE_MODELS_3D = {
     male: _mk3d('quarterback', 'football_quarterback', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       cast: 'Right_Hand_Sword_Slash', castThrow: 'Right_Hand_Sword_Slash',
-    }, { castTimeScale: 2.2 }),
+    }, { castTimeScale: 2.2, heightRatio: 1.1 }),   // big athlete + pads
   },
   // Female Atlantean — Swim_Idle as her resting loop (aquatic flavor).
   'atlantean': {
     female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
       idle: 'Swim_Idle', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }),
+    }, { heightRatio: 0.98 }),   // statuesque sea-dweller
   },
   // Werewolf (night form; day form will reuse the homosapien freelancer
   // model once the renderer swaps models per cycle phase — sprite for now).
@@ -651,7 +661,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Right_Hand_Sword_Slash', castMelee: 'Right_Hand_Sword_Slash',
       // spare on R2: Idle_11, Knock_Down
-    }, { castTimeScale: 2.2 }),
+    }, { castTimeScale: 2.2, heightRatio: 1.3 }),   // large hulking beast
   },
   // Catgirl — gun for ranged (native Gunslinger), left hook for melee,
   // backflip jump. Spare on R2: Right_Hand_Sword_Slash, Hit_Reaction, Regular_Jump.
@@ -660,7 +670,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_5', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMelee: 'Left_Hook_from_Guard',
-    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 } }),
+    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 }, heightRatio: 0.88 }),   // petite
   },
   // Female Ki Fighter — punch combo as the generic cast, kung-fu punch for
   // melee, mage_soell_cast_3 (note the _3) for ki blasts / support, backflip
@@ -670,7 +680,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Punch_Combo_5', castMelee: 'Kung_Fu_Punch',
       castMagic: 'mage_soell_cast_3', castSupport: 'mage_soell_cast_3',
-    }, { castTimeScale: 2.2 }),
+    }, { castTimeScale: 2.2, heightRatio: 0.93 }),
   },
   // Female Vampire (humanoid form only — bat-swarm form keeps its particle
   // build, the renderer skips models for it).
@@ -679,7 +689,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast_1',
-    }),
+    }, { heightRatio: 0.97 }),   // tall, elegant
   },
   // Still missing from R2 (prefix unknown — need the Character_output file
   // name per folder to wire): male telepath, male pirate.
