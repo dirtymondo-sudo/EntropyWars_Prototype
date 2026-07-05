@@ -1568,11 +1568,19 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     }));
   }
 
-  // the crown — a stopwatch pusher on top of the clock; the one, always-
-  // visible BACK control for every sub/quick/aiming state.
+  // the crown — a stopwatch pusher on top of the clock. In any sub/quick/
+  // aiming state it's the one, always-visible BACK control; at the root menu
+  // there's nothing to back out of, so it doubles as END TURN instead.
   const backable = view !== 'root' || !!am;
   const pressCrown = () => {
-    if (!backable) return;
+    if (!backable) {
+      // root view → END TURN (same ritual as firing the END TURN blade)
+      if (typeof playSfx === 'function') playSfx('uiConfirm');
+      if (clockApi.strike) clockApi.strike(90);
+      if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(700);
+      onEndTurn();
+      return;
+    }
     if (typeof playSfx === 'function') playSfx('uiBack');
     if (clockApi.wind) clockApi.wind(-360);   // unwind what the sub-menu wound
     onCancel();
@@ -1633,13 +1641,13 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
       ),
     ),
     h('div', {
-      className: 'hrlg-crown' + (backable ? ' live' : ''),
-      title: backable ? 'Back (ESC)' : undefined,
-      onClick: backable ? pressCrown : undefined,
+      className: 'hrlg-crown live' + (backable ? '' : ' endturn' + (ap <= 1 ? ' lastap' : '')),
+      title: backable ? 'Back (ESC)' : 'End Turn (SPACE)',
+      onClick: pressCrown,
     },
-      h('span', { className: 'hrlg-crown-cap' }, h('span', { className: 'hrlg-crown-arrow' }, '◀')),
+      h('span', { className: 'hrlg-crown-cap' }, h('span', { className: 'hrlg-crown-arrow' }, backable ? '◀' : '■')),
       h('span', { className: 'hrlg-crown-stem' }),
-      backable && h('span', { className: 'hrlg-crown-label' }, '◀ BACK'),
+      h('span', { className: 'hrlg-crown-label' }, backable ? '◀ BACK' : '■ END TURN'),
     ),
     h('div', { className: 'hrlg-core' },
       h('span', { className: 'hrlg-roman' }, roman + ' · '),
@@ -4514,6 +4522,17 @@ function _injectHudHideStyles() {
     }
     .hrlg-crown.live:hover  { transform: translateY(-2px) scale(1.06); }
     .hrlg-crown.live:active { transform: translateY(3px); }
+    /* root view: nothing to back out of → the crown is END TURN instead.
+       Calm by default; when the unit is down to its LAST AP it pulses hard
+       so "wrap it up" is impossible to miss. */
+    .hrlg-crown.endturn { animation: none; }
+    .hrlg-crown.endturn.lastap { animation: hrlgCrownLastAP 0.9s ease-in-out infinite; }
+    @keyframes hrlgCrownLastAP {
+      0%, 100% { filter: brightness(1);   transform: scale(1); }
+      50%      { filter: brightness(1.7); transform: scale(1.08); }
+    }
+    .hrlg-crown.endturn.lastap:hover  { animation: none; transform: translateY(-2px) scale(1.06); }
+    .hrlg-crown.endturn.lastap:active { animation: none; transform: translateY(3px); }
     /* ── special-action pushers: extra chronograph buttons on the bezel.
        Mounted only while their action is usable; they pulse + ping. */
     .hrlg-pusher {
