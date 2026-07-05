@@ -5501,8 +5501,16 @@ const ThreeRenderer = (function () {
     function _updateUnitSelfGlow() {
         unitEntries.forEach(function (entry, uid) {
             var spr = entry.sprite;
-            if (!spr || !spr.material || !spr.material.emissiveMap) return;
-            spr.material.emissiveIntensity = _unitSelfGlowIntensity(_findUnit(uid));
+            var hasModel = entry.modelMats && entry.modelMats.length;
+            var hasSprite = spr && spr.material && spr.material.emissiveMap;
+            if (!hasSprite && !hasModel) return;
+            var inten = _unitSelfGlowIntensity(_findUnit(uid));
+            if (hasSprite) spr.material.emissiveIntensity = inten;
+            if (hasModel) {
+                for (var i = 0; i < entry.modelMats.length; i++) {
+                    if (entry.modelMats[i].emissiveMap) entry.modelMats[i].emissiveIntensity = inten;
+                }
+            }
         });
     }
 
@@ -5520,6 +5528,274 @@ const ThreeRenderer = (function () {
         return Math.atan2(f.dx, f.dy);
     }
 
+    /* ── Rigged 3D unit models ───────────────────────────────────────────
+       Races registered in RACE_MODELS_3D (sprites.js) render as real skinned
+       GLB models instead of extruded sprite slabs. The base GLB loads once,
+       is cloned per unit with THREE.SkeletonUtils (each unit needs its own
+       bone graph), and the animation clips (idle / walk / cast / death)
+       retarget onto the clone from their own GLBs — all Meshy biped exports
+       share the same bone names, so one clip set drives any character rigged
+       on that skeleton.
+
+       Integration contract with the sprite pipeline:
+       - On the very first build (GLB still downloading) the normal sprite
+         slab is built as a loading placeholder; _attachUnitModel swaps it
+         out the moment the model arrives. Once cached, rebuilds resolve
+         synchronously and skip the placeholder entirely.
+       - The model lives in a wrapper Group flagged _ew_facingSprite, so the
+         gameplay-facing pass (_updateUnitFacing) yaws it exactly like a
+         sprite slab. Team rings, facing wedge, plates, tweens (walk/lunge/
+         dodge/jump) all keep working — they move the unit GROUP.
+       - An invisible pick pillar guarantees clicks land: raycasts against a
+         SkinnedMesh hit the bind pose, which drifts from the animated pose.
+       - Materials are rebuilt as MeshLambert with the art as its own
+         emissive map — the same lighting model as sprite units (sun/night
+         self-glow, AP-spent grey, hit flashes).
+       Set window.EW_DISABLE_3D_UNITS = true to force the sprite path. */
+    var _unitGlbCache = {};            // url -> { root, clips, bbox, loading, failed, cbs }
+    var _modelAnimState = new Map();   // unit id -> { name, time } — survives rebuilds
+    var MODEL_DEATH_MS = 1600;         // rigged death: knock-down clip + fade tail
+    var MODEL_ANIM_FADE = 0.15;        // crossfade between clips (seconds)
+
+    function _loadUnitGLB(url, cb) {
+        var e = _unitGlbCache[url];
+        if (e) {
+            if (e.root) { cb(e); return; }
+            if (e.failed) return;
+            e.cbs.push(cb); return;
+        }
+        e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
+        if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; return; }
+        try {
+            new THREE.GLTFLoader().load(url, function (gltf) {
+                var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+                if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; return; }
+                // Geometry is shared by every clone — protect it from _disposeR.
+                root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+                e.root = root;
+                e.clips = gltf.animations || [];
+                e.bbox = new THREE.Box3().setFromObject(root);
+                e.loading = false;
+                var cbs = e.cbs; e.cbs = [];
+                for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
+                invalidateUnits();   // swap placeholders for the model on the next frame
+            }, undefined, function () {
+                e.loading = false; e.failed = true; e.cbs.length = 0;
+                console.warn('[ThreeRenderer] unit model failed to load:', url);
+            });
+        } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; }
+    }
+
+    function _unitModelReady(def) {
+        var e = _unitGlbCache[def.model];
+        return !!(e && e.root);
+    }
+
+    function _cloneUnitModel(root) {
+        if (typeof THREE.SkeletonUtils !== 'undefined' && typeof THREE.SkeletonUtils.clone === 'function') {
+            return THREE.SkeletonUtils.clone(root);
+        }
+        // Plain clone shares the skeleton across instances — correct for a
+        // single unit of the race, wrong poses when several share the board.
+        console.warn('[ThreeRenderer] THREE.SkeletonUtils missing — skinned unit clones will share bones');
+        return root.clone(true);
+    }
+
+    /* Swap out the flat sprite placeholder (front plane + shell + shadow
+       proxy + x-ray silhouette) once the rigged model is live. */
+    function _removeUnitSpritePlaceholder(entry) {
+        var g = entry.group;
+        if (!g) return;
+        for (var i = g.children.length - 1; i >= 0; i--) {
+            var c = g.children[i];
+            if (c === entry.sprite || c === entry.silhouette || c._ew_shadowProxy) {
+                g.remove(c);
+                _disposeR(c);
+            }
+        }
+        entry.sprite = null;
+        entry.silhouette = null;
+    }
+
+    function _attachUnitModel(entry, unit, def, ts) {
+        var wrap = new THREE.Group();
+        wrap._ew_facingSprite = true;    // gameplay-facing pass owns wrap.rotation.y
+        wrap._ew_baseY = 0;
+        wrap.rotation.y = _unitFacingYaw(unit);
+        entry.group.add(wrap);
+        entry.model = wrap;
+        entry.modelDef = def;
+        entry.modelMats = [];
+
+        // Invisible pick pillar (see contract note above).
+        var pick = new THREE.Mesh(
+            new THREE.CylinderGeometry(ts * 0.26, ts * 0.26, ts * 0.95, 8),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        pick.position.y = ts * 0.475;
+        pick._ew_shadowFlagged = true;
+        wrap.add(pick);
+
+        var apSpent = unit.ap <= 0;
+        var glow = _unitSelfGlowIntensity(unit);
+
+        _loadUnitGLB(def.model, function (res) {
+            if (entry._ew_modelAttached) return;
+            entry._ew_modelAttached = true;
+
+            var m = _cloneUnitModel(res.root);
+            var bb = res.bbox;
+            var h = (bb.max.y - bb.min.y) || 1;
+            // Same on-board height as the sprite slabs (128px art = 1 tile).
+            var target = ts * UNIT_SPRITE_SIZE_RATIO * (def.heightRatio || 1);
+            var s = target / h;
+            var inner = new THREE.Group();
+            inner.rotation.y = def.yawOffset || 0;
+            m.scale.setScalar(s);
+            m.position.set(
+                -((bb.min.x + bb.max.x) * 0.5) * s,
+                -bb.min.y * s,                        // feet on the tile top
+                -((bb.min.z + bb.max.z) * 0.5) * s
+            );
+            inner.add(m);
+            wrap.add(inner);
+
+            m.traverse(function (n) {
+                if (!n.isMesh) return;
+                n.frustumCulled = false;   // animated poses leave the bind-pose bounds
+                n.castShadow = true;
+                n.receiveShadow = false;
+                n._ew_shadowFlagged = true;
+                n._ew_modelSkin = true;    // cloak/fade sweeps pick this up
+                var src = Array.isArray(n.material) ? n.material : [n.material];
+                var out = src.map(function (sm) {
+                    var tex = (sm && sm.map) ? sm.map : null;
+                    if (tex && tex.encoding !== THREE.LinearEncoding) {
+                        // Renderer output is linear like every other texture in
+                        // the game — drop the glTF sRGB decode so the bake isn't
+                        // darkened.
+                        tex.encoding = THREE.LinearEncoding;
+                        tex.needsUpdate = true;
+                    }
+                    var lm = new THREE.MeshLambertMaterial({ map: tex });
+                    if (n.isSkinnedMesh) lm.skinning = true;
+                    if (apSpent) lm.color.setRGB(0.5, 0.5, 0.5);
+                    if (tex) {
+                        lm.emissive = new THREE.Color(0xffffff);
+                        lm.emissiveMap = tex;
+                        lm.emissiveIntensity = glow;
+                    }
+                    entry.modelMats.push(lm);
+                    return lm;
+                });
+                n.material = Array.isArray(n.material) ? out : out[0];
+            });
+
+            // Mixer + retargeted clips: every clip GLB carries the same rig,
+            // so its first animation binds to this clone by node name.
+            var mixer = new THREE.AnimationMixer(m);
+            entry.mixer = mixer;
+            entry.actions = {};
+            var clips = def.clips || {};
+            Object.keys(clips).forEach(function (name) {
+                _loadUnitGLB(clips[name], function (cres) {
+                    if (!cres.clips || !cres.clips.length || entry.mixer !== mixer) return;
+                    var act = mixer.clipAction(cres.clips[0]);
+                    if (name === 'cast' || name === 'death') {
+                        act.setLoop(THREE.LoopOnce, 0);
+                        act.clampWhenFinished = true;
+                        act.timeScale = (name === 'cast')
+                            ? (def.castTimeScale || 1) : (def.deathTimeScale || 1);
+                    } else {
+                        act.setLoop(THREE.LoopRepeat, Infinity);
+                        if (name === 'walk') act.timeScale = def.moveTimeScale || 1;
+                    }
+                    entry.actions[name] = act;
+                    if (name === 'idle' && !entry._ew_curAnim) {
+                        entry._ew_curAnim = 'idle';
+                        act.play();
+                        // Resume the loop where it was before the rebuild so
+                        // selection changes don't visibly restart the idle.
+                        var st = _modelAnimState.get(unit.id);
+                        if (st && st.name === 'idle' && cres.clips[0].duration > 0) {
+                            act.time = st.time % cres.clips[0].duration;
+                        }
+                    }
+                });
+            });
+
+            _removeUnitSpritePlaceholder(entry);
+        });
+    }
+
+    /* Crossfade the entry's mixer to `name`. Falls back to idle when the walk
+       clip hasn't arrived yet; returns false when nothing can play. `force`
+       restarts the clip even if it is already the current one (repeat casts). */
+    function _playUnitModelAnim(entry, name, force) {
+        var acts = entry.actions || {};
+        var next = acts[name] || ((name === 'walk') ? acts.idle : null);
+        if (!next) return false;
+        var prev = entry._ew_curAnim ? acts[entry._ew_curAnim] : null;
+        if (prev === next && !force) { entry._ew_curAnim = name; return true; }
+        entry._ew_curAnim = name;
+        next.enabled = true;
+        next.reset();
+        next.play();
+        if (prev && prev !== next) next.crossFadeFrom(prev, MODEL_ANIM_FADE, false);
+        return true;
+    }
+
+    /* One-shot action clip (cast — also used for basic attacks). Owns the
+       animation for the clip's (time-scaled) duration, capped so long clips
+       can't stall the action feel; the state machine then falls back to
+       idle/walk. Returns false for sprite units so callers can chain to the
+       sprite-sheet path. */
+    function _maybeStartModelAnim(uid, name) {
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.mixer || !ue.actions || !ue.actions[name]) return false;
+        var act = ue.actions[name];
+        var clip = act.getClip();
+        var scale = Math.abs(act.timeScale) || 1;
+        var ms = Math.min((clip.duration / scale) * 1000, 1400);
+        ue._ew_oneShot = { name: name, until: performance.now() + ms };
+        _playUnitModelAnim(ue, name, true);
+        return true;
+    }
+
+    /* Per-frame model driver: advances every mixer and resolves the animation
+       state machine — death > one-shot (cast) > locomotion > idle. Also keeps
+       the AP-spent grey tint current (hit flashes own the tint while live). */
+    var _modelClockPrev = 0;
+    function _updateUnitModels() {
+        if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
+        var now = performance.now();
+        var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
+        _modelClockPrev = now;
+        unitEntries.forEach(function (entry, uid) {
+            if (!entry.mixer) return;
+            if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
+            var want;
+            if (_deathTweens.has(uid)) want = 'death';
+            else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
+            else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
+                     || _jumpTweens.has(uid) || _strikeTweens.has(uid)) want = 'walk';
+            else want = 'idle';
+            if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
+            entry.mixer.update(dt);
+            var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
+            if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
+            if (entry.modelMats.length && !_flashTweens.has(uid) && !_deathTweens.has(uid)) {
+                var unit = _findUnit(uid);
+                var grey = (unit && unit.ap <= 0) ? 0.5 : 1;
+                for (var i = 0; i < entry.modelMats.length; i++) {
+                    if (entry.modelMats[i].color.r !== grey) {
+                        entry.modelMats[i].color.setRGB(grey, grey, grey);
+                    }
+                }
+            }
+        });
+    }
+
     function _buildUnitEntry(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
@@ -5534,6 +5810,15 @@ const ThreeRenderer = (function () {
         var spriteMesh = null;
         var silhouetteMesh = null;
 
+        // Rigged 3D model race (RACE_MODELS_3D)? Once the GLB is cached the
+        // sprite pipeline below is skipped entirely; on the very first build
+        // the sprite slab still goes up as a loading placeholder and
+        // _attachUnitModel swaps it out when the model arrives.
+        var _m3dDef = (!unit._spriteOverride && typeof getRace3DModel === 'function'
+                       && typeof THREE.GLTFLoader === 'function')
+            ? getRace3DModel(unit.race, unit.gender || 'male') : null;
+        var _m3dReady = _m3dDef && _unitModelReady(_m3dDef);
+
         if (_isVampireBatForm(unit)) {
             var swarm = _buildBatSwarmGroup(unit, ts);
             group.add(swarm);
@@ -5541,6 +5826,10 @@ const ThreeRenderer = (function () {
             group._ew_spriteW = ts;
 
             spriteMesh = swarm.children.length > 0 ? swarm.children[0] : null;
+            _m3dDef = null;
+        } else if (_m3dReady) {
+            // Model attaches synchronously from cache in _attachUnitModel below.
+            group._ew_spriteW = ts * 0.7;
         } else {
 
             var spriteUrl = (typeof getBattleMapSpriteUrl === 'function')
@@ -5737,6 +6026,10 @@ const ThreeRenderer = (function () {
         if (group._ew_isBatSwarm) {
 
             group._ew_spriteTopY = surfY + ts * BAT_SPREAD + ts * BAT_SPRITE_SIZE + 12;
+        } else if (_m3dDef) {
+            // Rigged model: plate/chevron anchor sits at the model's head
+            // height (same tile-height budget as the sprite slabs).
+            group._ew_spriteTopY = surfY + ts * UNIT_SPRITE_SIZE_RATIO * (_m3dDef.heightRatio || 1) + 4;
         } else {
             var topShift = 0;
             var spriteUrl2 = (typeof getBattleMapSpriteUrl === 'function')
@@ -5759,7 +6052,9 @@ const ThreeRenderer = (function () {
             group._ew_spriteTopY = surfY + _effectiveSprH - bottomShift2 - topShift + 4;
         }
 
-        return { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
+        var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
+        if (_m3dDef) _attachUnitModel(entryObj, unit, _m3dDef, ts);
+        return entryObj;
     }
 
     function rebuildUnits() {
@@ -7843,7 +8138,7 @@ const ThreeRenderer = (function () {
     function _setEntrySpriteOpacity(entry, op) {
         if (!entry || !entry.group) return;
         entry.group.traverse(function(o) {
-            if (o.isMesh && o._ew_billboard && o.material) {
+            if (o.isMesh && (o._ew_billboard || o._ew_modelSkin) && o.material) {
                 if (o.material._ew_baseOpacity === undefined) {
                     o.material._ew_baseOpacity = (o.material.opacity !== undefined) ? o.material.opacity : 1;
                 }
@@ -9124,9 +9419,14 @@ const ThreeRenderer = (function () {
         var entry = _getUnitEntry(unitId);
         if (!entry || !entry.group) return;
 
+        // Rigged model units die by clip (knock-down) instead of the sprite
+        // spin/shrink — give the clip a longer window; _updateUnitModels holds
+        // the 'death' state while this tween runs.
+        var _isModelDeath = !!entry.mixer;
         _deathTweens.set(unitId, {
             startTime: performance.now(),
-            durationMs: DEATH_MS,
+            durationMs: _isModelDeath ? MODEL_DEATH_MS : DEATH_MS,
+            isModel: _isModelDeath,
             group: entry.group,
             startX: entry.group.position.x,
             startY: entry.group.position.y
@@ -9140,6 +9440,26 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
             var g = tw.group;
+            if (tw.isModel) {
+                // Rigged unit: the knock-down clip plays via _updateUnitModels
+                // ('death' state, clamped on its final frame). No spin/shrink —
+                // the body just settles, then the whole entry dissolves.
+                if (g && t > 0.55) {
+                    var mFade = (t - 0.55) / 0.45;
+                    g.traverse(function (o) {
+                        var mm = o.material;
+                        if (mm && !Array.isArray(mm) && mm.opacity !== undefined) {
+                            mm.transparent = true;
+                            mm.opacity = Math.min(mm.opacity, 1 - mFade);
+                        }
+                    });
+                }
+                if (t >= 1) {
+                    if (g) g.visible = false;
+                    toRemove.push(uid);
+                }
+                continue;
+            }
             if (g) {
 
                 if (t < 0.3) {
@@ -9985,8 +10305,9 @@ const ThreeRenderer = (function () {
                             durationMs: LUNGE_MS
                         });
                     }
-                    // Play the attack sprite sheet (if any) on top of the lunge.
-                    _maybeStartSpriteAnim(uid, 'attack');
+                    // Rigged model units play their cast clip for attacks; sprite
+                    // races play the attack sheet (if any) on top of the lunge.
+                    if (!_maybeStartModelAnim(uid, 'cast')) _maybeStartSpriteAnim(uid, 'attack');
                 }
             }
             _prevAttackIds = new Set(state.attackAnimIds);
@@ -10000,7 +10321,8 @@ const ThreeRenderer = (function () {
                     // race has a sheet we own the sprite for the cast and skip
                     // the default glow/pulse tween (which would tint it).
                     var _dmg = state._castAnimDamaging && state._castAnimDamaging[uid];
-                    if (!_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
+                    if (!_maybeStartModelAnim(uid, 'cast')
+                        && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
                             startTime: performance.now(),
                             durationMs: CAST_MS
@@ -10296,6 +10618,20 @@ const ThreeRenderer = (function () {
         for (var r = 0; r < toRemove.length; r++) _castTweens.delete(toRemove[r]);
     }
 
+    /* Tintable materials + the node that shakes for a flash/wiggle: the sprite
+       slab for sprite units, the model wrapper + its skin materials for rigged
+       units (whichever the entry currently carries). */
+    function _flashTargets(ue) {
+        if (!ue) return null;
+        if (ue.sprite && ue.sprite.material) {
+            return { mats: [ue.sprite.material], node: ue.sprite, baseY: ue.sprite._ew_baseY || 0 };
+        }
+        if (ue.model && ue.modelMats && ue.modelMats.length) {
+            return { mats: ue.modelMats, node: ue.model, baseY: ue.model._ew_baseY || 0 };
+        }
+        return null;
+    }
+
     function _updateFlashTweens() {
         var now = performance.now();
         var toRemove = [];
@@ -10303,56 +10639,50 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
             var ue = _getUnitEntry(uid);
-            if (ue && ue.sprite && ue.sprite.material) {
+            var ft = _flashTargets(ue);
+            if (ft) {
                 var flash = Math.sin(t * Math.PI);
+                var fr, fg, fb;
                 if (tw.kind === 'heal') {
-
-                    ue.sprite.material.color.setRGB(1 - flash * 0.2, 1 + flash * 0.8, 1 - flash * 0.2);
-                } else {
+                    fr = 1 - flash * 0.2; fg = 1 + flash * 0.8; fb = 1 - flash * 0.2;
+                } else if (tw.kind === 'burn') {
                     // Damage flash — colour depends on the source:
                     //   hit/default = white, burn = red, drowning = blue,
                     //   poison = purple, paralysis (stun) = yellow.
-                    var fr, fg, fb;
-                    if (tw.kind === 'burn') {
-                        fr = 1 + flash * 1.5; fg = 1 - flash * 0.6; fb = 1 - flash * 0.6;
-                    } else if (tw.kind === 'drowning') {
-                        fr = 1 - flash * 0.6; fg = 1 - flash * 0.2; fb = 1 + flash * 1.5;
-                    } else if (tw.kind === 'poison') {
-                        fr = 1 + flash * 0.9; fg = 1 - flash * 0.5; fb = 1 + flash * 1.1;
-                    } else if (tw.kind === 'paralysis') {
-                        fr = 1 + flash * 1.4; fg = 1 + flash * 1.1; fb = 1 - flash * 0.7;
-                    } else {
-                        // 'hit' / 'damage' — plain white flash.
-                        fr = 1 + flash * 1.5; fg = 1 + flash * 1.5; fb = 1 + flash * 1.5;
-                    }
-                    ue.sprite.material.color.setRGB(fr, fg, fb);
-                    var baseY = ue.sprite._ew_baseY || 0;
+                    fr = 1 + flash * 1.5; fg = 1 - flash * 0.6; fb = 1 - flash * 0.6;
+                } else if (tw.kind === 'drowning') {
+                    fr = 1 - flash * 0.6; fg = 1 - flash * 0.2; fb = 1 + flash * 1.5;
+                } else if (tw.kind === 'poison') {
+                    fr = 1 + flash * 0.9; fg = 1 - flash * 0.5; fb = 1 + flash * 1.1;
+                } else if (tw.kind === 'paralysis') {
+                    fr = 1 + flash * 1.4; fg = 1 + flash * 1.1; fb = 1 - flash * 0.7;
+                } else {
+                    // 'hit' / 'damage' — plain white flash.
+                    fr = 1 + flash * 1.5; fg = 1 + flash * 1.5; fb = 1 + flash * 1.5;
+                }
+                for (var mi = 0; mi < ft.mats.length; mi++) ft.mats[mi].color.setRGB(fr, fg, fb);
 
+                if (tw.kind !== 'heal') {
                     if (t < 0.6) {
                         var shakeDecay = 1 - (t / 0.6);
                         var shakeFreq = Math.sin(t * Math.PI * 8);
-                        ue.sprite.position.x = shakeFreq * shakeDecay * 6;
+                        ft.node.position.x = shakeFreq * shakeDecay * 6;
 
-                        ue.sprite.position.y = baseY - flash * 3;
+                        ft.node.position.y = ft.baseY - flash * 3;
                     } else {
-                        ue.sprite.position.x = 0;
-                        ue.sprite.position.y = baseY;
+                        ft.node.position.x = 0;
+                        ft.node.position.y = ft.baseY;
                     }
                 }
             }
             if (t >= 1) {
 
-                if (ue && ue.sprite) {
-                    ue.sprite.position.x = 0;
-                    ue.sprite.position.y = ue.sprite._ew_baseY || 0;
-                    if (ue.sprite.material) {
-                        var unit = _findUnit(uid);
-                        if (unit && unit.ap <= 0) {
-                            ue.sprite.material.color.setRGB(0.5, 0.5, 0.5);
-                        } else {
-                            ue.sprite.material.color.setRGB(1, 1, 1);
-                        }
-                    }
+                if (ft) {
+                    ft.node.position.x = 0;
+                    ft.node.position.y = ft.baseY;
+                    var unit = _findUnit(uid);
+                    var grey = (unit && unit.ap <= 0) ? 0.5 : 1;
+                    for (var ri = 0; ri < ft.mats.length; ri++) ft.mats[ri].color.setRGB(grey, grey, grey);
                 }
                 toRemove.push(uid);
             }
@@ -10367,15 +10697,16 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
             var ue = _getUnitEntry(uid);
-            if (ue && ue.sprite) {
+            var wNode = ue && (ue.sprite || ue.model);
+            if (wNode) {
 
                 var decay = 1 - t;
                 var freq = t * Math.PI * 6;
                 var offset = Math.sin(freq) * WIGGLE_AMP * decay;
-                ue.sprite.position.x = offset;
+                wNode.position.x = offset;
             }
             if (t >= 1) {
-                if (ue && ue.sprite) ue.sprite.position.x = 0;
+                if (wNode) wNode.position.x = 0;
                 toRemove.push(uid);
             }
         }
@@ -10407,6 +10738,7 @@ const ThreeRenderer = (function () {
         _updateFlashTweens();
         _updateWiggleTweens();
         _updateSpriteAnimTweens();
+        _updateUnitModels();
         _updateUnitSelfGlow();
     }
 
@@ -10432,6 +10764,8 @@ const ThreeRenderer = (function () {
         _wiggleTweens.clear();
         _prevWiggleIds.clear();
         _clearSpriteAnims();
+        _modelAnimState.clear();
+        _modelClockPrev = 0;
         clearAllOverlays();
     }
 

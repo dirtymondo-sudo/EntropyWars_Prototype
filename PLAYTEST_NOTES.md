@@ -26,6 +26,38 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Rigged 3D unit models (2026-07 — fortune teller pilot)
+Races registered in `RACE_MODELS_3D` (sprites.js) render on the battle board as
+skinned GLB models instead of extruded sprite slabs. Pilot: **male fortune
+teller (Harbinger)** — Meshy exports under
+`Assets/Sprites/Races/Homosapien/Male/harbinger/` on R2.
+- Base GLB = the Idle export (mesh+skin+texture+idle clip, ~7MB); walk / cast /
+  death clips retarget from their own GLBs (same rig → same bone names, so one
+  clip set can drive ANY character rigged on the Meshy biped skeleton).
+- Loader/mixer/state machine live in three-renderer.js (`_loadUnitGLB`,
+  `_attachUnitModel`, `_updateUnitModels`). State priority: death (Knock_Down,
+  clamped + fade, 1600ms) > cast one-shot (also plays for basic attacks) >
+  locomotion (walk clip at `moveTimeScale` while any walk/displace/jump/strike
+  tween is live) > idle. Idle time persists across rebuilds (`_modelAnimState`).
+- The 2D sprite slab still builds FIRST as a loading placeholder and is swapped
+  out when the GLB arrives (synchronous once cached); it remains the fallback
+  (and the ghost-preview art). `window.EW_DISABLE_3D_UNITS = true` forces
+  sprites for A/B.
+- Model is normalized to tile height (`heightRatio` 1.0 = same size as the
+  128px sprite units), wrapped in an `_ew_facingSprite` group so the gameplay
+  facing pass yaws it, with an invisible pick pillar for reliable clicks
+  (skinned raycasts hit the bind pose). Materials rebuilt as Lambert +
+  emissiveMap self-glow → hit flashes / AP-grey / night glow / cloak all work.
+- `THREE.SkeletonUtils` (new index.html script tag) clones the rig per unit.
+- HUD portraits: `RACE_PORTRAITS`/`getUnitPortraitUrl` (sprites.js) → hud.js
+  `UnitSprite` prefers the 128×128 `portrait.png` (cover/center) everywhere
+  (active-unit panel, turn-clock flanks, lists).
+- Verified locally via `USE_ASSET_CACHE=1 LOCAL_ASSETS=sprites.js,three-renderer.js,hud.js`
+  (asset_cache.js serves repo-local copies): SkinnedMesh replaces the sprite
+  billboards in-scene, idle bones animate, walk move accepted, HUD portrait
+  renders, zero page errors. NOTE for tests: `state.castAnimIds` & co are
+  Sets, not arrays (`.add`, not `.push`).
+
 ## Menu flow to start a VS-CPU match (no auto-sim — drive the real UI)
 1. `window._goToVsCpu()` → opens Mode Select (sets controllers {1:'local', 2:'ai'},
    parties auto-filled 4v4). Does NOT start a match.

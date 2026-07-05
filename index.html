@@ -37,8 +37,12 @@
     <script src="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/THREE.MeshLine.js"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb) -->
+    <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
+         AND rigged 3D unit models (sprites.js RACE_MODELS_3D) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- THREE.SkeletonUtils — clones skinned GLB unit models so each unit on the
+         board gets its own skeleton (a plain .clone() would share bones) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 
     <!-- Three.js import map for shader background -->
     <script type="importmap">

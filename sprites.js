@@ -391,6 +391,77 @@ function getRaceSpriteAnimations(race, gender) {
   return set[Object.keys(set)[0]] || null;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Rigged 3D unit models (GLB).
+// Races registered here render on the battle board as a real skinned 3D model
+// instead of the flat sprite slab. Each entry names a base GLB (the rigged,
+// textured character — its first animation doubles as the idle) plus one GLB
+// per animation clip. All Meshy exports of the same biped rig share bone
+// names, so clips retarget across characters: once a race's model is rigged
+// on that skeleton, this same clip set can drive it — just point the URLs at
+// its folder.
+//   model        base GLB (mesh + skin + texture). We use the Idle export so
+//                the idle clip ships with the mesh in one download.
+//   clips        idle / walk / cast / death → GLB whose first animation is
+//                that clip. `cast` also plays for basic attacks.
+//   heightRatio  model height in tiles (1.0 = same height as the 128px
+//                sprite slabs, i.e. identical to the non-3D characters).
+//   yawOffset    radians added if the model doesn't face +Z at rest.
+//   moveTimeScale / castTimeScale / deathTimeScale
+//                clip speed multipliers (board moves are fast — the walk
+//                cycle needs ~2x to keep up with the tween).
+// The 2D sprite stays as the loading placeholder, the ghost-preview art and
+// the fallback when GLTFLoader is unavailable. Set window.EW_DISABLE_3D_UNITS
+// = true (console) to force sprites for A/B comparison.
+// ───────────────────────────────────────────────────────────────────────────
+const _HARB_3D = `${_S}/Races/Homosapien/Male/harbinger`;
+const RACE_MODELS_3D = {
+  // Male Harbinger (Fortune Teller) — the 3D-unit pilot character.
+  'fortune teller': {
+    male: {
+      model: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
+      clips: {
+        idle:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
+        walk:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Walking_withSkin.glb`,
+        cast:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Charged_Spell_Cast_withSkin.glb`,
+        death: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Knock_Down_withSkin.glb`,
+      },
+      heightRatio: 1.0,
+      yawOffset: 0,
+      moveTimeScale: 2.0,   // walk cycle is 1.07s; tweens cross a tile in ~150ms
+      castTimeScale: 2.2,   // charged-cast clip is 2.7s; action window is ~1.2s
+      deathTimeScale: 1.6,  // knock-down clip is 2.53s; death window is 1.6s
+    },
+  },
+};
+
+function getRace3DModel(race, gender) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  const set = RACE_MODELS_3D[race];
+  if (!set) return null;
+  // Exact gender match only — never put the male model on a female unit.
+  if (gender) return set[gender] || null;
+  return set[Object.keys(set)[0]] || null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// HUD portraits — close-up 128×128 face art shown in the HUD panels and the
+// turn-clock flanks (hud.js UnitSprite) instead of the full-body map sprite.
+// Same exact-gender rule as the model/sheet registries.
+// ───────────────────────────────────────────────────────────────────────────
+const RACE_PORTRAITS = {
+  'fortune teller': {
+    male: `${_HARB_3D}/portrait.png`,
+  },
+};
+
+function getUnitPortraitUrl(unit) {
+  if (!unit || !unit.race) return null;
+  const set = RACE_PORTRAITS[unit.race];
+  if (!set) return null;
+  return set[unit.gender || 'male'] || null;
+}
+
 const RACE_SPRITES = {
   'ai': `${_S}/ai.png`,
   'android': `${_S}/android.png`,

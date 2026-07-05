@@ -242,13 +242,21 @@ function TypeChip({ name, color }) {
 }
 
 function UnitSprite({ unit, size, glow }) {
-  const src = useMemo(() => {
-    if (!unit) return '';
-    if (typeof getUnitSprite === 'function') return getUnitSprite(unit.cls, unit.player, unit);
-    if (typeof getR2RaceSpriteUrl === 'function') {
-      return getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || 'Freelancer') || '';
+  // Races with dedicated close-up portrait art (sprites.js RACE_PORTRAITS)
+  // show it in every HUD slot (active-unit panel, turn-clock flanks, lists)
+  // instead of the full-body map sprite. Portraits are square face crops, so
+  // they fill the frame (cover/center) rather than sitting on its floor.
+  const [src, isPortrait] = useMemo(() => {
+    if (!unit) return ['', false];
+    if (typeof getUnitPortraitUrl === 'function') {
+      const p = getUnitPortraitUrl(unit);
+      if (p) return [p, true];
     }
-    return '';
+    if (typeof getUnitSprite === 'function') return [getUnitSprite(unit.cls, unit.player, unit), false];
+    if (typeof getR2RaceSpriteUrl === 'function') {
+      return [getR2RaceSpriteUrl(unit.race, unit.gender || 'male', unit.cls || 'Freelancer') || '', false];
+    }
+    return ['', false];
   }, [unit?.id, unit?.race, unit?.cls, unit?.gender, unit?.player]);
 
   const fc = getFactionColor(unit);
@@ -262,8 +270,8 @@ function UnitSprite({ unit, size, glow }) {
     src && h('div', { style: {
       width: '100%', height: '100%',
       backgroundImage: 'url(' + src + ')',
-      backgroundSize: 'contain', backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center bottom',
+      backgroundSize: isPortrait ? 'cover' : 'contain', backgroundRepeat: 'no-repeat',
+      backgroundPosition: isPortrait ? 'center' : 'center bottom',
       imageRendering: 'pixelated',
       filter: glow ? 'drop-shadow(0 0 4px ' + fc + ')' : 'none',
     }})
