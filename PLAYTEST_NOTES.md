@@ -135,6 +135,27 @@ Win by destroying the enemy tower, wipeout, or **composite score** at the round 
   point (sync() multiplies by tileSize). Set `x/y/zoom/tilt/yaw` AND their `_t*` +
   `_smooth*` twins, wait ~1s, then screenshot.
 
+## Real-time unit rotation + facing-free follow-up (2026-07-05) — battle.js, three-renderer.js
+- **Units now visibly rotate** instead of snapping: `_updateUnitFacing` in
+  three-renderer.js rate-limits the slab/wedge yaw to `UNIT_TURN_RATE`
+  (4π rad/s ≈ 180° in 0.25s, shortest arc, real-time — independent of game
+  speed). New/rebuilt entries (spawn, attack-sprite swap) snap via
+  `g._ew_facingYaw == null` so units never pirouette on spawn. The pivot
+  always finishes inside the pre-attack camera hold, so strike anims start
+  on a squared-up unit.
+- **Action cam turn start faces with the unit**: `getTurnStartCamYaw(unit,
+  fallback)` (battle.js, next to `getUnitFacing`) returns
+  `atan2(-f.dx, -f.dy)` degrees when `state.cinematicActionCam` is on; all
+  four activation pans (AI + REMOTE in `_continueBlitzWithUnit_impl`, auto +
+  human branches in `selectUnit`) route their `_retYaw` through it. With the
+  toggle off, behavior is unchanged (resting/pre-cine yaw).
+- **Follow-up is now purely positional** (user request: facing must NOT
+  matter). Ally on the exact mirror tile of a melee attack → always a free
+  strike: trigger no longer requires the initial swing to land (`!evaded`
+  removed — the target is still pinned), the flanker's strike can't be
+  dodged, and the facing-arc damage mult is gone (flat `atk*0.4 + rand`).
+  The flanker turns first, then leaps on an `actionMs(280)` beat.
+
 ## Buff/debuff rebalance — DEF/MDEF + ATK/INT axis split (2026-07-05) — data.js, battle.js, state.js, ui.js, ai.js, three-renderer.js
 Spells predating the DEF/MDEF split were rebalanced so every stat axis has a
 roughly equal buff/debuff roster (Pokemon/SMT-style). Key engine facts:

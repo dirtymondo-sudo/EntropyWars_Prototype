@@ -8687,10 +8687,21 @@ const ThreeRenderer = (function () {
        ring wedge to unit.facing. Runs every frame (unlike the camera
        billboard pass, which early-outs when the camera is still) because
        facing changes on move/attack/cast with no camera motion. While a
-       walk tween is live the unit faces along its current path segment. */
+       walk tween is live the unit faces along its current path segment.
+
+       Rotation is RATE-LIMITED, not snapped: when unit.facing changes the
+       slab turns through the intermediate angles at UNIT_TURN_RATE (shortest
+       arc), so direction changes read as a real-time pivot. The rate is fast
+       enough (180° in ~0.25s) that the turn always completes inside the
+       pre-attack camera hold — the strike animation starts on a unit that
+       has already squared up. */
+    var UNIT_TURN_RATE = Math.PI * 4;   // rad/s — a full about-face in ~0.25s
+    var _facingPrevTs = 0;
     function _updateUnitFacing() {
         if (!unitGroup) return;
         var now = performance.now();
+        var dtSec = _facingPrevTs ? Math.min((now - _facingPrevTs) / 1000, 0.1) : 0;
+        _facingPrevTs = now;
         var cam = ThreeCamera.getCamera();
         var ts = CONFIG.tileSize || BASE_TILE;
         // Keep the x-ray silhouette in FRONT of the unit's WHOLE slab. The slab
@@ -8722,10 +8733,31 @@ const ThreeRenderer = (function () {
                 yaw = _unitFacingYaw(unit);
             }
 
+            // Rate-limited turn toward the target yaw (shortest arc). A brand
+            // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
+            // units never pirouette on spawn.
+            var curYaw = g._ew_facingYaw;
+            if (curYaw == null || !isFinite(curYaw)) {
+                curYaw = yaw;
+            } else if (dtSec > 0 && curYaw !== yaw) {
+                var dYaw = yaw - curYaw;
+                if (dYaw > Math.PI) dYaw -= Math.PI * 2;
+                else if (dYaw < -Math.PI) dYaw += Math.PI * 2;
+                var maxStep = UNIT_TURN_RATE * dtSec;
+                if (Math.abs(dYaw) <= maxStep) {
+                    curYaw = yaw;
+                } else {
+                    curYaw += (dYaw > 0 ? maxStep : -maxStep);
+                    if (curYaw > Math.PI) curYaw -= Math.PI * 2;
+                    else if (curYaw < -Math.PI) curYaw += Math.PI * 2;
+                }
+            }
+            g._ew_facingYaw = curYaw;
+
             for (var k = 0; k < g.children.length; k++) {
                 var ch = g.children[k];
                 if (ch._ew_facingSprite || ch._ew_facingIndicator) {
-                    ch.rotation.y = yaw;
+                    ch.rotation.y = curYaw;
                 } else if (ch._ew_silhouette && cam) {
                     // Face the camera and sit in front of the unit's entire
                     // slab (half sprite width covers the worst case: the slab

@@ -4684,6 +4684,21 @@
             return unit.facing;
         }
 
+        /* Action-cam turn framing: with the cinematic action camera on, a
+           unit's activation pan opens the turn looking the SAME direction the
+           unit faces (camera behind the unit, gazing over its shoulder) instead
+           of the resting board yaw. ThreeCamera's view dir is
+           (-sin yaw, -cos yaw), so aiming along facing (dx, dy) means
+           yaw = atan2(-dx, -dy) — the same mapping the offensive action shot
+           uses for its caster→target line. Falls back to the supplied resting
+           yaw when the toggle is off or the unit has no facing yet. */
+        function getTurnStartCamYaw(unit, fallbackYaw) {
+            if (!state.cinematicActionCam || !unit) return fallbackYaw;
+            const f = getUnitFacing(unit);
+            if (!f || (!f.dx && !f.dy)) return fallbackYaw;
+            return Math.atan2(-f.dx, -f.dy) * (180 / Math.PI);
+        }
+
         function getAttackArc(attacker, defender) {
             if (!attacker || !defender) return 'front';
             const f = getUnitFacing(defender);
@@ -15906,7 +15921,8 @@
                         // cinematic angle from the previous unit's action into
                         // the next unit's turn.
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        const _retYaw  = getTurnStartCamYaw(nextUnit,
+                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
@@ -15943,7 +15959,8 @@
                         // activation pan always settles at the resting tactical
                         // orientation, never at a leftover action angle.
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        const _retYaw  = getTurnStartCamYaw(nextUnit,
+                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
@@ -17594,7 +17611,8 @@
                         // previous framing left (zoom is only re-applied for the
                         // local player's own turn), only the angle is restored.
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        const _retYaw  = getTurnStartCamYaw(unit,
+                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._releaseCineSubject(550);
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
@@ -17618,7 +17636,8 @@
                         // pulled-way-out from the end-of-round overview, and the
                         // unit whose turn it is is always centred.
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = camera._preCineView ? camera._preCineView.yaw  : camera._restYaw;
+                        const _retYaw  = getTurnStartCamYaw(unit,
+                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._savedState = null;
                         camera._releaseCineSubject(750);
@@ -20928,12 +20947,14 @@
                     }, actionMs(500));
                 }
 
-                // Follow-Up Attack: landing a melee hit while an ally stands on
-                // the target's OPPOSITE side lets that ally throw in a free
-                // strike (no AP). The follow-up is facing-aware — a pinned
-                // target usually faces the initiator, so the flanker's strike
-                // typically lands as an undodgeable backstab.
-                if (!evaded && !target.dead && !target._dying && d === 1) {
+                // Follow-Up Attack: a melee attack while an ally stands on the
+                // target's OPPOSITE side lets that ally throw in a free strike
+                // (no AP). The pincer is purely POSITIONAL — facing plays no
+                // part in it. Two allies sandwiching an enemy ALWAYS trigger
+                // the follow-up (even if the initial swing was dodged, the
+                // target is still pinned), and the flanker's strike can't be
+                // dodged and takes no facing-arc damage scaling.
+                if (!target.dead && !target._dying && d === 1) {
                     const _fuX = target.x + (target.x - unit.x);
                     const _fuY = target.y + (target.y - unit.y);
                     const _fuAlly = state.units.find(a => !a.dead && !a._dying && a.id !== unit.id
@@ -20945,30 +20966,27 @@
                         const _fuTarget = target;
                         window.setTimeout(() => {
                             if (state.winner || _fuTarget.dead || _fuTarget._dying || _fuAlly.dead) return;
+                            // Square the flanker up FIRST, then leap on a short
+                            // beat — the renderer turns units at a real-time
+                            // rate, so this lets the pivot finish before the
+                            // strike instead of the two animating on top of
+                            // each other.
                             setUnitFacing(_fuAlly, _fuTarget.x - _fuAlly.x, _fuTarget.y - _fuAlly.y);
-                            const _fuArc = getAttackArc(_fuAlly, _fuTarget);
-                            const _fuEvaded = _fuArc === 'back' ? false : rollEvasion(_fuTarget);
-                            animateStrikeLeap(_fuAlly, _fuTarget.x, _fuTarget.y);
-                            playSfx('basicAttack');
-                            if (_fuEvaded) {
-                                _fuTarget._matchDodges = (_fuTarget._matchDodges || 0) + 1;
-                                grantXP(_fuTarget, XP_DODGE, 'dodge');
-                                addLog(`${unitDisplayName(_fuTarget)} slips ${unitDisplayName(_fuAlly)}'s follow-up strike!`);
-                                showFloatingTextForUnit(_fuTarget, 'DODGE!', 'dodge', { durationMs: 1000 });
-                                playSfx('dodge');
-                                triggerDodgeAnim(_fuTarget, _fuAlly.x, _fuAlly.y);
-                                return;
-                            }
-                            let _fuDmg = Math.max(24, Math.floor((_fuAlly.atk || 0) * 0.4) + randInt(24));
-                            _fuDmg = Math.floor(_fuDmg * getFacingDamageMult(_fuArc));
-                            _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
-                            grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
-                            addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
-                            showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
-                            applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
-                                sourceUnit: _fuAlly
-                            });
-                            checkWin();
+                            scheduleBoardRender();
+                            window.setTimeout(() => {
+                                if (state.winner || _fuTarget.dead || _fuTarget._dying || _fuAlly.dead) return;
+                                animateStrikeLeap(_fuAlly, _fuTarget.x, _fuTarget.y);
+                                playSfx('basicAttack');
+                                const _fuDmg = Math.max(24, Math.floor((_fuAlly.atk || 0) * 0.4) + randInt(24));
+                                _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
+                                grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
+                                addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
+                                showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
+                                applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
+                                    sourceUnit: _fuAlly
+                                });
+                                checkWin();
+                            }, actionMs(280));
                         }, actionMs(650));
                     }
                 }
