@@ -2,7 +2,8 @@
 
 Entropy Wars — a browser Tactical-JRPG PvP prototype. `server.js` (Express +
 socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
-`index.html` + ~35 scripts loaded from a Cloudflare R2 bucket and CDNs.
+`index.html` + ~35 scripts loaded from a Cloudflare R2 bucket (custom domain
+`cdn.entropywars.net`, brotli + long-cache edge) and CDNs.
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
@@ -14,6 +15,24 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
    sessions start from the latest).
 DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
 diffs. The deliverable is always the full edited file, produced in chat.
+
+### RULE #1b — CACHE-BUSTING (MANDATORY on EVERY R2 file delivery)
+Assets are served with immutable long-cache headers, so an uploaded file does
+NOTHING until `index.html`'s version token changes — players keep the cached old
+copy otherwise. Therefore: **whenever you deliver ANY R2-hosted file (.js/.css/
+asset) in chat, you MUST also bump the `?v=` token in `index.html` and deliver
+the updated `index.html` in the SAME message.** No exceptions — one R2 file
+changed ⇒ ship a fresh index.html too.
+- Bump = one global find/replace of the current token to a new unique one:
+  `sed -i 's/?v=<OLD>/?v=<NEW>/g' index.html`  (e.g. `20260705a` → `20260705b`,
+  or a fresh date). The token is shared across every URL, so one bump
+  invalidates everything — that's intended.
+- `index.html` is served by Render (NOT R2); the user redeploys it to Render.
+  It must stay revalidated (short/no cache), so the new token is seen immediately.
+- Asset URLs *inside* the JS (sprites/textures/audio/GLB in sprites.js `_S`,
+  audio.js `_R2_BASE`, inline data.js/three-renderer.js URLs) are NOT yet
+  `?v=`-tagged. If you change an asset in place, either rename its file (new path
+  = auto cache-bust) or tell the user, since the token bump won't cover it.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
