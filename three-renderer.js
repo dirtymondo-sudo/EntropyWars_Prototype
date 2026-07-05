@@ -5574,7 +5574,7 @@ const ThreeRenderer = (function () {
                 root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                 e.root = root;
                 e.clips = gltf.animations || [];
-                e.bbox = new THREE.Box3().setFromObject(root);
+                e.bbox = _skinnedBBox(root);
                 e.loading = false;
                 var cbs = e.cbs; e.cbs = [];
                 for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
@@ -5589,6 +5589,45 @@ const ThreeRenderer = (function () {
     function _unitModelReady(def) {
         var e = _unitGlbCache[def.model];
         return !!(e && e.root);
+    }
+
+    /* True rendered-space bounds of a (possibly skinned) model at rest pose.
+       Box3.setFromObject() only sees a SkinnedMesh's raw bind-pose geometry
+       transformed by its NODE matrices — but glTF skinned meshes are placed by
+       their BONES (the mesh node's own transform is ignored by the spec), and
+       rigs like Meshy's carry their real scale in the skeleton. Measuring the
+       naive way made the fortune teller's box look tiny, so the normalizing
+       scale exploded and the model towered over the whole map. Here we run
+       every skinned vertex through boneTransform() (bind matrices + current
+       bone pose — exactly what the GPU renders) and take bounds from that.
+       One-time cost per GLB, cached with the model. */
+    function _skinnedBBox(root) {
+        root.updateMatrixWorld(true);
+        var box = new THREE.Box3();
+        var v = new THREE.Vector3();
+        var tmp = new THREE.Box3();
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.geometry) return;
+            if (n.isSkinnedMesh && typeof n.boneTransform === 'function'
+                && n.geometry.attributes && n.geometry.attributes.position) {
+                if (n.skeleton && n.skeleton.update) n.skeleton.update();
+                var pos = n.geometry.attributes.position;
+                // Sample stride keeps huge meshes cheap; bounds of a body mesh
+                // are set by many vertices, so sampling every 4th is safe.
+                var stride = pos.count > 20000 ? 4 : 1;
+                for (var i = 0; i < pos.count; i += stride) {
+                    n.boneTransform(i, v);
+                    v.applyMatrix4(n.matrixWorld);
+                    box.expandByPoint(v);
+                }
+            } else {
+                if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+                tmp.copy(n.geometry.boundingBox).applyMatrix4(n.matrixWorld);
+                box.union(tmp);
+            }
+        });
+        if (box.isEmpty()) box.set(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+        return box;
     }
 
     function _cloneUnitModel(root) {
