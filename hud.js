@@ -2957,6 +2957,36 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     }
   }
 
+  // "Move Towards" — a plain one-click step toward the clicked enemy, for
+  // when nothing in this menu can reach them and you just want to close the
+  // distance without backing out through the menus to select MOVE.
+  if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+      && canUnitMove(actingUnit) && unitAP >= 1 && dist > 1) {
+    const mtMovesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
+    if (mtMovesLeft > 0) {
+      let towardTile = null;
+      let towardDist = dist;
+      for (const t of getMoveTiles(actingUnit)) {
+        if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
+        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        const d = distFrom(t.x, t.y, t.z);
+        if (d < towardDist) { towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; }
+      }
+      if (towardTile) {
+        actions.push({
+          id: 'moveTowards',
+          label: 'Move Towards',
+          icon: '➜',
+          apCost: 1,
+          moveTile: towardTile,
+          preview: null,
+          typeNote: '',
+          available: true,
+        });
+      }
+    }
+  }
+
   actions.sort((a, b) => {
     // Greyed-out (unavailable) actions sink to the bottom so the player never
     // has to scroll past things they can't do to reach something they can.
@@ -3182,6 +3212,16 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   const isMove = !!a.moveTile;
 
   const _executeAction = (actionId, spell, tx, ty, tz) => {
+    // "Move Towards" is pure movement — the walk already happened in the
+    // moveTile branch below; there's no follow-up strike, just tidy up.
+    if (actionId === 'moveTowards') {
+      state._enemyActionTargetId = null;
+      state.pendingTarget = null;
+      if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+      if (typeof renderIfDirty === 'function') renderIfDirty();
+      if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+      return;
+    }
 
     const target = tz != null
       ? (state.units || []).find(u => !u.dead && u.x === tx && u.y === ty && u.z === tz)
@@ -3394,7 +3434,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       meta: typeAdv ? { text: typeAdv, color: typeAdv === '▲' ? EW.good : EW.bad } : null,
-      note: isMove ? '↳ ' + _mvVerb : null,
+      note: isMove && a.id !== 'moveTowards' ? '↳ ' + _mvVerb : null,
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => _fireEnemyAction(actingUnit, targetUnit, a),
       hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
