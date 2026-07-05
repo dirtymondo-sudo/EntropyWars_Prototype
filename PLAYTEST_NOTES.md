@@ -1914,11 +1914,12 @@ raceFeralDive.impact (reuses racePounce_impact), raceLoveBite.impact (reuses
 raceInfectiousBite_impact) — without an impact mapping `_spell3DGeometry`
 never fires.
 
-Texture placeholders (swap when real sprites land on the R2, all call sites
-take a `*Tex` opt): BONE/enamel (fangs+talons use marble.png), LEATHER (grips
-use wood.png tinted dark), GUNMETAL (guns use metal.png tinted 0x7d8798),
-COPPER (tesla windings use gold.png tinted 0xc07a3e), CAST IRON (cannon uses
-metal_3.png tinted), FUR (jaw hide uses flesh_3.png tinted dark).
+Dedicated sprites (added to the R2 terrain folder 2026-07-05, wired in):
+`enamel.png` (fangs + talons), `gunmetal.png` (all three guns; also the cannon
+barrel tinted dark 0x9299a4 as cast iron), `copper.png` (tesla primary +
+secondary windings), `leather.png` (sword grip wrap), `skin.png` (the ORA
+fist — pass `rockTex:'rock.png'` for the old stone-golem look). Still
+placeholder: FUR — the jaws' outer hide ridge uses flesh_3.png tinted dark.
 
 Testing recipe that WORKS (models verified rendering in-game, 0 errors):
 `USE_ASSET_CACHE=1 LOCAL_ASSETS=three-vfx-effects.js,three-renderer.js` makes

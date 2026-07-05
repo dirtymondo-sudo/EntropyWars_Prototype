@@ -2733,9 +2733,9 @@ const ThreeRenderer = (function () {
                 color: new THREE.Color(tint), depthWrite: true,
             });
         }
-        var ironMat = tmat('metal_3.png', 0x868c98);
-        var copperMat = tmat('gold.png', 0xc07a3e);
-        var windMat = tmat('gold.png', 0xd89a52, 1, 6);   /* vertical repeat = winding stripes */
+        var ironMat = tmat('gunmetal.png', 0xb8bec8);
+        var copperMat = tmat('copper.png', 0xffffff);
+        var windMat = tmat('copper.png', 0xffd9b0, 1, 6);   /* vertical repeat = winding stripes */
         var alumMat = tmat('aluminium.png', 0xdde2ea);
         function add(geo, m, px, py, pz, rx) {
             var mesh = new THREE.Mesh(geo, m);

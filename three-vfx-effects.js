@@ -5489,13 +5489,12 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             transparent: true, opacity: 1, depthWrite: true,
         });
         if (!opts.hologram) guardMat.map = _sigTerrainTex(opts.guardTex || 'metal.png', 1, 1);
-        /* dark leather-wrapped grip — wood sprite tinted near-black stands in
-           for leather until a real leather sprite lands on the R2 */
+        /* stitched-leather wrapped grip (real leather sprite) */
         var wrapMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(opts.gripColor != null ? opts.gripColor : 0x3a2c22),
+            color: new THREE.Color(opts.gripColor != null ? opts.gripColor : 0xb9a88f),
             transparent: true, opacity: 1, depthWrite: true,
         });
-        if (!opts.hologram) wrapMat.map = _sigTerrainTex('wood.png', 1, 1);
+        if (!opts.hologram) wrapMat.map = _sigTerrainTex('leather.png', 1, 1);
 
         /* swept crossguard: hub block + two down-swept quillons with tips */
         var hubGeo = new THREE.BoxGeometry(half * 1.5, len * 0.045, half * 0.9);
@@ -5720,12 +5719,13 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         group.rotation.y = rn(0, Math.PI * 2);
 
         var fist = new THREE.Group();
-        /* stone-golem fist clad in the board's rock sprite (same recipe as
-           the 3D trees/boulders), gold knuckle caps, and a faint additive
-           aura shell in the spell colour so it still reads as summoned */
+        /* colossus fist clad in the dedicated skin sprite (pass rockTex:
+           'rock.png' for the old stone-golem look), gold knuckle caps, and a
+           faint additive aura shell in the spell colour so it still reads as
+           summoned */
         var rockMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.rockTex || 'rock.png', 1, 1),
-            color: new THREE.Color(opts.rockTint != null ? opts.rockTint : 0xd8d8d8),
+            map: _sigTerrainTex(opts.rockTex || 'skin.png', 1, 1),
+            color: new THREE.Color(opts.rockTint != null ? opts.rockTint : 0xffffff),
             transparent: true, opacity: 0, depthWrite: true,
         });
         var plateMat = new THREE.MeshBasicMaterial({
@@ -6315,8 +6315,8 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
     /* ── HERO: SPECTRAL JAWS — two flesh-and-fang jaw arcs materialize
        around the victim and SNAP shut. Gums wear the R2 flesh sprite, fangs
-       are marble-clad (bone sprite still wanted — see PLAYTEST_NOTES).
-       Used by werewolf maulings and every other bite in the roster. ─────── */
+       the dedicated cracked-enamel sprite. Used by werewolf maulings and
+       every other bite in the roster. ───────────────────────────────────── */
     function _sigJawsBite3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return;
@@ -6326,7 +6326,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var R = ts * 0.58 * scale;
         var color = opts.glowColor != null ? opts.glowColor : 0xff3333;
         var gumTint = opts.gumTint != null ? opts.gumTint : 0x8a2020;
-        var toothTint = opts.toothTint != null ? opts.toothTint : 0xf2ead8;
+        var toothTint = opts.toothTint != null ? opts.toothTint : 0xffffff;
 
         var gumMatU = new THREE.MeshBasicMaterial({
             map: _sigTerrainTex(opts.gumTex || 'flesh.png', 1, 1),
@@ -6338,7 +6338,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             transparent: true, opacity: 0, depthWrite: true,
         });
         var toothMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.toothTex || 'marble.png', 1, 1),
+            map: _sigTerrainTex(opts.toothTex || 'enamel.png', 1, 1),
             color: new THREE.Color(toothTint), transparent: true, opacity: 0, depthWrite: true,
         });
         var mawMat = _sigMat(color);
@@ -6477,8 +6477,8 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var scale = opts.scale != null ? opts.scale : 1;
         var color = opts.glowColor != null ? opts.glowColor : 0xff88cc;
         var clawMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.clawTex || 'marble.png', 1, 1),
-            color: new THREE.Color(opts.clawTint != null ? opts.clawTint : 0xf6eee2),
+            map: _sigTerrainTex(opts.clawTex || 'enamel.png', 1, 1),
+            color: new THREE.Color(opts.clawTint != null ? opts.clawTint : 0xffffff),
             transparent: true, opacity: 0, depthWrite: true,
         });
         var sheenMat = _sigMat(color);
@@ -6655,8 +6655,8 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var ts = fw.ts;
 
         var ironMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('metal_3.png', 1, 1),
-            color: new THREE.Color(0x596069),      /* cast iron (placeholder tint) */
+            map: _sigTerrainTex('gunmetal.png', 1, 1),
+            color: new THREE.Color(0x9299a4),      /* darkened gunmetal = cast iron */
             transparent: true, opacity: 0, depthWrite: true,
         });
         var woodMat = new THREE.MeshBasicMaterial({
@@ -6871,14 +6871,14 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
        sniper kits. One rig per (kind, caster tile); multi-hit spells reuse
        the live rig and just squeeze the trigger again (Double Pump cycles
        its pump between shells, the revolver's cylinder rolls, the sniper
-       paints an aim-laser before its hit). Gunmetal = metal.png tinted dark
-       (a dedicated gunmetal sprite would be even better). ────────────────── */
+       paints an aim-laser before its hit). Clad in the dedicated
+       gunmetal.png plate sprite. ─────────────────────────────────────────── */
     var _sigGunRigs = {};
 
     function _sigBuildGun(kind, ts) {
         var steelMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('metal.png', 1, 1),
-            color: new THREE.Color(0x7d8798), transparent: true, opacity: 0, depthWrite: true,
+            map: _sigTerrainTex('gunmetal.png', 1, 1),
+            color: new THREE.Color(0xdfe4ec), transparent: true, opacity: 0, depthWrite: true,
         });
         var woodMat = new THREE.MeshBasicMaterial({
             map: _sigTerrainTex('wood.png', 1, 1),
