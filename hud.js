@@ -285,6 +285,7 @@ function ActiveUnitPanel({ unit }) {
 
   return h(ClipPanel, {
     factionColor: ac,
+    className: 'ew-unitpanel',
     style: {
       position: 'absolute', top: 12, left: 12, width: 300,
       padding: '8px 12px 10px', display: 'flex', gap: 10, zIndex: 10,
@@ -641,11 +642,11 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
         boxShadow: '0 0 7px ' + color, flexShrink: 0,
       }}),
       h('span', { style: {
-        fontFamily: mono, fontSize: 10, letterSpacing: '0.14em',
+        fontFamily: mono, fontSize: 13, letterSpacing: '0.14em',
         color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
       }}, name),
       sub != null && !showTower && h('span', { style: {
-        fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.06em', whiteSpace: 'nowrap',
+        fontFamily: mono, fontSize: 11, color: EW.inkMute, letterSpacing: '0.06em', whiteSpace: 'nowrap',
       }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
     ),
 
@@ -662,7 +663,7 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
         }}),
       ),
       h('span', { style: {
-        fontFamily: mono, fontSize: 7, color: EW.inkDim, letterSpacing: '0.08em',
+        fontFamily: mono, fontSize: 9, color: EW.inkMute, letterSpacing: '0.08em',
       }}, '🏰 ' + towerHp + '/' + towerMax),
     ),
 
@@ -720,7 +721,7 @@ function Scoreboard({ st }) {
     }},
 
       h('span', { style: {
-        fontFamily: mono, fontSize: 7, letterSpacing: '0.26em', color: EW.inkMute,
+        fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute,
         textTransform: 'uppercase', lineHeight: 1,
       }}, mode.label || ''),
 
@@ -741,8 +742,8 @@ function Scoreboard({ st }) {
       ),
 
       h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
-        fontFamily: mono, fontSize: 7, letterSpacing: '0.24em', lineHeight: 1,
-        color: isSuddenDeath ? EW.bad : EW.inkDim,
+        fontFamily: mono, fontSize: 10, letterSpacing: '0.2em', lineHeight: 1,
+        color: isSuddenDeath ? EW.bad : EW.inkMute,
         textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none',
       }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : scoreCaption),
 
@@ -751,20 +752,20 @@ function Scoreboard({ st }) {
         paddingTop: 4, borderTop: '1px solid ' + EW.panelEdge,
         width: '100%', justifyContent: 'center',
       }},
-        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, lineHeight: 1 }},
-          h('span', { style: { fontFamily: mono, fontSize: 6, letterSpacing: '0.2em', color: EW.inkDim }}, 'TIME'),
-          h('span', { style: { fontFamily: mono, fontSize: 13, fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
+        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, lineHeight: 1 }},
+          h('span', { style: { fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', color: EW.inkMute }}, 'TIME'),
+          h('span', { style: { fontFamily: mono, fontSize: 16, fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
         ),
-        h('span', { style: { width: 1, height: 22, background: EW.panelEdge }}),
-        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, lineHeight: 1 }},
-          h('span', { style: { fontFamily: mono, fontSize: 6, letterSpacing: '0.2em', color: EW.inkDim }}, 'ROUND'),
+        h('span', { style: { width: 1, height: 24, background: EW.panelEdge }}),
+        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, lineHeight: 1 }},
+          h('span', { style: { fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', color: EW.inkMute }}, 'ROUND'),
           h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 1 }},
             h('span', { style: {
-              fontFamily: serif, fontSize: 19, fontWeight: 600, color: EW.time, lineHeight: 1,
+              fontFamily: serif, fontSize: 20, fontWeight: 600, color: EW.time, lineHeight: 1,
               textShadow: '0 0 10px ' + EW.time + '55',
             }}, round),
             roundLimit > 0 && h('span', { style: {
-              fontFamily: mono, fontSize: 9, color: EW.inkMute,
+              fontFamily: mono, fontSize: 11, color: EW.inkMute,
             }}, '/' + roundLimit),
           ),
         ),
@@ -797,7 +798,7 @@ function MatchMeta({ st }) {
   const p1Score = st.record ? (st.record[1] || 0) : 0;
   const p2Score = st.record ? (st.record[2] || 0) : 0;
 
-  return h('div', { style: {
+  return h('div', { className: 'ew-matchmeta', style: {
     position: 'absolute', top: 12, right: 12,
     display: 'flex', flexDirection: 'column', gap: 6,
     alignItems: 'flex-end', zIndex: 10,
@@ -806,8 +807,8 @@ function MatchMeta({ st }) {
       display: 'flex', alignItems: 'center', gap: 10,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       padding: '6px 12px',
-      fontFamily: '"DotGothic16", monospace', fontSize: 9,
-      letterSpacing: '0.14em', color: EW.inkMute,
+      fontFamily: '"DotGothic16", monospace', fontSize: 11,
+      letterSpacing: '0.12em', color: EW.inkMute,
       clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
     }},
       h('span', { style: { color: EW.ink }}, weatherText),
@@ -816,7 +817,7 @@ function MatchMeta({ st }) {
         title: zodiacBlessed ? zodiacLabel + ' reigns — matching units gain +10%' : zodiacLabel + ' reigns' },
         h('span', { className: zodiacBlessed ? 'ew-zodiac-blessed' : undefined, style: {
           fontFamily: '"Cinzel", serif', fontStyle: 'italic',
-          fontSize: 13, color: zodiacBlessed ? '#ffd866' : EW.time,
+          fontSize: 15, color: zodiacBlessed ? '#ffd866' : EW.time,
           textShadow: zodiacBlessed ? '0 0 8px rgba(255,200,80,0.9), 0 0 16px rgba(255,170,40,0.5)' : undefined,
         }}, zodiacIcon),
         h('span', { style: { color: EW.ink }}, zodiacLabel),
@@ -826,7 +827,7 @@ function MatchMeta({ st }) {
       h('span', { style: { color: EW.ink, fontWeight: 600 }}, p1Score + ' — ' + p2Score),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', {
-        style: { cursor: 'pointer', color: EW.inkMute, fontSize: 14 },
+        style: { cursor: 'pointer', color: EW.inkMute, fontSize: 16 },
         onClick: () => { if (typeof togglePauseMenu === 'function') togglePauseMenu(); },
       }, '☰'),
     ),
@@ -908,7 +909,7 @@ function CombatLog({ st }) {
     },
   },
     h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 7,
+      fontFamily: '"DotGothic16", monospace', fontSize: 9,
       letterSpacing: '0.22em', color: EW.inkMute,
     }}, 'COMBAT LOG'),
     h('div', { style: {
@@ -922,12 +923,12 @@ function CombatLog({ st }) {
     }}, '▼'),
   );
 
-  return h('div', { style: {
+  return h('div', { className: 'ew-combatlog', style: {
     position: 'absolute', right: 90, top: 140, width: 280,
     padding: '8px 12px 0', background: 'rgba(8,10,18,0.55)',
     borderLeft: '2px solid ' + EW.panelEdge,
     display: 'flex', flexDirection: 'column',
-    fontFamily: '"DotGothic16", monospace', fontSize: 9,
+    fontFamily: '"DotGothic16", monospace', fontSize: 10,
     zIndex: 8, pointerEvents: 'auto',
   }},
     header,
@@ -949,7 +950,7 @@ function CombatLog({ st }) {
         return h('div', {
           key: i,
           style: {
-            lineHeight: 1.3, fontSize: 9,
+            lineHeight: 1.3, fontSize: 10,
             color: e.isRound ? EW.warn : EW.inkMute,
             fontWeight: e.isRound ? 700 : 400,
             letterSpacing: e.isRound ? '0.06em' : 'normal',
@@ -1357,7 +1358,9 @@ function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onH
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
   if (b.sub) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
-  const badgeRow = tall && h('div', { className: 'hrlg-badges' },
+  // Type/delivery/range badges ride INLINE on the name row, sized to match
+  // the ability name — they're primary intel, not fine print.
+  const badgeRow = tall && h('span', { className: 'hrlg-badges' },
     b.badges.map((bd, k) => bd.plain
       ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
       : h('span', { key: k, style: bd.style, title: bd.title || undefined }, bd.label)),
@@ -1385,12 +1388,12 @@ function HorologeBlade({ b, idx, off, rowH, active, fireId, onFire, onFocus, onH
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
       tall
-        ? h('div', { className: 'hrlg-2line' },
-            h('div', { className: 'hrlg-line1' },
-              h('span', { className: 'hrlg-blabel' }, b.label),
-              right,
-            ),
+        ? h(React.Fragment, null,
+            // the NAME never shrinks — badges/chips clip first if space runs out
+            h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto', maxWidth: 220 } }, b.label),
             badgeRow,
+            h('span', { className: 'hrlg-spacer' }),
+            right,
           )
         : h(React.Fragment, null,
             h('span', { className: 'hrlg-blabel' }, b.label),
@@ -1411,9 +1414,9 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
 
-  // spell blades carry a badge row → taller rows, wider pitch
+  // spell blades carry inline badges → slightly taller rows, wider pitch
   const tall = blades.some(b => b.badges && b.badges.length);
-  const rowH = tall ? 58 : HRLG_ROW;
+  const rowH = tall ? 52 : HRLG_ROW;
 
   // ── Carousel selection: tracked by blade ID so the drum keeps its
   // heading when availability re-sorts costs or AP ticks re-render us.
@@ -1487,6 +1490,15 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     setHoverCost(0);
   };
   const selBlade = carousel ? blades[selIdx] : blades[0];
+
+  // ── SMT-style description bar: the bottom bar always describes the
+  // SELECTED (center) blade's spell; hover elsewhere overrides it briefly.
+  // Driven straight from render (the bar is a plain DOM node outside React,
+  // and _setSpellDescBase no-ops when the spell hasn't changed) — a mount
+  // useEffect can lag a full frame behind the drum here.
+  const selSpell = selBlade && selBlade.spell ? selBlade.spell : null;
+  if (typeof _setSpellDescBase === 'function') _setSpellDescBase(selSpell);
+  useEffect(() => () => { if (typeof _setSpellDescBase === 'function') _setSpellDescBase(null); }, []);
 
   // No wrap-around: the drum stops hard at the first and last entry.
   // Scrolling past an end gives a physical "bump" so the stop reads as
@@ -1682,6 +1694,29 @@ const _HRLG_CAT = {
   utility:{ icon: '◎', color: '#ccaa55' },
 };
 
+// Inline badges with a clear hierarchy: the TYPE badge (HUMAN/TECH/…)
+// rides the name row at name size — it's the matchup intel. Delivery
+// (PHYSICAL/MAGIC/UTILITY) and range class (MELEE/RANGED) are secondary
+// and stay small, dim chips so they don't compete with the name.
+const _HRLG_TYPE_FS = 11;
+const _HRLG_TYPE_PAD = '2px 8px';
+const _HRLG_SUB_FS = 8;
+const _HRLG_SUB_PAD = '1px 5px';
+function _hrlgSpellBadges(sp, cat, compact) {
+  const badges = [];
+  if (sp.spellType) badges.push({
+    label: sp.spellType.toUpperCase(),
+    style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
+    title: 'Spell type — drives type advantage',
+  });
+  if (compact) return badges;   // quick menus carry lots of chips already
+  const _db = spellDeliveryBadge(sp, cat);
+  badges.push({ label: _db.label, style: Object.assign(typeBadgeStyle(_db.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }) });
+  const _rb = spellRangeBadge(sp);
+  badges.push({ label: _rb.glyph + ' ' + _rb.label, style: Object.assign(typeBadgeStyle(_rb.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }), title: _rb.title });
+  return badges;
+}
+
 function _hrlgSpellBlades(unit, st) {
   const am = st.actionMode;
   const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
@@ -1741,26 +1776,17 @@ function _hrlgSpellBlades(unit, st) {
     const powerStat = spellPowerStat(sp);
 
     // ── badge row: the spell's TYPE (anomaly/tech/…) is critical intel —
-    // it drives strong/weak matchups — so it rides ON the blade, plus the
-    // delivery class (PHYSICAL/MAGIC/UTILITY) and range class chips.
-    const badges = [];
-    if (sp.spellType) badges.push({
-      label: sp.spellType.toUpperCase(),
-      style: typeBadgeStyleFor(sp.spellType, { fontSize: 7, padding: '1px 5px' }),
-      title: 'Spell type — drives type advantage',
-    });
-    const _db = spellDeliveryBadge(sp, cat);
-    badges.push({ label: _db.label, style: typeBadgeStyle(_db.color, { fontSize: 7, padding: '1px 5px' }) });
-    const _rb = spellRangeBadge(sp);
-    badges.push({ label: _rb.glyph + ' ' + _rb.label, style: typeBadgeStyle(_rb.color, { fontSize: 7, padding: '1px 5px' }), title: _rb.title });
-    if (sp.range > 0) badges.push({ plain: true, label: 'RNG ' + sp.range });
-    if (sp.tier) badges.push({ plain: true, label: 'T·' + sp.tier });
+    // it drives strong/weak matchups — so it rides ON the blade next to the
+    // name at name size, with small delivery/range chips after it. Exact
+    // range + tier live in the bottom description bar, not on the blade.
+    const badges = _hrlgSpellBadges(sp, cat);
 
     return {
       id: 'sp:' + (sp.name || i),
       icon: cc.icon, iconColor: cc.color,
       label: sp.name,
       badges: badges,
+      spell: sp,
       available: canCast,
       selected: am === 'spell' && st.selectedTool === sp.name,
       power: powerStat ? { v: powerStat.value, color: powerStat.color } : null,
@@ -3354,6 +3380,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       id: 'ea:' + a.id + ':' + i,
       icon: a.icon, label: a.label,
       available: a.available,
+      spell: a.spell || null,
+      badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
@@ -3405,6 +3433,8 @@ function _hrlgTileBlades(actingUnit, st) {
     iconColor: a.category === 'attack' ? '#ee6655' : undefined,
     label: a.label,
     available: a.available,
+    spell: a.spell || null,
+    badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
     mp: a.mpCost || null,
     cost: a.available && a.apCost ? a.apCost : null,
     sub: !a.available ? (a.reason || 'Unavailable') : null,
@@ -3771,26 +3801,35 @@ function _computeTileActions(actingUnit, tx, ty) {
   return actions.filter(a => a.available || (a.reason && a.reason !== 'No AP' && a.reason !== 'No MP' && a.reason !== 'Silenced' && a.reason !== 'Level req'));
 }
 
-let _spellTooltip = { visible: false, spell: null, x: 0, y: 0 };
-let _tooltipEl = null;
+/* ── SMT-style spell description bar ─────────────────────────────
+   The old mouse-follow tooltip is gone. Spell details now live in ONE
+   long, thin bar pinned to the bottom-center of the screen — black,
+   with gold/holo-blue hairline edges that fade out at the ends. It
+   always describes the drum's SELECTED blade (fed by HorologeMenu via
+   _setSpellDescBase); hovering a spell row temporarily overrides it.
+   showSpellTooltip / hideSpellTooltip keep their names so every
+   existing hoverIn/hoverOut call site keeps working unchanged. */
+let _descBarEl = null;
+let _descBarBase = null;    // spell of the currently selected blade
+let _descBarHover = null;   // hover override (cleared on mouse-out)
+let _descBarShown;          // last spell actually rendered (no-op guard)
 
-function _ensureTooltipEl() {
-  if (_tooltipEl) return _tooltipEl;
-  _tooltipEl = document.createElement('div');
-  _tooltipEl.id = 'ew-spell-tooltip';
-  _tooltipEl.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.15s ease;';
-  document.body.appendChild(_tooltipEl);
-  return _tooltipEl;
+function _ensureDescBarEl() {
+  if (_descBarEl && document.body.contains(_descBarEl)) return _descBarEl;
+  _descBarEl = document.createElement('div');
+  _descBarEl.id = 'ew-spell-descbar';
+  document.body.appendChild(_descBarEl);
+  return _descBarEl;
 }
 
-function showSpellTooltip(sp, evt) {
-  if (!sp) return;
-  const el = _ensureTooltipEl();
-  const desc = sp.desc || '';
-  if (!desc) { hideSpellTooltip(); return; }
+function _renderSpellDescBar() {
+  const sp = _descBarHover || _descBarBase;
+  if (_descBarEl && sp === _descBarShown) return;   // cheap: called every HUD render
+  _descBarShown = sp;
+  const el = _ensureDescBarEl();
+  if (!sp || !sp.name) { el.classList.remove('show'); return; }
 
-  const k = sp.kind || '';
-  const tc = TYPE_COLORS[sp.spellType] || EW.inkMute;
+  const tc = TYPE_COLORS[(sp.spellType || '').toLowerCase()] || EW.inkMute;
   const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;
 
   const details = [];
@@ -3805,6 +3844,7 @@ function showSpellTooltip(sp, evt) {
   const cost = sp.cost || 0;
   const apCost = sp.apCost != null ? sp.apCost : 2;
   details.push(cost + ' MP · ' + apCost + ' AP');
+  if (sp.tier) details.push('T·' + sp.tier);
 
   let statusLine = '';
   if (sp.statusEffects && sp.statusEffects.length > 0) {
@@ -3815,60 +3855,42 @@ function showSpellTooltip(sp, evt) {
     }).join(', ');
   }
 
-  el.innerHTML = '<div style="' +
-    'background:rgba(6,7,12,0.95);border:1px solid ' + tc + '55;' +
-    'padding:10px 14px;max-width:260px;min-width:180px;' +
-    'clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);' +
-    'box-shadow:0 4px 20px rgba(0,0,0,0.6);' +
-    '">' +
-    '<div style="font-family:Cinzel,serif;font-size:13px;font-weight:600;color:' + EW.ink + ';letter-spacing:0.04em;margin-bottom:4px;">' +
-      sp.name +
-    '</div>' +
-    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
-      '<span style="font-family:DotGothic16,monospace;font-size:7px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:' + tcText + ';background:linear-gradient(' + tc + '22,' + tc + '22),rgba(9,11,17,0.82);border:1px solid ' + tc + 'aa;padding:1px 5px;text-shadow:0 1px 2px rgba(0,0,0,0.85);clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);">' +
-        (sp.spellType || '').toUpperCase() +
-      '</span>' +
-      (sp.tier ? '<span style="font-family:DotGothic16,monospace;font-size:7px;color:' + EW.inkDim + ';">T' + sp.tier + '</span>' : '') +
-      (sp.damageType === 'physical' ? '<span style="font-family:DotGothic16,monospace;font-size:7px;color:#c89050;">PHY</span>' : '') +
-    '</div>' +
-    '<div style="font-family:DotGothic16,monospace;font-size:10px;line-height:1.5;color:' + EW.inkMute + ';margin-bottom:8px;">' +
-      desc +
-    '</div>' +
-    '<div style="font-family:DotGothic16,monospace;font-size:8px;color:' + EW.inkDim + ';letter-spacing:0.06em;line-height:1.6;">' +
-      details.join(' · ') +
-    '</div>' +
-    (statusLine ? '<div style="font-family:DotGothic16,monospace;font-size:8px;color:#c89ee0;letter-spacing:0.04em;margin-top:3px;">⤷ ' + statusLine + '</div>' : '') +
-  '</div>';
+  const badge = sp.spellType
+    ? '<span style="display:inline-flex;align-items:center;flex:none;' +
+      'font-family:DotGothic16,monospace;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;' +
+      'color:' + tcText + ';background:linear-gradient(' + tc + '22,' + tc + '22),rgba(9,11,17,0.82);' +
+      'border:1px solid ' + tc + 'aa;padding:2px 8px;text-shadow:0 1px 2px rgba(0,0,0,0.85);' +
+      'clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);">' +
+      sp.spellType.toUpperCase() + '</span>'
+    : '';
 
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  el.style.opacity = '1';
-
-  requestAnimationFrame(() => {
-    const r = el.getBoundingClientRect();
-    let left = evt.clientX + 12;
-    let top = evt.clientY - r.height - 8;
-    if (left + r.width > vw - 8) left = evt.clientX - r.width - 12;
-    if (top < 8) top = evt.clientY + 16;
-    el.style.left = left + 'px';
-    el.style.top = top + 'px';
-  });
+  el.innerHTML =
+    '<div class="ew-descbar-inner">' +
+      '<span class="ew-descbar-name">' + (sp.name || '') + '</span>' +
+      badge +
+      (sp.desc ? '<span class="ew-descbar-desc">' + sp.desc + '</span>' : '') +
+      '<span class="ew-descbar-stats">' + details.join(' · ') + '</span>' +
+      (statusLine ? '<span class="ew-descbar-status">⤷ ' + statusLine + '</span>' : '') +
+    '</div>';
+  el.classList.add('show');
 }
 
-function moveSpellTooltip(evt) {
-  if (!_tooltipEl || _tooltipEl.style.opacity === '0') return;
-  const vw = window.innerWidth;
-  const r = _tooltipEl.getBoundingClientRect();
-  let left = evt.clientX + 12;
-  let top = evt.clientY - r.height - 8;
-  if (left + r.width > vw - 8) left = evt.clientX - r.width - 12;
-  if (top < 8) top = evt.clientY + 16;
-  _tooltipEl.style.left = left + 'px';
-  _tooltipEl.style.top = top + 'px';
+// Called by HorologeMenu whenever the drum's selected blade changes.
+function _setSpellDescBase(sp) {
+  _descBarBase = sp || null;
+  _renderSpellDescBar();
 }
+
+function showSpellTooltip(sp, evt) {
+  _descBarHover = sp || null;
+  _renderSpellDescBar();
+}
+
+function moveSpellTooltip(evt) { /* bar is fixed — nothing tracks the mouse */ }
 
 function hideSpellTooltip() {
-  if (_tooltipEl) _tooltipEl.style.opacity = '0';
+  _descBarHover = null;
+  _renderSpellDescBar();
 }
 
 // Every sub/quick panel wears the Horologe's own material: the blade
@@ -3966,6 +3988,9 @@ function unmountReactHUD() {
   const el = document.getElementById('reactHudRoot');
   if (el) el.remove();
   _removeHudHideStyles();
+  // battle over → drop the spell description bar with the rest of the HUD
+  _descBarBase = null; _descBarHover = null;
+  _renderSpellDescBar();
 }
 
 // ── Click juice: press pop + ripple burst + SFX for every pressable HUD element ──
@@ -4431,9 +4456,14 @@ function _injectHudHideStyles() {
     .float-settings-panel .nine-slice-bg { display: none !important; }
 
     /* ══════════════ THE HOROLOGE — clock action menu ══════════════ */
+    /* The whole instrument scales with --ew-ui-scale (set by _applyUIScale
+       in ui.js: device auto-fit × the pause-menu HUD Size preference), so
+       it reads comfortably on a 1080p monitor and shrinks on phones. */
     .hrlg-rig {
       position: absolute; left: 8px; bottom: 8px; width: 560px; height: 485px;
       z-index: 12; pointer-events: none; font-family: 'DotGothic16', monospace;
+      transform: scale(var(--ew-ui-scale, 1));
+      transform-origin: 0 100%;
     }
     /* the watch — sits ABOVE the blade drum so blades slide out from
        under the bezel (no gap, no floating buttons). pointer-events on:
@@ -4628,7 +4658,7 @@ function _injectHudHideStyles() {
        transform/opacity transitions. */
     .hrlg-fan { position: absolute; left: 103px; bottom: 245px; width: 0; height: 0; pointer-events: none; z-index: 2; }
     .hrlg-blade {
-      position: absolute; left: 0; top: -19px; height: 38px; width: 264px;
+      position: absolute; left: 0; top: -19px; height: 38px; width: 288px;
       transform: translate(var(--tx), var(--ty));
       opacity: var(--o, 1);
       display: flex; align-items: center; pointer-events: auto; cursor: pointer;
@@ -4666,14 +4696,15 @@ function _injectHudHideStyles() {
       letter-spacing: 0.05em; color: #e6e9f2; line-height: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* two-line blade: name + chips on top, TYPE / delivery / range badges below */
-    .hrlg-blade.tall { height: 54px; top: -27px; }
-    .hrlg-2line { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-    .hrlg-line1 { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .hrlg-badges { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+    /* badge blade: name + TYPE badge (name-sized) + small delivery/range
+       chips share ONE row (SMT-style) — wider than a plain blade but the
+       drum must never reach past mid-screen */
+    .hrlg-blade.tall { height: 46px; top: -23px; width: 440px; }
+    .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     .hrlg-cpip { width: 6px; height: 6px; transform: rotate(45deg); background: var(--hfc); box-shadow: 0 0 5px var(--hfc-soft); }
-    .hrlg-cfree { font-size: 8px; letter-spacing: 0.16em; color: #555c70; flex: none; white-space: nowrap; }
+    .hrlg-cfree { font-size: 9px; letter-spacing: 0.16em; color: #6a7288; flex: none; white-space: nowrap; }
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff7a8a;
       border: 1px solid rgba(255,122,138,0.55); padding: 1px 4px;
@@ -4682,9 +4713,9 @@ function _injectHudHideStyles() {
     /* right-side detail chips shared by every blade list */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
     .hrlg-chip {
-      flex: none; font-size: 8px; letter-spacing: 0.08em; color: #7fc9e8;
+      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #7fc9e8;
       border: 1px solid rgba(95,214,255,0.35); background: rgba(95,214,255,0.08);
-      padding: 1px 4px; white-space: nowrap;
+      padding: 1px 5px; white-space: nowrap;
     }
     .hrlg-meta { flex: none; font-size: 8px; letter-spacing: 0.06em; color: #8a93a8; white-space: nowrap; }
     .hrlg-note {
@@ -4768,8 +4799,71 @@ function _injectHudHideStyles() {
       0%   { opacity: 0.85; transform: translateX(0); }
       100% { opacity: 0;    transform: translateX(26px); }
     }
-    @media (max-width: 1100px) { .hrlg-rig { transform: scale(0.85); transform-origin: bottom left; } }
-    @media (max-width: 760px)  { .hrlg-rig { transform: scale(0.68); transform-origin: bottom left; } }
+    /* NOTE: the old max-width media-query scales are gone — _applyUIScale()
+       in ui.js now folds device size into --ew-ui-scale directly. */
+
+    /* ── whole-HUD fit: fixed panels shrink together on small screens ──
+       --ew-hud-scale is 1 on desktop (panels stay their designed size) and
+       drops toward ~0.5 on phones so the scoreboard / unit panel / log /
+       minimap stop eating the battlefield. Corner-anchored transforms keep
+       every panel pinned where it belongs. */
+    .ew-unitpanel  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 0 0; }
+    .ew-scoreboard { transform: translateX(-50%) scale(var(--ew-hud-scale, 1)) !important; transform-origin: 50% 0; }
+    .ew-matchmeta  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
+    .ew-combatlog  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
+    #battleMinimap { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 100%; }
+    .battle-subtitle-text { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 50% 100%; }
+
+    /* ══════════ SPELL DESCRIPTION BAR — SMT-style HELP strip ══════════
+       One long, thin black bar pinned bottom-center. Gold/holo-blue
+       hairline edges that fade out toward the ends; the black fill fades
+       too. Describes the drum's selected (or hovered) ability. */
+    #ew-spell-descbar {
+      position: fixed; left: 50%; bottom: 12px; z-index: 60;
+      width: min(1160px, 96vw);
+      transform: translateX(-50%) scale(var(--ew-ui-scale, 1));
+      transform-origin: 50% 100%;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.16s ease;
+      font-family: 'DotGothic16', monospace;
+    }
+    #ew-spell-descbar.show { opacity: 1; }
+    #ew-spell-descbar::before, #ew-spell-descbar::after {
+      content: ''; position: absolute; left: 0; right: 0; height: 1px; z-index: 1;
+      background: linear-gradient(90deg,
+        rgba(95,214,255,0) 0%, rgba(95,214,255,0.85) 16%,
+        rgba(242,196,104,0.95) 50%,
+        rgba(95,214,255,0.85) 84%, rgba(95,214,255,0) 100%);
+      filter: drop-shadow(0 0 5px rgba(95,214,255,0.45));
+    }
+    #ew-spell-descbar::before { top: 0; }
+    #ew-spell-descbar::after  { bottom: 0; }
+    .ew-descbar-inner {
+      min-height: 46px; padding: 8px 64px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; flex-wrap: wrap; row-gap: 4px;
+      background: linear-gradient(90deg,
+        rgba(4,6,12,0) 0%, rgba(4,6,12,0.9) 6%,
+        rgba(4,6,12,0.94) 94%, rgba(4,6,12,0) 100%);
+    }
+    .ew-descbar-name {
+      font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
+      color: #f2c468; letter-spacing: 0.06em; white-space: nowrap;
+      text-shadow: 0 0 10px rgba(242,196,104,0.35), 0 1px 2px rgba(0,0,0,0.9);
+    }
+    .ew-descbar-desc {
+      font-size: 12px; line-height: 1.45; color: #cfd6e4;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+      max-width: 52%;
+    }
+    .ew-descbar-stats {
+      font-size: 10px; letter-spacing: 0.08em; color: #8a93a8; white-space: nowrap;
+    }
+    .ew-descbar-status { font-size: 10px; color: #c89ee0; white-space: nowrap; }
+    @media (max-width: 760px) {
+      .ew-descbar-inner { padding: 6px 26px; gap: 8px; }
+      .ew-descbar-desc { max-width: 100%; }
+    }
   `;
   document.head.appendChild(style);
 }

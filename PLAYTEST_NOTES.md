@@ -1812,6 +1812,72 @@ HP/MP under the watch. All shipped; ONLY hud.js changed:
   → root, forced st.bombs → 1 DETONATE pusher at 11 o'clock, vitals 913/913 +
   250/250, mode label intact, 0 page errors.
 
+### v4 (2026-07-05) — inline badges, SMT description bar, HUD scale setting (hud.js + ui.js)
+User feedback on v3: type badges too tiny at 1080p, hover-tooltip disliked,
+whole clock menu too small on desktop / too big on phone. All shipped:
+1. **Badges are INLINE with the name now.** `.hrlg-2line`/`.hrlg-line1` are
+   GONE — badge blades are single-row: glyph · name (flex:0 0 auto, never
+   shrinks, maxWidth 220) · `.hrlg-badges` (shrinks/clips first) ·
+   `.hrlg-spacer` · right chips. Badge font 11px pad 2px/8px (was 7px) via
+   `_hrlgSpellBadges(sp, cat, compact)` — shared builder; compact=true (type
+   chip only) used by the enemy/tile quick menus, which now ALSO carry badges
+   + `spell:` on their blades. `.tall` blade = 46px × 560px wide, pitch 52.
+2. **SMT-style description bar** replaces the mouse-follow tooltip.
+   `#ew-spell-descbar`: fixed bottom-center strip (min(1160px,96vw)), black
+   fill + gold/holo-blue 1px hairlines, both fading at the ends; shows name /
+   type chip / desc / DMG-Range-MP-AP-tier / status line. It always describes
+   the drum's SELECTED blade — HorologeMenu calls `_setSpellDescBase(selSpell)`
+   DURING RENDER (a mount useEffect provably lagged: passive effects didn't
+   flush until the next state change → bar missed the menu-open frame; the
+   `sp === _descBarShown` guard makes the render-path call free). Hover still
+   overrides via the old names `showSpellTooltip`/`hideSpellTooltip` (kept so
+   every hoverIn/hoverOut call site works; battle.js's same-named legacy fns
+   are shadowed because hud.js loads later). Cleared on menu unmount +
+   unmountReactHUD.
+3. **HUD scale.** `--ew-ui-scale` on :root drives `.hrlg-rig` and the desc
+   bar (transform scale, corner-anchored). `_applyUIScale()` in ui.js (near
+   _saveParticleSettings) = device base (≤760px→0.68, ≤1100px→0.85, else
+   1.22 — the old hrlg media queries are DELETED, JS owns it now) × pref from
+   localStorage `ew_uiScalePref`; runs at load + on resize. Pause menu →
+   Video → Display has a "HUD Size" seg row (XS .72 / Small .85 / Normal 1 /
+   Large 1.15 / Huge 1.3) calling `window._setUIScalePref`. Per-device by
+   nature of localStorage — phone remembers Small, desktop Normal.
+- Verified via scratchpad uitest.js (USE_ASSET_CACHE=1 LOCAL_ASSETS=hud.js,
+  ui.js): 1920×1080 → scale 1.220, abilities drum shows "Pistol Whip HUMAN
+  PHYSICAL ⚔MELEE RNG 1 T·I", bar shows Pistol Whip desc on OPEN (not just
+  hover), wheel-scroll re-points bar to Double Pump, pause HUD-Size Large →
+  1.403; 690×400 → 0.680, everything fits, bar wraps to 2 rows. 0 pageerrors.
+  Gotcha: `.hrlg-rig` can be absent for long stretches (AI turns / menu
+  hidden) — tests must poll for it and retry the open, not sleep-and-hope.
+
+### v4.1 (2026-07-05) — user corrections to v4 (hud.js + ui.js)
+Feedback: ONLY the TYPE badge should be name-sized (delivery/range were
+shouting), blades reached past mid-screen, scoreboard text still tiny, phone
+HUD ate the whole screen. Fixes:
+1. **Badge hierarchy**: type badge stays 11px; PHYSICAL/MAGIC/UTILITY and
+   MELEE/RANGED chips dropped to 8px @ 0.85 opacity (`_HRLG_SUB_FS/_PAD` in
+   `_hrlgSpellBadges`). RNG n / T·tier chips REMOVED from blades (the desc
+   bar shows exact range/tier). `.tall` width 560 → 440 — right edge lands
+   ≈815px at 1.22 on 1920, safely inside mid-screen.
+2. **Scoreboard/meta text bump** (kept panel size): mode label + score
+   caption 7→10, TIME/ROUND labels 6→8, clock 13→16, /limit 9→11, team name
+   10→13, ALIVE sub 8→11, tower hp 7→9, MatchMeta 9→11 (zodiac 13→15, ☰
+   14→16), combat log 9→10 (header 7→9).
+3. **--ew-hud-scale** (second root var): scales the FIXED panels together —
+   `.ew-unitpanel` (new class on ActiveUnitPanel; ClipPanel spreads props so
+   className passes through), `.ew-scoreboard` (needs `!important` — inline
+   translateX(-50%) — origin 50% 0), `.ew-matchmeta`, `.ew-combatlog`,
+   `#battleMinimap` (three-renderer DOM, plain CSS hits it), and
+   `.battle-subtitle-text`. Formula in _applyUIScale: clamp(0.45..1,
+   min(w/1500, h/760) × pref(0.75..1.25)) → 1 on desktop (panels unchanged),
+   ~0.46 on a 690×400 phone. Action-menu var is now continuous TOO:
+   clamp(0.4..1.35, min(w/1574, h/885)) × pref → 1.22 @1080p, 0.44 on phone
+   (the v4 width-only steps left phone HUDs enormous — height matters).
+- Verified same harness both viewports: desktop blades "Pistol Whip HUMAN
+  physical melee" (big/small mix), scoreboard legible, subtitle untouched at
+  hud-scale 1; phone 0.438/0.46 — board actually visible, subtitle tiny,
+  minimap/log/panels all shrunk. 0 pageerrors.
+
 ## Signature 3D spell cinematics (three-vfx-effects.js) — 2026-07-04
 A "SIGNATURE 3D SPELL CINEMATICS" section now lives in three-vfx-effects.js
 (just above `_spell3DGeometry`). It's an anime-style set-piece layer built from

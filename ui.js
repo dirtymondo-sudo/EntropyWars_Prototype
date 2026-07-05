@@ -6398,6 +6398,9 @@
             const pKeys = ['projectiles','aoe','movement','healing','buffs','status','levelUp','death','combos'];
             const pOn = pKeys.filter(k => ps[k]).length;
 
+            const uiPref = window._getUIScalePref ? window._getUIScalePref() : 1;
+            const _uiSeg = (v, label) => `<button class="pm-seg-btn${Math.abs(uiPref - v) < 0.01 ? ' active' : ''}" onclick="window._setUIScalePref(${v});_renderPauseMenu();">${label}</button>`;
+
             return `
             <div class="pm-settings-section">
                 <div class="pm-set-group">
@@ -6407,6 +6410,15 @@
                         <label class="pm-toggle"><input type="checkbox" ${cinematicChecked} onchange="document.getElementById('cinematicToggle').checked=this.checked;state.cinematicMode=this.checked;"><span class="pm-toggle-label">Cinematic</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cameraChecked} onchange="var cb=document.getElementById('cameraToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Camera Follow</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${actionCamChecked} onchange="window._setCinematicActionCam(this.checked);"><span class="pm-toggle-label">Action Cam</span><span class="pm-toggle-hint">cinematic attack shots</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">HUD Size</span>
+                        <div class="pm-seg-group">
+                            ${_uiSeg(0.72, 'XS')}${_uiSeg(0.85, 'Small')}${_uiSeg(1, 'Normal')}${_uiSeg(1.15, 'Large')}${_uiSeg(1.3, 'Huge')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">scales the action menu &amp; ability bar — auto-fits your screen, saved per device</span>
                     </div>
                 </div>
 
@@ -6637,6 +6649,43 @@
             for (var k in ps) { if (ps.hasOwnProperty(k)) ps[k] = !!val; }
             window._saveParticleSettings();
         };
+
+        /* ── HUD scale (--ew-ui-scale) ────────────────────────────────
+           One CSS variable drives the size of the battle HUD widgets that
+           scale (the Horologe action menu + the spell description bar).
+           Final scale = device auto-fit base × the player's HUD Size
+           preference from the pause menu. The pref is stored per device
+           (localStorage), so a phone and a 1080p monitor each remember
+           their own comfortable size. */
+        window._getUIScalePref = function() {
+            var v = NaN;
+            try { v = parseFloat(localStorage.getItem('ew_uiScalePref')); } catch(e) {}
+            return (v && v >= 0.5 && v <= 2) ? v : 1;
+        };
+        window._applyUIScale = function() {
+            var w = window.innerWidth || 1280;
+            var hh = window.innerHeight || 720;
+            var root = document.documentElement.style;
+            // Action menu + description bar (--ew-ui-scale): sized off BOTH
+            // axes so a 1080p monitor gets a big SMT-style menu (1.22×) while
+            // a short/narrow phone screen shrinks hard instead of the old
+            // width-only steps that left phone HUDs enormous.
+            var base = Math.max(0.4, Math.min(1.35, Math.min(w / 1574, hh / 885)));
+            var s = Math.max(0.35, Math.min(2, base * window._getUIScalePref()));
+            root.setProperty('--ew-ui-scale', s.toFixed(3));
+            // Fixed panels (scoreboard / unit panel / combat log / minimap):
+            // full designed size on desktop, shrinking together once the
+            // window can't comfortably fit them (--ew-hud-scale ≤ 1).
+            var pref = Math.max(0.75, Math.min(1.25, window._getUIScalePref()));
+            var hud = Math.max(0.45, Math.min(1, Math.min(w / 1500, hh / 760) * pref));
+            root.setProperty('--ew-hud-scale', hud.toFixed(3));
+        };
+        window._setUIScalePref = function(v) {
+            try { localStorage.setItem('ew_uiScalePref', String(v)); } catch(e) {}
+            window._applyUIScale();
+        };
+        window.addEventListener('resize', function() { window._applyUIScale(); });
+        window._applyUIScale();
 
         let _codexSelectedRace = null;
         let _codexFilterFaction = 'all';
