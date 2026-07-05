@@ -554,6 +554,14 @@ const RACE_MODELS_3D = {
       hitTimeScale: 2.8,
       deathTimeScale: 1.6,  // Knock_Down 2.53s
     },
+    // Male Psychic (Telepath) — "male_psychic_trench" (2026-07-05 upload). Note
+    // the doubled underscore in the file stem (…_trench__biped_…) → the _mk3d
+    // prefix keeps a trailing underscore. Full standard clip set; no Face_Punch
+    // hit export on R2 yet, so `hit` is omitted (falls back to the flinch tween).
+    male: _mk3d('Homosapien/Male/psychic', 'male_psychic_trench_', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }, { heightRatio: 1.0 }),   // adult human male, at the anchor height
   },
   // Female Black Mage (Witch).
   'wizard': {
@@ -617,6 +625,26 @@ const RACE_MODELS_3D = {
   },
 
   // ── Non-homosapien races (Races/<race folder>/<gender>/) ──
+  // Martian (Gunslinger, ranged) — "Green_martian". Ray-gun quick-draw is the
+  // ranged cast; Charged_Spell_Cast covers any psychic/magic hit. Little green
+  // man, so a touch taller than the classic grey (0.78) but well below humans.
+  'martian': {
+    male: _mk3d('martian/male', 'Green_martian', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
+      castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
+    }, { castTimeScale: 5.0, heightRatio: 0.82 }),   // little green man
+  },
+  // Half-Demon (Assassin, melee) — "hot_attractive_rich_f". No magic exports;
+  // her strikes are brawler clips (uppercut / kick). Left_Uppercut is the
+  // generic + melee cast. Imposing demonic woman → a hair taller than a plain
+  // human female.
+  'halfdemon': {
+    female: _mk3d('halfdemon/female', 'hot_attractive_rich_f', {
+      idle: 'Idle_7', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      death: 'Dead', cast: 'Left_Uppercut_from_Guard', castMelee: 'Left_Uppercut_from_Guard',
+    }, { castTimeScale: 2.2, heightRatio: 0.98 }),   // statuesque half-demon
+  },
   'fairy': {
     female: _mk3d('Fairy/female', 'young_fairy', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
@@ -692,7 +720,7 @@ const RACE_MODELS_3D = {
     }, { heightRatio: 0.97 }),   // tall, elegant
   },
   // Still missing from R2 (prefix unknown — need the Character_output file
-  // name per folder to wire): male telepath, male pirate.
+  // name per folder to wire): male pirate.
 };
 
 function getRace3DModel(race, gender) {
