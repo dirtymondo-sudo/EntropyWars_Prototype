@@ -12,6 +12,38 @@
     <meta name="theme-color" content="#06050a" />
     <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Entropy%20Wars%22%2C%22short_name%22%3A%22EntropyWars%22%2C%22start_url%22%3A%22.%22%2C%22scope%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22display_override%22%3A%5B%22fullscreen%22%2C%22standalone%22%5D%2C%22orientation%22%3A%22landscape%22%2C%22background_color%22%3A%22%2306050a%22%2C%22theme_color%22%3A%22%2306050a%22%7D" />
     <title>Entropy Wars v207 — Rectangular Maps & Tower Defense</title>
+    <style>/* pre-CSS frame: keep the page dark while external styles download */html,body{background:#06050a}</style>
+    <script>
+    /* ── Boot telemetry (must be the FIRST script) ──
+       Tracks real script/CSS download progress for the title loading bar and
+       records failures so a dead CDN/R2 file surfaces as an error overlay
+       instead of a silent soft-lock at "· LOADING ·".
+       - Failures: resource 'error' events don't bubble but DO pass through
+         window during capture ('load' events do NOT — Chromium quirk — so
+         progress comes from the Performance API instead). */
+    (function () {
+        var boot = window._ewBoot = { failed: [], t0: Date.now() };
+        try { performance.setResourceTimingBufferSize(1000); } catch (e) {}
+        boot.loadedCount = function () {
+            try {
+                return performance.getEntriesByType('resource').filter(function (r) {
+                    return r.initiatorType === 'script' || r.initiatorType === 'link';
+                }).length;
+            } catch (e) { return 0; }
+        };
+        window.addEventListener('error', function (e) {
+            var t = e.target;
+            if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+                var url = t.src || t.href || '';
+                if (url) boot.failed.push(url);
+            }
+        }, true);
+    })();
+    </script>
+    <link rel="preconnect" href="https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.socket.io">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -895,25 +927,70 @@
       var fill = document.querySelector('.title-loading-fill');
       var _clicked = false;
 
-      // Track actual script loading progress
-      var _totalSteps = 3; // sprites, main game init, assets.js (async bonus)
-      var _loadedSteps = 0;
+      // Real script-loading progress: _ewBoot.loadedCount() counts finished
+      // script/css downloads (Performance API); the denominator is the live
+      // count of such tags (grows as the parser reaches them, so the bar is
+      // clamped monotonic). Reaches 100% only when _gameReady flips.
+      var _maxPct = 0;
+      function _realPct() {
+        var boot = window._ewBoot;
+        if (!boot) return 0;
+        var tags = document.querySelectorAll('script[src], link[rel="stylesheet"]').length;
+        if (!tags) return 0;
+        var pct = Math.round((boot.loadedCount() / tags) * 100);
+        // never show "done" until the game is actually interactive
+        if (!window._gameReady) pct = Math.min(pct, 95);
+        _maxPct = Math.max(_maxPct, Math.min(100, pct));
+        return _maxPct;
+      }
       function updateLoadBar() {
-        _loadedSteps++;
-        var pct = Math.min(100, Math.round((_loadedSteps / _totalSteps) * 100));
+        var pct = window._gameReady ? 100 : _realPct();
         if (fill) {
           fill.style.animation = 'none';
           fill.style.transition = 'width 0.3s ease';
           fill.style.width = pct + '%';
         }
-        if (pct >= 66 && btn) {
-          btn.style.opacity = '1';
-          btn.style.pointerEvents = 'auto';
-        }
       }
 
-      // sprites.js loaded synchronously before this block
-      if (window._spritesLoaded) updateLoadBar();
+      // ── Failure surfacing: dead R2/CDN file used to soft-lock the title
+      // screen at "· LOADING ·" with zero feedback. Show a retry overlay
+      // instead. Only ever visible when boot is actually broken. ──
+      var CORE_RE = /(sprites|data|state|map|battle|three-renderer|three-camera|three-post|ui|hud|ai|online|party-builder|match-select|profile|audio|three\.min|socket\.io)[^\/]*\.js|styles-[^\/]*\.css/;
+      var _errShown = false;
+      function showBootError(failedList, soft) {
+        if (_errShown) return;
+        _errShown = true;
+        var box = document.createElement('div');
+        box.id = 'bootErrorOverlay';
+        box.style.cssText = 'position:fixed;left:50%;bottom:8%;transform:translateX(-50%);z-index:99999;' +
+          'max-width:min(560px,90vw);background:rgba(10,8,16,0.96);border:1px solid #8a2be2;border-radius:10px;' +
+          'padding:14px 18px;color:#e8e2f4;font:13px/1.5 "JetBrains Mono",monospace;box-shadow:0 8px 40px rgba(0,0,0,0.7);text-align:left;';
+        var msg = soft
+          ? 'Still loading after ' + Math.round((Date.now() - window._ewBoot.t0) / 1000) + 's — slow connection or a blocked host.'
+          : 'Some game files failed to load — the game cannot start.';
+        var files = (failedList || []).slice(0, 6).map(function (u) {
+          return '<div style="color:#ff7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✗ ' + u.split('/').pop().split('?')[0] + '</div>';
+        }).join('');
+        box.innerHTML = '<div style="font-weight:700;margin-bottom:6px;color:#c9a7ff">⚠ CONNECTION PROBLEM</div>' +
+          '<div style="margin-bottom:8px">' + msg + '</div>' + files +
+          '<button id="bootRetryBtn" style="margin-top:10px;padding:8px 22px;background:#8a2be2;color:#fff;border:0;border-radius:6px;font:inherit;font-weight:700;cursor:pointer">RELOAD</button>';
+        document.body.appendChild(box);
+        var rb = document.getElementById('bootRetryBtn');
+        if (rb) rb.addEventListener('click', function () { location.reload(); });
+      }
+      // Watch for core-module failures + a no-progress watchdog
+      var _watch = setInterval(function () {
+        var boot = window._ewBoot;
+        updateLoadBar();
+        if (window._gameReady) { clearInterval(_watch); return; }
+        if (boot && boot.failed.some(function (u) { return CORE_RE.test(u); })) {
+          showBootError(boot.failed, false);
+          clearInterval(_watch);
+        } else if (boot && Date.now() - boot.t0 > 45000) {
+          showBootError(boot.failed, true);
+          clearInterval(_watch);
+        }
+      }, 500);
 
       // Dim button until main game JS is ready
       if (btn) {

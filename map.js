@@ -1025,8 +1025,8 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, collect hourglasses, or wipe out the enemy. 33 rounds — composite score decides if no winner.', tag: null, locked: false },
-            { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 15 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, collect hourglasses, or wipe out the enemy. 15 rounds — composite score decides if no winner.', tag: null, locked: false },
+            { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'ffa', icon: '👤', label: 'Free For All', desc: 'Every player for themselves. Most kills in 15 rounds. No teams.', tag: null, locked: false },
             { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
             { id: 'hotspot', icon: '🔥', label: 'Hotspot', desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15 rounds.', tag: null, locked: false },

@@ -566,14 +566,17 @@ function MatchSelect() {
     }
   }, [compatibleMapIndices]);
 
-  useEffect(() => {
-    _msSelectedGM = gmIdx;
-    _msSelectedMap = mapIdx;
-    _msSelectedTeamSize = teamSize;
-    _msRanked = false;
-    _msOnline = false;
-    _msSelectedRounds = rounds;
-  }, [gmIdx, mapIdx, teamSize, ranked, opponent]);
+  // Mirror the live selection into the module globals during render (NOT in a
+  // deferred useEffect): _msConfirm reads these synchronously on CONFIRM, and
+  // an effect-based mirror can be outrun by a fast click — the old version
+  // also omitted `rounds` from its deps, so mode round-limits and manual
+  // ROUNDS tweaks were silently ignored (TDM ran 15 rounds instead of 12).
+  _msSelectedGM = gmIdx;
+  _msSelectedMap = mapIdx;
+  _msSelectedTeamSize = teamSize;
+  _msRanked = false;
+  _msOnline = false;
+  _msSelectedRounds = rounds;
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const accent = accentForMap(mp);

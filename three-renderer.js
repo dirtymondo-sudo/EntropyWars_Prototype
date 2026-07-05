@@ -13439,7 +13439,7 @@ const ThreeRenderer = (function () {
         _parentEl.appendChild(canvas);
 
         var w = _parentEl.clientWidth || 960, h = _parentEl.clientHeight || 540;
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true });
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(w, h);
 
@@ -15167,7 +15167,10 @@ const ThreeRenderer = (function () {
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,
 
-        get _scene() { return scene; }
+        get _scene() { return scene; },
+        /* Debug/profiling handle: renderer.info has live draw-call/triangle/
+           texture counts. Console: ThreeRenderer._renderer.info.render */
+        get _renderer() { return renderer; }
     };
 })();
 

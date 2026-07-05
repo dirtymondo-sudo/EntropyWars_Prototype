@@ -2167,6 +2167,44 @@ Tuning knobs if models read too small/big on other maps: gun `modelScale`
 (default 2.2) in `_sigGunRig3D`, cannon `scale` (1.35), claw fan ×1.25, tesla
 renderer model `g.scale.setScalar(1.3)`.
 
+## Production-readiness review (2026-07-05) — ROADMAP.md + boot loader + perf probe
+Full holistic audit session (QoL/architecture/perf/workflow). **Read `ROADMAP.md`** —
+it's the handoff plan (delivery pipeline, loading, draw calls, achievements, ranked
+maps, retention) with file:line anchors. Changes shipped (all non-visual):
+- **index.html**: real boot progress (head telemetry counts finished script/CSS via
+  the Performance API) + failure overlay & 45s watchdog (dead R2/CDN core file now
+  shows a RELOAD card instead of the silent "· LOADING ·" soft-lock) + preconnects +
+  dark pre-CSS background. GOTCHA: Chromium does NOT propagate `load` events for
+  script/link elements through window capture-phase listeners — only `error` events
+  capture. Progress must come from `performance.getEntriesByType('resource')`.
+- **server.js/package.json**: gzip `compression` middleware (index.html 115KB→28KB).
+- **three-renderer.js**: `powerPreference:'high-performance'`; new `ThreeRenderer._renderer`
+  getter → live draw-call/memory stats at `ThreeRenderer._renderer.info.render`.
+- **map.js**: MS_GAME_MODES descriptions fixed to match MULTIPLAYER_MODES rules
+  (Arena 33→15 rounds, TDM 15→12).
+- **match-select.js BUG FIX**: `_msSelectedRounds`/`_msSelectedGM`/etc. were mirrored
+  to globals in a useEffect that (a) omitted `rounds` from its deps and (b) is
+  deferred, so `_msConfirm` read stale values — every TDM started from mode select
+  ran a 15-round match clock (HUD "1/15") while the rules/log said 12, and manual
+  ROUNDS tweaks were ignored. Mirror moved into the render body. When probing this
+  UI, note `_msSelectedRounds` is a module-level `let` in map.js — NOT visible as
+  `window._msSelectedRounds`.
+Probe facts (8×8 TDM, 8 units, headless swiftshader — object counts valid, FPS not):
+~13.5s cold boot to `_gameReady` even with all assets local; scene = 1,089 meshes +
+684 sprites, 752 visible drawables, 467 unique geometries, **2,016 unique materials**,
+11 lights; DOM = 17.4k nodes (212 in the CSS2D overlay). No instancing/merging/atlas
+anywhere — see ROADMAP §4 before optimizing (shadow autoUpdate=false is NOT safe:
+GLB units idle-animate + castShadow and the sun eases every frame).
+HARNESS GOTCHAS: `ThreeRenderer` is a top-level `const`, NOT `window.ThreeRenderer` —
+in page.evaluate use the bare identifier / `typeof ThreeRenderer !== 'undefined'`
+(`window.ThreeRenderer && …` is always falsy). In the remote container launch with
+`executablePath: '/opt/pw-browsers/chromium'` (repo playwright wants a browser build
+that isn't installed; do NOT run `npx playwright install`).
+R2 delivery facts (verified by curl): the `pub-*.r2.dev` dev bucket serves battle.js
+as 1,356,685 raw bytes — **no Cache-Control, no gzip/brotli** — and index.html loads
+TWO three.js copies (r128 global + 0.160 module importmap for the menu/sky shaders).
+Custom domain on the bucket = brotli + edge cache + real headers (ROADMAP §2.1).
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`

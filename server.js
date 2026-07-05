@@ -13,6 +13,10 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
+// gzip everything Express serves (index.html alone drops ~110KB → ~25KB).
+// Optional so a stale node_modules can't crash the server.
+try { app.use(require('compression')()); } catch (e) { console.warn('[BOOT] compression middleware unavailable:', e.message); }
+
 app.use(express.json());
 
 app.use(express.static(path.join(__dirname), {
