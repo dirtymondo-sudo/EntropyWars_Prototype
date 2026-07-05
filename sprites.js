@@ -395,11 +395,9 @@ function getRaceSpriteAnimations(race, gender) {
 // Rigged 3D unit models (GLB).
 // Races registered here render on the battle board as a real skinned 3D model
 // instead of the flat sprite slab. Each entry names a base GLB (the rigged,
-// textured character — its first animation doubles as the idle) plus one GLB
-// per animation clip. All Meshy exports of the same biped rig share bone
-// names, so clips retarget across characters: once a race's model is rigged
-// on that skeleton, this same clip set can drive it — just point the URLs at
-// its folder.
+// textured character) plus one GLB per animation clip. Clips must be exported
+// from the SAME character as the model — see the rig-mismatch warning at
+// ANIM_CLIPS_3D below.
 //   model        base GLB (mesh + skin + texture). We use the Idle export so
 //                the idle clip ships with the mesh in one download.
 //   clips        idle / walk / cast / death → GLB whose first animation is
@@ -414,39 +412,33 @@ function getRaceSpriteAnimations(race, gender) {
 // the fallback when GLTFLoader is unavailable. Set window.EW_DISABLE_3D_UNITS
 // = true (console) to force sprites for A/B comparison.
 // ───────────────────────────────────────────────────────────────────────────
-// Shared animation clip library — Assets/Sprites/Races/animations/ on R2.
-// One GLB per clip, all exported on the SAME Meshy biped rig (identical bone
-// names), so any character rigged on that skeleton can borrow any clip from
-// here: no per-character walk/idle/death exports needed. NOTE: a character's
-// `model` GLB must be a RIGGED export (Meshy rig/animate stage, "with skin" —
-// it has bones + skin weights). The raw generate/texture stage GLBs are
-// static meshes with no skeleton; they still render (unanimated statue) but
-// no clip can drive them.
-const _ANIM_3D = `${_S}/Races/animations`;
-const ANIM_CLIPS_3D = {
-  idle:   `${_ANIM_3D}/Meshy_AI_Animation_Idle_11_withSkin.glb`,             // 1.93s loop
-  walk:   `${_ANIM_3D}/Meshy_AI_Animation_Walking_withSkin.glb`,             // 1.07s loop
-  run:    `${_ANIM_3D}/Meshy_AI_Animation_Running_withSkin.glb`,             // loop
-  cast:   `${_ANIM_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,  // 2.70s
-  shoot:  `${_ANIM_3D}/Meshy_AI_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb`, // 7.33s
-  death:  `${_ANIM_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,          // 2.53s
-};
-
+// ⚠ HARD RULE (verified 2026-07): Meshy auto-rigs EVERY character with its
+// own unique skeleton rest pose (same bone NAMES, different bone positions/
+// orientations), and each clip bakes absolute bone transforms for the ONE
+// character it was exported with. A clip only animates correctly on the
+// character it was exported FROM — cross-character playback warps the mesh.
+// So every race folder carries its OWN clip GLBs: in Meshy, open the
+// character → apply each library animation → export "with skin" → upload
+// into that race's folder alongside its Character_output.
+//
+// Also: a `model` GLB must be the RIGGED export ("Character output" or any
+// "withSkin" — it has bones + skin weights). The generate/texture stage
+// GLBs are boneless static meshes that nothing can animate.
 const _HARB_3D = `${_S}/Races/Homosapien/Male/harbinger`;
 const _AGENT_3D = `${_S}/Races/Homosapien/Male/agent`;
 const _PSY_3D = `${_S}/Races/Homosapien/Female/psychic`;
 const RACE_MODELS_3D = {
   // Male Harbinger (Fortune Teller) — the 3D-unit pilot character. Its base
-  // GLB is the rigged Idle export, so the idle clip rides along with the
-  // mesh in one download; the other clips come from the shared library.
+  // GLB is its rigged Idle export, so the idle clip rides along with the
+  // mesh in one download.
   'fortune teller': {
     male: {
       model: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
       clips: {
         idle:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Idle_11_withSkin.glb`,
-        walk:  ANIM_CLIPS_3D.walk,
-        cast:  ANIM_CLIPS_3D.cast,
-        death: ANIM_CLIPS_3D.death,
+        walk:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Walking_withSkin.glb`,
+        cast:  `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Charged_Spell_Cast_withSkin.glb`,
+        death: `${_HARB_3D}/Meshy_AI_Fortune_teller_with_r_biped_Animation_Knock_Down_withSkin.glb`,
       },
       heightRatio: 1.0,
       yawOffset: 0,
@@ -455,18 +447,16 @@ const RACE_MODELS_3D = {
       deathTimeScale: 1.6,  // knock-down clip is 2.53s; death window is 1.6s
     },
   },
-  // Male Agent (Men in Black). Cast/attack = the cowboy quick-draw clip.
-  // Base = the rigged Character_output export (verified: same bone set as the
-  // shared clip rig; its own animations[0] is just a 0.03s stub, so the real
-  // idle comes from the shared library like everything else).
+  // Male Agent (Men in Black). Idle = his Alert clip (4.03s watchful loop);
+  // cast/attack = his cowboy quick-draw.
   'men in black': {
     male: {
       model: `${_AGENT_3D}/Meshy_AI_Men_in_Black_CIA_age_biped_Character_output.glb`,
       clips: {
-        idle:  ANIM_CLIPS_3D.idle,
-        walk:  ANIM_CLIPS_3D.walk,
-        cast:  ANIM_CLIPS_3D.shoot,
-        death: ANIM_CLIPS_3D.death,
+        idle:  `${_AGENT_3D}/Meshy_AI_Animation_Alert_withSkin.glb`,
+        walk:  `${_AGENT_3D}/Meshy_AI_Animation_Walking_withSkin.glb`,
+        cast:  `${_AGENT_3D}/Meshy_AI_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb`,
+        death: `${_AGENT_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
       heightRatio: 1.0,
       yawOffset: 0,
@@ -475,16 +465,15 @@ const RACE_MODELS_3D = {
       deathTimeScale: 1.6,
     },
   },
-  // Female Psychic (Telepath). Her own Thoughtful_Walk from the shared
-  // library; cast/attack borrows the harbinger's charged-spell-cast clip.
+  // Female Psychic (Telepath) — her own clip set (verified same-rig).
   'telepath': {
     female: {
       model: `${_PSY_3D}/Meshy_AI_psychic_female_with_d_biped_Character_output.glb`,
       clips: {
-        idle:  ANIM_CLIPS_3D.idle,
-        walk:  `${_ANIM_3D}/Meshy_AI_psychic_female_with_d_biped_Animation_Thoughtful_Walk_withSkin.glb`,
-        cast:  ANIM_CLIPS_3D.cast,
-        death: ANIM_CLIPS_3D.death,
+        idle:  `${_PSY_3D}/Meshy_AI_Animation_Idle_4_withSkin.glb`,
+        walk:  `${_PSY_3D}/Meshy_AI_psychic_female_with_d_biped_Animation_Thoughtful_Walk_withSkin.glb`,
+        cast:  `${_PSY_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,
+        death: `${_PSY_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
       heightRatio: 1.0,
       yawOffset: 0,

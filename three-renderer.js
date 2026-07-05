@@ -5750,7 +5750,15 @@ const ThreeRenderer = (function () {
             Object.keys(clips).forEach(function (name) {
                 _loadUnitGLB(clips[name], function (cres) {
                     if (!cres.clips || !cres.clips.length || entry.mixer !== mixer) return;
-                    var act = mixer.clipAction(cres.clips[0]);
+                    // Two slots may share one GLB (e.g. idle = walk-in-slow-mo
+                    // until a real idle export exists). clipAction() returns the
+                    // SAME action for the same clip, and the slots need distinct
+                    // loop/timeScale settings — clone the clip in that case.
+                    var clip = cres.clips[0];
+                    for (var k in entry.actions) {
+                        if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
+                    }
+                    var act = mixer.clipAction(clip);
                     if (name === 'cast' || name === 'death') {
                         act.setLoop(THREE.LoopOnce, 0);
                         act.clampWhenFinished = true;
@@ -5759,6 +5767,7 @@ const ThreeRenderer = (function () {
                     } else {
                         act.setLoop(THREE.LoopRepeat, Infinity);
                         if (name === 'walk') act.timeScale = def.moveTimeScale || 1;
+                        else if (name === 'idle' && def.idleTimeScale) act.timeScale = def.idleTimeScale;
                     }
                     entry.actions[name] = act;
                     if (name === 'idle' && !entry._ew_curAnim) {

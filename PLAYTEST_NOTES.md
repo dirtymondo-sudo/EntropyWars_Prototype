@@ -34,18 +34,29 @@ teller (Harbinger)** — Meshy exports under
 - Base GLB = the Idle export (mesh+skin+texture+idle clip, ~7MB); walk / cast /
   death clips retarget from their own GLBs (same rig → same bone names, so one
   clip set can drive ANY character rigged on the Meshy biped skeleton).
-- Shared clip library (2026-07): `Assets/Sprites/Races/animations/` — one GLB
-  per clip (idle/walk/run/cast/cowboy-shoot/knock-down), all on the same rig;
-  registered as `ANIM_CLIPS_3D` in sprites.js. Characters reference these
-  instead of per-character animation exports. Second registered race: male
-  'men in black' (agent) — cast/attack = cowboy quick-draw. ⚠ Its current GLB
-  (`…_texture.glb`) is the UNRIGGED Meshy texture-stage export (0 skins/bones,
-  verified) — renders as a static 3D figure, clips can't bind. The renderer
-  detects rigless models, skips the mixer + clip downloads, and warns. Fix =
-  re-export from Meshy's rig/animate stage ("with skin") and point `model` at
-  it. Also: `Box3.setFromObject` LIES about skinned GLB size (Meshy geometry
-  is authored at 1/100 with bones scaling ×100) — `_skinnedBBox` measures via
+- ⚠ NO shared clip library (tried and reverted 2026-07): Meshy auto-rigs each
+  character with a UNIQUE rest pose (psychic vs fortune-teller rig: bone rest
+  positions off by up to 21.6 units, rest rotations ~60°) and clips bake
+  absolute bone transforms — a clip only fits the character it was exported
+  from; anything else = mangled mesh. Every race folder carries its OWN
+  `Meshy_AI_Animation_<Name>_withSkin.glb` set next to its
+  `..._Character_output.glb` (the rigged model; `_generate`/`_texture` GLBs
+  are boneless — never wire them; the renderer detects rigless models and
+  renders them static with a console warn).
+- Registered so far: male 'fortune teller' (harbinger), male 'men in black'
+  (agent — cowboy quick-draw for cast/attack; no Idle export yet, idle =
+  Walking at idleTimeScale 0.35 stopgap), female 'telepath' (psychic — own
+  Idle_4 / Thoughtful_Walk / Charged_Spell_Cast / Knock_Down, all verified
+  same-rig 0.000 diff).
+- Two slots may share one clip GLB (agent idle=walk): _attachUnitModel clones
+  the clip so the actions get independent loop/timeScale settings.
+- Gotcha: `Box3.setFromObject` LIES about skinned GLB size (Meshy geometry is
+  authored at 1/100 with bones scaling ×100) — `_skinnedBBox` measures via
   boneTransform(); naive h=0.017 vs real h=1.70.
+- Verifying a GLB from the shell (rigged? clips? same-rig?): parse the JSON
+  chunk — `buf.readUInt32LE(12)` = JSON length at offset 20; check `skins`
+  (must be ≥1), `animations[0]` name/duration, and compare `nodes[].translation`
+  between a clip GLB and the character's Character_output (must be ~0 diff).
 - Loader/mixer/state machine live in three-renderer.js (`_loadUnitGLB`,
   `_attachUnitModel`, `_updateUnitModels`). State priority: death (Knock_Down,
   clamped + fade, 1600ms) > cast one-shot (also plays for basic attacks) >
