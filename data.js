@@ -8047,6 +8047,11 @@ const ACCT_STARTER_UNITS = [
   'atlantean',      // Atlantean
   'pirate',         // Raider (human)
   'vampire',        // Vampire
+  'shaman',         // Harvester (human female 3D)
+  'giant',          // Warrior (colossal 3D)
+  'halfdemon',      // Agent/Assassin (3D)
+  // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
+  // starter EXCEPT 'martian', which is intentionally left locked (earn/buy it).
 ];
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own

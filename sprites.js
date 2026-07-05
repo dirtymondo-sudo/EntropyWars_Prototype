@@ -571,6 +571,17 @@ const RACE_MODELS_3D = {
       castSupport: 'mage_soell_cast',
     }, { heightRatio: 0.94 }),
   },
+  // Female Shaman (Harvester) — "beautiful_attractive_" (note the doubled
+  // underscore in her file stem …_attractive__biped_… → the _mk3d prefix keeps a
+  // trailing underscore). A support/magic caster: Charged_Spell_Cast is her one
+  // cast clip, serving generic + magic + (via fallback) support. No Regular_Jump
+  // export on R2 yet, so `jump` is omitted (falls back to the arc tween).
+  'shaman': {
+    female: _mk3d('Homosapien/Female/harvester', 'beautiful_attractive_', {
+      idle: 'Idle_7', walk: 'Running', hit: 'Hit_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+    }, { heightRatio: 0.94 }),   // human female, a touch shorter than the anchor
+  },
   // Engineers (Mad Scientist) — their "gun" cast is the ray-gun quick-draw.
   'mad scientist': {
     female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
@@ -615,9 +626,10 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
     }, { castTimeScale: 5.0, heightRatio: 1.02 }),
   },
-  // Homosapien (Freelancer) — also the model to reuse for the werewolf DAY
-  // form once the werewolf night model is wired (day form is sprite-only for
-  // now). No cast/hit exports yet — engine lunge/glow tweens cover actions.
+  // Homosapien (Freelancer) — also the werewolf's DAY form: getRace3DModel()
+  // returns this male entry for any werewolf while getCurrentCyclePhase() is
+  // 'day', and the beast model below at night. No cast/hit exports yet —
+  // engine lunge/glow tweens cover actions.
   'homosapien': {
     male: _mk3d('Homosapien/Male/freelancer', 'normal_man', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', death: 'Dead',
@@ -659,6 +671,16 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 1.4 }),   // towering cryptid
   },
+  // Giant (Warrior, melee tank) — "ancient_giant". A brawler with charged
+  // smash clips: Charged_Upward_Slash is the generic cast, Charged_Ground_Slam
+  // the melee strike; Face_Punch_Reaction is the hit flinch. The tallest unit
+  // on the board — well above bigfoot (1.4) and the werewolf (1.3).
+  'giant': {
+    male: _mk3d('Giant/male', 'ancient_giant', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Charged_Upward_Slash', castMelee: 'Charged_Ground_Slam',
+    }, { castTimeScale: 2.2, heightRatio: 1.7 }),   // colossal ancient giant
+  },
   'grey': {
     male: _mk3d('grey/male', 'grey_alien', {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
@@ -682,8 +704,9 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 0.98 }),   // statuesque sea-dweller
   },
-  // Werewolf (night form; day form will reuse the homosapien freelancer
-  // model once the renderer swaps models per cycle phase — sprite for now).
+  // Werewolf NIGHT form (the beast). The DAY form is the Homosapien Freelancer
+  // male model — see getRace3DModel(), which swaps this out for the human model
+  // while getCurrentCyclePhase() === 'day'.
   'werewolf': {
     male: _mk3d('Werewolf/male', 'werewolf', {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
@@ -725,6 +748,16 @@ const RACE_MODELS_3D = {
 
 function getRace3DModel(race, gender) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  // Werewolf transformation: a human (Homosapien Freelancer male) by day,
+  // the beast by night. The _computeUnitStructuralSerial() serial tags the
+  // werewolf's tod, so the entry rebuilds — and re-resolves this model — on
+  // every phase flip. Always the male freelancer, regardless of the unit's
+  // gender, per the day-form design.
+  if (race === 'werewolf' && typeof getCurrentCyclePhase === 'function'
+      && getCurrentCyclePhase() === 'day') {
+    const dayForm = RACE_MODELS_3D['homosapien'];
+    if (dayForm && dayForm.male) return dayForm.male;
+  }
   const set = RACE_MODELS_3D[race];
   if (!set) return null;
   // Exact gender match only — never put the male model on a female unit.
