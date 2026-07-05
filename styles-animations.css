@@ -1,0 +1,643 @@
+/* ═══ Entropy Wars — Animations: hit effects, lunge, dodge, projectiles, beams ═══ */
+        /* ── Hit-effect sprite (default: 10 frames, 5×2 grid, 64×64 each on 320×128) ── */
+        .hit-effect-sprite {
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px));
+            pointer-events: none;
+            z-index: 35;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/Effects/hit04.png');
+            background-size: 320px 128px;
+            background-repeat: no-repeat;
+            animation: hitEffectPlay10 var(--hit-fx-ms, 400ms) steps(1) forwards,
+                       hitEffectFade var(--hit-fx-ms, 400ms) ease-out forwards;
+            box-shadow: 0 0 6px rgba(255, 200, 100, 0.6);
+            mix-blend-mode: screen;
+            opacity: 1;
+        }
+
+        /* 8-frame variant (4×2 grid, 256×128 sheet) — for spell_hit_01 */
+        .hit-effect-sprite.hit-fx-8frame {
+            background-size: 256px 128px;
+            animation: hitEffectPlay8 var(--hit-fx-ms, 400ms) steps(1) forwards,
+                       hitEffectFade var(--hit-fx-ms, 400ms) ease-out forwards;
+        }
+
+        /* Step through 10 frames: row 0 (cols 0-4), row 1 (cols 0-4) */
+        @keyframes hitEffectPlay10 {
+            0%      { background-position: 0px    0px;   }
+            10%     { background-position: -64px  0px;   }
+            20%     { background-position: -128px 0px;   }
+            30%     { background-position: -192px 0px;   }
+            40%     { background-position: -256px 0px;   }
+            50%     { background-position: 0px    -64px; }
+            60%     { background-position: -64px  -64px; }
+            70%     { background-position: -128px -64px; }
+            80%     { background-position: -192px -64px; }
+            90%, 100% { background-position: -256px -64px; }
+        }
+
+        /* Step through 8 frames: row 0 (cols 0-3), row 1 (cols 0-3) */
+        @keyframes hitEffectPlay8 {
+            0%        { background-position: 0px    0px;   }
+            12.5%     { background-position: -64px  0px;   }
+            25%       { background-position: -128px 0px;   }
+            37.5%     { background-position: -192px 0px;   }
+            50%       { background-position: 0px    -64px; }
+            62.5%     { background-position: -64px  -64px; }
+            75%       { background-position: -128px -64px; }
+            87.5%, 100% { background-position: -192px -64px; }
+        }
+
+        @keyframes hitEffectFade {
+            0%   { opacity: 1; transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px)) scale(0.85); }
+            15%  { opacity: 1; transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px)) scale(1.05); }
+            50%  { opacity: 1; transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px)) scale(1.0); }
+            85%  { opacity: 0.6; transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px)) scale(1.0); }
+            100% { opacity: 0; transform: translate(-50%, -50%) translateZ(var(--elev-z, 0px)) scale(1.0); }
+        }
+
+        .unit.healing-pop {
+            animation: healPulse .45s ease;
+            box-shadow: 0 0 18px rgba(106, 138, 96, .7);
+        }
+
+        .unit.status-afflict {
+            animation: statusWiggle .6s ease;
+        }
+
+        @keyframes statusWiggle {
+            0%   { transform: translateX(0); }
+            10%  { transform: translateX(-3px) rotate(-2deg); }
+            20%  { transform: translateX(3px) rotate(2deg); }
+            30%  { transform: translateX(-3px) rotate(-1.5deg); }
+            40%  { transform: translateX(3px) rotate(1.5deg); }
+            55%  { transform: translateX(-2px) rotate(-1deg); }
+            70%  { transform: translateX(1px) rotate(0.5deg); }
+            100% { transform: translateX(0) rotate(0); }
+        }
+
+        /* ── Attack lunge: unit lunges toward the target direction ── */
+        .unit.attacking-lunge {
+            --lunge-dx: 0;
+            --lunge-dy: 0;
+            animation: attackLunge .32s cubic-bezier(.22,.68,.36,1);
+            z-index: 5;
+        }
+        .unit.attacking-lunge > .battle-sprite {
+            animation: attackSpriteSquash .32s cubic-bezier(.22,.68,.36,1);
+        }
+        @keyframes attackLunge {
+            0%   { transform: translate(0, 0); }
+            35%  { transform: translate(calc(var(--lunge-dx) * 10px), calc(var(--lunge-dy) * 10px)) scale(1.06); }
+            55%  { transform: translate(calc(var(--lunge-dx) * 10px), calc(var(--lunge-dy) * 10px)) scale(1.04); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes attackSpriteSquash {
+            0%   { transform: scale(1, 1); }
+            20%  { transform: scale(1.12, 0.9); }
+            50%  { transform: scale(0.95, 1.08); }
+            100% { transform: scale(1, 1); }
+        }
+
+        /* ── Cast pulse: unit glows and rises when casting a spell ── */
+        .unit.casting-spell {
+            animation: castPulse .48s ease-out;
+            z-index: 5;
+        }
+        .unit.casting-spell > .battle-sprite {
+            animation: castSpriteGlow .48s ease-out;
+        }
+        @keyframes castPulse {
+            0%   { transform: translateY(0) scale(1); }
+            30%  { transform: translateY(-4px) scale(1.06); }
+            60%  { transform: translateY(-3px) scale(1.04); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        @keyframes castSpriteGlow {
+            0%   { filter: brightness(1) drop-shadow(0 0 0px transparent); }
+            25%  { filter: brightness(1.6) drop-shadow(0 0 8px rgba(140, 180, 255, .8)); }
+            60%  { filter: brightness(1.3) drop-shadow(0 0 5px rgba(140, 180, 255, .5)); }
+            100% { filter: brightness(1) drop-shadow(0 0 0px transparent); }
+        }
+
+        /* ── Dodge sidestep: unit hops to the side and snaps back ── */
+        .unit.dodging {
+            --dodge-dx: 1;
+            --dodge-dy: 0;
+            animation: mapDodgeSidestep .40s cubic-bezier(.22, 1, .36, 1);
+            z-index: 6;
+        }
+        .unit.dodging > .battle-sprite {
+            animation: dodgeSpriteStretch .40s cubic-bezier(.22, 1, .36, 1);
+        }
+        @keyframes mapDodgeSidestep {
+            0%   { transform: translate(0, 0); opacity: 1; }
+            25%  { transform: translate(calc(var(--dodge-dx) * 14px), calc(var(--dodge-dy) * 14px - 4px)) scale(0.92); opacity: 0.6; }
+            50%  { transform: translate(calc(var(--dodge-dx) * 12px), calc(var(--dodge-dy) * 12px - 2px)) scale(0.95); opacity: 0.7; }
+            75%  { transform: translate(calc(var(--dodge-dx) * 4px), calc(var(--dodge-dy) * 4px)) scale(1.02); opacity: 0.9; }
+            100% { transform: translate(0, 0) scale(1); opacity: 1; }
+        }
+        @keyframes dodgeSpriteStretch {
+            0%   { transform: scale(1, 1); }
+            20%  { transform: scale(0.85, 1.1) rotate(calc(var(--dodge-dx) * -5deg)); }
+            50%  { transform: scale(1.05, 0.95); }
+            100% { transform: scale(1, 1); }
+        }
+
+        /* ── Enhanced damage recoil: add knockback to existing taking-hit ── */
+        .unit.taking-hit {
+            animation: damageRecoil .42s ease;
+            box-shadow: 0 0 0 2px rgba(200, 180, 150, .18), 0 0 18px rgba(152, 80, 80, .85);
+        }
+        @keyframes damageRecoil {
+            0%   { transform: translate(0, 0) scale(1); }
+            12%  { transform: translate(0, 2px) scale(1.06, 0.94); }
+            30%  { transform: translate(0, -2px) scale(0.96, 1.05); }
+            50%  { transform: translate(0, 1px) scale(1.02, 0.98); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+
+        /* ── Projectile sprite base ── */
+        .projectile {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            transform: translate(-50%, -50%);
+            animation: projectileFly var(--projectile-ms, .52s) linear forwards;
+            opacity: .95;
+            background-size: 32px 32px;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+        }
+
+        .projectile.proj-fire {
+            width: 48px;
+            height: 48px;
+            background-size: 48px 48px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_0.png');
+            animation: projectileFly var(--projectile-ms, .52s) linear forwards, fireProjectileCycle 0.5s steps(1) infinite;
+            box-shadow: 0 0 8px rgba(255, 120, 30, 0.85);
+            image-rendering: pixelated;
+        }
+        @keyframes fireProjectileCycle {
+            0%      { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_0.png'); }
+            3.333%  { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_1.png'); }
+            6.667%  { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_2.png'); }
+            10%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_3.png'); }
+            13.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_4.png'); }
+            16.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_5.png'); }
+            20%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_6.png'); }
+            23.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_7.png'); }
+            26.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_8.png'); }
+            30%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_9.png'); }
+            33.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_10.png'); }
+            36.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_11.png'); }
+            40%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_12.png'); }
+            43.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_13.png'); }
+            46.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_14.png'); }
+            50%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_15.png'); }
+            53.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_16.png'); }
+            56.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_17.png'); }
+            60%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_18.png'); }
+            63.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_19.png'); }
+            66.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_20.png'); }
+            70%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_21.png'); }
+            73.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_22.png'); }
+            76.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_23.png'); }
+            80%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_24.png'); }
+            83.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_25.png'); }
+            86.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_26.png'); }
+            90%     { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_27.png'); }
+            93.333% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_28.png'); }
+            96.667% { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/fire/fire_strike_29.png'); }
+        }
+
+        /* ── Elemental projectiles (spellType-based) ── */
+        .projectile.proj-divine {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_divine.png');
+            box-shadow: 0 0 6px rgba(255, 220, 100, 0.7);
+        }
+        .projectile.proj-unholy {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_unholy.png');
+            box-shadow: 0 0 6px rgba(160, 60, 180, 0.7);
+        }
+        .projectile.proj-tech {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_tech.png');
+            box-shadow: 0 0 6px rgba(100, 180, 220, 0.7);
+        }
+        .projectile.proj-alien {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_alien.png');
+            box-shadow: 0 0 6px rgba(60, 220, 200, 0.7);
+        }
+        .projectile.proj-human {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_human.png');
+            box-shadow: 0 0 6px rgba(200, 170, 100, 0.7);
+        }
+        .projectile.proj-anomaly {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_anomaly.png');
+            box-shadow: 0 0 6px rgba(200, 80, 200, 0.7);
+        }
+
+        /* ── Effect-override projectiles ── */
+
+        /* ── Voidweaver spider projectile (64×64 source, displayed at native res) ── */
+        .projectile.proj-spider {
+            width: 64px;
+            height: 64px;
+            background-size: 64px 64px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spider_1.png');
+            box-shadow: 0 0 5px rgba(60, 220, 200, 0.6);
+            image-rendering: pixelated;
+        }
+
+        /* ── Spiderweb projectile for Web Snare (128×128 source, displayed ~80px for flight read) ── */
+        .projectile.proj-spiderweb {
+            width: 80px;
+            height: 80px;
+            background-size: 80px 80px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spiderweb_1.png');
+            box-shadow: 0 0 8px rgba(180, 180, 220, 0.7);
+            image-rendering: pixelated;
+            animation: projectileFly var(--projectile-ms, .52s) linear forwards,
+                       spiderwebSpin 0.6s linear infinite;
+        }
+        @keyframes spiderwebSpin {
+            from { rotate: 0deg; }
+            to   { rotate: 360deg; }
+        }
+
+        .projectile.proj-heal {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_heal.png');
+            box-shadow: 0 0 6px rgba(68, 221, 102, 0.7);
+        }
+        .projectile.proj-shield {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_shield.png');
+            box-shadow: 0 0 6px rgba(100, 170, 220, 0.7);
+        }
+        .projectile.proj-debuff {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_debuff.png');
+            box-shadow: 0 0 6px rgba(170, 120, 220, 0.7);
+        }
+        .projectile.proj-bomb {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_bomb.png');
+            box-shadow: 0 0 6px rgba(152, 80, 80, 0.7);
+        }
+        .projectile.proj-ricochet {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_ricochet.png');
+            box-shadow: 0 0 6px rgba(255, 227, 138, 0.7);
+        }
+        .projectile.proj-lightning {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_lightning.png');
+            box-shadow: 0 0 8px rgba(180, 160, 255, 0.8);
+        }
+        .projectile.proj-pull-hook {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_pull_hook.png');
+            box-shadow: 0 0 5px rgba(180, 180, 180, 0.6);
+        }
+        .projectile.proj-football {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_football.png');
+            box-shadow: 0 0 6px rgba(139, 90, 43, 0.7);
+        }
+
+        /* ── Rope / Vine Tether Sprites ──
+           128×32 sprites tiled horizontally at native resolution.
+           Width set dynamically in JS; height = sprite's native 32px. */
+        .tether {
+            position: absolute;
+            height: 32px;
+            pointer-events: none;
+            background-repeat: repeat-x;
+            background-size: 128px 32px;
+            image-rendering: pixelated;
+            z-index: 50;
+            transform-origin: left center;
+            will-change: width, transform, opacity;
+        }
+        .tether-rope {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/rope.png');
+            box-shadow: 0 0 3px rgba(160, 130, 80, 0.6);
+        }
+        .tether-vine {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/vine.png');
+            box-shadow: 0 0 4px rgba(60, 180, 60, 0.6);
+        }
+
+        /* Diorama 3D: tether lives in the projectile layer which is
+           already preserve-3d. The translateZ in JS handles elevation. */
+        body.diorama-3d .projectile-layer > .tether {
+            transform-style: preserve-3d;
+        }
+        .projectile.proj-bullet {
+            width: 20px;
+            height: 20px;
+            background-size: 20px 20px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/bullet.png');
+            box-shadow: 0 0 4px rgba(255, 240, 180, 0.8);
+            animation: bulletFly var(--projectile-ms, .52s) linear forwards;
+        }
+        @keyframes bulletFly {
+            from {
+                transform: translate(-50%, -50%) translate3d(0, 0, var(--sz, 0px)) rotate(var(--proj-rot, 0deg)) scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: translate(-50%, -50%) translate3d(var(--dx), var(--dy), calc(var(--sz, 0px) + var(--dz, 0px))) rotate(var(--proj-rot, 0deg)) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* ── Football projectile (Quarterback) ── */
+        .projectile.proj-football {
+            width: 20px;
+            height: 20px;
+            background-size: 20px 20px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/football.png');
+            image-rendering: pixelated;
+            box-shadow: 0 0 4px rgba(139, 94, 60, 0.8);
+            animation: bulletFly var(--projectile-ms, .52s) linear forwards;
+        }
+
+        /* ── Bane projectiles ── */
+        .projectile.proj-bane-human {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_human_bane.png');
+            box-shadow: 0 0 6px rgba(200, 170, 100, 0.8);
+        }
+        .projectile.proj-bane-divine {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_divine_bane.png');
+            box-shadow: 0 0 6px rgba(255, 220, 100, 0.8);
+        }
+        .projectile.proj-bane-unholy {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_unholy_bane.png');
+            box-shadow: 0 0 6px rgba(160, 60, 180, 0.8);
+        }
+        .projectile.proj-bane-tech {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_tech_bane.png');
+            box-shadow: 0 0 6px rgba(100, 180, 220, 0.8);
+        }
+        .projectile.proj-bane-anomaly {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_anomaly_bane.png');
+            box-shadow: 0 0 6px rgba(200, 80, 200, 0.8);
+        }
+        .projectile.proj-bane-alien {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_alien_bane.png');
+            box-shadow: 0 0 6px rgba(60, 220, 200, 0.8);
+        }
+
+        /* ── Beam segments (line/linePush spells) ── */
+        .beam-segment {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_beam.png');
+            background-size: 64px 32px;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 12;
+            mix-blend-mode: screen;
+        }
+        .beam-segment.beam-start {
+            background-position: 0 0;
+        }
+        .beam-segment.beam-mid {
+            background-position: -32px 0;
+        }
+        .beam-segment.beam-divine { filter: drop-shadow(0 0 6px rgba(255, 220, 100, 0.7)) hue-rotate(40deg); }
+        .beam-segment.beam-unholy { filter: drop-shadow(0 0 6px rgba(160, 60, 180, 0.7)) hue-rotate(280deg); }
+        .beam-segment.beam-tech { filter: drop-shadow(0 0 6px rgba(100, 180, 220, 0.7)) hue-rotate(180deg); }
+        .beam-segment.beam-alien { filter: drop-shadow(0 0 6px rgba(60, 220, 200, 0.7)); }
+        .beam-segment.beam-human { filter: drop-shadow(0 0 6px rgba(200, 170, 100, 0.7)) hue-rotate(25deg); }
+        .beam-segment.beam-anomaly { filter: drop-shadow(0 0 6px rgba(200, 80, 200, 0.7)) hue-rotate(300deg); }
+
+        /* Diagonal beam: single 64x64 sprite, no start/mid split */
+        .beam-segment.beam-diagonal {
+            width: 64px;
+            height: 64px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_beam_diagonal.png');
+            background-size: 64px 64px;
+            background-position: 0 0;
+        }
+
+        @keyframes beamFlash {
+            0% { opacity: 0; }
+            15% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* ── AoE ring impact ── */
+        .aoe-ring {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_aoe_ring.png');
+            background-size: 32px 32px;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: none;
+            z-index: 12;
+            animation: aoeRingExpand 0.55s ease-out forwards;
+        }
+        .aoe-ring.ring-divine { filter: drop-shadow(0 0 8px rgba(255, 220, 100, 0.8)) hue-rotate(40deg); }
+        .aoe-ring.ring-unholy { filter: drop-shadow(0 0 8px rgba(160, 60, 180, 0.8)) hue-rotate(280deg); }
+        .aoe-ring.ring-tech { filter: drop-shadow(0 0 8px rgba(100, 180, 220, 0.8)) hue-rotate(180deg); }
+        .aoe-ring.ring-alien { filter: drop-shadow(0 0 8px rgba(60, 220, 200, 0.8)); }
+        .aoe-ring.ring-human { filter: drop-shadow(0 0 8px rgba(200, 170, 100, 0.8)) hue-rotate(25deg); }
+        .aoe-ring.ring-anomaly { filter: drop-shadow(0 0 8px rgba(200, 80, 200, 0.8)) hue-rotate(300deg); }
+
+        @keyframes aoeRingExpand {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+            60% { transform: translate(-50%, -50%) scale(var(--ring-scale, 3)); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(var(--ring-scale, 3.5)); opacity: 0; }
+        }
+
+        /* ── Legacy fallback: keep old class names working (mapped to generic) ── */
+        .projectile.attack { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_human.png'); filter: drop-shadow(0 0 6px rgba(238, 192, 64, 0.7)); }
+        .projectile.damage { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_tech.png'); filter: drop-shadow(0 0 6px rgba(221, 119, 85, 0.7)); }
+        .projectile.heal { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_heal.png'); filter: drop-shadow(0 0 6px rgba(68, 221, 102, 0.7)); }
+        .projectile.cleanse { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_heal.png'); filter: drop-shadow(0 0 6px rgba(102, 204, 221, 0.7)); }
+        .projectile.shield { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_shield.png'); filter: drop-shadow(0 0 6px rgba(102, 170, 221, 0.7)); }
+        .projectile.status { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_debuff.png'); filter: drop-shadow(0 0 6px rgba(170, 119, 221, 0.7)); }
+        .projectile.ricochet { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_ricochet.png'); filter: drop-shadow(0 0 6px rgba(255, 227, 138, 0.7)); }
+        .projectile.bomb { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_bomb.png'); filter: drop-shadow(0 0 6px rgba(152, 80, 80, 0.7)); }
+
+        /* ── Bane item sprites (shop/inventory icons) ── */
+        .bane-sprite {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background-size: 32px 32px;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            vertical-align: middle;
+        }
+        .bane-sprite.bane-human { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_human_bane.png'); }
+        .bane-sprite.bane-divine { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_divine_bane.png'); }
+        .bane-sprite.bane-unholy { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_unholy_bane.png'); }
+        .bane-sprite.bane-tech { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_tech_bane.png'); }
+        .bane-sprite.bane-anomaly { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_anomaly_bane.png'); }
+        .bane-sprite.bane-alien { background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_alien_bane.png'); }
+
+        @keyframes healPulse {
+            0% {
+                transform: scale(1);
+            }
+
+            30% {
+                background: rgba(106, 138, 96, .32);
+                filter: brightness(1.35);
+                transform: scale(1.06);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes floatingTextRise {
+            0% {
+                transform: translate(-50%, -10%) translateZ(var(--elev-z, 0px));
+                opacity: 0;
+            }
+
+            12% {
+                opacity: 1;
+            }
+
+            72% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -130%) translateZ(var(--elev-z, 0px));
+                opacity: 0;
+            }
+        }
+
+        @keyframes projectileFly {
+            from {
+                transform: translate(-50%, -50%) translate3d(0, 0, var(--sz, 0px)) scale(1);
+                opacity: .98;
+            }
+
+            to {
+                transform: translate(-50%, -50%) translate3d(var(--dx), var(--dy), calc(var(--sz, 0px) + var(--dz, 0px))) scale(.85);
+                opacity: .15;
+            }
+        }
+
+        /*
+     * ── MAP LAYER ARCHITECTURE ──
+     * Layer 0: Sky backdrop (.sky-backdrop inside .map-center)
+     * Layer 1 – TILE tier (z 0–5 within tile): terrain bg (0), coord (2), tower-icon (2), weather (3), turret (4), tile-object (5)
+     * Layer 2 – HIGHLIGHT tier (z 6–8 within tile): move/attack/spell/inspect ::before (6), preview ::after (6), non-targetable tint ::after (8)
+     * Layer 3 – NEXUS/WEATHER icon tier (z 9 within tile): nexus-marker, weather-overlay, aoe-preview ::after
+     * Layer 4 – UNIT tier (z 10–14 within tile): corpse, unit frame/sprite, HP/MP bars, items/hourglasses/bombs
+     * Layer 5 – TOWER TOP tier (z 15 within tile): tower-icon-top
+     * Layer 6 – INFO tier (z 20–24 within tile): status chips, HP text pill
+     * Board-level: weather/zone outline SVG (z-index 50 on boardStage)
+     * Board-level: projectile layer (z-index 30 on boardStage), hover HUD (z-index 40 on boardStage)
+     */
+        .tile {
+            width: 100%;
+            height: 100%;
+            background: var(--tile);
+            border: none;
+            border-radius: 0;
+            position: relative;
+            overflow: visible;
+            cursor: pointer;
+            transition: transform .08s ease;
+            contain: layout style;
+        }
+
+        .board-stage[data-zoomed="true"] .tile {
+            /* tiles always overflow:visible for sprite headroom */
+        }
+
+        .tile.light {
+            background: var(--tile);
+        }
+
+        .tile.dark {
+            background: var(--tile-alt);
+        }
+
+        .tile.terrain-grass {
+            background: linear-gradient(180deg, rgba(68, 58, 82, 0.38), rgba(48, 42, 62, 0.28));
+        }
+
+        .tile.terrain-water {
+            background: linear-gradient(180deg, rgba(40, 72, 88, 0.45), rgba(26, 50, 68, 0.35));
+        }
+
+        .tile.terrain-deep_water {
+            background: linear-gradient(180deg, rgba(18, 36, 62, 0.62), rgba(10, 22, 44, 0.52));
+        }
+
+        .tile.terrain-bridge {
+            background: linear-gradient(180deg, rgba(90, 70, 50, 0.62), rgba(60, 45, 30, 0.52));
+        }
+
+        .tile.terrain-mountain {
+            background: linear-gradient(180deg, rgba(72, 68, 78, 0.42), rgba(50, 48, 58, 0.32));
+        }
+
+        .tile.terrain-desert {
+            background: linear-gradient(180deg, rgba(108, 82, 48, 0.40), rgba(78, 58, 32, 0.30));
+        }
+
+        /* ── PULSE KEYFRAMES — gentle white flash on outlines ── */
+        /* PERF: All pulse animations use opacity-only — GPU composited, no CPU repaint */
+        @keyframes hlPulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes hlPulseGold {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes hlPulseRed {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes hlPulsePurple {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .tile.selected {
+            outline: 2px solid rgba(200, 180, 150, 0.8);
+            outline-offset: -2px;
+            box-shadow: 0 0 8px 2px rgba(200, 180, 150, 0.14);
+        }
+
+        /* Pulsing overlay on a pseudo-element so the opacity animation
+           doesn't rasterize the tile (and its nametag text) into a
+           blurry compositing layer. */
+        .tile.selected::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: inherit;
+            pointer-events: none;
+            animation: selectedFlashWhite 1.4s ease-in-out infinite;
+        }
+
+        @keyframes selectedFlashWhite {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
