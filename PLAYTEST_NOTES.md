@@ -192,7 +192,21 @@ skinned GLB models instead of extruded sprite slabs. Entries are built by
   - catgirl F → catgirl/female → `young_female_catgirl` (jump=Backflip_Jump, castRanged=quick-draw @5.0, castMelee=Left_Hook_from_Guard @2.0 via castTimeScales; spare Right_Hand_Sword_Slash, Hit_Reaction)
   - ki fighter F → kifighter/female → `attractive_beautiful_` (trailing _; jump=Backflip_Jump, cast=Punch_Combo_5, castMelee=Kung_Fu_Punch, castMagic/castSupport=mage_soell_cast_3 — note the _3; spare Punch_Forward_…)
   - vampire F → vampire/female → `beautiful_attractive_` (same prompt as MIB F, different rig; castSupport=mage_soell_cast_1 — note the _1; bat-swarm form still particle-based, renderer skips models for it)
-- **NOT wired (no model on R2 yet)**: male telepath.
+- **2026-07-06 additions (all URLs HEAD-verified + in-browser probed)**:
+  - machine elves M → machineelves/male → `DMT_clockwork_elf` (cast/castMagic=Charged_Spell_Cast, castRanged=quick-draw @5.0 via castTimeScales, hit=Face_Punch_Reaction; heightRatio 0.72)
+  - nordic M → Nordic/Male → `nordic_alien_male` (ONLY action export is quick-draw → wired to castRanged only so melee keeps the lunge tween; heightRatio 1.08)
+  - annunaki M → annunaki/male → `annunaki` (cast/castRanged=quick-draw @5.0, castMagic=Charged @2.0, castSupport=mage_soell_cast_3 @2.0; no hit clip; heightRatio 1.35)
+  - demon M → Demon/Male → `red_demon` (cast/castMagic=Charged; heightRatio 1.18). NO female demon model on R2 (probed) — the 3D-only gender rule hides her.
+  - All four also have Walking + Knock_Down spares on R2. Prefix discovery: user provided the R2 dashboard listing for machineelves; the other three were found by HEAD-probe sweeps.
+- **3D-ONLY ROSTER RULE (2026-07-06)**: matches are always 3D vs 3D.
+  - sprites.js: `race3DGenders(race)` / `isRace3DReady(race)` helpers; `getAvailableGendersForRace()` now filters to genders that have a 3D model when the race has any (male wizard, female demon, female homosapien etc. are no longer offered anywhere — party builder, random picks, campaign gender rolls).
+  - data.js `isUnitUnlocked()`: races with NO 3D model return false for everyone (before the account check, after `_DEV_UNLOCK_ALL`). Sprite-only races stay in ACCT_STARTER_UNITS ('marksman', 'priest') so they auto-unlock when models ship.
+  - state.js: new `cpu3DRaceForJobSlot(job)` — CPU default-party slots swap non-3D archetype races (angel, seraphim, android, ai, orb of light…) for a 3D-ready same-job race; `randomizeIdentity()` pool pre-filtered to 3D-ready for BOTH players.
+  - ui.js shop: non-3D vessels show "🔒 3D MODEL SOON", are excluded from the featured shelf, and `_shopBuy`/`_shopAskConfirm` refuse them (no wasted gold).
+  - Campaign rosters are intentionally NOT race-gated (level-designed enemy pools), only gender-filtered.
+- **Default unlocks (2026-07-06)**: ACCT_STARTER_UNITS (data.js + server.js copy — server copy also re-synced, it had drifted: was missing shaman/giant/halfdemon) now adds martian, machine elves, nordic, annunaki, demon. Martian is no longer intentionally locked.
+- **Verification probe**: scratchpad probe_new_3d.js run 2026-07-06 — 36/37 (unlocks, gender filters, both default rosters + CPU randomize all 3D-ready, all 5 models attached with expected action sets, cast-kind triggers; the single fail was the probe's own hit-flash timing, wiring identical to passing races).
+- **NOT wired (no model on R2 yet)**: male telepath, female demon.
 - **Per-slot cast speeds**: `castTimeScales: {slot: scale}` on a registry
   entry overrides `castTimeScale` for individual cast slots (catgirl mixes a
   7.33s quick-draw @5.0 with a short hook @2.0).

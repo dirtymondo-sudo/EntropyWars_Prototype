@@ -131,11 +131,40 @@ const RACE_SPRITE_GENDERS = {
 
 };
 
+// Genders of `race` that have a rigged 3D model wired in RACE_MODELS_3D
+// below. (The werewolf day form borrows the homosapien male model at render
+// time, but his OWN male entry is what makes him 3D-ready here.)
+function race3DGenders(race) {
+  if (typeof RACE_MODELS_3D === 'undefined') return [];
+  const set = RACE_MODELS_3D[race];
+  return set ? Object.keys(set) : [];
+}
+
+// True when the race can appear on the board as a 3D model at all. The
+// roster gates (isUnitUnlocked in data.js, the CPU pools in state.js, the
+// shop in ui.js) all route through this so matches stay 3D vs 3D.
+function isRace3DReady(race) {
+  return race3DGenders(race).length > 0;
+}
+
 function getAvailableGendersForRace(race) {
   const rule = RACE_SPRITE_GENDERS[race];
-  if (rule === 'both') return ['male', 'female'];
-  if (rule === 'female') return ['female'];
-  return ['male'];
+  let list;
+  if (rule === 'both') list = ['male', 'female'];
+  else if (rule === 'female') list = ['female'];
+  else list = ['male'];
+  // 3D-ONLY ROSTER RULE (2026-07-06): if this race has any rigged 3D model,
+  // only the genders that actually have one are playable — e.g. 'wizard'
+  // offers only the witch until a male model ships. Races with no models at
+  // all keep their sprite genders here; they are locked wholesale by
+  // isUnitUnlocked() / the CPU pools instead (and campaign still renders
+  // their sprites via this unfiltered list).
+  const g3d = race3DGenders(race);
+  if (g3d.length) {
+    const only3d = list.filter(g => g3d.includes(g));
+    if (only3d.length) list = only3d;
+  }
+  return list;
 }
 
 const JOB_FOLDER_MAP = {
@@ -646,6 +675,50 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
     }, { castTimeScale: 5.0, heightRatio: 0.82 }),   // little green man
+  },
+  // Machine Elf (Engineer, specialist caster) — "DMT_clockwork_elf". A tiny
+  // psychedelic clockwork entity: Charged_Spell_Cast is the generic/magic
+  // burst, the ray-gun quick-draw covers ranged/tech hits.
+  'machine elves': {
+    male: _mk3d('machineelves/male', 'DMT_clockwork_elf', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      castRanged: 'Cowboy_Quick_Draw_Shooting',
+      // spare on R2: Walking, Knock_Down
+    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 0.72 }),   // small clockwork elf
+  },
+  // Nordic (Warrior, support) — "nordic_alien_male". His only action export
+  // is the quick-draw, wired to castRanged ONLY so melee swings keep the
+  // engine lunge tween instead of a gun draw.
+  'nordic': {
+    male: _mk3d('Nordic/Male', 'nordic_alien_male', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', castRanged: 'Cowboy_Quick_Draw_Shooting',
+      // spare on R2: Walking, Knock_Down
+    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 1.08 }),   // tall blond alien
+  },
+  // Annunaki (Sniper, ranged) — "annunaki". Quick-draw is his basic/ranged
+  // shot, Charged_Spell_Cast the magic burst, mage_soell_cast_3 (note the _3)
+  // the support wave. No hit export → flinch tween.
+  'annunaki': {
+    male: _mk3d('annunaki/male', 'annunaki', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
+      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
+      castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
+      castSupport: 'mage_soell_cast_3',
+      // spare on R2: Walking, Knock_Down
+    }, { castTimeScale: 5.0, castTimeScales: { castMagic: 2.0, castSupport: 2.0 },
+         heightRatio: 1.35 }),   // towering Sumerian god
+  },
+  // Demon (Black Mage, bruiser) — "red_demon". Charged_Spell_Cast covers the
+  // generic + magic cast. MALE ONLY so far — the female demon has no model
+  // and is filtered out by the 3D-only gender rule above.
+  'demon': {
+    male: _mk3d('Demon/Male', 'red_demon', {
+      idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
+      death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
+      // spare on R2: Walking, Knock_Down
+    }, { heightRatio: 1.18 }),   // hulking horned demon
   },
   // Half-Demon (Assassin, melee) — "hot_attractive_rich_f". No magic exports;
   // her strikes are brawler clips (uppercut / kick). Left_Uppercut is the

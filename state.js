@@ -2594,6 +2594,25 @@
             return undefined;
         }
 
+        // CPU counterpart of ownedRaceForJobSlot: the CPU ignores account
+        // unlocks but must still obey the 3D-only roster rule — if a slot's
+        // archetype default race has no rigged 3D model (e.g. White Mage ->
+        // angel), swap in a 3D-ready race, preferring one with the same
+        // default job, so matches stay 3D vs 3D.
+        function cpu3DRaceForJobSlot(job) {
+            if (typeof isRace3DReady !== 'function') return undefined;
+            const archetypeRace = (getArchetypeForJob(job) || {}).race;
+            if (archetypeRace && isRace3DReady(archetypeRace)) return archetypeRace;
+            if (typeof AVAILABLE_RACES === 'undefined' || typeof RACE_DEFAULT_JOBS === 'undefined') {
+                return undefined;
+            }
+            const sameJob = AVAILABLE_RACES.filter(r => RACE_DEFAULT_JOBS[r] === job && isRace3DReady(r));
+            if (sameJob.length) return sameJob[0];
+            const any3D = AVAILABLE_RACES.filter(r => isRace3DReady(r));
+            if (any3D.length) return any3D[0];
+            return undefined;
+        }
+
         function makeDefaultPartyMeta() {
             const out = {
                 1: [],
@@ -2604,8 +2623,10 @@
                 const size = Math.max(CONFIG.teamSize, builds.length);
                 for (let i = 0; i < size; i++) {
                     const job = builds[i] || 'Gunslinger';
-                    // Only the local human (player 1) is gated on unlocks.
-                    const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) } : {};
+                    // Only the local human (player 1) is gated on unlocks; the
+                    // CPU is gated on 3D-model availability instead.
+                    const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) }
+                                                    : { race: cpu3DRaceForJobSlot(job) };
                     out[player].push(resolveIdentityForBuild(job, identity));
                 }
             });
@@ -2620,7 +2641,8 @@
                 for (let i = 0; i < size; i++) {
                     if (!state.partyMeta[player][i]) {
                         const job = (state.partyBuilds?.[player]?.[i]) || 'Gunslinger';
-                        const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) } : {};
+                        const identity = (player === 1) ? { race: ownedRaceForJobSlot(job) }
+                                                        : { race: cpu3DRaceForJobSlot(job) };
                         state.partyMeta[player][i] = resolveIdentityForBuild(job, identity);
                     }
                 }
@@ -2743,8 +2765,14 @@
 
         function randomizeIdentity(ownedOnly) {
             let pool = AVAILABLE_RACES;
+            // 3D-only roster rule: random picks (both the player's and the
+            // CPU's) never land on a race without a rigged 3D model.
+            if (typeof isRace3DReady === 'function') {
+                const ready3D = pool.filter(r => isRace3DReady(r));
+                if (ready3D.length) pool = ready3D;
+            }
             if (ownedOnly && typeof isUnitUnlocked === 'function') {
-                const owned = AVAILABLE_RACES.filter(r => isUnitUnlocked(r));
+                const owned = pool.filter(r => isUnitUnlocked(r));
                 if (owned.length) pool = owned;
             }
             const race = pool[randInt(pool.length)];

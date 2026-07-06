@@ -8050,8 +8050,15 @@ const ACCT_STARTER_UNITS = [
   'shaman',         // Harvester (human female 3D)
   'giant',          // Warrior (colossal 3D)
   'halfdemon',      // Agent/Assassin (3D)
+  'martian',        // Gunslinger (3D — unlocked 2026-07-06)
+  'machine elves',  // Engineer (3D — DMT clockwork elf)
+  'nordic',         // Warrior (3D — nordic alien male)
+  'annunaki',       // Sniper (3D — Sumerian god)
+  'demon',          // Black Mage (3D — red demon, male only)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
-  // starter EXCEPT 'martian', which is intentionally left locked (earn/buy it).
+  // starter. 'marksman'/'priest' above have NO 3D model yet, so the 3D-only
+  // gate in isUnitUnlocked() keeps them locked until their models ship —
+  // they stay listed here so they auto-unlock the moment they're wired.
 ];
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
@@ -8062,6 +8069,12 @@ const ACCT_PVP_MODES = ['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf'];
 // always server-authoritative; this just decides what shows as owned/selectable.
 function isUnitUnlocked(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
+  // 3D-ONLY ROSTER RULE (2026-07-06): a vessel with no rigged 3D model (any
+  // gender) is locked for EVERYONE — it can't be selected, started with, or
+  // bought — so PvP/VS-CPU matches are always 3D vs 3D. Overrides account
+  // unlocks on purpose: owning a sprite-only race keeps it shelved until its
+  // model ships. (Campaign rosters don't route through this gate.)
+  if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
   const acct = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
     ? (window.ProfileSystem.getActiveProfile() || {}).account
     : null;

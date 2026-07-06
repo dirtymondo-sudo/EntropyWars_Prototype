@@ -7159,9 +7159,17 @@
             if (badge) badge.style.display = ((econ.gold || 0) >= price) ? 'inline-flex' : 'none';
         };
 
+        // A vessel with no rigged 3D model is locked for everyone (3D-only
+        // roster rule) — it must not be purchasable, or the gold would buy a
+        // unit the unlock gate still refuses to field.
+        function _shopBuyable(race) {
+            return (typeof isRace3DReady === 'function') ? isRace3DReady(race) : true;
+        }
+
         function _shopDailyFeatured() {
             // Deterministic daily rotation by date seed over the locked roster.
-            const locked = AVAILABLE_RACES.filter(r => !((typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true));
+            // Only buyable (3D-ready) vessels get featured.
+            const locked = AVAILABLE_RACES.filter(r => _shopBuyable(r) && !((typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true));
             if (locked.length === 0) return [];
             const d = new Date();
             let seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -7187,7 +7195,9 @@
             const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
             const tag = unlocked
                 ? `<span style="color:#9fe0a0;font-size:11px;font-weight:600">✓ OWNED</span>`
-                : `<span style="color:#ffd86a;font-size:11px;font-weight:600">💰 ${price}</span>`;
+                : (_shopBuyable(race)
+                    ? `<span style="color:#ffd86a;font-size:11px;font-weight:600">💰 ${price}</span>`
+                    : `<span style="color:#8a8a9a;font-size:10px;font-weight:600">🔒 3D MODEL SOON</span>`);
             const featuredRibbon = opts.featured
                 ? `<div style="position:absolute;top:0;left:0;background:#b8455a;color:#fff;font-size:8px;letter-spacing:0.1em;padding:1px 5px">FEATURED</div>` : '';
             return `<div class="cdx-list-item${selected}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')" style="position:relative;cursor:pointer;flex-direction:column;align-items:center;padding:6px 4px;gap:3px;${unlocked ? '' : ''}">
@@ -7206,6 +7216,10 @@
             if (unlocked) {
                 buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
                     <span style="color:#9fe0a0;font-weight:600;letter-spacing:0.08em">✓ DECLASSIFIED — IN YOUR ROSTER</span>
+                </div>`;
+            } else if (!_shopBuyable(race)) {
+                buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
+                    <span style="color:#8a8a9a;font-weight:600;letter-spacing:0.08em">🔒 AWAITING 3D MODEL — NOT YET DEPLOYABLE</span>
                 </div>`;
             } else {
                 const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
@@ -7328,6 +7342,7 @@
         };
 
         window._shopAskConfirm = function(race) {
+            if (!_shopBuyable(race)) { if (typeof playSfx === 'function') playSfx('uiError'); return; }
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
             _shopConfirming = race;
             const d = document.getElementById('shopDetail');
@@ -7342,6 +7357,7 @@
         };
 
         window._shopBuy = function(race, useToken) {
+            if (!_shopBuyable(race)) { if (typeof playSfx === 'function') playSfx('uiError'); return; }
             const PS = window.ProfileSystem;
             if (!PS || typeof PS.serverPurchaseUnit !== 'function') {
                 alert('You need an online account to unlock units.');
