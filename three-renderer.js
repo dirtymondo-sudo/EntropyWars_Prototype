@@ -809,6 +809,63 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* Hologram x-ray for RIGGED 3D MODEL units — the model equivalent of the
+       sprite silhouette above. Instead of a camera-facing cutout plane, each
+       of the model's meshes gets a ghost twin sharing the same geometry AND
+       the same skeleton, so the hologram is the unit's actual animated pose.
+       Same GreaterDepth trick: fragments draw only where a real occluder
+       (wall, hill, prop) already wrote nearer depth; in the open the ghost is
+       invisible. The negative polygonOffset pulls the ghost a hair toward the
+       camera so the model's own coincident surfaces never self-paint it.
+       Scanlines run in screen space (the model's UV atlas has no vertical
+       axis to scan along). Skinning is compiled in per-mesh via the r128
+       material.skinning flag using the stock shader chunks. */
+    var _modelSilVertexShader = [
+        '#include <common>',
+        '#include <skinning_pars_vertex>',
+        'void main() {',
+        '  #include <skinbase_vertex>',
+        '  #include <begin_vertex>',
+        '  #include <skinning_vertex>',
+        '  #include <project_vertex>',
+        '}'
+    ].join('\n');
+
+    var _modelSilFragmentShader = [
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'uniform float uTime;',
+        'void main() {',
+        '  float scan = 0.78 + 0.22 * sin(gl_FragCoord.y * 0.45 - uTime * 6.0);', // holo scanlines
+        '  float pulse = 0.85 + 0.15 * sin(uTime * 3.0);',
+        '  vec3 col = mix(uColor * scan, vec3(1.0), 0.22);',                      // lift toward white for glow
+        '  gl_FragColor = vec4(col, uOpacity * pulse);',
+        '}'
+    ].join('\n');
+
+    function _makeModelSilhouetteMaterial(color, skinned) {
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor:   { value: new THREE.Color(color) },
+                uOpacity: { value: SILHOUETTE_OPACITY },
+                uTime:    _hlGlobalTime
+            },
+            vertexShader: _modelSilVertexShader,
+            fragmentShader: _modelSilFragmentShader,
+            transparent: true,
+            depthTest: true,
+            depthFunc: THREE.GreaterDepth,   // paint only where occluded
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -4,
+            polygonOffsetUnits: -4,
+            side: THREE.FrontSide,
+            fog: false
+        });
+        if (skinned) mat.skinning = true;
+        return mat;
+    }
+
     var renderer = null, scene = null, canvas = null;
     var active = false, initialized = false;
 
@@ -5565,6 +5622,35 @@ const ThreeRenderer = (function () {
     var MODEL_DEATH_MS = 1600;         // rigged death: knock-down clip + fade tail
     var MODEL_ANIM_FADE = 0.15;        // crossfade between clips (seconds)
 
+    /* Per-unit rig cache. rebuildUnits() tears the whole unit group down on
+       every structural change (a move, a kill, a selection change), and
+       re-cloning each rigged GLB (SkeletonUtils.clone + material rebuild +
+       mixer/clip setup) on every one of those rebuilds caused a visible frame
+       drop right after every walk/spell — the rebuild is deferred until the
+       tweens finish, so the hitch landed exactly at the end of the animation.
+       Instead the cloned skeleton, its rebuilt materials, the mixer and its
+       actions are cached per unit id and simply RE-PARENTED into the fresh
+       wrapper on rebuild; the mixer never stops, so the current clip carries
+       straight through the rebuild with zero work and zero visual pop.
+       Everything inside a rig is protected from _disposeR via _ew_shared and
+       disposed only here (evicted when its unit leaves the board, cleared
+       wholesale on match reset/dispose). */
+    var _unitModelRigs = new Map();    // unit id -> { url, inner, mixer, actions, modelMats, silMats }
+    function _disposeModelRig(rig) {
+        if (!rig) return;
+        try { if (rig.inner && rig.inner.parent) rig.inner.parent.remove(rig.inner); } catch (_e) {}
+        try { if (rig.mixer) { rig.mixer.stopAllAction(); rig.mixer.uncacheRoot(rig.mixer.getRoot()); } } catch (_e) {}
+        var mats = (rig.modelMats || []).concat(rig.silMats || []);
+        for (var i = 0; i < mats.length; i++) { try { mats[i].dispose(); } catch (_e) {} }
+        // Geometry stays untouched: every clone shares the base GLB's buffers
+        // (flagged _ew_shared at load time).
+    }
+    function _disposeAllModelRigs() {
+        _unitModelRigs.forEach(function (rig) { _disposeModelRig(rig); });
+        _unitModelRigs.clear();
+        _modelAnimState.clear();
+    }
+
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -5755,6 +5841,40 @@ const ThreeRenderer = (function () {
         var apSpent = unit.ap <= 0;
         var glow = _unitSelfGlowIntensity(unit);
 
+        // ── Rig-cache fast path ──────────────────────────────────────────
+        // A rebuild of an already-live model unit re-parents its cached
+        // clone (skeleton + materials + mixer + actions) into the fresh
+        // wrapper instead of re-cloning the GLB — this is what removes the
+        // frame hitch after every walk/spell (see _unitModelRigs above).
+        var _rig = _unitModelRigs.get(unit.id);
+        if (_rig && _rig.url !== def.model) {
+            // Character swapped model (sprite override cleared, race morph…)
+            _disposeModelRig(_rig);
+            _unitModelRigs.delete(unit.id);
+            _rig = null;
+        }
+        if (_rig) {
+            entry._ew_modelAttached = true;
+            if (_rig.inner.parent) _rig.inner.parent.remove(_rig.inner);
+            wrap.add(_rig.inner);
+            entry.mixer = _rig.mixer;
+            entry.actions = _rig.actions;
+            entry.modelMats = _rig.modelMats;
+            entry.modelSilMats = _rig.silMats;
+            // The mixer never stopped, so whatever clip was playing carries
+            // straight on — just tell the new entry which one that is.
+            var _rst = _modelAnimState.get(unit.id);
+            if (_rst && _rst.name) entry._ew_curAnim = _rst.name;
+            // Refresh the state-tint the fresh build path would have applied.
+            var _rg = apSpent ? 0.5 : 1;
+            for (var _ri = 0; _ri < entry.modelMats.length; _ri++) {
+                entry.modelMats[_ri].color.setRGB(_rg, _rg, _rg);
+                if (entry.modelMats[_ri].emissiveMap) entry.modelMats[_ri].emissiveIntensity = glow;
+            }
+            _removeUnitSpritePlaceholder(entry);
+            return;
+        }
+
         _loadUnitGLB(def.model, function (res) {
             if (entry._ew_modelAttached) return;
             entry._ew_modelAttached = true;
@@ -5803,11 +5923,47 @@ const ThreeRenderer = (function () {
                         lm.emissiveMap = tex;
                         lm.emissiveIntensity = glow;
                     }
+                    lm._ew_shared = true;   // owned by the rig cache, not _disposeR
                     entry.modelMats.push(lm);
                     return lm;
                 });
                 n.material = Array.isArray(n.material) ? out : out[0];
             });
+
+            // Hologram x-ray twins — the 3D equivalent of the sprite
+            // silhouette: same geometry + same skeleton with the GreaterDepth
+            // ghost material, so the unit's animated outline shows through
+            // terrain/props whenever it's occluded (blue = own, red = enemy).
+            entry.modelSilMats = [];
+            var _silColor = (unit.player === _viewerPlayerNum())
+                ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR;
+            var _silTargets = [];
+            m.traverse(function (n) { if (n.isMesh && !n._ew_silhouette) _silTargets.push(n); });
+            _silTargets.forEach(function (n) {
+                var silMat = _makeModelSilhouetteMaterial(_silColor, !!n.isSkinnedMesh);
+                silMat._ew_shared = true;   // rig-cache owned
+                var sil;
+                if (n.isSkinnedMesh) {
+                    sil = new THREE.SkinnedMesh(n.geometry, silMat);
+                    sil.bind(n.skeleton, n.bindMatrix);
+                } else {
+                    sil = new THREE.Mesh(n.geometry, silMat);
+                }
+                sil.frustumCulled = false;
+                sil.renderOrder = 9999;     // after terrain/props so depth is populated
+                sil.raycast = function () {};   // never block unit picking
+                sil._ew_silhouette = true;      // skipped by shadow flags / dispose sweeps
+                n.add(sil);                     // rides the parent mesh's transform
+                entry.modelSilMats.push(silMat);
+            });
+
+            // Register the rig cache record now; mixer/actions attach below
+            // (they stay null for unrigged static models).
+            var _rigRec = {
+                url: def.model, inner: inner, mixer: null, actions: null,
+                modelMats: entry.modelMats, silMats: entry.modelSilMats
+            };
+            _unitModelRigs.set(unit.id, _rigRec);
 
             // Mixer + retargeted clips: every clip GLB carries the same rig,
             // so its first animation binds to this clone by node name. An
@@ -5823,6 +5979,8 @@ const ThreeRenderer = (function () {
             var mixer = new THREE.AnimationMixer(m);
             entry.mixer = mixer;
             entry.actions = {};
+            _rigRec.mixer = mixer;
+            _rigRec.actions = entry.actions;
             var clips = def.clips || {};
             Object.keys(clips).forEach(function (name) {
                 _loadUnitGLB(clips[name], function (cres) {
@@ -6282,6 +6440,16 @@ const ThreeRenderer = (function () {
         _lastUnitSerial = _computeUnitSerial();
         _lastStructuralSerial = _computeUnitStructuralSerial();
         _rebuildUnitMap();
+
+        // Evict cached model rigs whose unit left the board (died, despawned)
+        // — live units just had theirs re-parented by _attachUnitModel.
+        _unitModelRigs.forEach(function (rig, uid) {
+            if (!unitEntries.has(uid)) {
+                _disposeModelRig(rig);
+                _unitModelRigs.delete(uid);
+                _modelAnimState.delete(uid);
+            }
+        });
 
         _bbLastCamX = NaN;
 
@@ -8364,6 +8532,12 @@ const ThreeRenderer = (function () {
                     unit.player === vp ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR
                 );
             }
+            if (entry.modelSilMats && entry.modelSilMats.length) {
+                var _msc = unit.player === vp ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR;
+                for (var _msi = 0; _msi < entry.modelSilMats.length; _msi++) {
+                    entry.modelSilMats[_msi].uniforms.uColor.value.set(_msc);
+                }
+            }
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */
@@ -9731,7 +9905,13 @@ const ThreeRenderer = (function () {
                     var mFade = (t - 0.55) / 0.45;
                     g.traverse(function (o) {
                         var mm = o.material;
-                        if (mm && !Array.isArray(mm) && mm.opacity !== undefined) {
+                        if (!mm || Array.isArray(mm)) return;
+                        if (mm.uniforms && mm.uniforms.uOpacity) {
+                            // Hologram x-ray twin — fade its shader opacity so
+                            // the ghost dissolves with the body.
+                            mm.uniforms.uOpacity.value =
+                                Math.min(mm.uniforms.uOpacity.value, (1 - mFade) * SILHOUETTE_OPACITY);
+                        } else if (mm.opacity !== undefined) {
                             mm.transparent = true;
                             mm.opacity = Math.min(mm.opacity, 1 - mFade);
                         }
@@ -15286,6 +15466,7 @@ const ThreeRenderer = (function () {
         _nexusBarGroup = null;
         textureCache.clear(); tileMeshes.clear(); objectMeshes.clear();
         turretMeshes.clear(); deployableMeshes.clear(); unitEntries.clear(); _plateObjs.clear();
+        _disposeAllModelRigs();
         _lastHpPctById.clear(); _lastMpPctById.clear();
         _fogMeshes.clear();
         _fogTiles.clear();
@@ -15324,6 +15505,9 @@ const ThreeRenderer = (function () {
         _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
         _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
         invalidateUnits();
+        // Fresh roster, reused unit ids: never carry a previous match's cloned
+        // rigs (clamped death poses, faded materials) into the new one.
+        _disposeAllModelRigs();
         if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
     }
 

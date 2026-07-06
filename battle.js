@@ -6965,26 +6965,9 @@
                 // only the remembered RESTING pitch is clamped — see REST_TILT_MAX.
                 if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = Math.min(opts.tilt, REST_TILT_MAX); }
                 if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
-                // Manual orbit steers the active unit: while the player drags
-                // the camera around during their own unit's turn, the unit
-                // pivots to keep facing the way the camera looks (third-person
-                // style; ThreeCamera's view dir for yaw is (-sin, -cos), and
-                // the renderer's turn-rate limiter keeps the pivot smooth).
-                // Only live player input (_userPanning) qualifies — resets and
-                // cinematic framing never spin the character.
-                if (opts.yaw !== undefined && state._userPanning
-                    && state.phase === 'battle' && !state.winner && !state._actionExecuting
-                    && typeof getSelectedUnit === 'function') {
-                    const _fu = getSelectedUnit();
-                    if (_fu && !_fu.dead && state._blitzActiveUnitId === _fu.id
-                        && state.activePlayer === _fu.player
-                        && !state.autoPlayers?.[_fu.player]
-                        && !_fu._dying) {
-                        const _fyr = this.yaw * (Math.PI / 180);
-                        setUnitFacing(_fu, -Math.sin(_fyr), -Math.cos(_fyr));
-                        if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
-                    }
-                }
+                // NOTE: camera orbit deliberately does NOT steer the active
+                // unit's facing — a unit keeps the direction it last moved,
+                // attacked or cast toward; only gameplay actions change it.
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
                 this._elevOverride = opts.elevZ ?? -1;
                 this._elevRelease = false;
@@ -14838,7 +14821,13 @@
         const LS_ART_BASE = (typeof _S === 'string') ? _S : 'https://cdn.entropywars.net/Assets/Sprites';
         const LS_ART_URLS = [1, 2, 3, 4, 5].map(n => `${LS_ART_BASE}/ls${n}.png`);
         const LS_MIN_SHOW_MS = 2600;    // long enough to actually read one hint
-        const LS_MAX_WAIT_MS = 12000;   // hard cap — never hold the match hostage
+        // Hard cap — never hold the match hostage. Generous on purpose: the
+        // rigged GLBs (base model + 4 clips per 3D character) are multi-MB and
+        // on a slow connection 12s wasn't enough, so the screen used to drop
+        // while models were still streaming in and the first seconds of the
+        // match stuttered. The screen still dismisses the moment every warmer
+        // settles, so fast connections never see the difference.
+        const LS_MAX_WAIT_MS = 45000;
         const LS_HINT_CYCLE_MS = 4600;
 
         /* Skyrim-style rotating lines. FIELD MANUAL = real mechanics;

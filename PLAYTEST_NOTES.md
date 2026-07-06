@@ -136,6 +136,34 @@ verify visually after upload) — syntax-checked only.
   wiggle / sfx play on-screen instead of mid-pan.
 
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
+- **Per-unit rig cache (2026-07-06 — post-animation hitch fix)**: rebuildUnits()
+  used to SkeletonUtils.clone every model on every structural rebuild (every
+  move/kill/selection — deferred until tweens end, so it hitched exactly when
+  each walk/spell animation finished). Now `_unitModelRigs` (three-renderer.js,
+  unit id → {inner group, mixer, actions, materials}) re-parents the existing
+  clone into the fresh wrapper; the mixer never stops, so clips carry through
+  rebuilds seamlessly. Rig materials are flagged `_ew_shared` so `_disposeR`
+  skips them; rigs are disposed on unit death (evicted in rebuildUnits), on
+  `resetForNewMatch`, and on renderer dispose. Measured warm structural
+  rebuild: ~3ms (probe: scratchpad probe kept the same mixer object across
+  rebuilds over a 2-min live match, 0 re-clones, 0 page errors).
+- **3D hologram x-ray (2026-07-06)**: model units now have the sprite-style
+  occlusion silhouette — each model mesh gets a ghost twin (same geometry +
+  same skeleton via `sil.bind(n.skeleton, n.bindMatrix)`) with a GreaterDepth
+  ShaderMaterial (`_makeModelSilhouetteMaterial`, screen-space scanlines,
+  blue own / red enemy, recolored on perspective swap in
+  _updateEnemyConcealment via `entry.modelSilMats`). r128 `material.skinning`
+  flag + stock skinning shader chunks.
+- **Camera orbit no longer steers facing (2026-07-06)**: removed the
+  battle.js snap() block that setUnitFacing'd the active unit to the camera
+  yaw while orbiting — facing changes only on move/attack/cast now.
+- Loading screen `LS_MAX_WAIT_MS` raised 12s → 45s (battle.js) — slow
+  connections used to hit the cap and drop the screen while GLBs were still
+  streaming (stutter + 2D placeholders in the opening seconds).
+- Playtest harness note: in this sandbox `playtest.js` can hang on
+  `waitUntil:'load'`; probes that work use `domcontentloaded` +
+  `--proxy-server=direct:// --proxy-bypass-list=*` + executablePath
+  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (see probe_3d_wiring.js).
 Races registered in `RACE_MODELS_3D` (sprites.js) render on the battle board as
 skinned GLB models instead of extruded sprite slabs. Entries are built by
 `_mk3d(folder, prefix, {slot: MeshyClipName}, opts)` — URLs are
