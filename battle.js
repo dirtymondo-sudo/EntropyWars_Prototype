@@ -9530,6 +9530,19 @@
                         scheduleBoardRender();
                     }
                 }
+
+                /* 🦴 Bone-pile looting — ending a move on an enemy's remains rifles
+                   them for items. Ally graves are left intact (their gear stays with
+                   them for a revive); allies can still be looted deliberately via scan. */
+                const _corpse = state.units.find(u => u.dead && u.player !== unit.player && u.x === x && u.y === y);
+                if (_corpse && typeof lootCorpseItems === 'function') {
+                    const _got = lootCorpseItems(unit, _corpse);
+                    if (_got > 0) {
+                        addLog(`🦴 ${unitDisplayName(unit)} loots ${_got} item${_got === 1 ? '' : 's'} from the remains of ${unitDisplayName(_corpse)}.`, unit.player);
+                        showFloatingTextForUnit(unit, `📦 Looted ${_got}`, 'pickup', { durationMs: 1200 });
+                        playSfx('uiConfirm');
+                    }
+                }
             }
         }
 
@@ -11651,7 +11664,11 @@
             }
 
             if (kind === 'revive') {
-                return state.units.some(u => u.player === unit.player && u.dead);
+                // Only a revivable corpse actually IN RANGE makes the spell castable
+                // (this used to return true if any dead ally existed anywhere on the
+                // map, lighting the spell up with nothing to click).
+                return state.units.some(u => u.player === unit.player && u.dead && !u.reviveLocked &&
+                    Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
             }
 
             if (kind === 'teleport') {
@@ -13055,6 +13072,7 @@
                 flag_captures: '🏳️ Capture Target Reached',
                 sudden_death: '⚡ Sudden Death',
                 arena_composite: '⏱ Arena Score',
+                nexus_dominance: '⬡ Nexus Dominance',
                 draw: '🤝 Draw',
                 no_contest: '⚖️ No Contest',
             };
@@ -13065,7 +13083,7 @@
             const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
 
             if (_mpMode && _mpMode.id === 'arena') {
-                const ARENA_PTS = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+                const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
                 function _vicArenaScore(p) {
                     const enemy = p === 1 ? 2 : 1;
                     let pts = 0, details = [];
@@ -13077,7 +13095,8 @@
                     const eTw = state.towers?.[enemy];
                     let tDmg = 0;
                     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-                    const tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                    let tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                    if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                     pts += tDmgPts;
                     details.push({ label: 'Tower Dmg', raw: tDmg, pts: tDmgPts, icon: '🏰' });
 
@@ -14306,6 +14325,8 @@
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
+            state._nexusSurgeAnnounced = false;
+            state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
 
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
@@ -15348,6 +15369,8 @@
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
+            state._nexusSurgeAnnounced = false;
+            state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
             state.flags = null;
             state.roamingNexus = null;
@@ -16009,7 +16032,11 @@
                         if (u._recallCooldown > 0) u._recallCooldown--;
                     }
 
-                    if (state.round > 1 && state.round % 10 === 0) {
+                    // Hourglasses restock ONCE, at round 10 — never again. (The old
+                    // `round % 10` schedule re-fired at round 20+ when sudden death
+                    // pushed a match past the round limit, dropping fresh hourglasses
+                    // into an instant-win-on-pickup situation.)
+                    if (state.round === 10 && !state.suddenDeathActive) {
                         const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
                         if (!_hgMode || _hgMode.hasHourglasses) {
                             spawnPeriodicHourglasses();
@@ -18244,7 +18271,11 @@
                 ? ((typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : unitZ)
                 : 0;
             for (const u of state.units) {
-                if (u.dead) continue;
+                // Dead units are invisible to targeting EXCEPT for revive, whose
+                // whole job is targeting a fallen ally's gravestone.
+                if (u.dead) {
+                    if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
+                }
                 // Above-target spells: an enemy not below the caster isn't a valid
                 // target from here. Clicking it instead routes to the jump-then-cast
                 // approach, which leaps up to clear the target first.
@@ -21668,6 +21699,16 @@
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
                     detonateBomb(bomb, `Scan triggers a hidden bomb at ${coordLabel(tile.x, tile.y)}.`);
+                }
+            }
+
+            if (totalHourglasses > 0 && state.suddenDeathActive && !state.winner) {
+                // Arena sudden death: an hourglass pickup is a score — it wins.
+                const _sdMode = getActiveMultiplayerMode();
+                if (_sdMode && _sdMode.id === 'arena') {
+                    state.winner = unit.player;
+                    state._winCondition = 'sudden_death';
+                    setTimeout(() => checkWin(), 0);
                 }
             }
 
@@ -26282,6 +26323,17 @@
                 }
             }
 
+            // Arena: NEXUS DOMINANCE — holding EVERY nexus zone simultaneously is
+            // an instant win. Only live on maps with 3+ zones (flat single-zone
+            // maps would otherwise turn the lone earth nexus into the whole game).
+            if (!state.winner && mpMode.id === 'arena' && state.nexusPoints) {
+                const _ndZones = Object.keys(state.nexusPoints).map(k => state.nexusPoints[k]).filter(n => n && n.zoneSize);
+                if (_ndZones.length >= 3) {
+                    if (_ndZones.every(n => n.owner === 1)) { state.winner = 1; state._winCondition = 'nexus_dominance'; }
+                    else if (_ndZones.every(n => n.owner === 2)) { state.winner = 2; state._winCondition = 'nexus_dominance'; }
+                }
+            }
+
             if (!state.winner && wcs.includes('most_captures') && state.matchScores) {
                 const target = 3;
                 if (state.matchScores[1] >= target) { state.winner = 1; state._winCondition = 'flag_captures'; }
@@ -26307,6 +26359,7 @@
                     flag_captures: `Player ${state.winner} wins by reaching the capture target!`,
                     sudden_death: `Player ${state.winner} wins in Sudden Death!`,
                     arena_composite: `Player ${state.winner} wins on Arena score!`,
+                    nexus_dominance: `⬡ NEXUS DOMINANCE! Player ${state.winner} wins by controlling every Nexus zone!`,
                 };
                 addLog(winMsgs[state._winCondition] || `Player ${state.winner} wins the match!`);
                 addLog('All remaining hourglasses and hidden items are now revealed.');
@@ -26370,7 +26423,7 @@
         }
 
         function _resolveArenaTimerExpiry() {
-            const ARENA_PTS = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
 
             function _arenaComposite(p) {
                 const enemy = p === 1 ? 2 : 1;
@@ -26385,7 +26438,8 @@
                 const eTower = state.towers?.[enemy];
                 let tDmg = 0;
                 if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
-                const tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                let tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                 pts += tDmgPts;
                 breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
 
@@ -26426,7 +26480,7 @@
 
                 state.suddenDeathActive = true;
                 state.matchClock.paused = true;
-                addLog('⚡ SCORES ARE TIED! SUDDEN DEATH! Next kill, tower hit, or hourglass pickup wins!');
+                addLog('⚡ SCORES ARE TIED! SUDDEN DEATH! Next kill, hourglass pickup, or Nexus capture wins!');
                 showCombatBanner('⚡ SUDDEN DEATH!', 'Next score wins!', 'neutral');
                 shakeBoard('hard');
                 playSfx('levelUp');
@@ -26609,10 +26663,22 @@
 
             if (mpMode.id === 'arena' && state.nexusPoints) {
                 if (!state._arenaNexusControl) state._arenaNexusControl = { 1: 0, 2: 0 };
+                // Nexus Surge — in the final rounds each held zone accrues DOUBLE
+                // control ticks, so zone play stays live (and comebacks possible)
+                // right up to the buzzer instead of the score being locked early.
+                const _surgeN = (window.ARENA_PTS && window.ARENA_PTS.surgeLastRounds) || 5;
+                const _surgeOn = roundLimit > 0 && state.round > roundLimit - _surgeN;
+                if (_surgeOn && !state._nexusSurgeAnnounced) {
+                    state._nexusSurgeAnnounced = true;
+                    addLog('⬡ NEXUS SURGE! Nexus control is now worth DOUBLE points until the end of the match!');
+                    showCombatBanner('⬡ NEXUS SURGE!', 'Nexus control worth 2× points!', 'neutral');
+                    playSfx('newRound');
+                }
+                const _tick = _surgeOn ? 2 : 1;
                 for (const key of Object.keys(state.nexusPoints)) {
                     const nex = state.nexusPoints[key];
                     if (nex && nex.owner && nex.owner > 0) {
-                        state._arenaNexusControl[nex.owner] = (state._arenaNexusControl[nex.owner] || 0) + 1;
+                        state._arenaNexusControl[nex.owner] = (state._arenaNexusControl[nex.owner] || 0) + _tick;
                     }
                 }
             }

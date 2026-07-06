@@ -8011,6 +8011,30 @@ const NEXUS_CHANNEL_COST_AP = 1;
 const NEXUS_CAPTURE_THRESHOLD = 6;
 const NEXUS_ZONE_SIZE = 2;
 
+// ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
+// Read by the timer-expiry resolver + victory screen (battle.js) and the
+// live scoreboard (hud.js). Tower damage is CAPPED so chip-poking the Cube
+// can't outscore playing the objectives (destroying it outright is still
+// an instant win); nexus control is the strongest per-round engine, and
+// accrual doubles in the final rounds (see tickMatchClock) so a trailing
+// team holding zones can close the gap.
+// Display names for nexus zone keys (zones are placed on a diagonal across
+// the fully-3D board: one always dead-center, one toward each corner).
+window.NEXUS_LABELS = {
+    earth: 'Central', nw: 'Northern', se: 'Southern',
+    west: 'Western', east: 'Eastern', north: 'Northern', south: 'Southern',
+    above: 'Sky', below: 'Cave', roaming: 'Hotspot',
+};
+
+window.ARENA_PTS = {
+    kill: 15,           // per kill
+    towerDmgPer10: 1,   // per 10 HP of damage to the enemy Cube…
+    towerDmgCap: 150,   // …capped here (≈10 kills' worth)
+    hourglass: 35,      // per hourglass carried at the buzzer
+    nexusRound: 6,      // per nexus-control round accrued
+    surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
+};
+
 // ── ACCOUNT ECONOMY (PvP) ──────────────────────────────────────────────
 // Single source of truth for the persistent, account-level unlock economy.
 // Challenge mode keeps its OWN separate wallet (state.campaignSave / save.gold)

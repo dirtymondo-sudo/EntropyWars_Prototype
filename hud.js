@@ -421,7 +421,7 @@ function _getModeInfo(st) {
     };
   }
 
-  const ARENA_PTS = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+  const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;
@@ -429,7 +429,7 @@ function _getModeInfo(st) {
     const eTw = st.towers && st.towers[enemy];
     let tDmg = 0;
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-    pts += Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+    pts += Math.min(Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     let hgCount = 0;
     if (st.hourglasses) {
       hgCount = st.hourglasses.filter(hg => {
@@ -450,7 +450,7 @@ function _getModeInfo(st) {
     const kills = (st.matchKills ? (st.matchKills[p] || 0) : 0);
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
-    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / 10) * ARENA_PTS.towerDmgPer10;
+    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / 10) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     if (st.hourglasses) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
@@ -469,6 +469,27 @@ function _getModeInfo(st) {
   const p2TowerHp = p2Tower ? Math.max(0, p2Tower.hp) : 0;
   const p2TowerMax = p2Tower ? (p2Tower.maxHp || 1500) : 0;
 
+  /* Nexus ownership pips — one per zone (cave/earth/sky). Owning ALL zones
+     on a 3-zone map is an instant win, so the scoreboard shows live zone
+     control and screams when one team is a single zone from victory. */
+  let nexusPips = null, nexusAlertPlayer = 0;
+  if (st.nexusPoints) {
+    const labels = window.NEXUS_LABELS || {};
+    nexusPips = Object.keys(st.nexusPoints).filter(k => st.nexusPoints[k]).map(k => ({
+      key: k, name: labels[k] || k, icon: '⬡',
+      owner: st.nexusPoints[k].owner || 0,
+      progress: st.nexusPoints[k].progress || 0,
+    }));
+    if (nexusPips.length >= 3) {
+      for (const p of [1, 2]) {
+        const owned = nexusPips.filter(z => z.owner === p).length;
+        if (owned === nexusPips.length - 1) nexusAlertPlayer = p;
+      }
+    } else if (nexusPips.length === 0) {
+      nexusPips = null;
+    }
+  }
+
   return {
     id: 'arena', label: 'Arena',
     p1Score: _fullArenaScore(1), p2Score: _fullArenaScore(2),
@@ -476,6 +497,7 @@ function _getModeInfo(st) {
     showTowerHp: true,
     p1TowerHp, p1TowerMax, p2TowerHp, p2TowerMax,
     p1Wins, p2Wins,
+    nexusPips, nexusAlertPlayer,
   };
 }
 
@@ -754,6 +776,30 @@ function Scoreboard({ st }) {
         color: isSuddenDeath ? EW.bad : EW.inkMute,
         textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none',
       }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : scoreCaption),
+
+      /* Nexus zone control pips (Arena) — cave/earth/sky ownership at a
+         glance; pulses red-hot when a team is ONE zone from an instant win. */
+      mode.nexusPips && h('div', { style: {
+        display: 'flex', alignItems: 'center', gap: 7, marginTop: 2, lineHeight: 1,
+      }},
+        mode.nexusPips.map(z => {
+          const zColor = z.owner === 1 ? EW.space : z.owner === 2 ? EW.chaos : 'rgba(255,255,255,0.28)';
+          const contested = z.owner === 0 && z.progress !== 0;
+          return h('span', {
+            key: z.key,
+            title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
+            className: mode.nexusAlertPlayer && z.owner === mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
+            style: {
+              fontFamily: mono, fontSize: 12, color: zColor,
+              textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
+            },
+          }, z.owner ? '⬢' : '⬡');
+        }),
+        mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
+          fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
+          textShadow: '0 0 8px ' + EW.bad,
+        }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
+      ),
 
       h('div', { style: {
         display: 'flex', alignItems: 'center', gap: 12, marginTop: 3,

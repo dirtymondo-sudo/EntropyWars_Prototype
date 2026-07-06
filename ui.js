@@ -4731,6 +4731,66 @@
             return false;
         }
 
+        function _nexusLabel(section) {
+            return (window.NEXUS_LABELS && window.NEXUS_LABELS[section]) || section;
+        }
+
+        /* Shared capture bookkeeping — one code path whether a zone falls to an
+           active channel (channelNexus) or to passive presence at round end
+           (processNexusIncome). Handles owner flip, mode scoring, fanfare, the
+           Nexus-Dominance threat/win checks, and arena sudden death. */
+        function _nexusCaptureBookkeeping(nex, section, player, creditUnit) {
+            nex.owner = player;
+            nex.progress = player === 1 ? NEXUS_CAPTURE_THRESHOLD : -NEXUS_CAPTURE_THRESHOLD;
+            const label = _nexusLabel(section);
+            const who = creditUnit ? unitDisplayName(creditUnit) : `Player ${player}`;
+            const _capMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+
+            if (_capMode && _capMode.scoringType === 'domination') {
+                const capBonus = _capMode.pointsPerNexusPerRound || 10;
+                state.matchScores[player] = (state.matchScores[player] || 0) + capBonus;
+                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! +${capBonus} pts (+${capBonus}/round)`);
+            } else if (_capMode && _capMode.id === 'arena') {
+                if (!state._arenaNexusControl) state._arenaNexusControl = { 1: 0, 2: 0 };
+                state._arenaNexusControl[player] = (state._arenaNexusControl[player] || 0) + 3;
+                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
+            } else {
+                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
+            }
+
+            showCombatBanner('⬡ NEXUS CAPTURED!', `${label} Nexus — Player ${player}`, player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+            if (creditUnit) {
+                showFloatingTextForUnit(creditUnit, '⬡ CAPTURED!', 'streak', { durationMs: 1600 });
+                grantXP(creditUnit, 15, 'nexusCapture');
+            }
+            shakeBoard('normal');
+            playSfx('nexusCaptured');
+
+            if (_capMode && _capMode.id === 'arena') {
+                // Nexus Dominance track: on 3-zone maps, owning every zone at once
+                // is an instant win. Shout the threat at all-but-one.
+                const _ndAll = Object.keys(state.nexusPoints || {}).map(k => state.nexusPoints[k]).filter(n => n && n.zoneSize);
+                if (_ndAll.length >= 3) {
+                    const _ndMine = _ndAll.filter(n => n.owner === player).length;
+                    if (_ndMine === _ndAll.length) {
+                        if (typeof checkWin === 'function') checkWin();
+                    } else if (_ndMine === _ndAll.length - 1 && state._nexusThreatAnnounced !== player) {
+                        state._nexusThreatAnnounced = player;
+                        addLog(`⬡ Player ${player} controls ${_ndMine} of ${_ndAll.length} Nexus zones — ONE MORE captures the match!`);
+                        showCombatBanner('⬡ NEXUS THREAT!', `Player ${player} needs 1 more Nexus to WIN!`, player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                        shakeBoard('hard');
+                        playSfx('levelUp');
+                    }
+                }
+                // Arena sudden death: a nexus capture is a score — it wins.
+                if (state.suddenDeathActive && !state.winner) {
+                    state.winner = player;
+                    state._winCondition = 'sudden_death';
+                    if (typeof checkWin === 'function') checkWin();
+                }
+            }
+        }
+
         function channelNexus(unit) {
             if (!unit || unit.dead || (unit.ap || 0) < NEXUS_CHANNEL_COST_AP) {
                 addLog('Not enough AP to channel.');
@@ -4777,49 +4837,26 @@
             const progressTeam = nex.progress > 0 ? 1 : nex.progress < 0 ? 2 : 0;
 
             if (absProgress >= NEXUS_CAPTURE_THRESHOLD && progressTeam === unit.player) {
-                const wasOwned = nex.owner;
-                nex.owner = unit.player;
-
                 if (floor === 'roaming' && typeof _captureRoamingNexus === 'function') {
+                    nex.owner = unit.player;
                     _captureRoamingNexus(unit.player);
                     grantXP(unit, 20, 'hotspotCapture');
                 } else {
-
-                    const _capMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                    if (_capMode) {
-                        if (_capMode.scoringType === 'domination') {
-                            const capBonus = _capMode.pointsPerNexusPerRound || 10;
-                            state.matchScores[unit.player] = (state.matchScores[unit.player] || 0) + capBonus;
-                            addLog(`⬡ ${unitDisplayName(unit)} captures the ${floor} Nexus for Player ${unit.player}! +${capBonus} pts (+${_capMode.pointsPerNexusPerRound || 10}/round)`);
-                        } else if (_capMode.id === 'arena') {
-                            if (!state._arenaNexusControl) state._arenaNexusControl = { 1: 0, 2: 0 };
-                            state._arenaNexusControl[unit.player] = (state._arenaNexusControl[unit.player] || 0) + 3;
-                            addLog(`⬡ ${unitDisplayName(unit)} captures the ${floor} Nexus for Player ${unit.player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
-                        } else {
-                            addLog(`⬡ ${unitDisplayName(unit)} captures the ${floor} Nexus for Player ${unit.player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
-                        }
-                    } else {
-                        addLog(`⬡ ${unitDisplayName(unit)} captures the ${floor} Nexus for Player ${unit.player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
-                    }
-                    showCombatBanner('⬡ NEXUS CAPTURED!', `${floor} Nexus — Player ${unit.player}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
-                    showFloatingTextForUnit(unit, '⬡ CAPTURED!', 'streak', { durationMs: 1600 });
-                    shakeBoard('normal');
-                    playSfx('nexusCaptured');
-                    grantXP(unit, 15, 'nexusCapture');
+                    _nexusCaptureBookkeeping(nex, floor, unit.player, unit);
                 }
             } else if (nex.owner !== 0 && progressTeam !== nex.owner && absProgress < NEXUS_CAPTURE_THRESHOLD) {
 
                 if (nex.progress === 0 || progressTeam !== nex.owner) {
                     const lostOwner = nex.owner;
                     nex.owner = 0;
-                    addLog(`⬡ ${unitDisplayName(unit)} neutralizes the ${floor} Nexus!`);
+                    addLog(`⬡ ${unitDisplayName(unit)} neutralizes the ${_nexusLabel(floor)} Nexus!`);
                     showFloatingTextForUnit(unit, '⬡ NEUTRAL', 'damage', { durationMs: 1200 });
                     playSfx('uiConfirm');
                 }
             } else {
 
                 const displayProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
-                addLog(`⬡ ${unitDisplayName(unit)} channels the ${floor} Nexus (${displayProg}/${NEXUS_CAPTURE_THRESHOLD})`);
+                addLog(`⬡ ${unitDisplayName(unit)} channels the ${_nexusLabel(floor)} Nexus (${displayProg}/${NEXUS_CAPTURE_THRESHOLD})`);
                 showFloatingTextForUnit(unit, `⬡ ${displayProg}/${NEXUS_CAPTURE_THRESHOLD}`, 'buff', { durationMs: 1200 });
                 playSfx('uiConfirm');
 
@@ -4845,24 +4882,58 @@
 
         function processNexusIncome() {
             if (!state.nexusPoints) return;
+            const thr = NEXUS_CAPTURE_THRESHOLD;
             for (const section of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[section];
-                if (!nex || nex.owner === 0) continue;
-                // Cloaked units don't contest — you can't dispute ground you
-                // aren't visibly standing on.
-                const enemyInZone = state.units.some(u => !u.dead && u.player !== nex.owner &&
+                if (!nex) continue;
+                const label = _nexusLabel(section);
+                // Cloaked units neither capture nor contest — you can't dispute
+                // ground you aren't visibly standing on.
+                const _inZone = p => state.units.filter(u => !u.dead && u.player === p &&
                     !(typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) &&
                     isInNexusZone(u.x, u.y, section));
-                if (enemyInZone) {
-                    addLog(`⬡ The ${section} Nexus is contested — no gold generated.`);
-                    continue;
+                const p1Units = _inZone(1), p2Units = _inZone(2);
+                const contested = p1Units.length > 0 && p2Units.length > 0;
+
+                /* ── Presence capture: boots on the ground move the capture bar
+                   every round — 1 unit ticks +1, 2+ units tick +2. Both teams in
+                   the zone = CONTESTED (bar frozen, no gold). Standing your ground
+                   IS capturing; channeling (1 AP) stacks on top for speed. */
+                if (contested) {
+                    addLog(`⚔ The ${label} Nexus is CONTESTED — capture frozen, no gold.`);
+                } else if (p1Units.length > 0 || p2Units.length > 0) {
+                    const team = p1Units.length > 0 ? 1 : 2;
+                    if (nex.owner !== team) {
+                        const count = team === 1 ? p1Units.length : p2Units.length;
+                        const ticks = count >= 2 ? 2 : 1;
+                        if (nex.owner !== 0) {
+                            // Standing uncontested in the enemy's zone rips it neutral.
+                            nex.owner = 0;
+                            addLog(`⬡ The ${label} Nexus is neutralized by Player ${team}!`);
+                        }
+                        const dir = team === 1 ? 1 : -1;
+                        nex.progress = Math.max(-thr, Math.min(thr, nex.progress + dir * ticks));
+                        const myProg = team === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
+                        if (myProg >= thr) {
+                            _nexusCaptureBookkeeping(nex, section, team, _inZone(team)[0] || null);
+                        } else {
+                            addLog(`⬡ ${label} Nexus: Player ${team} capturing… ${myProg}/${thr}`);
+                        }
+                    }
+                } else if (nex.owner === 0 && nex.progress !== 0) {
+                    // Abandoned half-capture bleeds back toward neutral.
+                    nex.progress += nex.progress > 0 ? -1 : 1;
                 }
-                const teamUnits = state.units.filter(u => !u.dead && u.player === nex.owner);
-                for (const u of teamUnits) {
-                    u.gold = (u.gold || 0) + NEXUS_GOLD_PER_ROUND;
-                }
-                if (teamUnits.length > 0) {
-                    addLog(`⬡ ${section} Nexus generates +${NEXUS_GOLD_PER_ROUND}g for Player ${nex.owner}'s team.`);
+
+                /* ── Income: an owned, uncontested zone pays the whole team. */
+                if (nex.owner > 0 && !contested) {
+                    const teamUnits = state.units.filter(u => !u.dead && u.player === nex.owner);
+                    for (const u of teamUnits) {
+                        u.gold = (u.gold || 0) + NEXUS_GOLD_PER_ROUND;
+                    }
+                    if (teamUnits.length > 0) {
+                        addLog(`⬡ ${label} Nexus generates +${NEXUS_GOLD_PER_ROUND}g for Player ${nex.owner}'s team.`);
+                    }
                 }
             }
         }

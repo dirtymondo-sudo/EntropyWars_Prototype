@@ -1025,7 +1025,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, collect hourglasses, or wipe out the enemy. 15 rounds — composite score decides if no winner.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win. 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'ffa', icon: '👤', label: 'Free For All', desc: 'Every player for themselves. Most kills in 15 rounds. No teams.', tag: null, locked: false },
             { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
@@ -3097,67 +3097,19 @@
                     return;
                 }
 
+                /* Diagonal nexus line: center zone always dead-center, plus one
+                   toward the NW corner and one toward the SE corner. The layout
+                   is 180°-rotation symmetric (fair for mirrored spawns), and
+                   _stampNear slides each zone to the nearest tile patch that
+                   actually fits this map's terrain. */
                 const midY = Math.floor(h / 2);
-                const scanRows = [];
-                for (let r = -1; r <= nzSz; r++) {
-                    const ry = midY + r;
-                    if (ry >= 0 && ry < h) scanRows.push(ry);
-                }
-
-                const colOpen = new Array(w).fill(false);
-                for (let x = 0; x <= w - nzSz; x++) {
-                    let allPass = true;
-                    outer: for (const ry of scanRows) {
-                        for (let dx = 0; dx < nzSz; dx++) {
-                            const t = state.boardTerrain?.[ry]?.[x + dx];
-                            if (t === 'nexus' || t === 'nexus_cave' || t === 'nexus_sky') continue;
-                            const rule = t ? TERRAIN_RULES[t] : null;
-                            if (rule && rule.passable === false) { allPass = false; break outer; }
-                        }
-                    }
-                    if (allPass) colOpen[x] = true;
-                }
-
-                const lanes = [];
-                let bandStart = -1;
-                for (let x = 0; x <= w; x++) {
-                    if (x < w && colOpen[x]) {
-                        if (bandStart < 0) bandStart = x;
-                    } else {
-                        if (bandStart >= 0) {
-                            const bandEnd = x - 1;
-                            const center = Math.floor((bandStart + bandEnd) / 2);
-                            lanes.push({ start: bandStart, end: bandEnd, center });
-                            bandStart = -1;
-                        }
-                    }
-                }
-
+                const midX = Math.floor(w / 2);
                 const nzHalf = Math.floor(nzSz / 2);
+                const off = Math.floor(Math.min(w, h) / 4);
 
-                if (lanes.length >= 3) {
-
-                    const leftLane = lanes[0];
-                    const rightLane = lanes[lanes.length - 1];
-                    const midX = Math.floor(w / 2);
-                    let centerLane = lanes[1];
-                    let bestDist = Infinity;
-                    for (let i = 1; i < lanes.length - 1; i++) {
-                        const d = Math.abs(lanes[i].center - midX);
-                        if (d < bestDist) { bestDist = d; centerLane = lanes[i]; }
-                    }
-
-                    const nexY = midY - nzHalf;
-                    _stampNear('west',  leftLane.center - nzHalf, nexY, 3);
-                    _stampNear('earth', centerLane.center - nzHalf, nexY, 3);
-                    _stampNear('east',  rightLane.center - nzHalf, nexY, 3);
-                } else {
-
-                    const margin = Math.max(2, Math.floor(Math.min(w, h) / 6));
-                    _stampNear('earth', Math.floor(w / 2) - nzHalf, Math.floor(h / 2) - nzHalf, 3);
-                    _stampNear('north', margin, margin, 4);
-                    _stampNear('south', w - nzSz - margin, h - nzSz - margin, 4);
-                }
+                _stampNear('earth', midX - nzHalf, midY - nzHalf, 3);
+                _stampNear('nw', midX - off - nzHalf, midY - off - nzHalf, 4);
+                _stampNear('se', midX + off - nzHalf, midY + off - nzHalf, 4);
             }
 
             if (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community') {
@@ -3373,51 +3325,32 @@
                 if (_hugeShouldPlaceNexus) {
                 const nzHalf = Math.floor(NEXUS_ZONE_SIZE / 2);
 
-                const gNexX = eMidX - nzHalf, gNexY = eMidY - nzHalf;
-                for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                    for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
-                        board[gNexY + dy][gNexX + dx] = 'nexus';
-                    }
-                }
-                state.nexusPoints = {
-                    earth: { zoneX: gNexX, zoneY: gNexY, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 }
-                };
-
-                const skyNexY = 2, skyNexX = eMidX - nzHalf;
-                for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                    for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
-                        const nx = skyNexX + dx, ny = skyNexY + dy;
-                        if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
-                            board[ny][nx] = 'nexus_sky';
-                            if (state.zoneMap) state.zoneMap[ny][nx] = 'nexus';
-                        }
-                    }
-                }
-
-                const ugNexY = h - 4, ugNexX = eMidX - nzHalf;
-                for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                    for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
-                        const nx = ugNexX + dx, ny = ugNexY + dy;
-                        if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
-                            board[ny][nx] = 'nexus_cave';
-                            if (state.zoneMap) state.zoneMap[ny][nx] = 'nexus';
-                        }
-                    }
-                }
-
-                for (let dy = -1; dy < NEXUS_ZONE_SIZE + 1; dy++) {
-                    for (let dx = -1; dx < NEXUS_ZONE_SIZE + 1; dx++) {
-                        const nx = ugNexX + dx, ny = ugNexY + dy;
-                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                            if (board[ny][nx] === 'cave_wall' || board[ny][nx] === 'void') {
-                                board[ny][nx] = 'cave_floor';
+                /* Diagonal nexus line: center zone always mid-map, one toward
+                   the NW corner and one toward the SE corner (see the standard
+                   generator path for rationale). */
+                const _hugeStamp = (key, ax, ay) => {
+                    ax = Math.max(1, Math.min(w - NEXUS_ZONE_SIZE - 1, ax));
+                    ay = Math.max(1, Math.min(h - NEXUS_ZONE_SIZE - 1, ay));
+                    for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
+                        for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
+                            const nx = ax + dx, ny = ay + dy;
+                            if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+                                board[ny][nx] = 'nexus';
+                                if (state.zoneMap) state.zoneMap[ny][nx] = 'nexus';
                             }
                         }
                     }
-                }
+                    state.nexusPoints[key] = { zoneX: ax, zoneY: ay, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 };
+                };
 
-                state.nexusPoints.above = { zoneX: skyNexX, zoneY: skyNexY, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 };
-                state.nexusPoints.below = { zoneX: ugNexX, zoneY: ugNexY, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 };
+                state.nexusPoints = {};
+                const gNexX = eMidX - nzHalf, gNexY = eMidY - nzHalf;
+                _hugeStamp('earth', gNexX, gNexY);
+                const _hugeOff = Math.floor(Math.min(w, h) / 4);
+                if (_hugeOff >= NEXUS_ZONE_SIZE + 1) {
+                    _hugeStamp('nw', gNexX - _hugeOff, gNexY - _hugeOff);
+                    _hugeStamp('se', gNexX + _hugeOff, gNexY + _hugeOff);
+                }
                 } else {
                     state.nexusPoints = {};
                 }
@@ -3473,58 +3406,36 @@
 
             if (shouldPlaceNexus) {
 
+            /* Nexus zones sit on a DIAGONAL line across the fully-3D board:
+               one always dead-center, plus one toward each of two opposite
+               corners (NW / SE) when the play band is big enough for three.
+               The diagonal is 180°-rotation symmetric, so it's fair for
+               mirrored left/right spawns. */
             const effectiveNexusSize = NEXUS_ZONE_SIZE;
-            const gNexX = midX - Math.floor(effectiveNexusSize / 2);
-            const gNexY = earthMidY - Math.floor(effectiveNexusSize / 2);
-            for (let dy = 0; dy < effectiveNexusSize; dy++) {
-                for (let dx = 0; dx < effectiveNexusSize; dx++) {
-                    const nx = gNexX + dx, ny = gNexY + dy;
-                    if (ny >= eStart && ny <= eEnd && nx >= 0 && nx < w) {
-                        board[ny][nx] = 'nexus';
+            const bandH = eEnd - eStart + 1;
+            const _stampZone = (key, ax, ay) => {
+                ax = Math.max(1, Math.min(w - effectiveNexusSize - 1, ax));
+                ay = Math.max(eStart + 1, Math.min(eEnd - effectiveNexusSize, ay));
+                for (let dy = 0; dy < effectiveNexusSize; dy++) {
+                    for (let dx = 0; dx < effectiveNexusSize; dx++) {
+                        const nx = ax + dx, ny = ay + dy;
+                        if (ny >= eStart && ny <= eEnd && nx >= 0 && nx < w) {
+                            board[ny][nx] = 'nexus';
+                        }
                     }
                 }
-            }
-
-            state.nexusPoints = {
-                earth: { zoneX: gNexX, zoneY: gNexY, zoneSize: effectiveNexusSize, owner: 0, progress: 0 }
+                state.nexusPoints[key] = { zoneX: ax, zoneY: ay, zoneSize: effectiveNexusSize, owner: 0, progress: 0 };
             };
 
-            if (MAP_HAS_FLOORS && MAP_SECTIONS.above && MAP_SECTIONS.below) {
-                const skyNexY = MAP_SECTIONS.above.startRow + 1;
-                const skyNexX = midX - nzHalf;
-                for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                    for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
-                        const nx = skyNexX + dx, ny = skyNexY + dy;
-                        if (ny >= MAP_SECTIONS.above.startRow && ny <= MAP_SECTIONS.above.endRow && nx >= 0 && nx < w) {
-                            board[ny][nx] = 'nexus_sky';
-                        }
-                    }
-                }
+            state.nexusPoints = {};
+            const gNexX = midX - Math.floor(effectiveNexusSize / 2);
+            const gNexY = earthMidY - Math.floor(effectiveNexusSize / 2);
+            _stampZone('earth', gNexX, gNexY);
 
-                const ugNexY = MAP_SECTIONS.below.endRow - NEXUS_ZONE_SIZE;
-                const ugNexX = midX - nzHalf;
-                for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
-                    for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
-                        const nx = ugNexX + dx, ny = ugNexY + dy;
-                        if (ny >= MAP_SECTIONS.below.startRow && ny <= MAP_SECTIONS.below.endRow && nx >= 0 && nx < w) {
-                            board[ny][nx] = 'nexus_cave';
-                        }
-                    }
-                }
-
-                for (let dy = -1; dy < NEXUS_ZONE_SIZE + 1; dy++) {
-                    for (let dx = -1; dx < NEXUS_ZONE_SIZE + 1; dx++) {
-                        const nx = ugNexX + dx, ny = ugNexY + dy;
-                        if (nx >= 0 && nx < w && ny >= MAP_SECTIONS.below.startRow && ny <= MAP_SECTIONS.below.endRow) {
-                            if (board[ny][nx] === 'cave_wall' || board[ny][nx] === 'fog_wall') {
-                                board[ny][nx] = 'cave_floor';
-                            }
-                        }
-                    }
-                }
-
-                state.nexusPoints.above = { zoneX: skyNexX, zoneY: skyNexY, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 };
-                state.nexusPoints.below = { zoneX: ugNexX, zoneY: ugNexY, zoneSize: NEXUS_ZONE_SIZE, owner: 0, progress: 0 };
+            const diagOff = Math.floor(Math.min(w, bandH) / 4);
+            if (diagOff >= effectiveNexusSize + 1) {
+                _stampZone('nw', gNexX - diagOff, gNexY - diagOff);
+                _stampZone('se', gNexX + diagOff, gNexY + diagOff);
             }
             } else {
 

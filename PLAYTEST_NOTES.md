@@ -438,19 +438,47 @@ directly to score moves. Multiplier = effectMult × stabMult: strong **×1.30**,
 ×1.0, weak **×0.75**; STAB **×1.25** if `source.types` includes the spellType. So
 super-effective is only +30% — **focus fire matters far more than type-chasing.**
 
-## Arena mode mechanics (multi-objective, scores via a COMPOSITE)
-Win by destroying the enemy tower, wipeout, or **composite score** at the round limit
-(15). Three scoring paths:
-- **Kills** (~15 pts each).
-- **Tower damage** — enemy tower = `state.towers[2]` `{x,y,hp}` (yours is `[1]`, 5000 HP).
-  Attack/cast its TILE to damage it. ~0.1 pt/HP → the **biggest** point source; lean here.
-- **Nexus** — `state.nexusPoints` (fixed, e.g. `earth`) and/or `state.roamingNexus`,
-  each with `{zoneX,zoneY,zoneSize,progress,owner}`. Stand a unit in the zone and call
-  **`window.channelNexus(unit)`** (costs `NEXUS_CHANNEL_COST_AP`); each call moves
-  `progress` ±1 toward you; reach the threshold (≈6) to capture → +gold/round + ~3 pts/round.
-  Helpers: `getNexusAtUnit(unit)`, `isInNexusZone(x,y)`.
+## Arena mode mechanics (multi-objective, scores via a COMPOSITE) — REWORKED 2026-07-06
+Instant wins: enemy tower destroyed, wipeout, all hourglasses carried, or **NEXUS
+DOMINANCE — own all 3 nexus zones simultaneously** (checkWin, only on maps with ≥3
+zones). Otherwise **composite score** at the round limit (15). Weights live in ONE
+place now: **`window.ARENA_PTS`** (data.js, next to the NEXUS_ constants) — kill 15,
+tower dmg 1/10HP **capped at 150 pts**, hourglass 35, nexus-control round 6. Nexus
+control accrual **doubles in the last 5 rounds** ("⬡ NEXUS SURGE", tickMatchClock) —
+the comeback lever. Tower poking can no longer outscore objective play.
+- **Nexus zones** spawn on a **diagonal line**: `earth` (Central) always dead-center,
+  `nw` + `se` toward opposite corners (all 3 map.js placement paths; keys are generic
+  now — NEVER hardcode earth/above/below; iterate `Object.keys(state.nexusPoints)`;
+  display names in `window.NEXUS_LABELS`).
+- **Capture = presence** (processNexusIncome, round end): only-your-team standing in
+  a zone ticks progress +1 (2+ units: +2) toward you; standing in an enemy zone
+  neutralizes it first. Both teams in zone = CONTESTED (frozen, no gold). Empty
+  unclaimed zone decays 1/round toward 0. **`channelNexus(unit)` (1 AP)** still adds
+  +1 tick — the active accelerant. Threshold ±6. Shared capture bookkeeping (banners,
+  scoring, dominance threat/win, sudden-death win) = `_nexusCaptureBookkeeping` (ui.js).
+- Scoreboard shows per-zone ownership pips (⬢/⬡) + a pulsing "P# NEEDS 1 NEXUS!"
+  alert at 2-of-3. Capture banner + "⬡ NEXUS THREAT!" at 2/3.
+- **Sudden death** (tied composite): next kill, hourglass pickup, or nexus capture wins.
+- **Hourglasses restock ONCE at round 10** (was every 10th round — round 20 in sudden
+  death used to re-fire the "⏳ materialized" toast).
+- **AI**: arena now has first-class nexus goals in pickMoveGoal (`arena_nexus`, and
+  `arena_nexus_deny` score-75 sprint when the enemy holds all-but-one) + a +25 arena
+  channel bonus (+45 for the winning zone, +30 to break enemy 2/3) in scoreNexusChannel.
 - **GOTCHA:** Arena `state.matchScores` stays 0-0 — the real result is the composite,
   logged at end as `P1: NNN pts — K kills (..), tower dmg (..), nexus rounds (..)`.
+
+## Gravestones + revive (2026-07-06)
+- Dead units leave tile props (three-renderer.js, built in rebuildDeployables, keyed
+  `grave_<unitId>`, hashed into `_computeDeployableSerial` → auto appear/vanish on
+  death/revive/respawn): **enemy dead = bone pile** (enamel.png-textured bones+skull),
+  **your dead = rock.png headstone with flower.png/flower_2-4.png cross billboards**.
+  Friend/enemy = relative to `getViewerPlayer()`. Kill-switch:
+  `window.EW_DISABLE_GRAVESTONES = true`.
+- **Loot**: ending a move on an ENEMY corpse auto-loots its items (finishMoveAt);
+  ally corpses keep gear for revive (scan-loot still works on both).
+- **Revive fixed**: `hasSpellTargetInRange` now checks range + `reviveLocked` (used to
+  light up if ANY dead ally existed anywhere); `_getSpellValidTargets` now includes
+  dead allies for revive-kind spells so fallen allies highlight as targets.
 
 ## Smart playtest agents (USE THESE — don't replay "hit closest enemy")
 - `playtest_smart.js` — TDM on 8×8 with real tactics: **focus-fires the lowest-HP

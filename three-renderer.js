@@ -4591,6 +4591,18 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* Gravestones: any dead (not mid-death-animation) unit is a tile prop.
+           Hashing them here makes graves appear on death and disappear on
+           revive/respawn with zero extra plumbing. */
+        if (state.units) {
+            for (var gi = 0; gi < state.units.length; gi++) {
+                var gu = state.units[gi];
+                if (gu && gu.dead && !gu._dying) {
+                    h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
+                    h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
+                }
+            }
+        }
         return h;
     }
 
@@ -4630,6 +4642,164 @@ const ThreeRenderer = (function () {
         m._ew_billboard = true;
         m._ew_deployable = true;
         return m;
+    }
+
+    /* ── Gravestones ─────────────────────────────────────────────────────
+       Every dead unit leaves a marker on its death tile: fallen ALLIES get a
+       stone grave with cross-plane flowers (revive targets — you can see who
+       to bring back), fallen ENEMIES get a pile of bones (lootable by walking
+       onto the tile). Built in rebuildDeployables like every other tile prop;
+       dead units are hashed into the deployable serial so graves appear on
+       death and vanish on revive/respawn automatically. */
+    var _boneTex = null;
+    function _getBoneTexture() {
+        if (_boneTex) return _boneTex;
+        _boneTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/enamel.png');
+        if (_boneTex) {
+            _boneTex.wrapS = THREE.RepeatWrapping;
+            _boneTex.wrapT = THREE.RepeatWrapping;
+        }
+        return _boneTex;
+    }
+    var _GRAVE_FLOWER_URLS = [
+        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower.png',
+        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_2.png',
+        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_3.png',
+        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_4.png',
+    ];
+
+    /* Deterministic per-corpse randomness (unit id → seed) so a grave's layout
+       is stable across rebuilds instead of reshuffling every state change. */
+    function _graveSeed(id) {
+        var s = String(id), h = 2166136261;
+        for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return h >>> 0;
+    }
+    function _graveRng(seed) {
+        var t = seed >>> 0;
+        return function () {
+            t += 0x6D2B79F5;
+            var r = Math.imul(t ^ (t >>> 15), t | 1);
+            r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+            return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    /* Enemy remains: a scattered pile of bones + a skull, enamel-textured. */
+    function _buildBonePile3D(x, y, seed) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var rng = _graveRng(seed);
+        var tex = _getBoneTexture();
+        var boneMat = tex
+            ? new THREE.MeshLambertMaterial({ map: tex })
+            : new THREE.MeshLambertMaterial({ color: 0xe8e2d0 });
+        var g = new THREE.Group();
+
+        var boneCount = 5 + Math.floor(rng() * 3);
+        for (var i = 0; i < boneCount; i++) {
+            var len = ts * (0.22 + rng() * 0.16);
+            var rad = ts * (0.028 + rng() * 0.014);
+            var bone = new THREE.Group();
+            var shaft = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 6), boneMat);
+            bone.add(shaft);
+            /* Knuckle knobs on both ends make a cylinder read as a bone. */
+            for (var e = -1; e <= 1; e += 2) {
+                var knob = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.7, 6, 5), boneMat);
+                knob.position.y = e * len / 2;
+                bone.add(knob);
+            }
+            /* Lay it nearly flat, random heading, scattered around the tile. */
+            bone.rotation.z = Math.PI / 2 + (rng() - 0.5) * 0.5;
+            bone.rotation.y = rng() * Math.PI * 2;
+            bone.position.set(
+                (rng() - 0.5) * ts * 0.55,
+                rad * 2 + rng() * ts * 0.05,
+                (rng() - 0.5) * ts * 0.55
+            );
+            g.add(bone);
+        }
+
+        /* Skull: cranium + jaw + dark eye sockets, tipped at a random angle. */
+        var skull = new THREE.Group();
+        var craniumR = ts * 0.095;
+        skull.add(new THREE.Mesh(new THREE.SphereGeometry(craniumR, 8, 7), boneMat));
+        var jaw = new THREE.Mesh(new THREE.BoxGeometry(craniumR * 1.15, craniumR * 0.8, craniumR * 1.05), boneMat);
+        jaw.position.set(0, -craniumR * 0.55, craniumR * 0.25);
+        skull.add(jaw);
+        var socketMat = new THREE.MeshBasicMaterial({ color: 0x181410 });
+        for (var s = -1; s <= 1; s += 2) {
+            var socket = new THREE.Mesh(new THREE.SphereGeometry(craniumR * 0.28, 5, 4), socketMat);
+            socket.position.set(s * craniumR * 0.38, -craniumR * 0.05, craniumR * 0.82);
+            skull.add(socket);
+        }
+        skull.position.set((rng() - 0.5) * ts * 0.3, craniumR * 1.15, (rng() - 0.5) * ts * 0.3);
+        skull.rotation.y = rng() * Math.PI * 2;
+        skull.rotation.z = (rng() - 0.5) * 0.6;
+        g.add(skull);
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        return g;
+    }
+
+    /* Ally grave: rock-textured headstone (slab + rounded cap on a plinth)
+       with little cross-plane flowers in front. */
+    function _buildGravestone3D(x, y, seed) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var rng = _graveRng(seed);
+        var rockTex = _getBoulderTexture();
+        var stoneMat = rockTex
+            ? new THREE.MeshLambertMaterial({ map: rockTex })
+            : new THREE.MeshLambertMaterial({ color: 0x8a8a92 });
+        var g = new THREE.Group();
+
+        var slabW = ts * 0.30, slabH = ts * 0.40, slabD = ts * 0.09;
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.07, ts * 0.24), stoneMat);
+        plinth.position.y = ts * 0.035;
+        g.add(plinth);
+        var slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, slabH, slabD), stoneMat);
+        slab.position.y = ts * 0.07 + slabH / 2;
+        g.add(slab);
+        /* Rounded cap: a horizontal cylinder flush with the slab's top edge. */
+        var cap = new THREE.Mesh(new THREE.CylinderGeometry(slabW / 2, slabW / 2, slabD, 12), stoneMat);
+        cap.rotation.x = Math.PI / 2;
+        cap.position.y = ts * 0.07 + slabH;
+        g.add(cap);
+
+        /* The whole stone leans back a touch and faces a semi-random way. */
+        g.rotation.y = (rng() - 0.5) * 0.9;
+        g.rotation.z = (rng() - 0.5) * 0.12;
+
+        /* Cross-plane flowers at the grave's foot (front of the slab). */
+        var flowerUrl = _GRAVE_FLOWER_URLS[Math.floor(rng() * _GRAVE_FLOWER_URLS.length)];
+        var ftex = getTexture(flowerUrl);
+        if (ftex) {
+            var fmat = new THREE.MeshBasicMaterial({
+                map: ftex, transparent: true, alphaTest: 0.1,
+                side: THREE.DoubleSide, depthWrite: true
+            });
+            var fCount = 1 + Math.floor(rng() * 2);
+            for (var f = 0; f < fCount; f++) {
+                var fh = ts * (0.20 + rng() * 0.08);
+                var fg = new THREE.Group();
+                var pA = new THREE.Mesh(new THREE.PlaneGeometry(fh, fh), fmat);
+                pA.position.y = fh / 2;
+                fg.add(pA);
+                var pB = new THREE.Mesh(new THREE.PlaneGeometry(fh, fh), fmat);
+                pB.rotation.y = Math.PI / 2;
+                pB.position.y = fh / 2;
+                fg.add(pB);
+                fg.position.set((rng() - 0.5) * ts * 0.3, 0, ts * (0.16 + rng() * 0.1));
+                fg.rotation.y = rng() * Math.PI;
+                g.add(fg);
+            }
+        }
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        return g;
     }
 
     function rebuildDeployables() {
@@ -4814,6 +4984,31 @@ const ThreeRenderer = (function () {
                 markerMesh._ew_depX = dx; markerMesh._ew_depY = dy;
                 objectGroup.add(markerMesh);
                 deployableMeshes.set(dKey, markerMesh);
+            }
+        }
+
+        /* ── Gravestones: bone piles for enemy dead, flowered graves for allied
+           dead — placed on each corpse's death tile. Suppressed while the death
+           animation is still playing so the grave doesn't pop in under the
+           collapsing sprite. */
+        if (state.units && !window.EW_DISABLE_GRAVESTONES) {
+            var _gvViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var ug = 0; ug < state.units.length; ug++) {
+                var du = state.units[ug];
+                if (!du || !du.dead || du._dying) continue;
+                var gx = (du._dyingX != null ? du._dyingX : du.x);
+                var gy = (du._dyingY != null ? du._dyingY : du.y);
+                if (gx == null || gy == null) continue;
+                var gseed = _graveSeed(du.id);
+                var gmesh = (du.player === _gvViewer)
+                    ? _buildGravestone3D(gx, gy, gseed)
+                    : _buildBonePile3D(gx, gy, gseed);
+                if (gmesh) {
+                    gmesh._ew_depX = gx; gmesh._ew_depY = gy;
+                    var gkey = 'grave_' + du.id;
+                    objectGroup.add(gmesh);
+                    deployableMeshes.set(gkey, gmesh);
+                }
             }
         }
 

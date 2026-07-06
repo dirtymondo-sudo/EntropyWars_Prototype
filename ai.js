@@ -2391,7 +2391,7 @@
 
         if (modeId === 'domination' && g.state.nexusPoints && v.visibleEnemies.length === 0) {
             let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
-            for (const key of ['earth', 'below', 'above']) {
+            for (const key of Object.keys(g.state.nexusPoints)) {
                 const nex = g.state.nexusPoints[key];
                 if (!nex || nex.owner === unit.player || !nex.zoneSize) continue;
                 const ncx = nex.zoneX + Math.floor(nex.zoneSize / 2);
@@ -2401,11 +2401,31 @@
             }
             if (bestNex) {
                 let s = 45;
-                const ownedCount = ['earth', 'below', 'above'].filter(f =>
+                const ownedCount = Object.keys(g.state.nexusPoints).filter(f =>
                     g.state.nexusPoints[f]?.owner === unit.player
                 ).length;
                 if (ownedCount === 0) s += 15;
                 return { x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'domination_nexus' };
+            }
+        }
+
+        // Arena EMERGENCY: on 3-zone maps, all three nexus zones at once is an
+        // instant win. If the enemy holds all-but-one, contesting/stealing a zone
+        // outranks everything except an immediate kill — sprint to the nearest
+        // zone we can flip (their weakest hold or the unclaimed one).
+        if (modeId === 'arena' && g.state.nexusPoints) {
+            const zones = Object.keys(g.state.nexusPoints).map(k => g.state.nexusPoints[k]).filter(n => n && n.zoneSize);
+            const enemyPlayer = unit.player === 1 ? 2 : 1;
+            if (zones.length >= 3 && zones.filter(n => n.owner === enemyPlayer).length >= zones.length - 1) {
+                let best = null, bestD = Infinity, bestC = null;
+                for (const nex of zones) {
+                    if (nex.owner === unit.player) continue;
+                    const ncx = nex.zoneX + Math.floor(nex.zoneSize / 2);
+                    const ncy = nex.zoneY + Math.floor(nex.zoneSize / 2);
+                    const d = Math.abs(unit.x - ncx) + Math.abs(unit.y - ncy);
+                    if (d < bestD) { bestD = d; best = nex; bestC = { x: ncx, y: ncy }; }
+                }
+                if (best) return { x: bestC.x, y: bestC.y, score: 75, reason: 'arena_nexus_deny' };
             }
         }
 
@@ -2491,9 +2511,44 @@
             }
         }
 
+        // Arena: nexus zones are a first-class objective, not an idle-time hobby.
+        // Unlike the generic block below this one is NOT gated on "no enemies
+        // visible" — zone control pays every round (and doubles late), and three
+        // zones is an instant win, so the AI must keep pressing them mid-fight.
+        if (modeId === 'arena' && g.state.nexusPoints) {
+            const zones = Object.keys(g.state.nexusPoints).map(k => g.state.nexusPoints[k]).filter(n => n && n.zoneSize);
+            if (zones.length) {
+                const enemyPlayer = unit.player === 1 ? 2 : 1;
+                let best = null, bestD = Infinity, bestC = null;
+                for (const nex of zones) {
+                    if (nex.owner === unit.player) continue;
+                    const ncx = nex.zoneX + Math.floor(nex.zoneSize / 2);
+                    const ncy = nex.zoneY + Math.floor(nex.zoneSize / 2);
+                    const d = Math.abs(unit.x - ncx) + Math.abs(unit.y - ncy);
+                    if (d < bestD) { bestD = d; best = nex; bestC = { x: ncx, y: ncy }; }
+                }
+                if (best) {
+                    const ownedCount = zones.filter(n => n.owner === unit.player).length;
+                    let s = 38;
+                    if (v.visibleEnemies.length > 0) s -= 12;
+                    if (ownedCount === 0) s += 8;
+                    s += ownedCount * 6;
+                    if (best.owner === enemyPlayer) s += 6;
+                    if (zones.length >= 3 && ownedCount === zones.length - 1) s += 30;
+                    if (v.enemyTower && v.enemyTower.hp < v.enemyTower.maxHp * 0.25) s -= 12;
+                    const alliesNear = g.state.units.filter(u =>
+                        u.player === unit.player && !u.dead && u.id !== unit.id &&
+                        Math.abs(u.x - bestC.x) + Math.abs(u.y - bestC.y) <= 3
+                    ).length;
+                    if (alliesNear >= 2) s -= 18;
+                    if (s > 0) return { x: bestC.x, y: bestC.y, score: s, reason: 'arena_nexus' };
+                }
+            }
+        }
+
         if (g.state.nexusPoints && v.visibleEnemies.length === 0) {
             let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
-            for (const key of ['earth', 'below', 'above']) {
+            for (const key of Object.keys(g.state.nexusPoints)) {
                 const nex = g.state.nexusPoints[key];
                 if (!nex || nex.owner === unit.player || !nex.zoneSize) continue;
                 const cx = nex.zoneX + Math.floor(nex.zoneSize / 2);
@@ -2503,7 +2558,7 @@
             }
             if (bestNex && bestNexDist <= 10) {
                 let s = Math.floor(g.getAIWeight('nexusCapBonus_v1') * 0.7);
-                const ownedCount = ['earth', 'below', 'above'].filter(f =>
+                const ownedCount = Object.keys(g.state.nexusPoints).filter(f =>
                     g.state.nexusPoints[f]?.owner === unit.player
                 ).length;
                 s += ownedCount * 5;
@@ -3218,7 +3273,19 @@
         if (inZone && nex.owner !== unit.player) {
             let score = g.getAIWeight('nexusCapBonus_v1');
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-            if (mpMode && mpMode.id === 'domination') score += 25;
+            // Arena values a channel like domination does — zone control is core
+            // scoring there (per-round points, late-game surge, dominance win).
+            if (mpMode && (mpMode.id === 'domination' || mpMode.id === 'arena')) score += 25;
+            if (mpMode && mpMode.id === 'arena') {
+                const _zoneList = Object.values(g.state.nexusPoints).filter(n => n && n.zoneSize);
+                if (_zoneList.length >= 3) {
+                    const _enemyP = unit.player === 1 ? 2 : 1;
+                    // Capturing our final missing zone = instant win. Channel like it.
+                    if (ownedCount === _zoneList.length - 1) score += 45;
+                    // Enemy is one zone from winning — flipping/neutralizing is urgent.
+                    if (_zoneList.filter(n => n.owner === _enemyP).length >= _zoneList.length - 1) score += 30;
+                }
+            }
             const myProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
             const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;
             if (myProg >= threshold - 2) score += 15;
