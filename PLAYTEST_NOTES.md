@@ -26,6 +26,44 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Movement/sky-spells/UFO/minimap fixes (2026-07-06) — battle.js, hud.js, ui.js, three-renderer.js, three-vfx-effects.js
+Token bumped `20260706h` → `20260706i`. Verified in-browser (scratchpad
+probe_fixes.js, LOCAL_ASSETS harness, 11/11 checks).
+- **Jump re-arms move mode (battle.js doJump `_doPostJump`)**: after a jump the
+  unit stays in `actionMode='move'` when `canUnitMove` (same cascade as
+  finishMoveAt) instead of dumping to the root menu. Combined with the existing
+  move→jump re-arms + ui.js folding jump tiles into the move overlay, walking
+  and jumping now feel like ONE movement verb.
+- **"Move Towards" chains the whole approach (hud.js)**: new `_chainMoveTowards`
+  + `_bestTowardStep` — the quick-menu button keeps stepping (walks AND the
+  jump) until the unit is adjacent, out of movement, or nothing gets closer.
+  `_executeAction`'s moveTowards branch calls the chain after the first step.
+- **Sky grabs (skyDrop/skyThrow/skySlam) fixed**: (a) range is now 2D-Manhattan
+  + no terrain LOS in `getSpellRangeTiles`, `_getSpellValidTargets` AND the
+  ui.js highlight `_rangeD` — matching doSpell's own validation (the old 3D
+  combatReach counted the flyer's altitude → "no longer in range" on adjacent
+  targets). (b) skyThrow phase 2 is view-INDEPENDENT in clickTile +
+  updateHoveredTarget (`_hasSkyGrab` gate) — drop-tile clicks no longer fall
+  into the generic validators when the menu re-armed to 'spells'; invalid
+  phase-2 clicks just nag (never cancel the paid grab / reselect). (c) grab
+  completion locks `actionMode/actionMenuView/selectedTool` for phase 2.
+  (d) NEW `_skySwoopTakeoff(unit)` (battle.js, above doJump): a grounded flyer
+  auto-takes-off as part of any requiresFlight sky cast (free — the swoop IS
+  the spell), so Predator Drop no longer needs a manual Take Off or an odd
+  approach move; drop damage uses the real airborne height.
+- **One true UFO**: every saucer is now the crop-circle `_sigBuildUFO` craft.
+  `_spawnProbeDescent3D` (three-vfx-effects.js) rebuilt on `_sigBuildUFO`
+  (probe needle + ~700ms pierce timing preserved); the flat ufo.png DOM
+  sprites in battle.js (debuff flyover for raceImplant, raceTractorBeam tow)
+  are DELETED, replaced with `ThreeVFXEffects.sigUFO3D` calls. `_sigUFO3D`
+  gained `path`/`pathMs` opts (glides along tile waypoints during hover, beam
+  tracks; exit starts from the last waypoint) for the tractor tow.
+- **Minimap (three-renderer.js)**: `_miniUnitVisible` now also requires the
+  enemy's tile in `_fogVisibleSet` (the same set that hides 3D models) — no
+  more permanent enemy dots through fog. Wrapper restyled to match the HUD
+  panels: `rgba(8,10,18,0.82)` bg, faint `rgba(120,140,180,0.16)` edge, 8px
+  chamfer clip-path (no border-radius), small DotGothic "TACTICAL" label.
+
 ## Party Builder redesign round 2 (2026-07-06, same session) — party-builder.js only
 Token bumped `20260706c` → `20260706d`. Six feedback fixes:
 - Header BACK removed; footer is now ONE command row: red `← BACK`

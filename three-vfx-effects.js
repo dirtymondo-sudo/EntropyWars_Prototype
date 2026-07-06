@@ -4289,29 +4289,17 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var tipR = ts * 0.075;
         var tipLen = ts * 0.2;
 
-        // Saucer body (grey metal hull)
-        var bodyGeo = new THREE.SphereGeometry(1, 20, 12);
-        var matBody = new THREE.MeshBasicMaterial({ color: 0x9aa3b2, transparent: true, opacity: 0, depthWrite: true });
-        var body = new THREE.Mesh(bodyGeo, matBody);
-        body.renderOrder = 160; scene.add(body);
-
-        // Darker metallic equator rim
-        var rimGeo = new THREE.TorusGeometry(1, 0.13, 8, 24);
-        var matRim = new THREE.MeshBasicMaterial({ color: 0x59626f, transparent: true, opacity: 0, depthWrite: true });
-        var rim = new THREE.Mesh(rimGeo, matRim);
-        rim.rotation.x = Math.PI / 2; rim.renderOrder = 161; scene.add(rim);
-
-        // Glass cockpit dome
-        var domeGeo = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        var matDome = new THREE.MeshBasicMaterial({ color: 0x99e0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
-        var dome = new THREE.Mesh(domeGeo, matDome);
-        dome.renderOrder = 162; scene.add(dome);
-
-        // Under-belly glow disc
-        var glowGeo = new THREE.CircleGeometry(1, 24);
-        var matGlow = new THREE.MeshBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-        var glow = new THREE.Mesh(glowGeo, matGlow);
-        glow.rotation.x = -Math.PI / 2; glow.renderOrder = 159; scene.add(glow);
+        // Saucer: the one true craft — same crop-circle builder (_sigBuildUFO)
+        // so every UFO in the game is the same metal.png-clad hero saucer.
+        var ufo = _sigBuildUFO(bodyR);
+        var saucer = ufo.group;
+        saucer.position.set(wp.x, hoverY, wp.z);
+        scene.add(saucer);
+        ufo.hullMat.opacity = 0; ufo.rimMat.opacity = 0;
+        ufo.domeMat.opacity = 0; ufo.glowMat.opacity = 0;
+        for (var _li = 0; _li < ufo.lights.length; _li++) ufo.lights[_li].opacity = 0;
+        var saucerParts = [];
+        saucer.traverse(function (n) { if (n.isMesh) saucerParts.push(n); });
 
         // Abduction beam cone
         var beamGeo = new THREE.CylinderGeometry(0.18, 1, 1, 20, 1, true);
@@ -4338,7 +4326,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         flash.renderOrder = 166; scene.add(flash);
 
         var totalMs = 1350;
-        var entry = { meshes: [body, rim, dome, glow, beam, shaft, tip, flash], done: false };
+        var entry = { meshes: [saucer].concat(saucerParts, [beam, shaft, tip, flash]), done: false };
 
         _animate3D(entry, totalMs, function(elapsed) {
             var appearE = Math.min(elapsed / 320, 1); appearE = 1 - Math.pow(1 - appearE, 3);
@@ -4354,26 +4342,19 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             var ascend = elapsed < 900 ? 0 : Math.min((elapsed - 900) / 450, 1) * ts * 0.9;
 
             var curHoverY = hoverY + ts * 0.6 * (1 - appearE) + ascend;
-            var curBottomY = curHoverY - bodyH * 0.5;
+            var curBottomY = curHoverY - bodyR * 0.16;
 
-            body.position.set(wp.x, curHoverY, wp.z);
-            body.scale.set(bodyR, bodyH, bodyR);
-            body.rotation.y = elapsed * 0.002;
-            matBody.opacity = appearE;
-
-            rim.position.set(wp.x, curHoverY, wp.z);
-            rim.scale.set(bodyR * 0.99, bodyR * 0.99, bodyH * 1.3);
-            rim.rotation.z = elapsed * 0.002;
-            matRim.opacity = appearE;
-
-            dome.position.set(wp.x, curHoverY + bodyH * 0.35, wp.z);
-            dome.scale.set(bodyR * 0.45, bodyR * 0.42, bodyR * 0.45);
-            matDome.opacity = appearE * 0.5;
-
-            var glowPulse = 1 + 0.18 * Math.sin(elapsed * 0.02);
-            glow.position.set(wp.x, curBottomY - 2, wp.z);
-            glow.scale.set(bodyR * 0.7 * glowPulse, bodyR * 0.7 * glowPulse, 1);
-            matGlow.opacity = appearE * (0.35 + 0.15 * Math.sin(elapsed * 0.02)) * fade;
+            saucer.position.set(wp.x, curHoverY, wp.z);
+            saucer.rotation.y = elapsed * 0.0022;
+            var sOp = appearE * fade;
+            ufo.hullMat.opacity = sOp;
+            ufo.rimMat.opacity = 0.5 * sOp;
+            ufo.domeMat.opacity = 0.4 * sOp;
+            ufo.glowMat.opacity = (0.5 + 0.2 * Math.sin(elapsed * 0.01)) * sOp;
+            for (var li = 0; li < ufo.lights.length; li++) {
+                ufo.lights[li].opacity =
+                    (0.25 + 0.75 * (0.5 + 0.5 * Math.sin(elapsed * 0.006 - li * 0.63))) * sOp;
+            }
 
             var beamLen = Math.max(1, curBottomY - wp.y);
             beam.position.set(wp.x, wp.y + beamLen * 0.5, wp.z);
@@ -7384,6 +7365,20 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         group.position.set(wp.x, wp.y, wp.z);
         group.add(ufo.group);
 
+        /* Optional path: array of {x,y} tile coords — during the hover phase
+           the saucer glides along them (tractor-beam style tows). Offsets are
+           relative to the anchor tile (tx,ty). */
+        var pathPts = null;
+        if (opts.path && opts.path.length > 1) {
+            pathPts = [];
+            for (var pi = 0; pi < opts.path.length; pi++) {
+                var pw = _worldPos(opts.path[pi].x, opts.path[pi].y);
+                pathPts.push({ x: pw.x - wp.x, z: pw.z - wp.z });
+            }
+        }
+        var pathMs = opts.pathMs != null ? opts.pathMs : hoverMs;
+        var endOff = pathPts ? pathPts[pathPts.length - 1] : { x: 0, z: 0 };
+
         var enterDir = rn(0, Math.PI * 2);
         var exitDir = enterDir + Math.PI + rn(-0.8, 0.8);
         var enterDist = ts * 9;
@@ -7415,15 +7410,23 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
                 if (beamMat) beamMat.opacity = 0;
             } else if (el < enterMs + hoverMs) {
                 var t2 = (el - enterMs) / hoverMs;
+                var offX = 0, offZ = 0;
+                if (pathPts) {
+                    var pf = Math.min(1, (el - enterMs) / Math.max(1, pathMs)) * (pathPts.length - 1);
+                    var pi0 = Math.floor(pf), pi1 = Math.min(pathPts.length - 1, pi0 + 1);
+                    var pft = pf - pi0;
+                    offX = pathPts[pi0].x + (pathPts[pi1].x - pathPts[pi0].x) * pft;
+                    offZ = pathPts[pi0].z + (pathPts[pi1].z - pathPts[pi0].z) * pft;
+                }
                 ufo.group.position.set(
-                    Math.sin(el * 0.003) * 4,
+                    offX + Math.sin(el * 0.003) * 4,
                     hoverH + Math.sin(el * 0.004) * 7,
-                    Math.cos(el * 0.0025) * 4);
+                    offZ + Math.cos(el * 0.0025) * 4);
                 ufo.group.rotation.z = 0;
                 ufo.group.rotation.x = 0;
                 if (beam) {
                     var bh = hoverH - R * 0.16;
-                    beam.position.y = bh / 2;
+                    beam.position.set(offX, bh / 2, offZ);
                     beam.scale.set(R * 0.85, bh, R * 0.85);
                     var ripple = 0.75 + 0.25 * Math.sin(el * 0.02);
                     beamMat.opacity = 0.22 * ripple * Math.min(1, t2 * 4)
@@ -7434,9 +7437,9 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
                 var d3 = enterDist * 1.2 * e3;
                 if (beamMat) beamMat.opacity = 0;
                 ufo.group.position.set(
-                    Math.cos(exitDir) * d3,
+                    endOff.x + Math.cos(exitDir) * d3,
                     hoverH + e3 * ts * 3,
-                    Math.sin(exitDir) * d3);
+                    endOff.z + Math.sin(exitDir) * d3);
                 ufo.group.rotation.z = -0.4 * e3 * Math.cos(exitDir);
                 /* motion-stretch streak as it blasts off */
                 ufo.group.scale.set(R * (1 + e3 * 0.6), R * (1 - e3 * 0.3), R * (1 + e3 * 0.6));

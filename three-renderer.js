@@ -15185,13 +15185,24 @@ const ThreeRenderer = (function () {
         if (_miniWrap) return;
         _miniWrap = document.createElement('div');
         _miniWrap.id = 'battleMinimap';
+        /* Styled to match the HUD panels (hud.js EW palette): same panel
+           background/edge tokens, DotGothic label, and a notched corner via
+           clip-path instead of the old rounded-card look. */
         _miniWrap.style.cssText = [
             'position:fixed', 'right:14px', 'bottom:14px', 'z-index:60',
-            'pointer-events:none', 'border-radius:10px', 'padding:6px',
-            'box-sizing:content-box', 'background:rgba(10,14,22,0.62)',
-            'border:1px solid rgba(120,150,190,0.35)',
-            'box-shadow:0 4px 18px rgba(0,0,0,0.45)'
+            'pointer-events:none', 'padding:6px',
+            'box-sizing:content-box', 'background:rgba(8,10,18,0.82)',
+            'border:1px solid rgba(120,140,180,0.16)',
+            'clip-path:polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
         ].join(';');
+        var _miniLabel = document.createElement('div');
+        _miniLabel.textContent = 'TACTICAL';
+        _miniLabel.style.cssText = [
+            'font-family:"DotGothic16", monospace', 'font-size:9px',
+            'letter-spacing:0.18em', 'color:#8a93a8',
+            'padding:0 0 4px 1px', 'text-transform:uppercase'
+        ].join(';');
+        _miniWrap.appendChild(_miniLabel);
         _miniCanvas = document.createElement('canvas');
         _miniCanvas.style.cssText = 'display:block;';
         _miniWrap.appendChild(_miniCanvas);
@@ -15211,12 +15222,16 @@ const ThreeRenderer = (function () {
         return 1;
     }
 
-    /* Fog-of-war aware: own units always show; enemies only when not concealed. */
+    /* Fog-of-war aware: own units always show; enemies only when their tile is
+       actually inside the viewer's vision (same _fogVisibleSet that hides their
+       3D models) AND they aren't concealed (invisible / smoke). The minimap
+       must never leak positions the board itself hides. */
     function _miniUnitVisible(u, viewer) {
         if (u.player === viewer) return true;
         if (!state.fogOfWar) return true;
         var ap = (state && state.autoPlayers) || {};
         if (ap[viewer]) return true; /* viewer is AI / spectated → reveal */
+        if (_fogVisibleSet && !_fogVisibleSet.has(u.x + ',' + u.y)) return false;
         try {
             if (window.GAME && typeof window.GAME.isUnitConcealedFrom === 'function')
                 return !window.GAME.isUnitConcealedFrom(u, viewer);

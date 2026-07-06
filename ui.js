@@ -2820,11 +2820,17 @@
               if (u && u.z != null) return u.z;
               return (typeof getHeightAt === 'function') ? getHeightAt(cx, cy) : 0;
             };
-            const _rangeD = (cx, cy) => (typeof combatReach === 'function')
-              ? combatReach(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy), _spellLong)
-              : (typeof combatDist === 'function')
-                ? combatDist(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy))
-                : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
+            // Sky grabs (skyDrop/skyThrow/skySlam) swoop from the air: horizontal
+            // range only, no elevation tax and no terrain LOS — must match the
+            // engine's own 2D validation in doSpell or clicks get rejected.
+            const _skyGrabHl = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+            const _rangeD = (cx, cy) => _skyGrabHl
+              ? (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy))
+              : (typeof combatReach === 'function')
+                ? combatReach(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy), _spellLong)
+                : (typeof combatDist === 'function')
+                  ? combatDist(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy))
+                  : (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy));
             if (_selectedForHl._skyThrowGrab && state._skyThrowHighlight) {
               // Sky-throw "phase 2": a target is grabbed — highlight where it can be
               // hurled (throwRange tiles around the grabbed unit), NOT the caster's
@@ -2960,7 +2966,7 @@
             } else {
               const _fogLimitSpells = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
               const _genEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
-              const _genSkipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport';
+              const _genSkipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport' || _skyGrabHl;
               const _genSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {

@@ -2861,10 +2861,17 @@
 
             const minR = (_kindMeta(spell).minRange ?? 1);
 
+            // Sky grabs (Predator Drop / Sky Throw / Sky Slam) swoop down from the
+            // air: range is horizontal-only and terrain never blocks the dive —
+            // this MUST match doSpell's own 2D-Manhattan/no-LOS validation, or the
+            // highlight/click gates reject casts the engine would accept
+            // ("no longer in range" while hovering right next to the target).
+            const _skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+
             // 'delayed' (artillery / called-in strikes) is indirect fire that arcs over
             // terrain — exempt from line-of-sight so its range highlight (and the AI's
             // reach check) match doSpell, which also skips LOS for this kind.
-            const skipLOS = spell.kind === 'teleport' || spell.kind === 'delayed' || spell.ignoresLineOfSight === true;
+            const skipLOS = spell.kind === 'teleport' || spell.kind === 'delayed' || spell.ignoresLineOfSight === true || _skyGrab;
 
             const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
             const _km = _kindMeta(spell);
@@ -2883,7 +2890,7 @@
                             : null;
                         if (colEnemy) tz = colEnemy.z ?? 0;
                     }
-                    let effectiveD = combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
+                    let effectiveD = _skyGrab ? dxy : combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
                     if (effectiveD < minR || effectiveD > effRange) continue;
 
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
@@ -18227,7 +18234,10 @@
             const minRange = _skm.minRange ?? 1;
             const isOffensive = !!_skm.offensive;
             const effRange = getEffectiveSpellRange(unit, spell);
-            const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport';
+            // Sky grabs dive from the air — terrain LOS never blocks them (matches
+            // doSpell, which does no LOS check for these kinds).
+            const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport'
+                || spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const _needsAbove = spellRequiresAboveTarget(spell);
             const _casterStandH = _needsAbove
@@ -18920,15 +18930,20 @@
             }
             if (!actionModeNeedsTargetConfirm()) return false;
 
-            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
+            /* Sky-throw phase 2 hover is view-INDEPENDENT (matches clickTile):
+               while a grab is held, hovering validates against the throw ring
+               around the grabbed unit, whatever the menu view re-armed to. */
+            const _stHoverUnit = getSelectedUnit();
+            const _stHoverGrab = _stHoverUnit && _stHoverUnit._skyThrowGrab && state._skyThrowHighlight;
+            if (_stHoverGrab) {
+                const hl = state._skyThrowHighlight;
+                const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
+                if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) return false;
+            } else if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
                 const unit = getSelectedUnit();
                 if (!unit) return false;
 
-                if (unit._skyThrowGrab && state._skyThrowHighlight) {
-                    const hl = state._skyThrowHighlight;
-                    const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
-                    if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) return false;
-                } else {
+                {
                     let validTargets;
                     if (state.actionMenuView === 'attackTargets') {
                         validTargets = _getAttackValidTargets(unit);
@@ -18947,7 +18962,7 @@
                 }
             }
 
-            if (state.actionMode === 'spell' && state.actionMenuView === 'spells') {
+            if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && !_stHoverGrab) {
                 const unit = getSelectedUnit();
                 if (unit) {
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
@@ -19224,18 +19239,23 @@
             const needsConfirm = actionModeNeedsTargetConfirm();
             if (clickedUnit) focusUnitPanel(clickedUnit.id);
 
-            if (needsConfirm && (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets')) {
+            /* Sky-throw phase 2 is view-INDEPENDENT: once a target is grabbed, the
+               next board click is the throw destination no matter what the action
+               menu re-armed itself to ('spells', 'spellTargets', …). Gating this
+               on the menu view used to send drop-tile clicks into the generic
+               range validators ("no longer in range") and dead-end the grab. */
+            const _hasSkyGrab = needsConfirm && actingUnit._skyThrowGrab && state._skyThrowHighlight;
+            if (_hasSkyGrab || (needsConfirm && (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets'))) {
 
-                if (actingUnit._skyThrowGrab && state._skyThrowHighlight) {
+                if (_hasSkyGrab) {
                     const hl = state._skyThrowHighlight;
                     const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
                     if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) {
-                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
-                            return;
-                        }
-                        if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) {
-                            selectUnit(clickedUnit.id);
-                        }
+                        /* The grab already cost MP — never cancel it (or reselect
+                           another unit) on a stray click; just nudge the player
+                           back to the highlighted ring. Right-click/BACK cancels. */
+                        addLog('Pick a highlighted tile to throw them to.', actingUnit.player);
+                        playErrorSfx();
                         return;
                     }
                     // Valid throw destination → resolve the throw on this single click.
@@ -20833,6 +20853,32 @@
             return getJumpTiles(unit).length > 0;
         }
 
+        /* Sky-grab casts (Predator Drop / Sky Throw / Sky Slam) are aerial moves:
+           a grounded flyer sweeps INTO the air as part of the cast — the swoop is
+           the spell, so no separate Take Off click (or AP) is required, and the
+           drop damage is computed from the real airborne height. */
+        function _skySwoopTakeoff(unit) {
+            if (typeof canFly !== 'function' || !canFly(unit)) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (typeof getMinFlyingZ !== 'function') return false;
+            const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y) : ((unit.z ?? 0) + 8);
+            let newZ = Math.max(getMinFlyingZ(unit.x, unit.y), (unit.z ?? 0) + 1);
+            // Collision guard: don't stack on another airborne unit in this column.
+            while (newZ <= maxZ && state.units.some(u =>
+                u !== unit && !u.dead && !u._dying &&
+                u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
+                newZ++;
+            }
+            if (newZ > maxZ) return false;
+            unit.z = newZ;
+            if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'in');
+            playSfx('buff');
+            showFloatingTextForUnit(unit, '⬆ SWOOP', 'buff', { durationMs: 900 });
+            addLog(`${unitDisplayName(unit)} sweeps into the air!`);
+            scheduleBoardRender();
+            return true;
+        }
+
         function doJump(unit, x, y, z) {
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
@@ -20924,10 +20970,21 @@
             const _jumpAnimMs = (!boardEl || _skipVisuals()) ? 0 : 650;
             const _doPostJump = () => {
                 state._actionExecuting = false;
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
+                /* Jumping IS movement: stay in move mode when the unit can still
+                   walk (same re-arm cascade as finishMoveAt) instead of dumping
+                   the player back to the root menu after every hop. */
+                const _postJumpCanMove = canUnitMove(unit);
+                if (_postJumpCanMove) {
+                    state.actionMode = 'move';
+                    state.pendingTarget = null;
+                } else {
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state._tileActionTarget = null;
+                    state._enemyActionTargetId = null;
+                }
                 if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
                 checkWin();
                 endUnitIfDone(unit);
@@ -23202,58 +23259,18 @@
                 completionDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
                 window.setTimeout(() => playProjectileToUnit(unit, target, 'proj-debuff', cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), projectileDelay);
 
-                /* ── Grey alien UFO flyover for debuff spells ── */
+                /* ── UFO flyover for alien debuff spells — the crop-circle 3D
+                   saucer (ThreeVFXEffects.sigUFO3D), replacing the old flat
+                   ufo.png sprite so every UFO in the game is the same craft. ── */
                 const _greyUfoSpells = ['raceProbe', 'raceAbductionBeam', 'raceImplant'];
-                if (_greyUfoSpells.includes(spell.id) && !_skipVisuals() && boardEl) {
-                    const _guTs = CONFIG.tileSize || 64;
-                    const _guGap = CONFIG.tileGap ?? 0;
-                    const _guPad = CONFIG.boardPadding ?? 2;
-                    const _guSize = Math.round(_guTs * 2);
-                    const _guHoverZ = 280;
-
-                    const guEl = document.createElement('div');
-                    guEl.style.cssText = `
-                        position: absolute; pointer-events: none;
-                        width: ${_guSize}px; height: ${_guSize}px;
-                        image-rendering: pixelated; z-index: 9999;
-                        transition: transform 600ms cubic-bezier(.22,.58,.36,1), opacity 400ms ease;
-                        opacity: 0;
-                    `;
-                    const guImg = document.createElement('img');
-                    guImg.src = 'https://cdn.entropywars.net/Assets/Sprites/ufo.png';
-                    guImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
-                    guEl.appendChild(guImg);
-
-                    const _guOff = (_guSize - _guTs) / 2;
-                    /* Position over target tile */
-                    guEl.style.left = (_guPad + target.x * (_guTs + _guGap) - _guOff) + 'px';
-                    guEl.style.top = (_guPad + target.y * (_guTs + _guGap) - _guOff) + 'px';
-
-                    const _guTargZ = (typeof getHeightAt === 'function') ? getHeightAt(target.x, target.y) : 0;
-                    const _guElevPx = (_guTargZ > 0 && typeof window._getElevationPx === 'function')
-                        ? window._getElevationPx(_guTargZ) : 0;
-                    const tiltDeg = state.dioramaTiltDeg ?? 50;
-                    const yawDeg = state.dioramaYawDeg ?? 0;
-                    const _guTotalZ = _guElevPx + _guHoverZ;
-                    guEl.style.transform = `translateZ(${_guTotalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
-
-                    boardEl.appendChild(guEl);
-
-                    /* Fade in at projectile impact time */
+                if (_greyUfoSpells.includes(spell.id) && !_skipVisuals()
+                    && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigUFO3D === 'function') {
+                    const _guHoverMs = Math.max(700, impactDelay - projectileDelay + actionMs(400));
                     window.setTimeout(() => {
-                        guEl.style.opacity = '0.9';
-                    }, projectileDelay);
-
-                    /* After hovering, ascend and fade out */
-                    window.setTimeout(() => {
-                        guEl.style.transition = 'transform 600ms ease-in, opacity 600ms ease-in';
-                        requestAnimationFrame(() => {
-                            const ascentZ = _guElevPx + _guHoverZ + 200;
-                            guEl.style.transform = `translateZ(${ascentZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
-                            guEl.style.opacity = '0';
+                        window.ThreeVFXEffects.sigUFO3D(target.x, target.y, {
+                            enterMs: 340, hoverMs: _guHoverMs, exitMs: 460,
                         });
-                        setTimeout(() => { guEl.remove(); }, 700);
-                    }, impactDelay + actionMs(400));
+                    }, Math.max(0, projectileDelay - 340));
                 }
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
@@ -24045,66 +24062,27 @@
                     animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120);
                     const pullAnimMs = _pullSteps.length * 120;
 
-                    if (spell.id === 'raceTractorBeam' && !_skipVisuals() && boardEl) {
-                        const _ufoTs = CONFIG.tileSize || 64;
-                        const _ufoGap = CONFIG.tileGap ?? 0;
-                        const _ufoPad = CONFIG.boardPadding ?? 2;
+                    if (spell.id === 'raceTractorBeam' && !_skipVisuals()
+                        && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigUFO3D === 'function') {
+                        /* The crop-circle 3D saucer tows the target: it glides
+                           along the pull path (path option) with its tractor
+                           beam on, then blasts off — replaces the old flat
+                           ufo.png sprite so every UFO is the same craft. */
                         const _ufoStepMs = 120;
+                        const _ufoPathMs = _pullSteps.length * _ufoStepMs;
+                        window.ThreeVFXEffects.sigUFO3D(_pullFromX, _pullFromY, {
+                            enterMs: 260,
+                            hoverMs: _ufoPathMs + 480,
+                            exitMs: 460,
+                            beam: true, beamColor: 0x55ff99,
+                            path: [{ x: _pullFromX, y: _pullFromY }].concat(_pullSteps),
+                            pathMs: _ufoPathMs,
+                        });
 
-                        const _ufoSize = Math.round(_ufoTs * 2);
-
-                        const _ufoHoverZ = 280;
-
-                        const ufoEl = document.createElement('div');
-                        ufoEl.style.cssText = `
-                            position: absolute; pointer-events: none;
-                            width: ${_ufoSize}px; height: ${_ufoSize}px;
-                            image-rendering: pixelated; z-index: 9999;
-                            transition: left ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
-                                        top ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
-                                        transform ${_ufoStepMs}ms cubic-bezier(.22,.58,.36,1),
-                                        opacity 400ms ease;
-                            opacity: 0;
-                        `;
-                        const ufoImg = document.createElement('img');
-                        ufoImg.src = 'https://cdn.entropywars.net/Assets/Sprites/ufo.png';
-                        ufoImg.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:pixelated;';
-                        ufoEl.appendChild(ufoImg);
-
-                        const _ufoOff = (_ufoSize - _ufoTs) / 2;
-                        ufoEl.style.left = (_ufoPad + _pullFromX * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
-                        ufoEl.style.top = (_ufoPad + _pullFromY * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
-
-                            const _fromZ = (typeof getHeightAt === 'function') ? getHeightAt(_pullFromX, _pullFromY) : 0;
-                            const _fromElevPx = (_fromZ > 0 && typeof window._getElevationPx === 'function')
-                                ? window._getElevationPx(_fromZ) : 0;
-                            const tiltDeg = state.dioramaTiltDeg ?? 50;
-                            const yawDeg = state.dioramaYawDeg ?? 0;
-                            const totalZ = _fromElevPx + _ufoHoverZ;
-                            ufoEl.style.transform = `translateZ(${totalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
-
-                        boardEl.appendChild(ufoEl);
-
-                        requestAnimationFrame(() => { ufoEl.style.opacity = '0.9'; });
-
+                        /* Keep the per-step / arrival fx cues on the old cadence. */
                         let _ufoStepIdx = 0;
-                        function _ufoSlide() {
+                        function _ufoStepFx() {
                             if (_ufoStepIdx >= _pullSteps.length) {
-
-                                ufoEl.style.transition = 'transform 600ms ease-in, opacity 600ms ease-in';
-                                requestAnimationFrame(() => {
-                                        const lastPt = _pullSteps[_pullSteps.length - 1];
-                                        const _arrZ = (typeof getHeightAt === 'function') ? getHeightAt(lastPt.x, lastPt.y) : 0;
-                                        const _arrElevPx = (_arrZ > 0 && typeof window._getElevationPx === 'function')
-                                            ? window._getElevationPx(_arrZ) : 0;
-                                        const tiltDeg = state.dioramaTiltDeg ?? 50;
-                                        const yawDeg = state.dioramaYawDeg ?? 0;
-                                        const ascentZ = _arrElevPx + _ufoHoverZ + 200;
-                                        ufoEl.style.transform = `translateZ(${ascentZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
-                                    ufoEl.style.opacity = '0';
-                                });
-                                setTimeout(() => { ufoEl.remove(); }, 700);
-
                                 if (typeof window.__playFx === 'function') {
                                     const lastPt = _pullSteps[_pullSteps.length - 1];
                                     window.__playFx('raceTractorBeam_arrive', lastPt.x, lastPt.y);
@@ -24112,26 +24090,13 @@
                                 return;
                             }
                             const pt = _pullSteps[_ufoStepIdx];
-                            ufoEl.style.left = (_ufoPad + pt.x * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
-                            ufoEl.style.top = (_ufoPad + pt.y * (_ufoTs + _ufoGap) - _ufoOff) + 'px';
-                            ufoEl.style.zIndex = String(9999);
-
-                                const stepZ = (typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0;
-                                const tiltDeg = state.dioramaTiltDeg ?? 50;
-                                const yawDeg = state.dioramaYawDeg ?? 0;
-                                const elevPx = (stepZ > 0 && typeof window._getElevationPx === 'function')
-                                    ? window._getElevationPx(stepZ) : 0;
-                                const totalZ = elevPx + _ufoHoverZ;
-                                ufoEl.style.transform = `translateZ(${totalZ}px) rotateZ(${-yawDeg}deg) translateY(50%) rotateX(${-tiltDeg}deg) translateY(-50%)`;
-
                             if (typeof window.__playFx === 'function') {
                                 window.__playFx('raceTractorBeam_step', pt.x, pt.y);
                             }
                             _ufoStepIdx++;
-                            setTimeout(_ufoSlide, _ufoStepMs);
+                            setTimeout(_ufoStepFx, _ufoStepMs);
                         }
-
-                        requestAnimationFrame(() => setTimeout(_ufoSlide, 30));
+                        setTimeout(_ufoStepFx, 290);
                     }
 
                     if (_pullTether) {
@@ -25867,6 +25832,7 @@
                     return 0;
                 }
                 pushUndoSnapshot(true);
+                if (spell.requiresFlight) _skySwoopTakeoff(unit);
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
 
@@ -26020,6 +25986,7 @@
                         playErrorSfx();
                         return 0;
                     }
+                    if (spell.requiresFlight) _skySwoopTakeoff(unit);
 
                     unit.mp -= effectiveSpellCost;
 
@@ -26034,6 +26001,14 @@
                             range: spell.throwRange || 3,
                             casterId: unit.id
                         };
+                        /* Lock the aim state for phase 2: whatever view/tool churn
+                           happened around the grab (repeat-queue re-arms, menu
+                           renders), the next click must read as the throw pick. */
+                        state.actionMode = 'spell';
+                        state.actionMenuView = 'spellTargets';
+                        state.selectedTool = spell.name;
+                        state.pendingTarget = null;
+                        state._actionExecuting = false;
                     }
                     scheduleBoardRender();
                     return 0;
@@ -26059,6 +26034,7 @@
                     return 0;
                 }
                 pushUndoSnapshot(true);
+                if (spell.requiresFlight) _skySwoopTakeoff(unit);
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
 

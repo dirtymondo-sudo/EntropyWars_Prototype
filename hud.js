@@ -3368,6 +3368,63 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
 // Execute one quick-menu action against the clicked enemy — including the
 // one-click move/jump/take-off + strike combos. Ported verbatim from the old
 // EnemyActionMenu card click handler.
+// ── "Move Towards" chase chain ─────────────────────────────────────────────
+// One click on Move Towards should spend the unit's WHOLE remaining movement
+// closing the distance (walk, walk again, jump — it's all movement), not a
+// single ring-1 step that strands the player back in the menus.
+function _bestTowardStep(actingUnit, targetUnit) {
+  const G = window.GAME;
+  const tz = targetUnit.z ?? 0;
+  const cd = (fx, fy, fz) => (G && typeof G.combatDist === 'function')
+    ? G.combatDist(fx, fy, fz ?? 0, targetUnit.x, targetUnit.y, tz)
+    : Math.abs(fx - targetUnit.x) + Math.abs(fy - targetUnit.y);
+  let best = null;
+  let bestD = cd(actingUnit.x, actingUnit.y, actingUnit.z ?? 0);
+  if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit)) {
+    for (const t of getMoveTiles(actingUnit)) {
+      if (t._takeoff) continue;
+      if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+      const d = cd(t.x, t.y, t.z);
+      if (d < bestD) { best = { x: t.x, y: t.y, z: t.z }; bestD = d; }
+    }
+  }
+  if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+    for (const t of getJumpTiles(actingUnit)) {
+      if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+      const d = cd(t.x, t.y, t.z);
+      if (d < bestD) { best = { x: t.x, y: t.y, z: t.z, _jump: true }; bestD = d; }
+    }
+  }
+  return best;
+}
+
+function _chainMoveTowards(actingUnit, targetUnit) {
+  const _finish = () => {
+    state._enemyActionTargetId = null;
+    state.pendingTarget = null;
+    if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+    if (typeof renderIfDirty === 'function') renderIfDirty();
+    if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  };
+  if (!actingUnit || actingUnit.dead || !targetUnit || targetUnit.dead) return _finish();
+  if ((actingUnit.ap || 0) < 1) return _finish();
+  const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
+  if (dist <= 1) return _finish();
+  const step = _bestTowardStep(actingUnit, targetUnit);
+  if (!step) return _finish();
+  if (step._jump) {
+    const jr = typeof doJump === 'function' ? doJump(actingUnit, step.x, step.y, step.z) : false;
+    if (jr === false) return _finish();
+    // doJump's post-jump settle runs at ~650ms; chain just after it.
+    setTimeout(() => _chainMoveTowards(actingUnit, targetUnit), 700);
+  } else {
+    const mr = typeof doMove === 'function' ? doMove(actingUnit, step.x, step.y, step.z) : false;
+    if (mr === false) return _finish();
+    const delay = typeof mr === 'number' ? mr : 450;
+    setTimeout(() => _chainMoveTowards(actingUnit, targetUnit), delay + 60);
+  }
+}
+
 function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (!a.available) return;
   hideSpellTooltip();
@@ -3378,14 +3435,11 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   const isMove = !!a.moveTile;
 
   const _executeAction = (actionId, spell, tx, ty, tz) => {
-    // "Move Towards" is pure movement — the walk already happened in the
-    // moveTile branch below; there's no follow-up strike, just tidy up.
+    // "Move Towards" is pure movement — the FIRST step already happened in the
+    // moveTile branch below. Keep chasing: chain further walk/jump steps until
+    // the unit's movement is spent or it's adjacent to the target.
     if (actionId === 'moveTowards') {
-      state._enemyActionTargetId = null;
-      state.pendingTarget = null;
-      if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
-      if (typeof renderIfDirty === 'function') renderIfDirty();
-      if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+      _chainMoveTowards(actingUnit, targetUnit);
       return;
     }
 
