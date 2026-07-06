@@ -7,7 +7,7 @@ if (!document.getElementById('pb-hover-css')) {
   const _css = document.createElement('style');
   _css.id = 'pb-hover-css';
   _css.textContent = `
-    /* ── Party Builder hover feedback ── */
+    /* ── Party Builder — champ-select redesign ── */
 
     /* Ghost outline buttons (BACK, RANDOM, RANDOM ALL, DEFAULTS, RND, RST) */
     .pb-btn-ghost {
@@ -120,34 +120,13 @@ if (!document.getElementById('pb-hover-css')) {
       transform: scale(0.95);
     }
 
-    /* Spell rows (slots + pool) */
-    .pb-spell-row {
-      transition: background 0.1s, filter 0.1s !important;
-    }
-    .pb-spell-row:hover {
-      filter: brightness(1.35);
-    }
-    .pb-spell-row:active {
-      filter: brightness(0.85);
-    }
-
     /* Rich spell tooltip */
     @keyframes pbTipIn {
       from { opacity: 0; transform: translateY(5px); }
       to   { opacity: 1; transform: none; }
     }
 
-    /* Accessory / Item rows */
-    .pb-equip-row {
-      transition: background 0.12s, border-color 0.12s, box-shadow 0.1s !important;
-    }
-    .pb-equip-row:hover {
-      border-color: rgba(180,200,240,0.3) !important;
-      box-shadow: 0 0 6px rgba(180,200,240,0.06);
-      filter: brightness(1.15);
-    }
-
-    /* Item stepper +/- buttons */
+    /* Item stepper +/- buttons (equipment pickers) */
     .pb-stepper-btn {
       transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
     }
@@ -161,17 +140,162 @@ if (!document.getElementById('pb-hover-css')) {
       background: rgba(180,200,240,0.2) !important;
     }
 
-    /* Footer slot thumbnails */
-    .pb-footer-slot {
-      transition: border-color 0.12s, background 0.12s, box-shadow 0.12s, transform 0.1s !important;
+    /* ── Battle-parity ability BLADES ──────────────────────────────
+       Same visual instrument as the in-battle Horologe menu (hud.js):
+       skewed dark body with angled ends, colored category left edge,
+       glyph, Cinzel name, chips on the right — plus an always-visible
+       one-line description (no hover required to learn a spell). */
+    .pbx-blade {
+      position: relative;
+      display: flex; align-items: center; gap: 8px;
+      min-height: 40px; padding: 3px 14px 4px 8px; margin: 0 9px 0 5px;
+      background: linear-gradient(100deg, #0c101f 0%, #0a0c15 55%, rgba(10,12,21,0.55) 100%);
+      border: 1px solid rgba(120,140,180,0.2);
+      border-left: 3px solid var(--cat, #8890b0);
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+      transform: skewX(-6deg); transform-origin: 0 50%;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, box-shadow 0.15s,
+                  transform 0.12s, opacity 0.15s;
     }
-    .pb-footer-slot:hover {
-      border-color: rgba(180,200,240,0.4) !important;
-      box-shadow: 0 0 8px rgba(180,200,240,0.1);
+    .pbx-blade > * { transform: skewX(6deg); }
+    .pbx-blade:hover {
+      background: linear-gradient(100deg, #16203a 0%, #0e1326 65%, rgba(14,19,38,0.6) 100%);
+      border-color: var(--cat, #8890b0);
+      box-shadow: -2px 0 14px rgba(120,150,220,0.14), inset 3px 0 0 var(--cat, #8890b0);
+      transform: skewX(-6deg) translateX(3px);
+    }
+    .pbx-blade:active { filter: brightness(0.85); }
+    .pbx-blade.on {
+      background: linear-gradient(100deg, #121a30 0%, #0d1222 65%, rgba(13,18,34,0.6) 100%);
+      border-color: var(--cat, #8890b0);
+      box-shadow: inset 3px 0 0 var(--cat, #8890b0), -1px 0 10px rgba(0,0,0,0.4);
+    }
+    .pbx-blade.empty {
+      border: 1px dashed rgba(120,140,180,0.22);
+      border-left: 3px solid rgba(120,140,180,0.12);
+      background: rgba(255,255,255,0.015);
+      cursor: default; min-height: 26px;
+    }
+    .pbx-blade.empty:hover {
+      transform: skewX(-6deg); box-shadow: none;
+      background: rgba(255,255,255,0.015);
+      border-color: rgba(120,140,180,0.22);
+    }
+    .pbx-glyph { font-size: 15px; width: 18px; text-align: center; flex: none;
+                 text-shadow: 0 0 10px rgba(0,0,0,0.6); }
+    .pbx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .pbx-row1 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+    /* the NAME never shrinks — chips clip at the right edge if space runs out
+       (same rule as the battle blades) */
+    .pbx-name {
+      flex: 0 0 auto; max-width: 50%;
+      font-family: 'Cinzel', serif; font-weight: 700; font-size: 13px;
+      letter-spacing: 0.04em; color: #e6e9f2; line-height: 1.15;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    @media (max-width: 1500px) {
+      .pbx-name { font-size: 12px; }
+    }
+    .pbx-desc {
+      font-size: 10px; line-height: 1.3; color: #77809a;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pbx-mp {
+      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #7fc9e8;
+      border: 1px solid rgba(95,214,255,0.35); background: rgba(95,214,255,0.08);
+      padding: 1px 5px; white-space: nowrap;
+    }
+    .pbx-pw { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+    .pbx-cost { flex: none; font-size: 8px; letter-spacing: 0.14em; }
+    .pbx-slotno { flex: none; width: 20px; font-size: 9px; color: #555c70; text-align: right; }
+    .pbx-checkbox {
+      flex: none; width: 12px; height: 12px; border: 1px solid rgba(140,160,200,0.4);
+      display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4);
+    }
+    .pbx-x { flex: none; font-size: 10px; color: rgba(255,122,138,0); transition: color 0.12s; }
+    .pbx-blade:hover .pbx-x { color: rgba(255,122,138,0.9); }
+
+    /* ── SUBCLASS bar — same blade instrument, sits above the spell pool ── */
+    .pbx-subbar {
+      display: flex; align-items: center; gap: 9px;
+      min-height: 34px; padding: 4px 14px 4px 10px; margin: 7px 9px 0 5px;
+      background: linear-gradient(100deg, #121a30 0%, #0d1222 65%, rgba(13,18,34,0.6) 100%);
+      border: 1px solid var(--cat, #8890b0); border-left: 3px solid var(--cat, #8890b0);
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+      transform: skewX(-6deg); transform-origin: 0 50%;
+      cursor: pointer;
+      transition: background 0.12s, box-shadow 0.15s, transform 0.12s;
+    }
+    .pbx-subbar > * { transform: skewX(6deg); }
+    .pbx-subbar:hover {
+      background: linear-gradient(100deg, #1a2542 0%, #101731 65%, rgba(16,23,49,0.6) 100%);
+      box-shadow: -2px 0 16px rgba(120,150,220,0.16), inset 3px 0 0 var(--cat, #8890b0);
+      transform: skewX(-6deg) translateX(3px);
+    }
+    .pbx-subbar:active { filter: brightness(0.85); }
+
+    /* ── race trait rows (passives & terrain) ── */
+    .pbx-trait {
+      display: flex; align-items: flex-start; gap: 7px;
+      padding: 3px 8px 4px 6px; background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(120,140,180,0.12);
+      border-left: 2px solid var(--pb-fc, rgba(242,196,104,0.5));
+    }
+
+    /* ── RPG equipment / item slot squares flanking the hero ── */
+    .pbx-eqslot {
+      position: relative; flex: none;
+      border: 1px dashed rgba(140,160,200,0.3); background: rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1px;
+      cursor: pointer;
+      transition: border-color 0.12s, background 0.12s, box-shadow 0.15s, transform 0.1s;
+      clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+    }
+    .pbx-eqslot:hover {
+      border-color: var(--acc, rgba(180,200,240,0.55));
+      box-shadow: 0 0 10px rgba(160,190,255,0.12);
+      background: rgba(20,26,44,0.5);
       transform: translateY(-1px);
     }
-    .pb-footer-slot:active {
-      transform: scale(0.95);
+    .pbx-eqslot.filled {
+      border-style: solid; border-color: var(--acc, rgba(180,200,240,0.55));
+      background: linear-gradient(180deg, rgba(20,26,44,0.5), rgba(0,0,0,0.4));
+      box-shadow: 0 0 8px rgba(0,0,0,0.5), inset 0 0 12px rgba(120,150,220,0.06);
+    }
+    .pbx-eqslot-icon { font-size: 19px; line-height: 1; }
+    .pbx-eqslot:not(.filled) .pbx-eqslot-icon {
+      color: rgba(140,160,200,0.4); font-size: 16px; font-family: 'DotGothic16', monospace;
+    }
+    .pbx-eqslot-label {
+      font-size: 7px; letter-spacing: 0.04em; color: #8a93a8; max-width: 92%;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .pbx-eqslot-x {
+      position: absolute; top: -1px; right: 1px; font-size: 9px; padding: 1px 2px;
+      color: rgba(255,122,138,0); cursor: pointer; z-index: 2; transition: color 0.12s;
+    }
+    .pbx-eqslot:hover .pbx-eqslot-x { color: rgba(255,122,138,0.9); }
+
+    /* ── Hero sheet tabs (ASSESSMENT / DOSSIER) ── */
+    .pbx-tab {
+      background: transparent; border: none; border-bottom: 2px solid transparent;
+      color: #8a93a8; font-family: 'DotGothic16', monospace; font-size: 10px;
+      letter-spacing: 0.16em; padding: 4px 10px; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .pbx-tab:hover { color: #e6e9f2; }
+    .pbx-tab.on { color: var(--pb-fc, #f2c468); border-bottom-color: var(--pb-fc, #f2c468); }
+
+    /* ── Gear / item picker rows ── */
+    .pbx-pick-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(120,140,180,0.16);
+      cursor: pointer; transition: background 0.12s, border-color 0.12s;
+    }
+    .pbx-pick-row:hover {
+      background: rgba(120,150,220,0.08);
+      border-color: rgba(180,200,240,0.4);
     }
   `;
   document.head.appendChild(_css);
@@ -415,15 +539,11 @@ function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
   return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${getFactionColor(glow)})` : undefined, ...extraStyle }});
 }
-function TypeChip({ type }) {
+function TypeChip({ type, size }) {
   const c = getTypeColor(type);
   const text = TYPE_TEXT_C[(type || '').toLowerCase()] || c;
-  return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding:'2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
-}
-function FactionChip({ faction }) {
-  const c = getFactionColor(faction);
-  return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.14em', fontWeight:600, color:c, padding:'2px 8px', border:`1px solid ${c}44`, background:`${c}12`, textTransform:'uppercase' }},
-    h('span', { style:{ width:5, height:5, background:c, borderRadius:'50%', marginRight:5, boxShadow:`0 0 4px ${c}` } }), faction);
+  const fs = size || 10;
+  return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:fs, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding: fs >= 11 ? '3px 10px' : '2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
 }
 function StatBar({ label, val, max, compact, zodiacMod, delta }) {
   const pct = Math.min(100, (val / max) * 100);
@@ -548,6 +668,216 @@ function buildSpellTooltip(sp, x, y) {
     sp.desc && h('div', { style: { fontSize: 11, lineHeight: 1.45, color: '#c3c8d6', borderTop: `1px solid ${EW.panelEdge}`, paddingTop: 6, fontStyle: 'italic' } }, sp.desc));
 }
 
+// ── Battle-parity ability blades ─────────────────────────────────
+// The builder's spell rows mirror the in-battle Horologe blades
+// (hud.js): category glyph + colored left edge, Cinzel name, the
+// canonical type badge, power/MP chips. What you equip here is what
+// you'll recognize mid-fight. Category map matches hud.js _HRLG_CAT.
+const PB_CAT = {
+  damage:  { icon: '⚔', color: '#ee6655' },
+  heal:    { icon: '♥', color: '#55cc66' },
+  buff:    { icon: '▲', color: '#55aaff' },
+  debuff:  { icon: '▼', color: '#cc77dd' },
+  utility: { icon: '◎', color: '#ccaa55' },
+};
+function pbPowerStat(sp) {
+  if (typeof window.spellPowerStat === 'function') return window.spellPowerStat(sp);
+  if (sp.dmg) return { value: sp.dmg, unit: 'PWR', color: '#ee6655' };
+  if (sp.hitDamages && sp.hitDamages.length) return { value: sp.hitDamages.reduce((s, v) => s + v, 0), unit: 'PWR', color: '#ee6655' };
+  if (sp.dotDamage) return { value: sp.dotDamage, unit: 'DOT', color: '#ee6655' };
+  if (sp.heal) return { value: sp.heal, unit: 'HP', color: '#55cc66' };
+  if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
+  return null;
+}
+function pbTypeBadgeStyle(typeKey, fontSize) {
+  const k = (typeKey || '').toLowerCase();
+  const base = TYPE_C[k] || EW.inkMute;
+  return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'DotGothic16, monospace', fontSize:fontSize||9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', lineHeight:1.3, color:TYPE_TEXT_C[k]||base, background:`linear-gradient(${base}22,${base}22), rgba(9,11,17,0.82)`, border:`1px solid ${base}aa`, padding:'1px 6px', textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)' };
+}
+function SpellBlade({ sp, slotLabel, pool, equipped, raceAbility, dim, empty, onClick, onHoverIn, onHoverOut }) {
+  if (empty) {
+    return h('div', { className:'pbx-blade empty' },
+      slotLabel != null ? h('span', { className:'pbx-slotno' }, slotLabel) : null,
+      h('span', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.1em' } }, 'EMPTY SLOT'));
+  }
+  const cat = classifySpellLocal(sp);
+  const cc = PB_CAT[cat] || PB_CAT.damage;
+  const sc = spellSlotCost(sp);
+  const pw = pbPowerStat(sp);
+  const costColor = sc >= 3 ? 'rgba(255,150,120,0.9)' : sc === 2 ? 'rgba(240,200,110,0.85)' : 'rgba(160,170,200,0.65)';
+  const aoe = pbAoeLabel(sp);
+  const rng = sp.range != null ? (sp.range === 0 ? 'Self' : 'RNG ' + sp.range) : null;
+  const descBits = [rng, aoe ? 'AOE ' + aoe : null].filter(Boolean).join(' · ');
+  return h('div', {
+    className: 'pbx-blade' + (pool ? ' pool' : '') + (equipped ? ' on' : ''),
+    style: { '--cat': cc.color, opacity: dim ? 0.45 : 1 },
+    onClick, onMouseEnter: onHoverIn, onMouseLeave: onHoverOut,
+  },
+    slotLabel != null ? h('span', { className:'pbx-slotno' }, slotLabel) : null,
+    pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(140,160,200,0.4)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
+    h('span', { className:'pbx-glyph', style:{ color:cc.color } }, cc.icon),
+    h('div', { className:'pbx-main' },
+      h('div', { className:'pbx-row1' },
+        h('span', { className:'pbx-name' }, sp.name),
+        sp.spellType ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType) : null,
+        h('span', { style:{ flex:1, minWidth:4 } }),
+        h('span', { className:'pbx-cost', title: sc + ' loadout slot' + (sc > 1 ? 's' : ''), style:{ color:costColor } }, '◆'.repeat(sc)),
+        pw ? h('span', { className:'pbx-pw', style:{ color:pw.color } }, pw.value + ' ' + pw.unit) : null,
+        sp.cost ? h('span', { className:'pbx-mp' }, sp.cost + ' MP') : null,
+        (!pool && onClick) ? h('span', { className:'pbx-x' }, '✕') : null),
+      h('div', { className:'pbx-desc' }, [descBits, sp.desc || ''].filter(Boolean).join(' — ') || spellCategoryLabel(cat))));
+}
+// ── Race traits: passives & terrain rules shown on the hero sheet ──
+// Entries marked CODED are live engine rules (map.js adaptation fns,
+// SKY_RACES flight, sleepPreference day/night swing, werewolf model swap,
+// deep-water/lava move+drown rules in state.js/battle.js). The rest are
+// DESIGN-intent passives authored 2026-07-06 to give each starter race a
+// distinct playstyle — surface them here first, wire them into battle.js
+// as they're implemented. Only default-unlocked (3D-ready) races listed.
+const RACE_TRAITS = {
+  'homosapien': [
+    { icon: '🎓', name: 'Quick Study', desc: 'Learns subclass spells as if they were native.' },                     // DESIGN
+    { icon: '💪', name: 'Underdog', desc: 'Deals +10% damage to vessels with higher max HP.' },                       // DESIGN
+  ],
+  'giant': [
+    { icon: '⛰️', name: 'Mountain Traverser', desc: 'Mountains cost only 1 MOV to climb.' },                          // CODED
+    { icon: '🧊', name: 'Sure-Footed', desc: 'Never slips on ice.' },                                                 // CODED
+    { icon: '🗿', name: 'Colossal Frame', desc: 'Too massive to be knocked back or pulled.' },                        // DESIGN
+  ],
+  'fairy': [
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
+    { icon: '🌲', name: 'Forest Spirit', desc: 'Moves through trees at full speed.' },                                // CODED
+  ],
+  'werewolf': [
+    { icon: '🌕', name: 'Lunar Shift', desc: 'Walks as a human by day — becomes the beast at night.' },               // CODED
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
+  ],
+  'grey': [
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🧠', name: 'Telepathic Network', desc: 'Allies gain +1 AWR while a Grey is on the field.' },             // DESIGN
+  ],
+  'telepath': [
+    { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground.' },                     // CODED
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🧠', name: 'Unquiet Mind', desc: 'Immune to sleep and charm.' },                                         // DESIGN
+  ],
+  'vampire': [
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🩸', name: 'Hemophage', desc: 'Basic attacks drain a portion of the damage as HP.' },                    // DESIGN
+    { icon: '🌙', name: 'Creature of the Night', desc: 'Stronger at night; weakened at high noon.' },                 // DESIGN
+  ],
+  'demon': [
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🌋', name: 'Lava-Born', desc: 'Immune to lava — strides through it at full speed.' },                    // CODED
+    { icon: '🔥', name: 'Hellfire Affinity', desc: 'Burns it inflicts last 1 turn longer.' },                         // DESIGN
+  ],
+  'annunaki': [
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '👁️', name: 'Ancient Sight', desc: '+1 vision range; sees over elevation.' },                             // DESIGN
+  ],
+  'atlantean': [
+    { icon: '🌊', name: 'Amphibious', desc: 'Cannot drown; deep water costs only 1 MOV.' },                           // CODED
+    { icon: '🔱', name: 'Tide Empowered', desc: '+1 spell range while standing in water.' },                          // DESIGN
+  ],
+  'pirate': [
+    { icon: '⚓', name: 'Old Salt', desc: 'Cannot drown; deep water costs only 1 MOV.' },                             // CODED (Raider class)
+    { icon: '💰', name: 'Plunder', desc: 'Earns extra gold from kills.' },                                            // DESIGN
+  ],
+  'bigfoot': [
+    { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
+    { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
+    { icon: '🦶', name: 'Elusive', desc: 'Hidden while in forest until it acts.' },                                   // DESIGN
+  ],
+  'catgirl': [
+    { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
+    { icon: '🐾', name: 'Featherfall', desc: 'Never takes fall damage — always lands on her feet.' },                 // DESIGN
+    { icon: '👁️', name: 'Night Vision', desc: 'Vision is not reduced at night.' },                                    // DESIGN
+  ],
+  'knight': [
+    { icon: '🛡️', name: 'Man-at-Arms', desc: 'Heavy plate — immune to stagger.' },                                    // DESIGN
+    { icon: '⚜️', name: 'Oath of the Shield', desc: 'Adjacent allies take 10% less damage.' },                        // DESIGN
+  ],
+  'shaman': [
+    { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
+    { icon: '🌿', name: 'Herbalist', desc: 'Potions she uses or receives heal +25%.' },                               // DESIGN
+    { icon: '👻', name: 'Spirit Sight', desc: 'Sees invisible units.' },                                              // DESIGN
+  ],
+  'mad scientist': [
+    { icon: '🔧', name: 'Overclocked Contraptions', desc: 'Deployed turrets gain +50% HP.' },                         // DESIGN
+    { icon: '⚗️', name: 'Volatile Mixtures', desc: 'Thrown items splash to adjacent tiles.' },                        // DESIGN
+  ],
+  'men in black': [
+    { icon: '🕶️', name: 'Redacted', desc: 'Cannot be scanned or revealed.' },                                         // DESIGN
+    { icon: '🌐', name: 'Clearance', desc: 'Ignores enemy ward vision — wards do not see him.' },                     // DESIGN
+  ],
+  'wizard': [
+    { icon: '📚', name: 'Arcane Reserves', desc: 'Regenerates +5 MP every round.' },                                  // DESIGN
+    { icon: '🔮', name: 'Tier Mastery', desc: 'Tier III spells cost 10 less MP.' },                                   // DESIGN
+  ],
+  'fortune teller': [
+    { icon: '🃏', name: 'Foresight', desc: 'Cannot be critically hit — she saw it coming.' },                         // DESIGN
+    { icon: '🌙', name: 'Moonlit Augury', desc: 'Spells cost 5 less MP at night.' },                                  // DESIGN
+  ],
+  'quarterback': [
+    { icon: '🏈', name: 'Cannon Arm', desc: 'Thrown items fly 2 tiles further.' },                                    // DESIGN
+    { icon: '🏃', name: 'Blitz', desc: '+1 MOV during the first round.' },                                            // DESIGN
+  ],
+  'ki fighter': [
+    { icon: '🔥', name: 'Inner Furnace', desc: 'Regains 5 MP whenever she takes a hit.' },                            // DESIGN
+    { icon: '🧘', name: 'Centered', desc: 'Immune to knockback until she moves each turn.' },                         // DESIGN
+  ],
+  'cowboy': [
+    { icon: '🤠', name: 'Quickdraw', desc: 'Wins every speed tie — always acts first among equals.' },                // DESIGN
+    { icon: '🎯', name: 'Deadeye', desc: '+15% damage to targets at maximum range.' },                                // DESIGN
+  ],
+  'machine elves': [
+    { icon: '🌀', name: 'Fractal Mind', desc: 'Immune to psychic debuffs — charm and confusion.' },                   // DESIGN
+    { icon: '⚙️', name: 'Self-Assembling', desc: 'Repairs 3% of max HP every round.' },                               // DESIGN
+  ],
+  'martian': [
+    { icon: '👽', name: 'Low-G Physique', desc: 'Jumps 1 tile higher.' },                                             // DESIGN
+    { icon: '🔫', name: 'Ray Tech', desc: '+10% damage with beam and projectile spells.' },                           // DESIGN
+  ],
+  'nordic': [
+    { icon: '❄️', name: 'Polar Born', desc: 'Unbothered by snow and ice weather.' },                                  // DESIGN
+    { icon: '🛡️', name: 'Serene Mind', desc: 'Immune to fear and charm.' },                                           // DESIGN
+  ],
+  'halfdemon': [
+    { icon: '😈', name: 'Dual Heritage', desc: 'Counts as both Human and Unholy in type matchups.' },                 // CODED (types)
+    { icon: '🔥', name: 'Infernal Blood', desc: 'Burns on her end 1 turn sooner.' },                                  // DESIGN
+  ],
+};
+if (typeof window !== 'undefined') window.RACE_TRAITS = RACE_TRAITS;
+
+// Compact tactical diamond: MOV and RNG each get their own footprint.
+function RangeDiamond({ radius, fill, edge, label, value, color }) {
+  const r = Math.max(0, Math.floor(radius) || 0);
+  const size = r * 2 + 1;
+  const cellPx = Math.max(4, Math.min(Math.floor(64 / size), 9));
+  const cells = [];
+  for (let gy = 0; gy < size; gy++) {
+    for (let gx = 0; gx < size; gx++) {
+      const dist = Math.abs(gx - r) + Math.abs(gy - r);
+      if (dist > r) continue;
+      const isC = dist === 0;
+      cells.push(h('div', { key: gx + '-' + gy, style: { position:'absolute', left: gx * cellPx, top: gy * cellPx, width: cellPx - 1, height: cellPx - 1, background: isC ? '#fff' : fill, border: `1px solid ${isC ? '#fff' : edge}`, boxSizing: 'border-box' } }));
+    }
+  }
+  return h('div', { style: { display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 } },
+    h('div', { style: { position:'relative', width: size * cellPx, height: size * cellPx } }, ...cells),
+    h('div', { style: { fontSize:9, color, letterSpacing:'0.1em', fontWeight:600, whiteSpace:'nowrap' } }, label, ' ', h('span', { style:{ color:'#e6e9f2' } }, value)));
+}
+// RPG-style equipment/item slot square flanking the hero sprite.
+function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onClear }) {
+  const s = size || 48;
+  return h('div', { onClick, title, className:'pbx-eqslot' + (filled ? ' filled' : ''), style:{ width:s, height:s, '--acc': accent || 'rgba(180,200,240,0.55)' } },
+    filled && onClear ? h('span', { className:'pbx-eqslot-x', title:'Remove', onClick:(e)=>{ e.stopPropagation(); onClear(); } }, '✕') : null,
+    h('span', { className:'pbx-eqslot-icon' }, filled ? icon : '+'),
+    filled && label ? h('span', { className:'pbx-eqslot-label' }, label) : null);
+}
+
 function PartyBuilder() {
   const st = getSt();
   if (!st || !st.partyBuilds) return h('div', { style:{ color:'#8a93a8', padding:40, fontFamily:'DotGothic16, monospace', textAlign:'center' } }, 'Initializing\u2026');
@@ -581,6 +911,8 @@ function PartyBuilder() {
   const [spellTip, setSpellTip] = React.useState(null); // { sp, x, y }
   const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };
   const hideSpellTip = () => setSpellTip(null);
+  const [heroTab, setHeroTab] = React.useState('stats');            // 'stats' | 'lore'
+  const [equipPicker, setEquipPicker] = React.useState(null);        // 'item' | 'accessory1' | 'accessory2'
   React.useEffect(() => { st.builderSelectedSlot = slot; }, [slot]);
 
   const getFavRaces = () => {
@@ -886,6 +1218,12 @@ function PartyBuilder() {
   const allItemKeys = typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [];
   const itemSlotMax = window.CONFIG?.unitItemSlots || 3;
   const totalItemsUsed = Object.values(unitItems).reduce((s,v)=>s+(v||0),0);
+  // Item counts expanded into per-slot units for the RPG-style slot squares.
+  const itemUnits = [];
+  for (const k of allItemKeys) { const c = unitItems[k] || 0; for (let n = 0; n < c && itemUnits.length < itemSlotMax; n++) itemUnits.push(k); }
+  const fbDef = window.FACTION_BONUSES?.[unitFaction];
+  const factionBonusTxt = fbDef ? (fbDef.atkBonus ? '+' + fbDef.atkBonus + ' ATK' : fbDef.healBonus ? '+' + fbDef.healBonus + ' HEAL' : fbDef.armorBonus ? '+' + fbDef.armorBonus + ' ARMOR' : '') : '';
+  const spellSlotsUsed = learnedSpells.reduce((s, sp) => s + spellSlotCost(sp), 0);
   const zodiacs = typeof window.AVAILABLE_ZODIACS!=='undefined' ? window.AVAILABLE_ZODIACS : ['aries','taurus','gemini','cancer','leo','virgo','libra','scorpio','sagittarius','capricorn','aquarius','pisces'];
   const codexLore = getCodexLore(unitRace);
   const raceClass = typeof window.RACE_CLASS !== 'undefined' ? window.RACE_CLASS[unitRace] : 'hybrid';
@@ -893,12 +1231,10 @@ function PartyBuilder() {
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const docNum = 'EW-' + (Math.abs((unitRace||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*7)%9000+1000);
 
-  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #12101e 0%, ${EW.bg} 60%, #02030a 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column' }},
+  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #12101e 0%, ${EW.bg} 60%, #02030a 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
     h(StarField),
 
     h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
-      h('button',{onClick:doBack,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'5px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.12em',cursor:'pointer',flexShrink:0}},'\u2190 BACK'),
-      h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
       h(SigilMark),
       h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
       h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
@@ -908,9 +1244,9 @@ function PartyBuilder() {
         h('span', { style:{color:EW.ink} }, (mpMode?.label || 'BATTLE').toUpperCase())),
     ),
 
-    h('div', { style:{ display:'grid', gridTemplateColumns:'140px 1fr 260px', flex:1, minHeight:0, position:'relative', zIndex:1 } },
+    h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(340px,28vw,470px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
 
-      h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 8px 10px 10px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
+      h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 6px 10px 8px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
         h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY'),
         Array.from({length: teamSize}).map((_, i) => {
           const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
@@ -921,170 +1257,120 @@ function PartyBuilder() {
           const nm = resolveUnitName(player, i, cn);
           return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-slot-card', style:{ position:'relative', cursor:'pointer', flex:1, minHeight:0, background:isActive?`linear-gradient(180deg,${fCol}18,rgba(0,0,0,0.3))`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?fCol+'99':EW.panelEdge}`, padding:'4px', display:'flex', flexDirection:'column', alignItems:'center', gap:2, clipPath:'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }},
             isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
-            confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '\u2713'),
+            confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓'),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
             h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg,${fCol}08,rgba(0,0,0,0.4))`, position:'relative', overflow:'hidden' }},
               h('div', { style:{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:'120%', height:'30%', background:`radial-gradient(ellipse,${fCol}40,transparent 70%)`, filter:'blur(4px)', pointerEvents:'none' } }),
               h(Sprite, { race:id.race, gender:id.gender||'male', cls:cn, size:'90%', glow:isActive?id.faction:null, style:{width:'90%',height:'90%'} }),
             ),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
-            h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' \u00B7 ',getJobDisplay(cn).toUpperCase()),
-            h('div', { style:{ display:'flex', gap:2, marginTop:1 } },
-              h('span', { style:{ width:5, height:5, background:fCol, borderRadius:'50%' } }),
-              ...(id.types||[]).map((t,ti)=>h('span',{key:ti,style:{width:5,height:5,background:getTypeColor(t),borderRadius:'50%'}}))),
+            h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', paddingBottom:1 } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' · ',getJobDisplay(cn).toUpperCase()),
           );
         }),
       ),
 
       h('div', { style:{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden' } },
 
-        h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr 0.8fr 1fr 1fr', gap:0, padding:'8px 10px 6px 10px', minHeight:0, maxHeight:'48%', overflow:'hidden' }},
+        // ══ HERO SHOWCASE — the selected vessel, staged like it matters ══
+        h('div', { style:{ display:'flex', height:'54%', minHeight:0, flexShrink:0, borderBottom:`1px solid ${EW.panelEdge}` } },
 
-          h('div', { style:{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, minHeight:0, overflow:'hidden', paddingRight:8, borderRight:`1px solid ${EW.panelEdge}` } },
-            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.14em', flexShrink:0, alignSelf:'flex-start' } }, '\u00B7 SLOT ',numerals[slot],' \u00B7 ',getJobDisplay(clsName).toUpperCase()),
-            h('div', { style:{ flexShrink:0, position:'relative', display:'flex', justifyContent:'center', alignItems:'flex-end' } },
-              h('div', { style:{ position:'absolute', inset:'20% -12px -5% -12px', background:`radial-gradient(ellipse,${fc}30,transparent 65%)`, filter:'blur(12px)', pointerEvents:'none' } }),
-              h(Sprite, { race:unitRace, gender:identity.gender||'male', cls:clsName, size:'clamp(70px,9vw,120px)', glow:unitFaction, style:{position:'relative',zIndex:1} }),
-              h('div', { style:{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:'70%', height:8, background:`radial-gradient(ellipse,${fc}55,transparent 70%)`, filter:'blur(2px)', pointerEvents:'none' } }),
-            ),
-            h('div', { style:{ display:'flex', alignItems:'center', gap:2, flexWrap:'wrap', justifyContent:'center' } },
-              ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t})), h(FactionChip,{faction:unitFaction})),
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(14px,1.6vw,22px)', fontWeight:500, lineHeight:0.95, textShadow:`0 0 20px ${fc}25`, textAlign:'center' } }, _grl(unitRace, identity.gender) || unitRace),
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(8px,0.8vw,11px)', fontWeight:300, color:EW.inkMute } }, 'the ',getJobDisplay(clsName).toLowerCase()),
-
-            h('div', { style:{ display:'flex', gap:3, alignItems:'center', padding:'3px 6px', background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, fontSize:10, flexWrap:'wrap', width:'100%' } },
-              h('span',{style:{color:EW.inkDim}},'NAME'),
-              h('input', { defaultValue:unitName, style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'2px 4px', width:60, minWidth:0 }, onBlur:e=>handleNameChange(e.target.value), onKeyDown:e=>{if(e.key==='Enter')e.target.blur();} }),
-              h('span',{style:{color:EW.inkDim}},'ZDC'),
-              h('select', { value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'2px 4px', maxWidth:80 } },
-                zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#0c0b16',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1)))),
-            ),
-            !isArena && clsName!=='Freelancer' && h('div', { style:{ display:'flex', gap:3, alignItems:'center', padding:'3px 6px', background:'rgba(0,0,0,0.2)', border:`1px solid ${EW.panelEdge}`, fontSize:10, width:'100%' } },
-              h('span',{style:{color:EW.inkDim}},'SUB'), h('select', { value:secJob, onChange:e=>handleSecJobChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'2px 4px', flex:1, minWidth:0 } },
-                h('option',{value:'',style:{background:'#0c0b16'}},'\u2014 Auto \u2014'), ...(typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer').map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}},getJobDisplay(j))))),
-          ),
-
-          h('div', { style:{ display:'flex', flexDirection:'column', gap:0, minHeight:0, overflow:'auto', padding:'0 8px', borderRight:`1px solid ${EW.panelEdge}` }},
-            h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', marginBottom:4, fontWeight:600 } }, 'COMBAT ASSESSMENT'),
-            h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
-              STAT_KEYS.map(k => {
-                const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
-                const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
-                let zMod = null;
-                if (zodiacNature && mapped !== 'range' && mapped !== 'move') { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d });
-              }),
-            ),
-
-            (() => {
-              const moveVal = fullStats.move ?? fullStats.MOV ?? 3;
-              const rangeVal = fullStats.range ?? fullStats.RNG ?? 1;
-              const maxR = Math.max(moveVal + rangeVal, 1);
-              const gridSize = maxR * 2 + 1;
-              const cellPx = Math.min(Math.floor(120 / gridSize), 11);
-              const cx = maxR, cy = maxR;
-              const cells = [];
-              for (let gy = 0; gy < gridSize; gy++) {
-                for (let gx = 0; gx < gridSize; gx++) {
-                  const dist = Math.abs(gx - cx) + Math.abs(gy - cy);
-                  let bg = 'transparent', border = 'transparent';
-                  if (dist === 0) { bg = '#fff'; border = '#fff'; }
-                  else if (dist <= moveVal) { bg = 'rgba(80,160,255,0.45)'; border = 'rgba(80,160,255,0.7)'; }
-                  else if (dist <= moveVal + rangeVal) { bg = 'rgba(255,70,70,0.35)'; border = 'rgba(255,70,70,0.6)'; }
-                  else { continue; }
-                  cells.push(h('div', { key:`${gx}-${gy}`, style:{ position:'absolute', left: gx * cellPx, top: gy * cellPx, width: cellPx - 1, height: cellPx - 1, background: bg, border: `1px solid ${border}`, boxSizing:'border-box' } }));
-                }
-              }
-              return h('div', { style:{ marginTop:6, paddingTop:4, borderTop:`1px solid ${EW.panelEdge}` } },
-                h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.12em', marginBottom:3, fontWeight:600 } }, 'RANGE PROFILE'),
-                h('div', { style:{ position:'relative', width: gridSize * cellPx, height: gridSize * cellPx, margin:'0 auto' } }, ...cells),
-                h('div', { style:{ display:'flex', gap:8, justifyContent:'center', marginTop:3 } },
-                  h('div', { style:{ display:'flex', alignItems:'center', gap:2, fontSize:9, color:EW.inkMute } },
-                    h('span', { style:{ width:6, height:6, background:'rgba(80,160,255,0.55)', border:'1px solid rgba(80,160,255,0.8)' } }),
-                    'MOV ', moveVal),
-                  h('div', { style:{ display:'flex', alignItems:'center', gap:2, fontSize:9, color:EW.inkMute } },
-                    h('span', { style:{ width:6, height:6, background:'rgba(255,70,70,0.45)', border:'1px solid rgba(255,70,70,0.7)' } }),
-                    'RNG ', rangeVal),
-                ),
-              );
-            })(),
-          ),
-
-          h('div', { style:{ display:'flex', flexDirection:'column', gap:0, minHeight:0, overflowY:'auto', padding:'0 8px', borderRight:`1px solid ${EW.panelEdge}` }},
-            h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3, paddingBottom:2, borderBottom:`1px solid ${fc}33` } },
-              h('div', { style:{ display:'flex', alignItems:'center', gap:4 } },
-                h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:13, letterSpacing:'0.1em', color:fc, textTransform:'uppercase', fontWeight:600 } }, 'Codex Dossier'),
-                h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 5px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
+          // ── the stage: gear rail · big sprite · item rail ──
+          h('div', { style:{ flex:'0 0 46%', minWidth:0, display:'flex', flexDirection:'column', padding:'8px 4px 8px 10px', position:'relative' } },
+            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.18em', flexShrink:0 } }, '· SLOT ', numerals[slot], ' · ', getJobDisplay(clsName).toUpperCase()),
+            h('div', { style:{ flex:1, minHeight:0, display:'flex', gap:8, alignItems:'stretch' } },
+              h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0 } },
+                h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'GEAR'),
+                ['accessory1','accessory2'].map(sk => {
+                  const accId = unitEquipment[sk];
+                  const def = accId ? window.EQUIP_DEFS?.[accId] : null;
+                  return h(EquipSlotBox, { key:sk, size:52, accent:fc,
+                    filled:!!def, icon:def ? (ACC_ICONS[accId]||'\u{1F392}') : null,
+                    label:def ? def.label : '', title:def ? `${def.label} — ${def.desc}` : 'Equip gear',
+                    onClick:()=>{ setEquipPicker(sk); sfx('uiCursorMove'); },
+                    onClear:def ? ()=>handleAccChange(sk, null) : null });
+                })),
+              h('div', { style:{ flex:1, minWidth:0, position:'relative', display:'flex', alignItems:'flex-end', justifyContent:'center' } },
+                h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'88%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
+                h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'70%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
+                h(Sprite, { race:unitRace, gender:identity.gender||'male', cls:clsName, size:'100%', glow:unitFaction, style:{ position:'relative', zIndex:1, width:'100%', height:'97%' } }),
               ),
-              h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
-            ),
-            h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cinzel, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:6 }}, codexLore),
-            h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', borderTop:`1px solid ${EW.panelEdge}`, paddingTop:2, marginTop:'auto' } }, 'TOP SECRET // \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 // NOFORN'),
-          ),
-
-          h('div', { style:{ display:'flex', flexDirection:'column', gap:3, minHeight:0, overflow:'auto', padding:'0 6px', borderRight:`1px solid ${EW.panelEdge}` }},
-            h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:13, letterSpacing:'0.1em', color:fc, textTransform:'uppercase', fontWeight:600 } }, 'Items'),
-              h('span', { style:{ fontSize:9, color:EW.inkDim } }, totalItemsUsed,'/',itemSlotMax),
-            ),
-            h('div', { style:{ display:'grid', gridTemplateColumns:'1fr', gap:3, alignContent:'start' } },
-              allItemKeys.map(itemKey => {
-                const rule = window.ITEM_RULES?.[itemKey];
-                if (!rule) return null;
-                const count = unitItems[itemKey] || 0;
-                const icon = rule.icon || '\u{1F4E6}';
-                const hasAny = count > 0;
-                return h('div', { key:itemKey, title:rule.desc, className:'pb-equip-row', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 4px', background: hasAny ? `${fc}12` : 'rgba(0,0,0,0.25)', border: `1px solid ${hasAny ? fc+'44' : EW.panelEdge}` }},
-                  h('span', { style:{ fontSize:14, lineHeight:1, flexShrink:0 } }, icon),
-                  h('div', { style:{ flex:1, minWidth:0 } },
-                    h('div', { style:{ fontSize:10, color: hasAny ? EW.ink : EW.inkMute, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, rule.name),
-                  ),
-                  h('div', { style:{ display:'flex', alignItems:'center', gap:2, flexShrink:0 } },
-                    h('button', { onClick:(e)=>{e.stopPropagation();setItemCount(itemKey,-1);}, className:'pb-stepper-btn', style:{ width:18, height:18, background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:12, lineHeight:'16px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' } }, '\u2212'),
-                    h('span', { style:{ fontSize:11, color: hasAny ? EW.ink : EW.inkDim, fontWeight:600, width:14, textAlign:'center' } }, count),
-                    h('button', { onClick:(e)=>{e.stopPropagation();setItemCount(itemKey,1);}, className:'pb-stepper-btn', style:{ width:18, height:18, background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:12, lineHeight:'16px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' } }, '+'),
-                  ),
-                );
-              }),
+              h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0, paddingRight:4 } },
+                h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'ITEMS'),
+                Array.from({length:itemSlotMax}).map((_, ii) => {
+                  const ik = itemUnits[ii];
+                  const rule = ik ? window.ITEM_RULES?.[ik] : null;
+                  return h(EquipSlotBox, { key:ii, size:52, accent:fc,
+                    filled:!!rule, icon:rule ? (rule.icon||'\u{1F4E6}') : null,
+                    label:rule ? rule.name : '', title:rule ? `${rule.name} — ${rule.desc}` : 'Add an item',
+                    onClick:()=>{ setEquipPicker('item'); sfx('uiCursorMove'); },
+                    onClear:rule ? ()=>setItemCount(ik, -1) : null });
+                })),
             ),
           ),
 
-          h('div', { style:{ display:'flex', flexDirection:'column', gap:3, minHeight:0, overflow:'auto', paddingLeft:6 }},
-            h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:13, letterSpacing:'0.1em', color:fc, textTransform:'uppercase', fontWeight:600 } }, 'Gear'),
-              h('span', { style:{ fontSize:9, color:EW.inkDim } },
-                [unitEquipment.accessory1, unitEquipment.accessory2].filter(Boolean).length, '/2'),
-            ),
-            h('div', { style:{ display:'grid', gridTemplateColumns:'1fr', gap:3, alignContent:'start' } },
-              allAccIds.map(accId => {
-                const def = window.EQUIP_DEFS?.[accId];
-                if (!def) return null;
-                const isEquipped = unitEquipment.accessory1 === accId || unitEquipment.accessory2 === accId;
-                const eqSlotLabel = unitEquipment.accessory1 === accId ? 'ACC1' : unitEquipment.accessory2 === accId ? 'ACC2' : null;
-                const icon = ACC_ICONS[accId] || '\u{1F392}';
-                const statTag = def.stat && def.statVal ? `+${def.statVal} ${(def.stat||'').toUpperCase()}` : '';
-                return h('div', { key:accId, onClick:()=>equipAccessory(accId), title:def.desc, className:'pb-equip-row', style:{ cursor:'pointer', position:'relative', display:'flex', alignItems:'center', gap:4, padding:'3px 5px', background: isEquipped ? `${fc}18` : 'rgba(0,0,0,0.25)', border: `1px solid ${isEquipped ? fc : EW.panelEdge}` }},
-                  h('span', { style:{ fontSize:16, lineHeight:1, flexShrink:0, filter: isEquipped ? `drop-shadow(0 0 3px ${fc})` : 'none' } }, icon),
-                  h('div', { style:{ flex:1, minWidth:0 } },
-                    h('div', { style:{ fontSize:10, fontWeight:500, color: isEquipped ? EW.ink : EW.inkMute, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, def.label),
-                    statTag && h('div', { style:{ fontSize:9, color: isEquipped ? EW.good : EW.inkDim, fontWeight:600 } }, statTag),
-                  ),
-                  eqSlotLabel && h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0 } }, eqSlotLabel),
-                  isEquipped && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${fc}`, boxShadow:`0 0 5px ${fc}44`, pointerEvents:'none' } }),
-                );
-              }),
-            ),
+          // ── identity + assessment sheet ──
+          h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
+            h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 26px ${fc}33` } }, _grl(unitRace, identity.gender) || unitRace),
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(10px,1vw,14px)', fontWeight:300, color:EW.inkMute } }, 'the ', getJobDisplay(clsName).toLowerCase())),
+            h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
+              ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:11})),
+              h('span', { style:{ fontSize:9, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:4, textTransform:'uppercase' } }, unitFaction, ' alignment', factionBonusTxt ? ' · ' + factionBonusTxt : '')),
+            h('div', { style:{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flexShrink:0, fontSize:10 } },
+              h('span', { style:{ color:EW.inkDim, letterSpacing:'0.08em' } }, 'NAME'),
+              h('input', { key:player+'-'+slot, defaultValue:unitName, style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 6px', width:110, minWidth:0 }, onBlur:e=>handleNameChange(e.target.value), onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } }),
+              h('span', { style:{ color:EW.inkDim, letterSpacing:'0.08em' } }, 'ZODIAC'),
+              h('select', { value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 4px', maxWidth:96 } },
+                zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#0c0b16',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1)))),
+              // Subclass selection lives on the ABILITIES panel (it drives the
+              // spell pool); this echo just keeps it visible on the sheet.
+              !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
+            h('div', { style:{ display:'flex', gap:2, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, marginTop:2 } },
+              h('button', { className:'pbx-tab'+(heroTab==='stats'?' on':''), onClick:()=>setHeroTab('stats') }, 'COMBAT ASSESSMENT'),
+              h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'CODEX DOSSIER')),
+            heroTab === 'stats'
+              ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflow:'hidden', paddingTop:2 } },
+                  // stat bars (short) + separate MOVE / RANGE footprints
+                  h('div', { style:{ display:'flex', gap:14, flexShrink:0 } },
+                    h('div', { style:{ flex:'0 1 54%', minWidth:0, display:'flex', flexDirection:'column', gap:2 } },
+                      STAT_KEYS.map(k => {
+                        const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
+                        const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
+                        let zMod = null;
+                        if (zodiacNature && mapped !== 'range' && mapped !== 'move') { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d });
+                      })),
+                    h('div', { style:{ flex:1, display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', paddingTop:2 } },
+                      h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
+                      h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)' }))),
+                  // race traits: passives & terrain rules unique to this vessel
+                  h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
+                    h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
+                    h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingRight:2 } },
+                      (RACE_TRAITS[unitRace] && RACE_TRAITS[unitRace].length)
+                        ? RACE_TRAITS[unitRace].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
+                            h('span', { style:{ fontSize:13, lineHeight:1.2, flexShrink:0, width:18, textAlign:'center' } }, t.icon),
+                            h('div', { style:{ minWidth:0, fontSize:10, lineHeight:1.4 } },
+                              h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
+                              h('span', { style:{ color:EW.inkMute } }, ' — ', t.desc))))
+                        : h('div', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', padding:'4px 6px' } }, 'No documented traits — field research pending.'))))
+              : h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingTop:4 } },
+                  h('div', { style:{ display:'flex', alignItems:'center', gap:6 } },
+                    h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
+                    h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum)),
+                  h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cinzel, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8 } }, codexLore),
+                  h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2 } }, 'TOP SECRET // ████████ // NOFORN')),
           ),
         ),
 
-        h('div', { style:{ display:'flex', flexDirection:'column', gap:4, padding:'6px 10px', flex:1, minHeight:0, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45))', overflow:'hidden' }},
+        // ══ ROSTER — compact codex grid; the hero + abilities lead ══
+        h('div', { style:{ display:'flex', flexDirection:'column', gap:4, padding:'6px 10px', flex:1, minHeight:0, background:'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45))', overflow:'hidden' }},
           h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 } },
-            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(14px,1.2vw,18px)', letterSpacing:'0.14em', textTransform:'uppercase' } }, 'Codex of Vessels'),
-            h('span', { style:{ fontSize:11, color:EW.inkMute, letterSpacing:'0.1em' } }, filteredRoster.length,'/',rosterEntries.length),
-            h('div', { style:{flex:1} }),
-            h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'4px 10px', width:140 }}),
+            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(12px,1vw,15px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.inkMute } }, 'Codex of Vessels'),
+            h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
+            h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
-              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#0c0b16'}},`${k} \u2193`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#0c0b16'}},`${k} \u2191`)]).flat(),
+              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#0c0b16'}},`${k} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#0c0b16'}},`${k} ↑`)]).flat(),
               h('option',{value:'label-asc',style:{background:'#0c0b16'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#0c0b16'}},'Name Z-A')),
             h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
               h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Types'),
@@ -1093,31 +1379,25 @@ function PartyBuilder() {
               h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Jobs'),
               ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}}, getJobDisplay(j)))),
             h('span', { style:{ width:1, height:14, background:EW.panelEdge } }),
-            ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, color:factionFilter===fk?FACTION_C[fk]:EW.inkMute, padding:'2px 7px', fontFamily:'DotGothic16, monospace', fontSize:11, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:3 }},
-              h('span',{style:{width:5,height:5,background:FACTION_C[fk],borderRadius:'50%',display:'inline-block'}}), fk.toUpperCase())),
+            ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, color:factionFilter===fk?FACTION_C[fk]:EW.inkDim, padding:'2px 8px', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer' }}, fk)),
           ),
-          h('div', { style:{ flex:1, minHeight:0, overflow:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(88px, 1fr))', gap:4, padding:'4px 0', alignContent:'start' }},
+          h('div', { style:{ flex:1, minHeight:0, overflow:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(72px, 1fr))', gap:4, padding:'4px 0', alignContent:'start' }},
             filteredRoster.map((entry, ei) => {
               const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
               const entryFc = getFactionColor(entry.faction);
-              const hpVal = (computeStats(entry.race,entry.cls).hp ?? 0);
               const starred = isFav(entry.race, entry.gender);
               // Account-unlock gate: only the local human's roster (player 1) is restricted.
               const locked = isLockedEntry(entry.race);
               const onCardClick = locked
                 ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
                 : ()=>pickRace(entry.race,entry.gender,entry.job);
-              return h('div', { key:ei, onClick:onCardClick, title: locked?'Locked \u2014 unlock this vessel in the Shop':undefined, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'4px 2px 3px', gap:1, opacity: locked?0.55:1 }},
-                h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}12 100%)` }},
+              return h('div', { key:ei, onClick:onCardClick, title: locked?'Locked — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
+                h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}10 100%)` }},
                   h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
-                  locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '\ud83d\udd12'),
-                  h('div', { style:{ position:'absolute', top:2, right:2, width:6, height:6, background:entryFc, borderRadius:'50%', boxShadow:`0 0 4px ${entryFc}` } }),
-                  !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:1, left:1, width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:12, color:starred?'#dcaa1e':'rgba(255,255,255,0.18)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'\u2605':'\u2606')),
-                h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2, padding:'1px 2px 0' }}, entry.label),
-                h('div', { style:{ display:'flex', gap:2, justifyContent:'center', flexWrap:'wrap' } },
-                  ...(entry.types||[]).slice(0,2).map((t,ti)=>h('span',{key:ti,style:{ display:'inline-flex', alignItems:'center', gap:1, color:getTypeColor(t), fontSize:8, letterSpacing:'0.04em', textTransform:'uppercase', padding:'0 3px', border:`1px solid ${getTypeColor(t)}33`, background:`${getTypeColor(t)}0a`, lineHeight:'14px' }}, h('span',{style:{width:3,height:3,background:getTypeColor(t),borderRadius:'50%'}}),t))),
-                h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.06em', textAlign:'center', marginTop:1 } }, getJobDisplay(entry.cls)),
-                h('div', { style:{ fontSize:9, color:EW.good, fontWeight:600 } }, hpVal),
+                  locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
+                  !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:0, left:0, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:11, color:starred?'#dcaa1e':'rgba(255,255,255,0.15)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'★':'☆')),
+                h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
+                h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.04em', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' } }, getJobDisplay(entry.cls)),
                 isActive && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${entryFc}`, boxShadow:`0 0 8px ${entryFc}44`, pointerEvents:'none' } }),
               );
             }),
@@ -1125,91 +1405,85 @@ function PartyBuilder() {
         ),
       ),
 
-      h('div', { style:{ display:'flex', flexDirection:'column', gap:0, minHeight:0, overflow:'hidden', padding:'8px 10px', borderLeft:`1px solid ${EW.panelEdge}`, background:'linear-gradient(270deg, rgba(0,0,0,0.25), transparent)' }},
-        h('div', { style:{ background:'rgba(8,10,18,0.5)', border:`1px solid ${EW.panelEdge}`, padding:'6px 8px', display:'flex', flexDirection:'column', gap:3, flex:1, minHeight:0, overflow:'hidden' } },
-          h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 } },
-            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, letterSpacing:'0.12em', textTransform:'uppercase' } }, 'Spells'),
-            h('span', { style:{ display:'flex', gap:4, alignItems:'center' } },
-              !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'RND'),
-              !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'RST'),
-              !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'2px 6px',fontFamily:'DotGothic16, monospace',cursor:'pointer'}},'CLR'),
-              h('span',{style:{fontSize:10,color:(learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0)>slotCap)?EW.bad:EW.time,letterSpacing:'0.14em'}},learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0),'/',slotCap,' SLOTS'))),
+      h('div', { style:{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden', padding:'8px 6px 8px 4px', borderLeft:`1px solid ${EW.panelEdge}`, background:'linear-gradient(270deg, rgba(0,0,0,0.3), transparent)' }},
+        h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexShrink:0, padding:'0 6px 6px 10px', borderBottom:`1px solid ${fc}33` } },
+          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:17, letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 } }, 'Abilities'),
+          h('span', { style:{ fontSize:10, color: spellSlotsUsed>slotCap ? EW.bad : EW.time, letterSpacing:'0.12em', border:`1px solid ${spellSlotsUsed>slotCap?'rgba(255,122,138,0.45)':'rgba(242,196,104,0.35)'}`, background:'rgba(0,0,0,0.35)', padding:'2px 8px', whiteSpace:'nowrap' } }, spellSlotsUsed, '/', slotCap, ' SLOTS'),
+          h('div', { style:{flex:1} }),
+          !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RND'),
+          !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
+          !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
 
-          h('div', { style:{ display:'flex', flexDirection:'column', gap:1, flexShrink:0 } },
-            (()=>{
-              const usedTotal=learnedSpells.reduce((s,sp)=>s+spellSlotCost(sp),0);
-              let slotNo=1;
-              const rows=learnedSpells.map((sp,si)=>{
-                const cat=classifySpellLocal(sp),catC=spellCategoryColor(cat),sc=spellSlotCost(sp),slotLabel=sc>1?`${slotNo}-${slotNo+sc-1}`:`${slotNo}`;slotNo+=sc;
-                return h('div',{key:sp.id||si,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:!isArena?()=>toggleSpell(sp.id):undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:`rgba(${cat==='damage'?'152,80,80':cat==='heal'?'90,148,86':cat==='buff'?'80,126,160':cat==='debuff'?'200,170,70':'140,100,180'},0.1)`,borderLeft:`3px solid ${catC}`,cursor:!isArena?'pointer':'help',fontSize:11}},
-                  h('span',{style:{width:20,fontSize:9,color:EW.inkDim,flexShrink:0}},slotLabel),
-                  h('span',{style:{flex:1,color:EW.ink,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
-                  h('span',{style:{fontSize:8,color:sc>=3?'rgba(255,150,120,0.85)':sc===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0,letterSpacing:'0.05em'}},'\u25c6'.repeat(sc)),
-                  sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
-                  typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(sp)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.7)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(sp)):null,
-                  sp.spellType?h('span',{style:{display:'inline-flex',alignItems:'center',gap:2,color:getTypeColor(sp.spellType),fontSize:8,flexShrink:0}},h('span',{style:{width:3,height:3,background:getTypeColor(sp.spellType),borderRadius:'50%'}}),sp.spellType):null);
-              });
-              for(let si=usedTotal;si<slotCap;si++){
-                rows.push(h('div',{key:`empty-${si}`,style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:'rgba(255,255,255,0.015)',borderLeft:'3px solid rgba(120,140,180,0.1)',opacity:0.5,fontSize:11}},
-                  h('span',{style:{width:20,fontSize:9,color:EW.inkDim,flexShrink:0}},si+1),h('span',{style:{flex:1,color:EW.inkDim,fontStyle:'italic'}},'\u2014 empty \u2014')));
-              }
-              if(usedTotal>slotCap){
-                rows.push(h('div',{key:'overbudget',style:{display:'flex',alignItems:'center',gap:4,padding:'2px 5px',background:'rgba(255,120,120,0.08)',borderLeft:'3px solid rgba(255,120,120,0.6)',fontSize:10,color:EW.bad}},
-                  h('span',{style:{flex:1}},'OVER BUDGET \u2014 remove spells (extras are dropped in battle)')));
-              }
-              return rows;
-            })()),
+        // ── equipped loadout: battle-style blades, click to unequip ──
+        h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, maxHeight:'46%', overflowY:'auto', padding:'7px 0 3px' } },
+          (()=>{
+            let slotNo = 1;
+            const rows = learnedSpells.map((sp, si) => {
+              const sc = spellSlotCost(sp);
+              const slotLabel = sc > 1 ? `${slotNo}-${slotNo + sc - 1}` : `${slotNo}`;
+              slotNo += sc;
+              const isRA = !!(raceAbilities.find(a => a.id && a.id === sp.id));
+              return h(SpellBlade, { key: sp.id || si, sp, slotLabel, raceAbility: isRA,
+                onClick: !isArena ? ()=>toggleSpell(sp.id) : undefined,
+                onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+            });
+            for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotLabel:String(si+1) }));
+            if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 9px 0 5px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
+              h('span', { style:{flex:1} }, 'OVER BUDGET — remove spells (extras are dropped in battle)')));
+            return rows;
+          })()),
 
-          (!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h('div',{style:{flex:1,minHeight:0,overflow:'auto',display:'flex',flexDirection:'column',gap:1,marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:3}},
-            h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:1}},
-              h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.1em'}},'SPELL POOL'),h('span',{style:{fontSize:9,color:EW.inkDim}},spellPool.length+raceAbilities.length,' total')),
-            raceAbilities.map((a,ai)=>{
-              const tc=getTypeColor(a.spellType||'human');
+        // ── SUBCLASS — a second job that feeds the pool below and shifts stats ──
+        !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
+          h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
+          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— Auto —'),
+          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
+          h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
+
+        // ── the pool ──
+        (!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
+          h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
+            h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
+            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
+            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
+          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
+            raceAbilities.map((a, ai) => {
               const raId = a.id || `ra_${unitRace}_${ai}`;
               const isEquipped = customSpells ? customSpells.includes(raId) : false;
-              return h('div',{key:`ra-${ai}`,onMouseEnter:e=>showSpellTip(a,e),onMouseLeave:hideSpellTip,onClick:a.id && !isArena ? ()=>toggleSpell(a.id) : undefined,className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:isEquipped?'rgba(140,120,200,0.16)':'rgba(140,120,200,0.06)',borderLeft:`3px solid ${isEquipped?'rgba(140,120,200,0.8)':'rgba(140,120,200,0.3)'}`,cursor:a.id && !isArena?'pointer':'help',fontSize:11}},
-                a.id && !isArena && h('div',{style:{width:11,height:11,border:'1px solid rgba(140,120,200,0.6)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},isEquipped&&h('div',{style:{width:6,height:6,background:'rgba(140,120,200,0.9)'}})),
-                h('span',{style:{width:12,fontSize:8,color:'rgba(140,120,200,0.6)',flexShrink:0,fontWeight:700}},'RA'),
-                h('span',{style:{flex:1,color:'rgba(180,160,220,0.9)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},a.name),
-                h('span',{style:{fontSize:8,color:spellSlotCost(a)>=3?'rgba(255,150,120,0.85)':spellSlotCost(a)===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0}},'◆'.repeat(spellSlotCost(a))),
-                a.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},a.cost+'mp'):null,
-                typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(a)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.65)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(a)):null);
+              const cantFit = !isEquipped && a.id && (spellSlotsUsed + spellIdSlotCost(a.id)) > slotCap;
+              return h(SpellBlade, { key:'ra-'+ai, sp:a, pool:!!a.id, raceAbility:true, equipped:isEquipped, dim:!!cantFit,
+                onClick: a.id && !isArena ? ()=>toggleSpell(a.id) : undefined,
+                onHoverIn: e=>showSpellTip(a, e), onHoverOut: hideSpellTip });
             }),
-            spellPool.map(sp=>{const selected=customSpells?customSpells.includes(sp.id):false,tc=getTypeColor(sp.spellType||'human');return h('div',{key:sp.id,onMouseEnter:e=>showSpellTip(sp,e),onMouseLeave:hideSpellTip,onClick:()=>toggleSpell(sp.id),className:'pb-spell-row',style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:selected?`${tc}14`:'rgba(255,255,255,0.02)',borderLeft:`3px solid ${selected?tc:'transparent'}`,cursor:'pointer',fontSize:11}},
-              h('div',{style:{width:11,height:11,border:`1px solid ${tc}88`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},selected&&h('div',{style:{width:6,height:6,background:tc}})),
-              h('span',{style:{flex:1,color:selected?EW.ink:EW.inkMute,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}},sp.name),
-              h('span',{style:{fontSize:8,color:spellSlotCost(sp)>=3?'rgba(255,150,120,0.85)':spellSlotCost(sp)===2?'rgba(240,200,110,0.8)':'rgba(160,170,200,0.6)',fontWeight:700,flexShrink:0}},'◆'.repeat(spellSlotCost(sp))),
-              sp.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},sp.cost+'mp'):null,
-              typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(sp)?h('span',{style:{fontSize:8,color:'rgba(220,190,140,0.5)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(sp)):null,
-              sp.spellType?h('span',{style:{display:'inline-flex',alignItems:'center',gap:1,color:tc,fontSize:8,flexShrink:0}},h('span',{style:{width:3,height:3,background:tc,borderRadius:'50%'}})):null);})),
-
-          isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:3,display:'flex',flexDirection:'column',gap:1}},
-            h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1}},'RACE ABILITIES'),
-            raceAbilities.map((a,ai)=>{const tc=getTypeColor(a.spellType||'human');return h('div',{key:ai,onMouseEnter:e=>showSpellTip(a,e),onMouseLeave:hideSpellTip,style:{display:'flex',alignItems:'center',gap:3,padding:'2px 5px',background:'rgba(140,120,200,0.06)',borderLeft:'3px solid rgba(140,120,200,0.3)',cursor:'help',fontSize:11}},
-              h('span',{style:{flex:1,color:'rgba(180,160,220,0.9)'}},a.name),a.cost?h('span',{style:{fontSize:8,color:'rgba(100,180,255,0.6)',fontWeight:600,flexShrink:0}},a.cost+'mp'):null,typeof window.getSpellPowerLabel==='function'&&window.getSpellPowerLabel(a)?h('span',{style:{fontSize:9,color:'rgba(220,190,140,0.65)',fontWeight:600,flexShrink:0}},window.getSpellPowerLabel(a)):null);})),
+            spellPool.map(sp => {
+              const selected = customSpells ? customSpells.includes(sp.id) : false;
+              const cantFit = !selected && (spellSlotsUsed + spellSlotCost(sp)) > slotCap;
+              return h(SpellBlade, { key:sp.id, sp, pool:true, equipped:selected, dim:!!cantFit,
+                onClick: ()=>toggleSpell(sp.id),
+                onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+            })),
         ),
+
+        isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:5,display:'flex',flexDirection:'column',gap:3}},
+          h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1,paddingLeft:10}},'RACE ABILITIES'),
+          raceAbilities.map((a,ai)=>h(SpellBlade,{key:ai,sp:a,raceAbility:true,onHoverIn:e=>showSpellTip(a,e),onHoverOut:hideSpellTip}))),
       ),
     ),
 
     h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:52, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(8,10,18,0.8), rgba(8,10,18,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
-      h('button',{onClick:doRandomize,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'8px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM'),
-      h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'8px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM ALL'),
-      h('button',{onClick:doDefaults,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'8px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'DEFAULTS'),
-      h('div',{style:{width:1,height:18,background:EW.panelEdge}}),
-      h('button',{onClick:()=>{setTeamSaveName('');setShowTeamModal('save');},className:'pb-btn-ghost',style:{background:'rgba(220,170,30,0.06)',color:'#dcaa1e',border:'1px solid rgba(220,170,30,0.25)',padding:'8px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2605 SAVE'),
-      h('button',{onClick:()=>setShowTeamModal('load'),className:'pb-btn-ghost',style:{background:'rgba(100,180,255,0.06)',color:'rgba(100,180,255,0.9)',border:'1px solid rgba(100,180,255,0.25)',padding:'8px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2191 LOAD'),
-      h('div',{style:{flex:1}}),
-      ...Array.from({length:teamSize}).map((_,i)=>{
-        const cn=typeof window.normalizeClassName==='function'?window.normalizeClassName(st.partyBuilds?.[player]?.[i],window.DEFAULT_BUILDS?.[player]?.[i]):(st.partyBuilds?.[player]?.[i]||'Warrior');
-        const mt=st.partyMeta?.[player]?.[i]||{};const id=typeof window.resolveIdentityForBuild==='function'?window.resolveIdentityForBuild(cn,mt):{};
-        const confirmed=!!(st.builderConfirmedSlots?.[player]?.[i]),isAct=i===slot;
-        return h('div',{key:i,onClick:()=>selectSlot(i),className:'pb-footer-slot',style:{width:44,height:44,cursor:'pointer',position:'relative',border:`1px solid ${isAct?fc:confirmed?'rgba(100,200,120,0.3)':EW.panelEdge}`,background:isAct?`${fc}12`:confirmed?'rgba(100,200,120,0.03)':'rgba(0,0,0,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}},
-          h(Sprite,{race:id.race,gender:id.gender||'male',cls:cn,size:32}),
-          confirmed&&h('span',{style:{position:'absolute',top:1,right:2,fontSize:8,color:'rgba(100,200,120,0.7)',fontWeight:700}},'\u2713'),
-          h('span',{style:{position:'absolute',bottom:0,left:3,fontSize:8,color:EW.inkDim}},i+1));
-      }),
+      // One command row: exit · party tools · presets ─ status ─ commit
+      h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,120,120,0.08)',color:'rgba(255,130,140,0.95)',border:'1px solid rgba(255,120,120,0.45)',padding:'9px 20px',fontFamily:'DotGothic16, monospace',fontSize:12,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
       h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
-      h('button',{onClick:confirmSlot,className:'pb-btn-confirm',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'8px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM'),
+      h('button',{onClick:doRandomize,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM'),
+      h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM ALL'),
+      h('button',{onClick:doDefaults,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'DEFAULTS'),
+      h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
+      h('button',{onClick:()=>{setTeamSaveName('');setShowTeamModal('save');},className:'pb-btn-ghost',style:{background:'rgba(220,170,30,0.06)',color:'#dcaa1e',border:'1px solid rgba(220,170,30,0.25)',padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2605 SAVE'),
+      h('button',{onClick:()=>setShowTeamModal('load'),className:'pb-btn-ghost',style:{background:'rgba(100,180,255,0.06)',color:'rgba(100,180,255,0.9)',border:'1px solid rgba(100,180,255,0.25)',padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2191 LOAD'),
+      h('div',{style:{flex:1}}),
+      h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, 'SLOT ', numerals[slot], ' · ', unitName),
+      h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
+      h('button',{onClick:confirmSlot,className:'pb-btn-confirm',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'9px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM'),
       friendlyHostCanStart
         ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 18px rgba(100,200,120,0.25)',display:'flex',alignItems:'center',gap:10}},
             '⚔ START MATCH')
@@ -1251,6 +1525,87 @@ function PartyBuilder() {
                   h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' \u00B7 ', new Date(preset.createdAt).toLocaleDateString())),
                 h('button', { onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);}, style:{ background:'transparent', border:'1px solid rgba(255,100,100,0.2)', color:'rgba(255,100,100,0.5)', fontSize:9, padding:'3px 8px', fontFamily:'DotGothic16, monospace', cursor:'pointer' }}, 'DEL'),
               ))),
+      )),
+
+    equipPicker && h('div', { onClick:()=>setEquipPicker(null), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.72)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
+      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0e0d1a', border:`1px solid ${EW.panelEdgeHi}`, padding:'16px 18px', width:430, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
+        h('div', { style:{ display:'flex', alignItems:'center', gap:10 }},
+          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', textTransform:'uppercase' }},
+            equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2')),
+          equipPicker === 'item' && h('span', { style:{ fontSize:10, color: totalItemsUsed >= itemSlotMax ? EW.warn : EW.inkMute, letterSpacing:'0.1em' }}, totalItemsUsed, '/', itemSlotMax, ' CARRIED'),
+          equipPicker === 'subjob' && h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em' }}, 'its spells join your pool · its training shifts your stats'),
+          h('div', { style:{flex:1} }),
+          h('button', { onClick:()=>setEquipPicker(null), style:{ background:'transparent', border:'none', color:EW.inkMute, fontSize:18, cursor:'pointer', lineHeight:1 }}, '✕')),
+        h('div', { style:{ display:'flex', flexDirection:'column', gap:5, overflowY:'auto' }},
+          equipPicker === 'subjob'
+            ? (() => {
+                // Subclass rows: spells the job contributes + its stat shifts, so
+                // the choice reads as "what playstyle does this buy me".
+                const jobs = (typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer');
+                const bonusStr = (j) => {
+                  const b = (typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(j) : {};
+                  return Object.entries(b).filter(([,v]) => v).map(([k,v]) => (v>0?'+':'')+v+' '+k.toUpperCase()).join('  ');
+                };
+                const spellCount = (j) => (((typeof window.CLASS_SPELL_LEARN_ORDER!=='undefined'&&window.CLASS_SPELL_LEARN_ORDER)||{})[j]||[]).length;
+                const pickJob = (j) => { handleSecJobChange(j); sfx('uiButtonConfirm'); setEquipPicker(null); };
+                const autoOn = !secJob;
+                const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
+                  h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
+                  h('div', { style:{ flex:1, minWidth:0 }},
+                    h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— Auto —'),
+                    h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
+                  autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
+                for (const j of jobs) {
+                  const on = secJob === j;
+                  const bs = bonusStr(j);
+                  rows.push(h('div', { key:j, className:'pbx-pick-row', style: on ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob(j) },
+                    // Plain homosapien in this job — a visual shorthand for the role.
+                    h('div', { style:{ width:40, height:40, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg, transparent 45%, ${fc}12 100%)`, border:`1px solid ${on?fc:EW.panelEdge}`, overflow:'hidden' }},
+                      h(Sprite, { race:'homosapien', gender:'male', cls:j, size:'92%', style:{ width:'92%', height:'92%' } })),
+                    h('div', { style:{ flex:1, minWidth:0 }},
+                      h('div', { style:{ display:'flex', alignItems:'baseline', gap:8 }},
+                        h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
+                        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em' }}, '+', spellCount(j), ' SPELLS TO POOL')),
+                      bs ? h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.4 }}, ...bs.split('  ').map((tok, ti) => h('span', { key:ti, style:{ color: tok.startsWith('-') ? EW.bad : EW.good, marginRight:8, fontWeight:600 }}, tok))) : null),
+                    on ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null));
+                }
+                return rows;
+              })()
+            : equipPicker === 'item'
+            ? allItemKeys.map(ik => {
+                const rule = window.ITEM_RULES?.[ik];
+                if (!rule) return null;
+                const count = unitItems[ik] || 0;
+                const capped = count >= (rule.max || 6) || totalItemsUsed >= itemSlotMax;
+                return h('div', { key:ik, className:'pbx-pick-row', onClick:()=>setItemCount(ik, 1), style:{ opacity: capped && !count ? 0.5 : 1 }},
+                  h('span', { style:{ fontSize:20, flexShrink:0, width:26, textAlign:'center' }}, rule.icon || '📦'),
+                  h('div', { style:{ flex:1, minWidth:0 }},
+                    h('div', { style:{ fontSize:12, color: count ? EW.ink : '#c3c8d6' }}, rule.name),
+                    h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, rule.desc)),
+                  h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }},
+                    count > 0 ? h('button', { className:'pb-stepper-btn', onClick:e=>{ e.stopPropagation(); setItemCount(ik, -1); }, style:{ width:20, height:20, background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:13, lineHeight:'18px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' }}, '−') : null,
+                    h('span', { style:{ width:18, textAlign:'center', fontSize:12, color: count ? EW.ink : EW.inkDim, fontWeight:600 }}, count)));
+              })
+            : (() => {
+                const other = equipPicker === 'accessory1' ? 'accessory2' : 'accessory1';
+                const rows = allAccIds.map(accId => {
+                  const def = window.EQUIP_DEFS?.[accId];
+                  if (!def) return null;
+                  const here = unitEquipment[equipPicker] === accId, there = unitEquipment[other] === accId;
+                  return h('div', { key:accId, className:'pbx-pick-row', style: here ? { borderColor:fc, background:`${fc}14` } : undefined,
+                    onClick:()=>{ if (here) { handleAccChange(equipPicker, null); } else { if (there) handleAccChange(other, null); handleAccChange(equipPicker, accId); } sfx('uiButtonConfirm'); setEquipPicker(null); } },
+                    h('span', { style:{ fontSize:18, flexShrink:0, width:26, textAlign:'center' }}, ACC_ICONS[accId] || '🎒'),
+                    h('div', { style:{ flex:1, minWidth:0 }},
+                      h('div', { style:{ fontSize:12, color: here ? EW.ink : '#c3c8d6' }}, def.label, there ? h('span', { style:{ fontSize:8, color:EW.inkDim }}, '  (in other slot)') : null),
+                      h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, def.desc)),
+                    def.stat && def.statVal ? h('span', { style:{ fontSize:10, color:EW.good, fontWeight:700, flexShrink:0 }}, '+' + def.statVal + ' ' + (def.stat || '').toUpperCase()) : null,
+                    here ? h('span', { style:{ fontSize:9, color:fc, flexShrink:0, fontWeight:700, letterSpacing:'0.08em' }}, 'EQUIPPED') : null);
+                });
+                if (unitEquipment[equipPicker]) rows.push(h('div', { key:'__rm', className:'pbx-pick-row', onClick:()=>{ handleAccChange(equipPicker, null); setEquipPicker(null); } },
+                  h('span', { style:{ width:26, textAlign:'center', color:EW.bad, flexShrink:0 }}, '✕'),
+                  h('div', { style:{ flex:1, fontSize:11, color:EW.bad }}, 'Remove gear from this slot')));
+                return rows;
+              })()),
       )),
 
     spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y),

@@ -26,6 +26,63 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Party Builder redesign round 2 (2026-07-06, same session) — party-builder.js only
+Token bumped `20260706c` → `20260706d`. Six feedback fixes:
+- Header BACK removed; footer is now ONE command row: red `← BACK`
+  (pb-btn-danger) · RANDOM/RANDOM ALL/DEFAULTS · SAVE/LOAD · slot indicator ·
+  CONFIRM · SEAL YOUR FATE.
+- Roster search/sort/filters left-aligned (spacer removed).
+- SUBCLASS promoted: blade-styled `.pbx-subbar` in the ABILITIES panel between
+  the loadout and the pool ("adds its spells to the pool below · shifts stats",
+  ▾ CHANGE). Opens the picker modal (`equipPicker === 'subjob'`): every job with
+  "+N SPELLS TO POOL" + green/red stat shifts from computeSecJobBonuses. Pool
+  header now reads "SPELL POOL <MAIN> + <SUB>". Identity row keeps a small
+  read-only "◈ SUB: <job>" echo.
+- Combat assessment: stat bars shortened to ~54% width; the combined
+  reach diamond split into TWO diamonds via `RangeDiamond` — blue MOVE
+  footprint + red RANGE footprint, each labeled with its value.
+- NEW `RACE_TRAITS` registry (window-exposed, party-builder.js): passives &
+  terrain rules per race, rendered as `.pbx-trait` rows under the stats.
+  Entries commented CODED (live engine rules: adaptation fns in map.js,
+  SKY_RACES flight, sleepPreference day/night ±8 ATK/5 armor/5 INT/1 AWR,
+  werewolf day-human/night-beast model swap, deep-water/lava move+drown) vs
+  DESIGN (authored playstyle passives, NOT yet implemented in battle.js —
+  implement these next; the menu already advertises them). Only the 26
+  default-unlocked/3D-ready races have entries.
+- RACIAL chip on spell blades removed (race abilities read as normal spells).
+
+## Party Builder redesign (2026-07-06) — party-builder.js only
+Token bumped `20260706b` → `20260706c`. Full champ-select-style relayout of the
+React builder (mount contract `_mountReactPartyBuilder`/`builderOverlay` unchanged;
+all handlers/data flow kept — presentation only).
+- Grid is now `112px rail | center | clamp(340px,28vw,470px) abilities`. Center
+  splits vertically: HERO SHOWCASE (54%) over the roster grid.
+- HERO SHOWCASE: big sprite (fills the stage), flanked by RPG-style slot squares —
+  2 GEAR + 3 ITEM (`EquipSlotBox`, class `.pbx-eqslot`). Clicking a slot opens a
+  centered picker modal (state `equipPicker`: `'item' | 'accessory1' | 'accessory2'`);
+  hover ✕ on a filled slot removes. Item counts are expanded to per-slot units
+  (`itemUnits`). Identity sheet right of the stage: big Cinzel name, TypeChips
+  (canonical cut-corner badges, size 11), faction demoted to a tiny text line with
+  its FACTION_BONUSES value, NAME/ZODIAC/SUB row, then tabs `heroTab`:
+  COMBAT ASSESSMENT (stat bars + range profile) / CODEX DOSSIER (lore).
+- ABILITIES panel: equipped loadout + spell pool render as `SpellBlade` —
+  battle-parity blades mirroring hud.js Horologe rows (skewX(-6deg), clip-path,
+  category glyph/left edge from PB_CAT ≡ _HRLG_CAT, Cinzel name, type badge,
+  ◆ slot-cost pips, colored PWR chip, MP chip) with an ALWAYS-VISIBLE one-line
+  desc (`RNG/AOE — desc`). Pool rows have a checkbox + lit state; rows that
+  can't fit the slot budget render at 0.45 opacity but stay clickable (error
+  sfx). Rich hover tooltip retained. `.pbx-name` never shrinks; chips clip
+  right; ≤1500px viewport hides the RACIAL chip (media query).
+- Removed per user feedback: ALL color-coded dots (party rail, vessel cards,
+  faction chips, spell rows), FactionChip component, footer slot thumbnails
+  (duplicate of the rail), items/gear side panels, codex dossier panel (now a tab).
+  Roster cards shrunk (minmax 72px) to name+job only.
+- HARNESS: builder screenshots via `.pb-tarot`; blades are `.pbx-blade`
+  (`.pool`/`.on`/`.empty`), tabs `.pbx-tab`, slot squares `.pbx-eqslot`,
+  pickers `.pbx-pick-row`. "SEAL YOUR FATE" flow (`.pb-btn-primary`) unchanged —
+  playtest.js works as-is (verified: menus → builder → interactions at 1600×900
+  and 1280×720 with `USE_ASSET_CACHE=1 LOCAL_ASSETS=party-builder.js`).
+
 ## Battle loading screen + asset preload gate (2026-07-05/06) — battle.js, three-renderer.js, audio.js, online.js, styles-cinematic.css
 Token bumped `20260705g` → `20260705h`. ROADMAP §3.1 + §3.2 shipped.
 - `showBattleLoadingScreen(onDone)` (battle.js, just above `showVSSplash`; also on
