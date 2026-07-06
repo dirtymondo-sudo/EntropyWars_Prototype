@@ -4825,8 +4825,11 @@
             const after = Math.min(ENTROPY_GAUGE_MAX, before + Math.round(amount));
             state.entropyGauge[player] = after;
 
-            if (!_skipVisuals() && sourceUnit && !sourceUnit.dead && (after - before) >= 3) {
-                showFloatingTextForUnit(sourceUnit, `⚛ +${after - before} ENTROPY`, 'mp', { durationMs: 1100, jitterY: -40 });
+            // Glowing orbs stream from the source into the HUD gauge (hud.js
+            // _entropyOrbsFly) — quieter than floating text, which was drowning
+            // out the damage numbers.
+            if (!_skipVisuals() && typeof window._entropyOrbsFly === 'function') {
+                try { window._entropyOrbsFly(player, after - before, (sourceUnit && !sourceUnit.dead) ? sourceUnit : null); } catch (e) {}
             }
 
             if (after >= ENTROPY_GAUGE_MAX && before < ENTROPY_GAUGE_MAX) {
