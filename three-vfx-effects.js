@@ -2135,7 +2135,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         _activeBubbleDomes.push(entry);
 
         function animate() {
-            if (entry.done) return;
+            if (entry.done) return false;
             var elapsed = performance.now() - startTime;
             if (elapsed >= totalMs) {
 
@@ -2145,7 +2145,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
                 entry.done = true;
                 var idx = _activeBubbleDomes.indexOf(entry);
                 if (idx >= 0) _activeBubbleDomes.splice(idx, 1);
-                return;
+                return false;
             }
 
             var t, s, opacity;
@@ -2181,12 +2181,47 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             domeWire.rotation.y = wireRot;
             matWire.opacity = opacity * 0.35;
 
-            requestAnimationFrame(animate);
+            return true;
         }
-        requestAnimationFrame(animate);
+        _fxSchedule(animate);
     }
 
     var _active3DGeom = [];
+
+    /* Was referenced by the light-lance / glacial-tomb effects but never
+       declared — casting them threw a ReferenceError mid-spawn and stranded
+       their meshes in the scene. Declared + swept by clearAll now. */
+    var _activeThreeMeshes = [];
+
+    /* ── §4.6 shared VFX ticker (ROADMAP) ──────────────────────────────────
+       Every effect used to run its own requestAnimationFrame chain; a busy
+       fight meant a dozen separate rAF callbacks per frame and no way to kill
+       stragglers on match end. All effect loops now register a tick function
+       here: ONE rAF drives them all, a tick returning false (or throwing)
+       unregisters it, and clearAll() drops every ticker at once. */
+    var _fxTickers = [], _fxRaf = null, _fxPumping = false;
+    function _fxSchedule(fn) {
+        _fxTickers.push(fn);
+        if (_fxRaf === null && !_fxPumping) _fxRaf = requestAnimationFrame(_fxPump);
+    }
+    function _fxPump() {
+        _fxRaf = null;
+        _fxPumping = true;
+        var list = _fxTickers;
+        _fxTickers = [];
+        for (var i = 0; i < list.length; i++) {
+            var alive = false;
+            try { alive = list[i]() !== false; }
+            catch (e) { try { console.warn('[VFX] ticker error, killing effect:', e && e.message ? e.message : e); } catch (e2) {} }
+            if (alive) _fxTickers.push(list[i]);
+        }
+        _fxPumping = false;
+        if (_fxTickers.length && _fxRaf === null) _fxRaf = requestAnimationFrame(_fxPump);
+    }
+    function _fxKillAllTickers() {
+        _fxTickers.length = 0;
+        if (_fxRaf !== null) { cancelAnimationFrame(_fxRaf); _fxRaf = null; }
+    }
 
     function _getVFXScene() {
         return window.ThreeVFX && window.ThreeVFX._getScene
@@ -2210,17 +2245,16 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
     function _animate3D(entry, totalMs, tickFn) {
         var startTime = performance.now();
         _active3DGeom.push(entry);
-        function loop() {
-            if (entry.done) return;
+        _fxSchedule(function () {
+            if (entry.done) return false;
             var elapsed = performance.now() - startTime;
             if (elapsed >= totalMs) {
                 _cleanup3D(entry);
-                return;
+                return false;
             }
             tickFn(elapsed, totalMs);
-            requestAnimationFrame(loop);
-        }
-        requestAnimationFrame(loop);
+            return true;
+        });
     }
 
     function _cleanup3D(entry) {
@@ -4700,7 +4734,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var totalMs = descentMs + holdMs + fadeMs;
 
         function tick() {
-            if (entry.done) return;
+            if (entry.done) return false;
             var elapsed = performance.now() - startTime;
             var t = Math.min(elapsed / totalMs, 1);
 
@@ -4740,11 +4774,11 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             if (t >= 1) {
                 entry.done = true;
                 allMeshes.forEach(function(m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
-                return;
+                return false;
             }
-            requestAnimationFrame(tick);
+            return true;
         }
-        requestAnimationFrame(tick);
+        _fxSchedule(tick);
     }
 
     function _spawnGlacialTombShard3D(tx, ty) {
@@ -4807,7 +4841,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var totalMs = descentMs + holdMs + shatterMs;
 
         function tick() {
-            if (entry.done) return;
+            if (entry.done) return false;
             var elapsed = performance.now() - startTime;
             var t = Math.min(elapsed / totalMs, 1);
             var now = performance.now();
@@ -4854,11 +4888,11 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             if (t >= 1) {
                 entry.done = true;
                 allMeshes.forEach(function(m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
-                return;
+                return false;
             }
-            requestAnimationFrame(tick);
+            return true;
         }
-        requestAnimationFrame(tick);
+        _fxSchedule(tick);
     }
 
     /* ═══════════════════ SIGNATURE 3D SPELL CINEMATICS ═══════════════════
@@ -5086,6 +5120,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
        flood the scene. */
     var _sigActive = 0;
     var _SIG_MAX_ACTIVE = 20;
+    var _sigEntries = [];   // live signature effects — clearAll() finishes them
     function _sigRun(group, totalMs, tick) {
         var scene = _getVFXScene();
         if (!scene) return null;
@@ -5093,11 +5128,14 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         _sigActive++;
         scene.add(group);
         var entry = { done: false, group: group };
+        _sigEntries.push(entry);
         var t0 = performance.now();
         function finish() {
             if (entry.done) return;
             entry.done = true;
             _sigActive--;
+            var _sei = _sigEntries.indexOf(entry);
+            if (_sei >= 0) _sigEntries.splice(_sei, 1);
             scene.remove(group);
             group.traverse(function (o) {
                 if (o.geometry) o.geometry.dispose();
@@ -5108,18 +5146,18 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             });
         }
         function loop() {
-            if (entry.done) return;
+            if (entry.done) return false;
             var el = performance.now() - t0;
-            if (el >= totalMs) { finish(); return; }
+            if (el >= totalMs) { finish(); return false; }
             try { tick(el); } catch (e) {
                 /* don't die silently — a sig effect vanishing one frame in is
                    otherwise undebuggable */
                 try { console.warn('[SIG3D] tick error, killing effect:', e && e.message ? e.message : e); } catch (e2) {}
-                finish(); return;
+                finish(); return false;
             }
-            requestAnimationFrame(loop);
+            return true;
         }
-        requestAnimationFrame(loop);
+        _fxSchedule(loop);
         entry.finish = finish;
         return entry;
     }
@@ -5149,12 +5187,12 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             var attack = Math.min(50, total * 0.25);
             function step() {
                 var t = performance.now() - t0;
-                if (t >= total) { el.style.opacity = '0'; return; }
+                if (t >= total) { el.style.opacity = '0'; return false; }
                 var o = t < attack ? (t / attack) : (1 - (t - attack) / (total - attack));
                 el.style.opacity = String(pk * Math.max(0, o));
-                requestAnimationFrame(step);
+                return true;
             }
-            requestAnimationFrame(step);
+            _fxSchedule(step);
         } catch (e) { /* cosmetic only */ }
     }
 
@@ -7874,9 +7912,58 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
     }
 
     var _origClear = clear;
+    var _clearingAll = false;
     function clearAll() {
+        /* Reentrancy guard: ThreeVFX.clear() (three-vfx.js:1654) calls back
+           into ThreeVFXEffects.clear — without this the two recurse forever
+           (pre-existing landmine, tripped once clear() is actually used). */
+        if (_clearingAll) return;
+        _clearingAll = true;
+        try {
         _origClear();
+        /* §4.6: hard-stop every registered effect ticker and sweep the scene
+           meshes of any effect still mid-flight (match end / renderer reset).
+           Before the shared ticker, an interrupted effect's own rAF chain was
+           the only thing that could clean it up — killed chains leaked meshes. */
+        var scene = _getVFXScene();
+        for (var gi = _active3DGeom.length - 1; gi >= 0; gi--) {
+            try { _cleanup3D(_active3DGeom[gi]); } catch (e) {}
+        }
+        _active3DGeom.length = 0;
+        for (var mi = _activeThreeMeshes.length - 1; mi >= 0; mi--) {
+            var me = _activeThreeMeshes[mi];
+            if (me && !me.done && me.meshes) {
+                me.done = true;
+                for (var mj = 0; mj < me.meshes.length; mj++) {
+                    var mm = me.meshes[mj];
+                    try {
+                        if (scene) scene.remove(mm);
+                        if (mm.geometry) mm.geometry.dispose();
+                        if (mm.material) mm.material.dispose();
+                    } catch (e) {}
+                }
+            }
+        }
+        _activeThreeMeshes.length = 0;
+        for (var bi = _activeBubbleDomes.length - 1; bi >= 0; bi--) {
+            var be = _activeBubbleDomes[bi];
+            if (be && !be.done) {
+                be.done = true;
+                try {
+                    if (scene) { scene.remove(be.domeOuter); scene.remove(be.domeInner); scene.remove(be.domeWire); }
+                    be.matOuter.dispose(); be.matInner.dispose(); be.matWire.dispose();
+                    be.geo.dispose(); be.wfGeo.dispose();
+                } catch (e) {}
+            }
+        }
+        _activeBubbleDomes.length = 0;
+        for (var si = _sigEntries.length - 1; si >= 0; si--) {
+            try { if (_sigEntries[si] && _sigEntries[si].finish) _sigEntries[si].finish(); } catch (e) {}
+        }
+        _sigEntries.length = 0;
+        _fxKillAllTickers();
         if (window.ThreeVFX && window.ThreeVFX.clear) window.ThreeVFX.clear();
+        } finally { _clearingAll = false; }
     }
 
     return {

@@ -610,6 +610,10 @@ const ThreePost = (function () {
         _applyCurrent();
     }
 
+    /* §4.2 shadow gating (three-renderer.js): true while the day/night grade
+       is still easing — the sun is moving, so shadow maps must re-render. */
+    function isLightingEasing() { return _lerpT < 1.0; }
+
     function syncLighting() {
         if (!_sunLight) return;
 
@@ -650,6 +654,7 @@ const ThreePost = (function () {
         sc.far = Math.max(radius * 1.8, 900) + radius * 2.5;
         sc.updateProjectionMatrix();
         _applyCurrent();   // repark the sun over the new frame
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.markShadowsDirty) ThreeRenderer.markShadowsDirty(); } catch (e) {}
     }
 
     // Every material bakes tone mapping + shadow defines into its program, so
@@ -682,6 +687,8 @@ const ThreePost = (function () {
             }
         }
         _recompileSceneMaterials();
+        /* the gated depth pass (§4.2) must re-render at the new size/state */
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.markShadowsDirty) ThreeRenderer.markShadowsDirty(); } catch (e) {}
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_shadows', q); } catch (e) {}
     }
     function getShadowQuality() { return _shadowQuality; }
@@ -1516,6 +1523,7 @@ const ThreePost = (function () {
         setPixelRatio: setPixelRatio,
         syncLighting: syncLighting,
         setShadowFrame: setShadowFrame,
+        isLightingEasing: isLightingEasing,
         setShadowQuality: setShadowQuality,
         getShadowQuality: getShadowQuality,
         getSunAzimuth: getSunAzimuth,

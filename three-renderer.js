@@ -899,6 +899,40 @@ const ThreeRenderer = (function () {
     var textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin('anonymous');
     var textureCache = new Map();
+    /* Texture-cache epoch (ROADMAP §4.9): getTexture stamps every texture it
+       hands out with the current match epoch; resetForNewMatch bumps the epoch
+       and disposes textures that haven't been requested for two matches, so a
+       long session doesn't accumulate the VRAM of every map ever played. */
+    var _texEpoch = 0;
+
+    /* ── Performance settings (ROADMAP §4) ─────────────────────────────────
+       Persisted like the ThreePost graphics settings (localStorage ew_*).
+       terrainBatch: §4.1 static-terrain draw-call merge (pixel-identical;
+                     exposed as a Video toggle purely as a kill-switch).
+       fpsCap:       §4.7 0 = uncapped, otherwise 30/60.
+       fpsCounter:   on-screen FPS readout (DotGothic16, retro).              */
+    var _perfSettings = { terrainBatch: true, fpsCap: 0, fpsCounter: false };
+    (function () {
+        try {
+            if (typeof localStorage === 'undefined') return;
+            var tb = localStorage.getItem('ew_terrainBatch');
+            if (tb !== null) _perfSettings.terrainBatch = tb !== '0';
+            var fc = localStorage.getItem('ew_fpsCap');
+            if (fc !== null) _perfSettings.fpsCap = parseInt(fc, 10) || 0;
+            var fq = localStorage.getItem('ew_fpsCounter');
+            if (fq !== null) _perfSettings.fpsCounter = fq === '1';
+        } catch (e) {}
+    })();
+
+    /* Shadow-map dirty gating state (ROADMAP §4.2). The sun's depth pass is
+       re-rendered only when something that CASTS a shadow could have changed:
+       a rebuild ran, a movement tween / GLB mixer is active, the day-night
+       lighting is easing, a turret arm / flying bob / tower cube moved, or
+       fog of war is restyling tile visibility. Console kill-switch:
+       window.EW_DISABLE_SHADOW_GATING = true → depth pass every frame again. */
+    var _shadowsDirty = true;     // consumed when the depth pass re-renders
+    var _shadowMotion = false;    // set by per-frame updaters that move casters
+    function markShadowsDirty() { _shadowsDirty = true; }
 
     var tileMeshes = new Map();
     var _lastTerrainVersion = -1, _lastHeightVersion = -1, _lastVoxelVersion = -1;
@@ -1212,6 +1246,7 @@ const ThreeRenderer = (function () {
         if (!url) return null;
         if (textureCache.has(url)) {
             var cached = textureCache.get(url);
+            cached._ew_epoch = _texEpoch;
 
             if (onLoad) {
                 if (cached.image && cached.image.complete) {
@@ -1241,6 +1276,7 @@ const ThreeRenderer = (function () {
         tex._ew_pendingLoads = [];
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.NearestFilter;
+        tex._ew_epoch = _texEpoch;
 
         textureCache.set(url, tex);
         return tex;
@@ -2165,6 +2201,208 @@ const ThreeRenderer = (function () {
             ThreePost.setShadowFrame(_sfW / 2, _sfH / 2,
                 Math.sqrt(_sfW * _sfW + _sfH * _sfH) / 2 + ts * 3);
         }
+        _rebuildMergedTerrain();
+        _shadowsDirty = true;
+    }
+
+    /* ── §4.1 Static terrain batching (ROADMAP) ────────────────────────────
+       Every tile is its own Mesh with up to 6 materials, so a big board costs
+       hundreds of draw calls before a single unit or effect renders. Since
+       terrain only changes when a rebuild serial flips, we bake all the plain
+       static tiles into ONE merged mesh per unique material after each
+       rebuild and hide the per-tile originals from the camera.
+
+       The per-tile meshes are KEPT in the scene graph (visible = false):
+       - three r128's Raycaster ignores `visible`, so screenToTile / editor /
+         occlusion picking hit the originals exactly as before;
+       - the merged meshes override `raycast` to a no-op so they are pure
+         render-side ghosts (no double hits, no giant-buffer ray tests);
+       - fog of war / the map editor churn per-tile visibility, so batching
+         simply turns itself off there (per-tile path = today's behavior).
+
+       What is NOT merged (kept as individual meshes, i.e. exactly today):
+       - lava tiles (per-tile emissive pulse) and fluid tiles (animated,
+         transparent materials);
+       - columns taller than 1 elevation step — they're the tiles the
+         action-cam occlusion fade needs to fade individually;
+       - anything mid-fade (occlusion or fog material swaps) or with a
+         non-Lambert / transparent / alpha-tested material.
+       Merged output uses the source geometry verbatim (positions baked to
+       world space, normals/uvs copied) and a representative of the identical
+       material params — pixel-identical, just fewer draw calls.
+       Kill-switches: Video-settings toggle, or window.EW_DISABLE_TERRAIN_MERGE. */
+    var _mergedTerrainMeshes = [];
+    var _mergedHiddenTiles = [];
+    var _mergedActive = false;
+
+    function _terrainBatchWanted() {
+        if (!_perfSettings.terrainBatch || window.EW_DISABLE_TERRAIN_MERGE) return false;
+        if (typeof state === 'undefined' || !state) return false;
+        if (state.fogOfWar) return false;       // fog toggles per-tile visibility
+        if (state.phase === 'editor') return false; // editor repaints tiles constantly
+        return true;
+    }
+
+    function _clearMergedTerrain() {
+        for (var i = 0; i < _mergedTerrainMeshes.length; i++) {
+            var mm = _mergedTerrainMeshes[i];
+            if (mm.parent) mm.parent.remove(mm);
+            if (mm.geometry) mm.geometry.dispose();
+        }
+        _mergedTerrainMeshes.length = 0;
+        for (var j = 0; j < _mergedHiddenTiles.length; j++) {
+            var tm = _mergedHiddenTiles[j];
+            tm._ew_mergedHidden = false;
+            /* Under fog the fog pass owns visibility — let it re-apply. */
+            if (!state || !state.fogOfWar) tm.visible = true;
+        }
+        _mergedHiddenTiles.length = 0;
+        _mergedActive = false;
+        _shadowsDirty = true;
+    }
+
+    /* A tile root qualifies when every mesh under it is a plain opaque
+       Lambert (the classic box/stair/landform path) and nothing about it
+       animates per-tile. */
+    var _MERGE_NEIGHBORS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    function _tileMergeable(root) {
+        if (root._ew_isLava || root._ew_hasLava) return false;
+        if (_FLUID_TERRAIN_SET[root._ew_terrain]) return false;
+        /* Occluder heuristic: keep a tile individual (so the action-cam
+           occlusion fade can still fade it) only when it RISES over adjacent
+           ground — i.e. a wall / cliff face. Absolute height is meaningless
+           here: a flat z=7 plateau that units stand ON can never block the
+           camera's view of them, so it merges; the plateau's edge tiles next
+           to a z=0 canyon tower over it and stay individual. */
+        var h = root._ew_height || 0;
+        if (h > 1) {
+            var px = root._ew_tileX, py = root._ew_tileY;
+            for (var ni = 0; ni < _MERGE_NEIGHBORS.length; ni++) {
+                var nm = tileMeshes.get((px + _MERGE_NEIGHBORS[ni][0]) + ',' + (py + _MERGE_NEIGHBORS[ni][1]));
+                if (nm && h - (nm._ew_height || 0) > 1) return false;
+            }
+        }
+        var ok = true;
+        root.traverse(function (o) {
+            if (!ok) return;
+            if (o.isMesh) {
+                if (o._ew_occOrig || o._ew_fogOrig) { ok = false; return; }
+                var g = o.geometry;
+                if (!g || !g.isBufferGeometry || !g.attributes.position) { ok = false; return; }
+                var mats = Array.isArray(o.material) ? o.material : [o.material];
+                for (var i = 0; i < mats.length; i++) {
+                    var mt = mats[i];
+                    if (!mt || !mt.isMeshLambertMaterial || mt.transparent
+                        || (mt.alphaTest || 0) > 0 || mt.blending !== THREE.NormalBlending
+                        || mt.wireframe || mt.emissiveMap || mt.aoMap || mt.lightMap
+                        /* per-instance onBeforeCompile = custom shader (fluid
+                           waves) — never fold into a shared-material bucket */
+                        || Object.prototype.hasOwnProperty.call(mt, 'onBeforeCompile')) { ok = false; return; }
+                }
+            } else if (o.isSprite || o.isPoints || o.isLine) { ok = false; }
+        });
+        return ok;
+    }
+
+    function _mergeBucketKey(mt) {
+        return (mt.map ? mt.map.uuid : 'flat') + '|' + mt.color.getHex()
+             + '|' + (mt.emissive ? mt.emissive.getHex() : 0)
+             + '|' + mt.side + '|' + (mt.vertexColors ? 1 : 0)
+             + '|' + (mt.flatShading ? 1 : 0);
+    }
+
+    /* Append one (geometry, material-group range, world matrix) slice into a
+       bucket as non-indexed triangles. */
+    function _mergeAppend(bucket, geo, start, count, matrixWorld, normalMatrix) {
+        var pos = geo.attributes.position;
+        var nrm = geo.attributes.normal || null;
+        var uv = geo.attributes.uv || null;
+        var col = geo.attributes.color || null;
+        var idx = geo.index;
+        var v = new THREE.Vector3();
+        for (var i = start; i < start + count; i++) {
+            var vi = idx ? idx.getX(i) : i;
+            v.set(pos.getX(vi), pos.getY(vi), pos.getZ(vi)).applyMatrix4(matrixWorld);
+            bucket.pos.push(v.x, v.y, v.z);
+            if (nrm) {
+                v.set(nrm.getX(vi), nrm.getY(vi), nrm.getZ(vi)).applyMatrix3(normalMatrix).normalize();
+                bucket.nrm.push(v.x, v.y, v.z);
+            } else {
+                bucket.nrm.push(0, 1, 0);
+            }
+            bucket.uv.push(uv ? uv.getX(vi) : 0, uv ? uv.getY(vi) : 0);
+            if (bucket.useColor) {
+                if (col) bucket.col.push(col.getX(vi), col.getY(vi), col.getZ(vi));
+                else bucket.col.push(1, 1, 1);
+            }
+        }
+    }
+
+    function _rebuildMergedTerrain() {
+        _clearMergedTerrain();
+        if (!terrainGroup) return;
+        if (!_terrainBatchWanted()) return;
+        _mergedActive = true;
+
+        terrainGroup.updateMatrixWorld(true);
+        var buckets = new Map();   // key → {mat, pos[], nrm[], uv[], col[], useColor}
+        var nm = new THREE.Matrix3();
+        /* Bake vertices in terrainGroup-local space (the merged meshes are its
+           children), so any transform on the group itself isn't applied twice. */
+        var invRoot = new THREE.Matrix4().copy(terrainGroup.matrixWorld).invert();
+        var relMat = new THREE.Matrix4();
+
+        tileMeshes.forEach(function (root) {
+            if (!_tileMergeable(root)) return;
+            var merged = false;
+            root.traverse(function (o) {
+                if (!o.isMesh) return;
+                var geo = o.geometry;
+                var mats = Array.isArray(o.material) ? o.material : [o.material];
+                relMat.multiplyMatrices(invRoot, o.matrixWorld);
+                nm.getNormalMatrix(relMat);
+                var total = geo.index ? geo.index.count : geo.attributes.position.count;
+                var groups = (geo.groups && geo.groups.length) ? geo.groups : [{ start: 0, count: total, materialIndex: 0 }];
+                for (var gi = 0; gi < groups.length; gi++) {
+                    var gr = groups[gi];
+                    var mt = mats[Math.min(gr.materialIndex || 0, mats.length - 1)];
+                    if (!mt) continue;
+                    var key = _mergeBucketKey(mt);
+                    var b = buckets.get(key);
+                    if (!b) {
+                        b = { mat: mt, pos: [], nrm: [], uv: [], col: [], useColor: !!mt.vertexColors };
+                        buckets.set(key, b);
+                    }
+                    var cnt = (gr.count === Infinity) ? (total - gr.start) : gr.count;
+                    _mergeAppend(b, geo, gr.start, Math.min(cnt, total - gr.start), relMat, nm);
+                }
+                merged = true;
+            });
+            if (merged) {
+                root.visible = false;
+                root._ew_mergedHidden = true;
+                _mergedHiddenTiles.push(root);
+            }
+        });
+
+        buckets.forEach(function (b) {
+            if (!b.pos.length) return;
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
+            g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nrm, 3));
+            g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+            if (b.useColor) g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+            var mesh = new THREE.Mesh(g, b.mat);
+            mesh.name = 'mergedTerrain';
+            mesh._ew_mergedTerrain = true;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.matrixAutoUpdate = false;
+            mesh.raycast = function () {};   // picking uses the hidden per-tile originals
+            terrainGroup.add(mesh);
+            _mergedTerrainMeshes.push(mesh);
+        });
+        _shadowsDirty = true;
     }
 
     function _computeObjectSerial() {
@@ -2211,13 +2449,34 @@ const ThreeRenderer = (function () {
         }
         return s;
     }
+    /* §4.4 (ROADMAP): the _compute*Serial functions used to concatenate
+       strings across every unit/object EVERY FRAME (~100 short-lived string
+       allocs/frame feeding GC pauses). They now fold the same fields into a
+       32-bit rolling hash — order-sensitive like the strings were, zero
+       allocation. A hash collision (≈2^-32 per changed frame) would only skip
+       one rebuild and self-heals on the next change. */
+    function _hashStr(h, s) {
+        if (!s) return (Math.imul(h, 31) + 1) | 0;
+        for (var i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+        return h;
+    }
+    function _hashInt(h, n) { return (Math.imul(h, 31) + (n | 0)) | 0; }
+    function _hashVal(h, v) {
+        if (typeof v === 'number') return _hashInt(h, Math.round(v * 1021));
+        return _hashStr(h, v == null ? '' : String(v));
+    }
+
     function _computeTurretSerial() {
-        if (!state.turrets || !state.turrets.length) return '';
+        if (!state.turrets || !state.turrets.length) return 0;
         /* facingAngle intentionally NOT in the serial — the renderer aims the
            arm itself every frame (_updateTurretAim), so aim changes must not
            trigger full mesh rebuilds. */
-        var p = []; for (var i = 0; i < state.turrets.length; i++) { var t = state.turrets[i]; p.push(t.id+':'+t.x+','+t.y+','+t.hp); }
-        return p.join('|');
+        var h = 7;
+        for (var i = 0; i < state.turrets.length; i++) {
+            var t = state.turrets[i];
+            h = _hashVal(h, t.id); h = _hashInt(h, t.x); h = _hashInt(h, t.y); h = _hashInt(h, t.hp);
+        }
+        return h;
     }
 
     function _buildBuildingPrism(objKey, x, y) {
@@ -4032,7 +4291,7 @@ const ThreeRenderer = (function () {
 
     function _computeTerrainDecoSerial() {
         /* Quick hash: terrain version + height version */
-        return (state._terrainVersion || 0) + ':' + (state._heightVersion || 0);
+        return (state._terrainVersion || 0) * 65599 + (state._heightVersion || 0);
     }
 
     function rebuildTerrainDecorations() {
@@ -4288,38 +4547,42 @@ const ThreeRenderer = (function () {
     };
 
     function _computeDeployableSerial() {
-        var parts = [];
+        var h = 23;
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                parts.push('s' + s.x + ',' + s.y + ':' + s.type);
+                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type);
             }
         }
         if (state.bombs) {
-            for (var i = 0; i < state.bombs.length; i++) {
-                var b = state.bombs[i];
-                parts.push('b' + b.x + ',' + b.y + ':' + b.owner);
+            for (var bi = 0; bi < state.bombs.length; bi++) {
+                var b = state.bombs[bi];
+                h = _hashInt(h, 2); h = _hashInt(h, b.x); h = _hashInt(h, b.y); h = _hashVal(h, b.owner);
             }
         }
         if (state.wards) {
-            for (var i = 0; i < state.wards.length; i++) {
-                var w = state.wards[i];
-                parts.push('w' + w.x + ',' + w.y + ':' + w.owner + ':' + (w.wallD4 != null ? w.wallD4 : ''));
+            for (var wi = 0; wi < state.wards.length; wi++) {
+                var w = state.wards[wi];
+                h = _hashInt(h, 3); h = _hashInt(h, w.x); h = _hashInt(h, w.y); h = _hashVal(h, w.owner);
+                h = _hashVal(h, w.wallD4 != null ? w.wallD4 : -9187);
             }
         }
         if (state.warpRunes) {
-            for (var i = 0; i < state.warpRunes.length; i++) {
-                var r = state.warpRunes[i];
-                parts.push('r' + r.x + ',' + r.y + ':' + r.owner);
+            for (var ri = 0; ri < state.warpRunes.length; ri++) {
+                var r = state.warpRunes[ri];
+                h = _hashInt(h, 4); h = _hashInt(h, r.x); h = _hashInt(h, r.y); h = _hashVal(h, r.owner);
             }
         }
         if (state._deployedObjects) {
-            for (var i = 0; i < state._deployedObjects.length; i++) {
-                var d = state._deployedObjects[i];
-                if (d.hp > 0) parts.push('d' + d.x + ',' + d.y + ':' + d.ownerPlayer + ':' + (d.spellName || '') + ':' + d.hp);
+            for (var di = 0; di < state._deployedObjects.length; di++) {
+                var d = state._deployedObjects[di];
+                if (d.hp > 0) {
+                    h = _hashInt(h, 5); h = _hashInt(h, d.x); h = _hashInt(h, d.y);
+                    h = _hashVal(h, d.ownerPlayer); h = _hashStr(h, d.spellName || ''); h = _hashInt(h, d.hp);
+                }
             }
         }
-        return parts.join('|');
+        return h;
     }
 
     function _buildDeployableBillboard(spriteKey, x, y, tint) {
@@ -4551,18 +4814,24 @@ const ThreeRenderer = (function () {
     }
 
     function _computeNexusSerial() {
-        var s = '';
+        var h = 29;
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
-                if (n) s += key + ':' + n.zoneX + ',' + n.zoneY + ',' + (n.zoneSize||2) + ',' + (n.owner||0) + ',' + (n.progress||0) + '|';
+                if (n) {
+                    h = _hashStr(h, key);
+                    h = _hashInt(h, n.zoneX); h = _hashInt(h, n.zoneY); h = _hashInt(h, n.zoneSize || 2);
+                    h = _hashInt(h, n.owner || 0); h = _hashVal(h, n.progress || 0);
+                }
             }
         }
         if (state.roamingNexus) {
             var rn = state.roamingNexus;
-            s += 'roam:' + rn.zoneX + ',' + rn.zoneY + ',' + (rn.zoneSize||2) + ',' + (rn.owner||0) + ',' + (rn.progress||0);
+            h = _hashInt(h, 6);
+            h = _hashInt(h, rn.zoneX); h = _hashInt(h, rn.zoneY); h = _hashInt(h, rn.zoneSize || 2);
+            h = _hashInt(h, rn.owner || 0); h = _hashVal(h, rn.progress || 0);
         }
-        return s;
+        return h;
     }
 
     var _nexusWallMats = [];
@@ -4689,13 +4958,13 @@ const ThreeRenderer = (function () {
     var _lastSpawnZoneSerial = '';
 
     function _computeSpawnZoneSerial() {
-        if (!state.spawnZones) return '';
-        var s = '';
+        if (!state.spawnZones) return 0;
+        var h = 37;
         for (var p = 1; p <= 2; p++) {
             var z = state.spawnZones[p];
-            if (z) for (var i = 0; i < z.length; i++) s += p + ':' + z[i].x + ',' + z[i].y + ';';
+            if (z) for (var i = 0; i < z.length; i++) { h = _hashInt(h, p); h = _hashInt(h, z[i].x); h = _hashInt(h, z[i].y); }
         }
-        return s;
+        return h;
     }
 
     function rebuildSpawnZoneOverlays() {
@@ -5052,18 +5321,18 @@ const ThreeRenderer = (function () {
     }
 
     function _computeNexusBarSerial() {
-        var s = '';
+        var h = 41;
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
-                if (n) s += key + ':' + (n.owner||0) + ',' + (n.progress||0) + '|';
+                if (n) { h = _hashStr(h, key); h = _hashInt(h, n.owner || 0); h = _hashVal(h, n.progress || 0); }
             }
         }
         if (state.roamingNexus) {
             var rn = state.roamingNexus;
-            s += 'roam:' + (rn.owner||0) + ',' + (rn.progress||0);
+            h = _hashInt(h, 6); h = _hashInt(h, rn.owner || 0); h = _hashVal(h, rn.progress || 0);
         }
-        return s;
+        return h;
     }
 
     function _buildNexusBar(key, nex) {
@@ -5194,42 +5463,73 @@ const ThreeRenderer = (function () {
     }
 
     function _computeUnitSerial() {
-        if (!state.units) return '';
-        var p = [];
+        if (!state.units) return 0;
+        var h = 13;
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
-            var sKeys = (typeof getActiveStatusKeys === 'function' && u.status) ? getActiveStatusKeys(u).join(',') : '';
-            p.push(u.id+':'+u.x+','+u.y+','+(u.z||0)+','+u.hp+','+u.mp+','+u.ap+','+u.player+','+(u.shield||0)+','+sKeys
-                +(u.race==='vampire'?',bat:'+(_isVampireBatForm(u)?1:0):'')
-                +(u._spriteOverride?',so:'+u._spriteOverride:'')
-                +(u._spriteFlipX?',fx:1':'')
-                +(u.race==='werewolf'?',tod:'+(typeof getCurrentCyclePhase==='function'?getCurrentCyclePhase():'night'):''));
+            h = _hashVal(h, u.id);
+            h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
+            h = _hashInt(h, u.hp); h = _hashInt(h, u.mp); h = _hashInt(h, u.ap);
+            h = _hashInt(h, u.player); h = _hashInt(h, u.shield || 0);
+            if (typeof getActiveStatusKeys === 'function' && u.status) {
+                var sk = getActiveStatusKeys(u);
+                for (var si = 0; si < sk.length; si++) h = _hashStr(h, sk[si]);
+            }
+            if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
+            if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
+            if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
         }
-        p.push('sel:'+(state.selectedUnitId||''));
-        p.push('nm:'+(state.nametagMode||'name'));
-        return p.join('|');
+        h = _hashVal(h, state.selectedUnitId || '');
+        h = _hashStr(h, state.nametagMode || 'name');
+        return h;
     }
 
     /* Structural serial — only changes that require a full 3D rebuild (position, sprite, player, selection).
        Stats-only changes (hp/mp/ap/shield/status) are patched in-place via _patchPlateStats(). */
     function _computeUnitStructuralSerial() {
-        if (!state.units) return '';
-        var p = [];
+        if (!state.units) return 0;
+        var h = 19;
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
-            p.push(u.id+':'+u.x+','+u.y+','+(u.z||0)+','+u.player
-                +(u.race==='vampire'?',bat:'+(_isVampireBatForm(u)?1:0):'')
-                +(u._spriteOverride?',so:'+u._spriteOverride:'')
-                +(u._spriteFlipX?',fx:1':'')
-                +(u.race==='werewolf'?',tod:'+(typeof getCurrentCyclePhase==='function'?getCurrentCyclePhase():'night'):''));
+            h = _hashVal(h, u.id);
+            h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
+            h = _hashInt(h, u.player);
+            if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
+            if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
+            if (u._spriteFlipX) h = _hashInt(h, 5);
+            if (u.race === 'werewolf') h = _hashStr(h, (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'night');
         }
-        p.push('sel:'+(state.selectedUnitId||''));
-        p.push('nm:'+(state.nametagMode||'name'));
-        return p.join('|');
+        h = _hashVal(h, state.selectedUnitId || '');
+        h = _hashStr(h, state.nametagMode || 'name');
+        return h;
     }
     var _lastStructuralSerial = '';
 
     /* Patch plate HP/MP/shield bars + status badges in-place so CSS transitions animate smoothly. */
+    /* §4.8: element refs are resolved once per plate and cached on the plate
+       object — a plate rebuild creates a fresh po, so the cache can't go stale. */
+    function _plateRefs(po) {
+        var r = po._refs;
+        if (!r) {
+            var hpBar = po.el.querySelector('.tp-bar:not(.tp-bar-mp)');
+            var mpBar = po.el.querySelector('.tp-bar-mp');
+            r = po._refs = {
+                hpFill: po.el.querySelector('.tp-hp-fill'),
+                mpFill: po.el.querySelector('.tp-mp-fill'),
+                hpBar: hpBar,
+                mpBar: mpBar,
+                hpNum: hpBar ? hpBar.querySelector('.tp-bar-num') : null,
+                mpNum: mpBar ? mpBar.querySelector('.tp-bar-num') : null,
+                eye: po.el.querySelector('[data-eye]'),
+                zBadge: po.el.querySelector('[data-zbadge]'),
+                evBadge: po.el.querySelector('[data-evbadge]'),
+                effBadge: po.el.querySelector('.tp-eff-badge')
+            };
+        }
+        return r;
+    }
+
     function _patchPlateStats() {
         if (!state.units) return;
         for (var i = 0; i < state.units.length; i++) {
@@ -5237,24 +5537,25 @@ const ThreeRenderer = (function () {
             if (u.dead) continue;
             var po = _plateObjs.get(u.id);
             if (!po || !po.el) continue;
+            var refs = _plateRefs(po);
 
             var hpPct = Math.max(0, Math.round(100 * u.hp / (u.maxHp || 1)));
             var mpPct = Math.max(0, Math.round(100 * u.mp / (u.maxMp || 1)));
 
             // Update HP bar fill width (transition animates it)
-            var hpFill = po.el.querySelector('.tp-hp-fill');
+            var hpFill = refs.hpFill;
             if (hpFill) hpFill.style.width = hpPct + '%';
             _lastHpPctById.set(u.id, hpPct);
             _lastMpPctById.set(u.id, mpPct);
 
             // HP bar color is ally/enemy based — no tier swap needed
-            var hpBar = po.el.querySelector('.tp-bar:not(.tp-bar-mp)');
+            var hpBar = refs.hpBar;
 
             // Update MP bar fill width
-            var mpFill = po.el.querySelector('.tp-mp-fill');
+            var mpFill = refs.mpFill;
             if (mpFill) mpFill.style.width = mpPct + '%';
 
-            // Update shield overlay
+            // Update shield overlay (created/removed dynamically — not cached)
             var shieldEl = po.el.querySelector('.tp-shield');
             var shieldAmt = u.shield || 0;
             var shieldPct = shieldAmt > 0 ? Math.round((shieldAmt / (u.maxHp || 1)) * 100) : 0;
@@ -5270,15 +5571,14 @@ const ThreeRenderer = (function () {
             }
 
             // Update numeric text
-            var hpNum = hpBar ? hpBar.querySelector('.tp-bar-num') : null;
+            var hpNum = refs.hpNum;
             if (hpNum) hpNum.textContent = u.hp + '/' + u.maxHp;
-            var mpBar = po.el.querySelector('.tp-bar-mp');
-            var mpNum = mpBar ? mpBar.querySelector('.tp-bar-num') : null;
+            var mpNum = refs.mpNum;
             if (mpNum) mpNum.textContent = u.mp + '/' + u.maxMp;
 
             // Vision eye: open when any enemy can see this unit, closed/slashed
             // when hidden. Recomputed each frame so it tracks movement/fog live.
-            var eyeEl = po.el.querySelector('[data-eye]');
+            var eyeEl = refs.eye;
             if (eyeEl) {
                 var eyeSeen = (typeof isUnitSeenByAnyEnemy === 'function') ? isUnitSeenByAnyEnemy(u) : true;
                 eyeEl.classList.toggle('tp-eye-hidden', !eyeSeen);
@@ -6804,7 +7104,7 @@ const ThreeRenderer = (function () {
             var uid = entry[0], po = entry[1];
             var u = _unitById.get(uid);
             if (!u || !po.el) continue;
-            var zb = po.el.querySelector('[data-zbadge]');
+            var zb = _plateRefs(po).zBadge;
             if (zb) {
                 var zOn = false;
                 try {
@@ -6813,7 +7113,7 @@ const ThreeRenderer = (function () {
                 } catch (e) {}
                 zb.classList.toggle('tp-zodiac-on', zOn);
             }
-            var eb = po.el.querySelector('[data-evbadge]');
+            var eb = _plateRefs(po).evBadge;
             if (eb) {
                 var eOn = false;
                 try { eOn = (typeof getSkyEventBonus === 'function') ? !!getSkyEventBonus(u).active : false; } catch (e) {}
@@ -7084,6 +7384,10 @@ const ThreeRenderer = (function () {
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
 
+            /* §4.8: skip the style write (and the style recalc it triggers)
+               when the camera hasn't meaningfully changed this plate's scale. */
+            if (po._lastScale !== undefined && Math.abs(po._lastScale - s) < 0.004) return;
+            po._lastScale = s;
             po.el.style.transform = 'translateX(-50%) scale(' + s.toFixed(3) + ')';
         });
 
@@ -7098,6 +7402,8 @@ const ThreeRenderer = (function () {
             if (_ddist < 1) _ddist = 1;
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
+            if (_dse._lastScale !== undefined && Math.abs(_dse._lastScale - _ds) < 0.004) continue;
+            _dse._lastScale = _ds;
             _dse.el.style.transform = 'translateX(-50%) scale(' + _ds.toFixed(3) + ')';
         }
     }
@@ -7169,7 +7475,7 @@ const ThreeRenderer = (function () {
 
         for (var entry of _plateObjs) {
             var uid = entry[0], po = entry[1];
-            var effEl = po.el.querySelector('.tp-eff-badge');
+            var effEl = _plateRefs(po).effBadge;
             if (!effEl) continue;
 
             if (!isTargeting || !hlMap) {
@@ -8830,9 +9136,12 @@ const ThreeRenderer = (function () {
     }
 
     function _applyFogVisibility(visible) {
+        _shadowsDirty = true;   // visibility flips add/remove shadow casters
         if (!state.fogOfWar) {
 
-            tileMeshes.forEach(function(mesh) { mesh.visible = true; });
+            /* Tiles baked into the merged terrain stay hidden — the merged
+               mesh is their visual (§4.1 terrain batching). */
+            tileMeshes.forEach(function(mesh) { mesh.visible = !mesh._ew_mergedHidden; });
             objectMeshes.forEach(function(mesh) { mesh.visible = true; });
             unitEntries.forEach(function(entry) { entry.group.visible = true; });
             deployableMeshes.forEach(function(mesh) { mesh.visible = true; });
@@ -9111,6 +9420,7 @@ const ThreeRenderer = (function () {
                     g.position.y = unitSurfaceY(unit) - sinkG;
                     g._ew_spriteTopY = unitSurfaceY(unit) + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
                     g._ew_bobActive = false;
+                    _shadowMotion = true;
                 }
                 continue;
             }
@@ -9124,6 +9434,7 @@ const ThreeRenderer = (function () {
             g.position.y = baseY + bob;
             g._ew_spriteTopY = baseY + bob + (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO + 4;
             g._ew_bobActive = true;
+            _shadowMotion = true;   // the unit's shadow proxy bobs with it (§4.2)
         }
     }
 
@@ -9192,12 +9503,12 @@ const ThreeRenderer = (function () {
             if (mesh._ew_aimRy != null) {
                 var diff = mesh._ew_aimRy - arm.rotation.y;
                 diff = Math.atan2(Math.sin(diff), Math.cos(diff));   // shortest arc
-                arm.rotation.y += diff * Math.min(1, dt * 9);
+                if (Math.abs(diff) > 0.0005) { arm.rotation.y += diff * Math.min(1, dt * 9); _shadowMotion = true; }
             }
             if (mesh._ew_aimRp != null && mesh._ew_pitch) {
                 // rotation.x is inverted: positive tips the muzzle down
                 var pdiff = (-mesh._ew_aimRp) - mesh._ew_pitch.rotation.x;
-                mesh._ew_pitch.rotation.x += pdiff * Math.min(1, dt * 9);
+                if (Math.abs(pdiff) > 0.0005) { mesh._ew_pitch.rotation.x += pdiff * Math.min(1, dt * 9); _shadowMotion = true; }
             }
 
             if (bestEntry && mesh.visible !== false && !state.devAutoSim) {
@@ -13845,6 +14156,10 @@ const ThreeRenderer = (function () {
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(w, h);
+        /* §4.2: the depth pass renders only when renderFrame flags it dirty
+           (renderer.shadowMap.needsUpdate) instead of every frame. */
+        renderer.shadowMap.autoUpdate = false;
+        renderer.shadowMap.needsUpdate = true;
 
         css2dRenderer = new THREE.CSS2DRenderer();
         css2dRenderer.setSize(w, h);
@@ -13924,6 +14239,9 @@ const ThreeRenderer = (function () {
         rebuildSpawnZoneOverlays();
         rebuildSanctuaryWalls();
         rebuildUnits(); rebuildHighlights(); rebuildFog();
+        _shadowsDirty = true;
+        _fpsFrames = 0; _fpsWinStart = 0; _fpsNextDue = 0;
+        if (_perfSettings.fpsCounter) _ensureFpsEl().style.display = 'block';
         renderer.setAnimationLoop(renderFrame);
         _bindInput();
         console.log('[ThreeRenderer] activated');
@@ -13977,6 +14295,7 @@ const ThreeRenderer = (function () {
         _zoneBorderMats.length = 0;
         _lastWeatherVfxKey = '';
         if (renderer) renderer.setAnimationLoop(null);
+        if (_fpsEl) _fpsEl.style.display = 'none';
         if (_miniWrap) _miniWrap.style.display = 'none';
         if (canvas) canvas.style.display = 'none';
         if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
@@ -15032,8 +15351,50 @@ const ThreeRenderer = (function () {
         window.updateEnemyRangePreview(_hoveredUnitId);
     }
 
+    var _fpsNextDue = 0;          // §4.7 FPS-cap accumulator
+    var _fpsFrames = 0, _fpsWinStart = 0, _fpsEl = null;
+
+    function _ensureFpsEl() {
+        if (_fpsEl) return _fpsEl;
+        _fpsEl = document.createElement('div');
+        _fpsEl.id = 'ewFpsCounter';
+        _fpsEl.style.cssText =
+            'position:fixed;top:48px;right:12px;z-index:9500;pointer-events:none;' +   /* below the top-right HUD strip */
+            "font-family:'DotGothic16',monospace;font-size:15px;letter-spacing:0.08em;" +
+            'color:#7dff9a;text-shadow:0 0 6px rgba(0,0,0,0.9),1px 1px 0 #000;display:none;';
+        _fpsEl.textContent = '-- FPS';
+        document.body.appendChild(_fpsEl);
+        return _fpsEl;
+    }
+
+    function _tickFpsCounter(now) {
+        _fpsFrames++;
+        if (!_fpsWinStart) { _fpsWinStart = now; return; }
+        var span = now - _fpsWinStart;
+        if (span < 500) return;
+        var fps = Math.round(_fpsFrames * 1000 / span);
+        _fpsFrames = 0; _fpsWinStart = now;
+        var el = _ensureFpsEl();
+        el.textContent = fps + ' FPS';
+        el.style.color = fps >= 50 ? '#7dff9a' : (fps >= 28 ? '#ffd866' : '#ff6b6b');
+    }
+
     function renderFrame() {
         if (!active || !renderer || !scene) return;
+
+        /* §4.7 FPS cap — drift-free accumulator; skipped frames cost one
+           comparison. 0 = uncapped (every display refresh, as before). */
+        var _frameNow = performance.now();
+        if (_perfSettings.fpsCap > 0) {
+            if (_frameNow < _fpsNextDue) return;
+            _fpsNextDue += 1000 / _perfSettings.fpsCap;
+            /* after a stall (tab hidden, long GC) resync instead of bursting */
+            if (_frameNow - _fpsNextDue > 250) _fpsNextDue = _frameNow + 1000 / _perfSettings.fpsCap;
+        }
+        if (_perfSettings.fpsCounter) _tickFpsCounter(_frameNow);
+
+        /* §4.1 terrain batching follows fog/editor/setting flips live. */
+        if (_terrainBatchWanted() !== _mergedActive) _rebuildMergedTerrain();
 
         if (typeof camera !== 'undefined') {
             ThreeCamera.setTileSize(CONFIG.tileSize || BASE_TILE);
@@ -15068,7 +15429,7 @@ const ThreeRenderer = (function () {
         var tv = state._terrainVersion || 0, hv = state._heightVersion || 0, vv = state._voxelVersion || 0;
         if (tv !== _lastTerrainVersion || hv !== _lastHeightVersion || vv !== _lastVoxelVersion) rebuildTerrain();
         var tdSer = _computeTerrainDecoSerial();
-        if (tdSer !== _lastTerrainDecoSerial) rebuildTerrainDecorations();
+        if (tdSer !== _lastTerrainDecoSerial) { rebuildTerrainDecorations(); _shadowsDirty = true; }
         var _objDirty = false;
         if (_objectsDirty || _computeObjectSerial() !== _lastObjectSerial) { rebuildObjects(); _objDirty = true; }
         var tSer = _computeTurretSerial();
@@ -15076,7 +15437,7 @@ const ThreeRenderer = (function () {
         var dSer = _computeDeployableSerial();
         if (dSer !== _lastDeployableSerial) { rebuildDeployables(); _objDirty = true; }
         var nSer = _computeNexusSerial();
-        if (nSer !== _lastNexusSerial) { rebuildNexusWalls(); }
+        if (nSer !== _lastNexusSerial) { rebuildNexusWalls(); _shadowsDirty = true; }
         rebuildSpawnZoneOverlays();
         rebuildSanctuaryWalls();
         _updateSpawnZonePulse();
@@ -15093,6 +15454,7 @@ const ThreeRenderer = (function () {
                     rebuildUnits();
                     _lastStructuralSerial = sSer;
                     _objDirty = true;
+                    _shadowsDirty = true;
                 } else {
                     // Stats-only change (hp/mp/ap/shield/status) — patch plates in-place for smooth transitions
                     _patchPlateStats();
@@ -15100,7 +15462,7 @@ const ThreeRenderer = (function () {
             }
         }
 
-        if (_objDirty) _applyShadowFlags(objectGroup);
+        if (_objDirty) { _applyShadowFlags(objectGroup); _shadowsDirty = true; }
 
         if (_objDirty && state.fogOfWar && _fogVisibleSet) {
             _applyFogVisibility(_fogVisibleSet);
@@ -15195,6 +15557,22 @@ const ThreeRenderer = (function () {
             /* Keep the hover pick glued to the cursor while the ENGINE moves the
                camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
             if (_onMouseMove) _refreshHoverOnCameraMove(cam);
+
+            /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
+               shadow caster could have moved this frame. Camera motion never
+               dirties it (the shadow map is light-space). See the caveat notes
+               in ROADMAP §4 — GLB idle anims, day/night easing, turret arms,
+               flying bob, tower cubes and fog fades all count as motion. */
+            if (renderer.shadowMap && renderer.shadowMap.enabled) {
+                var _needShadow = window.EW_DISABLE_SHADOW_GATING || _shadowsDirty || _shadowMotion
+                    || hasActiveAnims()
+                    || (state && state.fogOfWar)
+                    || _towerCubes.length > 0
+                    || (ThreePost && ThreePost.isLightingEasing && ThreePost.isLightingEasing())
+                    || _anyGlbAnimating();
+                if (_needShadow) { renderer.shadowMap.needsUpdate = true; _shadowsDirty = false; }
+            }
+            _shadowMotion = false;
 
             if (ThreePost && ThreePost.isReady()) {
                 ThreePost.render(cam);
@@ -15505,6 +15883,14 @@ const ThreeRenderer = (function () {
         initialized = false;
     }
 
+    /* Any unit currently driven by a GLB AnimationMixer (idle loops run
+       continuously, so their shadows must re-render every frame). */
+    function _anyGlbAnimating() {
+        var any = false;
+        unitEntries.forEach(function (e) { if (e.mixer) any = true; });
+        return any;
+    }
+
     function hasActiveAnims() {
         if (_floatTweens.length > 0) return true;
         if (_projTweens.length > 0) return true;
@@ -15529,6 +15915,18 @@ const ThreeRenderer = (function () {
     function resetForNewMatch() {
         _clearAnimations();
         _clearLaserBeams();
+        /* §4.6: kill any spell-VFX ticker still animating from the last match. */
+        try { if (window.ThreeVFXEffects && ThreeVFXEffects.clear) ThreeVFXEffects.clear(); } catch (e) {}
+        /* §4.9: drop textures that haven't been requested for two matches so a
+           long session doesn't hold every past map's sprites in VRAM. */
+        _texEpoch++;
+        textureCache.forEach(function (tex, url) {
+            if ((tex._ew_epoch || 0) < _texEpoch - 1) {
+                textureCache.delete(url);
+                try { tex.dispose(); } catch (e) {}
+            }
+        });
+        _shadowsDirty = true;
         _lastBoardW = 0; _lastBoardH = 0;
         _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
         _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
@@ -15570,6 +15968,30 @@ const ThreeRenderer = (function () {
         startHitEffect,
 
         hasActiveAnims,
+
+        /* §4 performance pass — Video-settings hooks + shadow gate */
+        markShadowsDirty,
+        setFpsCap: function (n) {
+            _perfSettings.fpsCap = (n === 30 || n === 60) ? n : 0;
+            _fpsNextDue = 0;
+            try { localStorage.setItem('ew_fpsCap', String(_perfSettings.fpsCap)); } catch (e) {}
+        },
+        getFpsCap: function () { return _perfSettings.fpsCap; },
+        setFpsCounter: function (on) {
+            _perfSettings.fpsCounter = !!on;
+            _fpsFrames = 0; _fpsWinStart = 0;
+            var el = _ensureFpsEl();
+            el.style.display = (on && active) ? 'block' : 'none';
+            if (on) el.textContent = '-- FPS';
+            try { localStorage.setItem('ew_fpsCounter', on ? '1' : '0'); } catch (e) {}
+        },
+        isFpsCounterOn: function () { return _perfSettings.fpsCounter; },
+        setTerrainBatching: function (on) {
+            _perfSettings.terrainBatch = !!on;
+            try { localStorage.setItem('ew_terrainBatch', on ? '1' : '0'); } catch (e) {}
+            _rebuildMergedTerrain();
+        },
+        isTerrainBatching: function () { return _perfSettings.terrainBatch; },
 
         setHorizonFog,
 

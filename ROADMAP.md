@@ -465,8 +465,49 @@ All non-visual; each verified end-to-end with a Playwright boot/match probe:
    index.html (`?v=` bump). §3.3 (online ready handshake) and §3.4 (defer head 3D
    stack) remain open.
 
-Deliberately NOT done (needs user sign-off or bigger scope): shadow dirty-gating
-(§4 caveats), terrain merging, §2 deploy-process decisions.
+8. **§4 PERFORMANCE PASS SHIPPED (session 2026-07-06, user-approved):** items
+   §4.1/4.2/4.4/4.6/4.7/4.8/4.9 are done — see the list below. Files touched:
+   three-renderer.js, three-post.js, three-vfx-effects.js, ui.js, index.html
+   (`?v=` bump → 20260706g).
+   - **§4.1 terrain batching** (three-renderer.js `_rebuildMergedTerrain`):
+     after every terrain rebuild, all static plain-Lambert tiles are baked into
+     one merged mesh per unique material; the per-tile originals stay in the
+     scene graph with `visible=false` (r128's Raycaster ignores `visible`, so
+     picking still hits them) and merged meshes are render-only ghosts
+     (`raycast` no-op). NOT merged: lava/fluid tiles, tiles that RISE ≥2 steps
+     over any 8-neighbour (walls/cliff faces — kept individual so the
+     action-cam occlusion fade still works; absolute height is NOT the test,
+     a flat z=7 plateau merges fine), anything mid-fade or non-Lambert.
+     Verified: pick parity 0/27 mismatches; on a half-mergeable map total draw
+     calls −42%, triangles −47%. Batching auto-disables under fog of war
+     and in the editor. Kill-switches: "Batched Terrain" toggle in Video
+     settings, `window.EW_DISABLE_TERRAIN_MERGE`.
+   - **§4.2 shadow gating**: `renderer.shadowMap.autoUpdate=false`; renderFrame
+     sets `needsUpdate` only when a rebuild ran, tweens/GLB mixers are active,
+     ThreePost.isLightingEasing() (day/night), turret arms / flying bob moved,
+     tower cubes exist, or fog of war is on. Kill-switch:
+     `window.EW_DISABLE_SHADOW_GATING = true`.
+   - **§4.4**: all `_compute*Serial` string concats → 32-bit rolling hashes
+     (`_hashStr/_hashInt/_hashVal`), zero per-frame allocation.
+   - **§4.6**: three-vfx-effects.js per-cast rAF chains → ONE shared ticker
+     (`_fxSchedule`/`_fxPump`); `ThreeVFXEffects.clear()` now hard-kills every
+     live effect (3D geom, bubble domes, sig cinematics) and is called from
+     `ThreeRenderer.resetForNewMatch()`. Also fixed a real bug: the light-lance
+     / glacial-tomb effects referenced an UNDECLARED `_activeThreeMeshes` —
+     casting them threw a ReferenceError and stranded their meshes; declared +
+     swept now.
+   - **§4.7 FPS cap** (Off/30/60, drift-free accumulator in renderFrame) +
+     **FPS counter** (DotGothic16 retro readout, top-right, color-coded) —
+     both in pause-menu Video → Graphics, persisted (`ew_fpsCap`,
+     `ew_fpsCounter`, `ew_terrainBatch`).
+   - **§4.8**: nameplate patchers use cached element refs (`_plateRefs`);
+     `_scalePlates` skips the DOM transform write when the scale is unchanged.
+   - **§4.9**: `getTexture` stamps a match epoch; `resetForNewMatch` disposes
+     textures unused for 2 matches.
+
+Deliberately NOT done: §4.3 texture atlas (biggest remaining §4 item),
+§4.2's optional 1024/PCF default (visual change), CSS2D plate canvas rewrite
+(§4.8 second half), §2 deploy-process decisions.
 
 ---
 

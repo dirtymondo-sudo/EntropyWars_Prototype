@@ -2413,6 +2413,55 @@ as 1,356,685 raw bytes — **no Cache-Control, no gzip/brotli** — and index.ht
 TWO three.js copies (r128 global + 0.160 module importmap for the menu/sky shaders).
 Custom domain on the bucket = brotli + edge cache + real headers (ROADMAP §2.1).
 
+## ROADMAP §4 performance pass (2026-07-06) — three-renderer.js, three-post.js, three-vfx-effects.js, ui.js
+User-approved perf/stability session ("run on a potato, zero visual change; anything
+visible → Video-settings control"). Shipped §4.1/4.2/4.4/4.6/4.7/4.8/4.9 — full detail
+in ROADMAP §11.8. Engine facts a future session needs:
+- **Terrain batching (§4.1)**: `_rebuildMergedTerrain()` (three-renderer.js) bakes all
+  static plain-Lambert tiles into one merged mesh per material bucket after every
+  `rebuildTerrain`. Originals stay in the graph `visible=false` — **r128 Raycaster
+  ignores `visible`** (verified: pick parity probe, 0/27 mismatches), so screenToTile
+  still hits them; merged meshes have a no-op `raycast`. NOT merged: lava/fluid,
+  custom-shader mats (own-property `onBeforeCompile`), and tiles that rise ≥2 steps
+  over any 8-neighbour (walls/cliffs — kept individual for the action-cam occlusion
+  fade). GOTCHA: `_ew_height` is the ABSOLUTE column top-z, not prominence — the
+  first cut rejected `_ew_height>1` and merged NOTHING on plateau maps (TDM map =
+  uniform z=7). Measured on that map (50/100 tiles merged → 8 meshes): total draw
+  calls −42%, triangles −47%. Auto-disables when `state.fogOfWar` (fog toggles per-tile
+  visibility) or `state.phase==='editor'`. Toggle: Video → "Batched Terrain";
+  console kill-switch `window.EW_DISABLE_TERRAIN_MERGE=true`. NOTE: **TDM ships with
+  fog of war ON**, so batching engages on fog-free modes/maps only.
+- **Shadow gating (§4.2)**: `renderer.shadowMap.autoUpdate=false`; renderFrame sets
+  `needsUpdate` when: any rebuild ran / `hasActiveAnims()` / any `entry.mixer` (GLB
+  idle) / `ThreePost.isLightingEasing()` / turret arm or flying-bob moved
+  (`_shadowMotion`) / tower cubes exist / fog on. Kill-switch
+  `window.EW_DISABLE_SHADOW_GATING=true`. Idle sprite board = depth pass fully skipped
+  (probe: 60 frames, 0 pending updates, shadows still correct).
+- **Serial hashing (§4.4)**: all `_compute*Serial` now return 32-bit ints via
+  `_hashStr/_hashInt/_hashVal`. If you add a field to a serial, hash it — do NOT
+  return strings (comparisons are numeric now; '' initial values still mismatch fine).
+- **VFX ticker (§4.6)**: three-vfx-effects.js effects register with `_fxSchedule(fn)`
+  (fn returns false → done); ONE rAF pump. `ThreeVFXEffects.clear()` now kills
+  everything (3D geom, domes, sig entries) and is called from
+  `ThreeRenderer.resetForNewMatch()`. **Two pre-existing bugs fixed**: (a)
+  `_activeThreeMeshes` was never declared — light-lance/glacial-tomb casts threw
+  ReferenceError mid-spawn and stranded meshes; (b) `ThreeVFXEffects.clear()` ↔
+  `ThreeVFX.clear()` (three-vfx.js:1654) mutually recursed → stack overflow the
+  first time anything called clear; guarded with `_clearingAll`.
+- **FPS cap/counter (§4.7)**: Video → Graphics. `ThreeRenderer.setFpsCap(0|30|60)`,
+  `setFpsCounter(bool)`, `setTerrainBatching(bool)`; persisted as `ew_fpsCap`,
+  `ew_fpsCounter`, `ew_terrainBatch`. Counter = `#ewFpsCounter`, DotGothic16,
+  top-right, green/yellow/red at ≥50/≥28/below.
+- **Plates (§4.8)**: `_plateRefs(po)` caches querySelector refs per plate object;
+  `_scalePlates` skips the transform write when scale Δ<0.004.
+- **Texture epoch (§4.9)**: `getTexture` stamps `tex._ew_epoch`; `resetForNewMatch`
+  disposes textures unused for 2 matches.
+- PROBE GOTCHA: with the EffectComposer, `renderer.info.render.calls` resets on EVERY
+  pass — sample with `info.autoReset=false; info.reset()` and divide by
+  `info.render.frame` to get calls per frame across all passes.
+- Harness combo that serves LOCAL edits: `PW_CHROMIUM=/opt/pw-browsers/chromium
+  USE_ASSET_CACHE=1 LOCAL_ASSETS=three-renderer.js,ui.js node playtest.js tdm`.
+
 ## Persistence
 This is Claude Code on the web: the container is ephemeral and the repo is cloned
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
