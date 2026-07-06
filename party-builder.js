@@ -723,6 +723,10 @@ function pbPowerStat(sp) {
   if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
   return null;
 }
+// Spell-pool ordering: category buckets (damage leads), power desc within.
+const PB_CAT_ORDER = { damage:0, utility:1, buff:2, debuff:3, heal:4 };
+function pbCatRank(sp) { const c = classifySpellLocal(sp); return PB_CAT_ORDER[c] != null ? PB_CAT_ORDER[c] : 9; }
+function pbPowerVal(sp) { const p = pbPowerStat(sp); return p ? (parseFloat(p.value) || 0) : 0; }
 function pbTypeBadgeStyle(typeKey, fontSize) {
   const k = (typeKey || '').toLowerCase();
   const base = TYPE_C[k] || EW.inkMute;
@@ -1494,21 +1498,46 @@ function PartyBuilder() {
             h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
             h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
           h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
-            raceAbilities.map((a, ai) => {
-              const raId = a.id || `ra_${unitRace}_${ai}`;
-              const isEquipped = customSpells ? customSpells.includes(raId) : false;
-              const cantFit = !isEquipped && a.id && (spellSlotsUsed + spellIdSlotCost(a.id)) > slotCap;
-              return h(SpellBlade, { key:'ra-'+ai, sp:a, pool:!!a.id, raceAbility:true, equipped:isEquipped, dim:!!cantFit,
-                onClick: a.id && !isArena ? ()=>toggleSpell(a.id) : undefined,
-                onHoverIn: e=>showSpellTip(a, e), onHoverOut: hideSpellTip });
-            }),
-            spellPool.map(sp => {
-              const selected = customSpells ? customSpells.includes(sp.id) : false;
-              const cantFit = !selected && (spellSlotsUsed + spellSlotCost(sp)) > slotCap;
-              return h(SpellBlade, { key:sp.id, sp, pool:true, equipped:selected, dim:!!cantFit,
-                onClick: ()=>toggleSpell(sp.id),
-                onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-            })),
+            (()=>{
+              // Build one sortable pool (race abilities + class spells), then
+              // order by: fits-first → race abilities → category (damage first)
+              // → power desc → name. Won't-fit spells sink to the bottom.
+              const entries = [];
+              raceAbilities.forEach((a, ai) => {
+                const raId = a.id || `ra_${unitRace}_${ai}`;
+                const selected = customSpells ? customSpells.includes(raId) : false;
+                const cantFit = !selected && a.id && (spellSlotsUsed + spellIdSlotCost(a.id)) > slotCap;
+                entries.push({ key:'ra-'+ai, sp:a, isRA:true, hasId:!!a.id, id:raId, selected, cantFit:!!cantFit });
+              });
+              spellPool.forEach(sp => {
+                const selected = customSpells ? customSpells.includes(sp.id) : false;
+                const cantFit = !selected && (spellSlotsUsed + spellSlotCost(sp)) > slotCap;
+                entries.push({ key:sp.id, sp, isRA:false, hasId:true, id:sp.id, selected, cantFit:!!cantFit });
+              });
+              entries.sort((a, b) => {
+                if (a.cantFit !== b.cantFit) return a.cantFit ? 1 : -1;   // dim → bottom
+                if (a.isRA !== b.isRA) return a.isRA ? -1 : 1;            // race abilities lead
+                const cr = pbCatRank(a.sp) - pbCatRank(b.sp);            // category buckets
+                if (cr) return cr;
+                const pw = pbPowerVal(b.sp) - pbPowerVal(a.sp);         // power desc
+                if (pw) return pw;
+                return (a.sp.name || '').localeCompare(b.sp.name || '');
+              });
+              const nodes = [];
+              let dimHeaderShown = false;
+              entries.forEach(en => {
+                if (en.cantFit && !dimHeaderShown) {
+                  dimHeaderShown = true;
+                  nodes.push(h('div', { key:'dimhdr', style:{ display:'flex', alignItems:'center', gap:6, margin:'8px 9px 1px 10px', flexShrink:0, fontSize:8, letterSpacing:'0.12em', color:EW.inkDim, textTransform:'uppercase', whiteSpace:'nowrap' } },
+                    h('span', null, "Won't fit remaining slots"),
+                    h('span', { style:{ flex:1, height:1, background:EW.panelEdge } })));
+                }
+                nodes.push(h(SpellBlade, { key:en.key, sp:en.sp, pool: en.isRA ? !!en.hasId : true, raceAbility: en.isRA || undefined, equipped:en.selected, dim:en.cantFit,
+                  onClick: en.isRA ? (en.hasId && !isArena ? ()=>toggleSpell(en.id) : undefined) : ()=>toggleSpell(en.id),
+                  onHoverIn: e=>showSpellTip(en.sp, e), onHoverOut: hideSpellTip }));
+              });
+              return nodes;
+            })()),
         ),
 
         isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:5,display:'flex',flexDirection:'column',gap:3}},
