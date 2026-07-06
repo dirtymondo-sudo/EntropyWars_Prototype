@@ -815,8 +815,23 @@ const ThreeRenderer = (function () {
        the same skeleton, so the hologram is the unit's actual animated pose.
        Same GreaterDepth trick: fragments draw only where a real occluder
        (wall, hill, prop) already wrote nearer depth; in the open the ghost is
-       invisible. The negative polygonOffset pulls the ghost a hair toward the
-       camera so the model's own coincident surfaces never self-paint it.
+       invisible.
+
+       CRUCIAL ORDERING: a multi-mesh character (body, robe, wings, hair …)
+       constantly self-occludes — one part sits behind another — so if the
+       ghost tested GreaterDepth against a buffer that already held the model's
+       OWN opaque parts, it would x-ray through the model almost everywhere and
+       the hologram would show all the time. A negative polygonOffset can't cure
+       that (the parts are genuinely far apart in depth, not coincident). The
+       fix is render ORDER: the ghost draws in the OPAQUE queue at renderOrder 1
+       — AFTER terrain/props (renderOrder ≤ 0) so real occluders are in the
+       depth buffer, but BEFORE the unit's own model meshes (bumped to
+       renderOrder 2), so the model's own parts are NOT yet in depth and can
+       never self-paint the ghost. Because r128's WebGLState forces NoBlending
+       for a NormalBlending+opaque material, the ghost stays translucent via an
+       explicit CustomBlending alpha blend (which keeps blending enabled while
+       living in the opaque queue). The small negative polygonOffset now only
+       lifts the feet off the ground plane so they don't shimmer.
        Scanlines run in screen space (the model's UV atlas has no vertical
        axis to scan along). Skinning is compiled in per-mesh via the r128
        material.skinning flag using the stock shader chunks. */
@@ -852,7 +867,15 @@ const ThreeRenderer = (function () {
             },
             vertexShader: _modelSilVertexShader,
             fragmentShader: _modelSilFragmentShader,
-            transparent: true,
+            // Opaque queue (transparent:false) so renderOrder slots the ghost
+            // between terrain and its own model — see the comment above. Alpha
+            // blending is forced back on with CustomBlending because r128
+            // disables blending for a NormalBlending+opaque material.
+            transparent: false,
+            blending: THREE.CustomBlending,
+            blendEquation: THREE.AddEquation,
+            blendSrc: THREE.SrcAlphaFactor,
+            blendDst: THREE.OneMinusSrcAlphaFactor,
             depthTest: true,
             depthFunc: THREE.GreaterDepth,   // paint only where occluded
             depthWrite: false,
@@ -5905,6 +5928,11 @@ const ThreeRenderer = (function () {
                 n.receiveShadow = false;
                 n._ew_shadowFlagged = true;
                 n._ew_modelSkin = true;    // cloak/fade sweeps pick this up
+                // Render the model AFTER its x-ray ghost twins (renderOrder 1),
+                // so the ghost tests occlusion against terrain/props ONLY and
+                // never against the model's own not-yet-drawn parts. Terrain and
+                // props sit at renderOrder ≤ 0, so 2 keeps units above them too.
+                n.renderOrder = 2;
                 var src = Array.isArray(n.material) ? n.material : [n.material];
                 var out = src.map(function (sm) {
                     var tex = (sm && sm.map) ? sm.map : null;
@@ -5950,7 +5978,7 @@ const ThreeRenderer = (function () {
                     sil = new THREE.Mesh(n.geometry, silMat);
                 }
                 sil.frustumCulled = false;
-                sil.renderOrder = 9999;     // after terrain/props so depth is populated
+                sil.renderOrder = 1;        // after terrain/props (≤0), before the model (2)
                 sil.raycast = function () {};   // never block unit picking
                 sil._ew_silhouette = true;      // skipped by shadow flags / dispose sweeps
                 n.add(sil);                     // rides the parent mesh's transform
