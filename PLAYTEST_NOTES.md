@@ -2456,6 +2456,17 @@ in ROADMAP §11.8. Engine facts a future session needs:
   `_scalePlates` skips the transform write when scale Δ<0.004.
 - **Texture epoch (§4.9)**: `getTexture` stamps `tex._ew_epoch`; `resetForNewMatch`
   disposes textures unused for 2 matches.
+- **Fog Grid toggle** (same session): Video → Graphics "Fog Grid" (`ew_fogGrid`).
+  Off = fog VISUAL removed (no wire boxes, no terrain dimming, whole map shown);
+  vision INFO unchanged — `_applyFogVisibility` splits into a world block (tiles/
+  objects/decos, shown in full when grid off) and the always-vision-gated block
+  (deployables/turrets/units/plates). `_updateFogPulse` has a 'nogrid' key state
+  that refreshes `_fogVisibleSet` every 0.2s via `_computeFogVisibleKey()` (which
+  was dead code — now the nogrid change detector). rebuildFog() early-returns to
+  the same path. Terrain batching engages under fog when the grid is off
+  (`_terrainBatchWanted` checks `state.fogOfWar && _fogGridWanted()`). Soak test:
+  0 hidden-enemy leaks across 6 samples (grid-ON baseline itself shows a transient
+  3-unit leak in the first ~15s of a match that self-clears — pre-existing).
 - PROBE GOTCHA: with the EffectComposer, `renderer.info.render.calls` resets on EVERY
   pass — sample with `info.autoReset=false; info.reset()` and divide by
   `info.render.frame` to get calls per frame across all passes.

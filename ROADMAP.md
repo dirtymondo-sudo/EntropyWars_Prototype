@@ -504,6 +504,13 @@ All non-visual; each verified end-to-end with a Playwright boot/match probe:
      `_scalePlates` skips the DOM transform write when the scale is unchanged.
    - **§4.9**: `getTexture` stamps a match epoch; `resetForNewMatch` disposes
      textures unused for 2 matches.
+   - **Fog Grid toggle** (follow-up, same session): Video → Graphics "Fog Grid"
+     (`ew_fogGrid`, default on). Off = no holographic fog boxes and no terrain
+     dimming — the whole map renders — but fog-of-war INFORMATION is untouched:
+     enemy units/plates/turrets/deployables outside vision stay hidden (same
+     `_fogVisibleSet`, refreshed 0.2s, verified 0 leaks over a soak test). As a
+     bonus, §4.1 terrain batching now engages on fog matches when the grid is
+     hidden. Renderer API: `ThreeRenderer.setFogGrid(bool)`/`isFogGridOn()`.
 
 Deliberately NOT done: §4.3 texture atlas (biggest remaining §4 item),
 §4.2's optional 1024/PCF default (visual change), CSS2D plate canvas rewrite

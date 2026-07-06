@@ -6406,6 +6406,7 @@
             const fpsCap = (_TR && _TR.getFpsCap) ? _TR.getFpsCap() : 0;
             const fpsCounterOn = !!(_TR && _TR.isFpsCounterOn && _TR.isFpsCounterOn());
             const terrainBatchOn = !(_TR && _TR.isTerrainBatching) || _TR.isTerrainBatching();
+            const fogGridOn = !(_TR && _TR.isFogGridOn) || _TR.isFogGridOn();
 
             const uiPref = window._getUIScalePref ? window._getUIScalePref() : 1;
             const _uiSeg = (v, label) => `<button class="pm-seg-btn${Math.abs(uiPref - v) < 0.01 ? ' active' : ''}" onclick="window._setUIScalePref(${v});_renderPauseMenu();">${label}</button>`;
@@ -6488,6 +6489,7 @@
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${fpsCounterOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCounter)ThreeRenderer.setFpsCounter(this.checked);"><span class="pm-toggle-label">FPS Counter</span><span class="pm-toggle-hint">on-screen framerate</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${terrainBatchOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setTerrainBatching)ThreeRenderer.setTerrainBatching(this.checked);"><span class="pm-toggle-label">Batched Terrain</span><span class="pm-toggle-hint">fewer draw calls — turn off only if terrain misrenders</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${fogGridOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFogGrid)ThreeRenderer.setFogGrid(this.checked);"><span class="pm-toggle-label">Fog Grid</span><span class="pm-toggle-hint">fog-of-war overlay — unseen enemies stay hidden either way</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:6px">
                         <span class="pm-setting-label">Nametags</span>

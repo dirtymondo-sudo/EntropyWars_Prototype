@@ -911,7 +911,7 @@ const ThreeRenderer = (function () {
                      exposed as a Video toggle purely as a kill-switch).
        fpsCap:       §4.7 0 = uncapped, otherwise 30/60.
        fpsCounter:   on-screen FPS readout (DotGothic16, retro).              */
-    var _perfSettings = { terrainBatch: true, fpsCap: 0, fpsCounter: false };
+    var _perfSettings = { terrainBatch: true, fpsCap: 0, fpsCounter: false, fogGrid: true };
     (function () {
         try {
             if (typeof localStorage === 'undefined') return;
@@ -921,8 +921,17 @@ const ThreeRenderer = (function () {
             if (fc !== null) _perfSettings.fpsCap = parseInt(fc, 10) || 0;
             var fq = localStorage.getItem('ew_fpsCounter');
             if (fq !== null) _perfSettings.fpsCounter = fq === '1';
+            var fg = localStorage.getItem('ew_fogGrid');
+            if (fg !== null) _perfSettings.fogGrid = fg !== '0';
         } catch (e) {}
     })();
+
+    /* Fog-grid VISUAL toggle (Video settings): when off, the holographic fog
+       boxes and the terrain dimming are not rendered — the whole map is
+       visible — but fog-of-war INFORMATION is untouched: enemy units, plates,
+       turrets and deployables outside the viewer's vision stay hidden, driven
+       by the same _fogVisibleSet as before. Purely client-side cosmetics. */
+    function _fogGridWanted() { return _perfSettings.fogGrid !== false; }
 
     /* Shadow-map dirty gating state (ROADMAP §4.2). The sun's depth pass is
        re-rendered only when something that CASTS a shadow could have changed:
@@ -2238,7 +2247,7 @@ const ThreeRenderer = (function () {
     function _terrainBatchWanted() {
         if (!_perfSettings.terrainBatch || window.EW_DISABLE_TERRAIN_MERGE) return false;
         if (typeof state === 'undefined' || !state) return false;
-        if (state.fogOfWar) return false;       // fog toggles per-tile visibility
+        if (state.fogOfWar && _fogGridWanted()) return false;   // fog GRID toggles per-tile visibility; with the grid hidden terrain is static again
         if (state.phase === 'editor') return false; // editor repaints tiles constantly
         return true;
     }
@@ -8788,6 +8797,16 @@ const ThreeRenderer = (function () {
         var visible = (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
         _fogVisibleSet = visible;
 
+        /* Fog grid hidden (Video setting): no boxes, no dimming — just apply
+           the vision gate to enemy pieces and let _updateFogPulse keep it fresh. */
+        if (!_fogGridWanted()) {
+            _applyFogVisibility(visible);
+            _fogNoGridLastKey = '';
+            _fogVisibleKey = 'nogrid';
+            _fogBuiltBw = _bw; _fogBuiltBh = _bh;
+            return;
+        }
+
         for (var y = 0; y < _bh; y++) {
             for (var x = 0; x < _bw; x++) {
                 var pk = x + ',' + y;
@@ -9157,6 +9176,20 @@ const ThreeRenderer = (function () {
             return;
         }
 
+        /* Fog grid hidden (Video setting): the WORLD renders in full — terrain,
+           props, buildings and decorations all visible, no dimming. Everything
+           below this block (deployables, turrets, units, plates) stays
+           vision-gated, so hidden enemies remain hidden either way. */
+        if (!_fogGridWanted()) {
+            tileMeshes.forEach(function(mesh) { mesh.visible = !mesh._ew_mergedHidden; });
+            objectMeshes.forEach(function(mesh) { mesh.visible = true; });
+            if (_terrainDecoGroup) {
+                for (var gdi = 0; gdi < _terrainDecoGroup.children.length; gdi++) {
+                    _terrainDecoGroup.children[gdi].visible = true;
+                }
+            }
+        } else {
+
         /* Terrain tiles, props and decorations are handled by the per-tile reveal
            fade (_updateFogReveal) so they ease in/out instead of popping. We still
            set their resting visibility here for tiles that AREN'T mid-fade, so a
@@ -9191,6 +9224,8 @@ const ThreeRenderer = (function () {
                     deco.visible = visible.has(deco._ew_decoX + ',' + deco._ew_decoY);
                 }
             }
+        }
+
         }
 
         var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
@@ -9339,12 +9374,40 @@ const ThreeRenderer = (function () {
         }
     }
 
+    var _fogNoGridLastKey = '';
+
     function _updateFogPulse() {
         if (!state.fogOfWar) {
             if (_fogVisibleKey !== 'off') { _fogVisibleKey = 'off'; rebuildFog(); }
             return;
         }
         if (!fogGroup) return;
+
+        /* Fog grid disabled (Video setting): render no fog boxes and no terrain
+           dimming, but keep _fogVisibleSet fresh on the same 0.2s throttle so
+           enemy units/turrets/deployables stay vision-gated. Re-apply only when
+           the vision set actually changed (hash key) — no per-frame churn. */
+        if (!_fogGridWanted()) {
+            if (_fogVisibleKey !== 'nogrid') {
+                _fogVisibleKey = 'nogrid';
+                _clearGroup(fogGroup);
+                _fogMeshes.clear();
+                _fogResetTileFades();
+                _fogNoGridLastKey = '';
+                _fogLastCheckTime = 0;
+            }
+            var nowNG = performance.now() / 1000;
+            if (!_fogLastCheckTime || (nowNG - _fogLastCheckTime) > 0.2) {
+                _fogLastCheckTime = nowNG;
+                var kNG = _computeFogVisibleKey();   // refreshes _fogVisibleSet
+                if (kNG === 'empty') _fogVisibleSet = new Set();
+                if (kNG !== _fogNoGridLastKey) {
+                    _fogNoGridLastKey = kNG;
+                    _applyFogVisibility(_fogVisibleSet || new Set());
+                }
+            }
+            return;
+        }
 
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
@@ -15992,6 +16055,14 @@ const ThreeRenderer = (function () {
             _rebuildMergedTerrain();
         },
         isTerrainBatching: function () { return _perfSettings.terrainBatch; },
+        /* Fog-grid visual toggle — vision info (hidden enemies) is unaffected. */
+        setFogGrid: function (on) {
+            _perfSettings.fogGrid = !!on;
+            try { localStorage.setItem('ew_fogGrid', on ? '1' : '0'); } catch (e) {}
+            _fogVisibleKey = '';   // hard re-apply on the next frame (rebuild boxes / clear them)
+            _shadowsDirty = true;
+        },
+        isFogGridOn: function () { return _perfSettings.fogGrid !== false; },
 
         setHorizonFog,
 
