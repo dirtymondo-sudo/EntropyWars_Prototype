@@ -3926,3 +3926,31 @@
     display: inline-block;
     animation: ewOnFireFlicker 0.7s ease-in-out infinite;
 }
+
+/* charging shimmer sweeping across the gauge fill */
+@keyframes ewEntropyShimmer {
+    from { transform: translateX(-22px); }
+    to   { transform: translateX(0); }
+}
+.ew-entropy-fill { position: absolute; }
+.ew-entropy-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    left: -22px;
+    background: repeating-linear-gradient(115deg,
+        rgba(255, 255, 255, 0.16) 0 5px, transparent 5px 11px);
+    animation: ewEntropyShimmer 1.05s linear infinite;
+    pointer-events: none;
+}
+/* orb-arrival kick */
+.ew-entropy-hit {
+    filter: brightness(1.9);
+}
+@keyframes ewEntropyReadyLabel {
+    0%, 100% { opacity: 0.85; }
+    50%      { opacity: 1; text-shadow: 0 0 10px #e8dcff, 0 0 20px #a36cff; }
+}
+.ew-entropy-ready-label {
+    animation: ewEntropyReadyLabel 1s ease-in-out infinite;
+}

@@ -709,10 +709,10 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
   );
 }
 
-/* ⚛ Entropy Gauge meter — one per team, always visible in the scoreboard
-   centre. Fills from kills / press-turn overflow / bounties / destruction
-   (battle.js addEntropy); glows violet and pulses when the team attack is
-   ready. */
+/* ⚛ Entropy Gauge meter — one per team, a big charged strip along the BOTTOM
+   of the scoreboard (P1 fills left→centre, P2 centre←right). Fed by battle.js
+   addEntropy via glowing orbs (_entropyOrbsFly below); shimmers while
+   charging, blazes violet with a READY label when the team attack is up. */
 function EntropyMeter({ st, player }) {
   const max = window.ENTROPY_GAUGE_MAX || 100;
   const val = (st.entropyGauge && st.entropyGauge[player]) || 0;
@@ -720,17 +720,22 @@ function EntropyMeter({ st, player }) {
   const full = val >= max;
   const team = player === 1 ? EW.space : EW.chaos;
   const p2 = player === 2;
+  const mono = '"DotGothic16", monospace';
   return h('div', {
+    id: 'ewEntropyMeterP' + player,
     title: 'ENTROPY GAUGE — P' + player + ': ' + Math.round(val) + '/' + max +
       (full ? '  ⚛ TEAM ATTACK READY!' : '  (press-turn overflow, kills, bounties and destruction charge it)'),
     style: {
-      flex: 1, height: 7, position: 'relative',
-      background: 'rgba(0,0,0,0.55)',
-      border: '1px solid ' + (full ? '#c9a5ff' : EW.panelEdge),
-      boxShadow: full ? '0 0 10px rgba(163,108,255,0.75)' : 'none',
+      flex: 1, height: 11, position: 'relative',
+      background: 'linear-gradient(180deg, rgba(8,4,18,0.92), rgba(26,14,48,0.88))',
+      border: '1px solid ' + (full ? '#c9a5ff' : 'rgba(130,105,190,0.4)'),
+      boxShadow: full
+        ? '0 0 16px rgba(163,108,255,0.9), inset 0 0 10px rgba(163,108,255,0.45)'
+        : 'inset 0 1px 4px rgba(0,0,0,0.65), 0 0 5px rgba(90,60,160,0.3)',
+      transition: 'filter 0.25s ease, box-shadow 0.4s ease',
       clipPath: p2
-        ? 'polygon(0 0, 100% 0, 100% 100%, 4px 100%, 0 calc(100% - 4px))'
-        : 'polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%)',
+        ? 'polygon(0 0, 100% 0, 100% 100%, 6px 100%, 0 calc(100% - 6px))'
+        : 'polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)',
     },
   },
     h('div', {
@@ -739,15 +744,98 @@ function EntropyMeter({ st, player }) {
         position: 'absolute', top: 0, bottom: 0,
         [p2 ? 'right' : 'left']: 0,
         width: pct + '%',
+        overflow: 'hidden',
         background: full
           ? 'linear-gradient(90deg, #5c33a8, #a36cff, #e8dcff)'
-          : 'linear-gradient(90deg, ' + team + '55, #a36cffcc)',
-        boxShadow: full ? '0 0 12px rgba(201,165,255,0.9)' : '0 0 6px rgba(163,108,255,0.4)',
+          : 'linear-gradient(90deg, ' + team + '66, #7a4fd6cc, #a36cff)',
+        boxShadow: full ? '0 0 14px rgba(201,165,255,1)' : '0 0 8px rgba(163,108,255,0.55)',
         transition: 'width 0.45s ease',
       },
     }),
+    /* quarter ticks */
+    [25, 50, 75].map(t => h('div', { key: t, style: {
+      position: 'absolute', top: 1, bottom: 1, [p2 ? 'right' : 'left']: t + '%',
+      width: 1, background: 'rgba(0,0,0,0.5)',
+    }})),
+    full && h('div', { className: 'ew-entropy-ready-label', style: {
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.42em', textIndent: '0.42em',
+      color: '#ffffff', textShadow: '0 0 6px #c9a5ff, 0 0 12px #a36cff', pointerEvents: 'none',
+    }}, 'READY'),
   );
 }
+
+/* ⚛ Orb flight: little glowing motes stream from the earning unit's board
+   position (or screen centre for unit-less gains) into that team's gauge.
+   Called by battle.js addEntropy. Pure chrome — fixed-position divs above the
+   HUD, removed on arrival with a brightness kick on the meter. */
+function _entropySourceScreenPos(sourceUnit) {
+  try {
+    if (sourceUnit && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera
+        && typeof THREE !== 'undefined' && typeof CONFIG !== 'undefined') {
+      const cam = ThreeCamera.getCamera();
+      const canvas = document.querySelector('#mapRow canvas');
+      if (cam && canvas) {
+        const ts = CONFIG.tileSize || 64;
+        const v = new THREE.Vector3(
+          sourceUnit.x * ts + ts / 2,
+          ((sourceUnit.z || 0) + 1.4) * ts * 0.55,
+          sourceUnit.y * ts + ts / 2);
+        v.project(cam);
+        if (v.z < 1 && v.x >= -1.2 && v.x <= 1.2 && v.y >= -1.2 && v.y <= 1.2) {
+          const r = canvas.getBoundingClientRect();
+          return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height };
+        }
+      }
+    }
+  } catch (e) {}
+  return { x: window.innerWidth / 2, y: window.innerHeight * 0.55 };
+}
+
+window._entropyOrbsFly = function(player, amount, sourceUnit) {
+  if (!amount || amount <= 0) return;
+  const meter = document.getElementById('ewEntropyMeterP' + player);
+  if (!meter) return;
+  const mr = meter.getBoundingClientRect();
+  if (!mr.width) return;
+  const src = _entropySourceScreenPos(sourceUnit);
+  const n = Math.max(1, Math.min(8, Math.ceil(amount / 2)));
+  for (let i = 0; i < n; i++) {
+    const orb = document.createElement('div');
+    const size = 7 + Math.random() * 5;
+    const jx = (Math.random() - 0.5) * 46, jy = (Math.random() - 0.5) * 36;
+    orb.style.cssText =
+      'position:fixed;z-index:5100;pointer-events:none;border-radius:50%;' +
+      'width:' + size + 'px;height:' + size + 'px;' +
+      'left:' + (src.x + jx - size / 2) + 'px;top:' + (src.y + jy - size / 2) + 'px;' +
+      'background:radial-gradient(circle at 35% 35%, #ffffff, #c9a5ff 45%, rgba(163,108,255,0) 72%);' +
+      'box-shadow:0 0 8px rgba(201,165,255,0.95), 0 0 16px rgba(163,108,255,0.6);' +
+      'opacity:0;transform:scale(0.4);' +
+      'transition:opacity 0.14s ease-out, transform 0.14s ease-out;';
+    document.body.appendChild(orb);
+    const tx = mr.left + mr.width * (0.15 + Math.random() * 0.7);
+    const ty = mr.top + mr.height / 2;
+    const delay = i * 55;
+    // pop in…
+    setTimeout(() => { orb.style.opacity = '1'; orb.style.transform = 'scale(1)'; }, 16 + delay);
+    // …then arc into the gauge
+    setTimeout(() => {
+      orb.style.transition = 'left 0.62s cubic-bezier(0.45,-0.25,0.55,1), top 0.62s cubic-bezier(0.3,0.1,0.2,1), transform 0.62s ease-in, opacity 0.62s ease-in';
+      orb.style.left = (tx - size / 2) + 'px';
+      orb.style.top = (ty - size / 2) + 'px';
+      orb.style.transform = 'scale(0.45)';
+    }, 170 + delay);
+    // arrival: kill the orb, kick the meter
+    setTimeout(() => {
+      orb.remove();
+      const m = document.getElementById('ewEntropyMeterP' + player);
+      if (m) {
+        m.classList.add('ew-entropy-hit');
+        setTimeout(() => m.classList.remove('ew-entropy-hit'), 200);
+      }
+    }, 170 + delay + 640);
+  }
+};
 
 function Scoreboard({ st }) {
   if (!st) return null;
@@ -780,9 +868,25 @@ function Scoreboard({ st }) {
       display: 'flex', alignItems: 'stretch', zIndex: 10,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
+      paddingBottom: 15,
       clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
     },
   },
+
+    /* ⚛ ENTROPY GAUGES — full-width strip along the scoreboard's bottom edge:
+       P1 fills left→centre, P2 centre←right, ⚛ pivot between. */
+    h('div', { style: {
+      position: 'absolute', left: 14, right: 14, bottom: 3, zIndex: 3,
+      display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
+    }},
+      h(EntropyMeter, { st, player: 1 }),
+      h('span', {
+        className: ((st.entropyGauge && (st.entropyGauge[1] >= (window.ENTROPY_GAUGE_MAX || 100) || st.entropyGauge[2] >= (window.ENTROPY_GAUGE_MAX || 100))) ? 'ew-entropy-glyph-ready' : undefined),
+        style: { fontFamily: mono, fontSize: 14, color: '#c9a5ff', textShadow: '0 0 8px rgba(163,108,255,0.85)' },
+        title: 'ENTROPY GAUGE — full = your whole team strikes every visible enemy',
+      }, '⚛'),
+      h(EntropyMeter, { st, player: 2 }),
+    ),
 
     h('div', { className: 'ew-scoreboard-sheen', style: {
       position: 'absolute', top: 0, left: 12, right: 12, height: 1, pointerEvents: 'none',
@@ -847,19 +951,6 @@ function Scoreboard({ st }) {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
           textShadow: '0 0 8px ' + EW.bad,
         }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
-      ),
-
-      /* ⚛ Entropy Gauges — P1 fills left→centre, P2 centre←right. */
-      h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 5, width: '100%', marginTop: 3, lineHeight: 1,
-      }},
-        h(EntropyMeter, { st, player: 1 }),
-        h('span', {
-          className: ((st.entropyGauge && (st.entropyGauge[1] >= (window.ENTROPY_GAUGE_MAX || 100) || st.entropyGauge[2] >= (window.ENTROPY_GAUGE_MAX || 100))) ? 'ew-entropy-glyph-ready' : undefined),
-          style: { fontFamily: mono, fontSize: 11, color: '#c9a5ff', textShadow: '0 0 7px rgba(163,108,255,0.8)' },
-          title: 'ENTROPY GAUGE — full = your whole team strikes every visible enemy',
-        }, '⚛'),
-        h(EntropyMeter, { st, player: 2 }),
       ),
 
       h('div', { style: {

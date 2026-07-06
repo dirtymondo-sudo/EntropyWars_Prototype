@@ -64,6 +64,15 @@ opted to verify the combat flows live in-game).
   / 🔥 ON FIRE (+X ATK, kills refund +1 AP)" + "💰 BOUNTY — worth +Ng".
 - GOTCHA: gauge stays PINNED at max until spent (addEntropy no-ops at 100).
   `state._entropyStrikeCount` tracks uses per player.
+- **Round 2 feedback pass (same day, token → `20260706n`)**: gauges moved to a
+  BIG full-width strip along the scoreboard's BOTTOM edge (11px, quarter
+  ticks, shimmer sweep, pulsing READY label; root gets paddingBottom:15;
+  meters have ids `ewEntropyMeterP1/2`). "⚛ +N ENTROPY" floating text REMOVED —
+  replaced by `window._entropyOrbsFly(player, amt, srcUnit)` (hud.js): 1-8
+  glowing motes pop at the earning unit's screen position (THREE.Vector3
+  .project via bare `ThreeCamera.getCamera()` + `CONFIG.tileSize`; falls back
+  to screen centre) and arc into the meter, each arrival kicking a
+  brightness flash (`.ew-entropy-hit`).
 
 ## Running the game + harness
 ```bash
