@@ -182,6 +182,37 @@ if (!document.getElementById('pb-hover-css')) {
       background: rgba(255,255,255,0.015);
       border-color: rgba(120,140,180,0.22);
     }
+    /* ── EQUIPPED slot blades — green = locked into a spell slot ── */
+    .pbx-blade.equipped {
+      border-color: rgba(90,205,125,0.45);
+      border-left: 3px solid #4fd07a;
+      background: linear-gradient(100deg, rgba(20,52,33,0.92) 0%, rgba(12,30,20,0.85) 55%, rgba(11,26,17,0.5) 100%);
+      box-shadow: inset 3px 0 0 #4fd07a, -1px 0 10px rgba(0,0,0,0.4);
+    }
+    .pbx-blade.equipped:hover {
+      border-color: #62e290;
+      background: linear-gradient(100deg, rgba(26,66,42,0.95) 0%, rgba(15,38,25,0.9) 65%, rgba(14,34,22,0.6) 100%);
+      box-shadow: inset 3px 0 0 #62e290, -2px 0 14px rgba(70,205,115,0.2);
+    }
+    .pbx-blade.equipped .pbx-slotno { color: #5fbf82; font-weight: 700; }
+    .pbx-blade.equipped .pbx-x { color: rgba(255,122,138,0); }
+    /* the rack that holds the 8 fixed spell slots */
+    .pbx-slotrack {
+      display: flex; flex-direction: column; gap: 3px;
+      flex-shrink: 0; padding: 8px 0 7px;
+      border: 1px solid rgba(90,205,125,0.28);
+      background: linear-gradient(180deg, rgba(38,92,55,0.13), rgba(16,36,24,0.05));
+      box-shadow: inset 0 0 26px rgba(55,185,95,0.05);
+    }
+    .pbx-slotrack-head {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+      padding: 0 12px 6px 12px; margin-bottom: 1px;
+      border-bottom: 1px solid rgba(90,205,125,0.18);
+    }
+    .pbx-slotrack-body {
+      display: flex; flex-direction: column; gap: 3px;
+      overflow-y: auto; min-height: 0;
+    }
     .pbx-glyph { font-size: 15px; width: 18px; text-align: center; flex: none;
                  text-shadow: 0 0 10px rgba(0,0,0,0.6); }
     .pbx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -208,7 +239,10 @@ if (!document.getElementById('pb-hover-css')) {
     }
     .pbx-pw { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
     .pbx-cost { flex: none; font-size: 8px; letter-spacing: 0.14em; }
-    .pbx-slotno { flex: none; width: 20px; font-size: 9px; color: #555c70; text-align: right; }
+    .pbx-slotno { flex: none; width: 20px; font-size: 9px; color: #555c70; text-align: right;
+      align-self: stretch; display: flex; flex-direction: column;
+      align-items: flex-end; justify-content: space-around; gap: 2px; padding: 1px 0; }
+    .pbx-slotno > span { line-height: 1; }
     .pbx-checkbox {
       flex: none; width: 12px; height: 12px; border: 1px solid rgba(140,160,200,0.4);
       display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4);
@@ -694,10 +728,15 @@ function pbTypeBadgeStyle(typeKey, fontSize) {
   const base = TYPE_C[k] || EW.inkMute;
   return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'DotGothic16, monospace', fontSize:fontSize||9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', lineHeight:1.3, color:TYPE_TEXT_C[k]||base, background:`linear-gradient(${base}22,${base}22), rgba(9,11,17,0.82)`, border:`1px solid ${base}aa`, padding:'1px 6px', textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)' };
 }
-function SpellBlade({ sp, slotLabel, pool, equipped, raceAbility, dim, empty, onClick, onHoverIn, onHoverOut }) {
+function slotNoNode(slotNums, slotLabel) {
+  if (slotNums && slotNums.length) return h('span', { className:'pbx-slotno' }, slotNums.map(n => h('span', { key:n }, n)));
+  if (slotLabel != null) return h('span', { className:'pbx-slotno' }, slotLabel);
+  return null;
+}
+function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equipped, raceAbility, dim, empty, onClick, onHoverIn, onHoverOut }) {
   if (empty) {
-    return h('div', { className:'pbx-blade empty' },
-      slotLabel != null ? h('span', { className:'pbx-slotno' }, slotLabel) : null,
+    return h('div', { className:'pbx-blade empty', style: heightPx ? { minHeight:heightPx } : null },
+      slotNoNode(slotNums, slotLabel),
       h('span', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.1em' } }, 'EMPTY SLOT'));
   }
   const cat = classifySpellLocal(sp);
@@ -709,11 +748,11 @@ function SpellBlade({ sp, slotLabel, pool, equipped, raceAbility, dim, empty, on
   const rng = sp.range != null ? (sp.range === 0 ? 'Self' : 'RNG ' + sp.range) : null;
   const descBits = [rng, aoe ? 'AOE ' + aoe : null].filter(Boolean).join(' · ');
   return h('div', {
-    className: 'pbx-blade' + (pool ? ' pool' : '') + (equipped ? ' on' : ''),
-    style: { '--cat': cc.color, opacity: dim ? 0.45 : 1 },
+    className: 'pbx-blade' + (pool ? ' pool' : '') + (equipped ? ' on' : '') + (equippedSlot ? ' equipped' : ''),
+    style: { '--cat': cc.color, opacity: dim ? 0.45 : 1, minHeight: heightPx || undefined },
     onClick, onMouseEnter: onHoverIn, onMouseLeave: onHoverOut,
   },
-    slotLabel != null ? h('span', { className:'pbx-slotno' }, slotLabel) : null,
+    slotNoNode(slotNums, slotLabel),
     pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(140,160,200,0.4)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
     h('span', { className:'pbx-glyph', style:{ color:cc.color } }, cc.icon),
     h('div', { className:'pbx-main' },
@@ -1414,24 +1453,32 @@ function PartyBuilder() {
           !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
           !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
 
-        // ── equipped loadout: battle-style blades, click to unequip ──
-        h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, maxHeight:'46%', overflowY:'auto', padding:'7px 0 3px' } },
+        // ── equipped loadout: fixed 8-slot rack; each spell physically occupies
+        //    its cost in slots (taller blade = more slots), green = locked in ──
+        h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
+          h('div', { className:'pbx-slotrack-head' },
+            h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
+            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
+          h('div', { className:'pbx-slotrack-body' },
           (()=>{
+            const SLOT_H = 34, GAP = 3;
             let slotNo = 1;
             const rows = learnedSpells.map((sp, si) => {
               const sc = spellSlotCost(sp);
-              const slotLabel = sc > 1 ? `${slotNo}-${slotNo + sc - 1}` : `${slotNo}`;
+              const slotNums = [];
+              for (let k = 0; k < sc; k++) slotNums.push(String(slotNo + k));
               slotNo += sc;
               const isRA = !!(raceAbilities.find(a => a.id && a.id === sp.id));
-              return h(SpellBlade, { key: sp.id || si, sp, slotLabel, raceAbility: isRA,
+              const heightPx = sc * SLOT_H + (sc - 1) * GAP;
+              return h(SpellBlade, { key: sp.id || si, sp, slotNums, heightPx, equippedSlot:true, raceAbility: isRA,
                 onClick: !isArena ? ()=>toggleSpell(sp.id) : undefined,
                 onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
             });
-            for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotLabel:String(si+1) }));
+            for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotNums:[String(si+1)], heightPx:SLOT_H }));
             if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 9px 0 5px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
               h('span', { style:{flex:1} }, 'OVER BUDGET — remove spells (extras are dropped in battle)')));
             return rows;
-          })()),
+          })())),
 
         // ── SUBCLASS — a second job that feeds the pool below and shifts stats ──
         !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
