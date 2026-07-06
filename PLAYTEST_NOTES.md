@@ -4,6 +4,67 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Killstreaks/Bounties + Entropy Gauge/ENTROPY STRIKE (2026-07-06) — battle.js, ai.js, hud.js, online.js, three-renderer.js, data.js, styles-hud.css, styles-cinematic.css
+Token bumped `20260706l` → `20260706m`. ALL game modes. Partially probe-verified
+(scratchpad probe_entropy.js — globals/gauge/HUD-meter/full-glow all PASS; user
+opted to verify the combat flows live in-game).
+- **Heat states (battle.js STREAK_LABELS + helpers)**: 2 kills without dying =
+  ♨️ HEATING UP, 3+ = 🔥 ON FIRE (labels renamed; 4=RAMPAGE, 5=GODLIKE kept).
+  Existing +8 ATK/streak-step bonus unchanged; death still resets via
+  resetKillStreak. Helpers on window + GAME: `isUnitHeatingUp/isUnitOnFire/
+  getUnitBountyGold`. While ON FIRE every kill refunds **+1 AP** (full tank →
+  the surplus vents into the Entropy Gauge instead).
+- **Bounties**: ON FIRE units carry `BOUNTY_GOLD_BASE 15 + 5/extra-kill, cap 35`
+  (GOLD_PER_KILL is 10). `processBountyClaim(killer, victim)` runs in the
+  applyDamageToUnit kill block BEFORE processKillStreak/defeatUnit (victim
+  streak still intact). Arena: +`ARENA_PTS.bounty` (10, data.js) per claim via
+  `state._arenaBountyPts` — added to ALL THREE composite calcs (hud.js
+  _arenaScore/_fullArenaScore, battle.js _vicArenaScore + _arenaComposite).
+  Announcements: "💰 BOUNTY POSTED" on ignition, "💰 BOUNTY CLAIMED" on cash-in.
+  Nameplate badges (three-renderer.js statusHtml block): `🔥 ON FIRE` (pulsing)
+  + `💰Ng`, `♨️ HOT` at 2. ON FIRE units also get a live torch-flame billboard
+  over their head (built in _buildUnitEntry, registered with _torchFlames —
+  auto-pruned on rebuild/death).
+- **Entropy Gauge (battle.js `ENTROPY_PTS` = single balance table)**: per-team
+  0..100 (`state.entropyGauge`, reset in both startMatch + find-next-match
+  blocks). Charges: press-turn OVERFLOW (a WEAK/CRIT refund clipped by the
+  per-turn cap or full AP — "the 6th AP") **8/AP** (the marquee source, wired
+  inside applyPressTurn), banked press refunds 1, kill 4, multikill +3/extra,
+  bounty claim 8, ON-FIRE overflow 4, overkill 2, hourglass 2, turret destroyed
+  3, building destroyed 4, seed/ward 1, tree 1 (in _fellTreeAt credit branch),
+  smashed block 1, tower hit 1 (all 3 Cube-damage sites). `addEntropy(player,
+  amt, reason, srcUnit)` floats "⚛ +N ENTROPY" (gains ≥3), pins at 100, logs/
+  announces FULL, pokes `window._updateEntropyGaugeHUD` (hud.js — dispatches
+  'ew-state-change').
+- **HUD (hud.js)**: `EntropyMeter` ×2 in the Scoreboard centre (P1 fills →, P2
+  fills ←, ⚛ glyph between; violet full-state pulse classes in styles-hud.css).
+  ⚛ ENTROPY pusher on the Horologe bezel when `canUseEntropyStrike(unit)` —
+  fires `window.doEntropyStrike` (bare global → hits the online wrapper).
+- **ENTROPY STRIKE (battle.js)**: full gauge → any allied unit, 1 AP, hits
+  EVERY visible enemy (fog: computeVisibleTilesCached; fog off: all) for
+  `150 + 0.55 × Σ(living allies' atk)` ±15 anomaly magic damage, drains gauge
+  to 0 (refillable). Kills go through the normal kill/streak/bounty pipeline.
+  Cinematic (~1.7s charge + 0.34s/enemy + 1.5s resolve, all actionMs-wrapped):
+  `ews-*` letterbox banner overlay (styles-cinematic.css, VS-splash pattern) +
+  nukeAlarm, per-ally sigMagicCircle3D + light pillars, bloom swell
+  (ThreePost.setBloomStrength tween), camera dive → focusOnTiles crane, giant
+  sky sigil, staggered per-enemy strikes rotating 3 flavors (ThreeLightning.
+  strikeFromSky+sigStormStrike3D / sigStandSword3D+shockring / sigLightPillar3D
+  +torus ring) with screen flashes + hard shakes, final whiteout + board-wide
+  shockring, camera.restore. VFX wrapped in `_ewsSafe` so a visual error can
+  never wedge `_actionExecuting`; `_skipVisuals()` path resolves instantly.
+  Returns total-ms (AI waits on it) or false.
+- **AI (ai.js)**: `scoreEntropyStrike` in gatherCandidates (score 200 + 40/
+  target — fires nearly always when full) + `entropyStrike` case in
+  executeAction. Uses GAME.canUseEntropyStrike/doEntropyStrike.
+- **Online (online.js)**: doEntropyStrike wrapped like channelNexus (host runs+
+  syncs, guest emits `{type:'engine', fn:'doEntropyStrike'}`) + host relay
+  case. server.js untouched.
+- Unit panel status chips (battle.js getStatusEntries) now read "♨️ HEATING UP
+  / 🔥 ON FIRE (+X ATK, kills refund +1 AP)" + "💰 BOUNTY — worth +Ng".
+- GOTCHA: gauge stays PINNED at max until spent (addEntropy no-ops at 100).
+  `state._entropyStrikeCount` tracks uses per player.
+
 ## Running the game + harness
 ```bash
 npm install                       # express + socket.io

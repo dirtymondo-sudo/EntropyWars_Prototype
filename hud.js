@@ -121,6 +121,12 @@ function useGameState() {
   return [G.state, tick];
 }
 
+/* ⚛ battle.js addEntropy() pokes this so gauge changes repaint immediately
+   (the HUD re-renders on 'ew-state-change'). */
+window._updateEntropyGaugeHUD = function() {
+  try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}
+};
+
 /* ── Menu visibility gate ─────────────────────────────────────────
    The action menu (and every sub/quick panel) must VANISH the instant
    the board goes live — walk animations, spell VFX, camera travel,
@@ -440,6 +446,7 @@ function _getModeInfo(st) {
     }
     pts += hgCount * ARENA_PTS.hourglass;
     pts += (st._arenaNexusControl && st._arenaNexusControl[p] || 0) * ARENA_PTS.nexusRound;
+    pts += (st._arenaBountyPts && st._arenaBountyPts[p] || 0);
     return pts;
   }
 
@@ -459,6 +466,7 @@ function _getModeInfo(st) {
       }).length * ARENA_PTS.hourglass;
     }
     pts += (st._arenaNexusControl && st._arenaNexusControl[p] || 0) * ARENA_PTS.nexusRound;
+    pts += (st._arenaBountyPts && st._arenaBountyPts[p] || 0);
     return pts;
   }
 
@@ -701,6 +709,46 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
   );
 }
 
+/* ⚛ Entropy Gauge meter — one per team, always visible in the scoreboard
+   centre. Fills from kills / press-turn overflow / bounties / destruction
+   (battle.js addEntropy); glows violet and pulses when the team attack is
+   ready. */
+function EntropyMeter({ st, player }) {
+  const max = window.ENTROPY_GAUGE_MAX || 100;
+  const val = (st.entropyGauge && st.entropyGauge[player]) || 0;
+  const pct = Math.max(0, Math.min(100, (val / max) * 100));
+  const full = val >= max;
+  const team = player === 1 ? EW.space : EW.chaos;
+  const p2 = player === 2;
+  return h('div', {
+    title: 'ENTROPY GAUGE — P' + player + ': ' + Math.round(val) + '/' + max +
+      (full ? '  ⚛ TEAM ATTACK READY!' : '  (press-turn overflow, kills, bounties and destruction charge it)'),
+    style: {
+      flex: 1, height: 7, position: 'relative',
+      background: 'rgba(0,0,0,0.55)',
+      border: '1px solid ' + (full ? '#c9a5ff' : EW.panelEdge),
+      boxShadow: full ? '0 0 10px rgba(163,108,255,0.75)' : 'none',
+      clipPath: p2
+        ? 'polygon(0 0, 100% 0, 100% 100%, 4px 100%, 0 calc(100% - 4px))'
+        : 'polygon(0 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%)',
+    },
+  },
+    h('div', {
+      className: full ? 'ew-entropy-fill ew-entropy-full' : 'ew-entropy-fill',
+      style: {
+        position: 'absolute', top: 0, bottom: 0,
+        [p2 ? 'right' : 'left']: 0,
+        width: pct + '%',
+        background: full
+          ? 'linear-gradient(90deg, #5c33a8, #a36cff, #e8dcff)'
+          : 'linear-gradient(90deg, ' + team + '55, #a36cffcc)',
+        boxShadow: full ? '0 0 12px rgba(201,165,255,0.9)' : '0 0 6px rgba(163,108,255,0.4)',
+        transition: 'width 0.45s ease',
+      },
+    }),
+  );
+}
+
 function Scoreboard({ st }) {
   if (!st) return null;
 
@@ -799,6 +847,19 @@ function Scoreboard({ st }) {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
           textShadow: '0 0 8px ' + EW.bad,
         }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
+      ),
+
+      /* ⚛ Entropy Gauges — P1 fills left→centre, P2 centre←right. */
+      h('div', { style: {
+        display: 'flex', alignItems: 'center', gap: 5, width: '100%', marginTop: 3, lineHeight: 1,
+      }},
+        h(EntropyMeter, { st, player: 1 }),
+        h('span', {
+          className: ((st.entropyGauge && (st.entropyGauge[1] >= (window.ENTROPY_GAUGE_MAX || 100) || st.entropyGauge[2] >= (window.ENTROPY_GAUGE_MAX || 100))) ? 'ew-entropy-glyph-ready' : undefined),
+          style: { fontFamily: mono, fontSize: 11, color: '#c9a5ff', textShadow: '0 0 7px rgba(163,108,255,0.8)' },
+          title: 'ENTROPY GAUGE — full = your whole team strikes every visible enemy',
+        }, '⚛'),
+        h(EntropyMeter, { st, player: 2 }),
       ),
 
       h('div', { style: {
@@ -2360,6 +2421,14 @@ function ActionMenu({ st, hidden }) {
   // stopwatch buttons on the bezel (they also stay listed under More).
   // Only built when usable right now — presence == opportunity.
   const pushers = [];
+  // ⚛ Full Entropy Gauge → the team attack is live on ANY of your units.
+  if (typeof window.canUseEntropyStrike === 'function' && window.canUseEntropyStrike(unit)) {
+    pushers.push({
+      id: 'entropyStrike', glyph: '⚛', label: 'ENTROPY', color: '#c9a5ff',
+      title: 'ENTROPY STRIKE — the whole team hammers every visible enemy (1 AP, drains the gauge)',
+      fire: () => { if (typeof window.doEntropyStrike === 'function' && typeof getSelectedUnit === 'function') window.doEntropyStrike(getSelectedUnit()); },
+    });
+  }
   if (typeof getNexusAtUnit === 'function') {
     const _nex = getNexusAtUnit(unit);
     if (_nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player)

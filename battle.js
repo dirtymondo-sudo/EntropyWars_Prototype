@@ -1503,6 +1503,7 @@
                 const sMsg = shieldLayers > 0 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
                 addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${tDmg} damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
                 grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
                 showFloatingTextAtTile(x, y, `-${tDmg}`, 'damage');
                 playSfx('spellDamage');
                 window.setTimeout(() => { finishAction(); }, actionMs(400));
@@ -1901,6 +1902,7 @@
             if (byUnit && opts.credit !== false) {
                 _ensureTreeState();
                 state.lumber[byUnit.player] = (state.lumber[byUnit.player] || 0) + 1;
+                addEntropy(byUnit.player, ENTROPY_PTS.destructTree, 'tree', null);
             }
             return true;
         }
@@ -2307,6 +2309,7 @@
                 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
             addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${totalDmg} total damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
             showFloatingTextAtTile(x, y, `-${totalDmg}`, 'damage');
+            addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
             window.setTimeout(() => { finishAction(); }, actionMs(400));
             return { handled: true, returnVal: 1 };
         }
@@ -3069,10 +3072,20 @@
                 key: 'hourglass',
                 text: `Temporal Buff Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
             });
-            if ((unit._killStreak || 0) >= 2) entries.push({
-                key: 'damage',
-                text: `🔥 ${unit._killStreak} Kill Streak (+${unit._streakAtkBonus || 0} ATK)`
-            });
+            if ((unit._killStreak || 0) >= 2) {
+                const _hot = (unit._killStreak >= 3);
+                entries.push({
+                    key: 'damage',
+                    text: _hot
+                        ? `🔥 ON FIRE — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK, kills refund +1 AP)`
+                        : `♨️ HEATING UP — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK)`
+                });
+                const _bounty = (typeof getUnitBountyGold === 'function') ? getUnitBountyGold(unit) : 0;
+                if (_bounty > 0) entries.push({
+                    key: 'pickup',
+                    text: `💰 BOUNTY — worth +${_bounty}g to the enemy`
+                });
+            }
             if (unit._lastStandTriggered && !unit.dead) entries.push({
                 key: 'damage',
                 text: `💢 Last Stand (+${unit._lastStandAtkBonus || 0} ATK)`
@@ -4754,17 +4767,98 @@
                  : arc === 'side' ? FACING_SIDE_DMG_MULT : 1;
         }
 
+        /* ── ENTROPY GAUGE ───────────────────────────────────────────────────
+           Per-team meter (0..ENTROPY_GAUGE_MAX) that fills over the match from
+           acts of chaos. When full, ANY unit on that team can unleash the
+           ENTROPY STRIKE — a one-time team attack that hammers every visible
+           enemy — which drains the gauge back to 0 (it can be refilled).
+           Weighting (heaviest → lightest):
+             • press-turn overflow — a WEAK/CRIT refund the AP pool couldn't
+               hold (per-turn cap reached or AP already max). That "6th AP you
+               would have gotten" is the marquee source.
+             • claiming a bounty / multi kills / ON-FIRE overflow
+             • kills
+             • destruction — turrets, buildings, deployables, wards, seeds,
+               trees, terrain blocks all feed the gauge a little.
+           All numbers live in ENTROPY_PTS so balance is one edit. */
+        const ENTROPY_GAUGE_MAX = 100;
+        const ENTROPY_PTS = {
+            pressOverflowAP:   8,  // per clipped press-refund AP (the "6th AP")
+            pressRefund:       1,  // even a banked press refund charges a little
+            kill:              4,
+            multiKill:         3,  // extra, per same-turn kill beyond the first
+            bounty:            8,  // ending an enemy's ON FIRE streak
+            onFireOverflowAP:  4,  // ON FIRE +1 AP reward with a full AP tank
+            overkill:          2,
+            hourglass:         2,
+            destructTurret:    3,
+            destructBuilding:  4,
+            destructDeployable: 1, // bombs/wards/seeds
+            destructTree:      1,
+            destructTerrain:   1,  // smashed blocks
+        };
+
+        function ensureEntropyGauge() {
+            if (!state.entropyGauge) state.entropyGauge = { 1: 0, 2: 0 };
+        }
+
+        function getEntropyGauge(player) {
+            ensureEntropyGauge();
+            return state.entropyGauge[player] || 0;
+        }
+
+        function isEntropyGaugeFull(player) {
+            return getEntropyGauge(player) >= ENTROPY_GAUGE_MAX;
+        }
+        window.getEntropyGauge = getEntropyGauge;
+        window.isEntropyGaugeFull = isEntropyGaugeFull;
+        window.ENTROPY_GAUGE_MAX = ENTROPY_GAUGE_MAX;
+
+        /* Charge a team's gauge. `sourceUnit` (optional) anchors the floating
+           feedback. Once full it stays pinned at max until spent. */
+        function addEntropy(player, amount, reason, sourceUnit) {
+            if (!player || !(amount > 0)) return;
+            if (state.phase !== 'battle' || state.winner) return;
+            ensureEntropyGauge();
+            const before = state.entropyGauge[player] || 0;
+            if (before >= ENTROPY_GAUGE_MAX) return; // pinned until spent
+            const after = Math.min(ENTROPY_GAUGE_MAX, before + Math.round(amount));
+            state.entropyGauge[player] = after;
+
+            if (!_skipVisuals() && sourceUnit && !sourceUnit.dead && (after - before) >= 3) {
+                showFloatingTextForUnit(sourceUnit, `⚛ +${after - before} ENTROPY`, 'mp', { durationMs: 1100, jitterY: -40 });
+            }
+
+            if (after >= ENTROPY_GAUGE_MAX && before < ENTROPY_GAUGE_MAX) {
+                addLog(`⚛ ENTROPY GAUGE FULL — Player ${player}'s team attack is READY!`);
+                if (!_skipVisuals()) {
+                    showBattleDialogue([`<span class="dlg-effective">⚛ ENTROPY MAXIMUM — the ENTROPY STRIKE is ready!</span>`], 2000);
+                    playSfx('levelUp');
+                    shakeBoard('normal');
+                }
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            }
+            if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD();
+        }
+        window.addEntropy = addEntropy;
+
+        /* ── Killstreak heat states (beer-pong rules) ───────────────────────
+           2 kills without dying = HEATING UP, 3+ = ON FIRE. Dying resets
+           (resetKillStreak, called from defeatUnit). ON FIRE units carry a
+           BOUNTY — killing them pays bonus gold (and arena points), scaling
+           with how long the streak ran. While ON FIRE, every kill also
+           refunds +1 AP (overflow feeds the Entropy Gauge instead). */
         const STREAK_LABELS = {
             2: {
-                text: 'Killstreak!',
-                icon: '⚔️'
+                text: 'HEATING UP!',
+                icon: '♨️'
             },
             3: {
-                text: 'Mega Streak!',
+                text: 'ON FIRE!',
                 icon: '🔥'
             },
             4: {
-                text: 'Rampage!',
+                text: 'RAMPAGE!',
                 icon: '💀'
             },
             5: {
@@ -4772,6 +4866,50 @@
                 icon: '👑'
             }
         };
+
+        const BOUNTY_STREAK_MIN    = 3;   // ON FIRE = bounty on your head
+        const BOUNTY_GOLD_BASE     = 15;  // at exactly 3 kills (GOLD_PER_KILL is 10)
+        const BOUNTY_GOLD_PER_KILL = 5;   // each streak kill past 3 raises it…
+        const BOUNTY_GOLD_CAP      = 35;  // …up to here
+
+        function isUnitHeatingUp(unit) {
+            return !!unit && !unit.dead && (unit._killStreak || 0) === 2;
+        }
+
+        function isUnitOnFire(unit) {
+            return !!unit && !unit.dead && (unit._killStreak || 0) >= BOUNTY_STREAK_MIN;
+        }
+
+        // Gold on this unit's head right now (0 = no bounty).
+        function getUnitBountyGold(unit) {
+            const streak = unit ? (unit._killStreak || 0) : 0;
+            if (streak < BOUNTY_STREAK_MIN) return 0;
+            return Math.min(BOUNTY_GOLD_BASE + (streak - BOUNTY_STREAK_MIN) * BOUNTY_GOLD_PER_KILL, BOUNTY_GOLD_CAP);
+        }
+        window.isUnitHeatingUp = isUnitHeatingUp;
+        window.isUnitOnFire = isUnitOnFire;
+        window.getUnitBountyGold = getUnitBountyGold;
+
+        // Pays the victim's bounty to the killer. Must run BEFORE
+        // processKillStreak/defeatUnit so victim._killStreak is still intact.
+        function processBountyClaim(killer, victim) {
+            const bounty = getUnitBountyGold(victim);
+            if (!bounty || !killer || killer.player === victim.player) return;
+            killer.gold = (killer.gold || 0) + bounty;
+            killer._matchBounties = (killer._matchBounties || 0) + 1;
+            const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            const bountyPts = (mpMode && mpMode.id === 'arena' && window.ARENA_PTS && window.ARENA_PTS.bounty) || 0;
+            if (bountyPts) {
+                if (!state._arenaBountyPts) state._arenaBountyPts = { 1: 0, 2: 0 };
+                state._arenaBountyPts[killer.player] = (state._arenaBountyPts[killer.player] || 0) + bountyPts;
+            }
+            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} extinguishes ${unitDisplayName(victim)} (+${bounty}g${bountyPts ? `, +${bountyPts} pts` : ''})`);
+            if (!_skipVisuals()) {
+                showFloatingTextForUnit(killer, `💰 BOUNTY +${bounty}g`, 'pickup', { durationMs: 1500 });
+                showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${unitDisplayName(victim)}'s fire is out!</span>`], 1400);
+            }
+            addEntropy(killer.player, ENTROPY_PTS.bounty, 'bounty', killer);
+        }
 
         const MULTIKILL_LABELS = {
             2: {
@@ -4874,6 +5012,34 @@
                 shakeBoard(streak >= 4 ? 'hard' : 'normal');
             }
 
+            // Reaching ON FIRE puts a bounty on your head — announce it so the
+            // other team knows there's gold to collect.
+            if (streak === BOUNTY_STREAK_MIN) {
+                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} is ON FIRE — worth +${getUnitBountyGold(killer)}g to whoever puts them down!`);
+                if (!_skipVisuals()) {
+                    showBattleDialogue([`<span class="dlg-effective">🔥 ${unitDisplayName(killer)} is ON FIRE! A bounty has been posted.</span>`], 1600);
+                }
+            }
+
+            // ON FIRE reward: every kill while burning refunds +1 AP (keep the
+            // rampage rolling). If the AP tank is already full, the surplus
+            // heat vents into the team's Entropy Gauge instead.
+            if (streak >= BOUNTY_STREAK_MIN) {
+                const apRoom = Math.max(0, getUnitMaxAP(killer) - (killer.ap || 0));
+                if (apRoom > 0) {
+                    killer.ap = (killer.ap || 0) + 1;
+                    if (!_skipVisuals()) {
+                        showFloatingTextForUnit(killer, '🔥 +1 AP', 'revive', { durationMs: 1100, jitterY: -26 });
+                    }
+                } else {
+                    addEntropy(killer.player, ENTROPY_PTS.onFireOverflowAP, 'onFireOverflow', killer);
+                }
+            }
+
+            // Entropy Gauge: every kill charges it; same-turn multi kills
+            // charge it harder (the chaos compounds).
+            addEntropy(killer.player, ENTROPY_PTS.kill + (turnKills >= 2 ? ENTROPY_PTS.multiKill * (turnKills - 1) : 0), 'kill', killer);
+
             // +8 ATK per streak step (capped at +24) — enough to actually feel
             // the hot hand against 500–1000 HP units, not a token +1/+2/+3.
             if (streak >= 2) killer._streakAtkBonus = Math.min(3, streak - 1) * 8;
@@ -4886,6 +5052,242 @@
             unit._killStreak = 0;
             unit._streakAtkBonus = 0;
         }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           ENTROPY STRIKE — the full-gauge team attack.
+           Any allied unit can trigger it on its turn once the team's Entropy
+           Gauge is full (1 AP). Every living ally channels; every enemy the
+           team can SEE takes massive anomaly damage. Consumes the whole gauge
+           (refillable). The presentation is the biggest cinematic in the game:
+           letterboxed banner → allies ignite in casting circles → the sky
+           tears open over the battlefield → staggered per-enemy annihilation
+           (lightning / blade / light pillar) → whiteout resolve.
+           ═══════════════════════════════════════════════════════════════════ */
+        const ENTROPY_STRIKE_AP_COST   = 1;
+        const ENTROPY_STRIKE_BASE_DMG  = 150;  // flat slice per enemy…
+        const ENTROPY_STRIKE_ATK_SCALE = 0.55; // …plus this × the team's summed ATK
+
+        function canUseEntropyStrike(unit) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state._actionExecuting) return false;
+            if (!isEntropyGaugeFull(unit.player)) return false;
+            if ((unit.ap || 0) < ENTROPY_STRIKE_AP_COST) return false;
+            return getEntropyStrikeTargets(unit).length > 0;
+        }
+
+        // Every living enemy the team can currently see (all of them if fog is off).
+        function getEntropyStrikeTargets(unit) {
+            if (!unit) return [];
+            let vis = null;
+            if (state.fogOfWar && typeof computeVisibleTilesCached === 'function') {
+                vis = computeVisibleTilesCached(unit.player);
+            }
+            return (state.units || []).filter(e =>
+                e && !e.dead && !e._dying && e.player !== unit.player
+                && (!vis || vis.has(posKey(e.x, e.y))));
+        }
+
+        function getEntropyStrikeDamage(unit) {
+            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+            const teamAtk = allies.reduce((s, u) => s + (u.atk || 0), 0);
+            return ENTROPY_STRIKE_BASE_DMG + Math.round(teamAtk * ENTROPY_STRIKE_ATK_SCALE);
+        }
+        window.canUseEntropyStrike = canUseEntropyStrike;
+        window.getEntropyStrikeTargets = getEntropyStrikeTargets;
+        window.getEntropyStrikeDamage = getEntropyStrikeDamage;
+
+        // Never let a visual failure wedge the action lock — the damage path
+        // is authoritative, the spectacle is best-effort.
+        function _ewsSafe(fn) {
+            try { fn(); } catch (err) { console.warn('[EntropyStrike VFX]', err); }
+        }
+
+        function _ewsTweenBloom(to, ms, thenRestore) {
+            if (typeof ThreePost === 'undefined' || !ThreePost.setBloomStrength || !ThreePost.getBloomStrength) return;
+            const from = ThreePost.getBloomStrength();
+            const t0 = Date.now();
+            (function step() {
+                const k = Math.min(1, (Date.now() - t0) / ms);
+                ThreePost.setBloomStrength(from + (to - from) * k);
+                if (k < 1) requestAnimationFrame(step);
+                else if (thenRestore != null) {
+                    window.setTimeout(() => _ewsTweenBloom(thenRestore.value, thenRestore.ms, null), thenRestore.holdMs || 0);
+                }
+            })();
+        }
+
+        /* Full-screen letterboxed banner (VS-splash pattern, `ews-*` classes in
+           styles-cinematic.css). Self-dismissing — pure chrome, never blocks. */
+        function _ewsShowBanner(player, totalMs) {
+            const old = document.getElementById('entropyStrikeOverlay');
+            if (old) old.remove();
+            const el = document.createElement('div');
+            el.id = 'entropyStrikeOverlay';
+            el.className = 'ews-overlay';
+            const mine = player === getViewerPlayer();
+            el.innerHTML = `
+                <div class="ews-letterbox ews-letterbox-top"></div>
+                <div class="ews-letterbox ews-letterbox-bot"></div>
+                <div class="ews-center">
+                    <div class="ews-glyph">⚛</div>
+                    <div class="ews-title ${mine ? 'ews-p1' : 'ews-p2'}">ENTROPY STRIKE</div>
+                    <div class="ews-sub">${mine ? 'YOUR TEAM UNLEASHES TOTAL ENTROPY' : 'THE ENEMY TEAM UNLEASHES TOTAL ENTROPY'}</div>
+                    <div class="ews-scanline"></div>
+                </div>`;
+            document.body.appendChild(el);
+            requestAnimationFrame(() => el.classList.add('ews-active'));
+            window.setTimeout(() => el.classList.add('ews-charge'), Math.max(200, totalMs * 0.18));
+            window.setTimeout(() => el.classList.add('ews-out'), Math.max(400, totalMs - 700));
+            window.setTimeout(() => el.remove(), totalMs + 400);
+        }
+
+        function doEntropyStrike(unit) {
+            if (!canUseEntropyStrike(unit)) {
+                if (unit && !isEntropyGaugeFull(unit.player)) addLog('⚛ The Entropy Gauge is not full yet.');
+                return false;
+            }
+            const targets = getEntropyStrikeTargets(unit);
+            const dmgBase = getEntropyStrikeDamage(unit);
+            const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
+
+            // Spend everything up front (host-authoritative, sync-safe).
+            ensureEntropyGauge();
+            state.entropyGauge[unit.player] = 0;
+            state._entropyStrikeCount = state._entropyStrikeCount || { 1: 0, 2: 0 };
+            state._entropyStrikeCount[unit.player] += 1;
+            spendAP(unit, ENTROPY_STRIKE_AP_COST);
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD();
+
+            state._actionExecuting = true;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+
+            addLog(`⚛ ${unitDisplayName(unit)} triggers the ENTROPY STRIKE — Player ${unit.player}'s team attacks as one!`);
+
+            const applyHit = (enemy) => {
+                if (!enemy || enemy.dead || enemy._dying) return;
+                const dmg = dmgBase + Math.floor(Math.random() * 30) - 15;
+                applyDamageToUnit(enemy, dmg, 'Entropy Strike: ', {
+                    sourceUnit: unit,
+                    damageType: 'magic',
+                    spellType: 'anomaly'
+                });
+            };
+
+            const finish = (delayMs) => {
+                window.setTimeout(() => {
+                    state._actionExecuting = false;
+                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                    if (typeof renderAfterCombat === 'function') renderAfterCombat();
+                    checkWin();
+                    if (!state.winner) endUnitIfDone(unit);
+                }, delayMs);
+            };
+
+            // Dev-sim / visuals-off: resolve instantly.
+            if (_skipVisuals()) {
+                for (const enemy of targets) applyHit(enemy);
+                finish(actionMs(200));
+                return actionMs(350);
+            }
+
+            /* ── The cinematic ────────────────────────────────────────────── */
+            const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
+            const CHARGE_MS  = actionMs(1700);              // banner + ally circles
+            const STAGGER_MS = actionMs(340);               // between enemy strikes
+            const RESOLVE_MS = actionMs(1500);              // whiteout + settle
+            const strikesMs  = STAGGER_MS * targets.length;
+            const totalMs    = CHARGE_MS + strikesMs + RESOLVE_MS;
+            const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+
+            // Banner + siren + letterbox
+            _ewsShowBanner(unit.player, totalMs);
+            playSfx('nukeAlarm');
+            shakeBoard('normal');
+
+            // Camera: dive to the catalyst, then crane out to frame every target.
+            if (camera.save) camera.save();
+            camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(520), _fogAllowed: true });
+            window.setTimeout(() => {
+                _ewsSafe(() => {
+                    const pts = targets.map(t => ({ x: t.x, y: t.y })).concat([{ x: unit.x, y: unit.y }]);
+                    if (camera.focusOnTiles) camera.focusOnTiles(pts, { duration: actionMs(750) });
+                });
+            }, actionMs(700));
+
+            // Charge phase: every ally ignites in a casting circle + thin pillar.
+            allies.forEach((a, i) => {
+                window.setTimeout(() => _ewsSafe(() => {
+                    if (!VFX) return;
+                    if (VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(a.x, a.y, { radiusPx: ts * 0.95, growMs: 240, holdMs: CHARGE_MS + strikesMs, fadeMs: 420, spin: true });
+                    if (VFX.sigLightPillar3D) VFX.sigLightPillar3D(a.x, a.y, { height: 300, radius: ts * 0.22, ms: 1100, color: 0x9fd8ff, coreColor: 0xffffff });
+                }), actionMs(240 + i * 130));
+            });
+            window.setTimeout(() => playSfx('buff'), actionMs(300));
+
+            // Bloom swells while the team channels; restored during resolve.
+            _ewsSafe(() => _ewsTweenBloom(
+                (typeof ThreePost !== 'undefined' && ThreePost.getBloomMaxStrength) ? ThreePost.getBloomMaxStrength() : 2.2,
+                CHARGE_MS,
+                { value: (typeof ThreePost !== 'undefined' && ThreePost.getBloomStrength) ? ThreePost.getBloomStrength() : 1.0, ms: RESOLVE_MS, holdMs: strikesMs }
+            ));
+
+            // The sky tears open: one vast sigil spinning over the battlefield.
+            window.setTimeout(() => _ewsSafe(() => {
+                const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
+                if (VFX && VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(cx, cy, { radiusPx: ts * (Math.max(bw(), bh()) * 0.42), growMs: 500, holdMs: strikesMs + 700, fadeMs: 600, spin: true, height: 560 });
+                if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#b48cff', 420, 0.45);
+                playSfx('spellDamage');
+            }), CHARGE_MS - actionMs(600));
+
+            // Annihilation: staggered per-enemy strikes, three rotating flavors.
+            targets.forEach((enemy, i) => {
+                const at = CHARGE_MS + i * STAGGER_MS;
+                window.setTimeout(() => {
+                    if (state.winner) return;
+                    const ex = enemy._dyingX ?? enemy.x, ey = enemy._dyingY ?? enemy.y;
+                    _ewsSafe(() => {
+                        const flavor = i % 3;
+                        if (flavor === 0) {
+                            if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(ex, ey, { durationMs: 320 });
+                            if (VFX && VFX.sigStormStrike3D) VFX.sigStormStrike3D(ex, ey, { delayMs: 60, color: 0xb48cff });
+                        } else if (flavor === 1) {
+                            if (VFX && VFX.sigStandSword3D) VFX.sigStandSword3D(ex, ey, { summonMs: 140, holdMs: 60, plungeMs: 130, lingerMs: 260, fadeMs: 240 });
+                            if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(ex, ey, { r0: ts * 0.2, r1: ts * 1.4, ms: 420 });
+                        } else {
+                            if (VFX && VFX.sigLightPillar3D) VFX.sigLightPillar3D(ex, ey, { height: 720, radius: ts * 0.4, ms: 700, color: 0xc9a5ff, coreColor: 0xffffff });
+                            if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(ex, ey, { r0: ts * 0.2, r1: ts * 1.6, ms: 460, torus: true });
+                        }
+                        if (VFX && VFX.sigScreenFlash && (i % 2 === 0)) VFX.sigScreenFlash('#e8dcff', 180, 0.28);
+                    });
+                    playSfx(i % 3 === 0 ? 'explosion' : 'spellDamage');
+                    shakeBoard('hard');
+                    applyHit(enemy);
+                    scheduleBoardRender();
+                }, at);
+            });
+
+            // Resolve: whiteout, one last board-wide ring, settle home.
+            window.setTimeout(() => _ewsSafe(() => {
+                if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#ffffff', 620, 0.85);
+                const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
+                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(cx, cy, { r0: ts * 0.5, r1: ts * Math.max(bw(), bh()), ms: 800 });
+                playSfx('explosion');
+                shakeBoard('hard');
+            }), CHARGE_MS + strikesMs + actionMs(150));
+
+            window.setTimeout(() => {
+                if (camera.restore) camera.restore({ duration: actionMs(700) });
+                else if (typeof camera.softResetToUnit === 'function') camera.softResetToUnit(unit);
+            }, CHARGE_MS + strikesMs + actionMs(650));
+
+            finish(totalMs);
+            return totalMs + actionMs(200);
+        }
+        window.doEntropyStrike = doEntropyStrike;
 
         function awardAssists(victim, killer) {
             if (!killer || !victim) return;
@@ -4957,6 +5359,7 @@
             });
             shakeBoard('hard');
             checkAchievement('overkill', killer);
+            addEntropy(killer.player, ENTROPY_PTS.overkill, 'overkill', null);
         }
 
         const ACHIEVEMENT_DEFS = {
@@ -8644,6 +9047,7 @@
                     state.plantedSeeds.splice(seedIdx, 1);
                     const seedName = destroyed.type === 'heal' ? 'Healing' : destroyed.type === 'poison' ? 'Poison' : 'Leech';
                     addLog(`🌿💥 The attack destroys a ${seedName} Seed at ${coordLabel(target.x, target.y)}!`);
+                    addEntropy(sourceUnit.player, ENTROPY_PTS.destructDeployable, 'seed', null);
                 }
             }
 
@@ -8652,6 +9056,7 @@
                 if (wardIdx >= 0) {
                     state.wards.splice(wardIdx, 1);
                     addLog(`👁💥 The attack destroys a Ward at ${coordLabel(target.x, target.y)}!`);
+                    addEntropy(sourceUnit.player, ENTROPY_PTS.destructDeployable, 'ward', null);
                     if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
                 }
             }
@@ -8672,6 +9077,10 @@
                     showFloatingTextForUnit(killer, `+${GOLD_PER_KILL}g`, 'pickup');
 
                     awardAssists(target, killer);
+
+                    // Bounty first — the victim's streak is still intact here
+                    // (defeatUnit resets it below).
+                    processBountyClaim(killer, target);
 
                     processKillStreak(killer);
 
@@ -8840,6 +9249,7 @@
             if (turret.hp <= 0) {
                 addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
+                if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
                 scheduleBoardRender();
             }
             return true;
@@ -8940,6 +9350,7 @@
         }
 
         function destroyBuilding(b, attackerUnit) {
+            if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructBuilding, 'building', attackerUnit);
             const label = buildingDisplayName(b);
             const tiles = (typeof buildingFootprintTiles === 'function')
                 ? buildingFootprintTiles(b.x, b.y)
@@ -11274,6 +11685,20 @@
                 result.apDelta = refund;
                 result.pressed = true;
             }
+
+            /* ENTROPY: a press the AP pool can't hold — the per-turn refund cap
+               is maxed or the tank is full — is "the 6th AP". It vents into the
+               team's Entropy Gauge instead of evaporating (the single biggest
+               charge source; keep pressing weaknesses on a maxed turn).
+               Banked refunds trickle a little charge too. */
+            const overflow = want - refund;
+            if (overflow > 0) {
+                addEntropy(unit.player, overflow * ENTROPY_PTS.pressOverflowAP, 'pressOverflow', unit);
+                result.entropyOverflow = overflow;
+            }
+            if (refund > 0) {
+                addEntropy(unit.player, refund * ENTROPY_PTS.pressRefund, 'pressRefund', null);
+            }
             return result;
         }
 
@@ -13117,6 +13542,12 @@
                     pts += nexPts;
                     details.push({ label: 'Nexus Rnds', raw: nexRounds, pts: nexPts, icon: '⬡' });
 
+                    const bountyPts = state._arenaBountyPts?.[p] || 0;
+                    if (bountyPts > 0) {
+                        pts += bountyPts;
+                        details.push({ label: 'Bounties', raw: Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
+                    }
+
                     return { pts, details };
                 }
                 const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
@@ -14325,6 +14756,9 @@
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
+            state.entropyGauge = { 1: 0, 2: 0 };
+            state._arenaBountyPts = { 1: 0, 2: 0 };
+            state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
             state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
@@ -15369,6 +15803,9 @@
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
+            state.entropyGauge = { 1: 0, 2: 0 };
+            state._arenaBountyPts = { 1: 0, 2: 0 };
+            state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
             state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
@@ -17737,6 +18174,12 @@
             spendAP, get pushUndoSnapshot() { return pushUndoSnapshot; }, addLog,
             showFloatingTextForUnit,
 
+            // ⚛ Entropy Gauge + team attack / 🔥 killstreak heat + bounties
+            getEntropyGauge, isEntropyGaugeFull, addEntropy,
+            canUseEntropyStrike, getEntropyStrikeTargets, getEntropyStrikeDamage, doEntropyStrike,
+            isUnitHeatingUp, isUnitOnFire, getUnitBountyGold,
+            get ENTROPY_GAUGE_MAX() { return ENTROPY_GAUGE_MAX; },
+
             finishComputerAction, queueComputerAction,
             focusUnitPanel, get scheduleBoardRender() { return scheduleBoardRender; },
             focusBoardCameraOnTiles, actionMs, scaleDevSimDelay,
@@ -18333,6 +18776,7 @@
             const oldH = getBaseHeightAt(x, y);
             if (oldH <= 0) return false;
             removeBlockAt(x, y, oldH);
+            if (attacker) addEntropy(attacker.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
             // Safety: anyone somehow standing in the column drops with it.
             const occupant = unitAt(x, y);
             if (occupant && !occupant.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occupant))) {
@@ -21140,6 +21584,7 @@
                     tw.hp = Math.max(0, tw.hp - damage);
                     addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                    addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
                     playSfx('uiConfirm');
                     showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
                     checkWin();
@@ -21187,6 +21632,7 @@
                     tw.hp = Math.max(0, tw.hp - damage);
                     addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
+                    addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
                     showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
                     playHitEffect(x, y);
                     playSfx('damage');
@@ -21718,6 +22164,7 @@
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
                 showFloatingTextForUnit(unit, `⏳ +${totalHourglasses}`, 'streak');
+                addEntropy(unit.player, ENTROPY_PTS.hourglass * totalHourglasses, 'hourglass', unit);
                 showCombatBanner(`⏳ Hourglass Found!`, `Buff Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
                 playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
                 shakeBoard('normal');
@@ -26459,6 +26906,12 @@
                 const nexPts = nexRounds * ARENA_PTS.nexusRound;
                 pts += nexPts;
                 breakdown.push(`${nexRounds} nexus rounds (${nexPts})`);
+
+                const bountyPts = state._arenaBountyPts?.[p] || 0;
+                if (bountyPts > 0) {
+                    pts += bountyPts;
+                    breakdown.push(`bounties (${bountyPts})`);
+                }
 
                 return { pts, breakdown };
             }

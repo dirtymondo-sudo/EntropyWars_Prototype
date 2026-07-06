@@ -8033,6 +8033,7 @@ window.ARENA_PTS = {
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
+    bounty: 10,         // per bounty claimed (killing an ON FIRE unit) — on top of the kill's 15
 };
 
 // ── ACCOUNT ECONOMY (PvP) ──────────────────────────────────────────────

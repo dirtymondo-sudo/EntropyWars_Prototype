@@ -469,6 +469,18 @@
             };
         }
 
+        const _origDoEntropyStrike = (typeof doEntropyStrike === 'function') ? doEntropyStrike : null;
+        if (_origDoEntropyStrike) {
+            doEntropyStrike = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origDoEntropyStrike(unit);
+                if (_isHost()) return _hostRunAndSync(_origDoEntropyStrike, [unit]);
+                if (!_guestOwnsAction(unit)) return 0;
+                _emit('game-action', { type: 'engine', fn: 'doEntropyStrike', unitId: unit.id });
+                return 1200;
+            };
+            window.doEntropyStrike = doEntropyStrike;
+        }
+
         const _origChannelNexus = (typeof channelNexus === 'function') ? channelNexus : null;
         if (_origChannelNexus) {
             channelNexus = function(unit) {
@@ -991,6 +1003,9 @@
                                 break;
                             case 'channelNexus':
                                 if (typeof channelNexus === 'function') channelNexus(engUnit);
+                                break;
+                            case 'doEntropyStrike':
+                                if (typeof doEntropyStrike === 'function') doEntropyStrike(engUnit);
                                 break;
                         }
                         break;

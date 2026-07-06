@@ -6944,6 +6944,33 @@ const ThreeRenderer = (function () {
             group._ew_spriteTopY = surfY + _effectiveSprH - bottomShift2 - topShift + 4;
         }
 
+        /* 🔥 ON FIRE (killstreak ≥3): a live torch-style flame floats over the
+           unit's head — the walking bounty. Registered with the torch flutter
+           loop (_updateTorchFlames), which auto-drops it when this group is
+           torn down by a rebuild (death resets the streak → flame gone). */
+        if ((unit._killStreak || 0) >= 3) {
+            try {
+                var fireW = ts * 0.52, fireH = ts * 0.74;
+                var fireMat = new THREE.MeshBasicMaterial({
+                    map: _getTorchFlameTex(), transparent: true, depthWrite: false, fog: false,
+                    blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+                });
+                var fireG = new THREE.Group();
+                var fpA = new THREE.Mesh(new THREE.PlaneGeometry(fireW, fireH), fireMat);
+                fpA.position.y = fireH * 0.5;
+                fireG.add(fpA);
+                var fpB = new THREE.Mesh(new THREE.PlaneGeometry(fireW, fireH), fireMat);
+                fpB.rotation.y = Math.PI / 2;
+                fpB.position.y = fireH * 0.5;
+                fireG.add(fpB);
+                fpA.raycast = function () {}; fpB.raycast = function () {};
+                fpA._ew_shadowFlagged = true; fpB._ew_shadowFlagged = true;
+                fireG.position.y = _effectiveSprH * 1.02;
+                group.add(fireG);
+                _torchRegisterFlame({ root: group, flame: fireG, mat: fireMat, light: null, seed: (unit.id * 17) % 100 });
+            } catch (e) {}
+        }
+
         var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
         if (_m3dDef) _attachUnitModel(entryObj, unit, _m3dDef, ts);
         return entryObj;
@@ -7108,6 +7135,11 @@ const ThreeRenderer = (function () {
                 '}',
                 '.tp-wrap .tp-stat-up { background: rgba(50,200,100,0.3); color: #6ee2a8; }',
                 '.tp-wrap .tp-stat-dn { background: rgba(255,80,80,0.3); color: #ff7a8a; }',
+                /* 🔥 killstreak heat + bounty markers */
+                '@keyframes tpOnFire { 0%,100% { box-shadow: 0 0 4px rgba(255,110,30,0.7); } 50% { box-shadow: 0 0 10px rgba(255,160,60,1); } }',
+                '.tp-wrap .tp-heatup { background: rgba(255,140,50,0.28); color: #ffb36e; }',
+                '.tp-wrap .tp-onfire { background: rgba(255,80,20,0.4); color: #ffd2a8; animation: tpOnFire 0.8s ease-in-out infinite; }',
+                '.tp-wrap .tp-bounty { background: rgba(255,200,60,0.3); color: #ffe08a; }',
 
                 /* Type badges stack vertically alongside the bars. With a single
                    type the lone badge stretches (flex:1) to span the full height
@@ -7418,6 +7450,16 @@ const ThreeRenderer = (function () {
             else if (mdefD < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MDEF' + mdefD + '</span>');
             if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
             else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
+
+            /* 🔥 Killstreak heat: HEATING UP at 2 kills, ON FIRE (+ bounty) at 3+. */
+            var _ks = unit._killStreak || 0;
+            if (_ks >= 3) {
+                var _bg = (typeof window.getUnitBountyGold === 'function') ? window.getUnitBountyGold(unit) : 0;
+                badges.push('<span class="tp-sbadge tp-onfire" title="ON FIRE — ' + _ks + ' kill streak. Bounty: +' + _bg + 'g to whoever kills this unit">🔥 ON FIRE</span>');
+                if (_bg > 0) badges.push('<span class="tp-sbadge tp-bounty" title="Kill this unit to claim +' + _bg + 'g">💰' + _bg + 'g</span>');
+            } else if (_ks === 2) {
+                badges.push('<span class="tp-sbadge tp-heatup" title="HEATING UP — 2 kill streak">♨️ HOT</span>');
+            }
             if (badges.length) statusHtml = '<div class="tp-status-row">' + badges.join('') + '</div>';
         }
 

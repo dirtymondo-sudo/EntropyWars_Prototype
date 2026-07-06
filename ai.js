@@ -844,6 +844,7 @@
         const candidates = [];
         const g = G();
 
+        scoreEntropyStrike(unit, v, candidates);
         scoreItems(unit, v, candidates);
         scoreAttacks(unit, v, candidates);
         scoreTowerAttack(unit, v, candidates);
@@ -3152,6 +3153,17 @@
         }
     }
 
+    // Full Entropy Gauge = fire the team attack. It hits every visible enemy
+    // for massive damage and the gauge is use-it-or-bank-nothing, so it
+    // outranks almost anything once available; more targets, higher score.
+    function scoreEntropyStrike(unit, v, out) {
+        const g = G();
+        if (typeof g.canUseEntropyStrike !== 'function' || !g.canUseEntropyStrike(unit)) return;
+        const targets = (typeof g.getEntropyStrikeTargets === 'function') ? g.getEntropyStrikeTargets(unit) : [];
+        if (!targets.length) return;
+        out.push({ type: 'entropyStrike', score: 200 + targets.length * 40 });
+    }
+
     function scoreGuard(unit, v, out) {
         const g = G();
         const ap = unit.ap || 0;
@@ -4013,6 +4025,17 @@
 
                 g.state.aiThinking = false;
                 g.maybeTriggerComputerTurn();
+                break;
+            }
+
+            case 'entropyStrike': {
+                const delay = (typeof g.doEntropyStrike === 'function') ? (g.doEntropyStrike(unit) || 0) : 0;
+                if (delay > 0) {
+                    window.setTimeout(() => g.finishComputerAction(), delay);
+                } else {
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                }
                 break;
             }
 

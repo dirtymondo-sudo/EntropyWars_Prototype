@@ -2961,3 +2961,107 @@
         to   { width: 62vw; }
     }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ⚛ ENTROPY STRIKE — full-gauge team-attack cinematic overlay (battle.js
+   _ewsShowBanner). Letterboxed, non-blocking chrome over the 3D board.
+   ════════════════════════════════════════════════════════════════════════ */
+.ews-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5200;
+    pointer-events: none;
+    overflow: hidden;
+}
+.ews-letterbox {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: #000;
+    box-shadow: 0 0 26px rgba(0, 0, 0, 0.9);
+    transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ews-letterbox-top { top: 0; }
+.ews-letterbox-bot { bottom: 0; }
+.ews-overlay.ews-active .ews-letterbox { height: 11vh; }
+.ews-overlay.ews-out .ews-letterbox { height: 0; }
+
+.ews-center {
+    position: absolute;
+    top: 13vh;
+    left: 0;
+    right: 0;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+    transition: opacity 0.45s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ews-overlay.ews-active .ews-center {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.ews-overlay.ews-out .ews-center {
+    opacity: 0;
+    transform: translateY(-20px) scale(1.04);
+}
+.ews-glyph {
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    line-height: 1;
+    color: #c9a5ff;
+    text-shadow: 0 0 18px rgba(163, 108, 255, 0.9), 0 0 42px rgba(163, 108, 255, 0.5);
+    animation: ewsGlyphSpin 2.4s linear infinite;
+    display: inline-block;
+}
+@keyframes ewsGlyphSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+.ews-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: clamp(2.4rem, 7vw, 5.2rem);
+    letter-spacing: 0.14em;
+    line-height: 1.05;
+    color: #f2eaff;
+    text-shadow:
+        0 0 10px rgba(201, 165, 255, 0.95),
+        0 0 34px rgba(163, 108, 255, 0.75),
+        0 4px 0 rgba(20, 8, 40, 0.85);
+}
+.ews-title.ews-p2 {
+    color: #ffe2dc;
+    text-shadow:
+        0 0 10px rgba(255, 138, 118, 0.95),
+        0 0 34px rgba(255, 90, 64, 0.7),
+        0 4px 0 rgba(40, 8, 8, 0.85);
+}
+.ews-overlay.ews-charge .ews-title {
+    animation: ewsTitlePulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes ewsTitlePulse {
+    from { transform: scale(1);    filter: brightness(1); }
+    to   { transform: scale(1.03); filter: brightness(1.35); }
+}
+.ews-sub {
+    margin-top: 6px;
+    font-family: 'DotGothic16', monospace;
+    font-size: clamp(0.7rem, 1.4vw, 1rem);
+    letter-spacing: 0.34em;
+    color: rgba(220, 205, 255, 0.85);
+    text-shadow: 0 0 8px rgba(120, 80, 200, 0.8);
+}
+.ews-scanline {
+    margin: 14px auto 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #c9a5ff, #ffffff, #c9a5ff, transparent);
+    box-shadow: 0 0 14px rgba(201, 165, 255, 0.9);
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ews-overlay.ews-active .ews-scanline { width: min(52vw, 640px); }
+
+@media (max-width: 720px) {
+    .ews-overlay.ews-active .ews-letterbox { height: 7vh; }
+    .ews-center { top: 9vh; }
+}
