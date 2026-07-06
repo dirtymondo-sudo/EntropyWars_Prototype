@@ -26,6 +26,37 @@ ALL game logic lives there (`battle.js` ~20k lines, `ai.js`, `data.js`, sprites�
   harness sets Playwright `ignoreHTTPSErrors: true` to load anyway.
 - Headless needs `--use-gl=swiftshader` for WebGL.
 
+## Battle loading screen + asset preload gate (2026-07-05/06) — battle.js, three-renderer.js, audio.js, online.js, styles-cinematic.css
+Token bumped `20260705g` → `20260705h`. ROADMAP §3.1 + §3.2 shipped.
+- `showBattleLoadingScreen(onDone)` (battle.js, just above `showVSSplash`; also on
+  `window`) now runs between team lock-in and the VS splash. NGE-title-card look:
+  YEAR 2058 / mode / map / BATTLE:n in Cinzel, random `Assets/Sprites/ls1–ls5.png`
+  pixel art, entropy motes, rotating FIELD MANUAL / INTEL FRAGMENT hints (mined from
+  the ui.js codex dossiers — `LS_HINTS`), real progress strip. CSS = `.ls-*` block at
+  the END of styles-cinematic.css.
+- It is a REAL gate: `ThreeRenderer.preloadUnitModels(units, (done,total)=>{})` (new
+  public API; settles per-URL on success OR failure via `doneCbs` next to the
+  success-only `cbs` in `_unitGlbCache`) + `warmBattleTrack(key)` (audio.js,
+  `canplaythrough`/10s) + `new Image()` warms of unit sprite URLs. Gate =
+  `Promise.race([all, 12s cap])` AND ≥2.6s min display; tap-to-dismiss once ready;
+  auto-dismiss 900ms after ready. Constants `LS_MIN_SHOW_MS`/`LS_MAX_WAIT_MS`.
+- Kills the 2D→3D pop-in: after the gate, `renderBoard` finds every GLB cached and
+  builds real models on the first pass (verified: `preloadUnitModels` re-run after
+  battle start reports total 0 outstanding on a normal run).
+- `_skipVisuals()` (dev-sim / animations off) skips the screen but still FIRES the
+  warmers — auto-sim harnesses are unaffected.
+- Online guests get the same screen via online.js phase-flip hook (wraps the guest
+  VS-splash call in `window.showBattleLoadingScreen`). §3.3 (both-clients-ready
+  handshake) still open.
+- HARNESS IMPACT: manual playtests now see loading screen (up to ~12s cold, ~2.6s
+  warm) + VS splash before round 1 — bump waits accordingly. In this container
+  SwiftShader jank stretches the page's own timers well past the 12s cap (observed
+  ~26s); that's environment jank, not the gate. Playwright route interception also
+  keeps `<audio>` at readyState ≤1 — the music warm can't be verified in-harness,
+  only live.
+- Map title on the card: `_lsMapTitle()` = "THE " + GAME_MODES label uppercased;
+  generic size labels (Small…Huge) → "THE PROVING GROUNDS".
+
 ## Combat-UI batch 2 (2026-07-05, later session) — battle.js, hud.js, state.js, ui.js
 Token bumped `20260705c` → `20260705d`. Verified by driving a full VS-CPU arena
 match with the harness + `USE_ASSET_CACHE=1 LOCAL_ASSETS=battle.js,hud.js,state.js,ui.js`

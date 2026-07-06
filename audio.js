@@ -382,6 +382,37 @@
             return battleShuffleBag.shift();
         }
 
+        /* Match-start audio preload (ROADMAP §3.2): force-buffer the battle
+           track chosen in startMatch while the loading screen is up, so the
+           first battle bar doesn't hitch on a cold MP3 stream. Resolves true
+           when the track can play through, false on error/timeout/no-track —
+           never rejects, so the loading screen can Promise.all it. Never
+           touches a track that is already playing. */
+        function warmBattleTrack(trackKey, timeoutMs) {
+            return new Promise((resolve) => {
+                const track = trackKey ? audioTracks[trackKey] : null;
+                if (!track || !track.paused) { resolve(false); return; }
+                if (track.readyState >= 4) { resolve(true); return; }   // HAVE_ENOUGH_DATA
+                let settled = false;
+                const finish = (ok) => {
+                    if (settled) return;
+                    settled = true;
+                    track.removeEventListener('canplaythrough', onReady);
+                    track.removeEventListener('error', onErr);
+                    resolve(ok);
+                };
+                const onReady = () => finish(true);
+                const onErr = () => finish(false);
+                track.addEventListener('canplaythrough', onReady);
+                track.addEventListener('error', onErr);
+                try {
+                    track.preload = 'auto';
+                    track.load();
+                } catch (_) { finish(false); return; }
+                setTimeout(() => finish(false), timeoutMs || 10000);
+            });
+        }
+
         const BATTLE_CROSSFADE_LEAD_SEC = 9;
         const _battleCrossfadeTriggered = new Set();
 

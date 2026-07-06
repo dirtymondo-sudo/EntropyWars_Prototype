@@ -2664,3 +2664,300 @@
         width: 2px;
     }
 }
+
+/* ══════════════════════════════════════════════════════
+   BATTLE LOADING SCREEN — Eva-title-card × Skyrim-tips
+   match intro + real asset gate (battle.js
+   showBattleLoadingScreen, ROADMAP §3.1/§3.2).
+   Stark black card, gothic serif intel block on the left,
+   glowing pixel-art vessel on the right, entropy motes,
+   rotating dossier hints, and a real progress strip.
+   ══════════════════════════════════════════════════════ */
+
+.ls-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    background: #000;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: pointer;
+    overflow: hidden;
+    transition: opacity 0.45s ease;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.ls-overlay.ls-active { opacity: 1; }
+.ls-overlay.ls-fade-out {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* ── Atmosphere: scanlines + slow breathing vignette ── */
+.ls-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(0deg,
+            rgba(255, 255, 255, 0.022) 0px,
+            rgba(255, 255, 255, 0.022) 1px,
+            transparent 1px,
+            transparent 3px),
+        radial-gradient(ellipse at center,
+            transparent 55%,
+            rgba(0, 0, 0, 0.55) 100%);
+    animation: lsVignetteBreathe 7s ease-in-out infinite alternate;
+}
+@keyframes lsVignetteBreathe {
+    from { opacity: 0.85; }
+    to   { opacity: 1; }
+}
+
+/* ── Entropy motes — slow purple/green embers rising off the void ── */
+.ls-motes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.ls-mote {
+    position: absolute;
+    bottom: -4vh;
+    border-radius: 50%;
+    background: #b98aff;
+    box-shadow: 0 0 8px 2px rgba(163, 108, 255, 0.55);
+    opacity: 0;
+    animation: lsMoteRise linear infinite;
+    will-change: transform, opacity;
+}
+.ls-mote-green {
+    background: #7fffb2;
+    box-shadow: 0 0 8px 2px rgba(90, 255, 160, 0.45);
+}
+@keyframes lsMoteRise {
+    0%   { transform: translate(0, 0) scale(0.7); opacity: 0; }
+    12%  { opacity: 0.85; }
+    75%  { opacity: 0.5; }
+    100% { transform: translate(var(--dx, 0vw), -112vh) scale(1.05); opacity: 0; }
+}
+
+/* ── Match intel card (the Eva title block) ── */
+.ls-card {
+    position: absolute;
+    left: clamp(24px, 9vw, 160px);
+    top: 16vh;
+    max-width: 62vw;
+    color: #fff;
+    font-family: 'Cinzel', 'Times New Roman', serif;
+    text-align: left;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+}
+.ls-line {
+    opacity: 0;
+    animation: lsLineIn 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.ls-line-1 {
+    font-size: clamp(1.3rem, 3.2vw, 2.5rem);
+    font-weight: 500;
+    animation-delay: 0.25s;
+}
+.ls-line-2 {
+    font-size: clamp(1.3rem, 3.2vw, 2.5rem);
+    font-weight: 500;
+    margin-top: 0.45em;
+    animation-delay: 0.45s;
+}
+.ls-title {
+    font-size: clamp(2.6rem, 8vw, 6.6rem);
+    font-weight: 700;
+    line-height: 1.04;
+    letter-spacing: 0.03em;
+    margin-top: 0.12em;
+    text-shadow: 0 0 34px rgba(214, 178, 255, 0.28);
+    opacity: 0;
+    animation: lsTitleIn 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) 0.7s forwards;
+}
+.ls-rule {
+    height: 3px;
+    width: 0;
+    margin: 2.4vh 0 2vh;
+    background: #fff;
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
+    animation: lsRuleIn 0.8s cubic-bezier(0.65, 0, 0.35, 1) 1.1s forwards;
+}
+.ls-battle {
+    font-size: clamp(1.2rem, 2.8vw, 2.1rem);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    animation-delay: 1.5s;
+}
+@keyframes lsLineIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lsTitleIn {
+    from { opacity: 0; transform: translateY(18px) scale(1.03); filter: blur(3px); }
+    to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes lsRuleIn {
+    from { width: 0; }
+    to   { width: min(36vw, 520px); }
+}
+
+/* ── Pixel-art vessel portrait ── */
+.ls-art-wrap {
+    position: absolute;
+    right: clamp(16px, 8vw, 140px);
+    top: 50%;
+    transform: translateY(-50%);
+    width: clamp(200px, 30vw, 460px);
+    aspect-ratio: 1 / 1;
+    pointer-events: none;
+}
+.ls-art-glow {
+    position: absolute;
+    inset: -22%;
+    background: radial-gradient(circle,
+        rgba(148, 84, 220, 0.26) 0%,
+        rgba(148, 84, 220, 0.10) 42%,
+        transparent 68%);
+    animation: lsGlowPulse 4.5s ease-in-out infinite alternate;
+}
+@keyframes lsGlowPulse {
+    from { opacity: 0.55; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1.05); }
+}
+.ls-art {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+    filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30));
+    will-change: transform, opacity;
+}
+.ls-art.ls-art-on {
+    opacity: 1;
+    transform: translateY(0);
+    animation:
+        lsArtFloat 7s ease-in-out 1s infinite alternate,
+        lsArtGlitch 9s steps(1, end) 2s infinite;
+}
+@keyframes lsArtFloat {
+    from { transform: translateY(-6px); }
+    to   { transform: translateY(8px); }
+}
+/* Sparse one-frame entropy glitches — barely there, then gone */
+@keyframes lsArtGlitch {
+    0%, 100% { filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30)); }
+    41.0% { filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30)); }
+    41.4% { filter: drop-shadow(-4px 0 0 rgba(90, 255, 160, 0.7)) drop-shadow(4px 0 0 rgba(255, 60, 120, 0.55)); }
+    41.8% { filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30)); }
+    73.0% { filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30)); }
+    73.3% { filter: drop-shadow(3px 0 0 rgba(90, 255, 160, 0.7)) drop-shadow(-3px 0 0 rgba(120, 160, 255, 0.55)) hue-rotate(30deg); }
+    73.7% { filter: drop-shadow(0 0 26px rgba(178, 120, 255, 0.30)); }
+}
+
+/* ── Rotating field-manual / dossier hint (bottom-left) ── */
+.ls-hint {
+    position: absolute;
+    left: clamp(24px, 9vw, 160px);
+    bottom: 11vh;
+    max-width: min(560px, 68vw);
+    opacity: 0;
+    animation: lsLineIn 0.7s ease 1.9s forwards;
+    transition: opacity 0.45s ease;
+    pointer-events: none;
+}
+.ls-hint.ls-hint-fade { opacity: 0 !important; }
+.ls-hint-tag {
+    font-family: 'DotGothic16', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+    color: #9a7fd1;
+    margin-bottom: 7px;
+}
+.ls-hint-text {
+    font-family: 'DotGothic16', monospace;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: #ddd6ec;
+    text-shadow: 0 0 12px rgba(154, 127, 209, 0.25);
+}
+.ls-hint-src {
+    font-family: 'DotGothic16', monospace;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #746d8c;
+    margin-top: 6px;
+}
+
+/* ── Status line + real progress strip ── */
+.ls-status {
+    position: absolute;
+    right: clamp(20px, 5vw, 80px);
+    bottom: 4.2vh;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: #8f88a8;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    pointer-events: none;
+}
+.ls-status-label { animation: lsBlink 1.15s steps(2, start) infinite; }
+.ls-overlay.ls-ready .ls-status-label {
+    animation: none;
+    color: #9dffb0;
+    text-shadow: 0 0 10px rgba(90, 255, 160, 0.5);
+}
+.ls-status-count { color: #6f6888; }
+@keyframes lsBlink {
+    0%, 55% { opacity: 1; }
+    56%, 100% { opacity: 0.35; }
+}
+.ls-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.07);
+}
+.ls-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #5c33a8, #a36cff, #c9a5ff);
+    box-shadow: 0 0 12px rgba(163, 108, 255, 0.75);
+    transition: width 0.35s ease;
+}
+.ls-overlay.ls-ready .ls-bar-fill {
+    background: linear-gradient(90deg, #2f9e5f, #7fffb2);
+    box-shadow: 0 0 12px rgba(127, 255, 178, 0.8);
+}
+
+/* ── Mobile: stack the card above a smaller portrait ── */
+@media (max-width: 720px) {
+    .ls-card { top: 10vh; max-width: 84vw; }
+    .ls-title { font-size: clamp(2.2rem, 11vw, 3.4rem); }
+    .ls-art-wrap {
+        top: auto;
+        bottom: 24vh;
+        right: 6vw;
+        transform: none;
+        width: clamp(120px, 38vw, 220px);
+    }
+    .ls-hint { bottom: 13vh; max-width: 86vw; }
+    .ls-status { right: 5vw; bottom: 5.5vh; }
+    @keyframes lsRuleIn {
+        from { width: 0; }
+        to   { width: 62vw; }
+    }
+}

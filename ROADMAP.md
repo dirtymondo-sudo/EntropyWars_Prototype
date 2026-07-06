@@ -448,10 +448,25 @@ All non-visual; each verified end-to-end with a Playwright boot/match probe:
    in the render body (globals always match the rendered UI). Verified end-to-end:
    HUD and `state.matchClock.roundLimit` now read 12 for TDM.
 6. **ROADMAP.md** (this file).
+7. **§3.1 + §3.2 SHIPPED (follow-up session, 2026-07-05/06): battle loading screen.**
+   New NGE-title-card × Skyrim-tips loading screen between team lock-in and the VS
+   splash — and it's the real asset gate: `ThreeRenderer.preloadUnitModels(units, cb)`
+   (new public API, three-renderer.js — warms every RACE_MODELS_3D GLB incl. clips,
+   settles on success OR failure) + `warmBattleTrack(key)` (audio.js — buffers the
+   chosen battle track) + unit sprite PNG warms, all raced against a 12s cap with a
+   2.6s minimum display. Kills the 2D→3D unit pop-in and cold-stream music hitch.
+   Content: YEAR 2058 / mode / map ("THE <label>", generic size boards → "THE PROVING
+   GROUNDS") / BATTLE:n in Cinzel; random ls1–ls5 pixel art w/ glow+glitch; entropy
+   motes; rotating FIELD MANUAL / INTEL FRAGMENT hints mined from the codex dossiers;
+   real progress strip. `showBattleLoadingScreen` in battle.js (also on `window` —
+   online.js guest phase-flip path uses it too, so guests get the same gate).
+   Dev-sim/animations-off skip visuals but still fire the warmers. Files touched:
+   battle.js, three-renderer.js, audio.js, online.js, styles-cinematic.css (`.ls-*`),
+   index.html (`?v=` bump). §3.3 (online ready handshake) and §3.4 (defer head 3D
+   stack) remain open.
 
-Deliberately NOT done (needs user sign-off or bigger scope): match-start GLB preload
-gate (§3.1 — changes perceived match-start flow), shadow dirty-gating (§4 caveats),
-terrain merging, `?v=` versioning (needs the deploy-process decision in §2).
+Deliberately NOT done (needs user sign-off or bigger scope): shadow dirty-gating
+(§4 caveats), terrain merging, §2 deploy-process decisions.
 
 ---
 

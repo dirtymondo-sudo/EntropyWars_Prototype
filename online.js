@@ -2842,7 +2842,14 @@
                                       : typeof window.showVsSplash === 'function' ? window.showVsSplash
                                       : null;
                         if (_splashFn) {
-                            _splashFn(function _afterGuestVSSplash() {
+                            // Loading screen first (asset gate: GLBs + battle
+                            // track + sprites — battle.js showBattleLoadingScreen),
+                            // then the VS splash. Mirrors the host's startMatch
+                            // intro so the guest doesn't watch units pop 2D→3D.
+                            var _introFn = (typeof window.showBattleLoadingScreen === 'function')
+                                ? function (cb) { window.showBattleLoadingScreen(function () { _splashFn(cb); }); }
+                                : _splashFn;
+                            _introFn(function _afterGuestVSSplash() {
 
                                 CONFIG.tileSize = BASE_TILE;
                                 if (typeof invalidateLayoutCache === 'function') invalidateLayoutCache();

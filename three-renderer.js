@@ -5573,11 +5573,11 @@ const ThreeRenderer = (function () {
             e.cbs.push(cb); return;
         }
         e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
-        if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; return; }
+        if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         try {
             new THREE.GLTFLoader().load(url, function (gltf) {
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
-                if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; return; }
+                if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
                 // Geometry is shared by every clone — protect it from _disposeR.
                 root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                 e.root = root;
@@ -5586,12 +5586,72 @@ const ThreeRenderer = (function () {
                 e.loading = false;
                 var cbs = e.cbs; e.cbs = [];
                 for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
+                _flushGlbDoneCbs(e);
                 invalidateUnits();   // swap placeholders for the model on the next frame
             }, undefined, function () {
-                e.loading = false; e.failed = true; e.cbs.length = 0;
+                e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 console.warn('[ThreeRenderer] unit model failed to load:', url);
             });
-        } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; }
+        } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
+    }
+
+    /* Settlement hooks for the preload gate: unlike e.cbs (success-only,
+       consumers expect a live root), doneCbs fire on success AND failure —
+       "this URL is no longer worth waiting for". */
+    function _flushGlbDoneCbs(e) {
+        var d = e.doneCbs;
+        if (!d || !d.length) return;
+        e.doneCbs = [];
+        for (var i = 0; i < d.length; i++) { try { d[i](e); } catch (_ex) {} }
+    }
+
+    /* Match-start preload gate (ROADMAP §3.1): warm every RACE_MODELS_3D GLB
+       (base model + all animation clips) needed by `units` so renderBoard
+       builds real skinned models on its first pass instead of 2D placeholder
+       slabs that pop into 3D mid-match. Resolves once every URL has either
+       loaded or failed — never rejects, so callers can Promise.all it.
+       onProgress(done, total) fires once up front with (0, total) and again
+       after each file settles. Already-cached files are excluded up front, so
+       a rematch with the same roster resolves immediately with total 0. */
+    function preloadUnitModels(units, onProgress) {
+        var urls = [];
+        var seen = {};
+        (units || []).forEach(function (u) {
+            if (!u || u.dead) return;
+            var def = (typeof getRace3DModel === 'function')
+                ? getRace3DModel(u.race, u.gender || 'male') : null;
+            if (!def || !def.model) return;
+            var list = [def.model];
+            var clips = def.clips || {};
+            for (var k in clips) { if (clips[k]) list.push(clips[k]); }
+            for (var i = 0; i < list.length; i++) {
+                var url = list[i];
+                if (seen[url]) continue;
+                seen[url] = true;
+                var e = _unitGlbCache[url];
+                if (e && (e.root || e.failed)) continue;   // already settled
+                urls.push(url);
+            }
+        });
+        var total = urls.length;
+        if (onProgress) { try { onProgress(0, total); } catch (_ex) {} }
+        if (!total || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') {
+            return Promise.resolve({ loaded: 0, total: 0 });
+        }
+        return new Promise(function (resolve) {
+            var done = 0;
+            function fileDone() {
+                done++;
+                if (onProgress) { try { onProgress(done, total); } catch (_ex) {} }
+                if (done >= total) resolve({ loaded: done, total: total });
+            }
+            urls.forEach(function (url) {
+                _loadUnitGLB(url, function () {});
+                var e = _unitGlbCache[url];
+                if (!e || e.root || e.failed) { fileDone(); return; }
+                (e.doneCbs = e.doneCbs || []).push(fileDone);
+            });
+        });
     }
 
     function _unitModelReady(def) {
@@ -15271,6 +15331,9 @@ const ThreeRenderer = (function () {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
         rebuildFog, invalidateUnits,
+
+        /* Match-start asset gate (battle.js loading screen, ROADMAP §3.1) */
+        preloadUnitModels,
 
         scanSpriteOffset,
 

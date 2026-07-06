@@ -14813,6 +14813,334 @@
             render();
         }
 
+        /* ══════════════════════════════════════════════════════════════════
+           BATTLE LOADING SCREEN — Eva-title-card × Skyrim-tips match intro
+           (ROADMAP §3.1 + §3.2). Runs between team lock-in and the VS splash
+           and is the REAL asset gate: rigged unit GLBs (base model + every
+           animation clip), the battle track chosen in startMatch, and the
+           units' 2D sprite PNGs all finish loading behind it. Result: the
+           board builds with zero 2D→3D pop-in and round 1 never stalls on a
+           cold audio stream.
+
+           Flow: fade to black card → match intel (year / mode / map / battle
+           number, gothic serif) types itself in → pixel-art vessel portrait
+           (ls1–ls5, random, no immediate repeats) glows on the right while
+           entropy motes drift up → FIELD MANUAL / INTEL FRAGMENT lines rotate
+           at the bottom → the strip at the very bottom is REAL progress.
+           Dismisses when all assets settle (hard cap LS_MAX_WAIT) AND the
+           minimum display beat has passed; once ready, a tap deploys
+           immediately. Dev-sim / animations-off skip the visuals but still
+           fire the warmers so the GLB cache goes hot.
+
+           Online guests reach this via window.showBattleLoadingScreen
+           (online.js phase-flip hook) — everything here is viewer-local. */
+
+        const LS_ART_BASE = (typeof _S === 'string') ? _S : 'https://cdn.entropywars.net/Assets/Sprites';
+        const LS_ART_URLS = [1, 2, 3, 4, 5].map(n => `${LS_ART_BASE}/ls${n}.png`);
+        const LS_MIN_SHOW_MS = 2600;    // long enough to actually read one hint
+        const LS_MAX_WAIT_MS = 12000;   // hard cap — never hold the match hostage
+        const LS_HINT_CYCLE_MS = 4600;
+
+        /* Skyrim-style rotating lines. FIELD MANUAL = real mechanics;
+           INTEL FRAGMENT = the best lines from the codex dossiers (ui.js
+           _CODEX_LORE) so the lore does double duty as loading flavor. */
+        const LS_HINTS = [
+            { t: 'FIELD MANUAL', q: 'Turn order is decided by SPEED. The fastest vessels on the field always move first.' },
+            { t: 'FIELD MANUAL', q: 'Hourglasses grant permanent team-wide buffs. Every one you leave in the dirt is one the enemy collects.' },
+            { t: 'FIELD MANUAL', q: 'The shot clock gives each turn 30 seconds. Entropy waits for no one.' },
+            { t: 'FIELD MANUAL', q: 'Every vessel carries a type — and every type has prey it hunts and a predator it fears. The Codex knows which.' },
+            { t: 'FIELD MANUAL', q: 'Deep water drowns the unwary. Winged vessels are untroubled by such things.' },
+            { t: 'FIELD MANUAL', q: 'Team Deathmatch is decided by total kills when the rounds run out. A full wipeout ends it on the spot.' },
+            { t: 'FIELD MANUAL', q: 'In Domination, held Nexus points pay out every round. Map control is a bank account.' },
+            { t: 'FIELD MANUAL', q: 'In Capture the Flag, the enemy standard scores only when it is carried all the way home to your spawn zone.' },
+            { t: 'FIELD MANUAL', q: 'The Hotspot Nexus never stays put. Capture it, take the point, and start running toward the next one.' },
+            { t: 'FIELD MANUAL', q: 'Spells cost MP. Moving and acting cost AP. Bankruptcy on either is how vessels die.' },
+            { t: 'FIELD MANUAL', q: 'Werewolves walk the field as ordinary humans by day. Keep one eye on the sky’s cycle.' },
+            { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
+            { t: 'FIELD MANUAL', q: 'Ping the field. A marked tile speaks louder than a typed apology.' },
+            { t: 'FIELD MANUAL', q: 'Victory pays gold, and gold buys new vessels in the shop. Defeat pays considerably less.' },
+            { t: 'FIELD MANUAL', q: 'Cinematics can be skipped with a tap. So can this screen — once the data is in.' },
+            { t: 'INTEL FRAGMENT', q: '“It parallel parked itself. Then it stood up and punched a building.”', s: 'Civilian witness ████ — file: HONDA CIVIC' },
+            { t: 'INTEL FRAGMENT', q: '“He knew about the classified operation. He knew everyone’s names. He gave Agent ████ socks. They were the right size.”', s: 'December incident report' },
+            { t: 'INTEL FRAGMENT', q: '“They posed. In the middle of the battle. It shouldn’t have worked. It worked.”', s: 'After-action review — SUPER SENTAI' },
+            { t: 'INTEL FRAGMENT', q: '“We built it a maze. It solved it in four minutes. We built a bigger maze. It solved it in three.”', s: 'Containment team report — MINOTAUR' },
+            { t: 'INTEL FRAGMENT', q: '“She didn’t attack us. She just looked disappointed. The ocean froze for six miles.”', s: 'Naval Report ████ — ICE QUEEN' },
+            { t: 'INTEL FRAGMENT', q: '“We put everything we had into stopping it. It didn’t slow down. It didn’t even notice.”', s: 'Final transmission — JUGGERNAUT' },
+            { t: 'INTEL FRAGMENT', q: '“The second shot was a warning. The first one wasn’t.”', s: 'Incident Report ████-7 — COWBOY' },
+            { t: 'INTEL FRAGMENT', q: '“Hit it again.” “I did. Five times.”', s: 'Field exchange, Operation ████ — KNIGHT' },
+            { t: 'INTEL FRAGMENT', q: '“The tower wasn’t on the map yesterday.” “It’s been there for 400 years.”', s: 'Survey team exchange — WIZARD' },
+            { t: 'INTEL FRAGMENT', q: '“It looked at me like it was deciding whether I was worth the effort.”', s: 'Surviving operative — DRAGON' },
+            { t: 'INTEL FRAGMENT', q: '“It’s not hiding from us. It’s choosing when to be seen.”', s: 'Cdr. ████ — KRAKEN' },
+            { t: 'INTEL FRAGMENT', q: '“It ate the containment team. Then it became the containment team.”', s: 'Incident Report ████ — BLACK GOO' },
+            { t: 'INTEL FRAGMENT', q: '“I watched him punch a hole through a tank. Then he asked where the cafeteria was.”', s: 'Field Report ████ — KI FIGHTER' },
+            { t: 'INTEL FRAGMENT', q: '“The zombie you can outrun. The ghoul has already circled behind you.”', s: 'Field Manual ██-7' },
+            { t: 'INTEL FRAGMENT', q: '“It just stood there. For four hundred years. Then someone wrote GO on a piece of paper.”', s: 'Archaeological survey — GOLEM' },
+            { t: 'INTEL FRAGMENT', q: '“We swept the ridge three times. Found nothing. On the fourth pass we found the shell casing. Just one.”', s: 'After-action report — MARKSMAN' },
+            { t: 'INTEL FRAGMENT', q: '“She decided we weren’t worth fighting, and flew away. Most insulting thing that’s ever happened to this unit.”', s: 'Lieutenant ████ — VALKRAYE' },
+            { t: 'INTEL FRAGMENT', q: '“He said ‘for Camelot’ and I believed him. I don’t even know where Camelot is.”', s: 'Interview transcript — KING ARTHUR' },
+            { t: 'INTEL FRAGMENT', q: '“He left a thank-you note. It was very polite.”', s: 'Treasury report ████ — ROBIN HOOD' },
+            { t: 'INTEL FRAGMENT', q: 'Do not make sustained eye contact.', s: 'Containment protocol — GREY' },
+            { t: 'INTEL FRAGMENT', q: 'If you are reading this, you have already been flagged.', s: 'Dossier final note — MEN IN BLACK' },
+            { t: 'INTEL FRAGMENT', q: 'Subject was asked to predict the outcome of this assessment. Subject smiled and said nothing.', s: 'Assessment file — FORTUNE TELLER' },
+            { t: 'INTEL FRAGMENT', q: 'Direct combat capability: unknown (has never been observed in a situation requiring it). “That itself is suspicious.”', s: 'Agent ████ — THE PRESIDENT' },
+            { t: 'INTEL FRAGMENT', q: 'Odor described as [REDACTED].', s: 'Field notes — BIGFOOT' },
+            { t: 'INTEL FRAGMENT', q: '“It blinked. Just once. And Agent ████ forgot his own name. Permanently.”', s: 'Post-incident report — OCCULUS' },
+            { t: 'INTEL FRAGMENT', q: '“He threw a football through a concrete wall. Then he high-fived someone and went back to the huddle.”', s: 'Surveillance footage ████ — QUARTERBACK' },
+            { t: 'INTEL FRAGMENT', q: 'Do not make verbal requests within earshot. All statements may be interpreted as binding wishes.', s: 'Handling protocol — DJINN' },
+            { t: 'INTEL FRAGMENT', q: 'Personnel are reminded this is a scientific document.', s: 'File marginalia — SKINWALKER' },
+            { t: 'INTEL FRAGMENT', q: '“The loch is deeper than the maps show. So is she.”', s: 'Dr. ████ — CRYPTID ALPHA-7' },
+            { t: 'INTEL FRAGMENT', q: '“We are not equipped for this. No one is.”', s: 'General ████ — KAIJU' },
+        ];
+
+        /* Map title for the card. Named prebuilts read as "THE MOON" /
+           "THE PYRAMIDS OF GIZA"; the generic random-size boards (Small…Huge)
+           have no name worth carving in serif, so they get a lore-safe one. */
+        function _lsMapTitle() {
+            const GENERIC_SIZE_LABELS = { 'Small': 1, 'Medium': 1, 'Large': 1, 'Extra Large': 1, 'Huge': 1 };
+            let label = null;
+            try {
+                if (typeof GAME_MODES !== 'undefined' && typeof activeGameMode !== 'undefined') {
+                    const gm = GAME_MODES[activeGameMode];
+                    if (gm && gm.label) label = gm.label;
+                }
+            } catch (_e) {}
+            if (!label || GENERIC_SIZE_LABELS[label]) return 'THE PROVING GROUNDS';
+            const up = String(label).toUpperCase();
+            return /^THE\s/.test(up) ? up : 'THE ' + up;
+        }
+
+        function showBattleLoadingScreen(onDone) {
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                if (onDone) onDone();
+            };
+
+            /* ── Asset warmers — fire these even when visuals are skipped, so
+               dev-sim and animations-off matches still get a hot cache. ── */
+            const prog = { model: [0, 0], img: [0, 0], music: [0, 1] };
+            const warmers = [];
+
+            // Rigged GLBs: the actual 2D→3D pop-in killer (§3.1).
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
+                && typeof ThreeRenderer.preloadUnitModels === 'function') {
+                warmers.push(ThreeRenderer.preloadUnitModels(state.units,
+                    (done, total) => { prog.model = [done, total]; }));
+            }
+
+            // The battle track chosen in startMatch (§3.2).
+            if (typeof warmBattleTrack === 'function') {
+                warmers.push(warmBattleTrack(state.currentBattleTrackKey)
+                    .then(() => { prog.music = [1, 1]; }));
+            } else {
+                prog.music = [1, 1];
+            }
+
+            // 2D sprite PNGs (board slabs for sprite races + HUD art) — a
+            // browser-cache warm so getTexture()/DOM <img> resolve instantly.
+            const sprUrls = new Set();
+            for (const u of (state.units || [])) {
+                if (!u || u.dead) continue;
+                try {
+                    const spr = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl(u) : null;
+                    if (spr) sprUrls.add(spr);
+                    const hud = (typeof getUnitSprite === 'function') ? getUnitSprite(u.cls, u.player, u) : null;
+                    if (hud) sprUrls.add(hud);
+                } catch (_e) {}
+            }
+            const imgList = Array.from(sprUrls);
+            prog.img = [0, imgList.length];
+            if (imgList.length) {
+                let imgDone = 0;
+                warmers.push(Promise.all(imgList.map(u => new Promise(res => {
+                    const im = new Image();
+                    const step = () => { imgDone++; prog.img = [imgDone, imgList.length]; res(); };
+                    im.onload = step;
+                    im.onerror = step;
+                    im.src = u;
+                }))));
+            }
+
+            const assetsReady = Promise.race([
+                Promise.all(warmers),
+                new Promise(res => setTimeout(res, LS_MAX_WAIT_MS)),
+            ]);
+
+            if (_skipVisuals()) { finish(); return; }
+
+            /* ── Build the card ── */
+            let overlay;
+            try {
+                overlay = document.createElement('div');
+                overlay.className = 'ls-overlay';
+
+                // Atmosphere layers
+                const grain = document.createElement('div');
+                grain.className = 'ls-grain';
+                overlay.appendChild(grain);
+
+                const motes = document.createElement('div');
+                motes.className = 'ls-motes';
+                for (let i = 0; i < 26; i++) {
+                    const m = document.createElement('div');
+                    m.className = 'ls-mote' + (Math.random() < 0.22 ? ' ls-mote-green' : '');
+                    const size = (2 + Math.random() * 4).toFixed(1);
+                    m.style.width = size + 'px';
+                    m.style.height = size + 'px';
+                    m.style.left = (Math.random() * 100).toFixed(2) + 'vw';
+                    m.style.setProperty('--dx', ((Math.random() * 12 - 6)).toFixed(1) + 'vw');
+                    m.style.animationDuration = (7 + Math.random() * 9).toFixed(2) + 's';
+                    m.style.animationDelay = (-Math.random() * 16).toFixed(2) + 's';
+                    motes.appendChild(m);
+                }
+                overlay.appendChild(motes);
+
+                // Pixel-art vessel portrait (random, no immediate repeat)
+                let artIdx = Math.floor(Math.random() * LS_ART_URLS.length);
+                if (LS_ART_URLS.length > 1 && artIdx === window._lsLastArtIdx) {
+                    artIdx = (artIdx + 1 + Math.floor(Math.random() * (LS_ART_URLS.length - 1))) % LS_ART_URLS.length;
+                }
+                window._lsLastArtIdx = artIdx;
+                const artWrap = document.createElement('div');
+                artWrap.className = 'ls-art-wrap';
+                const artGlow = document.createElement('div');
+                artGlow.className = 'ls-art-glow';
+                artWrap.appendChild(artGlow);
+                const art = document.createElement('img');
+                art.className = 'ls-art';
+                art.alt = '';
+                art.draggable = false;
+                art.onload = () => art.classList.add('ls-art-on');
+                art.src = LS_ART_URLS[artIdx];
+                artWrap.appendChild(art);
+                overlay.appendChild(artWrap);
+
+                // Match intel card (the Eva title block)
+                const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                const card = document.createElement('div');
+                card.className = 'ls-card';
+                const line1 = document.createElement('div');
+                line1.className = 'ls-line ls-line-1';
+                line1.textContent = 'YEAR 2058';
+                const line2 = document.createElement('div');
+                line2.className = 'ls-line ls-line-2';
+                line2.textContent = (mpMode && mpMode.label ? mpMode.label : 'Skirmish').toUpperCase();
+                const title = document.createElement('div');
+                title.className = 'ls-title';
+                title.textContent = _lsMapTitle();
+                const rule = document.createElement('div');
+                rule.className = 'ls-rule';
+                const battleLine = document.createElement('div');
+                battleLine.className = 'ls-line ls-battle';
+                battleLine.textContent = 'BATTLE:' + (state.matchNumber || 1);
+                card.appendChild(line1);
+                card.appendChild(line2);
+                card.appendChild(title);
+                card.appendChild(rule);
+                card.appendChild(battleLine);
+                overlay.appendChild(card);
+
+                // Rotating hint (bottom-left)
+                const hintBox = document.createElement('div');
+                hintBox.className = 'ls-hint';
+                const hintTag = document.createElement('div');
+                hintTag.className = 'ls-hint-tag';
+                const hintText = document.createElement('div');
+                hintText.className = 'ls-hint-text';
+                const hintSrc = document.createElement('div');
+                hintSrc.className = 'ls-hint-src';
+                hintBox.appendChild(hintTag);
+                hintBox.appendChild(hintText);
+                hintBox.appendChild(hintSrc);
+                overlay.appendChild(hintBox);
+
+                let hintIdx = Math.floor(Math.random() * LS_HINTS.length);
+                const setHint = () => {
+                    const h = LS_HINTS[hintIdx % LS_HINTS.length];
+                    hintTag.textContent = '◈ ' + h.t;
+                    hintText.textContent = h.q;
+                    hintSrc.textContent = h.s ? '— ' + h.s : '';
+                    hintIdx++;
+                };
+                setHint();
+                const hintTimer = setInterval(() => {
+                    hintBox.classList.add('ls-hint-fade');
+                    setTimeout(() => {
+                        setHint();
+                        hintBox.classList.remove('ls-hint-fade');
+                    }, 450);
+                }, LS_HINT_CYCLE_MS);
+
+                // Status + real progress strip (bottom)
+                const status = document.createElement('div');
+                status.className = 'ls-status';
+                const statusLabel = document.createElement('span');
+                statusLabel.className = 'ls-status-label';
+                statusLabel.textContent = 'NOW LOADING';
+                const statusCount = document.createElement('span');
+                statusCount.className = 'ls-status-count';
+                status.appendChild(statusLabel);
+                status.appendChild(statusCount);
+                overlay.appendChild(status);
+
+                const bar = document.createElement('div');
+                bar.className = 'ls-bar';
+                const fill = document.createElement('div');
+                fill.className = 'ls-bar-fill';
+                bar.appendChild(fill);
+                overlay.appendChild(bar);
+
+                let maxPct = 0;   // monotonic — totals can grow as warmers report in
+                const paintProgress = () => {
+                    const done = prog.model[0] + prog.img[0] + prog.music[0];
+                    const total = Math.max(1, prog.model[1] + prog.img[1] + prog.music[1]);
+                    maxPct = Math.max(maxPct, Math.min(100, Math.round((done / total) * 100)));
+                    fill.style.width = maxPct + '%';
+                    statusCount.textContent = String(done).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+                };
+                paintProgress();
+                const progTimer = setInterval(paintProgress, 180);
+
+                /* ── Gate + dismissal ── */
+                let ready = false;
+                let dismissed = false;
+                const dismiss = () => {
+                    if (dismissed) return;
+                    dismissed = true;
+                    clearInterval(hintTimer);
+                    clearInterval(progTimer);
+                    overlay.classList.add('ls-fade-out');
+                    setTimeout(() => {
+                        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                        finish();
+                    }, 520);
+                };
+                overlay.addEventListener('click', () => { if (ready) dismiss(); });
+
+                const minShow = new Promise(res => setTimeout(res, LS_MIN_SHOW_MS));
+                Promise.all([assetsReady, minShow]).then(() => {
+                    if (dismissed) return;
+                    ready = true;
+                    maxPct = 100;
+                    fill.style.width = '100%';
+                    overlay.classList.add('ls-ready');
+                    statusLabel.textContent = 'SYNC COMPLETE — TAP TO DEPLOY';
+                    playSfx('uiCursorFocus');
+                    setTimeout(dismiss, 900);
+                });
+
+                document.body.appendChild(overlay);
+                requestAnimationFrame(() => overlay.classList.add('ls-active'));
+            } catch (err) {
+                // Never let presentation kill a match start.
+                console.warn('[LoadingScreen] failed, continuing without it:', err);
+                try { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); } catch (_e) {}
+                finish();
+            }
+        }
+        window.showBattleLoadingScreen = showBattleLoadingScreen;
+
         function showVSSplash(onDone) {
 
             if (_skipVisuals()) { if (onDone) onDone(); return; }
@@ -15142,10 +15470,14 @@
 
             });
 
+            // Loading screen first (the real asset gate — GLBs, battle track,
+            // sprites), then the VS splash plays as a pure cinematic over a
+            // hot cache. See showBattleLoadingScreen above (ROADMAP §3.1/§3.2).
+            const _launchIntro = () => showBattleLoadingScreen(_launchVSSplash);
             if (_cutsceneScript) {
-                playCutscene(_cutsceneScript, _launchVSSplash);
+                playCutscene(_cutsceneScript, _launchIntro);
             } else {
-                _launchVSSplash();
+                _launchIntro();
             }
         }
 
