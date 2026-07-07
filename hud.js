@@ -3291,8 +3291,24 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   // mobility verb actually gets the unit closer, instead of stranding it.
   if (unitAP >= 1 && dist > 1) {
     const mtMovesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
+    // Approach progress is measured FLAT (2D Manhattan). The old 3D combatDist
+    // scoring counted the elevation gap to the target, so on bumpy maps every
+    // genuinely-closer tile up/down a slope looked "no closer" and Move Towards
+    // degenerated into a 1-tile shuffle. Ties prefer the smaller elevation gap.
+    const _flatD = (fx, fy) => {
+      let d = Math.abs(fx - tx) + Math.abs(fy - ty);
+      if (targetUnit._isBoss && targetUnit._bossSize === 2) {
+        d = Math.min(d,
+          Math.abs(fx - (tx + 1)) + Math.abs(fy - ty),
+          Math.abs(fx - tx) + Math.abs(fy - (ty + 1)),
+          Math.abs(fx - (tx + 1)) + Math.abs(fy - (ty + 1)));
+      }
+      return d;
+    };
+    const _zGap = (fz) => Math.abs((fz ?? 0) - targetZ);
     let towardTile = null;
-    let towardDist = dist;
+    let towardDist = _flatD(actingUnit.x, actingUnit.y);
+    let towardZGap = _zGap(actingUnit.z);
     let towardLabel = 'Move Towards';
     let towardIcon = '➜';
     if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
@@ -3300,8 +3316,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       for (const t of getMoveTiles(actingUnit)) {
         if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-        const d = distFrom(t.x, t.y, t.z);
-        if (d < towardDist) { towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; }
+        const d = _flatD(t.x, t.y);
+        const zg = _zGap(t.z);
+        if (d < towardDist || (d === towardDist && towardTile && zg < towardZGap)) {
+          towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; towardZGap = zg;
+        }
       }
     }
     // A leap that lands strictly closer than the best walk step wins (same
@@ -3310,10 +3329,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
       for (const t of getJumpTiles(actingUnit)) {
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-        const d = distFrom(t.x, t.y, t.z);
+        const d = _flatD(t.x, t.y);
         if (d < towardDist) {
           towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
           towardDist = d;
+          towardZGap = _zGap(t.z);
           towardLabel = 'Jump Towards';
           towardIcon = '↷';
         }
@@ -3579,26 +3599,30 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
 // closing the distance (walk, walk again, jump — it's all movement), not a
 // single ring-1 step that strands the player back in the menus.
 function _bestTowardStep(actingUnit, targetUnit) {
-  const G = window.GAME;
+  // FLAT (2D Manhattan) progress metric, matching the Move Towards blade: 3D
+  // combatDist folded the elevation gap into the score, which starved the
+  // chase chain of "closer" tiles on hilly maps (the 1-tile-shuffle bug).
+  // Ties prefer landing nearer the target's elevation.
   const tz = targetUnit.z ?? 0;
-  const cd = (fx, fy, fz) => (G && typeof G.combatDist === 'function')
-    ? G.combatDist(fx, fy, fz ?? 0, targetUnit.x, targetUnit.y, tz)
-    : Math.abs(fx - targetUnit.x) + Math.abs(fy - targetUnit.y);
+  const flat = (fx, fy) => Math.abs(fx - targetUnit.x) + Math.abs(fy - targetUnit.y);
+  const zGap = (fz) => Math.abs((fz ?? 0) - tz);
   let best = null;
-  let bestD = cd(actingUnit.x, actingUnit.y, actingUnit.z ?? 0);
+  let bestD = flat(actingUnit.x, actingUnit.y);
+  let bestZ = zGap(actingUnit.z);
   if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit)) {
     for (const t of getMoveTiles(actingUnit)) {
       if (t._takeoff) continue;
       if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-      const d = cd(t.x, t.y, t.z);
-      if (d < bestD) { best = { x: t.x, y: t.y, z: t.z }; bestD = d; }
+      const d = flat(t.x, t.y);
+      const zg = zGap(t.z);
+      if (d < bestD || (d === bestD && best && zg < bestZ)) { best = { x: t.x, y: t.y, z: t.z }; bestD = d; bestZ = zg; }
     }
   }
   if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
     for (const t of getJumpTiles(actingUnit)) {
       if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-      const d = cd(t.x, t.y, t.z);
-      if (d < bestD) { best = { x: t.x, y: t.y, z: t.z, _jump: true }; bestD = d; }
+      const d = flat(t.x, t.y);
+      if (d < bestD) { best = { x: t.x, y: t.y, z: t.z, _jump: true }; bestD = d; bestZ = zGap(t.z); }
     }
   }
   return best;
@@ -4228,21 +4252,9 @@ function _computeTileActions(actingUnit, tx, ty) {
     // destroyed by right-click-HOLDING it on the board (1 AP, same range/LOS
     // rules — see beginTileDemolishHold in battle.js).
 
-    // 🏢 Buildings: attack the structure (6 hits level it). Only offered when
-    // no unit stands on the roof tile — otherwise the swing hits the unit.
+    // 🏢 Buildings can't be attacked directly anymore — only area damage
+    // (AOE / bombs / beams / earthquakes) chips them, so no attack row here.
     const bldg = !onSelf && typeof getBuildingAt === 'function' ? getBuildingAt(tx, ty) : null;
-    if (bldg && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty))) {
-      const canSiege = inRangeUnit && !losBlocked;
-      actions.push({
-        id: 'attack:building', label: `Attack Building (${bldg.hp}/${bldg.maxHp})`, icon: '⚔', category: 'attack',
-        apCost: 1, available: canSiege, reason: canSiege ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canSiege ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
-      });
-    }
 
     // 🛗 Enter Building: offered on a building tile the acting unit stands
     // right next to — rides the lift, ends the turn, emerges on the roof

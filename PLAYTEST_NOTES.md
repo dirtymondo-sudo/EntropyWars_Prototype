@@ -4,6 +4,50 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Buildings AOE-only + face-your-attacker + press-turn drains + Move Towards metric (2026-07-07) — battle.js, hud.js
+Token bumped `20260706n` → `20260707a`. Probe-verified in-browser (scratchpad
+probe_fixes2.js, LOCAL_ASSETS harness, 10/10 checks).
+- **Buildings are AOE-only now**: basic attacks and single-target spells can no
+  longer hit or even target buildings — removed the doAttack siege branch, the
+  `kind:'building'` entries in the attack-target list, the doSpell single-target
+  chip block, and the hud.js tile-menu "Attack Building" row. Only area damage
+  touches structures: AOE blasts / bombs / beams / earthquakes chip exactly **1
+  hit per cast** (`buildingHitsForSpell` → 1; was 2 for AOE), cataclysm-class
+  spells (`demolishesBuildings`: meteor / both nukes, or terrainDeform+aoe+dmg≥150)
+  still level them outright. `BUILDING_MAX_HITS` 6 → **4** (4 area casts to
+  level; 6 was tuned for 1-per-swing basic attacks). Enter Building lift,
+  collapse rules, right-click demolish (trees/terrain only) all unchanged.
+- **Face your attacker (battle.js applyDamageToUnit)**: any direct damage from
+  an enemy spins the victim to face its attacker (inside the `finalDamage > 0`
+  + `sourceUnit` block; skips DoT ticks, dead targets, self-tile sources). So a
+  backstab lands once — repeat swings from the same tile hit the front arc, and
+  non-damaging spells (debuffs/seeds) never spin the target since they don't
+  route through applyDamageToUnit.
+- **Press turn — protected + countered waste AP**: (a) basic attack into a
+  Protected (STATUS_DEFS invulnerable) target forces `PRESS_OUTCOME.MISS`
+  (extra `PRESS_MISS_PENALTY_AP` drain, no refund chance) — checked
+  synchronously in doAttack before resolvePressOutcome; (b) spell damage
+  blocked by Protect pushes `{evaded:true}` into `_pressDamageCollector`
+  (a MISS vetoes/penalizes the whole cast — same rule as a dodge); (c) getting
+  COUNTERED applies an extra `applyPressTurn(unit, MISS)` drain at the counter
+  roll site in doAttack (WASTED! float at counter impact). Reminder: back-arc
+  attacks can't be dodged OR countered, so a successful backstab never eats
+  the counter drain.
+- **"Move Towards" 1-tile-shuffle root cause (hud.js)**: the approach scorers
+  (`towardTile` scan in _computeEnemyActions + `_bestTowardStep` chase chain)
+  ranked candidate tiles by **3D combatDist**, which folds the ELEVATION gap to
+  the target into the score — on bumpy maps a tile 2 steps closer on the board
+  but up/down a slope scored "no closer", so the pick degenerated to a 1-tile
+  shuffle (probe-observed: spawn at z8, candidates at z5-z12 vs target across
+  the map). Both now rank by **flat 2D Manhattan** progress (ties prefer the
+  smaller z-gap; boss 2×2 footprint handled); jump tiles still win when they
+  land strictly closer. Range/LOS gating everywhere else stays 3D — this is
+  approach heuristics only.
+- HARNESS gotcha: the horologe quick-menu blades (`.hrlg-blade`) don't mount in
+  the headless probe by just setting `_enemyActionTargetId`/calling clickTile —
+  verify quick-menu logic by calling the module-scope functions directly
+  (they're top-level script scope, so globally reachable in evaluate).
+
 ## Killstreaks/Bounties + Entropy Gauge/ENTROPY STRIKE (2026-07-06) — battle.js, ai.js, hud.js, online.js, three-renderer.js, data.js, styles-hud.css, styles-cinematic.css
 Token bumped `20260706l` → `20260706m`. ALL game modes. Partially probe-verified
 (scratchpad probe_entropy.js — globals/gauge/HUD-meter/full-glow all PASS; user

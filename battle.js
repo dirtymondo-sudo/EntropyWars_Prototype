@@ -79,13 +79,15 @@
 
         // ── Buildings ──────────────────────────────────────────────────────────
         // Every roofWalkable 2×2 building is a destructible structure with HP
-        // measured in HITS (like siege turrets): basic attacks and single-target
-        // spells chip 1, AOE spells chip 2, and cataclysm-class bombardments
-        // (meteor / nuke — anything that craters the ground) level it outright.
+        // measured in HITS (like siege turrets). Buildings CANNOT be basic-
+        // attacked or hit by single-target spells — only area damage touches
+        // them: AOE blasts / bombs / beams / earthquakes chip 1 hit per cast,
+        // and cataclysm-class bombardments (meteor / nuke — anything that
+        // craters the ground) level them outright.
         // A collapsing building leaves rubble terrain; units riding the roof fall
         // with the debris, and a unit sheltered INSIDE (via the Enter Building
         // lift) is crushed under it for bonus damage.
-        const BUILDING_MAX_HITS = 6;
+        const BUILDING_MAX_HITS = 4;   // 4 area casts to level (was 6 when basic attacks chipped)
         // Collapse damage scales with the victim's max HP (see percent constants
         // below) — these flat values are only the absolute floors.
         const BUILDING_COLLAPSE_MIN_DMG = 40;       // floor for roof-fall damage (roofs are ~2 high)
@@ -1533,25 +1535,10 @@
                 }
             }
 
-            // 🏢 Building targeting — single-target spells chip structure hits
-            // (area spells damage buildings through _applyAoeDamage instead).
-            if (!target && (spell.kind === 'damage' || spell.kind === 'multiHit' || spell.kind === 'ricochet')
-                && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
-                pushUndoSnapshot(true);
-                playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y);
-                unit.mp -= effectiveSpellCost;
-                damageBuildingAt(x, y, buildingHitsForSpell(spell), unit);
-                spendAP(unit, spellApCost);
-                state.actionMode = null;
-                state._actionExecuting = false;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                endUnitIfDone(unit);
-                renderAfterCombat();
-                return { handled: true, returnVal: 1 };
-            }
+            // 🏢 Buildings are NOT single-target targetable: only area damage
+            // (AOE blasts, bombs, beams, earthquakes — see _applyAoeDamage and
+            // the beam pass) chips structure hits. A single-target damage spell
+            // aimed at an empty building tile simply finds no target below.
 
             // Deployed object targeting
             if (!target && state._deployedObjects) {
@@ -2467,7 +2454,7 @@
                 }
             }
 
-            // 🏢 Buildings in the blast: AOE chips 2 structure hits; cataclysm-class
+            // 🏢 Buildings in the blast: AOE chips 1 structure hit; cataclysm-class
             // spells (meteor / nuke — crater-forming bombardments) level them
             // outright. One hit per building per cast, however many footprint
             // tiles the area overlaps. Runs AFTER the leaveTerrain pass so a
@@ -8864,6 +8851,14 @@
 
             const invulnStatus = getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);
             if (invulnStatus) {
+                // Press Turn: a spell wasted on a Protected enemy cuts the turn
+                // short exactly like a whiff — record a MISS in the collector
+                // (a miss vetoes any press from the rest of the cast).
+                if (_pressDamageCollector && opts.sourceUnit
+                    && opts.sourceUnit.id === _pressDamageCollector.casterId
+                    && opts.sourceUnit.player !== target.player) {
+                    _pressDamageCollector.hits.push({ evaded: true });
+                }
                 addLog(`${sourceText}${unitDisplayName(target)} is protected and takes no damage!`);
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
@@ -8948,6 +8943,16 @@
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
+
+                    // Whip around to face the attacker: the first backstab lands,
+                    // but a hit unit won't keep its back turned — repeat attacks
+                    // from that tile now strike the front arc (re-flank to
+                    // backstab again). DoT ticks don't spin the victim, and
+                    // non-damaging spells never reach this code.
+                    if (target.hp > 0 && damageType !== 'dot' && isEnemyUnit(sourceUnit, target)
+                        && (sourceUnit.x !== target.x || sourceUnit.y !== target.y)) {
+                        setUnitFacing(target, sourceUnit.x - target.x, sourceUnit.y - target.y);
+                    }
 
                     target._lastDamageSource = sourceUnit;
                     target._lastDamageSourceRound = state.round || 0;
@@ -9297,13 +9302,14 @@
         }
 
         /* How many structure hits a spell inflicts on a building.
+           Buildings are siege-proof against everything except area damage:
+           every AOE / bomb / beam / quake chips exactly 1 hit per cast.
            Infinity = demolished outright (meteor / nuke class). */
         function buildingHitsForSpell(spell) {
             if (!spell) return 1;
             if (spell.demolishesBuildings) return Infinity;
             // Cataclysms: crater-forming area bombardments (meteor, nuke, …).
             if (spell.terrainDeform && (spell.aoeRadius || 0) >= 1 && (spell.dmg || 0) >= 150) return Infinity;
-            if ((spell.aoeRadius || 0) >= 1) return 2;
             return 1;
         }
 
@@ -19045,28 +19051,9 @@
                 }
             }
 
-            // 🏢 Buildings: any unit can siege an in-range building with its basic
-            // attack (6 hits level it). Only the footprint tiles with no unit on
-            // the roof are offered — a manned tile resolves to the unit instead.
-            if (typeof getBuildingAt === 'function') {
-                const _seenBldgTiles = new Set();
-                for (let ty = 0; ty < bh(); ty++) {
-                    for (let tx = 0; tx < bw(); tx++) {
-                        const b = getBuildingAt(tx, ty);
-                        if (!b) continue;
-                        const occ = unitAt(tx, ty);
-                        if (occ && occ.id !== unit.id) continue;
-                        const baseZ = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty) : 0;
-                        const d = combatDist(unit.x, unit.y, unitZ, tx, ty, baseZ);
-                        if (d < 1 || d > effRange) continue;
-                        if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
-                        if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
-                        if (_seenBldgTiles.has(b.id)) continue;   // one entry per building
-                        _seenBldgTiles.add(b.id);
-                        targets.push({ x: tx, y: ty, dist: d, building: b, kind: 'building' });
-                    }
-                }
-            }
+            // 🏢 Buildings are NOT basic-attack targets: structures only take
+            // damage from area effects (AOE / bombs / beams / earthquakes) —
+            // see buildingHitsForSpell. They never appear in this list.
 
             // 🔨 Raised terrain: an exposed raised column (a cardinal neighbor
             // sits lower) can be smashed down one level with a basic attack —
@@ -21490,16 +21477,10 @@
                 d = distToTarget(unit.x, unit.y, _clickedTarget, unit.z);
             } else {
                 let _tz = _clickedTarget ? (_clickedTarget.z ?? 0) : (z ?? 0);
-                // 🏢 Attacking an (empty) building tile strikes the WALL, not the
-                // roof plane — measure to the wall base so melee siege works even
-                // though the roof sits 2 levels up.
-                if (!_clickedTarget && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
-                    _tz = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : 0;
-                }
                 // 🔨 Attacking a raised terrain column strikes its exposed FACE
                 // at the attacker's own height (or its top when striking down),
                 // so melee can smash a tall pillar it stands beside.
-                else if (!_clickedTarget && _tileIsSmashable(x, y)) {
+                if (!_clickedTarget && _tileIsSmashable(x, y)) {
                     _tz = Math.min(getBaseHeightAt(x, y), unit.z ?? 0);
                 }
                 d = combatDist(unit.x, unit.y, unit.z ?? 0, x, y, _tz);
@@ -21757,25 +21738,9 @@
                 renderAfterCombat();
                 return 1;
             }
-            // 🏢 Buildings: a basic attack on an (enemy-free) building tile chips
-            // one structure hit — six swings level the block (BUILDING_MAX_HITS).
-            if ((!target || target.id === unit.id) && typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
-                pushUndoSnapshot(true);
-                animateStrikeLeap(unit, x, y);
-                damageBuildingAt(x, y, 1, unit);
-                playSfx('basicAttack');
-                grantXP(unit, 4, 'siege');
-                spendAP(unit, AP_COST_ACTION);
-                state.actionMode = null;
-                state._actionExecuting = false;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                checkWin();
-                endUnitIfDone(unit);
-                renderAfterCombat();
-                return 1;
-            }
+            // 🏢 Buildings can't be basic-attacked: structures only take area
+            // damage (AOE / bombs / beams / earthquakes). An attack click on an
+            // empty building tile falls through to the "choose an enemy" nag.
             // 🔨 Smash terrain: attacking an exposed raised column knocks it
             // down one level — the counter to reshape pillars / tower camping.
             if ((!target || target.id === unit.id) && _tileIsSmashable(x, y)) {
@@ -21829,8 +21794,11 @@
             const isCrit = !evaded && rollCrit(unit);
 
             // Press Turn: resolve outcome synchronously from the rolled result
-            // and type tier; the AP math runs at the spend site below.
-            const _pressOutcome = resolvePressOutcome({
+            // and type tier; the AP math runs at the spend site below. Swinging
+            // into a Protected (invulnerable) target wastes the turn like a
+            // whiff — extra AP drain instead of any chance at a refund.
+            const _targetProtected = getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable);
+            const _pressOutcome = _targetProtected ? PRESS_OUTCOME.MISS : resolvePressOutcome({
                 evaded,
                 isCrit,
                 effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
@@ -21989,6 +21957,10 @@
 
                     grantXP(target, XP_COUNTER, 'counter');
                     addLog(`⚔️ ${unitDisplayName(target)} counter-attacks for ${counterDmg} damage!`);
+                    // Press Turn: getting countered wastes your momentum — the
+                    // same extra AP drain as a whiff, on top of the swing's own
+                    // press result (a weak-hit refund gets eaten by the riposte).
+                    const _counterPressRes = applyPressTurn(unit, PRESS_OUTCOME.MISS, { cost: AP_COST_ACTION });
                     const _counterTarget = target;
                     const _counterAttacker = unit;
                     window.setTimeout(() => {
@@ -21996,6 +21968,7 @@
                             durationMs: 1000
                         });
                         if (_activeCinematic?.showCounter) _activeCinematic.showCounter();
+                        _showPressFeedback(_counterAttacker, _counterPressRes);
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
                             ignoreArmor: false
