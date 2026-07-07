@@ -1493,9 +1493,14 @@
             const FALL_PER_LEVEL = (typeof FALL_DAMAGE_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PER_LEVEL : 8;
             const drop = (fromZ ?? 0) - (toZ ?? 0);
             if (drop < FALL_THRESHOLD) return 0;
-            const dmg = (drop - (FALL_THRESHOLD - 1)) * FALL_PER_LEVEL;
+            // ⚖️ RACE_PHYSIQUE (2026-07-07): mass scales the landing. A fairy
+            // drifts down at half damage; a golem craters at ×1.25; a kaiju
+            // hits like a falling building (×1.5). Flyers stay exempt above.
+            const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
+            const dmg = Math.max(1, Math.round((drop - (FALL_THRESHOLD - 1)) * FALL_PER_LEVEL * _wMult));
             const prefix = logPrefix || '';
-            addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!`);
+            const _wNote = _wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : '');
+            addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
             return dmg;
         }
@@ -1504,6 +1509,11 @@
 
         function applyBlowback(unit, sourceX, sourceY, logPrefix) {
             if (!unit || unit.dead) return null;
+            // ⚖️ Colossal races (RACE_PHYSIQUE ≥ 1000 kg) cannot be blown back.
+            if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(unit) === 'colossal') {
+                addLog(`${logPrefix || ''}${unitDisplayName(unit)} is far too massive to be blown back!`);
+                return null;
+            }
 
             const rawDx = unit.x - sourceX;
             const rawDy = unit.y - sourceY;

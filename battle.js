@@ -1785,6 +1785,15 @@
             return getTerrainAt(x, y) === 'ice';
         }
 
+        function _isMetalTile(x, y) {
+            const t = getTerrainAt(x, y);
+            return !!t && (t.indexOf('metal') === 0 || t === 'aluminium');
+        }
+
+        function _isCrystalTile(x, y) {
+            return getTerrainAt(x, y) === 'crystal';
+        }
+
         // Orthogonal flood-fill of the connected region of tiles satisfying
         // match(x,y), starting at (sx,sy), capped at `cap` tiles.
         function _floodConnectedTiles(sx, sy, match, cap) {
@@ -1890,6 +1899,7 @@
                 _ensureTreeState();
                 state.lumber[byUnit.player] = (state.lumber[byUnit.player] || 0) + 1;
                 addEntropy(byUnit.player, ENTROPY_PTS.destructTree, 'tree', null);
+                gainMaterial(byUnit.player, 'wood', 1);
             }
             return true;
         }
@@ -1981,6 +1991,62 @@
             if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 450);
         }
 
+        // ⚡🔩 Metal conducts: a lightning strike on metal flooring (or player-
+        // placed steel blocks) arcs across the whole connected sheet and zaps
+        // every grounded unit standing on it — friend or foe, caster excluded.
+        // This is the "build a steel tower, then call lightning onto it" combo.
+        function _reactLightningMetal(caster, spell, ox, oy, sheet) {
+            if (!sheet || !sheet.length) return;
+            const tick = Math.max(36, Math.round((spell.dmg || 90) * 0.5));
+            let zapped = 0;
+            for (const t of sheet) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying) continue;
+                if (u.id === caster.id) continue;
+                if (t.x === ox && t.y === oy) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                applyDamageToUnit(u, tick, `⚡ The metal conducts ${spell.name}: `, {
+                    sourceUnit: caster,
+                    allowMarkBonus: false,
+                    damageType: 'magic',
+                    spellType: spell.spellType || null,
+                    flashColor: 'shock'
+                });
+                showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
+                zapped++;
+            }
+            if (sheet.length > 1 || zapped > 0) {
+                addLog(`⚡ ${spell.name} electrifies the metal — the charge races across ${sheet.length} tile${sheet.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
+            }
+        }
+
+        // 💥💎 Crystal shatters: fire or lightning detonates the connected
+        // crystal vein — everyone standing on it takes a shard burst and the
+        // vein is reduced to rubble (its MP-regen terrain perk is destroyed).
+        function _reactCrystalShatter(caster, spell, ox, oy, vein) {
+            if (!vein || !vein.length) return;
+            let cut = 0;
+            for (const t of vein) {
+                setTerrainAt(t.x, t.y, 'rubble_2');
+                const u = unitAt(t.x, t.y);
+                if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
+                    applyDamageToUnit(u, 55, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
+                        sourceUnit: caster,
+                        allowMarkBonus: false,
+                        damageType: 'magic',
+                        spellType: spell.spellType || null
+                    });
+                    showFloatingTextForUnit(u, '💎 SHARDS!', 'damage', { durationMs: 1100 });
+                    cut++;
+                }
+            }
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`💎 ${spell.name} detonates the crystal vein — ${vein.length} tile${vein.length !== 1 ? 's' : ''} explode into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
+            if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 500);
+        }
+
         // Dispatcher: called from every damage-spell resolver with the tiles the
         // spell struck. Detects the spell's element and fires the matching terrain
         // reaction once per connected body (deduped so an AoE over one lake only
@@ -2009,6 +2075,14 @@
                     const body = _floodConnectedTiles(tile.x, tile.y, _isIceTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactFireIce(caster, spell, tile.x, tile.y, body);
+                } else if (el === 'lightning' && _isMetalTile(tile.x, tile.y)) {
+                    const sheet = _floodConnectedTiles(tile.x, tile.y, _isMetalTile, 40);
+                    sheet.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactLightningMetal(caster, spell, tile.x, tile.y, sheet);
+                } else if ((el === 'fire' || el === 'lightning') && _isCrystalTile(tile.x, tile.y)) {
+                    const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
+                    vein.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactCrystalShatter(caster, spell, tile.x, tile.y, vein);
                 }
             }
         }
@@ -2044,6 +2118,249 @@
                 showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
             }
+            // Shoved/pulled onto a hidden trap → it springs. "Drag them into
+            // the snare" is exactly the play the trap arsenal wants to reward.
+            if (typeof checkTrapTrigger === 'function') checkTrapTrigger(unit);
+        }
+
+        // 🌊 Water finds its level (2026-07-07): whenever ground is LOWERED next
+        // to standing water, the water pours in and spreads through connected
+        // floor that sits strictly below the pool's surface (deep water at 2+
+        // below the waterline). Dig a trench beside a lake → instant moat; a
+        // meteor crater by the sea floods. Capped so one dig can't drown the map.
+        const WATER_SETTLE_CAP = 16;
+
+        function _floodableTerrain(t) {
+            if (!t) return false;
+            if (t === 'water' || t === 'deep_water') return false;   // already wet
+            if (t === 'wall' || t === 'lava' || t === 'chasm' || t === 'void' ||
+                t === 'cloud_gap' || t === 'sky_open') return false;  // holes/fluids stay
+            return true;
+        }
+
+        function _tileCanFlood(x, y) {
+            if (!isInside(x, y)) return false;
+            if (!_floodableTerrain(getTerrainAt(x, y))) return false;
+            if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return false;
+            const o = getObjectAt(x, y);
+            if (o) {
+                const rule = typeof getObjectRule === 'function' ? getObjectRule(o) : null;
+                if (rule && !rule.cosmetic && !rule.walkable) return false;
+            }
+            return true;
+        }
+
+        function settleWaterAround(tiles) {
+            if (!tiles || !tiles.length || !state.boardColumns) return [];
+            // Seeds: lowered tiles touching standing water. Water pours in at the
+            // touching pool's surface level and keeps spreading through connected
+            // ground strictly below that waterline.
+            const queue = [];
+            for (const t of tiles) {
+                if (!t || !_tileCanFlood(t.x, t.y)) continue;
+                const nbrs = [[t.x + 1, t.y], [t.x - 1, t.y], [t.x, t.y + 1], [t.x, t.y - 1]];
+                for (const n of nbrs) {
+                    if (!isInside(n[0], n[1]) || !_isWaterTile(n[0], n[1])) continue;
+                    const lvl = getBaseHeightAt(n[0], n[1]);
+                    if (getBaseHeightAt(t.x, t.y) < lvl) { queue.push({ x: t.x, y: t.y, lvl }); break; }
+                }
+            }
+            if (!queue.length) return [];
+            const seen = new Set();
+            const flooded = [];
+            while (queue.length && flooded.length < WATER_SETTLE_CAP) {
+                const c = queue.shift();
+                const k = c.x + ',' + c.y;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                if (!_tileCanFlood(c.x, c.y)) continue;
+                const h = getBaseHeightAt(c.x, c.y);
+                if (h >= c.lvl) continue;
+                setTerrainAt(c.x, c.y, (c.lvl - h >= 2) ? 'deep_water' : 'water');
+                flooded.push({ x: c.x, y: c.y });
+                queue.push({ x: c.x + 1, y: c.y, lvl: c.lvl }, { x: c.x - 1, y: c.y, lvl: c.lvl },
+                           { x: c.x, y: c.y + 1, lvl: c.lvl }, { x: c.x, y: c.y - 1, lvl: c.lvl });
+            }
+            if (flooded.length) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+                addLog(`🌊 Water rushes into the lowered ground — ${flooded.length} tile${flooded.length !== 1 ? 's' : ''} flood!`);
+                for (const f of flooded) {
+                    const u = unitAt(f.x, f.y);
+                    if (u && !u.dead) _applyKnockbackHazard(u);
+                }
+            }
+            return flooded;
+        }
+
+        // ── RACE_PHYSIQUE accessors (2026-07-07 physique pass) ───────────────
+        // Every race has an official height (m) + weight (kg) in data.js.
+        // Weight class buckets drive the displacement physics, fall damage and
+        // crash-through rules; height is real data for future reach/LOS work
+        // (and the inspect panel shows both).
+        function getUnitPhysique(unit) {
+            const p = (unit && typeof RACE_PHYSIQUE !== 'undefined') ? RACE_PHYSIQUE[unit.race] : null;
+            return p || { h: 1.8, w: 80 };
+        }
+
+        function getWeightClassForKg(kg) {
+            if (kg < 30) return 'feather';
+            if (kg < 80) return 'light';
+            if (kg < 250) return 'medium';
+            if (kg < 1000) return 'heavy';
+            return 'colossal';
+        }
+
+        function getUnitWeightClass(unit) {
+            return getWeightClassForKg(getUnitPhysique(unit).w);
+        }
+
+        const WEIGHT_FALL_DMG_MULT = { feather: 0.5, light: 0.75, medium: 1.0, heavy: 1.25, colossal: 1.5 };
+
+        function getUnitFallDamageMult(unit) {
+            return WEIGHT_FALL_DMG_MULT[getUnitWeightClass(unit)] ?? 1.0;
+        }
+
+        // ⚖️ Weight-adjusted push distance (2026-07-07 physique pass): feather
+        // units sail one tile further, heavy units give one tile less (min 1),
+        // colossal units simply do not budge. Every push path funnels through
+        // this so spells, previews and the AI agree.
+        function getUnitPushDistance(unit, baseDist) {
+            const d = Math.max(0, baseDist || 0);
+            if (!d || !unit) return d;
+            const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
+            if (wc === 'colossal') return 0;
+            if (wc === 'heavy') return Math.max(1, d - 1);
+            if (wc === 'feather') return d + 1;
+            return d;
+        }
+
+        // 💥 Crash-through (2026-07-07): a unit knocked INTO a low obstacle no
+        // longer just stops — weak barriers break. Trees get flattened, and a
+        // 1-high lip of wood / ice / crystal shatters so the shove continues
+        // (stone and metal hold). Weight classes (RACE_PHYSIQUE) refine this:
+        // feather units bounce off instead of breaking, heavy units also punch
+        // through stone. Returns true when the obstacle broke.
+        const CRASH_THROUGH_DMG = 12;
+
+        function _crashBreakables(unit) {
+            const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
+            if (wc === 'feather') return null;                       // too light to break anything
+            const soft = (t) => !!t && (getTerrainMaterial(t) === 'wood' || t === 'ice' || t === 'crystal');
+            if (wc === 'heavy' || wc === 'colossal') {
+                return (t) => soft(t) || getTerrainMaterial(t) === 'stone';
+            }
+            return soft;
+        }
+
+        function _tryCrashThrough(unit, nx, ny, opts = {}) {
+            if (!unit || unit.dead) return false;
+            if (!isInside(nx, ny)) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (unitAt(nx, ny)) return false;                        // bodies don't break
+            const canBreak = _crashBreakables(unit);
+            if (!canBreak) return false;
+            const byUnit = opts.byUnit || null;
+
+            // A standing tree in the flight path gets flattened (pusher's team
+            // banks the wood — they did the work).
+            if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
+                if (_fellTreeAt(nx, ny, byUnit, { credit: !!byUnit })) {
+                    applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the tree: `, {
+                        ignoreArmor: true, consumeMarked: false
+                    });
+                    addLog(`💥 ${unitDisplayName(unit)} smashes straight through a tree!`);
+                    showFloatingTextForUnit(unit, '💥 CRASH!', 'damage', { durationMs: 900 });
+                    return true;
+                }
+                return false;
+            }
+
+            // A 1-high lip of breakable material shatters under the impact.
+            const unitZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+            const colH = getBaseHeightAt(nx, ny);
+            if (colH !== unitZ + 1) return false;
+            const t = getTerrainAt(nx, ny);
+            if (!canBreak(t)) return false;
+            removeBlockAt(nx, ny, colH);
+            _invalidateBoardGrid();
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            scheduleBoardRender();
+            const _crashLabel = t === 'ice' ? 'ice' : t === 'crystal' ? 'crystal' : (getTerrainMaterial(t) === 'stone' ? 'stone' : 'timber');
+            applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the ${_crashLabel}: `, {
+                ignoreArmor: true, consumeMarked: false
+            });
+            addLog(`💥 ${unitDisplayName(unit)} is knocked THROUGH the ${_crashLabel} block — debris everywhere!`);
+            showFloatingTextForUnit(unit, '💥 CRASH!', 'damage', { durationMs: 900 });
+            settleWaterAround([{ x: nx, y: ny }]);
+            return true;
+        }
+
+        // ── Salvage / material economy (2026-07-07 terraforming pass) ────────
+        // Destruction pays: chopping trees, smashing raised columns, collapsing
+        // buildings and wrecking turrets bank MATERIALS for the destroyer's
+        // team, and the build spells (kind placeBlock / buildStructure) spend
+        // them. Per-team bank: state.matBank = { player: {wood,stone,metal} }.
+        // Teams start with a small stock so build spells work on turn 1; the
+        // Harvester-only state.lumber tally is untouched (still powers Timber
+        // Strike).
+        const MAT_KINDS = ['wood', 'stone', 'metal'];
+        const MAT_ICONS = { wood: '🪵', stone: '🪨', metal: '⚙️' };
+        const MAT_START_STOCK = { wood: 2, stone: 2, metal: 1 };
+
+        function _matFor(player) {
+            if (!state.matBank) state.matBank = {};
+            if (!state.matBank[player]) state.matBank[player] = Object.assign({}, MAT_START_STOCK);
+            return state.matBank[player];
+        }
+
+        function getMaterials(player) {
+            return Object.assign({}, _matFor(player));
+        }
+
+        function gainMaterial(player, kind, n = 1, opts = {}) {
+            if (!player || !MAT_KINDS.includes(kind) || n <= 0) return;
+            const m = _matFor(player);
+            m[kind] = (m[kind] || 0) + n;
+            if (opts.log !== false) {
+                addLog(`${MAT_ICONS[kind]} Team ${player} salvages ${n} ${kind} (${m[kind]} banked).`);
+            }
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+        }
+
+        function canAffordMaterials(player, cost) {
+            if (!cost) return true;
+            const m = _matFor(player);
+            for (const k in cost) { if ((m[k] || 0) < cost[k]) return false; }
+            return true;
+        }
+
+        function spendMaterials(player, cost) {
+            if (!cost) return true;
+            if (!canAffordMaterials(player, cost)) return false;
+            const m = _matFor(player);
+            for (const k in cost) m[k] -= cost[k];
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            return true;
+        }
+
+        function materialCostLabel(cost) {
+            if (!cost) return '';
+            return Object.keys(cost).map(k => `${cost[k]} ${MAT_ICONS[k] || k}`).join(' + ');
+        }
+
+        // Which salvage family a terrain key belongs to (null = yields nothing —
+        // plain earth isn't worth carrying home).
+        function getTerrainMaterial(t) {
+            if (!t) return null;
+            if (t === 'wood' || t === 'wood_planks' || t === 'bridge' || t === 'tree' ||
+                t === 'forest' || t === 'forest_2' || t.indexOf('leaves') === 0) return 'wood';
+            if (t.indexOf('metal') === 0 || t === 'aluminium') return 'metal';
+            if (t === 'mountain' || t === 'mountain_2' || t === 'mountain_top' || t === 'castle_wall' ||
+                t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0 || t.indexOf('rock') === 0 ||
+                t.indexOf('rubble') === 0 || t.indexOf('marble') === 0 || t.indexOf('dungeon') === 0 ||
+                t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff') return 'stone';
+            return null;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -2379,12 +2696,18 @@
                         const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
                         const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
                         const _crFromX = target.x, _crFromY = target.y;
+                        const _crFromZ = target.z ?? 0;
                         const _crSteps = [];
-                        for (let p = 0; p < spell.pushDistance; p++) {
+                        const _crPush = getUnitPushDistance(target, spell.pushDistance);
+                        for (let p = 0; p < _crPush; p++) {
                             const nx = target.x + pdx, ny = target.y + pdy;
-                            if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny }); }
-                            else break;
+                            if (!isInside(nx, ny)) break;
+                            // Weak barriers give way: trees / wood / ice / crystal
+                            // lips shatter and the shove carries through.
+                            if (!canOccupy(nx, ny) && !(_tryCrashThrough(target, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
+                            target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny });
                         }
+                        if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `);
                         if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
                         if (_crSteps.length > 0) _applyKnockbackHazard(target);
                     }
@@ -2631,14 +2954,16 @@
 
                 // linePush: push targets away
                 if (spell.kind === 'linePush' && !hit.dead) {
-                    const pushDist = spell.pushDistance || 1;
+                    const pushDist = getUnitPushDistance(hit, spell.pushDistance || 1);
                     const _lpFromX = hit.x, _lpFromY = hit.y;
                     const _lpFromZ = hit.z ?? 0;
                     const _lpSteps = [];
                     for (let p = 0; p < pushDist; p++) {
                         const nx = hit.x + dx, ny = hit.y + dy;
-                        if (isInside(nx, ny) && canOccupy(nx, ny)) { hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny }); }
-                        else break;
+                        if (!isInside(nx, ny)) break;
+                        // Crash-through: weak barriers break instead of stopping the shove.
+                        if (!canOccupy(nx, ny) && !(_tryCrashThrough(hit, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
+                        hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny });
                     }
                     if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `);
                     if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
@@ -9390,6 +9715,8 @@
                 addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
+                // Wrecked machinery is a metal mine for the wrecker's team.
+                if (attackerUnit) gainMaterial(attackerUnit.player, 'metal', 2);
                 scheduleBoardRender();
             }
             return true;
@@ -9514,6 +9841,11 @@
             setObjectAt(b.x, b.y, 'ruins');
 
             addLog(`🏚 ${label} at ${coordLabel(b.x, b.y)} COLLAPSES${attackerUnit ? ` under ${unitDisplayName(attackerUnit)}'s assault` : ''}! Rubble covers the ground.`);
+            // A felled building is a quarry: masonry + fittings for the wrecker.
+            if (attackerUnit) {
+                gainMaterial(attackerUnit.player, 'stone', 2);
+                gainMaterial(attackerUnit.player, 'metal', 1);
+            }
             showFloatingTextAtTile(b.x, b.y, '🏚 COLLAPSE!', 'damage', { durationMs: 1200 });
             if (typeof shakeBoard === 'function') shakeBoard('normal');
             playSfx('damage');
@@ -9969,6 +10301,11 @@
                     x,
                     y
                 };
+                // New trap arsenal (placeTrap): walking THROUGH the tile stops
+                // the move there; the post-move checkTrapTrigger springs it.
+                if (state.traps && state.traps.some(t => t.x === x && t.y === y && t.owner !== unit.player)) {
+                    return { kind: 'trap', x, y };
+                }
                 /* ── detonateOnStep trap check ── */
                 if (state._deployedObjects) {
                     const trap = state._deployedObjects.find(o =>
@@ -10057,6 +10394,7 @@
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
                     detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
                 }
+                if (typeof checkTrapTrigger === 'function') checkTrapTrigger(unit);
                 /* ── detonateOnStep: trigger traps when a unit steps on them ── */
                 if (state._deployedObjects) {
                     const trapIdx = state._deployedObjects.findIndex(o =>
@@ -10581,6 +10919,8 @@
             state.plantedSeeds = [];
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
+            state.matBank = null;   // material bank re-seeds with the starting stock
+            state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
@@ -11748,6 +12088,9 @@
             if ((unit.ap || 0) < cost) return false;
             if (spell && !unitMeetsSpellTierReq(unit, spell)) return false;
             if (spell && getSpellCooldownRemaining(unit, spell) > 0) return false;
+            // Build spells consume banked materials (salvage economy) — the HUD
+            // graying, both AIs and doSpell all inherit this gate.
+            if (spell && spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) return false;
             return true;
         }
 
@@ -12224,7 +12567,8 @@
                 });
             }
 
-            if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash'].includes(kind)) {
+            if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash',
+                 'placeBlock', 'buildStructure', 'placeTrap'].includes(kind)) {
                 return range > 0 || true;
             }
 
@@ -12847,10 +13191,12 @@
             if (isPull) {
                 dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
                 dist = spell.pullDistance || 3; mode = 'pull';
+                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal') dist = 0;
             } else {
                 dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
-                dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
+                dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2); mode = 'push';
             }
+            if (!dist) return null;
             if (dx === 0 && dy === 0) return null;
             let px = target.x, py = target.y;
             for (let i = 0; i < dist; i++) {
@@ -14711,6 +15057,8 @@
             state.plantedSeeds = [];
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
+            state.matBank = null;   // material bank re-seeds with the starting stock
+            state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
@@ -15132,6 +15480,8 @@
             state.plantedSeeds = [];
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
+            state.matBank = null;   // material bank re-seeds with the starting stock
+            state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
@@ -15344,6 +15694,8 @@
             state.plantedSeeds = [];
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
+            state.matBank = null;   // material bank re-seeds with the starting stock
+            state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
@@ -18428,6 +18780,7 @@
             get FACING_SIDE_DMG_MULT() { return FACING_SIDE_DMG_MULT; },
 
             doMove, doAttack, doSpell, doItem, doInspect, doReshape, canReshapeTile, applyTerrainDeform,
+            predictTerrainSpellChanges,
             doAltitudeChange, canChangeAltitude,
             doComboAttack, doDetonate, doJump,
             get doFlair() { return doFlair; },
@@ -18438,6 +18791,12 @@
             getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
             getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
             _tileIsSmashable, smashTerrainAt,
+            // 🪵🪨⚙️ salvage economy (materials fund placeBlock/buildStructure)
+            getMaterials, gainMaterial, spendMaterials, canAffordMaterials,
+            materialCostLabel, getTerrainMaterial,
+            // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
+            getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
+            settleWaterAround, checkTrapTrigger,
             // 🔨 right-click-hold demolition (see beginTileDemolishHold)
             beginTileDemolishHold, cancelTileDemolishHold,
             get TILE_DEMOLISH_HOLD_MS() { return TILE_DEMOLISH_HOLD_MS; },
@@ -19053,8 +19412,17 @@
         function smashTerrainAt(x, y, attacker) {
             const oldH = getBaseHeightAt(x, y);
             if (oldH <= 0) return false;
+            const smashedTerrain = getTerrainAt(x, y);
             removeBlockAt(x, y, oldH);
             if (attacker) addEntropy(attacker.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
+            // Salvage: smashing a wood/stone/metal block banks its material for
+            // the smasher's team (plain earth yields nothing).
+            if (attacker) {
+                const mat = getTerrainMaterial(smashedTerrain);
+                if (mat) gainMaterial(attacker.player, mat, 1);
+            }
+            // Knocking the block out below a neighboring waterline lets the water in.
+            settleWaterAround([{ x, y }]);
             // Safety: anyone somehow standing in the column drops with it.
             const occupant = unitAt(x, y);
             if (occupant && !occupant.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occupant))) {
@@ -20279,6 +20647,7 @@
                                     detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
                                 }
                             }
+                            if (!_inlineAirborne) checkTrapTrigger(actingUnit);
                             if (!_inlineAirborne) checkWarpRuneTrigger(actingUnit);
                             if (!_inlineAirborne) checkSeedStepTrigger(actingUnit);
 
@@ -20634,6 +21003,106 @@
                 scheduleBoardRender();
             }
             return true;
+        }
+
+        // ── Trap arsenal (2026-07-07): kind 'placeTrap' charges ──────────────
+        // state.traps records: { x, y, z, owner, casterUnitId, trapType, dmg,
+        // spellId, spellName }. Hidden from the enemy (renderer shows sigils to
+        // the owner only, like warp runes). The first ENEMY to end up on the
+        // tile springs it — walking, or being shoved/pulled onto it
+        // (_applyKnockbackHazard calls this too, so "drag them into the trap"
+        // is a real play). Airborne units glide over.
+        function checkTrapTrigger(unit) {
+            if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
+            if (idx < 0) return false;
+            const trap = state.traps.splice(idx, 1)[0];
+            _springTrap(trap, unit);
+            return true;
+        }
+
+        function _springTrap(trap, victim) {
+            const owner = state.units.find(u => u.id === trap.casterUnitId) || null;
+            addLog(`🪤 ${unitDisplayName(victim)} springs a hidden ${trap.spellName || 'trap'} at ${coordLabel(trap.x, trap.y)}!`);
+            showFloatingTextForUnit(victim, '🪤 TRAP!', 'damage', { durationMs: 1100 });
+            playSfx('damage');
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
+            const dmg = Math.max(1, trap.dmg || 0);
+
+            if (trap.trapType === 'spike') {
+                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
+                    sourceUnit: owner, damageType: 'physical'
+                });
+                if (!victim.dead) {
+                    applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
+                    showFloatingTextForUnit(victim, '🕸 ROOTED!', 'debuff', { durationMs: 1100 });
+                }
+            } else if (trap.trapType === 'frost') {
+                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
+                    sourceUnit: owner, damageType: 'magic'
+                });
+                if (!victim.dead) {
+                    applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
+                    showFloatingTextForUnit(victim, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
+                }
+                // 3×3 flash-freeze: water and soft natural ground glaze to ice.
+                let glazed = 0;
+                for (const ft of getSquareArea(trap.x, trap.y, 1)) {
+                    if (!isInside(ft.x, ft.y)) continue;
+                    const t = getTerrainAt(ft.x, ft.y);
+                    if (t === 'water' || t === 'deep_water' || t.indexOf('grass') === 0 || t.indexOf('dirt') === 0) {
+                        setTerrainAt(ft.x, ft.y, 'ice');
+                        glazed++;
+                    }
+                }
+                if (glazed > 0) {
+                    _invalidateBoardGrid();
+                    scheduleBoardRender();
+                    addLog(`❄️ The blast glazes ${glazed} tile${glazed !== 1 ? 's' : ''} to slick ice!`);
+                }
+            } else if (trap.trapType === 'tremor') {
+                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Tremor Charge'}: `, {
+                    sourceUnit: owner, damageType: 'physical'
+                });
+                const fromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
+                applyTerrainDeform(trap.x, trap.y, 0, { centerDelta: -2, edgeDelta: 0 });
+                if (!victim.dead && typeof applyFallDamage === 'function') {
+                    applyFallDamage(victim, fromZ, victim.z ?? 0, `${trap.spellName || 'Tremor Charge'}: `);
+                }
+                addLog('⛏ The ground collapses into a fresh pit!');
+            } else if (trap.trapType === 'magnet') {
+                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Magnet Mine'}: `, {
+                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock'
+                });
+                // Drag every grounded unit within 2 tiles one step toward the mine.
+                let dragged = 0;
+                for (const pt of getSquareArea(trap.x, trap.y, 2)) {
+                    const u = unitAt(pt.x, pt.y);
+                    if (!u || u.dead || u.id === victim.id) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(u) === 'colossal') continue;
+                    const pdx = Math.sign(trap.x - u.x), pdy = Math.sign(trap.y - u.y);
+                    if (pdx === 0 && pdy === 0) continue;
+                    const nx = u.x + pdx, ny = u.y + pdy;
+                    if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
+                    const _mgFromX = u.x, _mgFromY = u.y;
+                    u.x = nx; u.y = ny;
+                    if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(nx, ny, u.z);
+                    animateDisplacement(u, _mgFromX, _mgFromY, nx, ny, 160);
+                    _applyKnockbackHazard(u);
+                    dragged++;
+                }
+                if (dragged > 0) addLog(`🧲 The magnetic pulse drags ${dragged} unit${dragged !== 1 ? 's' : ''} toward the mine!`);
+                // The shock is lightning — let it conduct through water/metal.
+                if (owner) {
+                    const _mgSpell = (typeof getSpellById === 'function' ? getSpellById(trap.spellId) : null)
+                        || { name: trap.spellName || 'Magnet Mine', element: 'lightning', dmg };
+                    triggerTerrainSpellReaction(owner, _mgSpell, [{ x: trap.x, y: trap.y }]);
+                }
+            }
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            scheduleBoardRender();
         }
 
         function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0) {
@@ -21581,6 +22050,7 @@
 
             resolveMovePath(unit, path, x, y);
 
+            checkTrapTrigger(unit);
             checkWarpRuneTrigger(unit);
             checkSeedStepTrigger(unit);
 
@@ -22944,6 +23414,9 @@
                 playSfx('physicalAbility');
                 showFloatingTextForUnit(unit, '🔻 LOWER', 'neutral', { durationMs: 900 });
                 addLog(`${unitDisplayName(unit)} lowers the ground beneath them! (Height ${oldHeight} → ${newHeight})`);
+                // Digging below a neighboring waterline floods the fresh pit
+                // (yes, onto the digger — water doesn't care).
+                if (typeof settleWaterAround === 'function') settleWaterAround([{ x, y }]);
             }
 
             unit._reshapeThisTurn = (unit._reshapeThisTurn || 0) + 1;
@@ -23051,9 +23524,211 @@
                 }
             }
 
+            // 🌊 Ground carved below an adjacent waterline floods (craters by the
+            // sea become pools; a fissure dug along a lake becomes a moat).
+            const _tdLowered = modified.filter(m => m.newH < m.oldH);
+            if (_tdLowered.length && typeof settleWaterAround === 'function') settleWaterAround(_tdLowered);
+
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+        }
+
+        // ── Prebuilt structure spells (2026-07-07 terraforming pass) ─────────
+        // STRUCTURE_TEMPLATES (data.js) are small voxel prefabs — bridge,
+        // watchtower, steps, fort ring. _structurePlanFor turns a template +
+        // cast tile into a concrete world-space block plan, oriented by the
+        // caster→target direction. The ghost preview and the buildStructure
+        // handler BOTH consume this plan, so what you see is what you get.
+        function _structurePlanFor(unit, spell, tx, ty) {
+            const tpl = (typeof STRUCTURE_TEMPLATES !== 'undefined') ? STRUCTURE_TEMPLATES[spell.structure] : null;
+            if (!tpl || !unit || !isInside(tx, ty)) return null;
+
+            // Cardinal facing from caster→target; ties break toward the longer
+            // axis, self-column casts default east.
+            let fdx = Math.sign(tx - unit.x), fdy = Math.sign(ty - unit.y);
+            if (fdx !== 0 && fdy !== 0) {
+                if (Math.abs(tx - unit.x) >= Math.abs(ty - unit.y)) fdy = 0; else fdx = 0;
+            }
+            if (fdx === 0 && fdy === 0) fdx = 1;
+            // Local frame: +x = away from the caster, +y = to its right.
+            const rot = (lx, ly) => ({ x: tx + lx * fdx - ly * fdy, y: ty + lx * fdy + ly * fdx });
+
+            const canStamp = (x, y) => {
+                if (!isInside(x, y)) return false;
+                if (getTerrainAt(x, y) === 'wall') return false;
+                if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return false;
+                const o = getObjectAt(x, y);
+                if (o) {
+                    const r = typeof getObjectRule === 'function' ? getObjectRule(o) : null;
+                    if (r && !r.walkable && !r.cosmetic) return false;
+                }
+                if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return false;
+                return true;
+            };
+
+            const blocks = [];
+
+            if (tpl.kind === 'bridge') {
+                // Deck extends away from the caster at the caster's standing
+                // height, over water/chasms/low ground, until it meets ground at
+                // (or above) deck level — the far shore.
+                const deckZ = Math.max(1, unit.z ?? getBaseHeightAt(unit.x, unit.y));
+                for (let i = 0; i < (tpl.length || 4); i++) {
+                    const p = rot(i, 0);
+                    if (!canStamp(p.x, p.y)) break;
+                    if (unitAt(p.x, p.y)) break;              // never deck over a head
+                    const t = getTerrainAt(p.x, p.y);
+                    const h = getBaseHeightAt(p.x, p.y);
+                    const fluid = (t === 'water' || t === 'deep_water' || t === 'chasm' || t === 'void' || t === 'cloud_gap');
+                    if (!fluid && h >= deckZ) {
+                        if (i === 0) return null;             // must START over a gap
+                        break;                                // reached the far shore
+                    }
+                    blocks.push({ x: p.x, y: p.y, z: deckZ, dz: Math.max(1, deckZ - h),
+                                  terrain: tpl.deckTerrain || 'wood_planks', deck: true });
+                }
+                return blocks.length ? { tpl, blocks } : null;
+            }
+
+            // 'blocks' prefabs: each entry stacks dz levels on the tile's top.
+            for (const b of (tpl.blocks || [])) {
+                const p = rot(b.dx, b.dy);
+                if (!canStamp(p.x, p.y)) continue;
+                if ((b.dz || 0) > 0 && unitAt(p.x, p.y)) continue;   // leave gaps where bodies stand
+                const h = getBaseHeightAt(p.x, p.y);
+                if (h + (b.dz || 0) > TERRAIN_RESHAPE_CONFIG.maxHeight) continue;
+                blocks.push({ x: p.x, y: p.y, z: h, dz: b.dz || 0,
+                              terrain: b.terrain, topTerrain: b.topTerrain || null });
+            }
+            return blocks.length ? { tpl, blocks } : null;
+        }
+
+        // ── Terrain-spell preview prediction (2026-07-07 terraforming pass) ──
+        // Pure, side-effect-free mirror of the terrain-changing spell handlers
+        // (terrainCreate / placeBlock / buildStructure). Returns ghost entries
+        // [{x, y, mode:'raise'|'lower'|'paint', dz, color}] for
+        // ThreeRenderer.showTerrainGhost so the pre-cast hologram and the real
+        // execution can never disagree about the footprint. Keep this in sync
+        // when editing those handlers.
+        function _terrainPreviewColor(t) {
+            if (!t) return 0x9fd8ff;
+            if (t === 'lava' || t === 'scorched') return 0xff8a3c;
+            if (t === 'ice') return 0xbfeaff;
+            if (t === 'water') return 0x4fa8ff;
+            if (t === 'deep_water') return 0x2f6fe0;
+            if (t.indexOf('poison') === 0 || t === 'swamp' || t === 'purple_bog') return 0x8fd44f;
+            if (t === 'grass' || t === 'healing_spring') return 0x59e08d;
+            if (t === 'crystal') return 0xc98fff;
+            if (t === 'chasm' || t === 'void') return 0xff7a5c;
+            if (t === 'wood_planks' || t === 'wood' || t === 'bridge') return 0xd8a86a;
+            if (t.indexOf('metal') === 0 || t === 'aluminium') return 0xb8c4d0;
+            if (t === 'mountain' || t === 'castle_wall' || t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0) return 0xd8c9a8;
+            return 0x9fd8ff;
+        }
+
+        function predictTerrainSpellChanges(unit, spell, tx, ty) {
+            if (!spell) return [];
+            const changes = [];
+            const color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
+
+            const pushChange = (x, y) => {
+                if (!isInside(x, y)) return;
+                const current = getTerrainAt(x, y);
+                if (current === 'wall') return;
+                const deform = spell.terrainDeform;
+                if (deform && (deform.centerDelta || 0) !== 0) {
+                    // terrainCreate applies the deform per affected tile with
+                    // radius 0 → only centerDelta matters. Mirror the guards in
+                    // applyTerrainDeform (mountain can't sink, objectives and
+                    // solid props are untouchable).
+                    const cDelta = deform.centerDelta || 0;
+                    let blocked = false;
+                    if (current === 'mountain' && cDelta < 0) blocked = true;
+                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) blocked = true;
+                    const obj = getObjectAt(x, y);
+                    if (obj) {
+                        const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
+                        if (rule && !rule.walkable) blocked = true;
+                    }
+                    if (!blocked) {
+                        const oldH = getBaseHeightAt(x, y);
+                        const newH = Math.max(TERRAIN_RESHAPE_CONFIG.minHeight,
+                            Math.min(TERRAIN_RESHAPE_CONFIG.maxHeight, oldH + cDelta));
+                        if (newH !== oldH) {
+                            changes.push({ x, y, mode: newH > oldH ? 'raise' : 'lower', dz: Math.abs(newH - oldH), color });
+                            return;
+                        }
+                    }
+                }
+                changes.push({ x, y, mode: 'paint', dz: 0, color });
+            };
+
+            if (spell.kind === 'terrainCreate') {
+                const count = spell.tileCount || 3;
+                if (spell.orientable) {
+                    const tiles = getOrientedLineTiles(tx, ty, count, state._spellOrientation || 'horizontal');
+                    for (const t of tiles) pushChange(t.x, t.y);
+                } else if (spell.squareFlood) {
+                    for (const t of getSquareArea(tx, ty, spell.aoeRadius || 1)) pushChange(t.x, t.y);
+                } else {
+                    // mirror of the handler's cardinal BFS flood
+                    const visited = new Set();
+                    const queue = [{ x: tx, y: ty }];
+                    let converted = 0;
+                    while (queue.length > 0 && converted < count) {
+                        const tile = queue.shift();
+                        const pk = posKey(tile.x, tile.y);
+                        if (visited.has(pk)) continue;
+                        visited.add(pk);
+                        if (!isInside(tile.x, tile.y)) continue;
+                        if (getTerrainAt(tile.x, tile.y) === 'wall') continue;
+                        pushChange(tile.x, tile.y);
+                        converted++;
+                        queue.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y },
+                                   { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+                    }
+                }
+                return changes;
+            }
+
+            if (spell.kind === 'placeBlock') {
+                // Mirror of the placeBlock handler's validation.
+                if (!isInside(tx, ty) || getTerrainAt(tx, ty) === 'wall') return changes;
+                if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) return changes;
+                const obj = getObjectAt(tx, ty);
+                if (obj) {
+                    const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
+                    if (rule && !rule.walkable && !rule.cosmetic) return changes;
+                }
+                if (typeof getBuildingAt === 'function' && getBuildingAt(tx, ty)) return changes;
+                const blockColor = _terrainPreviewColor(spell.terrainType);
+                if (_isWaterTile(tx, ty)) {
+                    changes.push({ x: tx, y: ty, mode: 'paint', dz: 0, color: blockColor });
+                } else if (getBaseHeightAt(tx, ty) < TERRAIN_RESHAPE_CONFIG.maxHeight) {
+                    changes.push({ x: tx, y: ty, mode: 'raise', dz: 1, color: blockColor });
+                }
+                return changes;
+            }
+
+            if (spell.kind === 'buildStructure') {
+                // Mirror of the buildStructure handler: template blocks oriented
+                // by the caster→target direction.
+                const plan = (typeof _structurePlanFor === 'function') ? _structurePlanFor(unit, spell, tx, ty) : null;
+                if (plan) {
+                    for (const b of plan.blocks) {
+                        changes.push({
+                            x: b.x, y: b.y,
+                            mode: b.dz > 0 ? 'raise' : 'paint',
+                            dz: Math.abs(b.dz || 0),
+                            color: _terrainPreviewColor(b.terrain)
+                        });
+                    }
+                }
+                return changes;
+            }
+
+            return changes;
         }
 
         function doDetonate(unit) {
@@ -23857,8 +24532,12 @@
                 return 0;
             }
             if (!canAffordSpell(unit, spell)) {
-                const needed = getSpellApCost(spell);
-                addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
+                if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
+                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
+                } else {
+                    const needed = getSpellApCost(spell);
+                    addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
+                }
                 state._teleportingUnit = null;
                 playErrorSfx();
                 return 0;
@@ -24214,6 +24893,44 @@
                     radius: spell.blastRadius || 1
                 });
                 addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+            } else if (spell.kind === 'placeTrap') {
+                // ── Trap arsenal (2026-07-07): snare / frost / tremor / magnet.
+                // Hidden charge on an empty passable tile; first enemy to land
+                // on it springs it (see _springTrap). Owner-only sigil decal.
+                if (!state.traps) state.traps = [];
+                if (unitAt(x, y, z) || unitAt(x, y)) {
+                    addLog('Traps need an empty tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!isTerrainPassable(x, y)) {
+                    addLog('Cannot hide a trap in impassable terrain.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (state.traps.some(t => t.x === x && t.y === y) ||
+                    (state.bombs || []).some(b => b.x === x && b.y === y)) {
+                    addLog('That tile is already rigged.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const _ownedTraps = state.traps.filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType);
+                if (_ownedTraps.length >= (spell.maxActivePerCaster || 2)) {
+                    state.traps = state.traps.filter(t => t !== _ownedTraps[0]);
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                state.traps.push({
+                    x, y, z,
+                    owner: unit.player,
+                    casterUnitId: unit.id,
+                    trapType: spell.trapType || 'spike',
+                    dmg: (spell.dmg || 0) + spellPower,
+                    spellId: spell.id,
+                    spellName: spell.name
+                });
+                addLog(`${unitDisplayName(unit)} hides a ${spell.name} at ${coordLabel(x, y)}.`, unit.player);
             } else if (spell.kind === 'scan') {
                 const effectiveAwr = getEffectiveAwr(unit);
                 if (effectiveAwr <= 0) {
@@ -24670,17 +25387,27 @@
 
                     const dx = Math.sign(target.x - unit.x) || 1;
                     const dy = Math.sign(target.y - unit.y);
-                    const dist = spell.displaceDistance || 2;
+                    const dist = getUnitPushDistance(target, spell.displaceDistance || 2);
                     let flung = 0;
                     let hitObstacle = false;
                     const _displaceFromX = target.x, _displaceFromY = target.y;
                     const _displaceFromZ = target.z ?? 0;
                     const _displaceSteps = [];
+                    if (dist === 0) {
+                        addLog(`${unitDisplayName(target)} is far too heavy to budge!`);
+                        showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
+                    }
                     for (let i = 0; i < dist; i++) {
                         const nx = target.x + dx;
                         const ny = target.y + dy;
-                        if (!isInside(nx, ny) || !isTerrainPassable(nx, ny)) { hitObstacle = true; break; }
-                        if (unitAt(nx, ny)) { hitObstacle = true; break; }
+                        if (!isInside(nx, ny)) { hitObstacle = true; break; }
+                        if (!isTerrainPassable(nx, ny) || unitAt(nx, ny)) {
+                            // Crash-through: trees and weak block lips break under
+                            // the flung body instead of stopping it.
+                            if (_tryCrashThrough(target, nx, ny, { byUnit: unit }) && isTerrainPassable(nx, ny) && !unitAt(nx, ny)) {
+                                // barrier broken — fall through to the move below
+                            } else { hitObstacle = true; break; }
+                        }
                         target.x = nx;
                         target.y = ny;
                         if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
@@ -24865,7 +25592,12 @@
                     }
                 }
                 unit.mp -= effectiveSpellCost;
-                const pullDist = spell.pullDistance || 3;
+                let pullDist = spell.pullDistance || 3;
+                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal') {
+                    pullDist = 0;
+                    addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
+                    showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
+                }
                 const pdx = Math.sign(unit.x - target.x);
                 const pdy = Math.sign(unit.y - target.y);
                 let pulled = 0;
@@ -25454,6 +26186,121 @@
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'placeBlock') {
+                // ── Minecraft-style block placement (2026-07-07) ─────────────
+                // Stacks ONE voxel of the spell's material on the target column
+                // (+1 height, lifting any grounded occupant with it), or fills a
+                // water surface into a walkable stepping stone. Spends banked
+                // materials (salvage economy). Validation mirrored in
+                // predictTerrainSpellChanges — keep in sync.
+                const blockTerrain = spell.terrainType || 'cobblestone';
+                if (!isInside(x, y) || getTerrainAt(x, y) === 'wall') {
+                    addLog('Cannot build there.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) {
+                    addLog('Cannot build on an objective tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const _pbObj = getObjectAt(x, y);
+                if (_pbObj) {
+                    const _pbRule = typeof getObjectRule === 'function' ? getObjectRule(_pbObj) : null;
+                    if (_pbRule && !_pbRule.walkable && !_pbRule.cosmetic) {
+                        addLog('Something already stands on that tile.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                }
+                if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
+                    addLog('Cannot build inside a structure.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const _pbIsWater = _isWaterTile(x, y);
+                const _pbOldH = getBaseHeightAt(x, y);
+                if (!_pbIsWater && _pbOldH >= TERRAIN_RESHAPE_CONFIG.maxHeight) {
+                    addLog('That column is already at maximum height.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
+                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                if (_pbIsWater) {
+                    setTerrainAt(x, y, blockTerrain);
+                    addLog(`${unitDisplayName(unit)} sinks a ${spell.name} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                } else {
+                    setBlockAt(x, y, _pbOldH + 1, blockTerrain);
+                    const _pbOcc = unitAt(x, y);
+                    if (_pbOcc && !_pbOcc.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbOcc))) {
+                        _pbOcc.z = _pbOldH + 1;
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbOcc, fromX: x, fromY: y });
+                        if (_pbOcc.id !== unit.id) addLog(`${unitDisplayName(_pbOcc)} rides the new block up!`);
+                    }
+                    addLog(`${unitDisplayName(unit)} stacks a ${spell.name} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
+                }
+                _invalidateBoardGrid();
+                if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                scheduleBoardRender();
+                completionDelay = actionMs(650);
+            }
+
+            else if (spell.kind === 'buildStructure') {
+                // ── Prebuilt voxel structures (2026-07-07): bridge / watchtower /
+                // steps / fort ring. The plan (footprint + heights) comes from
+                // _structurePlanFor — the same function the ghost preview uses.
+                const plan = _structurePlanFor(unit, spell, x, y);
+                if (!plan) {
+                    addLog(spell.structure === 'bridgeSpan'
+                        ? 'Aim the bridge at water or a gap — it spans away from you to the far shore.'
+                        : 'No room to raise that structure there.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
+                    addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                let stamped = 0;
+                for (const b of plan.blocks) {
+                    if (b.deck) {
+                        // Bridge deck: one floating slab at deck height — the
+                        // column engine treats it as a walkable surface with the
+                        // gap (water / chasm) intact underneath.
+                        setBlockAt(b.x, b.y, b.z, b.terrain);
+                        stamped++;
+                        continue;
+                    }
+                    const h0 = getBaseHeightAt(b.x, b.y);
+                    for (let li = 1; li <= b.dz; li++) {
+                        const terr = (li === b.dz && b.topTerrain) ? b.topTerrain : b.terrain;
+                        setBlockAt(b.x, b.y, h0 + li, terr);
+                    }
+                    if (b.dz === 0 && b.terrain) setTerrainAt(b.x, b.y, b.terrain);
+                    stamped++;
+                }
+                _invalidateBoardGrid();
+                if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                scheduleBoardRender();
+                addLog(`${unitDisplayName(unit)} raises ${spell.name} — ${stamped} tile${stamped !== 1 ? 's' : ''} of fresh construction${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}!`);
+                completionDelay = actionMs(800);
             }
 
             else if (spell.kind === 'terrainCreate') {

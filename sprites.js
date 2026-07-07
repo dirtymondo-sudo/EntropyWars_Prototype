@@ -1531,6 +1531,50 @@ const SEED_TILE_SPRITES = {
     ]
 };
 
+/* Trap sigils (2026-07-07 placeTrap arsenal) — inline SVG ground decals,
+   rendered only for the trap's owner (same rule as warp runes). Keyed by
+   trapType: spike / frost / tremor / magnet. */
+const TRAP_TILE_SPRITES = {
+    spike: [
+        _terrainSvg(
+            '<circle cx="32" cy="32" r="18" fill="none" stroke="rgba(180,180,170,0.4)" stroke-width="1.5" stroke-dasharray="5 4"/>' +
+            '<path d="M32 20 L36 32 L28 32 Z" fill="rgba(200,200,190,0.55)"/>' +
+            '<path d="M20 36 L30 38 L24 44 Z" fill="rgba(185,185,175,0.5)"/>' +
+            '<path d="M44 36 L38 44 L34 37 Z" fill="rgba(185,185,175,0.5)"/>' +
+            '<path d="M26 26 L38 26 L32 33 Z" fill="none" stroke="rgba(160,160,150,0.45)" stroke-width="1.2"/>' +
+            '<circle cx="32" cy="32" r="2.5" fill="rgba(220,220,210,0.5)"/>'
+        )
+    ],
+    frost: [
+        _terrainSvg(
+            '<g stroke="rgba(160,220,255,0.55)" stroke-width="1.6" fill="none">' +
+            '<path d="M32 14 L32 50 M14 32 L50 32 M19 19 L45 45 M45 19 L19 45"/>' +
+            '<path d="M32 18 L28 23 M32 18 L36 23 M32 46 L28 41 M32 46 L36 41"/>' +
+            '<path d="M18 32 L23 28 M18 32 L23 36 M46 32 L41 28 M46 32 L41 36"/>' +
+            '</g>' +
+            '<circle cx="32" cy="32" r="4" fill="rgba(190,235,255,0.45)"/>'
+        )
+    ],
+    tremor: [
+        _terrainSvg(
+            '<g stroke="rgba(235,150,60,0.55)" stroke-width="1.8" fill="none">' +
+            '<path d="M32 32 L20 18 M32 32 L47 22 M32 32 L44 46 M32 32 L18 42"/>' +
+            '<path d="M26 25 L23 26 M39 27 L40 30 M38 39 L35 41 M25 37 L26 40"/>' +
+            '</g>' +
+            '<circle cx="32" cy="32" r="5" fill="none" stroke="rgba(250,180,90,0.5)" stroke-width="1.6"/>' +
+            '<circle cx="32" cy="32" r="2" fill="rgba(255,200,120,0.55)"/>'
+        )
+    ],
+    magnet: [
+        _terrainSvg(
+            '<path d="M22 40 L22 26 A10 10 0 0 1 42 26 L42 40" fill="none" stroke="rgba(230,80,80,0.6)" stroke-width="5"/>' +
+            '<rect x="19" y="38" width="6" height="6" fill="rgba(220,225,235,0.6)"/>' +
+            '<rect x="39" y="38" width="6" height="6" fill="rgba(220,225,235,0.6)"/>' +
+            '<path d="M18 20 L22 16 M46 20 L42 16 M32 12 L32 17" stroke="rgba(140,200,255,0.5)" stroke-width="1.5" fill="none"/>'
+        )
+    ]
+};
+
 if (typeof TERRAIN_SPRITES !== 'undefined') {
     const _legacySprites = {
         ice: [

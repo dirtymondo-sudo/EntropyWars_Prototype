@@ -7122,6 +7122,22 @@
             const lore = _CODEX_LORE[race] || 'No intelligence available. File pending ████████ review.';
             const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
             const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.awr || 0);
+            // ⚖️ Official physique (RACE_PHYSIQUE): height/weight are real game
+            // data — the weight class drives push/pull physics, fall damage and
+            // crash-through, so the dossier states it like the stat it is.
+            const phys = (typeof RACE_PHYSIQUE !== 'undefined') ? RACE_PHYSIQUE[race] : null;
+            let physHtml = '';
+            if (phys) {
+                const wc = phys.w < 30 ? 'FEATHER' : phys.w < 80 ? 'LIGHT' : phys.w < 250 ? 'MEDIUM' : phys.w < 1000 ? 'HEAVY' : 'COLOSSAL';
+                const hLabel = phys.h < 1 ? `${Math.round(phys.h * 100)} cm` : `${phys.h >= 10 ? Math.round(phys.h) : phys.h} m`;
+                const wLabel = phys.w < 1 ? `${Math.round(phys.w * 1000)} g` : phys.w >= 1000 ? `${(phys.w / 1000).toFixed(1)} t` : `${phys.w} kg`;
+                const wcNote = wc === 'COLOSSAL' ? 'immune to knockback; falls hit ×1.5'
+                    : wc === 'HEAVY' ? 'pushed 1 tile less; smashes through stone; falls ×1.25'
+                    : wc === 'FEATHER' ? 'pushed 1 tile further; falls ×0.5; too light to crash through blocks'
+                    : wc === 'LIGHT' ? 'falls ×0.75'
+                    : 'standard displacement physics';
+                physHtml = `<div class="cdx-lore" style="margin-bottom:6px">OFFICIAL HEIGHT: ${hLabel} &nbsp;·&nbsp; WEIGHT: ${wLabel} &nbsp;·&nbsp; CLASS: ${wc} <span style="opacity:.75">(${wcNote})</span></div>`;
+            }
             return `
                 <div class="cdx-section">
                     <div class="cdx-section-header">1. &nbsp;EXECUTIVE SUMMARY:</div>
@@ -7129,6 +7145,7 @@
                 </div>
                 <div class="cdx-section">
                     <div class="cdx-section-header">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
+                    ${physHtml}
                     <div class="cdx-stats-grid">
                         ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70')}
                         ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898')}
@@ -7979,6 +7996,47 @@
             }
             clearAoePreview();
             clearIntentPreview();
+
+            // ── Terrain-shaping spells: voxel ghost preview ─────────────────
+            // (2026-07-07 terraforming pass) Instead of the loud generic red
+            // AoE tiles, terrain spells show translucent ghost BLOCKS at the
+            // exact tiles/heights they will create or carve (footprint comes
+            // from battle.js predictTerrainSpellChanges — same math as the
+            // cast), plus a quiet color-coded floor wash. Red is reserved for
+            // spells that also deal damage.
+            const _terrainKinds = { terrainCreate: 1, placeBlock: 1, buildStructure: 1 };
+            if (_terrainKinds[spell.kind] && typeof predictTerrainSpellChanges === 'function') {
+                const ghostChanges = predictTerrainSpellChanges(unit, spell, x, y);
+                if (ghostChanges.length > 0 && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    if (ThreeRenderer.showTerrainGhost) {
+                        ThreeRenderer.showTerrainGhost(ghostChanges);
+                        _terrainGhost3dActive = true;
+                    }
+                    const hurts = !!spell.dmg;
+                    const overlayTiles = ghostChanges.map(t => ({
+                        x: t.x, y: t.y,
+                        color: hurts ? 0xff5544 : (t.color || 0x9fd8ff),
+                        opacity: hurts ? 0.32 : 0.22
+                    }));
+                    ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.3);
+                    _aoePreview3dActive = true;
+                }
+                updateIntentPreview(x, y);
+                return;
+            }
+            // Damage spells that repaint the ground they hit (leaveTerrain,
+            // e.g. Dragonfire's lava trail) keep their normal red footprint
+            // but add flat paint decals showing what the ground becomes.
+            if (spell.leaveTerrain && typeof _terrainPreviewColor === 'function' &&
+                typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive() && ThreeRenderer.showTerrainGhost) {
+                const fp = getSpellAoeFootprint(spell, x, y, unit);
+                if (fp.length > 0) {
+                    const lc = _terrainPreviewColor(spell.leaveTerrain);
+                    ThreeRenderer.showTerrainGhost(fp.map(t => ({ x: t.x, y: t.y, mode: 'paint', dz: 0, color: lc })));
+                    _terrainGhost3dActive = true;
+                }
+            }
+
             const footprint = getSpellAoeFootprint(spell, x, y, unit);
             if (footprint.length > 0) {
                 const isHeal = ['heal', 'healAll'].includes(spell.kind);
@@ -8012,6 +8070,7 @@
         }
 
         let _aoePreview3dActive = false;
+        let _terrainGhost3dActive = false;
 
         function clearAoePreview() {
             for (const entry of _aoePreviewTiles) entry.el.classList.remove(entry.cls);
@@ -8019,6 +8078,10 @@
             if (_aoePreview3dActive && typeof ThreeRenderer !== 'undefined') {
                 ThreeRenderer.clearOverlay('aoe');
                 _aoePreview3dActive = false;
+            }
+            if (_terrainGhost3dActive && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearTerrainGhost) {
+                ThreeRenderer.clearTerrainGhost();
+                _terrainGhost3dActive = false;
             }
             clearIntentPreview();
         }

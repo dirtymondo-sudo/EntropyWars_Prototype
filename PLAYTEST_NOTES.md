@@ -4,6 +4,106 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## TERRAFORMING OVERHAUL (2026-07-07) — battle.js, data.js, ui.js, hud.js, ai.js, state.js, sprites.js, three-renderer.js
+Token `20260708d` → `20260708e`. Design doc: `TERRAIN_SPELLS_PLAN.md` (repo
+root). Six systems, all building on existing plumbing. NOT playtested this
+session (per RULE #1c) — syntax-checked only; first live run should sanity-check
+the ghost preview + a placeBlock/structure cast + a trap trigger.
+
+1. **Terrain-spell ghost preview.** `ThreeRenderer.showTerrainGhost(changes)` /
+   `clearTerrainGhost()` (three-renderer, after flashTelegraph): per-level
+   translucent voxel boxes + solid edge lines (raise = cyan stack, lower = red
+   carve volume, paint = flat family-colored decal), gentle fill-only pulse via
+   `_updateTerrainGhostPulse` in renderFrame. Footprints come from
+   `predictTerrainSpellChanges(unit, spell, tx, ty)` (battle.js, right after
+   applyTerrainDeform; exported on GAME) — a PURE mirror of the
+   terrainCreate/placeBlock/buildStructure handlers. ⚠ KEEP IN SYNC when
+   editing those handlers. ui.js `updateAoePreview` drives it: terrain kinds
+   skip the loud red AoE tiles (red only if spell.dmg) and get the ghost +
+   quiet family-colored wash; `leaveTerrain` damage spells (Dragonfire lava
+   etc.) keep red but add paint decals. Cleared in `clearAoePreview`
+   (`_terrainGhost3dActive` flag) — every preview clear site funnels there.
+2. **Calmer highlights (readability pass).** `_hlFragmentShader`: fill
+   0.55→0.34, wash-toward-white cap 0.75→0.45, pulse 0.88±0.12→0.94±0.06.
+   `_updatePreviewOverlayPulse`: 0.4..1.0 @5Hz → 0.7..1.0 @2.6Hz. Colors now
+   stay saturated (color IS the semantics).
+3. **Salvage economy.** `state.matBank = {player: {wood,stone,metal}}` (lazy
+   `_matFor`, seeded `MAT_START_STOCK` {2,2,1}; reset via `state.matBank=null`
+   at the 4 match-init sites alongside state.lumber). Gains: chop tree +1 wood
+   (in `_fellTreeAt` credit branch, on top of Harvester lumber), smash column
+   +1 of `getTerrainMaterial(terrain)` (wood/stone/metal families over EXISTING
+   terrain keys — nothing for plain earth), destroyBuilding +2 stone +1 metal,
+   turret kill +2 metal. Spending: `spell.materialCost = {stone:1}` gated in
+   `canAffordSpell` (HUD/AI/doSpell inherit), spent via `spendMaterials` inside
+   the placeBlock/buildStructure handlers. HUD spell rows show "Need 1 🪨"
+   (hud.js reason chain); doSpell logs a salvage hint. GAME: getMaterials /
+   gainMaterial / spendMaterials / canAffordMaterials / materialCostLabel /
+   getTerrainMaterial.
+4. **New element reactions** (extend triggerTerrainSpellReaction):
+   ⚡+metal-family terrain (`metal*`, `aluminium` — incl. placed Steel Blocks) =
+   `_reactLightningMetal` conducts across the connected sheet (50% tick, units
+   standing on it); 🔥/⚡+crystal = `_reactCrystalShatter` (vein cap 12 →
+   rubble_2 + 55 dmg to units on it; kills the MP-regen perk).
+5. **placeBlock kind** (Minecraft building): stacks ONE voxel (+1 h, cap
+   maxHeight 12) of spell.terrainType on the target column, lifting any
+   grounded occupant (raise-a-sniper-pillar is intended); on water it REPLACES
+   the surface = stepping stone. Guards: wall/objective/solid-object/building.
+   Spells: `timberBlock` (Harvester+Engineer, 1 wood, wood_planks),
+   `stoneBlock` (Engineer, 1 stone, cobblestone), `steelBlock` (Engineer,
+   1 metal, metal → conducts).
+6. **Crash-through.** `_tryCrashThrough(unit, nx, ny, {byUnit})`: pushed units
+   now BREAK weak barriers instead of stopping — trees felled (pusher's team
+   banks the wood), 1-high lips of wood-family/ice/crystal shattered
+   (CRASH_THROUGH_DMG 12, push continues). Weight-gated: feather can't break
+   anything, heavy/colossal also punch through stone-family. Wired into the
+   cross-push (_applyAoeDamage), linePush, and displacement fling loops.
+7. **Water settles.** `settleWaterAround(tiles)`: when ground is LOWERED beside
+   standing water, water floods connected floor strictly below the pool's
+   surface level (BFS, cap 16, deep_water at 2+ below; hazards bite via
+   _applyKnockbackHazard). Called from applyTerrainDeform (lowered tiles →
+   meteor craters flood), smashTerrainAt, doReshape lower, crash-through, and
+   the tremor trap. Chasm/void/lava/walls/objectives never flood.
+8. **buildStructure kind + STRUCTURE_TEMPLATES** (data.js, before the SHARED
+   spells): local frame +x = away from caster, rotated by caster→target
+   cardinal; `_structurePlanFor` (battle.js) computes the world plan (shared
+   with the ghost preview). `bridgeSpan` = up-to-4-tile wood deck at caster's
+   standing z over water/chasm until the far shore (floating block, gap stays
+   open under it); `watchtower` = +2 tower (top `mountain_top` → +1 range) with
+   +1 step on the caster side; `stairway` = +1/+2 rising away; `fortRing` =
+   ring-8 of +2 castle_wall (unit-occupied tiles left open). Spells:
+   `fieldBridge`/`watchtower`/`bulwarkRing` (Engineer), `timberSteps`
+   (Harvester+Engineer), `SHARED_BULWARK_RING` race ability on giant/golem/
+   minotaur.
+9. **Trap arsenal — placeTrap kind + state.traps** (records {x,y,owner,
+   casterUnitId,trapType,dmg,spellId,spellName}; reset with bombs). Placement
+   mirrors bombs but needs an EMPTY passable un-rigged tile. Trigger:
+   `checkTrapTrigger(unit)` — enemy-only, airborne immune — called at both move
+   executors, the AI move path, `getPathPickupEvent` (walking THROUGH stops on
+   it), and inside `_applyKnockbackHazard` (pushed/pulled INTO a trap springs
+   it — magnet-into-snare chains work). Effects in `_springTrap`: `spike`
+   (snareTrap, Agent/Harvester) dmg+root 2; `frost` (frostMine, Black Mage)
+   dmg+stun+3×3 ice glaze (water/grass*/dirt*); `tremor` (tremorCharge,
+   Engineer) dmg + ground −2 + fall dmg + water settle; `magnet` (magnetMine,
+   Agent/Engineer) dmg + drags all units in r2 one step in (colossal immune) +
+   lightning terrain reaction at the mine. Rendering: owner-only SVG sigils
+   (`TRAP_TILE_SPRITES` in sprites.js, warp-rune pattern) in rebuildDeployables
+   + hashed into `_computeDeployableSerial` (tag 8).
+10. **RACE_PHYSIQUE** (data.js after RACE_BASE_STATS): official height/weight
+   for all 95 races (honda civic 1300 kg, kaiju 20 t, fairy 1.5 kg…). Classes
+   (battle.js getUnitWeightClass): feather &lt;30 ≤ light &lt;80 ≤ medium &lt;250 ≤
+   heavy &lt;1000 ≤ colossal. Effects: `getUnitPushDistance` (feather +1, heavy
+   −1 min 1, colossal 0 — used by cross-push/linePush/displacement AND the
+   shove preview `_predictSpellApproachShove`); pull + blowback colossal
+   immunity ("⚖️ IMMOVABLE"); fall damage ×0.5/0.75/1/1.25/1.5
+   (state.js applyFallDamage — flyers still exempt); crash-through gating.
+   Codex dossier §2 shows HEIGHT/WEIGHT/CLASS + what the class means.
+11. **AI**: scoreSpell + tile pickers for placeTrap (empty tile nearest most
+   enemies), placeBlock (pillar under an allied Sniper/Gunslinger/Black Mage),
+   buildStructure (fortRing → box best enemy in range; bridge → nearest
+   water/chasm tile; tower/steps → free tile toward enemy). All three in
+   nonRepeatableKinds. Kinds also added to hud.js tileTargetKinds and
+   hasSpellTargetInRange's always-castable list.
+
 ## Gamepad support + camera modes + controls editor (2026-07-07) — state.js, battle.js, hud.js, ui.js, map.js
 Token bumped `20260708b` → `20260708c`. Probe-verified in-browser (scratchpad
 probe_gamepad.js — fake standard-mapping pad injected over navigator.getGamepads;

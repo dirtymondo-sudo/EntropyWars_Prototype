@@ -2100,6 +2100,9 @@ function _hrlgSpellBlades(unit, st) {
       else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
       else if (unit.mp < cost) reason = 'No MP';
       else if ((unit.ap || 0) < apCost) reason = 'No AP';
+      else if (sp.materialCost && typeof canAffordMaterials === 'function' && !canAffordMaterials(unit.player, sp.materialCost)) {
+        reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
+      }
       else if (!hasTarget) reason = 'No target';
     }
 
@@ -4266,6 +4269,7 @@ function _computeTileActions(actingUnit, tx, ty) {
     'displacement', 'line', 'linePush', 'terrainCreate',
     'zoneDebuff', 'zoneHeal', 'seedHeal', 'seedPoison', 'leechSeed',
     'remoteView', 'summonWeather',
+    'placeBlock', 'buildStructure', 'placeTrap',
   ]);
 
   for (const sp of allSpells) {

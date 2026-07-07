@@ -2596,6 +2596,113 @@ const RACE_BASE_STATS = {
     'watcher':       { hp: 480, mp: 178, atk: 22, def: 28, mdef: 39, move: 2, awr: 5, int: 52, spd: 6 },
 };
 
+/* ── RACE_PHYSIQUE (2026-07-07 physique pass) ──────────────────────────────
+   Official height (m) and weight (kg) for every race — canonical values used
+   in CALCULATIONS, not just flavor. Weight class derives from kg in battle.js
+   getUnitWeightClass:
+     feather < 30 ≤ light < 80 ≤ medium < 250 ≤ heavy < 1000 ≤ colossal
+   and feeds: push/pull distance (feather +1, heavy −1, colossal immovable),
+   fall damage (×0.5 feather … ×1.5 colossal), and crash-through (feathers
+   bounce off blocks, heavies also smash through stone). Armored/equipped
+   races list their fighting weight, gear included. */
+const RACE_PHYSIQUE = {
+    'homosapien':          { h: 1.75, w: 75 },
+    'pirate':              { h: 1.80, w: 85 },
+    'knight':              { h: 1.90, w: 140 },   // full plate included
+    'shaman':              { h: 1.70, w: 70 },
+    'mad scientist':       { h: 1.75, w: 72 },
+    'cowboy':              { h: 1.80, w: 82 },
+    'men in black':        { h: 1.85, w: 80 },
+    'telepath':            { h: 1.70, w: 65 },
+    'marksman':            { h: 1.80, w: 80 },
+    'priest':              { h: 1.75, w: 74 },
+    'wizard':              { h: 1.70, w: 68 },
+    'fortune teller':      { h: 1.65, w: 60 },
+    'giant':               { h: 7.50, w: 3800 },
+    'fairy':               { h: 0.25, w: 1.5 },
+    'martian':             { h: 1.50, w: 48 },
+    'nordic':              { h: 2.10, w: 105 },
+    'grey':                { h: 1.20, w: 35 },
+    'bigfoot':             { h: 2.60, w: 380 },
+    'shadow entity':       { h: 1.90, w: 2 },     // barely tethered to matter
+    'reptilian':           { h: 2.00, w: 110 },
+    'ai':                  { h: 1.20, w: 25 },    // a floating core
+    'robot':               { h: 1.90, w: 350 },
+    'android':             { h: 1.80, w: 150 },
+    'angel':               { h: 1.90, w: 80 },
+    'seraphim':            { h: 2.40, w: 95 },
+    'orb of light':        { h: 0.60, w: 0.5 },
+    'demon':               { h: 2.20, w: 160 },
+    'succubus':            { h: 1.75, w: 62 },
+    'skeleton':            { h: 1.75, w: 28 },    // bones only — flies when hit
+    'mech':                { h: 3.50, w: 2200 },
+    'ghost':               { h: 1.80, w: 0.1 },
+    'zombie':              { h: 1.75, w: 70 },
+    'annunaki':            { h: 2.50, w: 140 },
+    'skinwalker':          { h: 1.90, w: 90 },
+    'werewolf':            { h: 2.10, w: 130 },
+    'gargoyle':            { h: 1.90, w: 400 },   // living stone
+    'djinn':               { h: 2.30, w: 40 },    // smoke below the waist
+    'anubis':              { h: 2.10, w: 110 },
+    'catgirl':             { h: 1.60, w: 52 },
+    'mantid':              { h: 1.90, w: 75 },
+    'antperson':           { h: 1.50, w: 55 },
+    'mothman':             { h: 2.20, w: 85 },
+    'siren':               { h: 1.70, w: 60 },
+    'scarecrow':           { h: 1.85, w: 25 },    // straw and burlap
+    'glitch':              { h: 1.70, w: 10 },
+    'machine elves':       { h: 1.40, w: 30 },
+    'cyclops':             { h: 3.20, w: 520 },
+    'cyborg':              { h: 1.90, w: 160 },
+    'demon prince':        { h: 2.30, w: 180 },
+    'demon princess':      { h: 2.10, w: 120 },
+    'dreameater':          { h: 2.00, w: 90 },
+    'fallen angel':        { h: 1.95, w: 85 },
+    'goatman':             { h: 2.00, w: 115 },
+    'halfdemon':           { h: 1.90, w: 95 },
+    'mermaid':             { h: 1.70, w: 65 },
+    'nephilim':            { h: 2.80, w: 280 },
+    'vampire':             { h: 1.85, w: 75 },
+    'voidweaver':          { h: 2.00, w: 70 },
+    'cosmic wraith':       { h: 2.20, w: 5 },
+    'superhero':           { h: 1.90, w: 100 },
+    'general':             { h: 1.80, w: 85 },
+    'droid':               { h: 1.40, w: 90 },
+    'antihero':            { h: 1.85, w: 88 },
+    'conspiracy theorist': { h: 1.75, w: 78 },
+    'overlord':            { h: 2.40, w: 190 },
+    'chosen one':          { h: 1.80, w: 75 },
+    'politician':          { h: 1.80, w: 90 },
+    'atlantean':           { h: 2.00, w: 95 },
+    'dinosaur':            { h: 4.50, w: 4000 },
+    'dragon':              { h: 6.00, w: 4500 },
+    'ghoul':               { h: 1.80, w: 65 },
+    'gnome':               { h: 0.90, w: 25 },
+    'kaiju':               { h: 50.0, w: 20000 },
+    'kraken':              { h: 12.0, w: 6000 },
+    'loch ness monster':   { h: 10.0, w: 5000 },
+    'yeti':                { h: 2.50, w: 320 },
+    'barbarella':          { h: 1.70, w: 62 },
+    'black goo':           { h: 1.50, w: 260 },   // dense amorphous mass
+    'golem':               { h: 2.60, w: 900 },
+    'honda civic':         { h: 1.45, w: 1300 },  // it is, in fact, a car
+    'ice queen':           { h: 1.80, w: 64 },
+    'juggernaut':          { h: 2.40, w: 1100 },  // unstoppable ≈ immovable
+    'ki fighter':          { h: 1.75, w: 80 },
+    'king arthur':         { h: 1.85, w: 130 },   // crown, plate, Excalibur
+    'king kong':           { h: 15.0, w: 8000 },
+    'minotaur':            { h: 2.40, w: 280 },
+    'necromancer':         { h: 1.80, w: 65 },
+    'occulus':             { h: 1.50, w: 40 },    // floating eye
+    'quarterback':         { h: 1.90, w: 110 },
+    'robinhood':           { h: 1.80, w: 75 },
+    'santa clause':        { h: 1.80, w: 120 },
+    'super sentai':        { h: 1.80, w: 78 },
+    'symbiote':            { h: 1.90, w: 95 },
+    'valkraye':            { h: 1.90, w: 85 },
+    'watcher':             { h: 2.00, w: 50 },
+};
+
 const JOB_MODIFIERS = {
     'Warrior': {
         hp: 120,
@@ -4627,6 +4734,228 @@ const SPELL_LIBRARY = [
         aoeRadius: 1,
         shieldHp: 200,
         desc: 'Project a psychic bubble over a 3x3 area. Allies inside gain a shared shield (200 HP) that absorbs incoming damage until destroyed.'
+    },
+
+    /* ── Terraforming pass (2026-07-07): block building ──────────────────
+       kind 'placeBlock' stacks ONE voxel of the spell's material on the
+       target column (+1 height, lifting any occupant), or fills a water
+       surface into a stepping stone. Costs banked materials (salvage
+       economy: chop trees → wood, smash rock/demolish → stone, wreck
+       machines → metal). Material identity matters: timber burns and
+       shatters when units crash through it, stone holds, steel conducts
+       lightning across connected metal. */
+    {
+        id: 'timberBlock',
+        spellType: 'human',
+        element: 'earth',
+        name: 'Timber Block',
+        type: 'utility',
+        cost: 12,
+        equipCost: 10,
+        apCost: 1,
+        range: 3,
+        kind: 'placeBlock',
+        terrainType: 'wood_planks',
+        materialCost: { wood: 1 },
+        tier: 'I',
+        school: 'Harvester',
+        classRestrictions: ['Harvester', 'Engineer'],
+        desc: 'Stack a wooden block (+1 height) on any tile in range — costs 1 🪵. Lifts whoever stands there; dropped into water it becomes a stepping stone. Timber burns, and bodies knocked into it smash straight through.'
+    },
+    {
+        id: 'stoneBlock',
+        spellType: 'human',
+        element: 'earth',
+        name: 'Stone Block',
+        type: 'utility',
+        cost: 14,
+        equipCost: 10,
+        apCost: 1,
+        range: 3,
+        kind: 'placeBlock',
+        terrainType: 'cobblestone',
+        materialCost: { stone: 1 },
+        tier: 'I',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Stack a stone block (+1 height) on any tile in range — costs 1 🪨. Lifts whoever stands there; fills water into a stepping stone. Fireproof, and only the heaviest brutes crash through it.'
+    },
+    {
+        id: 'steelBlock',
+        spellType: 'tech',
+        element: 'metal',
+        name: 'Steel Block',
+        type: 'utility',
+        cost: 16,
+        equipCost: 12,
+        apCost: 1,
+        range: 3,
+        kind: 'placeBlock',
+        terrainType: 'metal',
+        materialCost: { metal: 1 },
+        tier: 'II',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Stack a steel block (+1 height) — costs 1 ⚙️. Lifts whoever stands there; fills water into a platform. Steel CONDUCTS: lightning striking any connected metal arcs into every unit standing on it.'
+    },
+
+    /* ── Terraforming pass: prebuilt voxel structures ─────────────────────
+       kind 'buildStructure' stamps a STRUCTURE_TEMPLATES prefab oriented by
+       the caster→target direction. The ghost preview shows the exact
+       blocks before you click. */
+    {
+        id: 'fieldBridge',
+        spellType: 'tech',
+        element: 'earth',
+        name: 'Field Bridge',
+        type: 'utility',
+        cost: 20,
+        equipCost: 12,
+        apCost: 1,
+        range: 3,
+        kind: 'buildStructure',
+        structure: 'bridgeSpan',
+        materialCost: { wood: 2 },
+        tier: 'I',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Span water or a chasm with a timber deck up to 4 tiles long (2 🪵). Aim at the gap — the bridge runs away from you at your standing height until it finds the far shore.'
+    },
+    {
+        id: 'watchtower',
+        spellType: 'tech',
+        element: 'earth',
+        name: 'Watchtower',
+        type: 'utility',
+        cost: 30,
+        equipCost: 15,
+        apCost: 1,
+        range: 2,
+        kind: 'buildStructure',
+        structure: 'watchtower',
+        materialCost: { stone: 2 },
+        tier: 'II',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Raise a 2-high stone lookout with a climbing step on your side (2 🪨). The peak counts as a mountain top: +1 attack range. Instant sniper nest — until someone smashes the base.'
+    },
+    {
+        id: 'timberSteps',
+        spellType: 'human',
+        element: 'earth',
+        name: 'Timber Steps',
+        type: 'utility',
+        cost: 15,
+        equipCost: 10,
+        apCost: 1,
+        range: 2,
+        kind: 'buildStructure',
+        structure: 'stairway',
+        materialCost: { wood: 1 },
+        tier: 'I',
+        school: 'Harvester',
+        classRestrictions: ['Harvester', 'Engineer'],
+        desc: 'Build +1/+2 wooden steps climbing away from you (1 🪵) — a walkable path onto ledges, walls and high ground that would otherwise need a jump.'
+    },
+    {
+        id: 'bulwarkRing',
+        spellType: 'tech',
+        element: 'earth',
+        name: 'Bulwark Ring',
+        type: 'utility',
+        cost: 55,
+        equipCost: 25,
+        apCost: 2,
+        range: 3,
+        kind: 'buildStructure',
+        structure: 'fortRing',
+        materialCost: { stone: 4 },
+        cooldownRounds: 3,
+        tier: 'III',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Slam a ring of 2-high castle wall out of the earth around the target tile (4 🪨). Box a boss in or bunker your carrier — tiles with units stay open, so the ring is only as tight as the battlefield lets it be.'
+    },
+
+    /* ── Terraforming pass: trap arsenal ──────────────────────────────────
+       kind 'placeTrap' hides a charge on an empty tile (visible only to
+       your team). The first ENEMY to step on it springs it; airborne units
+       glide over. Each trap warps the fight a different way. */
+    {
+        id: 'snareTrap',
+        spellType: 'human',
+        element: 'nature',
+        name: 'Snare Trap',
+        type: 'utility',
+        cost: 20,
+        equipCost: 10,
+        apCost: 1,
+        range: 2,
+        kind: 'placeTrap',
+        trapType: 'spike',
+        dmg: 90,
+        maxActivePerCaster: 2,
+        tier: 'I',
+        school: 'Agent',
+        classRestrictions: ['Agent', 'Harvester'],
+        desc: 'Hide a spring-loaded spike snare (max 2 active). The first enemy to step on it takes damage and is ROOTED in place for 2 turns — right where you want them.'
+    },
+    {
+        id: 'frostMine',
+        spellType: 'anomaly',
+        element: 'ice',
+        name: 'Frost Mine',
+        type: 'utility',
+        cost: 25,
+        equipCost: 12,
+        apCost: 1,
+        range: 2,
+        kind: 'placeTrap',
+        trapType: 'frost',
+        dmg: 60,
+        maxActivePerCaster: 2,
+        tier: 'I',
+        school: 'Black Mage',
+        classRestriction: 'Black Mage',
+        desc: 'Bury a freezing charge (max 2 active). The triggering enemy takes damage and is stunned a turn while the surrounding 3×3 flash-freezes to slick ice — shatter it, slide on it, or melt it later.'
+    },
+    {
+        id: 'tremorCharge',
+        spellType: 'tech',
+        element: 'earth',
+        name: 'Tremor Charge',
+        type: 'utility',
+        cost: 25,
+        equipCost: 12,
+        apCost: 1,
+        range: 2,
+        kind: 'placeTrap',
+        trapType: 'tremor',
+        dmg: 50,
+        maxActivePerCaster: 2,
+        tier: 'II',
+        school: 'Engineer',
+        classRestriction: 'Engineer',
+        desc: 'Plant a seismic charge (max 2 active). When an enemy steps on it the ground COLLAPSES 2 levels under their feet — blast damage plus the fall, and adjacent water floods the fresh pit.'
+    },
+    {
+        id: 'magnetMine',
+        spellType: 'tech',
+        element: 'lightning',
+        name: 'Magnet Mine',
+        type: 'utility',
+        cost: 30,
+        equipCost: 15,
+        apCost: 1,
+        range: 2,
+        kind: 'placeTrap',
+        trapType: 'magnet',
+        dmg: 55,
+        maxActivePerCaster: 2,
+        tier: 'II',
+        school: 'Agent',
+        classRestrictions: ['Agent', 'Engineer'],
+        desc: 'Conceal a magnetic pulse charge (max 2 active). The trigger shocks its victim and DRAGS every unit within 2 tiles one step toward the mine — bunch them up, then drop the follow-up on the pile.'
     }
 ];
 const SPELL_BY_ID = Object.fromEntries(SPELL_LIBRARY.map(spell => [spell.id, spell]));
@@ -4635,6 +4964,65 @@ const SPELL_EQUIP_REQUIREMENTS = {};
 
 function equipmentMeetsSpellReq(equipment, spellId) { return true; }
 function unitMeetsSpellEquipReq(unit, spellId) { return true; }
+
+/* ── STRUCTURE_TEMPLATES (2026-07-07 terraforming pass) ────────────────────
+   Voxel prefabs for kind:'buildStructure' spells. Local frame: +x = away
+   from the caster (through the target tile), +y = caster's right; battle.js
+   _structurePlanFor rotates the footprint to the cast direction and the
+   ghost preview shows the exact resulting blocks.
+   - kind 'bridge': a walkable deck at the caster's standing height, extending
+     up to `length` tiles over water/chasm until it meets the far shore.
+   - kind 'blocks': each entry stacks `dz` levels of `terrain` on the tile's
+     current top (optional `topTerrain` for the crowning block). Tiles holding
+     units are skipped — structures never crush or trap a body. */
+const STRUCTURE_TEMPLATES = {
+    bridgeSpan: {
+        name: 'Field Bridge',
+        kind: 'bridge',
+        length: 4,
+        deckTerrain: 'wood_planks'
+    },
+    watchtower: {
+        name: 'Watchtower',
+        kind: 'blocks',
+        blocks: [
+            { dx: 0,  dy: 0, dz: 2, terrain: 'cobblestone', topTerrain: 'mountain_top' },
+            { dx: -1, dy: 0, dz: 1, terrain: 'cobblestone' }   // climbing step, caster side
+        ]
+    },
+    stairway: {
+        name: 'Timber Steps',
+        kind: 'blocks',
+        blocks: [
+            { dx: 0, dy: 0, dz: 1, terrain: 'wood_planks' },
+            { dx: 1, dy: 0, dz: 2, terrain: 'wood_planks' }    // rises away from the caster
+        ]
+    },
+    fortRing: {
+        name: 'Bulwark Ring',
+        kind: 'blocks',
+        blocks: [
+            { dx: -1, dy: -1, dz: 2, terrain: 'castle_wall' },
+            { dx:  0, dy: -1, dz: 2, terrain: 'castle_wall' },
+            { dx:  1, dy: -1, dz: 2, terrain: 'castle_wall' },
+            { dx: -1, dy:  0, dz: 2, terrain: 'castle_wall' },
+            { dx:  1, dy:  0, dz: 2, terrain: 'castle_wall' },
+            { dx: -1, dy:  1, dz: 2, terrain: 'castle_wall' },
+            { dx:  0, dy:  1, dz: 2, terrain: 'castle_wall' },
+            { dx:  1, dy:  1, dz: 2, terrain: 'castle_wall' }
+        ]
+    }
+};
+
+/* Earth-titan race variant of the Engineer's Bulwark Ring (golem / giant /
+   minotaur) — same prefab, race-flavored. */
+const SHARED_BULWARK_RING = {
+    id: 'sharedBulwarkRing', spellType: 'human', element: 'earth', name: 'Bulwark Ring',
+    type: 'utility', cost: 55, apCost: 2, range: 3,
+    kind: 'buildStructure', structure: 'fortRing',
+    materialCost: { stone: 4 }, cooldownRounds: 3,
+    desc: 'Slam a ring of 2-high castle wall out of the earth around the target tile (4 🪨). Tiles with units stay open.'
+};
 
 const SHARED_FLASH_FREEZE = {
     id: 'sharedFlashFreeze', spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
@@ -5254,6 +5642,7 @@ const RACE_ABILITIES = {
     ],
 
     'giant': [
+        SHARED_BULWARK_RING,
         { id: 'raceTitanStep', spellType: 'human', element: 'earth', name: 'Titan Step',
           type: 'damage', cost: 30, dmg: 112, range: 0,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
@@ -6409,6 +6798,7 @@ const RACE_ABILITIES = {
     ],
 
     'golem': [
+        SHARED_BULWARK_RING,
         { id: 'raceBoulderHurl', spellType: 'human', name: 'Boulder Hurl',
           type: 'damage', cost: 25, dmg: 130, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -6615,6 +7005,7 @@ const RACE_ABILITIES = {
     ],
 
     'minotaur': [
+        SHARED_BULWARK_RING,
         { id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
           type: 'damage', cost: 25, dmg: 140, range: 4,
           kind: 'dash', damageType: 'physical',
@@ -10150,12 +10541,12 @@ const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['pistolWhip', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
     'Warrior':      ['fortify', 'guardSlash', 'warCry', 'shieldBash', 'dragonSlash', 'judgment'],
-    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'meteor', 'thunderstorm'],
+    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
     'White Mage':  ['heal1', 'radiantBolt', 'cleanse', 'exorcism', 'healAll'],
-    'Agent':       ['knifeThrow', 'placeBomb', 'sneakSlash', 'shadowLunge', 'empBurst'],
+    'Agent':       ['knifeThrow', 'placeBomb', 'snareTrap', 'sneakSlash', 'shadowLunge', 'magnetMine', 'empBurst'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
-    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'wildwood', 'timberStrike', 'leechSeed', 'overgrowth'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'freeEnergy', 'fiveGTower', 'overclock'],
+    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'timberBlock', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'stoneBlock', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'steelBlock', 'fiveGTower', 'bulwarkRing', 'overclock'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],

@@ -624,7 +624,9 @@ const ThreeRenderer = (function () {
         '  float grid = smoothstep(0.45, 0.5, gridX) + smoothstep(0.45, 0.5, gridY);',
         '  grid = min(grid, 1.0) * 0.18;',
         '',
-        '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2);',
+        // Calmer highlights (2026-07-07 readability pass): tiny pulse — the
+        // old ±12% throb made the whole board feel like it was shouting.
+        '  float pulse = 0.94 + 0.06 * sin(uTime * 2.2);',
         '',
         '  float bracketLen = 0.22;',
         '  float bracketW = 0.045;',
@@ -664,15 +666,19 @@ const ThreeRenderer = (function () {
         '    }',
         '  }',
         '',
-        '  float fill = 0.55 * pulse;',
+        // Readability pass: quieter interior fill (tiles read as crisp borders
+        // + a soft wash instead of a solid glowing slab), and much less
+        // wash-toward-white so each highlight KEEPS ITS COLOR — color is how
+        // the player tells move/strike/hazard/terrain apart at a glance.
+        '  float fill = 0.34 * pulse;',
         '  float border = (borderHard * 1.0 + borderSoft * 0.5) * uEdgeGlow * pulse;',
-        '  float glow = innerGlow * uEdgeGlow * 0.35;',
+        '  float glow = innerGlow * uEdgeGlow * 0.25;',
         '',
         '  float alpha = (fill + border + glow + grid + brackets + dots) * uOpacity;',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
         '  float bright = border * 0.5 + brackets * 0.65 + dots * 0.85;',
-        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.75));',
+        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.45));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
     ].join('\n');
@@ -4601,6 +4607,13 @@ const ThreeRenderer = (function () {
                 h = _hashInt(h, 4); h = _hashInt(h, r.x); h = _hashInt(h, r.y); h = _hashVal(h, r.owner);
             }
         }
+        if (state.traps) {
+            for (var tpi = 0; tpi < state.traps.length; tpi++) {
+                var tp = state.traps[tpi];
+                h = _hashInt(h, 8); h = _hashInt(h, tp.x); h = _hashInt(h, tp.y);
+                h = _hashVal(h, tp.owner); h = _hashStr(h, tp.trapType || '');
+            }
+        }
         if (state.pixieDust) {
             for (var pdi = 0; pdi < state.pixieDust.length; pdi++) {
                 var pd = state.pixieDust[pdi];
@@ -4934,6 +4947,36 @@ const ThreeRenderer = (function () {
                 var rkey = 'dep_' + (idx++);
                 objectGroup.add(rmesh);
                 deployableMeshes.set(rkey, rmesh);
+            }
+        }
+
+        /* ── Trap arsenal sigils (2026-07-07 placeTrap) — flat SVG decals laid
+           on the tile, rendered ONLY for the trap's owner (traps are hidden
+           from the enemy, same visibility rule as warp runes). ── */
+        if (state.traps && typeof TRAP_TILE_SPRITES !== 'undefined') {
+            var _trapVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            var _trapTs = CONFIG.tileSize || BASE_TILE;
+            for (var tpi2 = 0; tpi2 < state.traps.length; tpi2++) {
+                var tpr = state.traps[tpi2];
+                if (tpr.owner !== _trapVp) continue;
+                var tSprites = TRAP_TILE_SPRITES[tpr.trapType];
+                if (!tSprites || !tSprites.length) continue;
+                var ttex = getTexture(tSprites[0]);
+                if (!ttex) continue;
+                var tmat = new THREE.MeshBasicMaterial({
+                    map: ttex, transparent: true, alphaTest: 0.01,
+                    side: THREE.DoubleSide, depthWrite: false
+                });
+                var tmesh = new THREE.Mesh(new THREE.PlaneGeometry(_trapTs * 0.86, _trapTs * 0.86), tmat);
+                tmesh.rotation.x = -Math.PI / 2;
+                var ttopY = tileTopY(tpr.x, tpr.y);
+                tmesh.position.set(tpr.x * _trapTs + _trapTs / 2, ttopY + 0.6, tpr.y * _trapTs + _trapTs / 2);
+                tmesh._ew_deployable = true;
+                tmesh._ew_groundDecal = true;
+                tmesh._ew_depX = tpr.x; tmesh._ew_depY = tpr.y;
+                var tkey = 'dep_' + (idx++);
+                objectGroup.add(tmesh);
+                deployableMeshes.set(tkey, tmesh);
             }
         }
 
@@ -8170,7 +8213,10 @@ const ThreeRenderer = (function () {
             if (!meshes || !meshes.length) continue;
             var baseOp = _previewBaseOpacity[name] || 0.4;
 
-            var pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 5.0));
+            // Readability pass: shallow, slower breathing (0.7..1.0) — the old
+            // 0.4..1.0 @5Hz strobe made range previews the loudest thing on
+            // screen when they should just quietly mark reachable tiles.
+            var pulse = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2.6));
             var op = baseOp * pulse;
             for (var i = 0; i < meshes.length; i++) {
                 var mat = meshes[i].material;
@@ -8211,6 +8257,108 @@ const ThreeRenderer = (function () {
         setOverlay('telegraph', [{ x: tx, y: ty }], 0xffff44, 0.45);
         if (_telegraphTimer) clearTimeout(_telegraphTimer);
         _telegraphTimer = setTimeout(function() { clearOverlay('telegraph'); _telegraphTimer = null; }, 450);
+    }
+
+    // ── Terrain-change ghost preview (2026-07-07 terraforming pass) ──────────
+    // Voxel "what will happen" hologram for terrain spells: translucent boxes +
+    // crisp edge lines showing EXACTLY how a spell reshapes the board before
+    // the player commits. Footprints come from battle.js
+    // predictTerrainSpellChanges() so preview and execution share one source
+    // of truth. changes = [{ x, y, mode:'raise'|'lower'|'paint', dz, color }].
+    //   raise → stacked cube ghosts on TOP of the current surface (new blocks)
+    //   lower → tinted volume carved DOWN from the surface (removed ground)
+    //   paint → flat surface decal (terrain type swap, no height change)
+    var _terrainGhostGroup = null;
+    var _terrainGhostFillMats = [];
+    var _TG_DEFAULTS = { raise: 0x6fe3ff, lower: 0xff7a5c, paint: 0x9fd8ff };
+
+    function showTerrainGhost(changes) {
+        clearTerrainGhost();
+        if (!highlightGroup || !changes || !changes.length) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var lv = ts * ELEV_STEP_RATIO;             // world height of one level
+        var g = new THREE.Group();
+        g.name = 'terrainGhost';
+        for (var i = 0; i < changes.length; i++) {
+            var ch = changes[i];
+            if (!ch) continue;
+            var mode = ch.mode || 'paint';
+            var color = (ch.color !== undefined && ch.color !== null) ? ch.color : (_TG_DEFAULTS[mode] || 0x9fd8ff);
+            var cx = ch.x * ts + ts / 2, cz = ch.y * ts + ts / 2;
+            var topY = tileTopY(ch.x, ch.y);
+            if (mode === 'raise' || mode === 'lower') {
+                var levels = Math.max(1, Math.round(Math.abs(ch.dz || 1)));
+                // One inset cube PER LEVEL (not one merged slab) so the preview
+                // reads as minecraft blocks and the exact new height is countable.
+                for (var li = 0; li < levels; li++) {
+                    var boxGeo = new THREE.BoxGeometry(ts * 0.90, lv * 0.92, ts * 0.90);
+                    var fillMat = new THREE.MeshBasicMaterial({
+                        color: color, transparent: true, opacity: 0.22,
+                        depthWrite: false
+                    });
+                    var box = new THREE.Mesh(boxGeo, fillMat);
+                    var yC = (mode === 'raise')
+                        ? topY + li * lv + lv / 2
+                        : topY - li * lv - lv / 2;
+                    box.position.set(cx, yC, cz);
+                    box.renderOrder = 5;
+                    g.add(box);
+                    var edgeMat = new THREE.LineBasicMaterial({
+                        color: color, transparent: true, opacity: 0.85, depthWrite: false
+                    });
+                    var edges = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), edgeMat);
+                    edges.position.copy(box.position);
+                    edges.renderOrder = 6;
+                    g.add(edges);
+                    _terrainGhostFillMats.push(fillMat);
+                }
+            } else {
+                // paint: flat decal riding just above the surface
+                var pGeo = new THREE.PlaneGeometry(ts * 0.88, ts * 0.88);
+                var pMat = new THREE.MeshBasicMaterial({
+                    color: color, transparent: true, opacity: 0.30,
+                    depthWrite: false, side: THREE.DoubleSide
+                });
+                var plane = new THREE.Mesh(pGeo, pMat);
+                plane.rotation.x = -Math.PI / 2;
+                plane.position.set(cx, topY + 0.9, cz);
+                plane.renderOrder = 5;
+                g.add(plane);
+                var pEdgeMat = new THREE.LineBasicMaterial({
+                    color: color, transparent: true, opacity: 0.8, depthWrite: false
+                });
+                var pEdges = new THREE.LineSegments(new THREE.EdgesGeometry(pGeo), pEdgeMat);
+                pEdges.rotation.x = -Math.PI / 2;
+                pEdges.position.set(cx, topY + 1.0, cz);
+                pEdges.renderOrder = 6;
+                g.add(pEdges);
+                _terrainGhostFillMats.push(pMat);
+            }
+        }
+        highlightGroup.add(g);
+        _terrainGhostGroup = g;
+    }
+
+    function clearTerrainGhost() {
+        if (!_terrainGhostGroup) return;
+        if (highlightGroup) highlightGroup.remove(_terrainGhostGroup);
+        _terrainGhostGroup.traverse(function (o) {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) o.material.dispose();
+        });
+        _terrainGhostGroup = null;
+        _terrainGhostFillMats.length = 0;
+    }
+
+    function _updateTerrainGhostPulse() {
+        if (!_terrainGhostFillMats.length) return;
+        var t = performance.now() / 1000.0;
+        // gentle breath on the fills only — the edge lines stay solid so the
+        // silhouette never flickers
+        var op = 0.16 + 0.10 * (0.5 + 0.5 * Math.sin(t * 2.4));
+        for (var i = 0; i < _terrainGhostFillMats.length; i++) {
+            _terrainGhostFillMats[i].opacity = op;
+        }
     }
 
     // ── Holographic action-plan ghosts ────────────────────────────────────────
@@ -17247,6 +17395,7 @@ const ThreeRenderer = (function () {
         _updateZoneBorderPulse();
 
         _updatePreviewOverlayPulse();
+        _updateTerrainGhostPulse();
 
         _updateActionPlanPulse();
 
@@ -17684,6 +17833,8 @@ const ThreeRenderer = (function () {
         drawArrow3D, drawPathArrow3D, clearArrows3D,
 
         showGhostUnit, clearGhostUnit,
+
+        showTerrainGhost, clearTerrainGhost,
 
         unitSurfaceY, tileTopY,
 

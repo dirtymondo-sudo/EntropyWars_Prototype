@@ -204,7 +204,8 @@
 
             if (c.spell?.kind) {
                 const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
-                    'deployPair', 'warpRune', 'remoteView', 'scan', 'encore'];
+                    'deployPair', 'warpRune', 'remoteView', 'scan', 'encore',
+                    'placeTrap', 'placeBlock', 'buildStructure'];
                 if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
                     c.score *= 0.1;
                 }
@@ -1549,6 +1550,39 @@
         if (kind === 'warpRune' && target) {
             const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
             return nearE > 0 ? 10 + nearE * 6 : 0;
+        }
+
+        // ── Terraforming kinds (2026-07-07): traps / blocks / structures ──
+        if (kind === 'placeTrap' && target) {
+            const active = (g.state.traps || []).filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType).length;
+            if (active >= (spell.maxActivePerCaster || 2)) return 0;
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
+            return nearE > 0 ? 12 + nearE * 7 + (spell.dmg || 0) * 0.08 : 0;
+        }
+
+        if (kind === 'placeBlock' && target) {
+            if (spell.materialCost && typeof g.canAffordMaterials === 'function' &&
+                !g.canAffordMaterials(unit.player, spell.materialCost)) return 0;
+            let s = 0;
+            // Best use: raise a pillar under an allied backliner (instant high ground).
+            const allyOn = [unit, ...(v.allies || [])].find(a => !a.dead && a.x === target.x && a.y === target.y);
+            if (allyOn && ['Sniper', 'Gunslinger', 'Black Mage'].includes(allyOn.cls)) s += 22;
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
+            s += nearE * 4;
+            return s;
+        }
+
+        if (kind === 'buildStructure' && target) {
+            if (spell.materialCost && typeof g.canAffordMaterials === 'function' &&
+                !g.canAffordMaterials(unit.player, spell.materialCost)) return 0;
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 3).length;
+            let s = 8 + nearE * 5;
+            if (spell.structure === 'fortRing') {
+                const boxed = v.visibleEnemies.find(e => e.x === target.x && e.y === target.y);
+                if (boxed) s += 25 + getTargetPriority(boxed, unit, v) * 0.3;
+            }
+            if (spell.structure === 'watchtower' && ['Sniper', 'Gunslinger', 'Engineer'].includes(unit.cls)) s += 10;
+            return s;
         }
 
         if (kind === 'warCry') {
@@ -3566,6 +3600,77 @@
             });
 
             return inRange.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
+        }
+
+        // ── Terraforming kinds (2026-07-07) — tile pickers ──
+        if (kind === 'placeTrap') {
+            // Traps need an EMPTY tile; pick the free tile in range closest to
+            // the most enemies (choke seeding, not random scatter).
+            const R = _effRange(unit, spell) || 2;
+            let bestTile = null, bestScore = 0;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    if (g.unitAt(tx, ty)) continue;
+                    let score = 0;
+                    for (const e of v.visibleEnemies) {
+                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        if (eDist <= 1) score += 12;
+                        else if (eDist <= 3) score += 4;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'placeBlock') {
+            // Raise a pillar under an allied backliner in range (high ground).
+            const R = _effRange(unit, spell) || 3;
+            if (!v.visibleEnemies.length) return null;
+            const backline = [unit, ...(v.allies || [])]
+                .filter(a => !a.dead && ['Sniper', 'Gunslinger', 'Black Mage'].includes(a.cls))
+                .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R);
+            return backline.length ? { x: backline[0].x, y: backline[0].y } : null;
+        }
+
+        if (kind === 'buildStructure') {
+            const R = _effRange(unit, spell) || 3;
+            if (spell.structure === 'fortRing') {
+                // Box the juiciest enemy in range.
+                const inR = v.visibleEnemies.filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= R);
+                return inR.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
+            }
+            if (spell.structure === 'bridgeSpan') {
+                // Needs a gap: nearest water/chasm tile in range.
+                for (let d = 1; d <= R; d++) {
+                    for (let dy = -d; dy <= d; dy++) {
+                        for (let dx = -d; dx <= d; dx++) {
+                            if (Math.abs(dx) + Math.abs(dy) !== d) continue;
+                            const tx = unit.x + dx, ty = unit.y + dy;
+                            if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                            const t = g.getTerrainAt(tx, ty);
+                            if (t === 'water' || t === 'deep_water' || t === 'chasm') return { x: tx, y: ty };
+                        }
+                    }
+                }
+                return null;
+            }
+            // Watchtower / steps: a free tile beside us, toward the enemy.
+            if (!v.visibleEnemies.length) return null;
+            const e0 = v.visibleEnemies[0];
+            const sx = Math.sign(e0.x - unit.x), sy = Math.sign(e0.y - unit.y);
+            const cands = [{ x: unit.x + sx, y: unit.y + sy }, { x: unit.x + sx, y: unit.y }, { x: unit.x, y: unit.y + sy }];
+            for (const c of cands) {
+                if (c.x < 0 || c.y < 0 || c.x >= g.bw() || c.y >= g.bh()) continue;
+                if (c.x === unit.x && c.y === unit.y) continue;
+                if (g.unitAt(c.x, c.y)) continue;
+                return c;
+            }
+            return null;
         }
 
         if (kind === 'summonWeather') return v.visibleEnemies[0] || null;
