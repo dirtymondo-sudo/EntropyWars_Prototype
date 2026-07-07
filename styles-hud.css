@@ -821,65 +821,104 @@
 
 
         /* ══════════════════════════════════════════════ */
-        /* ══ CODEX — CLASSIFIED DOSSIER ══             */
+        /* ══ CODEX & SHOP — INTELLIGENCE DIVISION ══    */
         /* ══════════════════════════════════════════════ */
+        /* Both screens are full-bleed terminals: a roster rail on the left and
+           a dossier panel on the right. The dossier leads with a HERO STAGE
+           (the selected vessel, big, party-builder style), the file body
+           scrolls underneath, and the shop's action bar is pinned — the
+           unlock/confirm buttons are always on screen, never scrolled for. */
+
+        #codexPage, #shopPage { align-items: stretch; justify-content: stretch; }
+        #codexPage > .ms-container, #shopPage > .ms-container { width: 100%; }
         .codex-container { padding: 0 !important; }
-        .codex-container .ms-top-bar { padding: 12px 16px 0; margin-bottom: 8px; }
+        .codex-container .ms-top-bar {
+            padding: 10px 16px; margin-bottom: 0; flex-shrink: 0;
+            border-bottom: 1px solid rgba(184,160,96,0.16);
+            background: linear-gradient(180deg, rgba(14,12,6,0.55), rgba(0,0,0,0.2));
+        }
+        .codex-container .ms-title-text {
+            font-family: 'Cinzel', serif; font-size: 12px;
+            letter-spacing: 3px; color: #b8a060;
+        }
         .codex-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
 
-        /* ── Filters ── */
-        .cdx-filters {
-            display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 10px;
-            border-bottom: 1px solid rgba(140,140,200,0.06);
+        /* ── Toolbar: search / filter chips / collection meter ── */
+        .cdx-toolbar {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
+            padding: 8px 16px; flex-shrink: 0;
+            border-bottom: 1px solid rgba(184,160,96,0.10);
+            background: rgba(8,7,4,0.35);
         }
         .cdx-filter-group { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-        .cdx-filter-label { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-right: 2px; font-weight: 600; }
+        .cdx-filter-label { font-size: 9px; letter-spacing: 1.5px; color: rgba(170,160,140,0.55); margin-right: 3px; font-weight: 600; }
         .cdx-filter-btn {
-            font-size: 9px; letter-spacing: 0.5px; padding: 3px 8px;
-            background: rgba(140,140,200,0.04); border: 1px solid rgba(140,140,200,0.08);
-            border-radius: 3px; color: var(--muted); cursor: pointer; font-family: inherit;
+            font-size: 10px; letter-spacing: 0.8px; padding: 4px 10px;
+            background: rgba(184,160,96,0.05); border: 1px solid rgba(184,160,96,0.14);
+            border-radius: 3px; color: rgba(200,190,168,0.78); cursor: pointer; font-family: inherit;
             transition: all 0.15s;
         }
-        .cdx-filter-btn:hover { border-color: rgba(140,140,200,0.2); color: var(--text); }
-        .cdx-filter-btn.active { background: rgba(96,208,160,0.1); border-color: rgba(96,208,160,0.3); color: #60d0a0; }
-
-        /* ── Layout: list + detail ── */
-        .cdx-layout {
-            display: flex; flex: 1; min-height: 0; overflow: hidden;
+        .cdx-filter-btn:hover { border-color: rgba(255,216,106,0.45); color: #ffd86a; background: rgba(184,160,96,0.10); }
+        .cdx-filter-btn.active {
+            background: rgba(255,216,106,0.12); border-color: rgba(255,216,106,0.55); color: #ffd86a;
+            box-shadow: 0 0 8px rgba(255,216,106,0.12);
         }
+        .cdx-search {
+            background: rgba(0,0,0,0.45); border: 1px solid rgba(184,160,96,0.20);
+            border-radius: 3px; color: #e8dfc0; padding: 5px 10px; width: 168px;
+            font-family: 'DotGothic16', monospace; font-size: 12px;
+        }
+        .cdx-search:focus { outline: none; border-color: rgba(255,216,106,0.5); box-shadow: 0 0 8px rgba(255,216,106,0.12); }
+        .cdx-search::placeholder { color: rgba(170,160,140,0.4); }
+
+        /* collection meter (right end of the toolbar) */
+        .cdx-meter { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 200px; }
+        .cdx-meter-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; color: #b8a060; white-space: nowrap; }
+        .cdx-meter-track { flex: 1; height: 6px; min-width: 70px; background: rgba(0,0,0,0.55); border: 1px solid rgba(184,160,96,0.25); border-radius: 3px; overflow: hidden; }
+        .cdx-meter-fill { height: 100%; background: linear-gradient(90deg, #8a7030, #ffd86a); box-shadow: 0 0 6px rgba(255,216,106,0.4); }
+        .cdx-meter-count { font-size: 11px; color: #ffd86a; font-weight: 600; white-space: nowrap; }
+
+        /* ── Layout: roster rail + dossier panel ── */
+        .cdx-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
         .cdx-list {
-            width: 260px; min-width: 220px; overflow-y: auto; overflow-x: hidden;
-            border-right: 1px solid rgba(140,140,200,0.06);
-            padding: 8px 0;
-            scrollbar-width: thin; scrollbar-color: rgba(140,140,200,0.15) transparent;
+            width: 292px; min-width: 236px; overflow-y: auto; overflow-x: hidden;
+            border-right: 1px solid rgba(184,160,96,0.10);
+            padding: 6px 0 14px;
+            background: linear-gradient(90deg, rgba(0,0,0,0.30), transparent);
+            scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.25) transparent;
         }
-        .cdx-detail {
-            flex: 1; overflow-y: auto; overflow-x: hidden;
-            padding: 0;
-            scrollbar-width: thin; scrollbar-color: rgba(140,140,200,0.15) transparent;
+        .cdx-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .cdx-detail-scroll {
+            flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+            scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.25) transparent;
         }
 
-        /* ── List items ── */
+        /* ── Roster list items (codex rail) ── */
         .cdx-list-item {
-            display: flex; align-items: center; gap: 10px; padding: 8px 14px;
-            cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+            display: flex; align-items: center; gap: 10px; padding: 7px 14px;
+            cursor: pointer; transition: background 0.15s, border-color 0.15s;
+            border-left: 3px solid transparent;
         }
-        .cdx-list-item:hover { background: rgba(140,140,200,0.04); }
+        .cdx-list-item:hover { background: rgba(255,216,106,0.05); }
         .cdx-list-item.selected {
-            background: rgba(96,208,160,0.06); border-left-color: #60d0a0;
+            background: linear-gradient(90deg, rgba(255,216,106,0.10), transparent);
+            border-left-color: #ffd86a;
         }
+        .cdx-list-locked .cdx-list-sprite { border-color: rgba(120,110,90,0.18); }
         .cdx-list-sprite {
-            width: 42px; height: 42px; background-size: contain; background-position: center bottom;
+            width: 44px; height: 44px; background-size: contain; background-position: center bottom;
             background-repeat: no-repeat; flex-shrink: 0;
-            border: 1px solid rgba(140,140,200,0.1); border-radius: 3px;
-            background-color: rgba(0,0,0,0.3);
+            border: 1px solid rgba(184,160,96,0.16); border-radius: 3px;
+            background-color: rgba(0,0,0,0.35);
             image-rendering: pixelated;
         }
         .cdx-list-info { flex: 1; min-width: 0; }
         .cdx-list-name {
             font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: 0.5px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: flex; align-items: center;
         }
+        .cdx-list-lock { margin-left: auto; font-size: 12px; opacity: 0.7; }
         .cdx-list-tags { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
         .cdx-list-faction {
             font-size: 8px; letter-spacing: 1px; font-weight: 700; padding: 1px 5px;
@@ -892,203 +931,278 @@
         .cdx-list-class { font-size: 8px; color: rgba(160,150,140,0.4); letter-spacing: 1px; margin-top: 1px; text-transform: uppercase; }
         .cdx-empty { padding: 30px; text-align: center; color: var(--muted); font-size: 11px; letter-spacing: 1px; }
 
-        /* ── Dossier detail ── */
+        /* ── HERO STAGE — the selected vessel, staged like it matters ── */
+        .cdx-hero {
+            display: flex; gap: 20px; flex-shrink: 0; position: relative;
+            padding: 14px 24px 10px 16px;
+            border-bottom: 1px solid rgba(184,160,96,0.16);
+            background:
+                radial-gradient(ellipse at 20% 80%, var(--cdx-fc-dim, rgba(184,160,96,0.08)) 0%, transparent 55%),
+                linear-gradient(180deg, rgba(10,9,5,0.35), rgba(0,0,0,0.12));
+            height: clamp(200px, 32vh, 320px);
+        }
+        .cdx-hero-stage {
+            position: relative; flex: 0 0 clamp(170px, 21vw, 300px);
+            display: flex; align-items: flex-end; justify-content: center; min-width: 0;
+        }
+        .cdx-hero-glow {
+            position: absolute; left: 50%; top: 54%; transform: translate(-50%,-50%);
+            width: 92%; aspect-ratio: 1; border-radius: 50%;
+            background: radial-gradient(circle, var(--cdx-fc-glow, rgba(184,160,96,0.20)), transparent 62%);
+            filter: blur(18px); pointer-events: none;
+        }
+        .cdx-hero-ground {
+            position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+            width: 68%; height: 13px; border-radius: 50%;
+            background: radial-gradient(ellipse, var(--cdx-fc-ground, rgba(184,160,96,0.40)), transparent 70%);
+            filter: blur(3px); pointer-events: none;
+        }
+        .cdx-hero-sprite {
+            position: relative; z-index: 1; width: 100%; height: 96%;
+            background-size: contain; background-position: center bottom; background-repeat: no-repeat;
+            image-rendering: pixelated;
+        }
+        .cdx-hero-sprite.locked { filter: brightness(0.07) saturate(0); }
+
+        .cdx-hero-id {
+            flex: 1; min-width: 0; display: flex; flex-direction: column;
+            gap: 8px; padding-top: 4px; overflow: hidden;
+        }
+        .cdx-hero-topline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .cdx-stamp {
+            display: inline-block; font-size: 10px; font-weight: 900;
+            letter-spacing: 2px; padding: 3px 10px; border: 2px solid;
+            border-radius: 3px; transform: rotate(-1deg);
+            text-transform: uppercase;
+        }
+        .cdx-stamp.space { color: #5a8898; border-color: #5a8898; background: rgba(90,136,152,0.08); }
+        .cdx-stamp.time { color: #b8a060; border-color: #b8a060; background: rgba(184,160,96,0.08); }
+        .cdx-stamp.chaos { color: #985050; border-color: #985050; background: rgba(152,80,80,0.08); }
+        .cdx-doc-id { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; }
+        .cdx-classification {
+            font-size: 9px; font-weight: 900; color: #c04040;
+            letter-spacing: 2px; padding: 2px 8px;
+            border: 1px solid rgba(192,64,64,0.3);
+            display: inline-block; background: rgba(192,64,64,0.05);
+            white-space: nowrap;
+        }
+        .cdx-subject-name {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(22px, 2.8vw, 38px); font-weight: 700;
+            letter-spacing: 3px; line-height: 1.05; color: #f0e8d0;
+            text-shadow: 0 0 26px var(--cdx-fc-glow, rgba(184,160,96,0.25));
+            display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+        }
+        .cdx-subject-role {
+            font-family: 'Cinzel', serif; font-style: italic; font-weight: 300;
+            font-size: clamp(11px, 1vw, 15px); letter-spacing: 1px;
+            color: rgba(200,190,168,0.65); text-shadow: none;
+        }
+        .cdx-hero-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .cdx-meta-tag { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+        .cdx-meta-tag b { color: var(--text); }
+        .cdx-traits-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-bottom: 6px; }
+        .cdx-trait-tag {
+            font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+            padding: 3px 10px; border-radius: 2px;
+            background: rgba(140,180,220,0.14); color: rgba(180,200,230,0.9);
+            border: 1px solid rgba(140,180,220,0.22);
+        }
+        .cdx-hero-price {
+            font-size: 14px; font-weight: 700; color: #ffd86a; letter-spacing: 0.08em;
+            padding: 4px 12px; border: 1px solid rgba(255,216,106,0.35);
+            border-radius: 3px; background: rgba(255,216,106,0.06); white-space: nowrap;
+        }
+        .cdx-hero-price.owned { color: #9fe0a0; border-color: rgba(120,230,150,0.35); background: rgba(120,230,150,0.06); }
+        .cdx-hero-price.soon { color: #9a9aae; border-color: rgba(150,150,170,0.3); background: rgba(150,150,170,0.05); }
+
+        /* ── Dossier file body (scrolls under the hero) ── */
         .cdx-dossier {
-            padding: 24px 28px 40px;
+            padding: 16px 26px 34px;
             font-family: 'Courier New', 'Courier', monospace;
             color: var(--text);
             background: repeating-linear-gradient(
                 0deg,
                 transparent,
                 transparent 23px,
-                rgba(140,140,200,0.02) 23px,
-                rgba(140,140,200,0.02) 24px
+                rgba(184,160,96,0.025) 23px,
+                rgba(184,160,96,0.025) 24px
             );
             position: relative;
         }
-        .cdx-dossier::before {
-            content: '';
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(ellipse at 30% 20%, rgba(96,208,160,0.02) 0%, transparent 60%);
-            pointer-events: none;
-        }
-
-        /* ── Header block ── */
-        .cdx-dossier-header {
-            border-bottom: 2px solid rgba(140,140,200,0.12);
-            padding-bottom: 12px; margin-bottom: 16px;
-        }
-        .cdx-stamp {
-            display: inline-block; font-size: 10px; font-weight: 900;
-            letter-spacing: 2px; padding: 4px 12px; border: 2px solid;
-            border-radius: 3px; transform: rotate(-1deg);
-            text-transform: uppercase; margin-bottom: 6px;
-        }
-        .cdx-stamp.space { color: #5a8898; border-color: #5a8898; background: rgba(90,136,152,0.08); }
-        .cdx-stamp.time { color: #b8a060; border-color: #b8a060; background: rgba(184,160,96,0.08); }
-        .cdx-stamp.chaos { color: #985050; border-color: #985050; background: rgba(152,80,80,0.08); }
-        .cdx-doc-id { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; margin-top: 4px; }
-        .cdx-classification {
-            font-size: 10px; font-weight: 900; color: #c04040;
-            letter-spacing: 2px; margin-top: 6px;
-            padding: 3px 10px; border: 1px solid rgba(192,64,64,0.3);
-            display: inline-block; background: rgba(192,64,64,0.05);
-        }
-
-        /* ── Title row with sprite ── */
-        .cdx-dossier-title-row {
-            display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;
-        }
-        .cdx-dossier-title { flex: 1; }
-        .cdx-subject-header {
-            font-size: 10px; letter-spacing: 1.5px; color: var(--muted);
-            text-transform: uppercase; font-weight: 700; margin-bottom: 4px;
-        }
-        .cdx-subject-name {
-            font-size: 22px; font-weight: 900; color: var(--text);
-            letter-spacing: 3px; line-height: 1.1; margin-bottom: 8px;
-            text-shadow: 0 0 20px rgba(96,208,160,0.15);
-        }
-        .cdx-subject-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
-        .cdx-meta-tag { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
-        .cdx-meta-tag b { color: var(--text); }
-        .cdx-type-row { display: flex; gap: 6px; margin-top: 6px; }
-        .cdx-type-badge {
-            font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
-            padding: 3px 10px; border-radius: 2px; color: #000;
-        }
-        .cdx-traits-row {
-            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
-        }
-        .cdx-trait-tag {
-            font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
-            padding: 3px 10px; border-radius: 2px;
-            background: rgba(140,180,220,0.18); color: rgba(180,200,230,0.9);
-            border: 1px solid rgba(140,180,220,0.25);
-        }
-        .cdx-sprite-frame {
-            width: 110px; flex-shrink: 0; text-align: center;
-        }
-        .cdx-sprite {
-            width: 100px; height: 120px;
-            background-size: contain; background-position: center bottom;
-            background-repeat: no-repeat; image-rendering: pixelated;
-            border: 1px solid rgba(140,140,200,0.12);
-            background-color: rgba(0,0,0,0.3);
-            margin: 0 auto 4px;
-        }
-        .cdx-sprite-label {
-            font-size: 7px; color: rgba(140,140,200,0.3); letter-spacing: 1px; text-transform: uppercase;
-        }
-
-        /* ── Sections ── */
-        .cdx-section {
-            margin-bottom: 20px; padding-top: 12px;
-            border-top: 1px solid rgba(140,140,200,0.06);
-        }
+        .cdx-section { margin-bottom: 20px; padding-top: 12px; border-top: 1px solid rgba(184,160,96,0.08); }
+        .cdx-section:first-child { border-top: none; padding-top: 2px; }
         .cdx-section-header {
             font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-            color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+            color: #b8a060; text-transform: uppercase; margin-bottom: 10px;
         }
         .cdx-lore {
             font-size: 12px; line-height: 1.7; color: rgba(208,203,192,0.85);
             text-align: justify; font-family: 'Courier New', monospace;
+            max-width: 74ch;
         }
 
-        /* ── Stat bars ── */
-        .cdx-stats-grid { display: flex; flex-direction: column; gap: 5px; }
+        /* stat bars */
+        .cdx-stats-grid { display: flex; flex-direction: column; gap: 5px; max-width: 560px; }
         .cdx-stat-row { display: flex; align-items: center; gap: 8px; }
         .cdx-stat-label {
-            width: 32px; font-size: 9px; font-weight: 800; letter-spacing: 1px;
+            width: 36px; font-size: 9px; font-weight: 800; letter-spacing: 1px;
             color: var(--muted); text-align: right; flex-shrink: 0;
         }
         .cdx-stat-bar-track {
-            flex: 1; height: 10px; background: rgba(140,140,200,0.06);
-            border-radius: 2px; overflow: hidden; border: 1px solid rgba(140,140,200,0.04);
+            flex: 1; height: 11px; background: rgba(184,160,96,0.05);
+            border-radius: 2px; overflow: hidden; border: 1px solid rgba(184,160,96,0.06);
         }
-        .cdx-stat-bar-fill {
-            height: 100%; border-radius: 1px; transition: width 0.4s ease;
-            position: relative;
-        }
+        .cdx-stat-bar-fill { height: 100%; border-radius: 1px; transition: width 0.4s ease; position: relative; }
         .cdx-stat-bar-fill::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            content: ''; position: absolute; inset: 0;
             background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
         }
-        .cdx-stat-val {
-            width: 32px; font-size: 10px; font-weight: 700; color: var(--text);
-            text-align: left; font-family: 'Courier New', monospace;
-        }
-        .cdx-stat-total {
-            font-size: 9px; letter-spacing: 1px; color: var(--muted);
-            text-align: right; margin-top: 6px; font-weight: 600;
-        }
+        .cdx-stat-val { width: 36px; font-size: 10px; font-weight: 700; color: var(--text); text-align: left; font-family: 'Courier New', monospace; }
+        .cdx-stat-total { font-size: 9px; letter-spacing: 1px; color: var(--muted); text-align: right; margin-top: 6px; font-weight: 600; max-width: 560px; }
 
-        /* ── Type matchups ── */
+        /* type matchups */
         .cdx-matchups { display: flex; flex-direction: column; gap: 6px; }
         .cdx-mu-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .cdx-mu-label {
-            font-size: 9px; font-weight: 700; letter-spacing: 1px;
-            color: var(--muted); width: 85px; flex-shrink: 0;
-        }
-        .cdx-type-pill {
-            font-size: 9px; font-weight: 700; letter-spacing: 1px;
-            padding: 2px 8px; border: 1px solid; border-radius: 2px;
-        }
+        .cdx-mu-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--muted); width: 85px; flex-shrink: 0; }
 
-        /* ── Abilities ── */
+        /* abilities */
         .cdx-ability {
             margin-bottom: 10px; padding: 10px 12px;
-            background: rgba(140,140,200,0.03);
-            border: 1px solid rgba(140,140,200,0.06);
-            border-radius: 3px;
+            background: rgba(184,160,96,0.03);
+            border: 1px solid rgba(184,160,96,0.08);
+            border-left: 3px solid rgba(255,216,106,0.35);
+            border-radius: 3px; max-width: 74ch;
         }
-        .cdx-ability-header {
-            display: flex; justify-content: space-between; align-items: baseline;
-            margin-bottom: 4px; flex-wrap: wrap; gap: 6px;
+        .cdx-ability-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; flex-wrap: wrap; gap: 6px; }
+        .cdx-ability-name { font-size: 11px; font-weight: 800; color: #ffd86a; letter-spacing: 0.5px; }
+        .cdx-ability-meta { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; font-weight: 600; }
+        .cdx-ability-desc { font-size: 10px; color: rgba(208,203,192,0.7); line-height: 1.5; font-family: 'Courier New', monospace; }
+        .cdx-section-note { font-size: 10px; color: var(--muted); font-style: italic; letter-spacing: 0.5px; }
+
+        /* footer stamp */
+        .cdx-footer-stamp { margin-top: 26px; padding-top: 12px; border-top: 2px solid rgba(184,160,96,0.10); text-align: center; }
+        .cdx-watermark { font-size: 9px; letter-spacing: 4px; color: rgba(184,160,96,0.18); font-weight: 900; text-transform: uppercase; }
+        .cdx-page-class { font-size: 8px; letter-spacing: 1.5px; color: rgba(160,150,130,0.25); margin-top: 4px; }
+
+        /* redacted (sealed) file */
+        .cdx-redacted-block {
+            font-size: 12px; line-height: 1.9; color: rgba(120,112,96,0.55);
+            letter-spacing: 2px; word-break: break-all; max-width: 74ch;
         }
-        .cdx-ability-name {
-            font-size: 11px; font-weight: 800; color: #60d0a0;
-            letter-spacing: 0.5px;
-        }
-        .cdx-ability-meta {
-            font-size: 9px; color: var(--muted); letter-spacing: 0.5px; font-weight: 600;
-        }
-        .cdx-ability-desc {
-            font-size: 10px; color: rgba(208,203,192,0.7); line-height: 1.5;
-            font-family: 'Courier New', monospace;
-        }
-        .cdx-section-note {
-            font-size: 10px; color: var(--muted); font-style: italic;
-            letter-spacing: 0.5px;
+        .cdx-redacted-banner {
+            padding: 14px; text-align: center; color: #6a6450;
+            letter-spacing: 0.16em; font-size: 12px;
+            border: 1px dashed rgba(184,160,96,0.25); background: rgba(0,0,0,0.25);
+            max-width: 560px;
         }
 
-        /* ── Footer stamp ── */
-        .cdx-footer-stamp {
-            margin-top: 30px; padding-top: 12px;
-            border-top: 2px solid rgba(140,140,200,0.08);
-            text-align: center;
+        /* ── PINNED ACTION BAR — always visible, never scrolled for ── */
+        .cdx-actionbar {
+            flex-shrink: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 12px 18px; min-height: 62px;
+            border-top: 1px solid rgba(184,160,96,0.25);
+            background: linear-gradient(180deg, rgba(22,18,9,0.94), rgba(9,7,3,0.97));
+            box-shadow: 0 -10px 24px rgba(0,0,0,0.55);
+            position: relative; z-index: 2;
         }
-        .cdx-watermark {
-            font-size: 9px; letter-spacing: 4px; color: rgba(96,208,160,0.12);
-            font-weight: 900; text-transform: uppercase;
+        .cdx-actionbar-spacer { flex: 1; }
+        .cdx-action-status { font-size: 12px; letter-spacing: 0.12em; font-weight: 700; }
+        .cdx-action-note { font-size: 10px; color: rgba(200,190,168,0.55); letter-spacing: 0.06em; }
+
+        .cdx-btn {
+            font-family: 'DotGothic16', monospace; font-size: 13px; letter-spacing: 0.06em;
+            padding: 10px 20px; border-radius: 4px; cursor: pointer;
+            border: 1px solid rgba(184,160,96,0.35); background: rgba(184,160,96,0.08); color: #e8dfc0;
+            transition: all 0.15s; white-space: nowrap;
         }
-        .cdx-page-class {
-            font-size: 8px; letter-spacing: 1.5px; color: rgba(140,140,200,0.2);
-            margin-top: 4px;
+        .cdx-btn:hover { border-color: rgba(255,216,106,0.6); color: #ffd86a; }
+        .cdx-btn:active { transform: scale(0.97); }
+        .cdx-btn-primary {
+            background: linear-gradient(180deg, #6b5518, #483809);
+            border-color: rgba(255,216,106,0.55); color: #ffe9a8; font-weight: 700;
+            box-shadow: 0 0 14px rgba(255,216,106,0.14);
+        }
+        .cdx-btn-primary:hover { filter: brightness(1.2); box-shadow: 0 0 22px rgba(255,216,106,0.3); color: #fff3cc; }
+        .cdx-btn-primary:disabled { opacity: 0.45; cursor: default; filter: none; box-shadow: none; transform: none; }
+        .cdx-btn-token { background: linear-gradient(180deg, #1d3a5a, #122540); border-color: rgba(120,190,255,0.5); color: #bfe0ff; }
+        .cdx-btn-token:hover { filter: brightness(1.25); border-color: rgba(150,210,255,0.8); color: #dfefff; box-shadow: 0 0 18px rgba(120,190,255,0.25); }
+        .cdx-btn-confirm { background: linear-gradient(180deg, #1e4a2a, #103016); border-color: rgba(120,230,150,0.55); color: #a8f0bc; font-weight: 700; }
+        .cdx-btn-confirm:hover { filter: brightness(1.25); border-color: rgba(150,255,180,0.8); color: #ccffdd; box-shadow: 0 0 18px rgba(120,230,150,0.25); }
+        .cdx-btn-ghost { background: transparent; border-color: rgba(200,190,168,0.22); color: rgba(200,190,168,0.75); }
+
+        /* ── SHOP: left column (featured strip + card grid) ── */
+        .shop-left { flex: 1 1 46%; min-width: 300px; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(184,160,96,0.10); }
+        .shop-featured {
+            flex-shrink: 0; display: flex; align-items: stretch; gap: 8px;
+            padding: 8px 12px; overflow-x: auto; overflow-y: hidden;
+            border-bottom: 1px solid rgba(184,69,90,0.25);
+            background: linear-gradient(180deg, rgba(40,12,18,0.30), rgba(20,6,9,0.15));
+            scrollbar-width: thin; scrollbar-color: rgba(184,69,90,0.3) transparent;
+        }
+        .shop-featured-label {
+            font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.18em; color: #e08a9a;
+            writing-mode: vertical-rl; transform: rotate(180deg);
+            text-align: center; flex-shrink: 0; align-self: center;
+        }
+        .shop-featured .shop-card { width: 100px; flex-shrink: 0; }
+        .shop-grid {
+            flex: 1; min-height: 0; overflow-y: auto;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(106px, 1fr));
+            gap: 8px; padding: 12px 14px; align-content: start;
+            scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.25) transparent;
+        }
+        .shop-detail { flex: 1 1 54%; }
+
+        /* shop vessel cards — NO overflow:hidden here: a column-flex grid item
+           with hidden overflow collapses its auto-row contribution in Chromium. */
+        .shop-card {
+            position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+            padding: 9px 4px 7px; cursor: pointer; border-radius: 4px;
+            background: rgba(0,0,0,0.35); border: 1px solid rgba(184,160,96,0.12);
+            transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s;
+        }
+        .shop-card:hover { border-color: rgba(255,216,106,0.45); transform: translateY(-1px); box-shadow: 0 0 10px rgba(255,216,106,0.08); }
+        .shop-card:active { transform: scale(0.97); }
+        .shop-card.selected { border-color: #ffd86a; background: rgba(255,216,106,0.07); box-shadow: 0 0 12px rgba(255,216,106,0.18); }
+        .shop-card-sprite {
+            width: 64px; height: 64px; background-size: contain; background-position: center bottom;
+            background-repeat: no-repeat; image-rendering: pixelated;
+        }
+        .shop-card-name {
+            font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.3px;
+            text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .shop-card.locked .shop-card-name { color: rgba(190,180,160,0.7); }
+        .shop-card-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+        .shop-card-tag.owned { color: #9fe0a0; }
+        .shop-card-tag.price { color: #ffd86a; }
+        .shop-card-tag.soon { color: #8a8a9a; font-size: 9px; }
+        .shop-ribbon {
+            position: absolute; top: 0; left: 0; z-index: 1;
+            background: #b8455a; color: #fff; font-size: 8px; font-weight: 700;
+            letter-spacing: 0.12em; padding: 2px 7px; border-radius: 3px 0 4px 0;
         }
 
         /* ── Mobile responsive ── */
-        @media (max-width: 700px) {
+        @media (max-width: 760px) {
             .cdx-layout { flex-direction: column; }
             .cdx-list {
-                width: 100%; min-width: unset; max-height: 200px;
-                border-right: none; border-bottom: 1px solid rgba(140,140,200,0.06);
+                width: 100%; min-width: unset; max-height: 26vh; flex-shrink: 0;
+                border-right: none; border-bottom: 1px solid rgba(184,160,96,0.12);
             }
-            .cdx-dossier { padding: 16px 14px 30px; }
-            .cdx-dossier-title-row { flex-direction: column; }
-            .cdx-sprite-frame { width: 100%; }
-            .cdx-subject-name { font-size: 18px; }
-            .cdx-filters { padding: 0 10px 8px; }
+            .shop-left { min-width: unset; max-height: 34vh; flex: 0 0 auto; border-right: none; border-bottom: 1px solid rgba(184,160,96,0.12); }
+            .shop-featured { display: none; }
+            .cdx-hero { height: auto; min-height: 150px; gap: 12px; padding: 10px 14px 8px 10px; }
+            .cdx-hero-stage { flex-basis: 128px; }
+            .cdx-subject-name { font-size: 19px; letter-spacing: 2px; }
+            .cdx-traits-row { display: none; }
+            .cdx-dossier { padding: 12px 14px 28px; }
+            .cdx-toolbar { padding: 6px 10px; gap: 6px 10px; }
+            .cdx-meter { min-width: 130px; }
+            .cdx-search { width: 120px; }
+            .cdx-actionbar { padding: 10px 12px; }
+            .cdx-btn { padding: 9px 14px; font-size: 12px; }
         }
         /* ══ AI TRAINING DASHBOARD ══ */
         .training-panel {

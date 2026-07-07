@@ -47,12 +47,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260707a">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260707a">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260707a">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260707a">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260707b">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260707b">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260707b">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260707b">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260707a">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260707b">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -66,7 +66,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260707b"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -391,7 +391,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260707a" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260707b" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -894,18 +894,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260707b"></script>
     <script>window._spritesLoaded = true;</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260707b"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260707a';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260707b';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1056,23 +1056,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260707b"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260707b"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260707b"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1102,14 +1102,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260707a"></script>
-    <script src="https://cdn.entropywars.net/ai.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260707b"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260707b"></script>
     <!-- "Claude" AI override: MUST load after ai.js (wraps window.aiTakeTurn) -->
-    <script src="https://cdn.entropywars.net/ainew.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/ainew.js?v=20260707b"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260707a"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260707b"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">
@@ -1742,223 +1742,92 @@
         }
     </script>
 
-    <!-- ── Menu Background: Light Trails (Three.js) ── -->
-    <script type="module">
-        import * as THREE from 'three';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-
+    <!-- ── Menu Background: Rising Motes (canvas 2D) ──
+         Same mood as the battle loading screen: black, drifting embers rising.
+         Keeps the #menuBgCanvas id and window._menuBgSetActive API the rest of
+         the code (map.js _showTitlePage) already talks to. -->
+    <script>
+    (function () {
         const canvas = document.getElementById('menuBgCanvas');
         const overlay = document.getElementById('startOverlay');
-        if (!canvas || !overlay) { console.warn('Menu BG: canvas or overlay not found'); }
-        else {
-            /* ── Config (hardcoded — no GUI) ── */
-            const C = {
-                dpr: Math.min(window.devicePixelRatio, 1.5),
-                exposure: 3.65, brightness: 4.0,
-                bloomStrength: 0.2, bloomRadius: 0.29, bloomThreshold: 0.0,
-                speedMultiplier: 0.1,
-                linesCount: 70,
-                dotDensity: 70, dotSize: 0.25, dotSpeed: 1.5,
-                blurStrength: 3.5,
-                arcRadius: 10.0, bendStartZ: -150.0, floorLength: 132.75, wallHeight: 200.0,
-                colors: ['#004c94','#2e89ff','#003994','#004bad','#ff5900']
-            };
+        if (!canvas || !overlay) { console.warn('Menu BG: canvas or overlay not found'); return; }
+        const ctx = canvas.getContext('2d');
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-            /* ── Curve ── */
-            class CycCurve extends THREE.Curve {
-                constructor(x, zStart, zBend, radius, yEnd) {
-                    super(); this.x=x; this.zStart=zStart; this.zBend=zBend; this.radius=radius; this.yEnd=yEnd;
-                    this.L_flat=Math.abs(zStart-(zBend+radius));
-                    this.L_arc=(Math.PI*radius)*0.5;
-                    this.L_up=Math.max(0.1,yEnd-radius);
-                    this.totalLength=this.L_flat+this.L_arc+this.L_up;
-                }
-                getPoint(t, o=new THREE.Vector3()) {
-                    const d=t*this.totalLength; let py=0,pz=0;
-                    if(d<=this.L_flat){ pz=this.zStart-d; }
-                    else if(d<=this.L_flat+this.L_arc){
-                        const n=(d-this.L_flat)/this.L_arc;
-                        const e=n*n*(3-2*n);
-                        const a=(n*0.4+e*0.6)*(Math.PI*0.5);
-                        py=this.radius*(1-Math.cos(a)); pz=(this.zBend+this.radius)-Math.sin(a)*this.radius;
-                    } else { py=this.radius+(d-(this.L_flat+this.L_arc)); pz=this.zBend; }
-                    return o.set(this.x,py,pz);
-                }
-            }
-
-            /* ── Scene ── */
-            const scene = new THREE.Scene(); scene.background = new THREE.Color(0x000000);
-            const camera = new THREE.PerspectiveCamera(55, 1, 1, 2000);
-            camera.position.set(0, 20, 140); camera.lookAt(0, 20, -50);
-
-            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference:'high-performance' });
-            renderer.setPixelRatio(C.dpr);
-            renderer.toneMapping = THREE.LinearToneMapping;
-            renderer.toneMappingExposure = C.exposure;
-
-            const rt = new THREE.WebGLRenderTarget(1,1,{ type:THREE.HalfFloatType, format:THREE.RGBAFormat });
-            const composer = new EffectComposer(renderer, rt);
-            composer.setPixelRatio(C.dpr);
-            composer.addPass(new RenderPass(scene, camera));
-            const bloomPass = new UnrealBloomPass(new THREE.Vector2(1,1), C.bloomStrength, C.bloomRadius, C.bloomThreshold);
-            composer.addPass(bloomPass);
-
-            /* foreground blur */
-            const blurShader = {
-                uniforms: {
-                    tDiffuse:{value:null},
-                    resolution:{value:new THREE.Vector2(1,1)},
-                    blurStrength:{value:C.blurStrength}
-                },
-                vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-                fragmentShader:`
-                    uniform sampler2D tDiffuse; uniform vec2 resolution; uniform float blurStrength; varying vec2 vUv;
-                    void main(){
-                        float mask=1.0-smoothstep(0.0,0.35,vUv.y); float radius=mask*blurStrength;
-                        if(radius<0.1){ gl_FragColor=texture2D(tDiffuse,vUv); return; }
-                        vec4 c=vec4(0.0); float total=0.0; const float GA=2.3999632;
-                        for(int i=0;i<32;i++){ float f=float(i); float r=sqrt(f)*radius; float th=f*GA;
-                            vec2 off=vec2(cos(th),sin(th))*(r/resolution); c+=texture2D(tDiffuse,vUv+off); total+=1.0; }
-                        gl_FragColor=c/total;
-                    }`
-            };
-            const blurPass = new ShaderPass(blurShader);
-            composer.addPass(blurPass);
-            composer.addPass(new OutputPass());
-
-            /* ── Floor ── */
-            const floorMat = new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.85, depthWrite:false, side:THREE.DoubleSide });
-            const floorMesh = new THREE.Mesh(new THREE.BufferGeometry(), floorMat);
-            floorMesh.position.set(0,-0.5,-0.5); floorMesh.renderOrder=1; scene.add(floorMesh);
-
-            /* ── Trails ── */
-            const trailGroup = new THREE.Group(); scene.add(trailGroup);
-            const trailMats = [], trailObjs = [];
-
-            const trailVS = `
-                varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewPosition;
-                void main(){ vUv=uv; vNormal=normalMatrix*normal;
-                    vec4 mv=modelViewMatrix*vec4(position,1.0); vViewPosition=-mv.xyz; gl_Position=projectionMatrix*mv; }`;
-            const trailFS = `
-                varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewPosition;
-                uniform float uTime; uniform vec3 uColor; uniform float uSpeed; uniform float uOffset;
-                uniform float uTailLength; uniform float uIntensityMultiplier; uniform float uBendUv;
-                uniform float uIsReflection; uniform float uDotDensity; uniform float uDotSize;
-                uniform float uDotSpeed; uniform float uBrightness; uniform float uDirection;
-                float hash(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
-                void main(){
-                    float t=fract(uTime*uSpeed*uDirection+uOffset);
-                    float dist=fract((t-vUv.x)*uDirection+1.0);
-                    float baseAlpha=smoothstep(uTailLength,0.0,dist);
-                    baseAlpha=pow(max(0.0,baseAlpha),1.2);
-                    vec3 viewDir=normalize(vViewPosition);
-                    float fresnel=abs(dot(normalize(vNormal),viewDir));
-                    float edgeSoftness=smoothstep(0.0,0.02,fresnel);
-                    baseAlpha*=edgeSoftness;
-                    float core=pow(max(0.0,baseAlpha),3.0)*1.5;
-                    float movingUV=vUv.x-(uTime*uSpeed*uDotSpeed*uDirection)-uOffset;
-                    float signalPos=movingUV*uDotDensity;
-                    float dotId=floor(signalPos); float dotLocal=fract(signalPos);
-                    float distToCenter=length(vec2((dotLocal-0.5)*2.0,(fract(vUv.y+0.5)-0.5)*6.0));
-                    float dotShape=1.0-smoothstep(0.0,max(0.001,uDotSize),distToCenter);
-                    float dotFinal=dotShape*step(0.6,hash(vec2(dotId,uOffset)))*(sin(uTime*4.0+hash(vec2(dotId))*6.28)*0.3+0.7)*baseAlpha;
-                    if(uIsReflection>0.5){
-                        float refFade=1.0-smoothstep(uBendUv-0.015,uBendUv,vUv.x);
-                        baseAlpha*=refFade; core*=refFade; dotFinal*=refFade*0.1;
-                        baseAlpha=pow(max(0.0,baseAlpha),0.5)*(0.7+hash(vUv*300.0+uTime*0.05)*0.3); core*=0.3;
-                    }
-                    vec3 trailColor=uColor*(baseAlpha+core*1.5)*uIntensityMultiplier*uBrightness;
-                    vec3 rgb=trailColor/max(1.0-clamp(dotFinal*1.8,0.0,0.95),0.001)+uColor*dotFinal*2.5*uIntensityMultiplier*uBrightness;
-                    gl_FragColor=vec4(rgb,(baseAlpha+dotFinal)*uIntensityMultiplier);
-                }`;
-
-            for(let i=0;i<C.linesCount;i++){
-                const norm=(i/(C.linesCount-1))*2-1;
-                const lin=norm, exp=Math.sign(norm)*Math.pow(Math.abs(norm),1.2);
-                let startX=(lin*0.5+exp*0.5)*80+(Math.random()-0.5)*2;
-                const thickness=Math.random()*0.2+0.1;
-                const ci=Math.floor(Math.random()*5);
-                const u={
-                    uTime:{value:0}, uColor:{value:new THREE.Color(C.colors[ci])}, uColorIndex:{value:ci},
-                    uSpeed:{value:Math.random()*0.5+0.2}, uOffset:{value:Math.random()},
-                    uTailLength:{value:Math.random()*0.4+0.3}, uIntensityMultiplier:{value:1.0},
-                    uBendUv:{value:0}, uIsReflection:{value:0}, uDotDensity:{value:C.dotDensity},
-                    uDotSize:{value:C.dotSize}, uDotSpeed:{value:C.dotSpeed},
-                    uBrightness:{value:C.brightness}, uDirection:{value:1.0}
-                };
-                const mat=new THREE.ShaderMaterial({vertexShader:trailVS,fragmentShader:trailFS,uniforms:u,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
-                const mesh=new THREE.Mesh(new THREE.BufferGeometry(),mat);
-                const refMat=mat.clone(); refMat.uniforms.uIntensityMultiplier.value=0.4; refMat.uniforms.uIsReflection.value=1.0;
-                const refMesh=new THREE.Mesh(new THREE.BufferGeometry(),refMat);
-                refMesh.scale.y=-1; refMesh.position.y=-1.0;
-                trailGroup.add(mesh,refMesh);
-                trailMats.push(mat.uniforms, refMat.uniforms);
-                trailObjs.push({mesh,refMesh,startX,thickness});
-            }
-
-            /* ── Build geometry ── */
-            function rebuildGeo(){
-                if(floorMesh.geometry) floorMesh.geometry.dispose();
-                const fg=new THREE.PlaneGeometry(1000,1000,1,1500); fg.rotateX(-Math.PI*0.5);
-                const p=fg.attributes.position.array;
-                for(let i=0;i<p.length;i+=3){
-                    if(p[i+2]<C.bendStartZ){
-                        let d=C.bendStartZ-p[i+2], maxA=C.arcRadius*Math.PI*0.5;
-                        if(d<maxA){ let n=d/maxA, a=(n*0.4+(n*n*(3-2*n))*0.6)*(Math.PI*0.5);
-                            p[i+1]=C.arcRadius*(1-Math.cos(a)); p[i+2]=C.bendStartZ-Math.sin(a)*C.arcRadius;
-                        } else { p[i+1]=C.arcRadius+(d-maxA); p[i+2]=C.bendStartZ-C.arcRadius; }
-                    }
-                }
-                fg.computeVertexNormals(); floorMesh.geometry=fg;
-                const bendUv=Math.abs(C.floorLength-C.bendStartZ)/(Math.abs(C.floorLength-C.bendStartZ)+(Math.PI*C.arcRadius)*0.5+Math.max(0.1,C.wallHeight-C.arcRadius));
-                trailObjs.forEach(o=>{
-                    const path=new CycCurve(o.startX,C.floorLength,C.bendStartZ-C.arcRadius,C.arcRadius,C.wallHeight);
-                    const geo=new THREE.TubeGeometry(path,200,o.thickness,8,false);
-                    if(o.mesh.geometry) o.mesh.geometry.dispose();
-                    o.mesh.geometry=o.refMesh.geometry=geo;
-                    o.mesh.material.uniforms.uBendUv.value=o.refMesh.material.uniforms.uBendUv.value=bendUv;
-                });
-            }
-            rebuildGeo();
-
-            /* ── Resize ── */
-            function syncSize(){
-                const w=overlay.offsetWidth, h=overlay.offsetHeight;
-                if(w<1||h<1) return false;
-                camera.aspect=w/h; camera.updateProjectionMatrix();
-                renderer.setSize(w,h);
-                composer.setSize(w,h);
-                blurPass.uniforms.resolution.value.set(w*C.dpr,h*C.dpr);
-                bloomPass.resolution.set(w,h);
-                return true;
-            }
-            syncSize();
-            window.addEventListener('resize', syncSize);
-
-            /* ── Animate — pauses when overlay is hidden ── */
-            const clock = new THREE.Clock();
-            let globalTime = 0;
-            let _menuBgRunning = true;
-
-            window._menuBgSetActive = function(active) {
-                _menuBgRunning = active;
-                if (active) clock.getDelta(); // reset delta so no time jump
-            };
-
-            function animate(){
-                requestAnimationFrame(animate);
-                if(!_menuBgRunning) return;
-                if(overlay.classList.contains('hidden') || overlay.style.display==='none') return;
-                globalTime += clock.getDelta() * C.speedMultiplier;
-                trailMats.forEach(m => m.uTime.value = globalTime);
-                composer.render();
-            }
-            animate();
+        // Loading-screen palette: violet + green motes, plus warm candle-white.
+        const COLORS = [
+            { rgb: '185,138,255', w: 0.26 },
+            { rgb: '127,255,178', w: 0.14 },
+            { rgb: '255,251,230', w: 0.60 }
+        ];
+        function pickColor() {
+            let r = Math.random();
+            for (const k of COLORS) { r -= k.w; if (r <= 0) return k.rgb; }
+            return COLORS[0].rgb;
         }
+
+        let W = 0, H = 0, motes = [], vignette = null;
+        function spawn(m, anywhere) {
+            m.x = Math.random() * W;
+            m.y = anywhere ? Math.random() * H : H + 8;
+            m.r = 0.7 + Math.random() * 2.1;
+            m.vy = 9 + Math.random() * 24;          // px/s upward
+            m.sway = 8 + Math.random() * 18;        // horizontal wander amplitude
+            m.phase = Math.random() * Math.PI * 2;
+            m.freq = 0.15 + Math.random() * 0.45;
+            m.alpha = 0.10 + Math.random() * 0.42;
+            m.rgb = pickColor();
+        }
+        function resize() {
+            const w = overlay.offsetWidth, h = overlay.offsetHeight;
+            if (w < 1 || h < 1) return;
+            W = w; H = h;
+            canvas.width = Math.round(w * DPR);
+            canvas.height = Math.round(h * DPR);
+            const target = Math.round(Math.min(90, Math.max(36, (w * h) / 20000)));
+            while (motes.length < target) { const m = {}; spawn(m, true); motes.push(m); }
+            motes.length = target;
+            vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
+            vignette.addColorStop(0, 'rgba(0,0,0,0)');
+            vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        let running = true, last = performance.now();
+        window._menuBgSetActive = function (active) {
+            running = active;
+            if (active) last = performance.now(); // no time jump on resume
+        };
+
+        function frame(now) {
+            requestAnimationFrame(frame);
+            if (!running) return;
+            if (overlay.classList.contains('hidden') || overlay.style.display === 'none') return;
+            let dt = (now - last) / 1000; last = now;
+            if (dt > 0.1) dt = 0.1;
+            const t = now * 0.001;
+
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, W, H);
+
+            for (const m of motes) {
+                m.y -= m.vy * dt;
+                if (m.y < -10) spawn(m, false);
+                const x = m.x + Math.sin(t * m.freq * 2 + m.phase) * m.sway;
+                const a = m.alpha * (0.6 + 0.4 * Math.sin(t * 1.2 + m.phase));
+                // soft halo + core, no shadowBlur (cheap on weak GPUs)
+                ctx.fillStyle = 'rgba(' + m.rgb + ',' + (a * 0.22).toFixed(3) + ')';
+                ctx.beginPath(); ctx.arc(x, m.y, m.r * 3.2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(' + m.rgb + ',' + a.toFixed(3) + ')';
+                ctx.beginPath(); ctx.arc(x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+            }
+
+            if (vignette) { ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H); }
+        }
+        requestAnimationFrame(frame);
+    })();
     </script>
 
     </div><!-- #game-viewport -->

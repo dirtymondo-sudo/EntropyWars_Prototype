@@ -6947,103 +6947,145 @@
             return html;
         }
 
-        function _codexRenderDossier(race) {
+        // ── Shared dossier building blocks (codex + shop) ──
+        function _codexHexToRgb(hex) {
+            const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+            if (!m) return '184,160,96';
+            const n = parseInt(m[1], 16);
+            return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+        }
+
+        function _codexFactionVars(faction) {
+            const col = (_CODEX_FACTION[faction] && _CODEX_FACTION[faction].color) || '#b8a060';
+            const rgb = _codexHexToRgb(col);
+            return `--cdx-fc-glow:rgba(${rgb},0.26);--cdx-fc-ground:rgba(${rgb},0.50);--cdx-fc-dim:rgba(${rgb},0.10)`;
+        }
+
+        function _codexDocNum(race) {
+            return 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
+        }
+
+        const _CODEX_SKY_RACES = ['fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','valkraye','watcher'];
+
+        function _codexTraits(race) {
+            const traits = [];
+            if (_CODEX_SKY_RACES.includes(race)) traits.push('✈ FLIGHT CAPABLE');
+            // Terrain affinities (mirror party builder)
+            if (['siren','reptilian','ghost','atlantean','kraken','loch ness monster','black goo'].includes(race)) traits.push('🌊 DEEP WATER ADAPTED');
+            if (['demon','djinn','succubus','skeleton','dragon'].includes(race)) traits.push('🔥 LAVA ADAPTED');
+            if (['anubis','djinn','reptilian','skeleton'].includes(race)) traits.push('🏜 DESERT ADAPTED');
+            if (['bigfoot','fairy','werewolf','shadow entity','skinwalker','catgirl','mothman','scarecrow','dinosaur','king kong'].includes(race)) traits.push('🌲 FOREST ADAPTED');
+            if (['giant','cyclops','gargoyle','gnome','yeti','dragon','kaiju','golem','ice queen','minotaur','juggernaut','king kong'].includes(race)) traits.push('⛰ MOUNTAIN TRAVERSER');
+            if (['zombie','skeleton','robot','mech','android','ai','glitch','kaiju','ghoul','necromancer','black goo'].includes(race)) traits.push('☢ WASTELAND ADAPTED');
+            if (['yeti','ice queen'].includes(race)) traits.push('❄ ICE TERRAIN IMMUNITY');
+            return traits;
+        }
+
+        // The hero stage: the selected vessel staged BIG (party-builder style),
+        // identity + faction stamp beside it. Shared by the codex and the shop
+        // so both screens read as the same Intelligence Division terminal.
+        function _codexHeroHtml(race, opts) {
+            opts = opts || {};
             const profile = RACE_PROFILES[race];
             if (!profile) return '';
-            const stats = RACE_BASE_STATS[race];
             const faction = _CODEX_FACTION[profile.faction] || { label: '???', color: '#888', stamp: '❓' };
             const raceClass = RACE_CLASS[race] || 'hybrid';
             const classLabel = _CODEX_CLASS_LABELS[raceClass] || 'UNCLASSIFIED';
             const defaultJob = RACE_DEFAULT_JOBS[race] || 'Freelancer';
             const types = profile.types || [];
-            const lore = _CODEX_LORE[race] || 'No intelligence available. File pending ████████ review.';
             const sprUrl = _codexGetSpriteUrl(race);
+            const docNum = _codexDocNum(race);
+            const locked = !!opts.locked;
+            const blk = (n) => '█'.repeat(n);
 
-            const docNum = 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
-            const dateStr = '██/██/199█';
-
-            const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
+            const stamp = locked
+                ? `<div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>`
+                : `<div class="cdx-stamp ${profile.faction}">${faction.stamp} ${faction.label} FACTION</div>`;
+            const nameHtml = locked
+                ? `${blk(9)}<span class="cdx-subject-role">designation withheld</span>`
+                : `${profile.label.toUpperCase()}<span class="cdx-subject-role">the ${defaultJob.toLowerCase()}</span>`;
+            const chips = locked
+                ? `<span class="cdx-meta-tag">Class: <b>${blk(5)}</b></span><span class="cdx-meta-tag">Default Role: <b>${blk(7)}</b></span>`
+                : `${types.map(t => `<span class="type-badge type-${t}">${t.toUpperCase()}</span>`).join('')}
+                   <span class="cdx-meta-tag">Class: <b>${classLabel}</b></span>
+                   <span class="cdx-meta-tag">Default Role: <b>${defaultJob}</b></span>`;
+            const traits = locked ? [] : _codexTraits(race);
+            const traitsHtml = traits.length
+                ? `<div class="cdx-traits-row">${traits.map(t => `<span class="cdx-trait-tag">${t}</span>`).join('')}</div>` : '';
 
             return `
-            <div class="cdx-dossier">
-                <div class="cdx-dossier-header">
-                    <div class="cdx-stamp ${profile.faction}">${faction.stamp} ${faction.label} FACTION</div>
-                    <div class="cdx-doc-id">DOC# ${docNum} · ${dateStr}</div>
-                    <div class="cdx-classification">TOP SECRET // ████████ // NOFORN</div>
+            <div class="cdx-hero" style="${_codexFactionVars(profile.faction)}">
+                <div class="cdx-hero-stage">
+                    <div class="cdx-hero-glow"></div>
+                    <div class="cdx-hero-ground"></div>
+                    <div class="cdx-hero-sprite${locked ? ' locked' : ''}" style="background-image:url('${sprUrl}')"></div>
                 </div>
-
-                <div class="cdx-dossier-title-row">
-                    <div class="cdx-dossier-title">
-                        <div class="cdx-subject-header">1. &nbsp;SUBJECT IDENTIFICATION:</div>
-                        <div class="cdx-subject-name">${profile.label.toUpperCase()}</div>
-                        <div class="cdx-subject-meta">
-                            <span class="cdx-meta-tag">Designation: <b>${profile.label}</b></span>
-                            <span class="cdx-meta-tag">Class: <b>${classLabel}</b></span>
-                            <span class="cdx-meta-tag">Default Role: <b>${defaultJob}</b></span>
-                        </div>
-                        <div class="cdx-type-row">
-                            ${types.map(t => `<span class="type-badge type-${t}">${t.toUpperCase()}</span>`).join('')}
-                        </div>
+                <div class="cdx-hero-id">
+                    <div class="cdx-hero-topline">
+                        ${stamp}
+                        <div class="cdx-doc-id">DOC# ${docNum} · ██/██/199█</div>
+                        <div class="cdx-classification">TOP SECRET // ████████ // NOFORN</div>
+                        ${opts.priceTag || ''}
                     </div>
-                    <div class="cdx-sprite-frame">
-                        <div class="cdx-sprite" style="background-image:url('${sprUrl}')"></div>
-                        <div class="cdx-sprite-label">PHOTO — SUBJECT ${docNum}</div>
-                    </div>
-                </div>
-
-                ${(() => {
-                    const _skyRaces = ['fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','valkraye','watcher'];
-                    const _canFly = _skyRaces.includes(race);
-                    const traits = [];
-                    if (_canFly) traits.push('✈ FLIGHT CAPABLE');
-                    // Terrain affinities (mirror party builder)
-                    if (race === 'siren' || race === 'reptilian' || race === 'ghost' || race === 'atlantean' || race === 'kraken' || race === 'loch ness monster' || race === 'black goo') traits.push('🌊 DEEP WATER ADAPTED');
-                    if (race === 'demon' || race === 'djinn' || race === 'succubus' || race === 'skeleton' || race === 'dragon') traits.push('🔥 LAVA ADAPTED');
-                    if (race === 'anubis' || race === 'djinn' || race === 'reptilian' || race === 'skeleton') traits.push('🏜 DESERT ADAPTED');
-                    if (race === 'bigfoot' || race === 'fairy' || race === 'werewolf' || race === 'shadow entity' || race === 'skinwalker' || race === 'catgirl' || race === 'mothman' || race === 'scarecrow' || race === 'dinosaur' || race === 'king kong') traits.push('🌲 FOREST ADAPTED');
-                    if (race === 'giant' || race === 'cyclops' || race === 'gargoyle' || race === 'gnome' || race === 'yeti' || race === 'dragon' || race === 'kaiju' || race === 'golem' || race === 'ice queen' || race === 'minotaur' || race === 'juggernaut' || race === 'king kong') traits.push('⛰ MOUNTAIN TRAVERSER');
-                    if (race === 'zombie' || race === 'skeleton' || race === 'robot' || race === 'mech' || race === 'android' || race === 'ai' || race === 'glitch' || race === 'kaiju' || race === 'ghoul' || race === 'necromancer' || race === 'black goo') traits.push('☢ WASTELAND ADAPTED');
-                    if (race === 'yeti' || race === 'ice queen') traits.push('❄ ICE TERRAIN IMMUNITY');
-                    if (traits.length === 0) return '';
-                    return `<div class="cdx-section"><div class="cdx-section-header">1b. SPECIAL TRAITS:</div><div class="cdx-traits-row">${traits.map(t => `<span class="cdx-trait-tag">${t}</span>`).join('')}</div></div>`;
-                })()}
-
-                <div class="cdx-section">
-                    <div class="cdx-section-header">2. &nbsp;EXECUTIVE SUMMARY:</div>
-                    <div class="cdx-lore">${lore}</div>
-                </div>
-
-                <div class="cdx-section">
-                    <div class="cdx-section-header">3. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
-                    <div class="cdx-stats-grid">
-                        ${_codexBuildStatBar(stats.hp, maxHp, 'HP', '#55bb70')}
-                        ${_codexBuildStatBar(stats.mp, maxMp, 'MP', '#5a8898')}
-                        ${_codexBuildStatBar(stats.atk, maxAtk, 'ATK', '#c05050')}
-                        ${_codexBuildStatBar(stats.def, maxDef, 'DEF', '#b8a060')}
-                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'MDEF', '#6f8fc0')}
-                        ${_codexBuildStatBar(stats.int, maxInt, 'INT', '#9080b8')}
-                        ${_codexBuildStatBar(stats.spd, maxSpd, 'SPD', '#d09050')}
-                        ${_codexBuildStatBar(stats.move, 5, 'MOV', '#60b8d0')}
-                        ${_codexBuildStatBar(stats.awr, 8, 'AWR', '#b0b070')}
-                    </div>
-                    <div class="cdx-stat-total">TOTAL STAT POINTS: ${stats.hp + stats.mp + stats.atk + stats.def + (stats.mdef || 0) + stats.int + stats.spd + stats.move + stats.awr}</div>
-                </div>
-
-                <div class="cdx-section">
-                    <div class="cdx-section-header">4. &nbsp;TYPE EFFECTIVENESS:</div>
-                    ${_codexBuildTypeMatchups(types)}
-                </div>
-
-                <div class="cdx-section">
-                    <div class="cdx-section-header">5. &nbsp;DOCUMENTED CAPABILITIES:</div>
-                    ${_codexBuildAbilities(race)}
-                </div>
-
-                <div class="cdx-footer-stamp">
-                    <div class="cdx-watermark">ENTROPY WARS INTELLIGENCE DIVISION</div>
-                    <div class="cdx-page-class">PAGE 1 OF 1 · DISTRIBUTION: ████████ ONLY</div>
+                    <div class="cdx-subject-name">${nameHtml}</div>
+                    <div class="cdx-hero-chips">${chips}</div>
+                    ${traitsHtml}
                 </div>
             </div>`;
+        }
+
+        // Sections of the file body (lore / stats / matchups / abilities).
+        function _codexDossierSections(race) {
+            const stats = RACE_BASE_STATS[race] || {};
+            const profile = RACE_PROFILES[race] || {};
+            const types = profile.types || [];
+            const lore = _CODEX_LORE[race] || 'No intelligence available. File pending ████████ review.';
+            const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
+            const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.awr || 0);
+            return `
+                <div class="cdx-section">
+                    <div class="cdx-section-header">1. &nbsp;EXECUTIVE SUMMARY:</div>
+                    <div class="cdx-lore">${lore}</div>
+                </div>
+                <div class="cdx-section">
+                    <div class="cdx-section-header">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
+                    <div class="cdx-stats-grid">
+                        ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70')}
+                        ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898')}
+                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050')}
+                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060')}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'MDEF', '#6f8fc0')}
+                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'INT', '#9080b8')}
+                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050')}
+                        ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0')}
+                        ${_codexBuildStatBar(stats.awr || 0, 8, 'AWR', '#b0b070')}
+                    </div>
+                    <div class="cdx-stat-total">TOTAL STAT POINTS: ${total}</div>
+                </div>
+                <div class="cdx-section">
+                    <div class="cdx-section-header">3. &nbsp;TYPE EFFECTIVENESS:</div>
+                    ${_codexBuildTypeMatchups(types)}
+                </div>
+                <div class="cdx-section">
+                    <div class="cdx-section-header">4. &nbsp;DOCUMENTED CAPABILITIES:</div>
+                    ${_codexBuildAbilities(race)}
+                </div>`;
+        }
+
+        // Full dossier: hero stage pinned on top, the file body scrolls below.
+        function _codexRenderDossier(race) {
+            if (!RACE_PROFILES[race]) return '';
+            return `
+                ${_codexHeroHtml(race)}
+                <div class="cdx-detail-scroll">
+                    <div class="cdx-dossier">
+                        ${_codexDossierSections(race)}
+                        <div class="cdx-footer-stamp">
+                            <div class="cdx-watermark">ENTROPY WARS INTELLIGENCE DIVISION</div>
+                            <div class="cdx-page-class">PAGE 1 OF 1 · DISTRIBUTION: ████████ ONLY</div>
+                        </div>
+                    </div>
+                </div>`;
         }
 
         function _codexRenderList() {
@@ -7075,11 +7117,11 @@
                     ? `background-image:url('${sprUrl}')`
                     : `background-image:url('${sprUrl}');filter:brightness(0) opacity(0.45)`;
                 const nameHtml = unlocked ? p.label : '<span style="letter-spacing:0.12em;color:#7a7060">CLASSIFIED</span>';
-                const lockBadge = unlocked ? '' : '<span class="cdx-list-lock" style="margin-left:auto;font-size:13px;opacity:0.7">🔒</span>';
+                const lockBadge = unlocked ? '' : '<span class="cdx-list-lock">🔒</span>';
                 html += `<div class="cdx-list-item${selected}${lockedCls}" data-race="${race}" onclick="window._codexSelect('${race.replace(/'/g, "\\'")}')" style="${unlocked ? '' : 'opacity:0.78'}">
                     <div class="cdx-list-sprite" style="${spriteStyle}"></div>
                     <div class="cdx-list-info">
-                        <div class="cdx-list-name" style="display:flex;align-items:center">${nameHtml}${lockBadge}</div>
+                        <div class="cdx-list-name">${nameHtml}${lockBadge}</div>
                         <div class="cdx-list-tags">
                             <span class="cdx-list-faction ${faction}">${faction.toUpperCase()}</span>
                             <span class="cdx-list-type">${unlocked ? types : '████'}</span>
@@ -7100,40 +7142,38 @@
 
             const factionOpts = ['all', 'space', 'time', 'chaos'];
             const typeOpts = ['all', 'divine', 'unholy', 'anomaly', 'tech', 'human', 'alien'];
-            let filterHtml = '<div class="cdx-filters">';
-            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION:</span>';
+            let filterHtml = '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION</span>';
             for (const f of factionOpts) {
                 const sel = f === _codexFilterFaction ? ' active' : '';
-                const lbl = f === 'all' ? 'ALL' : f.toUpperCase();
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('faction','${f}')">${lbl}</button>`;
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
             }
-            filterHtml += '</div>';
-            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">TYPE:</span>';
+            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">TYPE</span>';
             for (const t of typeOpts) {
                 const sel = t === _codexFilterType ? ' active' : '';
-                const lbl = t === 'all' ? 'ALL' : t.toUpperCase();
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('type','${t}')">${lbl}</button>`;
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._codexSetFilter('type','${t}')">${t === 'all' ? 'ALL' : t.toUpperCase()}</button>`;
             }
-            filterHtml += '</div></div>';
-
-            const _total = AVAILABLE_RACES.length;
-            const _owned = AVAILABLE_RACES.filter(r => (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true).length;
-            const _pct = Math.round((_owned / Math.max(1, _total)) * 100);
-            const meterHtml = `<div class="cdx-collection-meter" style="display:flex;align-items:center;gap:10px;padding:6px 10px;margin-bottom:6px;border:1px solid rgba(184,160,96,0.3);background:rgba(20,16,8,0.4);border-radius:6px">
-                <span style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.14em;color:#b8a060">VESSELS DECLASSIFIED</span>
-                <div style="flex:1;height:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(184,160,96,0.25);border-radius:4px;overflow:hidden"><div style="width:${_pct}%;height:100%;background:linear-gradient(90deg,#8a7030,#ffd86a)"></div></div>
-                <span style="font-size:12px;color:#ffd86a;font-weight:600">${_owned} / ${_total}</span>
-            </div>`;
+            filterHtml += '</div>';
 
             body.innerHTML = `
-                ${meterHtml}
-                ${filterHtml}
+                <div class="cdx-toolbar">${filterHtml}${_codexMeterHtml()}</div>
                 <div class="cdx-layout">
                     <div class="cdx-list" id="codexList">${_codexRenderList()}</div>
                     <div class="cdx-detail" id="codexDetail">${_codexDossierFor(_codexSelectedRace)}</div>
                 </div>
             `;
         };
+
+        // Collection meter — shared by codex + shop toolbars.
+        function _codexMeterHtml() {
+            const total = AVAILABLE_RACES.length;
+            const owned = AVAILABLE_RACES.filter(r => (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(r) : true).length;
+            const pct = Math.round((owned / Math.max(1, total)) * 100);
+            return `<div class="cdx-meter" title="${owned} of ${total} vessels declassified">
+                <span class="cdx-meter-label">VESSELS DECLASSIFIED</span>
+                <div class="cdx-meter-track"><div class="cdx-meter-fill" style="width:${pct}%"></div></div>
+                <span class="cdx-meter-count">${owned} / ${total}</span>
+            </div>`;
+        }
 
         // Full dossier when owned; fully-redacted dossier when locked.
         function _codexDossierFor(race) {
@@ -7144,47 +7184,36 @@
         function _codexRenderRedactedDossier(race) {
             const profile = RACE_PROFILES[race];
             if (!profile) return '';
-            const docNum = 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
             const blk = (n) => '█'.repeat(n);
-            const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
+            const price = (window.ACCT_UNIT_PRICE || 5000);
             const econ = window.ProfileSystem && window.ProfileSystem.getAccountEconomy ? window.ProfileSystem.getAccountEconomy() : { freeTokens: 0 };
+            const rk = race.replace(/'/g, "\\'");
             const tokenBtn = (econ.freeTokens > 0)
-                ? `<button class="cdx-filter-btn" style="margin-left:8px" onclick="window._goToShop('${race.replace(/'/g, "\\'")}')">🎟 Use Free Unlock</button>` : '';
+                ? `<button class="cdx-btn cdx-btn-token" onclick="window._goToShop('${rk}')">🎟 Use Free Unlock</button>` : '';
             return `
-            <div class="cdx-dossier cdx-dossier-locked">
-                <div class="cdx-dossier-header">
-                    <div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>
-                    <div class="cdx-doc-id">DOC# ${docNum} · ██/██/199█</div>
-                    <div class="cdx-classification">TOP SECRET // ████████ // NOFORN</div>
-                </div>
-                <div class="cdx-dossier-title-row">
-                    <div class="cdx-dossier-title">
-                        <div class="cdx-subject-header">1. &nbsp;SUBJECT IDENTIFICATION:</div>
-                        <div class="cdx-subject-name">${blk(9)}</div>
-                        <div class="cdx-subject-meta">
-                            <span class="cdx-meta-tag">Designation: <b>${blk(6)}</b></span>
-                            <span class="cdx-meta-tag">Class: <b>${blk(5)}</b></span>
-                            <span class="cdx-meta-tag">Default Role: <b>${blk(7)}</b></span>
+                ${_codexHeroHtml(race, { locked: true })}
+                <div class="cdx-detail-scroll">
+                    <div class="cdx-dossier cdx-dossier-locked">
+                        <div class="cdx-section">
+                            <div class="cdx-section-header">1. &nbsp;EXECUTIVE SUMMARY:</div>
+                            <div class="cdx-redacted-block">${blk(38)} ${blk(22)} ${blk(31)} ████ ${blk(18)} ████████ ${blk(26)} ${blk(14)}.</div>
+                        </div>
+                        <div class="cdx-section">
+                            <div class="cdx-section-header">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
+                            <div class="cdx-redacted-banner">████████ INTELLIGENCE WITHHELD ████████</div>
+                        </div>
+                        <div class="cdx-section">
+                            <div class="cdx-section-header">3. &nbsp;DOCUMENTED CAPABILITIES:</div>
+                            <div class="cdx-redacted-block">${blk(26)} ${blk(12)} ${blk(30)} ${blk(9)} ${blk(21)}</div>
                         </div>
                     </div>
-                    <div class="cdx-sprite-frame">
-                        <div class="cdx-sprite" style="display:flex;align-items:center;justify-content:center;background-image:none;font-size:54px;color:rgba(184,160,96,0.4)">❓</div>
-                        <div class="cdx-sprite-label">PHOTO ████████</div>
-                    </div>
                 </div>
-                <div class="cdx-section">
-                    <div class="cdx-section-header">2. &nbsp;EXECUTIVE SUMMARY:</div>
-                    <div class="cdx-lore">${blk(38)} ${blk(22)} ${blk(31)} ████ ${blk(18)} ████████ ${blk(26)} ${blk(14)}.</div>
-                </div>
-                <div class="cdx-section">
-                    <div class="cdx-section-header">3. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
-                    <div style="padding:12px;text-align:center;color:#6a6450;letter-spacing:0.14em;font-size:12px">████████ INTELLIGENCE WITHHELD ████████</div>
-                </div>
-                <div class="cdx-locked-cta" style="text-align:center;padding:14px;border-top:1px dashed rgba(184,160,96,0.3);margin-top:8px">
-                    <div style="font-size:13px;color:#b8a060;margin-bottom:8px;letter-spacing:0.1em">🔒 FILE SEALED — DECLASSIFY TO REVEAL</div>
-                    <button class="primary" onclick="window._goToShop('${race.replace(/'/g, "\\'")}')">Unlock in Shop · 💰 ${price}</button>${tokenBtn}
-                </div>
-            </div>`;
+                <div class="cdx-actionbar">
+                    <span class="cdx-action-status" style="color:#b8a060">🔒 FILE SEALED — DECLASSIFY TO REVEAL</span>
+                    <div class="cdx-actionbar-spacer"></div>
+                    ${tokenBtn}
+                    <button class="cdx-btn cdx-btn-primary" onclick="window._goToShop('${rk}')">Unlock in Shop · 💰 ${price.toLocaleString()}</button>
+                </div>`;
         }
 
         window._codexSelect = function(race) {
@@ -7220,6 +7249,7 @@
         let _shopFilterOwn = 'all'; // all | owned | locked
         let _shopSearch = '';
         let _shopConfirming = null; // race awaiting purchase confirmation
+        let _shopConfirmToken = false; // confirming with a free token (vs gold)
 
         // Reusable wallet readout — single implementation across all screens.
         window._formatGold = function(n) { return (Number(n) || 0).toLocaleString(); };
@@ -7283,104 +7313,95 @@
             const p = RACE_PROFILES[race];
             if (!p) return '';
             const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
-            const faction = p.faction || 'space';
             const sprUrl = _codexGetSpriteUrl(race);
             const selected = race === _shopSelectedRace ? ' selected' : '';
+            const lockedCls = unlocked ? '' : ' locked';
             const sprStyle = unlocked ? `background-image:url('${sprUrl}')`
-                : `background-image:url('${sprUrl}');filter:brightness(0.15) opacity(0.55)`;
+                : `background-image:url('${sprUrl}');filter:brightness(0.16) opacity(0.6)`;
             const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
             const tag = unlocked
-                ? `<span style="color:#9fe0a0;font-size:11px;font-weight:600">✓ OWNED</span>`
+                ? `<span class="shop-card-tag owned">✓ OWNED</span>`
                 : (_shopBuyable(race)
-                    ? `<span style="color:#ffd86a;font-size:11px;font-weight:600">💰 ${price}</span>`
-                    : `<span style="color:#8a8a9a;font-size:10px;font-weight:600">🔒 3D MODEL SOON</span>`);
-            const featuredRibbon = opts.featured
-                ? `<div style="position:absolute;top:0;left:0;background:#b8455a;color:#fff;font-size:8px;letter-spacing:0.1em;padding:1px 5px">FEATURED</div>` : '';
-            return `<div class="cdx-list-item${selected}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')" style="position:relative;cursor:pointer;flex-direction:column;align-items:center;padding:6px 4px;gap:3px;${unlocked ? '' : ''}">
+                    ? `<span class="shop-card-tag price">💰 ${price}</span>`
+                    : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`);
+            const featuredRibbon = opts.featured ? `<div class="shop-ribbon">FEATURED</div>` : '';
+            return `<div class="shop-card${selected}${lockedCls}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')">
                 ${featuredRibbon}
-                <div class="cdx-list-sprite" style="${sprStyle};width:56px;height:56px"></div>
-                <div class="cdx-list-name" style="font-size:11px;text-align:center;${unlocked ? '' : 'color:#9a9080'}">${p.label}</div>
-                <div>${tag}</div>
+                <div class="shop-card-sprite" style="${sprStyle}"></div>
+                <div class="shop-card-name">${p.label}</div>
+                ${tag}
+            </div>`;
+        }
+
+        // The pinned action bar: whatever state the vessel is in, the button
+        // that matters is ALWAYS on screen — never below the fold.
+        function _shopActionBar(race) {
+            const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
+            const rk = race.replace(/'/g, "\\'");
+            if (unlocked) {
+                return `<div class="cdx-actionbar">
+                    <span class="cdx-action-status" style="color:#9fe0a0">✓ DECLASSIFIED — IN YOUR ROSTER</span>
+                    <div class="cdx-actionbar-spacer"></div>
+                    <button class="cdx-btn cdx-btn-ghost" onclick="window._shopViewInCodex('${rk}')">VIEW IN CODEX</button>
+                </div>`;
+            }
+            if (!_shopBuyable(race)) {
+                return `<div class="cdx-actionbar">
+                    <span class="cdx-action-status" style="color:#9a9aae">🔒 AWAITING 3D MODEL — NOT YET DEPLOYABLE</span>
+                    <span class="cdx-action-note">This vessel goes on sale once its rigged model ships.</span>
+                </div>`;
+            }
+            const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
+                ? window.ProfileSystem.getAccountEconomy() : { gold: 0, freeTokens: 0 };
+            const price = window.ACCT_UNIT_PRICE || 5000;
+            const canAfford = (econ.gold || 0) >= price;
+            const hasToken = (econ.freeTokens || 0) > 0;
+            if (_shopConfirming === race) {
+                const method = _shopConfirmToken
+                    ? `<b style="color:#9ad0ff">1 free unlock token 🎟</b>`
+                    : `<b style="color:#ffd86a">💰 ${price.toLocaleString()} gold</b>`;
+                return `<div class="cdx-actionbar">
+                    <span class="cdx-action-status" style="color:#e8dfc0;font-weight:400">Declassify <b>${RACE_PROFILES[race].label}</b> for ${method}?</span>
+                    <div class="cdx-actionbar-spacer"></div>
+                    <button class="cdx-btn cdx-btn-ghost" onclick="window._shopCancelConfirm()">✕ Cancel</button>
+                    <button class="cdx-btn cdx-btn-confirm" onclick="window._shopBuy('${rk}', ${_shopConfirmToken ? 'true' : 'false'})">✓ Confirm Purchase</button>
+                </div>`;
+            }
+            const affordNote = canAfford ? ''
+                : `<span class="cdx-action-note" style="color:#c08050">need ${(price - (econ.gold || 0)).toLocaleString()} more gold — win matches to earn it</span>`;
+            const tokenBtn = hasToken
+                ? `<button class="cdx-btn cdx-btn-token" onclick="window._shopAskConfirm('${rk}', true)">🎟 Use Free Unlock (${econ.freeTokens})</button>` : '';
+            const buyBtn = canAfford
+                ? `<button class="cdx-btn cdx-btn-primary" onclick="window._shopAskConfirm('${rk}', false)">Unlock · 💰 ${price.toLocaleString()}</button>`
+                : `<button class="cdx-btn cdx-btn-primary" disabled title="Not enough gold">Unlock · 💰 ${price.toLocaleString()}</button>`;
+            return `<div class="cdx-actionbar">
+                <span class="cdx-action-status" style="color:#b8a060">🔒 SEALED FILE</span>
+                ${affordNote}
+                <div class="cdx-actionbar-spacer"></div>
+                ${tokenBtn}
+                ${buyBtn}
             </div>`;
         }
 
         function _shopRenderDetail(race) {
-            if (!race) return '<div class="cdx-empty" style="padding:30px;text-align:center;color:#888">Select a vessel to inspect its dossier.</div>';
+            if (!race || !RACE_PROFILES[race]) return '<div class="cdx-empty" style="margin:auto">Select a vessel to inspect its dossier.</div>';
             const unlocked = (typeof isUnitUnlocked === 'function') ? isUnitUnlocked(race) : true;
-            const dossier = _codexRenderDossier(race); // full preview-before-buy
-            let buyBar = '';
-            if (unlocked) {
-                buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
-                    <span style="color:#9fe0a0;font-weight:600;letter-spacing:0.08em">✓ DECLASSIFIED — IN YOUR ROSTER</span>
-                </div>`;
-            } else if (!_shopBuyable(race)) {
-                buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
-                    <span style="color:#8a8a9a;font-weight:600;letter-spacing:0.08em">🔒 AWAITING 3D MODEL — NOT YET DEPLOYABLE</span>
-                </div>`;
-            } else {
-                const econ = (window.ProfileSystem && window.ProfileSystem.getAccountEconomy)
-                    ? window.ProfileSystem.getAccountEconomy() : { gold: 0, freeTokens: 0 };
-                const price = window.ACCT_UNIT_PRICE || 5000;
-                const canAfford = (econ.gold || 0) >= price;
-                const hasToken = (econ.freeTokens || 0) > 0;
-                const rk = race.replace(/'/g, "\\'");
-                if (_shopConfirming === race) {
-                    buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
-                        <div style="color:#b8a060;margin-bottom:8px">Declassify <b>${RACE_PROFILES[race].label}</b>?</div>
-                        <button class="primary" onclick="window._shopBuy('${rk}', false)">Confirm · 💰 ${price.toLocaleString()}</button>
-                        ${hasToken ? `<button class="primary" style="background:#3a6ea5" onclick="window._shopBuy('${rk}', true)">🎟 Use Free Unlock</button>` : ''}
-                        <button onclick="window._shopCancelConfirm()">Cancel</button>
-                    </div>`;
-                } else {
-                    const priceBtn = canAfford
-                        ? `<button class="primary" onclick="window._shopAskConfirm('${rk}')">Unlock · 💰 ${price.toLocaleString()}</button>`
-                        : `<button disabled title="Not enough gold" style="opacity:0.5">💰 ${price.toLocaleString()} (need ${(price - (econ.gold || 0)).toLocaleString()} more)</button>`;
-                    const tokenBtn = hasToken
-                        ? `<button class="primary" style="background:#3a6ea5" onclick="window._shopAskConfirm('${rk}')">🎟 Use Free Unlock (${econ.freeTokens})</button>` : '';
-                    buyBar = `<div class="shop-buybar" style="text-align:center;padding:12px;border-top:1px solid rgba(184,160,96,0.3);margin-top:6px">
-                        ${priceBtn} ${tokenBtn}
-                    </div>`;
-                }
-            }
-            return `<div id="shopDetailInner" class="${unlocked ? '' : 'shop-detail-locked'}">${dossier}${buyBar}</div>`;
+            const price = (window.ACCT_UNIT_PRICE || 5000).toLocaleString();
+            const priceTag = unlocked
+                ? '<div class="cdx-hero-price owned">✓ OWNED</div>'
+                : (_shopBuyable(race)
+                    ? `<div class="cdx-hero-price">💰 ${price}</div>`
+                    : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>');
+            // Full preview-before-buy: the shop never hides what you are buying.
+            return `
+                ${_codexHeroHtml(race, { priceTag })}
+                <div class="cdx-detail-scroll">
+                    <div class="cdx-dossier">${_codexDossierSections(race)}</div>
+                </div>
+                ${_shopActionBar(race)}`;
         }
 
-        window._renderShop = function() {
-            const body = document.getElementById('shopBody');
-            if (!body) return;
-            if (!_shopSelectedRace) {
-                const firstLocked = AVAILABLE_RACES.find(r => !isUnitUnlocked(r));
-                _shopSelectedRace = firstLocked || AVAILABLE_RACES[0];
-            }
-
-            // Featured shelf
-            const featured = _shopDailyFeatured();
-            let featuredHtml = '';
-            if (featured.length) {
-                featuredHtml = `<div class="shop-featured" style="margin-bottom:8px;padding:8px;border:1px solid rgba(184,69,90,0.4);background:rgba(40,12,18,0.35);border-radius:6px">
-                    <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:0.16em;color:#e08a9a;margin-bottom:6px">★ TODAY'S DECLASSIFICATION TARGETS</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap">${featured.map(r => _shopRenderCard(r, { featured: true })).join('')}</div>
-                </div>`;
-            }
-
-            // Filters
-            const factionOpts = ['all', 'space', 'time', 'chaos'];
-            const ownOpts = [['all', 'ALL'], ['owned', 'OWNED'], ['locked', 'LOCKED']];
-            let filterHtml = '<div class="cdx-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px">';
-            filterHtml += `<input type="text" placeholder="Search vessels…" value="${_shopSearch.replace(/"/g, '&quot;')}" oninput="window._shopSetSearch(this.value)" style="background:rgba(0,0,0,0.4);border:1px solid rgba(184,160,96,0.3);color:#d8cfa8;padding:4px 8px;font-family:DotGothic16,monospace;font-size:12px">`;
-            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION:</span>';
-            for (const f of factionOpts) {
-                const sel = f === _shopFilterFaction ? ' active' : '';
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
-            }
-            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">STATUS:</span>';
-            for (const [v, lbl] of ownOpts) {
-                const sel = v === _shopFilterOwn ? ' active' : '';
-                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('own','${v}')">${lbl}</button>`;
-            }
-            filterHtml += '</div></div>';
-
-            // Grid
+        function _shopFilteredRaces() {
             let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
             if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
             if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitUnlocked(r));
@@ -7389,17 +7410,56 @@
                 const q = _shopSearch.trim().toLowerCase();
                 races = races.filter(r => (RACE_PROFILES[r].label || r).toLowerCase().includes(q) || r.toLowerCase().includes(q));
             }
-            races.sort((a, b) => (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
-            const gridHtml = races.length
-                ? races.map(r => _shopRenderCard(r)).join('')
-                : '<div class="cdx-empty" style="padding:20px;color:#888">No vessels match.</div>';
+            // What you can act on leads: buyable → coming-soon → owned, A→Z within each.
+            const rank = r => isUnitUnlocked(r) ? 2 : (_shopBuyable(r) ? 0 : 1);
+            races.sort((a, b) => (rank(a) - rank(b)) || (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
+            return races;
+        }
 
+        function _shopGridHtml() {
+            const races = _shopFilteredRaces();
+            return races.length ? races.map(r => _shopRenderCard(r)).join('')
+                : '<div class="cdx-empty" style="grid-column:1/-1">No vessels match.</div>';
+        }
+
+        function _shopFeaturedHtml() {
+            const featured = _shopDailyFeatured();
+            if (!featured.length) return '';
+            return `<span class="shop-featured-label">★ TODAY'S TARGETS</span>${featured.map(r => _shopRenderCard(r, { featured: true })).join('')}`;
+        }
+
+        window._renderShop = function() {
+            const body = document.getElementById('shopBody');
+            if (!body) return;
+            if (!_shopSelectedRace) {
+                const firstBuyable = AVAILABLE_RACES.find(r => _shopBuyable(r) && !isUnitUnlocked(r));
+                _shopSelectedRace = firstBuyable || AVAILABLE_RACES.find(r => !isUnitUnlocked(r)) || AVAILABLE_RACES[0];
+            }
+
+            const factionOpts = ['all', 'space', 'time', 'chaos'];
+            const ownOpts = [['all', 'ALL'], ['locked', 'LOCKED'], ['owned', 'OWNED']];
+            let filterHtml = `<input type="text" class="cdx-search" placeholder="Search vessels…" value="${_shopSearch.replace(/"/g, '&quot;')}" oninput="window._shopSetSearch(this.value)">`;
+            filterHtml += '<div class="cdx-filter-group"><span class="cdx-filter-label">FACTION</span>';
+            for (const f of factionOpts) {
+                const sel = f === _shopFilterFaction ? ' active' : '';
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('faction','${f}')">${f === 'all' ? 'ALL' : f.toUpperCase()}</button>`;
+            }
+            filterHtml += '</div><div class="cdx-filter-group"><span class="cdx-filter-label">STATUS</span>';
+            for (const [v, lbl] of ownOpts) {
+                const sel = v === _shopFilterOwn ? ' active' : '';
+                filterHtml += `<button class="cdx-filter-btn${sel}" onclick="window._shopSetFilter('own','${v}')">${lbl}</button>`;
+            }
+            filterHtml += '</div>';
+
+            const featuredHtml = _shopFeaturedHtml();
             body.innerHTML = `
-                ${featuredHtml}
-                ${filterHtml}
-                <div class="cdx-layout" style="display:flex;gap:10px">
-                    <div class="cdx-list" id="shopGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;align-content:start;flex:1;overflow:auto">${gridHtml}</div>
-                    <div class="cdx-detail" id="shopDetail" style="flex:1.2;overflow:auto">${_shopRenderDetail(_shopSelectedRace)}</div>
+                <div class="cdx-toolbar">${filterHtml}${_codexMeterHtml()}</div>
+                <div class="cdx-layout">
+                    <div class="shop-left">
+                        ${featuredHtml ? `<div class="shop-featured" id="shopFeatured">${featuredHtml}</div>` : ''}
+                        <div class="shop-grid" id="shopGrid">${_shopGridHtml()}</div>
+                    </div>
+                    <div class="cdx-detail shop-detail" id="shopDetail">${_shopRenderDetail(_shopSelectedRace)}</div>
                 </div>
             `;
             const w = document.getElementById('shopWallet');
@@ -7410,7 +7470,15 @@
             if (typeof playSfx === 'function') playSfx('uiCursorFocus');
             _shopSelectedRace = race;
             _shopConfirming = null;
-            window._renderShop();
+            _shopConfirmToken = false;
+            // Surgical refresh — keeps the grid's scroll position.
+            const grid = document.getElementById('shopGrid');
+            const feat = document.getElementById('shopFeatured');
+            const detail = document.getElementById('shopDetail');
+            if (!grid || !detail) { window._renderShop(); return; }
+            grid.innerHTML = _shopGridHtml();
+            if (feat) feat.innerHTML = _shopFeaturedHtml();
+            detail.innerHTML = _shopRenderDetail(race);
         };
 
         window._shopSetFilter = function(type, value) {
@@ -7425,22 +7493,14 @@
             // Re-render just the grid to avoid losing input focus.
             const grid = document.getElementById('shopGrid');
             if (!grid) { window._renderShop(); return; }
-            let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
-            if (_shopFilterFaction !== 'all') races = races.filter(r => (RACE_PROFILES[r].faction || '') === _shopFilterFaction);
-            if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitUnlocked(r));
-            if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitUnlocked(r));
-            if (_shopSearch.trim()) {
-                const q = _shopSearch.trim().toLowerCase();
-                races = races.filter(r => (RACE_PROFILES[r].label || r).toLowerCase().includes(q) || r.toLowerCase().includes(q));
-            }
-            races.sort((a, b) => (RACE_PROFILES[a].label || a).localeCompare(RACE_PROFILES[b].label || b));
-            grid.innerHTML = races.length ? races.map(r => _shopRenderCard(r)).join('') : '<div class="cdx-empty" style="padding:20px;color:#888">No vessels match.</div>';
+            grid.innerHTML = _shopGridHtml();
         };
 
-        window._shopAskConfirm = function(race) {
+        window._shopAskConfirm = function(race, useToken) {
             if (!_shopBuyable(race)) { if (typeof playSfx === 'function') playSfx('uiError'); return; }
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
             _shopConfirming = race;
+            _shopConfirmToken = !!useToken;
             const d = document.getElementById('shopDetail');
             if (d) d.innerHTML = _shopRenderDetail(race);
         };
@@ -7448,8 +7508,16 @@
         window._shopCancelConfirm = function() {
             if (typeof playSfx === 'function') playSfx('uiCursorMove');
             _shopConfirming = null;
+            _shopConfirmToken = false;
             const d = document.getElementById('shopDetail');
             if (d) d.innerHTML = _shopRenderDetail(_shopSelectedRace);
+        };
+
+        window._shopViewInCodex = function(race) {
+            if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            if (AVAILABLE_RACES.indexOf(race) !== -1) _codexSelectedRace = race;
+            if (typeof _showTitlePage === 'function') _showTitlePage('codexPage');
+            if (typeof window._renderCodex === 'function') window._renderCodex();
         };
 
         window._shopBuy = function(race, useToken) {
@@ -7460,16 +7528,18 @@
                 return;
             }
             const detail = document.getElementById('shopDetail');
-            const inner = document.getElementById('shopDetailInner');
-            if (inner) inner.style.opacity = '0.5';
+            if (detail) detail.style.opacity = '0.5';
             PS.serverPurchaseUnit(race, !!useToken).then(function(r) {
+                const d = document.getElementById('shopDetail');
+                if (d) d.style.opacity = '1';
                 if (r && r.ok) {
                     _shopConfirming = null;
+                    _shopConfirmToken = false;
                     if (typeof playSfx === 'function') { try { playSfx('levelUp'); } catch (e) {} }
                     window._refreshWallets();
                     window._renderShop();
                     // Declassify reveal flash on the now-owned dossier.
-                    const di = document.getElementById('shopDetailInner');
+                    const di = document.getElementById('shopDetail');
                     if (di) {
                         di.style.transition = 'none';
                         di.style.filter = 'brightness(2.2)';
@@ -7481,7 +7551,7 @@
                 } else {
                     if (typeof playSfx === 'function') { try { playSfx('uiError'); } catch (e) {} }
                     alert((r && r.error) || 'Purchase failed.');
-                    if (detail) detail.innerHTML = _shopRenderDetail(race);
+                    if (d) d.innerHTML = _shopRenderDetail(race);
                 }
             });
         };
@@ -7490,6 +7560,7 @@
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
             if (focusRace && AVAILABLE_RACES.indexOf(focusRace) !== -1) _shopSelectedRace = focusRace;
             _shopConfirming = null;
+            _shopConfirmToken = false;
             if (typeof _showTitlePage === 'function') _showTitlePage('shopPage');
             // Refresh the server-authoritative economy when entering the shop.
             if (window.ProfileSystem && typeof window.ProfileSystem.serverFetchEconomy === 'function') {
