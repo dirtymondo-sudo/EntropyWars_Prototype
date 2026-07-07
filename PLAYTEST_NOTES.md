@@ -4,6 +4,96 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Gamepad support + camera modes + controls editor (2026-07-07) — state.js, battle.js, hud.js, ui.js, map.js
+Token bumped `20260708b` → `20260708c`. Probe-verified in-browser (scratchpad
+probe_gamepad.js — fake standard-mapping pad injected over navigator.getGamepads;
+**36/36 ×3 runs**: connect/vendor/glyphs/rebind-swap-reset, mode cycling +
+persistence, drum hook, stick orbit + _userPanning latch, ZR zoom, stick-walk +
+A-commit, X-X end turn (turn handed to P2), + pause / dpad focus / B close,
+hints bar, zero page errors). Probe gotcha: hold pad buttons ≥400ms — under
+SwiftShader jank the poll loop can run at a few fps and a 150ms release falls
+between frames (no edge). Sandbox browser stops crashing on the match-start
+transition once `window.EW_DISABLE_3D_UNITS = true` is set in addInitScript.
+- **Input layer (state.js, appended at EOF)**: `window.EWInput` tracks the LAST
+  device touched (`'kbm' | 'pad'`; trusted-event listeners only — the pad layer
+  itself dispatches SYNTHETIC key events, filtered via `e.isTrusted`). Fires
+  `ew-input-device` + stamps `body[data-input-device]`. `window.EWPad` = the
+  whole controller stack: rAF poll loop (idles at 500ms checks until a pad ever
+  connects), per-vendor default bindings (Nintendo confirm=A(idx1)/cancel=B(idx0);
+  generic/Xbox/PS confirm=idx0), 15 rebindable actions persisted in
+  `ew_padBindings` (rebind = capture-next-button; duplicate bindings swap),
+  stick opts in `ew_padOpts` (invertY/invertX/sensitivity/deadzone/vibration),
+  radial deadzone + ^1.5 expo curve, `rumble()` (dual-rumble → hapticActuators
+  fallback), `glyphForAction/ForButton` (vendor-correct labels: Switch B/A/Y/X,
+  PS shapes, Xbox letters), `debugContext()` for harness assertions.
+- **Pad → gameplay routing reuses existing paths, never duplicates them**:
+  contexts are `menu` (Horologe drum owns stick+dpad → `window._hrlgPad` hook),
+  `aim` (move/jump/spell targeting → SYNTHETIC W/A/S/D + ENTER keydowns feed
+  the ui.js WASD-walk + kb-cursor pipeline; A with a `pendingTarget` and no
+  cursor = clickTile two-click confirm), `free` (not our turn: left stick pans),
+  `dialog` (A/B = handleUiDialogPrimary/Secondary), `title`, `domnav` (pause
+  menu/settings/menus: focus-order navigation over visible buttons, A clicks,
+  left/right adjusts range/select), `rebind`. Global battle buttons: + pause,
+  − overview, Y camera mode, X end turn, R3 recenter, ZL/ZR analog zoom
+  (writes state.userZoomScale like the wheel), L/R cycle spell targets
+  (cycleSpellTarget) else drum rows. Right stick orbits via the SAME
+  `camera.snap({_force,tilt,yaw})` contract as middle-drag (sets
+  `state._userPanning` while held + consumes `_deferredTurnPanUnitId` on
+  release, mirroring mouseup).
+- **END TURN is two-press** (`window._ewRequestEndTurn`, shared by pad X and
+  the NEW SPACE key): first press arms a 1.6s window + toast "PRESS AGAIN TO
+  END TURN". Also NEW: `C` cycles camera mode. Both live in the ui.js battle
+  keydown (same guards as WASD). `window._ewToast(msg, ms)` = the little
+  DotGothic announcement chip (also used for camera-mode switches + pad
+  connect/disconnect).
+- **Camera modes (battle.js)**: `state.cameraMode` ∈ tactical | follow |
+  cinematic (persisted `ew_cameraMode`; legacy `ew_cinematicActionCam` '1'
+  migrates → cinematic in the ui.js load block; `state.cinematicActionCam` is
+  now DERIVED from the mode). `setCameraMode/cycleCameraMode/getCameraMode/
+  isFollowCamMode` + `getFollowCamTilt/Zoom/Yaw` on window. Follow = the
+  camera opens every turn parked BEHIND the active unit's facing
+  (`getTurnStartCamYaw` now triggers for follow too) at `FOLLOW_CAM_TILT` 68°
+  and `getDefaultZoom()×2.0`; the remembered rest pitch may ride to
+  `FOLLOW_REST_TILT_MAX` 85 (snap()'s clamp is mode-aware; tactical stays
+  REST_TILT_MAX 62). Cinematic = follow (72°, ×2.2) + auto action shots.
+  A free PAN (mouse right-drag or pad left-stick) in follow/cinematic
+  DETACHES to tactical silently + toast — orbit/zoom do NOT detach. The
+  setActionMode move/jump "force tactical pitch" clamp is skipped in follow.
+  Mode switch re-frames the active unit immediately (non-silent).
+- **HUD (hud.js)**: `useInputDevice()` hook + `_hintKey(action, kbLabel)`
+  helper swap every hint by device: crown label/title (◀ BACK B / ■ END TURN
+  X chip), CANCEL/END TURN blade hints. NEW `ControlHints` bar (`.ew-hints-bar`,
+  under the scoreboard, hidden <1150px) lists exactly the live inputs per
+  context + device with `.ew-padbtn` (round Switch-style caps) / `.ew-keycap`
+  chips; its camera chip is CLICKABLE (cycles mode). `window._hrlgPad`
+  hook exposed from HorologeMenu ({view, blades, cycle, fire, crown}) — fire
+  is nulled while aiming (same rule as ENTER). CSS in the injected
+  `_injectHudHideStyles` block, incl. a gold focus ring for pad DOM-nav
+  (`body[data-input-device="pad"] .pause-card :focus`).
+- **Controls editor (ui.js `window._buildControlsSettingsHTML`)**: shared by
+  the pause-menu Controls tab (still has Game Speed) AND main-menu Settings
+  (map.js injects it between Display and Developer). Camera-mode 3-button
+  selector, gamepad status line (id + non-standard-mapping warning), full
+  rebind grid (click a `.pm-bind-btn` → `window._ewPadRebind` → press a
+  button; ESC cancels; 8s timeout), Invert-Y / Rumble / Reset Bindings,
+  sensitivity slider, and an ACCURATE kb/mouse reference (the old grid
+  advertised SPACE/right-click binds that didn't exist; SPACE is real now).
+  `window._ewControlsRerender` refreshes whichever host is open (pad
+  connect/disconnect/rebind call it).
+- **kb-cursor upgrade (ui.js)**: the arrow-key board cursor now calls
+  `updateHoveredTarget(nx, ny)` per step, so move-path/AoE previews track it
+  (keyboard AND pad aiming).
+- GOTCHA: `handleBackAction()` at the ROOT menu deselects the unit (existing
+  ESC behavior) — after which bare `setActionMode`/`triggerEndTurn`/WASD all
+  no-op on `getSelectedUnit()`. Probes must `selectUnit(_blitzActiveUnitId)`
+  before driving verbs directly. Pad B at root goes through `hook.crown()`
+  (= END TURN ritual), NOT handleBackAction, so pad players don't hit this.
+- HARNESS: fake pad = override `navigator.getGamepads` in addInitScript +
+  dispatch a hand-built `gamepadconnected` Event with `.gamepad` attached;
+  `EWPad.debugContext()` tells you which router context the pad layer sees.
+  Sandbox chromium crash-flaky ("Target page/browser closed") on the
+  match-start transition — retry, and `--disable-dev-shm-usage` helps.
+
 ## Character balance pass + flyer grounding + Balance Lab v2 (2026-07-07) — data.js, battle.js, three-vfx-effects.js, three-renderer.js, sprites.js, party-builder.js
 Token bumped `20260707c` → `20260707d`. Verified: node data-integrity script
 (40+ checks) + in-browser LOCAL_ASSETS probe (scratchpad probe_balance.js,

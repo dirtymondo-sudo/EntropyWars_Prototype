@@ -945,6 +945,7 @@
                             <button class="pm-set-btn${isFs ? ' active' : ''}" id="mmFsBtn" onclick="toggleFullscreen();setTimeout(()=>{const b=document.getElementById('mmFsBtn');if(b)b.textContent=document.fullscreenElement?'Exit Fullscreen':'⛶ Fullscreen';},120);">${isFs ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>
                         </div>
                     </div>
+                    ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Developer</div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>

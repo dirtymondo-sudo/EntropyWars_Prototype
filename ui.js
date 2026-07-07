@@ -6704,6 +6704,97 @@
             </div>`;
         }
 
+        /* ── Controls settings (shared: pause-menu tab + main-menu Settings) ──
+           Camera-mode selector, gamepad status + remappable bindings, stick
+           options, and the keyboard/mouse reference. Rendered as an HTML
+           string; every handler is a window.* global so both hosts work. */
+        function _escCtl(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        window._buildControlsSettingsHTML = function() {
+            const camMode = typeof window.getCameraMode === 'function' ? window.getCameraMode() : 'tactical';
+            const camBtn = (mode, label) => `<button class="pm-set-btn${camMode === mode ? ' active' : ''}" onclick="window.setCameraMode&&window.setCameraMode('${mode}');window._ewControlsRerender();">${label}</button>`;
+            const pad = window.EWPad;
+            const padOn = !!(pad && pad.isConnected());
+            const padId = padOn ? _escCtl(pad.getPadId()).slice(0, 52) : '';
+            const padMapping = padOn ? pad.getMapping() : '';
+            let bindRows = '';
+            if (pad) {
+                for (const a of pad.ACTIONS) {
+                    const g = pad.glyphForAction(a.id);
+                    bindRows += `<div class="pm-keybind"><span class="pm-keybind-action">${_escCtl(a.label)}</span>`
+                        + `<button class="pm-kbd pm-bind-btn" title="Click, then press the controller button to bind"`
+                        + ` onclick="window._ewPadRebind('${a.id}')">${_escCtl(g.text)}</button></div>`;
+                }
+            }
+            const opts = pad ? pad.getOpts() : { invertY: false, sensitivity: 1, vibration: true };
+            return `
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">Camera Mode</div>
+                    <div class="pm-set-row">
+                        ${camBtn('tactical', '🗺 Tactical')}
+                        ${camBtn('follow', '🎥 Follow')}
+                        ${camBtn('cinematic', '🎬 Cinematic')}
+                    </div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">Tactical = free overhead board view. Follow = third-person, attached to your active unit (panning detaches back to tactical). Cinematic = follow + automatic action-camera shots. Cycle in battle with <b>C</b> or the pad's Camera Mode button.</div>
+                </div>
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">Gamepad</div>
+                    <div style="font-size:10px;color:${padOn ? '#8fd18f' : 'var(--muted)'};margin-bottom:8px;line-height:1.5">
+                        ${padOn
+                            ? '🎮 ' + padId + (padMapping !== 'standard' ? ' · <b>non-standard mapping</b> — rebind below if buttons feel wrong' : '')
+                            : '🎮 No controller detected — plug one in and press any button on it. (Works with Switch Pro, Xbox and PS pads.)'}
+                    </div>
+                    <div class="pm-keybinds-grid">${bindRows}</div>
+                    <div class="pm-set-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+                        <button class="pm-set-btn${opts.invertY ? ' active' : ''}" onclick="window.EWPad&&window.EWPad.setOpt('invertY',${opts.invertY ? 'false' : 'true'});window._ewControlsRerender();">Invert Camera Y: ${opts.invertY ? 'ON' : 'OFF'}</button>
+                        <button class="pm-set-btn${opts.vibration ? ' active' : ''}" onclick="window.EWPad&&window.EWPad.setOpt('vibration',${opts.vibration ? 'false' : 'true'});window._ewControlsRerender();">Rumble: ${opts.vibration ? 'ON' : 'OFF'}</button>
+                        <button class="pm-set-btn" onclick="window.EWPad&&window.EWPad.resetBindings();window._ewControlsRerender();">Reset Bindings</button>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:8px;align-items:center;gap:8px">
+                        <span class="pm-vol-label">Stick Sens.</span>
+                        <input type="range" class="pm-vol-slider" min="0.4" max="2" step="0.1" value="${opts.sensitivity}"
+                            oninput="window.EWPad&&window.EWPad.setOpt('sensitivity',parseFloat(this.value));this.nextElementSibling.textContent=this.value+'×';">
+                        <span class="pm-vol-val">${opts.sensitivity}×</span>
+                    </div>
+                </div>
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">Keyboard &amp; Mouse</div>
+                    <div class="pm-keybinds-grid">
+                        <div class="pm-keybind"><span class="pm-keybind-action">Move / Cursor</span><kbd class="pm-kbd">WASD</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Confirm</span><kbd class="pm-kbd">ENTER</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Menu Drum</span><kbd class="pm-kbd">↑ ↓ · WHEEL</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Cancel / Back</span><kbd class="pm-kbd">ESC · R-CLICK</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">End Turn (×2)</span><kbd class="pm-kbd">SPACE</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Camera Mode</span><kbd class="pm-kbd">C</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Cycle Target</span><kbd class="pm-kbd">TAB</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Orbit Camera</span><kbd class="pm-kbd">MID-DRAG</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Pan Camera</span><kbd class="pm-kbd">R-DRAG</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Zoom</span><kbd class="pm-kbd">SCROLL</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC</kbd></div>
+                    </div>
+                </div>`;
+        };
+        window._ewPadRebind = function(actionId) {
+            if (!window.EWPad) return;
+            if (!window.EWPad.isConnected()) {
+                if (window._ewToast) window._ewToast('CONNECT A CONTROLLER FIRST', 1400);
+                return;
+            }
+            window.EWPad.beginRebind(actionId, function() { window._ewControlsRerender(); });
+        };
+        window._ewControlsRerender = function() {
+            try {
+                const ov = document.getElementById('pauseOverlay');
+                if (ov && ov.classList.contains('active')) {
+                    if (_pauseTab === 'controls') _renderPauseMenu();
+                    return;
+                }
+                const mm = document.getElementById('mmSettingsBody');
+                if (mm && mm.offsetParent !== null && typeof _renderMainMenuSettings === 'function') _renderMainMenuSettings();
+            } catch (e) {}
+        };
+
         function _buildPauseControls() {
             const curSpeed = state.devSimSpeed || 1;
 
@@ -6717,18 +6808,7 @@
                         <button class="pm-set-btn speed${curSpeed===4?' active':''}" onclick="document.getElementById('devSimBattleSpeed4Btn')?.click();_renderPauseMenu();">×4</button>
                     </div>
                 </div>
-
-                <div class="pm-set-group">
-                    <div class="pm-set-group-title">Keybinds</div>
-                    <div class="pm-keybinds-grid">
-                        <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Cycle Target</span><kbd class="pm-kbd">TAB</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">End Turn</span><kbd class="pm-kbd">SPACE</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Cancel</span><kbd class="pm-kbd">RIGHT</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Pan Camera</span><kbd class="pm-kbd">WASD</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Zoom</span><kbd class="pm-kbd">SCROLL</kbd></div>
-                    </div>
-                </div>
+                ${window._buildControlsSettingsHTML()}
             </div>`;
         }
 
@@ -9038,6 +9118,9 @@
                         state._kbCursorX = nx;
                         state._kbCursorY = ny;
                         playSfx('uiCursorMove');
+                        // drive the same hover pipeline the mouse uses so the
+                        // move-path / AoE previews track the keyboard cursor too
+                        if (typeof updateHoveredTarget === 'function') updateHoveredTarget(nx, ny);
                         const cursorUnit = unitAt(nx, ny);
                         if (cursorUnit && !cursorUnit.dead) focusUnitPanel(cursorUnit.id, null, 'hover');
                         else focusUnitPanel(unit.id, null, 'hover');
@@ -9096,6 +9179,19 @@
                     focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });
                 }
                 scheduleBoardRender();
+                return;
+            }
+
+            // SPACE ends the turn (two presses — the first arms a confirm) and
+            // C cycles the camera mode. Shared with the gamepad's X / Y buttons.
+            if (key === ' ') {
+                event.preventDefault();
+                if (typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                return;
+            }
+            if (key === 'c' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                event.preventDefault();
+                if (typeof cycleCameraMode === 'function') cycleCameraMode();
                 return;
             }
 
@@ -9230,12 +9326,16 @@
             } catch(e) {}
 
             try {
+                // camera mode (tactical / follow / cinematic). The legacy
+                // ew_cinematicActionCam flag migrates to the cinematic mode.
+                var _cmRaw = localStorage.getItem('ew_cameraMode');
                 var _acRaw = localStorage.getItem('ew_cinematicActionCam');
-                if (_acRaw !== null) {
-                    state.cinematicActionCam = (_acRaw === '1' || _acRaw === 'true');
-                    var _acDevCb = document.getElementById('actionCamToggleBattle');
-                    if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
-                }
+                var _cmMode = (_cmRaw === 'tactical' || _cmRaw === 'follow' || _cmRaw === 'cinematic') ? _cmRaw
+                    : ((_acRaw === '1' || _acRaw === 'true') ? 'cinematic' : 'tactical');
+                state.cameraMode = _cmMode;
+                state.cinematicActionCam = (_cmMode === 'cinematic');
+                var _acDevCb = document.getElementById('actionCamToggleBattle');
+                if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
             } catch(e) {}
         }, {
             once: true

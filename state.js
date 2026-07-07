@@ -4501,7 +4501,18 @@
                 if (!_panActive) return;
                 const dx = e.clientX - _panStartX;
                 const dy = e.clientY - _panStartY;
-                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _panMoved = true;
+                if ((Math.abs(dx) > 3 || Math.abs(dy) > 3) && !_panMoved) {
+                    _panMoved = true;
+                    // A free pan detaches the follow camera — hand the player
+                    // back to tactical instead of dragging a camera that will
+                    // just re-attach to the unit on the next action.
+                    if (state.phase === 'battle'
+                        && typeof isFollowCamMode === 'function' && isFollowCamMode()
+                        && typeof setCameraMode === 'function') {
+                        setCameraMode('tactical', { silent: true });
+                        if (typeof window._ewToast === 'function') window._ewToast('🗺 TACTICAL CAMERA', 1100);
+                    }
+                }
 
                 if (typeof camera !== 'undefined') {
 
@@ -5013,3 +5024,703 @@
             });
 
         }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           GAMEPAD + INPUT-DEVICE LAYER (window.EWInput / window.EWPad)
+           ═══════════════════════════════════════════════════════════════════
+           Optional controller support (built/tested around a Switch Pro pad
+           over USB in Firefox, works with any Gamepad-API pad). Design rules:
+           - NOTHING here replaces mouse/keyboard — the pad drives the SAME
+             battle-tested entry points the mouse and keyboard already use:
+             synthetic W/A/S/D + ENTER keydowns for walking and the board
+             cursor (ui.js owns that logic), the Horologe menu hook
+             (window._hrlgPad, hud.js) for the action drum, camera.snap for
+             orbit/pan/zoom (what the mouse drag handlers call), and the bare
+             globals clickTile / handleBackAction / triggerEndTurn.
+           - Bindings are remappable (Controls tab / main-menu Settings) and
+             persisted in ew_padBindings; stick options in ew_padOpts.
+           - window.EWInput.device ('kbm' | 'pad') tracks the LAST device the
+             player touched; the HUD swaps its button hints off it (event
+             'ew-input-device', plus body[data-input-device]).                */
+
+        const EWInput = {
+            device: 'kbm',
+            setDevice(d) {
+                if (this.device === d) return;
+                this.device = d;
+                try { document.body && document.body.setAttribute('data-input-device', d); } catch (e) {}
+                try { window.dispatchEvent(new CustomEvent('ew-input-device', { detail: d })); } catch (e) {}
+            }
+        };
+        window.EWInput = EWInput;
+        // Real (trusted) kb/mouse activity flips the hints back to kb+mouse.
+        // The pad layer dispatches SYNTHETIC key events — isTrusted filters those.
+        window.addEventListener('keydown', (e) => { if (e.isTrusted) EWInput.setDevice('kbm'); }, { capture: true, passive: true });
+        window.addEventListener('pointerdown', (e) => { if (e.isTrusted) EWInput.setDevice('kbm'); }, { capture: true, passive: true });
+        window.addEventListener('wheel', (e) => { if (e.isTrusted) EWInput.setDevice('kbm'); }, { capture: true, passive: true });
+
+        /* ── small announcement toast (also used by camera-mode switches) ── */
+        let _ewToastEl = null, _ewToastTimer = null;
+        window._ewToast = function (msg, ms) {
+            try {
+                if (!_ewToastEl) {
+                    _ewToastEl = document.createElement('div');
+                    _ewToastEl.id = 'ewInputToast';
+                    _ewToastEl.style.cssText =
+                        'position:fixed;left:50%;top:16%;transform:translate(-50%,-8px);' +
+                        'font-family:DotGothic16,monospace;font-size:15px;letter-spacing:0.18em;' +
+                        'color:#e8ecff;background:rgba(8,10,18,0.88);border:1px solid rgba(140,160,220,0.45);' +
+                        'padding:8px 18px;z-index:4000;pointer-events:none;opacity:0;white-space:nowrap;' +
+                        'clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);' +
+                        'text-shadow:0 1px 3px rgba(0,0,0,0.9);transition:opacity 160ms ease,transform 160ms ease;';
+                    document.body.appendChild(_ewToastEl);
+                }
+                _ewToastEl.textContent = msg;
+                _ewToastEl.style.opacity = '1';
+                _ewToastEl.style.transform = 'translate(-50%,0)';
+                if (_ewToastTimer) clearTimeout(_ewToastTimer);
+                _ewToastTimer = setTimeout(() => {
+                    _ewToastEl.style.opacity = '0';
+                    _ewToastEl.style.transform = 'translate(-50%,-8px)';
+                }, ms || 1500);
+            } catch (e) {}
+        };
+
+        /* ── two-press END TURN (shared by the pad X button and SPACE) ───── */
+        let _ewEndTurnArmT = 0;
+        window._ewRequestEndTurn = function () {
+            if (state.phase !== 'battle' || state.winner) return;
+            if (state.autoPlayers?.[state.activePlayer]) return;
+            if (state._actionExecuting) return;
+            if (typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer()) return;
+            const now = performance.now();
+            if (now < _ewEndTurnArmT) {
+                _ewEndTurnArmT = 0;
+                if (typeof playSfx === 'function') playSfx('uiConfirm');
+                if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(700);
+                if (typeof triggerEndTurn === 'function') triggerEndTurn();
+            } else {
+                _ewEndTurnArmT = now + 1600;
+                if (typeof playSfx === 'function') playSfx('uiCursorMove');
+                window._ewToast('PRESS AGAIN TO END TURN', 1500);
+            }
+        };
+
+        /* ── pad actions + default bindings (standard-mapping indices) ─────
+           Standard mapping is POSITIONAL: 0=bottom, 1=right, 2=left, 3=top
+           face button. Nintendo pads confirm with A (right, 1) and cancel
+           with B (bottom, 0); Xbox/PS pads confirm with the BOTTOM button.
+           The per-vendor default flips just those two.                      */
+        const PAD_ACTIONS = [
+            { id: 'confirm',    label: 'Confirm / Select' },
+            { id: 'cancel',     label: 'Cancel / Back' },
+            { id: 'endTurn',    label: 'End Turn (press twice)' },
+            { id: 'cameraMode', label: 'Camera Mode' },
+            { id: 'targetPrev', label: 'Previous Target' },
+            { id: 'targetNext', label: 'Next Target' },
+            { id: 'zoomOut',    label: 'Zoom Out' },
+            { id: 'zoomIn',     label: 'Zoom In' },
+            { id: 'overview',   label: 'Full-Map Overview' },
+            { id: 'pause',      label: 'Pause Menu' },
+            { id: 'recenter',   label: 'Recenter Camera' },
+            { id: 'menuUp',     label: 'Menu / Cursor Up' },
+            { id: 'menuDown',   label: 'Menu / Cursor Down' },
+            { id: 'menuLeft',   label: 'Menu / Cursor Left' },
+            { id: 'menuRight',  label: 'Menu / Cursor Right' },
+        ];
+        const PAD_DEFAULTS_NINTENDO = {
+            confirm: 1, cancel: 0, endTurn: 3, cameraMode: 2,
+            targetPrev: 4, targetNext: 5, zoomOut: 6, zoomIn: 7,
+            overview: 8, pause: 9, recenter: 11,
+            menuUp: 12, menuDown: 13, menuLeft: 14, menuRight: 15,
+        };
+        const PAD_DEFAULTS_GENERIC = {
+            ...PAD_DEFAULTS_NINTENDO,
+            confirm: 0, cancel: 1,
+        };
+
+        const EWPad = (function () {
+            let padIndex = null;
+            let padId = '';
+            let vendor = 'generic';           // 'nintendo' | 'xbox' | 'playstation' | 'generic'
+            let bindings = null;              // action id → button index
+            let opts = { invertY: false, invertX: false, sensitivity: 1, deadzone: 0.18, vibration: true };
+            let prevPressed = [];
+            let rebind = null;                // { id, cb, until }
+            let lastLoopT = 0;
+            let idleCheckT = 0;
+            let stickPanning = false;         // right stick currently orbiting
+            let lastCursorStepT = 0;
+            let heldDirKey = null;            // for step repeat
+            let heldDirSince = 0;
+            let menuRepeatT = 0;
+            let everConnected = false;
+
+            function _detectVendor(id) {
+                const s = String(id || '').toLowerCase();
+                if (/(nintendo|pro controller|joy-con|057e)/.test(s)) return 'nintendo';
+                if (/(sony|playstation|dualshock|dualsense|054c)/.test(s)) return 'playstation';
+                if (/(xbox|xinput|microsoft|045e)/.test(s)) return 'xbox';
+                return 'generic';
+            }
+            function _defaults() {
+                return vendor === 'nintendo' ? { ...PAD_DEFAULTS_NINTENDO } : { ...PAD_DEFAULTS_GENERIC };
+            }
+            function _loadBindings() {
+                bindings = _defaults();
+                try {
+                    const raw = localStorage.getItem('ew_padBindings');
+                    if (raw) {
+                        const saved = JSON.parse(raw);
+                        if (saved && typeof saved === 'object') {
+                            for (const a of PAD_ACTIONS) {
+                                if (Number.isInteger(saved[a.id])) bindings[a.id] = saved[a.id];
+                            }
+                        }
+                    }
+                } catch (e) {}
+                try {
+                    const raw = localStorage.getItem('ew_padOpts');
+                    if (raw) {
+                        const saved = JSON.parse(raw);
+                        if (saved && typeof saved === 'object') {
+                            if (typeof saved.invertY === 'boolean') opts.invertY = saved.invertY;
+                            if (typeof saved.invertX === 'boolean') opts.invertX = saved.invertX;
+                            if (typeof saved.sensitivity === 'number') opts.sensitivity = Math.max(0.3, Math.min(2.5, saved.sensitivity));
+                            if (typeof saved.deadzone === 'number') opts.deadzone = Math.max(0.05, Math.min(0.45, saved.deadzone));
+                            if (typeof saved.vibration === 'boolean') opts.vibration = saved.vibration;
+                        }
+                    }
+                } catch (e) {}
+            }
+            function _saveBindings() {
+                try { localStorage.setItem('ew_padBindings', JSON.stringify(bindings)); } catch (e) {}
+            }
+            function _saveOpts() {
+                try { localStorage.setItem('ew_padOpts', JSON.stringify(opts)); } catch (e) {}
+            }
+
+            function getPad() {
+                const pads = (navigator.getGamepads && navigator.getGamepads()) || [];
+                if (padIndex != null) {
+                    const p = pads[padIndex];
+                    if (p && p.connected) return p;
+                    padIndex = null;
+                }
+                for (const p of pads) {
+                    if (p && p.connected && p.buttons && p.buttons.length) {
+                        padIndex = p.index;
+                        if (p.id !== padId) {
+                            padId = p.id;
+                            vendor = _detectVendor(p.id);
+                            _loadBindings();
+                        }
+                        return p;
+                    }
+                }
+                return null;
+            }
+
+            /* button glyphs per vendor — POSITIONAL index → what's printed on
+               that physical button. Used by the HUD hints + controls editor. */
+            function glyphForButton(idx) {
+                const dpad = { 12: '▲', 13: '▼', 14: '◀', 15: '▶' };
+                if (dpad[idx]) return { text: dpad[idx], kind: 'dpad' };
+                if (idx === 10) return { text: 'L3', kind: 'stick' };
+                if (idx === 11) return { text: 'R3', kind: 'stick' };
+                if (idx === 16) return { text: '⌂', kind: 'sys' };
+                if (vendor === 'nintendo') {
+                    const m = { 0: 'B', 1: 'A', 2: 'Y', 3: 'X', 4: 'L', 5: 'R', 6: 'ZL', 7: 'ZR', 8: '−', 9: '+' };
+                    return { text: m[idx] ?? ('B' + idx), kind: idx <= 3 ? 'face' : idx <= 7 ? 'shoulder' : 'sys' };
+                }
+                if (vendor === 'playstation') {
+                    const m = { 0: '✕', 1: '○', 2: '□', 3: '△', 4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2', 8: 'SHARE', 9: 'OPT' };
+                    return { text: m[idx] ?? ('B' + idx), kind: idx <= 3 ? 'face' : idx <= 7 ? 'shoulder' : 'sys' };
+                }
+                const m = { 0: 'A', 1: 'B', 2: 'X', 3: 'Y', 4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT', 8: 'VIEW', 9: 'MENU' };
+                return { text: m[idx] ?? ('B' + idx), kind: idx <= 3 ? 'face' : idx <= 7 ? 'shoulder' : 'sys' };
+            }
+            function glyphForAction(actionId) {
+                if (!bindings) _loadBindings();
+                const idx = bindings[actionId];
+                if (!Number.isInteger(idx) || idx < 0) return { text: '—', kind: 'sys' };
+                return glyphForButton(idx);
+            }
+
+            function setBinding(actionId, btnIdx) {
+                if (!bindings) _loadBindings();
+                if (!PAD_ACTIONS.some(a => a.id === actionId)) return;
+                // swap with whichever action already owns that button, so a
+                // rebind can never silently leave two actions on one button
+                const oldIdx = bindings[actionId];
+                for (const a of PAD_ACTIONS) {
+                    if (a.id !== actionId && bindings[a.id] === btnIdx) bindings[a.id] = oldIdx;
+                }
+                bindings[actionId] = btnIdx;
+                _saveBindings();
+            }
+            function resetBindings() {
+                bindings = _defaults();
+                _saveBindings();
+            }
+            function beginRebind(actionId, cb) {
+                if (!PAD_ACTIONS.some(a => a.id === actionId)) return;
+                rebind = { id: actionId, cb: cb || null, until: performance.now() + 8000 };
+                window._ewToast('PRESS A CONTROLLER BUTTON…  (ESC CANCELS)', 8000);
+            }
+            function cancelRebind() {
+                if (!rebind) return;
+                rebind = null;
+                window._ewToast('REBIND CANCELLED', 900);
+            }
+            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && rebind && e.isTrusted) cancelRebind(); });
+
+            function rumble(strong, weak, ms) {
+                if (!opts.vibration) return;
+                const gp = getPad();
+                if (!gp) return;
+                try {
+                    if (gp.vibrationActuator && gp.vibrationActuator.playEffect) {
+                        gp.vibrationActuator.playEffect('dual-rumble', {
+                            duration: ms, strongMagnitude: strong, weakMagnitude: weak
+                        }).catch(() => {});
+                    } else if (gp.hapticActuators && gp.hapticActuators[0] && gp.hapticActuators[0].pulse) {
+                        gp.hapticActuators[0].pulse(Math.max(strong, weak), ms).catch(() => {});
+                    }
+                } catch (e) {}
+            }
+
+            /* radial deadzone + mild expo so fine aiming is precise */
+            function _curve(v) {
+                const dz = opts.deadzone;
+                const a = Math.abs(v);
+                if (a < dz) return 0;
+                const n = (a - dz) / (1 - dz);
+                return Math.sign(v) * Math.pow(n, 1.5);
+            }
+
+            function _btn(gp, idx) {
+                const b = gp.buttons[idx];
+                if (!b) return false;
+                return b.pressed || b.value > 0.5;
+            }
+            function _btnVal(gp, idx) {
+                const b = gp.buttons[idx];
+                return b ? (b.value || (b.pressed ? 1 : 0)) : 0;
+            }
+            function _action(gp, actionId) { return _btn(gp, bindings[actionId]); }
+            function _justPressedIdx(gp, pressed) {
+                for (let i = 0; i < pressed.length; i++) {
+                    if (pressed[i] && !prevPressed[i]) return i;
+                }
+                return -1;
+            }
+            function _just(pressed, actionId) {
+                const idx = bindings[actionId];
+                return idx >= 0 && pressed[idx] && !prevPressed[idx];
+            }
+
+            /* ── contexts ─────────────────────────────────────────────────── */
+            function _pauseOpen() {
+                const ov = document.getElementById('pauseOverlay');
+                return !!(ov && ov.classList.contains('active'));
+            }
+            function _mmSettingsOpen() {
+                const el = document.getElementById('mmSettingsBody');
+                if (!el) return false;
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.height > 0 && el.offsetParent !== null;
+            }
+            function _context() {
+                if (rebind) return 'rebind';
+                if (_pauseOpen()) return 'domnav';
+                if (state.uiDialog) return 'dialog';
+                if (state.titleScreenVisible) return 'title';
+                if (state.phase === 'battle' && !state.winner) {
+                    const hook = window._hrlgPad;
+                    const wasd = typeof window._isWasdActive === 'function' && window._isWasdActive();
+                    if (hook && hook.view && hook.view !== 'aim' && hook.blades > 0 && !wasd) return 'menu';
+                    if (hook) return 'aim';       // aim view, WASD walk, or empty drum
+                    return 'free';                 // not our turn / spectating
+                }
+                if (state.phase === 'editor') return 'free';
+                if (_mmSettingsOpen()) return 'domnav';
+                return 'domnav';                   // menus outside battle
+            }
+
+            /* ── generic DOM focus navigation (pause menu, dialogs, menus) ── */
+            function _domNavRoot() {
+                const pause = document.getElementById('pauseOverlay');
+                if (pause && pause.classList.contains('active')) return pause;
+                const dlg = document.getElementById('uiDialogOverlay');
+                if (dlg && dlg.offsetParent !== null) return dlg;
+                const mm = document.getElementById('mmSettingsBody');
+                if (mm && mm.offsetParent !== null) return mm.closest('.mm-modal') || mm;
+                return document.body;
+            }
+            function _domNavEls() {
+                const root = _domNavRoot();
+                if (!root) return [];
+                const els = Array.from(root.querySelectorAll(
+                    'button, select, input, [role="button"], [tabindex]:not([tabindex="-1"])'
+                ));
+                return els.filter(el => {
+                    if (el.disabled) return false;
+                    if (el.offsetParent === null) return false;
+                    const r = el.getBoundingClientRect();
+                    return r.width > 2 && r.height > 2;
+                });
+            }
+            function _domNavStep(dir) {
+                const els = _domNavEls();
+                if (!els.length) return;
+                let i = els.indexOf(document.activeElement);
+                if (i < 0) i = dir > 0 ? -1 : 0;
+                i = (i + dir + els.length) % els.length;
+                const el = els[i];
+                try { el.focus({ preventScroll: false }); } catch (e) { el.focus(); }
+                if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+                if (typeof playSfx === 'function') playSfx('uiCursorMove');
+            }
+            function _domNavActivate() {
+                const el = document.activeElement;
+                if (!el || el === document.body) { _domNavStep(1); return; }
+                if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+                el.click();
+            }
+            function _domNavAdjust(dir) {
+                const el = document.activeElement;
+                if (el && el.tagName === 'INPUT' && el.type === 'range') {
+                    const step = parseFloat(el.step) || 1;
+                    el.value = String(parseFloat(el.value || '0') + dir * step);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return true;
+                }
+                if (el && el.tagName === 'SELECT') {
+                    const n = el.selectedIndex + dir;
+                    if (n >= 0 && n < el.options.length) {
+                        el.selectedIndex = n;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            /* ── synthetic keys: reuse ui.js WASD walking + board kb-cursor ── */
+            function _sendKey(key) {
+                try {
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true }));
+                } catch (e) {}
+            }
+            const DIR_KEYS = { up: 'w', down: 's', left: 'a', right: 'd' };
+            function _dirFromStick(x, y) {
+                if (Math.abs(x) < 0.55 && Math.abs(y) < 0.55) return null;
+                return Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : (y > 0 ? 'down' : 'up');
+            }
+            /* step-repeat for cursor/walk: instant first step, then repeats */
+            function _dirStep(dirName, now) {
+                if (!dirName) { heldDirKey = null; return; }
+                const fresh = heldDirKey !== dirName;
+                if (fresh) { heldDirKey = dirName; heldDirSince = now; lastCursorStepT = 0; }
+                const heldMs = now - heldDirSince;
+                const interval = heldMs > 900 ? 110 : 170;
+                if (!fresh && now - lastCursorStepT < interval) return;
+                lastCursorStepT = now;
+                _sendKey(DIR_KEYS[dirName]);
+            }
+
+            function _consumeDeferredTurnPan() {
+                if (!state._deferredTurnPanUnitId) return;
+                const defId = state._deferredTurnPanUnitId;
+                state._deferredTurnPanUnitId = null;
+                const u = state.units?.find(un => un.id === defId && !un.dead);
+                if (u && typeof focusBoardCameraOnTiles === 'function') {
+                    const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
+                    const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
+                        ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                    focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
+                        zoom, holdMs: 99999, persist: true, transitionMs: 500
+                    });
+                }
+            }
+
+            function _updateZoomChip(newZoom) {
+                const btn = document.getElementById('zoomToggleBtn');
+                if (btn && typeof getUserZoomLabel === 'function') {
+                    btn.textContent = getUserZoomLabel();
+                    btn.classList.toggle('active', typeof isUserZoomEngaged === 'function' ? isUserZoomEngaged() : newZoom > 1.05);
+                }
+            }
+
+            /* ── camera: right stick orbit, triggers zoom, in-battle only ── */
+            function _cameraFrame(gp, dt, ctx) {
+                if (typeof camera === 'undefined' || !camera) return;
+                if (state.phase !== 'battle' && state.phase !== 'editor') return;
+                if (state.cameraDisabled) return;
+
+                const rx = _curve((opts.invertX ? -1 : 1) * (gp.axes[2] ?? 0));
+                const ry = _curve((opts.invertY ? -1 : 1) * (gp.axes[3] ?? 0));
+                const orbiting = (rx !== 0 || ry !== 0);
+                if (orbiting) {
+                    if (!stickPanning) {
+                        stickPanning = true;
+                        state._userPanning = true;
+                        camera._stop();
+                    }
+                    const yaw = (state.dioramaYawDeg ?? camera.yaw ?? 0) + rx * 170 * opts.sensitivity * dt;
+                    const tilt = Math.max(0, Math.min(135,
+                        (state.dioramaTiltDeg ?? camera.tilt ?? 50) + ry * 100 * opts.sensitivity * dt));
+                    camera.snap({ _force: true, tilt: Math.round(tilt * 10) / 10, yaw: Math.round(yaw * 10) / 10 });
+                } else if (stickPanning) {
+                    stickPanning = false;
+                    state._userPanning = false;
+                    _consumeDeferredTurnPan();
+                }
+
+                // analog zoom on the triggers (mirrors the wheel-zoom contract:
+                // engage state.userZoomScale so auto-framing respects it)
+                const zi = _btnVal(gp, bindings.zoomIn);
+                const zo = _btnVal(gp, bindings.zoomOut);
+                if (zi > 0.05 || zo > 0.05) {
+                    const cur = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged() && state.userZoomScale)
+                        ? state.userZoomScale : (camera.zoom || 1);
+                    const factor = 1 + (zi - zo) * 1.6 * dt;
+                    const newZoom = Math.round(Math.max(0.25, Math.min(10.0, cur * factor)) * 1000) / 1000;
+                    if (Math.abs(newZoom - cur) > 0.0005) {
+                        state.userZoomScale = newZoom;
+                        _updateZoomChip(newZoom);
+                        camera.snap({ _force: true, zoom: newZoom });
+                    }
+                }
+
+                // left stick pans the free camera OUTSIDE menus/aiming.
+                // In follow mode a free pan makes no sense — detach to tactical
+                // (same rule as a mouse right-drag pan).
+                if (ctx === 'free') {
+                    const lx = _curve(gp.axes[0] ?? 0);
+                    const ly = _curve(gp.axes[1] ?? 0);
+                    if (lx !== 0 || ly !== 0) {
+                        if (typeof isFollowCamMode === 'function' && isFollowCamMode()
+                            && typeof setCameraMode === 'function') {
+                            setCameraMode('tactical', { silent: true });
+                            window._ewToast('🗺 TACTICAL CAMERA', 1100);
+                        }
+                        const yawRad = -((state.dioramaYawDeg ?? 0) * Math.PI / 180);
+                        const cosY = Math.cos(yawRad), sinY = Math.sin(yawRad);
+                        const bdx = lx * cosY + ly * sinY;
+                        const bdy = -lx * sinY + ly * cosY;
+                        const speed = 9 / Math.max(0.35, camera.zoom || 1);   // tiles/sec
+                        camera.snap({
+                            _force: true,
+                            x: camera.x + bdx * speed * dt,
+                            y: camera.y + bdy * speed * dt
+                        });
+                    }
+                }
+            }
+
+            /* ── per-frame router ─────────────────────────────────────────── */
+            function _frame(gp, dt, now) {
+                const pressed = [];
+                let anyPressed = false;
+                for (let i = 0; i < gp.buttons.length; i++) {
+                    pressed[i] = _btn(gp, i);
+                    if (pressed[i]) anyPressed = true;
+                }
+                let anyAxis = false;
+                for (let i = 0; i < Math.min(gp.axes.length, 4); i++) {
+                    if (Math.abs(gp.axes[i]) > opts.deadzone) { anyAxis = true; break; }
+                }
+                if (anyPressed || anyAxis) EWInput.setDevice('pad');
+
+                // rebind capture swallows EVERYTHING until a button lands
+                if (rebind) {
+                    if (now > rebind.until) { rebind = null; window._ewToast('REBIND TIMED OUT', 900); }
+                    else {
+                        const idx = _justPressedIdx(gp, pressed);
+                        if (idx >= 0) {
+                            const r = rebind; rebind = null;
+                            setBinding(r.id, idx);
+                            if (typeof playSfx === 'function') playSfx('uiConfirm');
+                            window._ewToast('BOUND: ' + glyphForButton(idx).text, 1100);
+                            rumble(0.4, 0.4, 90);
+                            if (r.cb) try { r.cb(idx); } catch (e) {}
+                            if (typeof window._ewControlsRerender === 'function') window._ewControlsRerender();
+                        }
+                    }
+                    prevPressed = pressed;
+                    return;
+                }
+
+                const ctx = _context();
+
+                /* camera first — the sticks stay live in every battle context
+                   except while the drum owns the left stick (menu nav). */
+                if (ctx === 'menu' || ctx === 'aim' || ctx === 'free') _cameraFrame(gp, dt, ctx);
+
+                const hook = window._hrlgPad;
+
+                /* ── global battle buttons ── */
+                if (ctx === 'menu' || ctx === 'aim' || ctx === 'free') {
+                    if (_just(pressed, 'pause') && typeof togglePauseMenu === 'function') togglePauseMenu();
+                    if (_just(pressed, 'cameraMode') && typeof cycleCameraMode === 'function') cycleCameraMode();
+                    if (_just(pressed, 'overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
+                    if (_just(pressed, 'recenter') && typeof setCameraMode === 'function'
+                        && typeof getCameraMode === 'function') setCameraMode(getCameraMode());
+                    if (_just(pressed, 'endTurn')) window._ewRequestEndTurn();
+                    // L/R cycle spell targets whenever the engine has a cycle list
+                    if (state.actionMode === 'spell' && state._spellCycleTargets?.length > 1
+                        && typeof cycleSpellTarget === 'function') {
+                        if (_just(pressed, 'targetPrev')) cycleSpellTarget(-1);
+                        if (_just(pressed, 'targetNext')) cycleSpellTarget(1);
+                    } else if (hook && hook.blades > 0) {
+                        if (_just(pressed, 'targetPrev')) hook.cycle(-1);
+                        if (_just(pressed, 'targetNext')) hook.cycle(1);
+                    }
+                }
+
+                if (ctx === 'menu') {
+                    // drum navigation: D-pad or left stick, A fires, B backs out
+                    const lx = _curve(gp.axes[0] ?? 0);
+                    const ly = _curve(gp.axes[1] ?? 0);
+                    let nav = 0;
+                    if (_action(gp, 'menuUp') || ly < -0.55) nav = -1;
+                    else if (_action(gp, 'menuDown') || ly > 0.55) nav = 1;
+                    if (nav !== 0) {
+                        if (now - menuRepeatT > 170) { menuRepeatT = now; hook.cycle(nav); }
+                    } else menuRepeatT = 0;
+                    if (_just(pressed, 'confirm')) { hook.fire(); rumble(0.25, 0.35, 60); }
+                    if (_just(pressed, 'cancel')) hook.crown();
+                } else if (ctx === 'aim') {
+                    // board aiming: left stick / D-pad drive the SAME WASD +
+                    // kb-cursor pipeline the keyboard uses; A = ENTER, B = back
+                    const lx = _curve(gp.axes[0] ?? 0);
+                    const ly = _curve(gp.axes[1] ?? 0);
+                    let dirName = _dirFromStick(lx, ly);
+                    if (!dirName) {
+                        if (_action(gp, 'menuUp')) dirName = 'up';
+                        else if (_action(gp, 'menuDown')) dirName = 'down';
+                        else if (_action(gp, 'menuLeft')) dirName = 'left';
+                        else if (_action(gp, 'menuRight')) dirName = 'right';
+                    }
+                    _dirStep(dirName, now);
+                    if (_just(pressed, 'confirm')) {
+                        // With a target already picked (L/R cycling arms
+                        // state.pendingTarget) and no live board cursor,
+                        // A confirms it directly — the two-click contract.
+                        const pt = state.pendingTarget;
+                        const wasdLive = typeof window._isWasdActive === 'function' && window._isWasdActive();
+                        if (!wasdLive && typeof state._kbCursorX !== 'number'
+                            && pt && typeof clickTile === 'function') {
+                            state._clickedUnitId = null;
+                            clickTile(pt.x, pt.y, pt.z);
+                        } else {
+                            _sendKey('Enter');
+                        }
+                        rumble(0.25, 0.35, 60);
+                    }
+                    if (_just(pressed, 'cancel') && typeof handleBackAction === 'function') handleBackAction();
+                } else if (ctx === 'free') {
+                    if (_just(pressed, 'cancel') && typeof handleBackAction === 'function') handleBackAction();
+                    if (_just(pressed, 'confirm')) {
+                        // reselect / recentre on the acting unit when idle
+                        const u = typeof getSelectedUnit === 'function' && getSelectedUnit();
+                        if (u && typeof focusBoardCameraOnTiles === 'function') {
+                            focusBoardCameraOnTiles([{ x: u.x, y: u.y }], { holdMs: 99999, persist: true, transitionMs: 300 });
+                        }
+                    }
+                } else if (ctx === 'dialog') {
+                    if (_just(pressed, 'confirm') && typeof handleUiDialogPrimary === 'function') handleUiDialogPrimary();
+                    if (_just(pressed, 'cancel') && typeof handleUiDialogSecondary === 'function') handleUiDialogSecondary();
+                } else if (ctx === 'title') {
+                    if ((_just(pressed, 'confirm') || _just(pressed, 'pause'))
+                        && typeof enterGameFromTitle === 'function') enterGameFromTitle();
+                } else if (ctx === 'domnav') {
+                    // pause menu / dialogs / front-end menus: focus-order nav
+                    const ly = _curve(gp.axes[1] ?? 0);
+                    const lx = _curve(gp.axes[0] ?? 0);
+                    let nav = 0;
+                    if (_action(gp, 'menuUp') || ly < -0.55) nav = -1;
+                    else if (_action(gp, 'menuDown') || ly > 0.55) nav = 1;
+                    if (nav !== 0) {
+                        if (now - menuRepeatT > 180) { menuRepeatT = now; _domNavStep(nav); }
+                    } else menuRepeatT = 0;
+                    let adj = 0;
+                    if (_action(gp, 'menuLeft') || lx < -0.55) adj = -1;
+                    else if (_action(gp, 'menuRight') || lx > 0.55) adj = 1;
+                    if (adj !== 0) {
+                        if (now - lastCursorStepT > 160) { lastCursorStepT = now; if (!_domNavAdjust(adj)) _domNavStep(adj); }
+                    }
+                    if (_just(pressed, 'confirm')) _domNavActivate();
+                    if (_just(pressed, 'cancel') || _just(pressed, 'pause')) {
+                        if (_pauseOpen() && typeof closePauseMenu === 'function') closePauseMenu();
+                        else if (state.uiDialog && typeof handleUiDialogSecondary === 'function') handleUiDialogSecondary();
+                        else _sendKey('Escape');
+                    }
+                }
+
+                prevPressed = pressed;
+            }
+
+            function _loop(t) {
+                requestAnimationFrame(_loop);
+                const now = performance.now();
+                // no pad yet → cheap re-check a couple times a second
+                if (padIndex == null && !everConnected && now - idleCheckT < 500) return;
+                idleCheckT = now;
+                const gp = getPad();
+                if (!gp) { prevPressed = []; if (stickPanning) { stickPanning = false; state._userPanning = false; } return; }
+                everConnected = true;
+                const dt = lastLoopT ? Math.min((now - lastLoopT) / 1000, 0.05) : 0.016;
+                lastLoopT = now;
+                try { _frame(gp, dt, now); } catch (e) { /* never wedge input on a UI error */ }
+            }
+
+            window.addEventListener('gamepadconnected', (e) => {
+                const gp = e.gamepad;
+                padIndex = gp.index;
+                padId = gp.id;
+                vendor = _detectVendor(gp.id);
+                _loadBindings();
+                everConnected = true;
+                EWInput.setDevice('pad');
+                const shortId = String(gp.id).replace(/\s*\(.*$/, '').slice(0, 40);
+                window._ewToast('🎮 ' + (shortId || 'CONTROLLER') + ' CONNECTED', 2200);
+                if (gp.mapping !== 'standard') {
+                    setTimeout(() => window._ewToast('NON-STANDARD PAD MAPPING — REBIND IN CONTROLS IF BUTTONS FEEL WRONG', 3200), 2400);
+                }
+                if (typeof window._ewControlsRerender === 'function') window._ewControlsRerender();
+            });
+            window.addEventListener('gamepaddisconnected', (e) => {
+                if (padIndex === e.gamepad.index) padIndex = null;
+                window._ewToast('🎮 CONTROLLER DISCONNECTED', 1800);
+                EWInput.setDevice('kbm');
+                if (typeof window._ewControlsRerender === 'function') window._ewControlsRerender();
+            });
+
+            _loadBindings();
+            requestAnimationFrame(_loop);
+
+            return {
+                ACTIONS: PAD_ACTIONS,
+                isConnected() { return !!getPad(); },
+                getPadId() { getPad(); return padId; },
+                getVendor() { getPad(); return vendor; },
+                getMapping() { const p = getPad(); return p ? p.mapping : ''; },
+                getBinding(id) { if (!bindings) _loadBindings(); return bindings[id]; },
+                debugContext() { return _context(); },
+                setBinding, resetBindings, beginRebind, cancelRebind,
+                isRebinding() { return !!rebind; },
+                glyphForAction, glyphForButton,
+                getOpts() { return { ...opts }; },
+                setOpt(k, v) {
+                    if (!(k in opts)) return;
+                    opts[k] = v;
+                    _saveOpts();
+                },
+                rumble,
+            };
+        })();
+        window.EWPad = EWPad;

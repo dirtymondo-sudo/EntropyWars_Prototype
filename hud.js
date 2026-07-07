@@ -1624,6 +1624,7 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
+  const inputDev = useInputDevice();
 
   // spell blades carry inline badges → slightly taller rows, wider pitch;
   // target blades carry a portrait + HP bar → taller still
@@ -1817,6 +1818,19 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     onCancel();
   };
 
+  // ── gamepad bridge: EWPad (state.js) steers the drum through this hook —
+  // same cycle/fire/crown paths the keyboard and mouse use, plus the view
+  // name so the pad router knows when the drum owns the left stick.
+  const crownRef = useRef(null); crownRef.current = pressCrown;
+  window._hrlgPad = {
+    view: view,
+    blades: blades.length,
+    cycle: (d) => cycleRef.current(d),
+    fire: () => { if (fireSelRef.current) fireSelRef.current(); },
+    crown: () => { if (crownRef.current) crownRef.current(); },
+  };
+  useEffect(() => () => { window._hrlgPad = null; }, []);
+
   // how many entries sit beyond the focus window
   const hiddenUp = carousel ? winStart : 0;
   const hiddenDn = carousel ? Math.max(0, blades.length - winStart - WIN) : 0;
@@ -1890,12 +1904,19 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     ),
     h('div', {
       className: 'hrlg-crown live' + (backable ? '' : ' endturn' + (ap <= 1 ? ' lastap' : '')),
-      title: backable ? 'Back (ESC)' : 'End Turn (SPACE)',
+      title: backable
+        ? (inputDev === 'pad' ? 'Back (' + _hintKey('cancel', 'ESC') + ')' : 'Back (ESC)')
+        : (inputDev === 'pad' ? 'End Turn (' + _hintKey('endTurn', 'SPACE') + ' twice)' : 'End Turn (SPACE)'),
       onClick: pressCrown,
     },
       h('span', { className: 'hrlg-crown-cap' }, h('span', { className: 'hrlg-crown-arrow' }, backable ? '◀' : '■')),
       h('span', { className: 'hrlg-crown-stem' }),
-      h('span', { className: 'hrlg-crown-label' }, backable ? '◀ BACK' : '■ END TURN'),
+      h('span', { className: 'hrlg-crown-label' },
+        backable ? '◀ BACK' : '■ END TURN',
+        inputDev === 'pad' && window.EWPad ? h('span', {
+          className: 'ew-padbtn ew-padbtn-face ew-padbtn-inline',
+        }, _hintKey(backable ? 'cancel' : 'endTurn', '')) : null,
+      ),
     ),
     h('div', { className: 'hrlg-core' },
       h('span', { className: 'hrlg-roman' }, roman + ' · '),
@@ -2692,7 +2713,7 @@ function ActionMenu({ st, hidden }) {
   //  sub   — a submenu's items (abilities / items / more / …)
   //  quick — the clicked enemy's / tile's actions
   //  aim   — board-targeting in progress: a lone CANCEL blade
-  const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, hint: 'ESC' };
+  const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, hint: _hintKey('cancel', 'ESC') };
   let view = 'root', viewKey = 'root', blades = [], modeLabel = null, title = null;
   let built = null;
   if (inTileTarget) {
@@ -2751,7 +2772,7 @@ function ActionMenu({ st, hidden }) {
     view = 'root'; viewKey = 'root|' + (am || '');
     if (am) modeLabel = modeLabels[am] || null;
     blades = actions.map(a => ({ ...a }));   // declared order IS the drum order
-    blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: 'SPACE' });
+    blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   }
   if (built) { blades = built.blades; title = built.title; }
 
@@ -4535,6 +4556,96 @@ function FrameCorners() {
   );
 }
 
+/* ── Input-device awareness ──────────────────────────────────────────────
+   window.EWInput (state.js) tracks the LAST device the player touched
+   ('kbm' | 'pad') and fires 'ew-input-device' on change; the HUD swaps its
+   button hints accordingly. window.EWPad supplies the live (rebindable)
+   button glyph for each logical action.                                    */
+function useInputDevice() {
+  const [dev, setDev] = useState(() => (window.EWInput && window.EWInput.device) || 'kbm');
+  useEffect(() => {
+    const on = (e) => setDev((e && e.detail) || (window.EWInput && window.EWInput.device) || 'kbm');
+    window.addEventListener('ew-input-device', on);
+    return () => window.removeEventListener('ew-input-device', on);
+  }, []);
+  return dev;
+}
+
+// Non-hook variant for components that early-return before hooks may run.
+function _hintKey(action, kbLabel) {
+  return (window.EWInput && window.EWInput.device === 'pad' && window.EWPad)
+    ? window.EWPad.glyphForAction(action).text : kbLabel;
+}
+
+// One controller-button chip (glyph follows the live binding + pad vendor).
+function PadBtn({ action, text, kind }) {
+  const g = text ? { text, kind: kind || 'stick' }
+    : (window.EWPad ? window.EWPad.glyphForAction(action) : { text: '?', kind: 'face' });
+  return h('span', { className: 'ew-padbtn ew-padbtn-' + (g.kind || 'face') }, g.text);
+}
+function KeyCap({ k }) { return h('span', { className: 'ew-keycap' }, k); }
+
+/* ── Contextual control-hints bar (FE3H-style) ───────────────────────────
+   A slim strip under the scoreboard listing exactly the inputs that work
+   RIGHT NOW, with controller glyphs or key caps per the active device. The
+   camera-mode chip is live — clicking it cycles tactical/follow/cinematic. */
+function ControlHints({ st }) {
+  const dev = useInputDevice();
+  const [, setBump] = useState(0);
+  useEffect(() => {
+    const f = () => setBump(n => n + 1);
+    window.addEventListener('ew-camera-mode', f);
+    return () => window.removeEventListener('ew-camera-mode', f);
+  }, []);
+  if (!st || st.phase !== 'battle' || st.winner) return null;
+
+  const humanTurn = !st.autoPlayers?.[st.activePlayer];
+  const myTurn = humanTurn
+    && (typeof getViewerPlayer !== 'function' || st.activePlayer === getViewerPlayer());
+  const aiming = !!(st.actionMode || st.selectedTool);
+  const camMode = typeof window.getCameraMode === 'function' ? window.getCameraMode() : 'tactical';
+  const camLbl = ((window.CAMERA_MODE_ICONS && window.CAMERA_MODE_ICONS[camMode]) || '')
+    + ' ' + ((window.CAMERA_MODE_LABELS && window.CAMERA_MODE_LABELS[camMode]) || camMode).toUpperCase();
+
+  const hints = [];
+  const add = (chip, label, cls, onClick) => hints.push(
+    h('span', { key: hints.length, className: 'ew-hint' + (cls ? ' ' + cls : ''), onClick },
+      chip, h('span', { className: 'ew-hint-lbl' }, label)));
+
+  if (dev === 'pad') {
+    if (myTurn && aiming) {
+      add(h(PadBtn, { text: 'LS', kind: 'stick' }), 'CURSOR');
+      add(h(PadBtn, { action: 'confirm' }), 'CONFIRM');
+      add(h(PadBtn, { action: 'cancel' }), 'CANCEL');
+    } else if (myTurn) {
+      add(h(PadBtn, { text: '✚', kind: 'dpad' }), 'MENU');
+      add(h(PadBtn, { action: 'confirm' }), 'SELECT');
+      add(h(PadBtn, { action: 'cancel' }), 'BACK');
+      add(h(PadBtn, { action: 'endTurn' }), 'END TURN');
+    }
+    add(h(PadBtn, { text: 'RS', kind: 'stick' }), 'CAMERA');
+    add(h(PadBtn, { action: 'cameraMode' }), camLbl, 'cam',
+      () => { if (typeof window.cycleCameraMode === 'function') window.cycleCameraMode(); });
+    add(h(PadBtn, { action: 'pause' }), 'PAUSE');
+  } else {
+    if (myTurn && aiming) {
+      add(h(KeyCap, { k: 'WASD' }), 'CURSOR');
+      add(h(KeyCap, { k: 'ENTER' }), 'CONFIRM');
+      add(h(KeyCap, { k: 'ESC' }), 'CANCEL');
+    } else if (myTurn) {
+      add(h(KeyCap, { k: '↑↓·ENTER' }), 'MENU');
+      add(h(KeyCap, { k: 'WASD' }), 'MOVE');
+      add(h(KeyCap, { k: 'SPACE' }), 'END TURN');
+    }
+    add(h(KeyCap, { k: 'MMB' }), 'ORBIT');
+    add(h(KeyCap, { k: 'RMB' }), 'PAN');
+    add(h(KeyCap, { k: 'C' }), camLbl, 'cam',
+      () => { if (typeof window.cycleCameraMode === 'function') window.cycleCameraMode(); });
+  }
+
+  return h('div', { className: 'ew-hints-bar' }, hints);
+}
+
 function ReactHUD() {
   const [st, tick] = useGameState();
   const menusHidden = useMenusHidden(st);
@@ -4557,6 +4668,9 @@ function ReactHUD() {
       h(MatchMeta, { st }),
     ),
     h(CombatLog, { st }),
+    h('div', { style: { pointerEvents: 'auto' }},
+      h(ControlHints, { st }),
+    ),
     // ONE menu system: the Horologe drum renders the root verbs, every
     // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
@@ -4758,6 +4872,50 @@ function _injectHudHideStyles() {
     /* Keep float-settings-panel + battle-subtitle-bar visible */
     /* Hide old float-action-menu — replaced by React ActionMenu */
     .float-action-menu { display: none !important; }
+
+    /* ── Gamepad glyphs + input hints (device-aware controls) ── */
+    .ew-padbtn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 3px; border-radius: 50%;
+      font-family: Inter, system-ui, sans-serif; font-size: 10px; font-weight: 800;
+      color: #0b0d14; background: linear-gradient(180deg, #eef2fc, #b8c2dc);
+      border: 1px solid rgba(16, 20, 34, 0.9); line-height: 1;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.65), inset 0 -1px 0 rgba(0,0,0,0.28);
+    }
+    .ew-padbtn-shoulder, .ew-padbtn-stick { border-radius: 5px; padding: 0 5px; }
+    .ew-padbtn-sys  { border-radius: 4px; padding: 0 5px; }
+    .ew-padbtn-dpad { border-radius: 4px; }
+    .ew-padbtn-inline { margin-left: 7px; transform: scale(0.92); vertical-align: middle; }
+    .ew-keycap {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 5px; border-radius: 3px;
+      font-family: Inter, system-ui, sans-serif; font-size: 9px; font-weight: 700;
+      color: #dbe3f8; background: linear-gradient(180deg, #2a3148, #171c2c);
+      border: 1px solid rgba(140, 160, 220, 0.4); line-height: 1;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+    .ew-hints-bar {
+      position: absolute; top: calc(84px * var(--ew-hud-scale, 1));
+      left: 50%; transform: translateX(-50%);
+      display: flex; gap: 15px; align-items: center; z-index: 58;
+      pointer-events: none;
+      font-family: DotGothic16, monospace; font-size: 10px; letter-spacing: 0.13em;
+      color: rgba(198, 208, 235, 0.8);
+      background: rgba(8, 10, 18, 0.6);
+      border: 1px solid rgba(120, 140, 180, 0.18);
+      padding: 4px 13px; white-space: nowrap;
+      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+    }
+    .ew-hint { display: inline-flex; align-items: center; gap: 5px; }
+    .ew-hint-lbl { padding-top: 1px; }
+    .ew-hint.cam { pointer-events: auto; cursor: pointer; }
+    .ew-hint.cam:hover .ew-hint-lbl { color: #ffe9b8; }
+    @media (max-width: 1150px) { .ew-hints-bar { display: none; } }
+    /* controller focus ring for the DOM-nav contexts (pause menu, settings) */
+    body[data-input-device="pad"] .pause-card :focus,
+    body[data-input-device="pad"] #mmSettingsBody :focus {
+      outline: 2px solid rgba(255, 214, 128, 0.9) !important; outline-offset: 2px;
+    }
 
     /* ── React HUD hover states ── */
     /* Action-menu rows now share the warm-gold "bloom" focus the spell/ability

@@ -4728,7 +4728,11 @@
            uses for its caster→target line. Falls back to the supplied resting
            yaw when the toggle is off or the unit has no facing yet. */
         function getTurnStartCamYaw(unit, fallbackYaw) {
-            if (!state.cinematicActionCam || !unit) return fallbackYaw;
+            // The follow camera modes also open every turn parked behind the
+            // unit (over-the-shoulder), not just the cinematic action cam.
+            const _behindUnit = state.cinematicActionCam
+                || (typeof isFollowCamMode === 'function' && isFollowCamMode());
+            if (!_behindUnit || !unit) return fallbackYaw;
             const f = getUnitFacing(unit);
             if (!f || (!f.dx && !f.dy)) return fallbackYaw;
             return Math.atan2(-f.dx, -f.dy) * (180 / Math.PI);
@@ -6956,6 +6960,10 @@
         // the ceiling is honored exactly; anything above it settles to a view
         // where the board is actually readable.
         const REST_TILT_MAX = 62;
+        /* In the follow/cinematic camera modes the "resting" pitch is a
+           third-person shot, not the tactical overhead — let the remembered
+           rest tilt ride much closer to the horizon there (90 = dead level). */
+        const FOLLOW_REST_TILT_MAX = 85;
 
         const camera = {
 
@@ -7363,7 +7371,12 @@
                 // moveTo(), not snap(), so they never pollute the resting angle.
                 // The LIVE tilt takes the raw value (free look, sky included);
                 // only the remembered RESTING pitch is clamped — see REST_TILT_MAX.
-                if (opts.tilt !== undefined) { this.tilt = opts.tilt; this._restTilt = Math.min(opts.tilt, REST_TILT_MAX); }
+                if (opts.tilt !== undefined) {
+                    this.tilt = opts.tilt;
+                    const _rtMax = (typeof isFollowCamMode === 'function' && isFollowCamMode())
+                        ? FOLLOW_REST_TILT_MAX : REST_TILT_MAX;
+                    this._restTilt = Math.min(opts.tilt, _rtMax);
+                }
                 if (opts.yaw  !== undefined) { this.yaw  = opts.yaw;  this._restYaw  = opts.yaw; }
                 // NOTE: camera orbit deliberately does NOT steer the active
                 // unit's facing — a unit keeps the direction it last moved,
@@ -8065,6 +8078,116 @@
                 zoom: getFullMapZoom(), duration: 380, _bypassCap: true, _allowZoomChange: true
             });
         }
+
+        /* ── Camera modes (gamepad/camera overhaul) ──────────────────────
+           'tactical'  — the classic overhead board view (resting tilt ~50°),
+                         free pan/orbit, best for reading the whole map.
+           'follow'    — third-person: the camera opens every turn parked
+                         behind the active unit at a close zoom, orbits stay
+                         centred on it. Panning the board detaches back to
+                         tactical (a follow camera has no free pan).
+           'cinematic' — follow + the automatic action shots (the old
+                         cinematicActionCam toggle, folded into the mode).
+           Persisted in ew_cameraMode; state.cinematicActionCam is DERIVED
+           from the mode so every existing cine-shot gate keeps working. */
+        const CAMERA_MODES = ['tactical', 'follow', 'cinematic'];
+        const CAMERA_MODE_LABELS = { tactical: 'TACTICAL', follow: 'FOLLOW', cinematic: 'CINEMATIC' };
+        const CAMERA_MODE_ICONS  = { tactical: '🗺', follow: '🎥', cinematic: '🎬' };
+        const FOLLOW_CAM_TILT = 68;          // deg — behind-the-unit pitch (90 = horizon)
+        const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
+        const CINE_FOLLOW_TILT = 72;
+        const CINE_FOLLOW_ZOOM_MULT = 2.2;
+        function getCameraMode() {
+            return CAMERA_MODES.includes(state.cameraMode) ? state.cameraMode : 'tactical';
+        }
+        function isFollowCamMode() {
+            const m = getCameraMode();
+            return m === 'follow' || m === 'cinematic';
+        }
+        function getFollowCamTilt() {
+            return getCameraMode() === 'cinematic' ? CINE_FOLLOW_TILT : FOLLOW_CAM_TILT;
+        }
+        function getFollowCamZoom() {
+            const mult = getCameraMode() === 'cinematic' ? CINE_FOLLOW_ZOOM_MULT : FOLLOW_ZOOM_MULT;
+            return Math.max(0.15, Math.min(10.0, getDefaultZoom() * mult));
+        }
+        /* Yaw that parks the camera behind `unit`, gazing the way it faces
+           (same mapping as the cine shots: view dir = (-sin yaw, -cos yaw)). */
+        function getFollowCamYaw(unit, fallbackYaw) {
+            if (!unit || typeof getUnitFacing !== 'function') return fallbackYaw;
+            const f = getUnitFacing(unit);
+            if (!f || (!f.dx && !f.dy)) return fallbackYaw;
+            return Math.atan2(-f.dx, -f.dy) * (180 / Math.PI);
+        }
+        function setCameraMode(mode, opts) {
+            if (!CAMERA_MODES.includes(mode)) return getCameraMode();
+            state.cameraMode = mode;
+            state.cinematicActionCam = (mode === 'cinematic');
+            try {
+                localStorage.setItem('ew_cameraMode', mode);
+                localStorage.setItem('ew_cinematicActionCam', state.cinematicActionCam ? '1' : '0');
+            } catch (e) {}
+            const silent = opts && opts.silent;
+            // The remembered resting pitch IS the mode: follow rides a
+            // third-person shot, tactical returns to the readable overhead.
+            if (typeof camera !== 'undefined' && camera) {
+                if (isFollowCamMode()) camera._restTilt = getFollowCamTilt();
+                else camera._restTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+            }
+            if (!silent) {
+                if (typeof window._ewToast === 'function') {
+                    window._ewToast(CAMERA_MODE_ICONS[mode] + ' ' + CAMERA_MODE_LABELS[mode] + ' CAMERA');
+                }
+                // Re-frame on the acting unit so the switch is felt immediately.
+                if (state.phase === 'battle' && !state.cameraDisabled
+                    && typeof camera !== 'undefined' && camera && !camera.isBusy()) {
+                    const unit = (typeof getSelectedUnit === 'function' && getSelectedUnit())
+                        || state.units?.find(u => u.id === state._blitzActiveUnitId && !u.dead);
+                    if (unit) {
+                        camera._preCineView = null;
+                        camera._cineShotId = null;
+                        camera._releaseCineSubject(420);
+                        if (isFollowCamMode()) {
+                            camera.moveTo({
+                                x: unit.x, y: unit.y,
+                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getFollowCamZoom(),
+                                tilt: getFollowCamTilt(),
+                                yaw: getFollowCamYaw(unit, camera.yaw),
+                                duration: 520, easing: 'easeInOut',
+                                _allowZoomChange: true, _bypassCap: true
+                            });
+                        } else {
+                            camera.moveTo({
+                                x: unit.x, y: unit.y,
+                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getTurnFramingZoom(),
+                                tilt: camera._restTilt,
+                                duration: 520, easing: 'easeInOut',
+                                _allowZoomChange: true, _bypassCap: true
+                            });
+                        }
+                    }
+                }
+            }
+            const _acDevCb = document.getElementById('actionCamToggleBattle');
+            if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
+            try { window.dispatchEvent(new CustomEvent('ew-camera-mode', { detail: mode })); } catch (e) {}
+            if (typeof markDirty === 'function') { markDirty('hud'); renderIfDirty(); }
+            return mode;
+        }
+        function cycleCameraMode() {
+            const idx = CAMERA_MODES.indexOf(getCameraMode());
+            return setCameraMode(CAMERA_MODES[(idx + 1) % CAMERA_MODES.length]);
+        }
+        window.getCameraMode = getCameraMode;
+        window.isFollowCamMode = isFollowCamMode;
+        window.setCameraMode = setCameraMode;
+        window.cycleCameraMode = cycleCameraMode;
+        window.getFollowCamTilt = getFollowCamTilt;
+        window.getFollowCamZoom = getFollowCamZoom;
+        window.getFollowCamYaw = getFollowCamYaw;
+        window.CAMERA_MODES = CAMERA_MODES;
+        window.CAMERA_MODE_LABELS = CAMERA_MODE_LABELS;
+        window.CAMERA_MODE_ICONS = CAMERA_MODE_ICONS;
 
         // Pull back to a high, near-top-down tactical view of the WHOLE
         // battlefield for the end-of-round resolution beats (status ticks,
@@ -18631,7 +18754,9 @@
                         && state.controllers?.[unit.player] === CTRL.LOCAL
                         && unit.player === getViewerPlayer();
                     const zoom = isUserZoomEngaged() ? baseZoom
-                        : (_localActiveTurn ? getTurnFramingZoom() : getDefaultZoom());
+                        : (_localActiveTurn
+                            ? (isFollowCamMode() ? getFollowCamZoom() : getTurnFramingZoom())
+                            : getDefaultZoom());
 
                     if (_cameraActingSideIsAuto()) {
                         // Auto / AI side: follow the newly-activated unit, but
@@ -19348,7 +19473,11 @@
                than any pitch problem). */
             if ((mode === 'move' || mode === 'jump') && !state.cameraDisabled
                 && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
-                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+                // Follow/cinematic modes keep their third-person pitch while
+                // picking tiles — only the tactical mode forces the overhead.
+                const _pickTiltMax = (typeof isFollowCamMode === 'function' && isFollowCamMode())
+                    ? FOLLOW_REST_TILT_MAX : REST_TILT_MAX;
+                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, _pickTiltMax);
                 if (Math.abs((camera.tilt ?? _pickTilt) - _pickTilt) > 8 || camera._cineShotId != null) {
                     camera._preCineView = null;
                     camera._cineShotId = null;
