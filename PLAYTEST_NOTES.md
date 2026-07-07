@@ -4,6 +4,65 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Character portraits everywhere (2026-07-07) — sprites.js, data.js, battle.js, hud.js, three-renderer.js, party-builder.js
+Token bumped `20260707b` → `20260707c`. Probe: scratchpad probe_portraits.js.
+- **Portrait folder**: `Assets/Sprites/character_portraits/<male|female>/<name>.png`
+  (128×128). NO bucket listing — the inventory was found by HEAD-probing
+  candidate names. Files use slang/gendered names: `glowie` (female men in
+  black), `cowgirl`, `witch`, `devil` (male demon), `psychic` (telepath F),
+  `sniper` (marksman M+F), `harvester` (shaman M+F), `freelancer`
+  (homosapien F), `madscientist` (M+F), `meninblack` (M), `kifighter` (F),
+  `fortuneteller` (F), plus plain race names: pirate (M+F), knight (F),
+  priest (M), nordic, djinn, quarterback, bigfoot, grey, giant, werewolf,
+  reptilian, anubis, mantid, antperson (M) and zombie, catgirl, succubus,
+  fairy, halfdemon, valkraye (F). **Missing (fall back to map sprite): male
+  fortune teller** (kept his old `Races/Homosapien/Male/harbinger/portrait.png`),
+  male homosapien/knight/telepath/wizard, female priest(ess), martian,
+  machine elves, annunaki, atlantean, vampire, nordic F.
+- **sprites.js RACE_PORTRAITS** maps every verified file; `getUnitPortraitUrl`
+  unchanged (exact gender match, null → callers fall back to the map sprite).
+- **Gendered race labels**: data.js `men in black` got labelMale 'Man in Black'
+  + labelFemale 'Glowie'; priest labelFemale 'Nun'→'Priestess'. battle.js
+  `unitDisplayName`/`getNametagText` and the three-renderer plate labels
+  ('race' nametag mode — the default) now route through
+  `getRaceLabel(race, gender)` — plates read "Glowie"/"Priestess"/
+  "Mad Scientist", never a lowercase race key.
+- **Horologe (hud.js)**: the clock face's inner disc (old etched flat-earth
+  map) now wears the ACTIVE unit's portrait (SVG `<image>` inside the
+  `hrlgMapClip` circle + radial vignette; no portrait → the map stays). It
+  only renders on the local player's turn (ActionMenu gates on canControl),
+  so it can never be mistaken for the enemy's turn. New `.hrlg-core-sub`
+  line under the unit name: `LvN · RACE · JOB` (race skipped when it equals
+  the shown name).
+- **Top-left ActiveUnitPanel REMOVED** (hud.js ReactHUD) — redundant with the
+  clock (portrait, name, sub-line, AP pips, HP/MP vitals). HudBar is now
+  unused but left in place.
+- **Target drums = JRPG target lists**: `_hrlgTargetBlades` (attack + spell,
+  incl. heals/revives — KO'd revive targets render grayscale) and NEW
+  `_hrlgItemTargetBlades` (heal/mana potions → living allies anywhere, banes
+  → living enemies within getEffectiveRange+2 chebyshev, mirroring doItem)
+  attach a `portrait` payload to each unit blade → HorologeBlade renders a
+  face chip (blue ally / red enemy ring) + name over a live HP bar (+shield
+  notch; +MP bar on mana-potion targets). Classes: `.hrlg-blade.trow`,
+  `.hrlg-tport`, `.hrlg-tcol`, `.hrlg-thp*`. Non-unit targets (towers,
+  turrets, buildings) keep the old text meta. The enemy quick-menu view tab
+  shows the clicked enemy's face too. battle.js `selectTargetFromMenu`
+  gained the `actionMode==='item'` confirm branch (releases
+  `_actionExecuting` before doItem — items never owned that latch). Warp
+  stone keeps free board aim.
+- **Far-zoom portrait nameplates (three-renderer.js)**: every plate carries a
+  hidden `.tp-portrait` (portrait, else map sprite) + a `.tp-main` wrapper.
+  `_scalePlates` toggles `.tp-far` per frame with hysteresis on projected
+  tile width (enter <68px, exit >86px — i.e. when the plate is wider than
+  the tile it labels): the plate becomes face card + name + one chunky HP
+  bar; types/MP/status/eye/zodiac badges hide. The toggle sits BEFORE the
+  `_lastScale` early-return (scale pins at MIN when far and stops changing).
+  Decoy clone plates share the structure + toggle so they don't stand out.
+- **Party builder rail**: `PortraitSprite` (party-builder.js) — rail slot
+  cards show the portrait full-bleed (cover), Sprite fallback otherwise.
+- GOTCHA: `RACE_PORTRAITS` URLs are NOT `?v=`-tagged (same as every in-JS
+  asset URL) — replacing a portrait image in place needs a file rename.
+
 ## Buildings AOE-only + face-your-attacker + press-turn drains + Move Towards metric (2026-07-07) — battle.js, hud.js
 Token bumped `20260706n` → `20260707a`. Probe-verified in-browser (scratchpad
 probe_fixes2.js, LOCAL_ASSETS harness, 10/10 checks).

@@ -284,70 +284,11 @@ function UnitSprite({ unit, size, glow }) {
   );
 }
 
-function ActiveUnitPanel({ unit }) {
-  if (!unit) return null;
-  const ac = getAllianceColor(unit);
-  const tc = getTypeColor(unit);
-  const typeName = getTypeName(unit);
-  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3;
-  const level = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
-  const slot = unit._partySlot || unit.slot || 1;
-  const roman = ['I','II','III','IV','V','VI','VII','VIII'][slot - 1] || slot;
-  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const isFriendly = unit.player === viewer;
-  const playerTag = 'P' + (unit.player || 1);
-
-  return h(ClipPanel, {
-    factionColor: ac,
-    className: 'ew-unitpanel',
-    style: {
-      position: 'absolute', top: 12, left: 12, width: 300,
-      padding: '8px 12px 10px', display: 'flex', gap: 10, zIndex: 10,
-    },
-  },
-
-    h('div', { style: { position: 'relative', flexShrink: 0 }},
-      h(UnitSprite, { unit, size: 52, glow: true }),
-      h('div', { style: {
-        position: 'absolute', top: 1, left: 3,
-        fontFamily: '"Cinzel", serif', fontStyle: 'italic',
-        fontSize: 11, color: ac, letterSpacing: '0.05em',
-      }}, roman),
-    ),
-
-    h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }},
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }},
-
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          color: '#000', letterSpacing: '0.08em', fontWeight: 700,
-          background: ac, padding: '1px 5px', lineHeight: '14px',
-        }}, playerTag),
-        h('span', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 20,
-          fontWeight: 500, lineHeight: 1, color: EW.ink, letterSpacing: '0.01em',
-        }}, typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls)),
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkMute, letterSpacing: '0.16em',
-        }}, 'Lv' + level),
-      ),
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }},
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkMute, letterSpacing: '0.12em',
-        }}, ((unit.race || '').toUpperCase()) + ' · ' + ((unit.cls || '').toUpperCase())),
-        typeName && h(TypeChip, { name: typeName, color: tc }),
-      ),
-      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }},
-        h(HudBar, { label: 'HP', val: unit.hp || 0, max: unit.maxHp || 1, color: unit.hp <= (unit.maxHp * 0.3) ? EW.bad : EW.good }),
-        h(HudBar, { label: 'MP', val: unit.mp || 0, max: unit.maxMp || 1, color: EW.space }),
-        h(HudBar, { label: 'AP', val: unit.ap || 0, max: maxAP, color: EW.time, pip: true,
-          pressFlash: !!(unit._pressFlashAt && (Date.now() - unit._pressFlashAt) < 900) }),
-      ),
-    ),
-  );
-}
+/* ActiveUnitPanel (the top-left unit card) is GONE — the horologe action
+   menu now carries everything it showed: the clock face wears the active
+   unit's portrait, the core line reads slot + name, a sub-line adds
+   Lv · race · job, and HP/MP/AP live in the vitals under the watch. One
+   instrument, zero duplicated chrome. */
 
 function _getMultiplayerMode() {
   if (typeof getActiveMultiplayerMode === 'function') {
@@ -1338,7 +1279,7 @@ const HRLG_MAP = 'M28,32 L46,22 L72,20 L88,26 L84,34 L70,38 L66,50 L54,58 L46,72
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ factionKey, api }) {
+function HorologeHub({ factionKey, api, portraitUrl }) {
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
   const A = useRef({ min: HRLG_REST.min, hour: HRLG_REST.hour, sec: 0, paused: false });
@@ -1466,23 +1407,41 @@ function HorologeHub({ factionKey, api }) {
           h('stop', { offset: '70%', stopColor: '#080a12' }),
           h('stop', { offset: '100%', stopColor: '#05060b' }),
         ),
+        h('radialGradient', { id: 'hrlgPortraitVig', cx: '50%', cy: '50%', r: '50%' },
+          h('stop', { offset: '0%', stopColor: '#05060b', stopOpacity: 0 }),
+          h('stop', { offset: '70%', stopColor: '#05060b', stopOpacity: 0.06 }),
+          h('stop', { offset: '100%', stopColor: '#05060b', stopOpacity: 0.8 }),
+        ),
         h('clipPath', { id: 'hrlgMapClip' }, h('circle', { cx: 100, cy: 100, r: 56 })),
       ),
       h('circle', { cx: 100, cy: 100, r: 96, fill: 'url(#hrlgFaceG)', stroke: 'var(--hfc-soft)', strokeWidth: 1 }),
       h('circle', { cx: 100, cy: 100, r: 98, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.8, opacity: 0.5 }),
       h('circle', { cx: 100, cy: 100, r: 57, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.6, opacity: 0.22 }),
-      h('g', { clipPath: 'url(#hrlgMapClip)' },
-        grid,
-        h('path', {
-          d: HRLG_MAP, transform: 'translate(44,72) scale(0.3733)',
-          fill: 'var(--hfc)', opacity: 0.13,
-          stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
-        }),
-      ),
+      // The inner disc: the ACTIVE UNIT'S PORTRAIT when it has face art
+      // (this menu only renders on the local player's turn, so the face on
+      // the clock is always YOUR unit — never the enemy's), else the old
+      // etched flat-earth chart. A vignette keeps the hands readable.
+      portraitUrl
+        ? h('g', { clipPath: 'url(#hrlgMapClip)' },
+            h('image', {
+              href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
+              preserveAspectRatio: 'xMidYMid slice', opacity: 0.94,
+              style: { imageRendering: 'pixelated' },
+            }),
+            h('circle', { cx: 100, cy: 100, r: 56.5, fill: 'url(#hrlgPortraitVig)' }),
+          )
+        : h('g', { clipPath: 'url(#hrlgMapClip)' },
+            grid,
+            h('path', {
+              d: HRLG_MAP, transform: 'translate(44,72) scale(0.3733)',
+              fill: 'var(--hfc)', opacity: 0.13,
+              stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
+            }),
+          ),
       h('g', { ref: ticksRef }, ticks),
       h('g', null, numerals),
     );
-  }, []);
+  }, [portraitUrl]);
 
   return h('div', { className: 'hrlg-hub' },
     h('svg', { viewBox: '0 0 200 200' },
@@ -1552,6 +1511,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
   const tall = !!(b.badges && b.badges.length);
+  const port = (b.portrait && b.portrait.url) ? b.portrait : null;   // JRPG target row
   const slot = _hrlgSlot(off, rowH, focused, sel);
   const right = [];
   if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓'));
@@ -1573,11 +1533,39 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
       ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
       : h('span', { key: k, style: bd.style, title: bd.title || undefined }, bd.label)),
   );
+  // portrait target rows: face chip + name over a real HP (and optional MP)
+  // bar — the classic JRPG "who am I hitting / healing" readout.
+  let portCol = null;
+  if (port) {
+    const hpPct = port.maxHp > 0 ? Math.max(0, Math.min(100, (port.hp / port.maxHp) * 100)) : 0;
+    const hpCol = hpPct <= 30 ? EW.bad : hpPct <= 55 ? EW.warn : EW.good;
+    const shPct = (port.maxHp > 0 && port.shield > 0)
+      ? Math.min(100, Math.round((port.shield / port.maxHp) * 100)) : 0;
+    portCol = h('span', { className: 'hrlg-tcol' },
+      h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto' } }, b.label),
+      h('span', { className: 'hrlg-thp' },
+        h('span', { className: 'hrlg-thp-fill', style: {
+          width: hpPct + '%',
+          background: 'linear-gradient(90deg, ' + hpCol + ', ' + hpCol + 'aa)',
+          boxShadow: '0 0 5px ' + hpCol + '55',
+        }}),
+        shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
+        h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
+      ),
+      port.showMp && port.maxMp > 0 && h('span', { className: 'hrlg-thp mp' },
+        h('span', { className: 'hrlg-thp-fill', style: {
+          width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
+          background: EW.space, opacity: 0.8,
+        }}),
+        h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
+      ),
+    );
+  }
   return h('div', {
     className: 'hrlg-blade'
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
-      + (tall ? ' tall' : '')
+      + (port ? ' trow' : tall ? ' tall' : '')
       + (focused ? ' center' : ' dim')
       + (sel ? ' sel' : '')
       + (active ? ' active' : '')
@@ -1597,7 +1585,20 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
   },
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       h('span', { className: 'hrlg-glyph', style: b.iconColor ? { color: b.iconColor, textShadow: 'none' } : undefined }, b.icon),
-      tall
+      port
+        ? h(React.Fragment, null,
+            h('span', {
+              className: 'hrlg-tport'
+                + (port.isFace ? '' : ' sprite')
+                + (port.ally ? ' ally' : ' enemy')
+                + (port.ko ? ' ko' : ''),
+              style: { backgroundImage: 'url("' + port.url + '")' },
+            }),
+            portCol,
+            h('span', { className: 'hrlg-spacer' }),
+            right,
+          )
+        : tall
         ? h(React.Fragment, null,
             // the NAME never shrinks — badges/chips clip first if space runs out
             h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto', maxWidth: 220 } }, b.label),
@@ -1618,15 +1619,17 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
 
-  // spell blades carry inline badges → slightly taller rows, wider pitch
+  // spell blades carry inline badges → slightly taller rows, wider pitch;
+  // target blades carry a portrait + HP bar → taller still
   const tall = blades.some(b => b.badges && b.badges.length);
-  const rowH = tall ? 52 : HRLG_ROW;
+  const hasPortraits = blades.some(b => b.portrait && b.portrait.url);
+  const rowH = hasPortraits ? 58 : tall ? 52 : HRLG_ROW;
 
   // ── Carousel selection: tracked by blade ID so the drum keeps its
   // heading when availability re-sorts costs or AP ticks re-render us.
@@ -1849,7 +1852,7 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
         style: { top: (_arrowTy + 2) + 'px' },
       }, '▼ ' + hiddenDn + ' MORE'),
     ),
-    h(HorologeHub, { factionKey: factionKey, api: clockApi }),
+    h(HorologeHub, { factionKey: factionKey, api: clockApi, portraitUrl: portraitUrl }),
     /* special-action pushers — extra stopwatch buttons riding the bezel.
        Only mounted when the action is actually usable RIGHT NOW, and they
        pulse so the player can't miss the opportunity. Root view only —
@@ -1898,6 +1901,8 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
       h('span', { className: 'hrlg-roman' }, roman + ' · '),
       h('span', { className: 'hrlg-name' }, unitName),
     ),
+    /* identity sub-line — what the retired top-left panel used to say */
+    subLine && h('div', { className: 'hrlg-core-sub' }, subLine),
     h('div', { className: 'hrlg-ap' },
       h('span', { className: 'hrlg-ap-lbl' }, 'AP'),
       pips,
@@ -2178,6 +2183,24 @@ function _hrlgOrientationBlades(st) {
 // Attack / spell target pickers. First click centers + marks ✓ (the
 // engine pre-marks the nearest target), second click confirms and the
 // menus drop instantly.
+/* Face-art payload for a target blade: portrait URL (map-sprite fallback),
+   ally/enemy framing relative to the ACTING unit, KO state (revive targets)
+   and the live HP/shield numbers the row's bar renders. */
+function _hrlgPortraitData(u, actingUnit) {
+  let url = typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(u) : null;
+  const isFace = !!url;
+  if (!url && typeof getBattleMapSpriteUrl === 'function') url = getBattleMapSpriteUrl(u);
+  if (!url && typeof getUnitSprite === 'function') url = getUnitSprite(u.cls, u.player, u);
+  if (!url) return null;
+  return {
+    url, isFace,
+    ally: actingUnit ? u.player === actingUnit.player : false,
+    ko: !!u.dead,
+    hp: Math.max(0, Math.round(u.hp || 0)), maxHp: u.maxHp || 0,
+    shield: u.shield || 0,
+  };
+}
+
 function _hrlgTargetBlades(unit, st, mode) {
   let targets = [], titleText = 'Targets', titleIcon = '⌖';
   let spell = null;
@@ -2219,6 +2242,10 @@ function _hrlgTargetBlades(unit, st, mode) {
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
 
+    // Unit targets get the JRPG treatment (face + live HP bar on the blade);
+    // structures keep the old hp% text since they have no face art.
+    const portrait = tUnit ? _hrlgPortraitData(tUnit, unit) : null;
+
     return {
       id: 'tg:' + i + ':' + t.x + ',' + t.y,
       icon: typeAdv || '⌖',
@@ -2226,7 +2253,10 @@ function _hrlgTargetBlades(unit, st, mode) {
       label: label,
       available: true,
       check: !!isPending,
-      meta: { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't', color: hpPct != null && hpPct <= 30 ? EW.bad : undefined },
+      portrait: portrait,
+      meta: portrait
+        ? { text: t.dist + 't' }
+        : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't', color: hpPct != null && hpPct <= 30 ? EW.bad : undefined },
       // Pass the target's own elevation so an airborne unit (or the upper
       // unit of a stack) is hit — not whoever stands on the ground below.
       // Second (confirming) click fires the action → hide the menus NOW.
@@ -2244,6 +2274,71 @@ function _hrlgTargetBlades(unit, st, mode) {
     });
   }
   return { title: { icon: titleIcon, text: titleText, count: targets.length + '' }, blades };
+}
+
+/* Unit-targeted ITEMS (potions on allies, banes thrown at enemies) get the
+   same portrait + HP-bar target drum as attacks and spells — no more blind
+   board-click aiming. Validity mirrors doItem: potions reach ANY living
+   ally, banes need a living enemy within effective range + 2 (chebyshev). */
+function _hrlgItemTargetBlades(unit, st) {
+  const key = st.selectedTool;
+  const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[key] : null;
+  const isBane = !!(rule && rule.baneType);
+  const isHeal = key === 'healPotion';
+  const isMana = key === 'manaPotion';
+
+  let targets = [];
+  const living = (st.units || []).filter(u => !u.dead);
+  if (isBane) {
+    const range = (typeof getEffectiveRange === 'function' ? getEffectiveRange(unit) : 1) + 2;
+    targets = living
+      .filter(u => (typeof isEnemyUnit === 'function' ? isEnemyUnit(u, unit) : u.player !== unit.player))
+      .map(u => ({ unit: u, dist: Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) }))
+      .filter(t => t.dist <= range);
+  } else {
+    targets = living
+      .filter(u => u.player === unit.player)
+      .map(u => ({ unit: u, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) }));
+  }
+  targets.sort((a, b) => a.dist - b.dist);
+
+  const blades = targets.map((t, i) => {
+    const u = t.unit;
+    const isPending = st.pendingTarget && st.pendingTarget.x === u.x && st.pendingTarget.y === u.y;
+    let available = true, sub = null;
+    if (isHeal && u.hp >= u.maxHp) { available = false; sub = 'Full HP'; }
+    else if (isMana && !(u.maxMp > 0)) { available = false; sub = 'No MP pool'; }
+    else if (isMana && u.mp >= u.maxMp) { available = false; sub = 'Full MP'; }
+    const baneHit = isBane && (u.types || []).includes(rule.baneType);
+    const portrait = _hrlgPortraitData(u, unit);
+    if (portrait && isMana) {
+      portrait.showMp = true;
+      portrait.mp = Math.max(0, Math.round(u.mp || 0));
+      portrait.maxMp = u.maxMp || 0;
+    }
+    return {
+      id: 'it:' + i + ':' + u.x + ',' + u.y,
+      icon: isBane ? (baneHit ? '▲' : '⌖') : '♥',
+      iconColor: isBane ? (baneHit ? EW.good : undefined) : '#55cc66',
+      label: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
+      available: available,
+      sub: sub,
+      check: !!isPending,
+      portrait: portrait,
+      meta: { text: t.dist + 't' },
+      fire: () => {
+        if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
+        if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(u.x, u.y, u.z);
+      },
+    };
+  });
+  if (!blades.length) {
+    blades.push({
+      id: 'none', icon: '❖', available: false,
+      label: isBane ? 'No enemies in throw range' : 'No valid allies',
+    });
+  }
+  return { title: { icon: '❖', text: (rule && rule.name) || key, count: targets.length + '' }, blades };
 }
 
 function _hrlgMoreBlades(unit, st) {
@@ -2614,11 +2709,19 @@ function ActionMenu({ st, hidden }) {
     modeLabel = (st.selectedTool + ' — CLICK A TARGET').toUpperCase();
     blades = [cancelBlade];
   } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
-    view = 'aim'; viewKey = 'aim|item';
-    title = { icon: '❖', text: 'Items' };
-    const itName = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[st.selectedTool]?.name) || st.selectedTool;
-    modeLabel = (itName + ' — CLICK A TARGET').toUpperCase();
-    blades = [cancelBlade];
+    const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;
+    const itName = (itRule && itRule.name) || st.selectedTool;
+    if (itRule && (st.selectedTool === 'healPotion' || st.selectedTool === 'manaPotion' || itRule.baneType)) {
+      // unit-targeted item → the same portrait target drum as attacks/spells
+      built = _hrlgItemTargetBlades(unit, st); view = 'sub'; viewKey = 'itemTargets|' + st.selectedTool;
+      modeLabel = (itName + ' — PICK A TARGET').toUpperCase();
+    } else {
+      // tile-targeted item (warp stone): keep free board aim
+      view = 'aim'; viewKey = 'aim|item';
+      title = { icon: '❖', text: 'Items' };
+      modeLabel = (itName + ' — CLICK A TARGET').toUpperCase();
+      blades = [cancelBlade];
+    }
   } else if (menuView === 'spells') {
     built = _hrlgSpellBlades(unit, st); view = 'sub'; viewKey = 'spells';
   } else if (menuView === 'items') {
@@ -2673,10 +2776,24 @@ function ActionMenu({ st, hidden }) {
   }
   const onItem = (key) => { if (typeof chooseItemAction === 'function') chooseItemAction(key); };
 
+  // Identity readout replacing the retired top-left panel: portrait on the
+  // clock face, Lv · race · job under the name (race skipped when the name
+  // already IS the race label — the default nametag mode).
+  const _lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
+  const _raceLbl = (unit.race && typeof getRaceLabel === 'function')
+    ? getRaceLabel(unit.race, unit.gender)
+    : (unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '');
+  const _jobLbl = typeof getJobDisplayName === 'function' ? getJobDisplayName(unit.cls) : (unit.cls || '');
+  const subLine = 'Lv' + _lvl
+    + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '')
+    + (_jobLbl ? ' · ' + String(_jobLbl).toUpperCase() : '');
+
   return h(HorologeMenu, {
     view: view, viewKey: viewKey, title: title, blades: blades, fc: fc,
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
     roman: roman, unitName: unitName, unitKey: unit.id,
+    subLine: subLine,
+    portraitUrl: typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null,
     ap: unit.ap || 0, maxAP: maxAP,
     hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
     modeLabel: modeLabel, am: am, pushers: pushers,
@@ -3893,8 +4010,15 @@ function _hrlgEnemyBlades(actingUnit, st) {
   });
   if (!blades.length) blades.push({ id: 'none', icon: '⚔', label: 'No actions available', available: false });
 
+  // The clicked enemy's face rides the view tab — instant "who am I on".
+  const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
   const title = { node: h(React.Fragment, null,
-    h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
+    tabPort
+      ? h('span', {
+          className: 'hrlg-tport enemy' + (tabPort.isFace ? '' : ' sprite'),
+          style: { width: 18, height: 18, backgroundImage: 'url("' + tabPort.url + '")' },
+        })
+      : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
@@ -4416,19 +4540,6 @@ function ReactHUD() {
   const menusHidden = useMenusHidden(st);
   if (!st || st.phase !== 'battle') return null;
 
-  const sel = typeof getSelectedUnit === 'function' ? getSelectedUnit() : null;
-  const activeId = st._blitzActiveUnitId || st.selectedUnitId;
-  const activeUnit = (() => {
-
-    if (st._blitzActiveUnitId) {
-      const blitzU = (st.units || []).find(u => u.id === st._blitzActiveUnitId && !u.dead);
-      if (blitzU) return blitzU;
-    }
-
-    const u = sel || (st.units || []).find(u => u.id === activeId && !u.dead);
-    return u || (st.units || []).find(u => !u.dead) || null;
-  })();
-
   return h('div', {
     id: 'reactHudLayer',
     style: {
@@ -4439,9 +4550,6 @@ function ReactHUD() {
     },
   },
 
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(ActiveUnitPanel, { unit: activeUnit }),
-    ),
     h('div', { style: { pointerEvents: 'auto' }},
       h(Scoreboard, { st }),
     ),
@@ -5104,6 +5212,12 @@ function _injectHudHideStyles() {
     }
     .hrlg-roman { font-family: 'Cinzel', serif; font-style: italic; font-size: 11px; color: var(--hfc); }
     .hrlg-name  { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.1em; color: #e6e9f2; }
+    /* Lv · race · job identity line (the retired top-left panel's info) */
+    .hrlg-core-sub {
+      position: absolute; left: 8px; bottom: 112px; width: 190px; text-align: center;
+      font-size: 7px; letter-spacing: 0.14em; color: #8a93a8;
+      pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     .hrlg-ap {
       position: absolute; left: 8px; bottom: 102px; width: 190px;
       display: flex; align-items: center; justify-content: center; gap: 5px; pointer-events: none;
@@ -5251,6 +5365,45 @@ function _injectHudHideStyles() {
        chips share ONE row (SMT-style) — wider than a plain blade but the
        drum must never reach past mid-screen */
     .hrlg-blade.tall { height: 46px; top: -23px; width: 440px; }
+    /* portrait target row: face chip + name over a real HP bar (JRPG style) */
+    .hrlg-blade.trow { height: 52px; top: -26px; width: 400px; }
+    .hrlg-tport {
+      flex: none; width: 40px; height: 40px;
+      background-size: cover; background-position: center;
+      background-color: rgba(0,0,0,0.55); image-rendering: pixelated;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 1px 5px rgba(0,0,0,0.7);
+    }
+    .hrlg-tport.sprite { background-size: contain; background-repeat: no-repeat; background-position: center bottom; }
+    .hrlg-tport.ally  { border-color: rgba(90,170,255,0.75); }
+    .hrlg-tport.enemy { border-color: rgba(255,90,90,0.75); }
+    .hrlg-tport.ko { filter: grayscale(1) brightness(0.65); }
+    .hrlg-tcol {
+      flex: 1 1 auto; min-width: 0; max-width: 230px;
+      display: flex; flex-direction: column; gap: 3px; justify-content: center;
+    }
+    .hrlg-tcol .hrlg-blabel { font-size: 13px; }
+    .hrlg-thp {
+      position: relative; height: 10px; overflow: hidden;
+      background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.14);
+      clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
+    }
+    .hrlg-thp.mp { height: 7px; }
+    .hrlg-thp-fill {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      transition: width 0.3s ease-out;
+    }
+    .hrlg-thp-shield {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, rgba(120,200,255,0.7), rgba(60,140,220,0.5));
+    }
+    .hrlg-thp-num {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: flex-end; padding-right: 3px;
+      font-size: 8px; line-height: 1; color: #fff;
+      text-shadow: 0 1px 1px #000, 0 0 3px rgba(0,0,0,0.8);
+    }
+    .hrlg-thp.mp .hrlg-thp-num { font-size: 7px; }
     .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }

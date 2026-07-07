@@ -573,6 +573,21 @@ function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
   return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${getFactionColor(glow)})` : undefined, ...extraStyle }});
 }
+/* Party-rail slot art: the 128×128 character portrait when the vessel has
+   one (sprites.js RACE_PORTRAITS), full-bleed like a champ-select card;
+   falls back to the ordinary full-body Sprite otherwise. */
+function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
+  const pUrl = (typeof window.getUnitPortraitUrl === 'function')
+    ? window.getUnitPortraitUrl({ race, gender }) : null;
+  if (!pUrl) return h(Sprite, { race, gender, cls, size: '90%', glow, style: { width: '90%', height: '90%', ...extraStyle } });
+  return h('div', { style: {
+    width: '100%', height: '100%',
+    backgroundImage: `url('${pUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center',
+    imageRendering: 'pixelated',
+    filter: glow ? `drop-shadow(0 0 8px ${getFactionColor(glow)})` : undefined,
+    ...extraStyle,
+  }});
+}
 function TypeChip({ type, size }) {
   const c = getTypeColor(type);
   const text = TYPE_TEXT_C[(type || '').toLowerCase()] || c;
@@ -1304,7 +1319,7 @@ function PartyBuilder() {
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
             h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg,${fCol}08,rgba(0,0,0,0.4))`, position:'relative', overflow:'hidden' }},
               h('div', { style:{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:'120%', height:'30%', background:`radial-gradient(ellipse,${fCol}40,transparent 70%)`, filter:'blur(4px)', pointerEvents:'none' } }),
-              h(Sprite, { race:id.race, gender:id.gender||'male', cls:cn, size:'90%', glow:isActive?id.faction:null, style:{width:'90%',height:'90%'} }),
+              h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null }),
             ),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
             h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', paddingBottom:1 } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' · ',getJobDisplay(cn).toUpperCase()),

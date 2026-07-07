@@ -2073,6 +2073,10 @@ const RACE_PROFILES = {
     },
     'men in black': {
         label: 'Men in Black',
+        labelMale: 'Man in Black',
+        // A woman can't very well be a Man in Black — she's a Glowie
+        // (slang for a CIA/fed agent). Portrait art follows suit.
+        labelFemale: 'Glowie',
         faction: 'space',
         types: ['human', 'tech']
     },
@@ -2089,7 +2093,7 @@ const RACE_PROFILES = {
     'priest': {
         label: 'Priest',
         labelMale: 'Priest',
-        labelFemale: 'Nun',
+        labelFemale: 'Priestess',
         faction: 'time',
         types: ['human', 'divine']
     },

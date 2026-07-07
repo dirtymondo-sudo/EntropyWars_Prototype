@@ -839,16 +839,61 @@ function getRace3DModel(race, gender) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// HUD portraits — close-up 128×128 face art shown in the HUD panels and the
-// turn-clock flanks (hud.js UnitSprite) instead of the full-body map sprite.
-// Same exact-gender rule as the model/sheet registries.
+// HUD portraits — close-up 128×128 face art shown in the HUD panels, the
+// turn-clock flanks, the horologe clock face + target menus, the far-zoom
+// nameplates and the party-builder rail. Same exact-gender rule as the
+// model/sheet registries; units without an entry fall back to their map
+// sprite wherever portraits render.
+//
+// Art lives in the shared folder Assets/Sprites/character_portraits/
+// <male|female>/<name>.png. Some file names are slang/gendered variants of
+// the race ("glowie" = female men in black, "cowgirl", "witch", …) — every
+// URL below was HEAD-verified live on R2 2026-07-07. To add one: upload a
+// 128×128 png into that folder and list it here.
 // ───────────────────────────────────────────────────────────────────────────
-// Only the male harbinger has a portrait.png on R2 so far. To add one:
-// upload a 128×128 portrait.png into the race's folder and list it here.
+const _PORT = `${_S}/character_portraits`;
+const _pm = (f) => `${_PORT}/male/${f}.png`;
+const _pf = (f) => `${_PORT}/female/${f}.png`;
 const RACE_PORTRAITS = {
+  // ── homosapien sub-races ──
+  'homosapien':     { female: _pf('freelancer') },          // no male file yet
+  'pirate':         { male: _pm('pirate'),       female: _pf('pirate') },
+  'knight':         { female: _pf('knight') },
+  'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
+  'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
+  'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
+  'men in black':   { male: _pm('meninblack'),   female: _pf('glowie') },
+  'telepath':       { female: _pf('psychic') },
+  'marksman':       { male: _pm('sniper'),       female: _pf('sniper') },
+  'priest':         { male: _pm('priest') },                // no priestess file yet
+  'wizard':         { female: _pf('witch') },               // no male wizard file yet
   'fortune teller': {
+    // ⚠ character_portraits has no male fortuneteller yet — he keeps his
+    // original harbinger-folder portrait until one is uploaded.
     male: `${_S}/Races/Homosapien/Male/harbinger/portrait.png`,
+    female: _pf('fortuneteller'),
   },
+
+  // ── everyone else with art in the folder ──
+  'nordic':      { male: _pm('nordic') },
+  'djinn':       { male: _pm('djinn') },
+  'demon':       { male: _pm('devil') },
+  'quarterback': { male: _pm('quarterback') },
+  'bigfoot':     { male: _pm('bigfoot') },
+  'grey':        { male: _pm('grey') },
+  'giant':       { male: _pm('giant') },
+  'werewolf':    { male: _pm('werewolf') },
+  'reptilian':   { male: _pm('reptilian') },
+  'anubis':      { male: _pm('anubis') },
+  'mantid':      { male: _pm('mantid') },
+  'antperson':   { male: _pm('antperson') },
+  'zombie':      { female: _pf('zombie') },
+  'catgirl':     { female: _pf('catgirl') },
+  'succubus':    { female: _pf('succubus') },
+  'fairy':       { female: _pf('fairy') },
+  'halfdemon':   { female: _pf('halfdemon') },
+  'ki fighter':  { female: _pf('kifighter') },
+  'valkraye':    { female: _pf('valkraye') },
 };
 
 function getUnitPortraitUrl(unit) {

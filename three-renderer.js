@@ -7273,7 +7273,44 @@ const ThreeRenderer = (function () {
                 '@keyframes tp-eff-pulse {',
                 '  0%, 100% { transform: scale(1); }',
                 '  50% { transform: scale(1.15); }',
-                '}'
+                '}',
+
+                /* ---- Far-zoom portrait plate ------------------------------
+                   When the camera pulls far enough back that a tile projects
+                   smaller than the plate itself, the plate covers the unit
+                   anyway — so it BECOMES the unit: a JRPG card of face +
+                   name + one chunky HP bar. Types / MP / status chips hide
+                   (illegible at that distance); the portrait carries team
+                   color on its frame. Toggled per-frame in _scalePlates()
+                   with hysteresis so it never flickers at the boundary. */
+                '.tp-wrap .tp-portrait { display: none; }',
+                '.tp-wrap .tp-main { flex: 1 1 auto; min-width: 0; }',
+                '.tp-wrap.tp-far { width: 168px; display: flex; align-items: flex-end; gap: 5px; }',
+                '.tp-wrap.tp-far .tp-portrait {',
+                '  display: block; flex: none; width: 46px; height: 46px;',
+                '  background-size: cover; background-position: center;',
+                '  background-color: rgba(6,8,14,0.85); image-rendering: pixelated;',
+                '  border: 2px solid rgba(255,255,255,0.3); border-radius: 3px;',
+                '  box-shadow: 0 2px 8px rgba(0,0,0,0.8);',
+                '}',
+                '.tp-wrap.tp-far .tp-portrait.tp-portrait-sprite {',
+                '  background-size: contain; background-repeat: no-repeat;',
+                '  background-position: center bottom;',
+                '}',
+                '.tp-wrap.tp-far.tp-p1 .tp-portrait { border-color: rgba(90,170,255,0.75); }',
+                '.tp-wrap.tp-far.tp-p2 .tp-portrait { border-color: rgba(255,90,90,0.75); }',
+                'body.is-p2-viewer .tp-wrap.tp-far.tp-p1 .tp-portrait { border-color: rgba(255,90,90,0.75); }',
+                'body.is-p2-viewer .tp-wrap.tp-far.tp-p2 .tp-portrait { border-color: rgba(90,170,255,0.75); }',
+                '.tp-wrap.tp-far.tp-active .tp-portrait {',
+                '  border-color: rgba(255,200,0,0.85);',
+                '  box-shadow: 0 0 12px rgba(255,200,0,0.45), 0 2px 8px rgba(0,0,0,0.8);',
+                '}',
+                '.tp-wrap.tp-far .tp-types, .tp-wrap.tp-far .tp-bar-mp,',
+                '.tp-wrap.tp-far .tp-status-row, .tp-wrap.tp-far .tp-eye,',
+                '.tp-wrap.tp-far .tp-zodiac, .tp-wrap.tp-far .tp-skyev { display: none !important; }',
+                '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 21px; justify-content: flex-start; }',
+                '.tp-wrap.tp-far .tp-bar { height: 17px; }',
+                '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }'
             ].join('\n');
             document.head.appendChild(s);
         }
@@ -7359,6 +7396,27 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* Gendered race label for the plate 'race' nametag mode — sub-races read
+       "Pirate"/"Glowie"/"Priestess"/"Mad Scientist" via data.js getRaceLabel,
+       never a bare lowercase race key. */
+    function _plateRaceLabel(u) {
+        if (!u || !u.race) return '';
+        if (typeof getRaceLabel === 'function') return getRaceLabel(u.race, u.gender);
+        return u.race.charAt(0).toUpperCase() + u.race.slice(1);
+    }
+
+    /* Portrait block for the far-zoom nameplate (hidden until .tp-far).
+       128×128 face art from sprites.js RACE_PORTRAITS; units without one
+       fall back to their full-body map sprite (contain, floor-anchored). */
+    function _platePortraitHtml(u) {
+        var url = (typeof getUnitPortraitUrl === 'function') ? getUnitPortraitUrl(u) : null;
+        var isFace = !!url;
+        if (!url && typeof getBattleMapSpriteUrl === 'function') url = getBattleMapSpriteUrl(u);
+        if (!url) return '';
+        return '<div class="tp-portrait' + (isFace ? '' : ' tp-portrait-sprite')
+            + '" style="background-image:url(&quot;' + url + '&quot;)"></div>';
+    }
+
     function _createPlate(unit) {
         _ensurePlateStyles();
 
@@ -7380,7 +7438,7 @@ const ThreeRenderer = (function () {
         var mode = state.nametagMode || 'name';
         var label = '';
         if (mode === 'job') label = (typeof getJobDisplayName === 'function') ? getJobDisplayName(unit.cls) : (unit.cls || '');
-        else if (mode === 'race') label = unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : '';
+        else if (mode === 'race') label = _plateRaceLabel(unit);
         else if (mode !== 'none') label = unit.name || unit.cls || '';
 
         var hpPct = Math.max(0, Math.round(100 * unit.hp / (unit.maxHp || 1)));
@@ -7475,7 +7533,11 @@ const ThreeRenderer = (function () {
                 + '">👁</span>';
         }
 
+        /* Portrait rides OUTSIDE tp-main so the far-zoom layout can sit face +
+           info side by side; near zoom keeps it display:none. */
         wrap.innerHTML =
+            _platePortraitHtml(unit) +
+            '<div class="tp-main">' +
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
@@ -7497,7 +7559,8 @@ const ThreeRenderer = (function () {
                     '</div>' +
                 '</div>' +
             '</div>' +
-            statusHtml;
+            statusHtml +
+            '</div>';
 
         var effEl = document.createElement('div');
         effEl.className = 'tp-eff-badge';
@@ -7551,7 +7614,7 @@ const ThreeRenderer = (function () {
         var mode = state.nametagMode || 'name';
         var label = '';
         if (mode === 'job') label = (typeof getJobDisplayName === 'function') ? getJobDisplayName(su.cls) : (su.cls || '');
-        else if (mode === 'race') label = su.race ? su.race.charAt(0).toUpperCase() + su.race.slice(1) : '';
+        else if (mode === 'race') label = _plateRaceLabel(su);
         else if (mode !== 'none') label = su.name || su.cls || '';
 
         var maxHp = su.maxHp || 1, maxMp = su.maxMp || 0;
@@ -7570,7 +7633,11 @@ const ThreeRenderer = (function () {
             typeHtml = '<div class="tp-types">' + tParts.join('') + '</div>';
         }
 
+        /* Same structure as _createPlate (portrait + tp-main) so a decoy's
+           plate is indistinguishable from a real one at any zoom. */
         wrap.innerHTML =
+            _platePortraitHtml(su) +
+            '<div class="tp-main">' +
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
                 _escHtml(label) +
@@ -7589,6 +7656,7 @@ const ThreeRenderer = (function () {
                         '<span class="tp-bar-num">' + maxMp + '/' + maxMp + '</span>' +
                     '</div>' +
                 '</div>' +
+            '</div>' +
             '</div>';
 
         var effEl = document.createElement('div');
@@ -7604,6 +7672,21 @@ const ThreeRenderer = (function () {
     var PLATE_BASE_W = 150;
     var MIN_PLATE_SCALE = 1.0;
     var MAX_PLATE_SCALE = 3.0;
+    /* Far-zoom portrait mode: below FAR_ENTER projected-tile-px the plate is
+       bigger than the unit it labels → swap to the portrait card; back out
+       above FAR_EXIT. The gap is hysteresis so orbiting at the boundary
+       doesn't strobe the layout. */
+    var PLATE_FAR_ENTER_PX = 68;
+    var PLATE_FAR_EXIT_PX = 86;
+
+    function _plateFarToggle(holder, el, projW) {
+        var wasFar = !!holder._farMode;
+        var isFar = wasFar ? (projW < PLATE_FAR_EXIT_PX) : (projW < PLATE_FAR_ENTER_PX);
+        if (isFar !== wasFar) {
+            holder._farMode = isFar;
+            el.classList.toggle('tp-far', isFar);
+        }
+    }
 
     function _scalePlates(cam) {
         if (!cam || !_parentEl) return;
@@ -7627,6 +7710,11 @@ const ThreeRenderer = (function () {
             /* projected pixel width of one tile at this distance */
             var projW = (refW * screenH) / (2 * dist * halfTanFov);
 
+            /* far-zoom portrait card swap — BEFORE the scale-skip return
+               below (at far range the scale pins at MIN and stops changing,
+               but the camera can still cross the far threshold). */
+            _plateFarToggle(po, po.el, projW);
+
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
 
@@ -7647,6 +7735,7 @@ const ThreeRenderer = (function () {
             var _ddist = _scalePlateVec.distanceTo(cam.position);
             if (_ddist < 1) _ddist = 1;
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
+            _plateFarToggle(_dse, _dse.el, _dprojW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
             if (_dse._lastScale !== undefined && Math.abs(_dse._lastScale - _ds) < 0.004) continue;
             _dse._lastScale = _ds;

@@ -13063,6 +13063,10 @@
             if (!unit) return 'Unit';
             const mode = state.nametagMode || 'race';
             if (mode === 'race' && unit.race) {
+                // Canonical gendered race label (data.js RACE_PROFILES) — a
+                // female men in black reads "Glowie", a female priest
+                // "Priestess", every word capitalized ("Mad Scientist").
+                if (typeof getRaceLabel === 'function') return getRaceLabel(unit.race, unit.gender);
                 return unit.race.charAt(0).toUpperCase() + unit.race.slice(1);
             }
             if (mode === 'job') {
@@ -13079,7 +13083,10 @@
             if (mode === 'none') return lvlStr;
             let label = '';
             if (mode === 'job') label = getJobDisplayName(unit.cls) || unit.name || '';
-            else if (mode === 'race') label = unit.race ? unit.race.charAt(0).toUpperCase() + unit.race.slice(1) : (unit.name || '');
+            else if (mode === 'race') label = unit.race
+                ? (typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender)
+                    : unit.race.charAt(0).toUpperCase() + unit.race.slice(1))
+                : (unit.name || '');
             else label = unit.name || unit.cls || '';
             return label ? `${lvlStr} ${label}` : lvlStr;
         }
@@ -19142,6 +19149,12 @@
                     : null;
                 if (state.actionMode === 'attack') { doAttack(unit, x, y, execZ); }
                 else if (state.actionMode === 'spell') { doSpell(unit, x, y, execZ); }
+                else if (state.actionMode === 'item') {
+                    // Items don't own the executing latch the way attacks/spells
+                    // do (board clicks call doItem directly) — release it here.
+                    state._actionExecuting = false;
+                    doItem(unit, x, y);
+                }
                 scheduleBoardRender();
                 return;
             }
