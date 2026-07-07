@@ -2367,6 +2367,154 @@
             letter-spacing: 0.5px;
         }
 
+        /* ══ MAIN MENU — black-void redesign (loading-screen vibe) ══════
+           Bare left-aligned serif text over rising entropy motes; the
+           .ls-grain / .ls-mote atmosphere classes come from
+           styles-cinematic.css. Everything is scoped to #mainMenuPage —
+           the play hub and other pages keep the old .mm-* panel styles. */
+        #mainMenuPage {
+            background: #000;
+            overflow: hidden;
+        }
+        #mainMenuPage .mm-stack {
+            position: absolute;
+            left: clamp(24px, 9vw, 160px);
+            top: 10vh;
+            bottom: 9vh;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            z-index: 2;
+        }
+        #mainMenuPage .mm-logo {
+            font-family: 'Cinzel', 'Times New Roman', serif;
+            font-size: clamp(2.3rem, 6vw, 4.6rem);
+            font-weight: 700;
+            line-height: 1.04;
+            letter-spacing: 0.04em;
+            color: #fff;
+            text-align: left;
+            margin: 0;
+            text-shadow: 0 0 34px rgba(214,178,255,0.28);
+        }
+        #mainMenuPage .mm-sub {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(0.78rem, 1.3vw, 1.05rem);
+            color: #9a7fd1;
+            letter-spacing: 0.34em;
+            text-transform: uppercase;
+            margin: 0.55em 0 0;
+            text-align: left;
+        }
+        #mainMenuPage .mm-rule {
+            height: 2px;
+            width: min(30vw, 420px);
+            margin: 2.4vh 0 2.8vh;
+            background: #fff;
+            box-shadow: 0 0 14px rgba(255,255,255,0.55);
+        }
+        #mainMenuPage .mm-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: auto;
+            min-width: 340px;
+            flex: 1;
+            min-height: 0;
+            justify-content: flex-start;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-left: 1.2em;   /* room for the › hover marker */
+            margin-left: -1.2em;
+        }
+        #mainMenuPage .mm-btn {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            padding: 0.32em 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            text-align: left;
+            cursor: pointer;
+            transform: none;
+            transition: transform 0.16s ease;
+        }
+        #mainMenuPage .mm-btn:hover {
+            background: none;
+            border: none;
+            box-shadow: none;
+            transform: translateX(10px);
+        }
+        #mainMenuPage .mm-btn:active {
+            transform: translateX(10px) scale(0.99);
+            filter: none;
+            box-shadow: none;
+        }
+        #mainMenuPage .mm-label {
+            position: relative;
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.02rem, 1.9vw, 1.45rem);
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #b7b0ca;
+            transition: color 0.16s ease, text-shadow 0.16s ease;
+        }
+        #mainMenuPage .mm-label::before {
+            content: '›';
+            position: absolute;
+            left: -0.85em;
+            opacity: 0;
+            color: #c9a5ff;
+            transition: opacity 0.16s ease;
+        }
+        #mainMenuPage .mm-btn:hover .mm-label {
+            color: #fff;
+            text-shadow: 0 0 18px rgba(201,165,255,0.65);
+        }
+        #mainMenuPage .mm-btn:hover .mm-label::before { opacity: 1; }
+        #mainMenuPage .mm-desc-text {
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.14em;
+            color: #746d8c;
+            margin: 0;
+            opacity: 0;
+            transform: translateX(-6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+        }
+        #mainMenuPage .mm-btn:hover .mm-desc-text {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        #mainMenuPage .mm-elo-display {
+            position: absolute;
+            left: clamp(24px, 9vw, 160px);
+            bottom: 4.2vh;
+            margin: 0;
+            text-align: left;
+            z-index: 2;
+        }
+        #mainMenuPage .mm-online-count {
+            position: absolute;
+            right: clamp(20px, 5vw, 80px);
+            bottom: 4.2vh;
+            z-index: 2;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.2em;
+            color: #8f88a8;
+        }
+        @media (max-width: 720px), (max-height: 560px) {
+            #mainMenuPage .mm-stack { top: 6vh; bottom: 12vh; }
+            #mainMenuPage .mm-logo { font-size: clamp(1.7rem, 8.5vw, 2.6rem); }
+            #mainMenuPage .mm-buttons { min-width: 0; }
+            #mainMenuPage .mm-desc-text { display: none; }
+        }
+
 
         /* ══════════════════════════════════════════════ */
         /* ══ MODE & MAP SELECTOR ══                     */

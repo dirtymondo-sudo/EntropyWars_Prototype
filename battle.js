@@ -15451,7 +15451,7 @@
         // match stuttered. The screen still dismisses the moment every warmer
         // settles, so fast connections never see the difference.
         const LS_MAX_WAIT_MS = 45000;
-        const LS_HINT_CYCLE_MS = 4600;
+        const LS_HINT_CYCLE_MS = 9500;   // slow enough to actually read the lore
 
         /* Skyrim-style rotating lines. FIELD MANUAL = real mechanics;
            INTEL FRAGMENT = the best lines from the codex dossiers (ui.js
@@ -15504,9 +15504,9 @@
             { t: 'INTEL FRAGMENT', q: '“We are not equipped for this. No one is.”', s: 'General ████ — KAIJU' },
         ];
 
-        /* Map title for the card. Named prebuilts read as "THE MOON" /
-           "THE PYRAMIDS OF GIZA"; the generic random-size boards (Small…Huge)
-           have no name worth carving in serif, so they get a lore-safe one. */
+        /* Map title for the card — the bare map name ("MOON" / "PYRAMIDS OF
+           GIZA"); the generic random-size boards (Small…Huge) have no name
+           worth carving in serif, so they get a lore-safe one. */
         function _lsMapTitle() {
             const GENERIC_SIZE_LABELS = { 'Small': 1, 'Medium': 1, 'Large': 1, 'Extra Large': 1, 'Huge': 1 };
             let label = null;
@@ -15516,9 +15516,18 @@
                     if (gm && gm.label) label = gm.label;
                 }
             } catch (_e) {}
-            if (!label || GENERIC_SIZE_LABELS[label]) return 'THE PROVING GROUNDS';
-            const up = String(label).toUpperCase();
-            return /^THE\s/.test(up) ? up : 'THE ' + up;
+            if (!label || GENERIC_SIZE_LABELS[label]) return 'PROVING GROUNDS';
+            return String(label).toUpperCase().replace(/^THE\s+/, '');
+        }
+        window._lsMapTitle = _lsMapTitle;
+
+        /* Timeline stamp for the card — every battle happens somewhen between
+           12500 BC and 3333 AD. */
+        function _lsRandomYear() {
+            const yr = Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
+            if (yr < 0) return 'YEAR ' + (-yr) + ' BC';
+            if (yr === 0) return 'YEAR 1 AD';
+            return 'YEAR ' + yr + ' AD';
         }
 
         function showBattleLoadingScreen(onDone) {
@@ -15634,7 +15643,7 @@
                 card.className = 'ls-card';
                 const line1 = document.createElement('div');
                 line1.className = 'ls-line ls-line-1';
-                line1.textContent = 'YEAR 2058';
+                line1.textContent = _lsRandomYear();
                 const line2 = document.createElement('div');
                 line2.className = 'ls-line ls-line-2';
                 line2.textContent = (mpMode && mpMode.label ? mpMode.label : 'Skirmish').toUpperCase();

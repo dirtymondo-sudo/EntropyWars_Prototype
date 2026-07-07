@@ -945,11 +945,20 @@ function MatchMeta({ st }) {
   const p1Score = st.record ? (st.record[1] || 0) : 0;
   const p2Score = st.record ? (st.record[2] || 0) : 0;
 
+  // the battlefield's name (same source as the loading-screen title)
+  const mapName = (typeof window._lsMapTitle === 'function') ? window._lsMapTitle() : null;
+
   return h('div', { className: 'ew-matchmeta', style: {
     position: 'absolute', top: 12, right: 12,
     display: 'flex', flexDirection: 'column', gap: 6,
     alignItems: 'flex-end', zIndex: 10,
   }},
+    mapName && h('div', { style: {
+      fontFamily: '"Cinzel", serif', fontSize: 13, fontWeight: 600,
+      letterSpacing: '0.18em', lineHeight: 1, color: EW.ink,
+      textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
+      padding: '2px 2px 0 0', pointerEvents: 'none',
+    }}, '◈ ' + mapName),
     h('div', { style: {
       display: 'flex', alignItems: 'center', gap: 10,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
@@ -1279,10 +1288,24 @@ const HRLG_MAP = 'M28,32 L46,22 L72,20 L88,26 L84,34 L70,38 L66,50 L54,58 L46,72
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ factionKey, api, portraitUrl }) {
+function HorologeHub({ factionKey, api, portraitUrl, unitKey, burning, poisoned }) {
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
+  const hitRef = useRef(null);
   const A = useRef({ min: HRLG_REST.min, hour: HRLG_REST.hour, sec: 0, paused: false });
+
+  // one-shot white blink on the face when THIS unit takes hit damage
+  // (applyDamageToUnit emits 'unit:damaged' on the RenderBus)
+  useEffect(() => {
+    if (!window.RenderBus || !unitKey) return;
+    const onHit = (ev) => {
+      if (!ev || !ev.unit || ev.unit.id !== unitKey) return;
+      const el = hitRef.current; if (!el) return;
+      el.classList.remove('go'); void el.getBoundingClientRect(); el.classList.add('go');
+    };
+    window.RenderBus.on('unit:damaged', onHit);
+    return () => { window.RenderBus.off('unit:damaged', onHit); };
+  }, [unitKey]);
 
   const _setHand = (ref, deg) => { if (ref.current) ref.current.style.transform = 'rotate(' + deg + 'deg)'; };
 
@@ -1417,27 +1440,17 @@ function HorologeHub({ factionKey, api, portraitUrl }) {
       h('circle', { cx: 100, cy: 100, r: 96, fill: 'url(#hrlgFaceG)', stroke: 'var(--hfc-soft)', strokeWidth: 1 }),
       h('circle', { cx: 100, cy: 100, r: 98, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.8, opacity: 0.5 }),
       h('circle', { cx: 100, cy: 100, r: 57, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.6, opacity: 0.22 }),
-      // The inner disc: the ACTIVE UNIT'S PORTRAIT when it has face art
-      // (this menu only renders on the local player's turn, so the face on
-      // the clock is always YOUR unit — never the enemy's), else the old
-      // etched flat-earth chart. A vignette keeps the hands readable.
-      portraitUrl
-        ? h('g', { clipPath: 'url(#hrlgMapClip)' },
-            h('image', {
-              href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
-              preserveAspectRatio: 'xMidYMid slice', opacity: 0.94,
-              style: { imageRendering: 'pixelated' },
-            }),
-            h('circle', { cx: 100, cy: 100, r: 56.5, fill: 'url(#hrlgPortraitVig)' }),
-          )
-        : h('g', { clipPath: 'url(#hrlgMapClip)' },
-            grid,
-            h('path', {
-              d: HRLG_MAP, transform: 'translate(44,72) scale(0.3733)',
-              fill: 'var(--hfc)', opacity: 0.13,
-              stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
-            }),
-          ),
+      // The inner disc: the etched flat-earth chart when the unit has no
+      // face art. (The portrait itself is rendered OVER the hands — see
+      // the svg composition in the return below.)
+      !portraitUrl && h('g', { clipPath: 'url(#hrlgMapClip)' },
+        grid,
+        h('path', {
+          d: HRLG_MAP, transform: 'translate(44,72) scale(0.3733)',
+          fill: 'var(--hfc)', opacity: 0.13,
+          stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
+        }),
+      ),
       h('g', { ref: ticksRef }, ticks),
       h('g', null, numerals),
     );
@@ -1460,6 +1473,21 @@ function HorologeHub({ factionKey, api, portraitUrl }) {
       ),
       h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0a0c15', stroke: 'var(--hfc)', strokeWidth: 1.3 }),
       h('circle', { cx: 100, cy: 100, r: 1.7, fill: 'var(--hfc)' }),
+      // The ACTIVE UNIT'S PORTRAIT rides ON TOP of the hands (this menu only
+      // renders on the local player's turn, so the face on the clock is
+      // always YOUR unit — never the enemy's). Status flashes tint the disc:
+      // red while burning, purple while poisoned, a white blink on hits.
+      h('g', { clipPath: 'url(#hrlgMapClip)' },
+        portraitUrl && h('image', {
+          href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
+          preserveAspectRatio: 'xMidYMid slice', opacity: 0.94,
+          style: { imageRendering: 'pixelated' },
+        }),
+        portraitUrl && h('circle', { cx: 100, cy: 100, r: 56.5, fill: 'url(#hrlgPortraitVig)' }),
+        burning && h('circle', { cx: 100, cy: 100, r: 56.5, className: 'hrlg-flash hrlg-flash-burn' }),
+        poisoned && h('circle', { cx: 100, cy: 100, r: 56.5, className: 'hrlg-flash hrlg-flash-poison' }),
+        h('circle', { ref: hitRef, cx: 100, cy: 100, r: 56.5, className: 'hrlg-hitflash' }),
+      ),
     ),
     h('div', { ref: chimeARef, className: 'hrlg-chime' }),
     h('div', { ref: chimeBRef, className: 'hrlg-chime' }),
@@ -1619,7 +1647,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
@@ -1866,7 +1894,7 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
         style: { top: (_arrowTy + 2) + 'px' },
       }, '▼ ' + hiddenDn + ' MORE'),
     ),
-    h(HorologeHub, { factionKey: factionKey, api: clockApi, portraitUrl: portraitUrl }),
+    h(HorologeHub, { factionKey: factionKey, api: clockApi, portraitUrl: portraitUrl, unitKey: unitKey, burning: burning, poisoned: poisoned }),
     /* special-action pushers — extra stopwatch buttons riding the bezel.
        Only mounted when the action is actually usable RIGHT NOW, and they
        pulse so the player can't miss the opportunity. Root view only —
@@ -2815,6 +2843,8 @@ function ActionMenu({ st, hidden }) {
     roman: roman, unitName: unitName, unitKey: unit.id,
     subLine: subLine,
     portraitUrl: typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null,
+    burning: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'burn'),
+    poisoned: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'poison'),
     ap: unit.ap || 0, maxAP: maxAP,
     hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
     modeLabel: modeLabel, am: am, pushers: pushers,
@@ -5242,6 +5272,16 @@ function _injectHudHideStyles() {
       animation: hrlgStamp 0.5s cubic-bezier(0.16,1.4,0.3,1) both;
     }
     .hrlg-hub svg { width: 100%; height: 100%; overflow: visible; display: block; }
+    /* face-disc status tints: red pulse while burning, purple while
+       poisoned; a one-shot white blink when the unit takes hit damage */
+    .hrlg-flash, .hrlg-hitflash { pointer-events: none; }
+    .hrlg-flash-burn { fill: #ff4a30; opacity: 0; animation: hrlgFlashBurn 1.5s ease-in-out infinite; }
+    .hrlg-flash-poison { fill: #a44dff; opacity: 0; animation: hrlgFlashPoison 2.1s ease-in-out infinite; }
+    @keyframes hrlgFlashBurn { 0%, 100% { opacity: 0; } 50% { opacity: 0.42; } }
+    @keyframes hrlgFlashPoison { 0%, 100% { opacity: 0; } 50% { opacity: 0.4; } }
+    .hrlg-hitflash { fill: #fff; opacity: 0; }
+    .hrlg-hitflash.go { animation: hrlgHitFlash 0.45s ease-out; }
+    @keyframes hrlgHitFlash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
     @keyframes hrlgStamp {
       0%   { opacity: 0; transform: scale(0.3) rotate(-70deg); }
       70%  { opacity: 1; transform: scale(1.08) rotate(5deg); }

@@ -16,6 +16,14 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
 DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
 diffs. The deliverable is always the full edited file, produced in chat.
 
+### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
+Playtesting (Playwright runs, browser automation, driving the game) burns a LOT
+of the user's tokens and they are fully capable of testing themselves. After
+making changes: syntax-check the edited JS (`node --check <file>`) and hand the
+files over — that's it. Only run the playtest harness / any browser automation
+when the user explicitly requests it (e.g. "playtest <mode>") or when a change
+is genuinely impossible to validate any other way AND the user has agreed.
+
 ### RULE #1b — CACHE-BUSTING (MANDATORY on EVERY R2 file delivery)
 Assets are served with immutable long-cache headers, so an uploaded file does
 NOTHING until `index.html`'s version token changes — players keep the cached old

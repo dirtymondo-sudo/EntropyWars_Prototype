@@ -1318,9 +1318,13 @@ function PartyBuilder() {
             isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
             confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓'),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
-            h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg,${fCol}08,rgba(0,0,0,0.4))`, position:'relative', overflow:'hidden' }},
-              h('div', { style:{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:'120%', height:'30%', background:`radial-gradient(ellipse,${fCol}40,transparent 70%)`, filter:'blur(4px)', pointerEvents:'none' } }),
-              h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null }),
+            /* Portraits are 128×128 art — the box stays a SQUARE no matter the
+               party size (the outer flex row absorbs the leftover space). */
+            h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }},
+              h('div', { style:{ height:'100%', maxWidth:'100%', aspectRatio:'1 / 1', display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg,${fCol}08,rgba(0,0,0,0.4))`, position:'relative', overflow:'hidden' }},
+                h('div', { style:{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:'120%', height:'30%', background:`radial-gradient(ellipse,${fCol}40,transparent 70%)`, filter:'blur(4px)', pointerEvents:'none' } }),
+                h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null }),
+              ),
             ),
             h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
             h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', paddingBottom:1 } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' · ',getJobDisplay(cn).toUpperCase()),
