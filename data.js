@@ -4760,7 +4760,7 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Harvester',
         classRestrictions: ['Harvester', 'Engineer'],
-        desc: 'Stack a wooden block (+1 height) on any tile in range — costs 1 🪵. Lifts whoever stands there; dropped into water it becomes a stepping stone. Timber burns, and bodies knocked into it smash straight through.'
+        desc: 'Target any tile in range: stack a wooden block (+1 height) for 1 🪵. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away (into your pit, trap or moat). Dropped into water it becomes a stepping stone. Timber burns, and bodies knocked into it smash straight through.'
     },
     {
         id: 'stoneBlock',
@@ -4778,7 +4778,7 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Stack a stone block (+1 height) on any tile in range — costs 1 🪨. Lifts whoever stands there; fills water into a stepping stone. Fireproof, and only the heaviest brutes crash through it.'
+        desc: 'Target any tile in range: stack a stone block (+1 height) for 1 🪨. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away. Fills water into a stepping stone. Fireproof, and only the heaviest brutes crash through it.'
     },
     {
         id: 'steelBlock',
@@ -4796,7 +4796,7 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Stack a steel block (+1 height) — costs 1 ⚙️. Lifts whoever stands there; fills water into a platform. Steel CONDUCTS: lightning striking any connected metal arcs into every unit standing on it.'
+        desc: 'Target any tile in range: stack a steel block (+1 height) for 1 ⚙️. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away. Fills water into a platform. Steel CONDUCTS: lightning striking any connected metal arcs into every unit standing on it.'
     },
 
     /* ── Terraforming pass: prebuilt voxel structures ─────────────────────
@@ -4898,7 +4898,7 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Agent',
         classRestrictions: ['Agent', 'Harvester'],
-        desc: 'Hide a spring-loaded spike snare (max 2 active). The first enemy to step on it takes damage and is ROOTED in place for 2 turns — right where you want them.'
+        desc: 'Hide a spring-loaded spike snare on any EMPTY tile in range (max 2 active). The first enemy to step on it takes damage and is ROOTED in place for 2 turns — right where you want them.'
     },
     {
         id: 'frostMine',
@@ -4917,7 +4917,7 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Black Mage',
         classRestriction: 'Black Mage',
-        desc: 'Bury a freezing charge (max 2 active). The triggering enemy takes damage and is stunned a turn while the surrounding 3×3 flash-freezes to slick ice — shatter it, slide on it, or melt it later.'
+        desc: 'Bury a freezing charge in any EMPTY tile in range (max 2 active). The triggering enemy takes damage and is stunned a turn while the surrounding 3×3 flash-freezes to slick ice — shatter it, slide on it, or melt it later.'
     },
     {
         id: 'tremorCharge',
@@ -4936,7 +4936,7 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Plant a seismic charge (max 2 active). When an enemy steps on it the ground COLLAPSES 2 levels under their feet — blast damage plus the fall, and adjacent water floods the fresh pit.'
+        desc: 'Plant a seismic charge in any EMPTY tile in range (max 2 active). When an enemy steps on it the ground COLLAPSES 2 levels under their feet — blast damage plus the fall, and adjacent water floods the fresh pit.'
     },
     {
         id: 'magnetMine',
@@ -4955,7 +4955,7 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Agent',
         classRestrictions: ['Agent', 'Engineer'],
-        desc: 'Conceal a magnetic pulse charge (max 2 active). The trigger shocks its victim and DRAGS every unit within 2 tiles one step toward the mine — bunch them up, then drop the follow-up on the pile.'
+        desc: 'Conceal a magnetic pulse charge in any EMPTY tile in range (max 2 active). The trigger shocks its victim and DRAGS every unit within 2 tiles one step toward the mine — bunch them up, then drop the follow-up on the pile.'
     }
 ];
 const SPELL_BY_ID = Object.fromEntries(SPELL_LIBRARY.map(spell => [spell.id, spell]));
@@ -7382,6 +7382,9 @@ const SIM_DEFAULTS = {
     delayed:      { simTargeting: 'tile',  simPhase: 'slow',     simFallback: null },
     terrainCreate:{ simTargeting: 'tile',  simPhase: 'slow',     simFallback: null },
     summonWeather:{ simTargeting: 'self',  simPhase: 'slow',     simFallback: null },
+    placeBlock:   { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    buildStructure:{ simTargeting: 'tile', simPhase: 'slow',     simFallback: null },
+    placeTrap:    { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
 
     skyDrop:      { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
     skyThrow:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },

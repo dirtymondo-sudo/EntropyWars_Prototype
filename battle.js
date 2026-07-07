@@ -285,6 +285,15 @@
             terrainCreate:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             summonWeather:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             delayed:      { minRange: 0, offensive: false, tileTargeted: true },
+            // Terraforming pass (2026-07-07): build/trap kinds pick a TILE, never
+            // a unit. Leaving these out of the table made them default to
+            // {minRange:1, offensive:true} — the whole engine then treated them
+            // as enemy-targeted attacks ("Select an enemy target for Steel
+            // Block", traps demanding a victim click, blocks only buildable
+            // under enemies). Keep every new kind registered here.
+            placeBlock:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            buildStructure:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            placeTrap:    { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
 
             // ── Zone effects ──
             zoneDebuff:   { minRange: 0, offensive: false, tileTargeted: true },
@@ -11490,6 +11499,9 @@
                 case 'leapStrike':    return nm + ': select an enemy to leap at.';
                 case 'summonWeather': return nm + ': select a tile to call the weather down on.';
                 case 'remoteView':    return nm + ': select any tile to scry — the fog there is revealed.';
+                case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
+                case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
+                case 'placeTrap':     return nm + ': select an empty tile to hide the trap on.';
             }
             const meta = _kindMeta(spell);
             if (meta.allyOnly)     return 'Select an ally for ' + nm + '.';
@@ -12567,9 +12579,18 @@
                 });
             }
 
-            if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash',
-                 'placeBlock', 'buildStructure', 'placeTrap'].includes(kind)) {
+            if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash'].includes(kind)) {
                 return range > 0 || true;
+            }
+
+            // Placement kinds: only castable when at least one tile in range
+            // actually ACCEPTS the placement — otherwise the ability menu greys
+            // the spell ("No target") instead of letting a doomed cast through.
+            if (kind === 'placeTrap' || kind === 'placeBlock' || kind === 'buildStructure') {
+                const tiles = getSpellRangeTiles(unit, spell);
+                if (kind === 'placeTrap') return tiles.some(t => !_placeTrapProblem(t.x, t.y));
+                if (kind === 'placeBlock') return tiles.some(t => !_placeBlockProblem(unit, spell, t.x, t.y));
+                return tiles.some(t => !!_structurePlanFor(unit, spell, t.x, t.y));
             }
 
             if (kind === 'encore') {
@@ -18794,6 +18815,8 @@
             // 🪵🪨⚙️ salvage economy (materials fund placeBlock/buildStructure)
             getMaterials, gainMaterial, spendMaterials, canAffordMaterials,
             materialCostLabel, getTerrainMaterial,
+            // placement validity (shared by menus / previews / AI)
+            _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
             getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
             settleWaterAround, checkTrapTrigger,
@@ -19989,6 +20012,35 @@
             if (typeof ThreeRenderer !== 'undefined') ThreeRenderer.clearOverlay('attackRange');
         }
         window.clearAttackRangePreview = clearAttackRangePreview;
+
+        // ── One sweep for EVERY targeting visual ─────────────────────────────
+        // AoE tiles, range overlays, terrain ghost blocks, intent/approach/plan
+        // arrows, highlight cache. Called from doSpell/doAttack the moment a
+        // cast is validated (every entry point — board click, keyboard, HUD
+        // quick menus, move-then-cast — funnels through them), so no preview
+        // can linger into the cast animation. Safe to call twice.
+        function clearAllTargetingVisuals() {
+            if (typeof clearAoePreview === 'function') clearAoePreview(); // aoe overlay + ghost + intent arrows
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            if (typeof clearHoveredTarget === 'function') clearHoveredTarget();
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearOverlay) {
+                for (const ov of ['spellApproachMove', 'spellApproachTarget', 'spellApproachShove',
+                                  'movePreview', 'actionPlanTarget', 'actionPlanAoe', 'actionPlanShove',
+                                  'moveHoverDest', 'enemyRange']) {
+                    ThreeRenderer.clearOverlay(ov);
+                }
+                if (ThreeRenderer.clearArrows3D) ThreeRenderer.clearArrows3D();
+                if (ThreeRenderer.clearTerrainGhost) ThreeRenderer.clearTerrainGhost();
+            }
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            // Camera glides during the cast re-resolve hover every frame — hold
+            // hover-driven previews off until the action settles (checked in
+            // three-renderer's _refreshHoverOnCameraMove).
+            state._suppressHoverPreviewUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + 1400;
+            scheduleBoardRender();
+        }
+        window.clearAllTargetingVisuals = clearAllTargetingVisuals;
 
         function showSpellTooltip(btnEl) {
             const tip = document.getElementById('spellTooltip');
@@ -22365,6 +22417,10 @@
                 playErrorSfx();
                 return 0;
             }
+            // Attack is validated — sweep targeting previews/arrows before the
+            // swing animation starts (same chokepoint as doSpell).
+            if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+
             let target = z != null ? (unitAt(x, y, z) || unitAt(x, y)) : unitAt(x, y);
 
             if (target && target.id === unit.id) {
@@ -23604,6 +23660,62 @@
             return blocks.length ? { tpl, blocks } : null;
         }
 
+        // ── Placement validity helpers (shared by doSpell / previews / menus) ──
+        // Single source of truth for "can this build/trap land on (x,y)": the
+        // doSpell handlers, hasSpellTargetInRange (spell greying), the tile
+        // quick-menu reasons and the ghost preview all call these, so the UI
+        // can never light up a cast the engine would reject.
+
+        // placeBlock: null when the block can form, else a short human reason.
+        // Also computes the enemy-shove destination (see the placeBlock handler):
+        // callers that need it read the `out` object.
+        function _placeBlockProblem(unit, spell, x, y, out = {}) {
+            if (!isInside(x, y) || getTerrainAt(x, y) === 'wall') return 'Cannot build there';
+            if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return 'Objective tile';
+            const obj = getObjectAt(x, y);
+            if (obj) {
+                const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
+                if (rule && !rule.walkable && !rule.cosmetic) return 'Tile is occupied';
+            }
+            if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return 'Inside a structure';
+            out.isWater = _isWaterTile(x, y);
+            out.oldH = getBaseHeightAt(x, y);
+            if (!out.isWater && out.oldH >= TERRAIN_RESHAPE_CONFIG.maxHeight) return 'Max height';
+            const occ = unitAt(x, y);
+            const occAirborne = occ && typeof isUnitAirborne === 'function' && isUnitAirborne(occ);
+            if (occ && !occ.dead && !occAirborne && isEnemyUnit(occ, unit) && !out.isWater) {
+                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(occ) === 'colossal') {
+                    return 'Too heavy to shove';
+                }
+                let sdx = Math.sign(x - unit.x), sdy = Math.sign(y - unit.y);
+                if (sdx !== 0 && sdy !== 0) {
+                    if (Math.abs(x - unit.x) >= Math.abs(y - unit.y)) sdy = 0; else sdx = 0;
+                }
+                if (sdx === 0 && sdy === 0) sdx = 1;
+                const dirs = sdx !== 0 ? [[sdx, 0], [0, 1], [0, -1]] : [[0, sdy], [1, 0], [-1, 0]];
+                for (const [ddx, ddy] of dirs) {
+                    const nx = x + ddx, ny = y + ddy;
+                    if (!isInside(nx, ny)) continue;
+                    if (!canOccupy(nx, ny)) continue;
+                    out.shoveTo = { x: nx, y: ny };
+                    break;
+                }
+                if (!out.shoveTo) return 'No room to shove them';
+                out.enemyOcc = occ;
+            }
+            return null;
+        }
+
+        // placeTrap: null when a trap can hide on (x,y), else the reason.
+        function _placeTrapProblem(x, y) {
+            if (!isInside(x, y)) return 'Cannot place there';
+            if (unitAt(x, y)) return 'Needs an empty tile';
+            if (!isTerrainPassable(x, y)) return 'Impassable terrain';
+            if ((state.traps || []).some(t => t.x === x && t.y === y) ||
+                (state.bombs || []).some(b => b.x === x && b.y === y)) return 'Already rigged';
+            return null;
+        }
+
         // ── Terrain-spell preview prediction (2026-07-07 terraforming pass) ──
         // Pure, side-effect-free mirror of the terrain-changing spell handlers
         // (terrainCreate / placeBlock / buildStructure). Returns ghost entries
@@ -23693,21 +23805,26 @@
             }
 
             if (spell.kind === 'placeBlock') {
-                // Mirror of the placeBlock handler's validation.
-                if (!isInside(tx, ty) || getTerrainAt(tx, ty) === 'wall') return changes;
-                if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) return changes;
-                const obj = getObjectAt(tx, ty);
-                if (obj) {
-                    const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
-                    if (rule && !rule.walkable && !rule.cosmetic) return changes;
-                }
-                if (typeof getBuildingAt === 'function' && getBuildingAt(tx, ty)) return changes;
+                // Same validity check the handler uses — an invalid tile shows
+                // NO ghost, so "no hologram = this click will not work".
+                const info = {};
+                if (_placeBlockProblem(unit, spell, tx, ty, info)) return changes;
                 const blockColor = _terrainPreviewColor(spell.terrainType);
-                if (_isWaterTile(tx, ty)) {
+                if (info.isWater) {
                     changes.push({ x: tx, y: ty, mode: 'paint', dz: 0, color: blockColor });
-                } else if (getBaseHeightAt(tx, ty) < TERRAIN_RESHAPE_CONFIG.maxHeight) {
+                } else {
                     changes.push({ x: tx, y: ty, mode: 'raise', dz: 1, color: blockColor });
+                    // Enemy on the column: the block will SHOVE them — mark the
+                    // tile they'll be hurled onto so the play reads before the click.
+                    if (info.shoveTo) changes.push({ x: info.shoveTo.x, y: info.shoveTo.y, mode: 'paint', dz: 0, color: 0xff8a3c });
                 }
+                return changes;
+            }
+
+            if (spell.kind === 'placeTrap') {
+                // Amber sigil ghost on a valid, empty tile; nothing on invalid.
+                if (_placeTrapProblem(tx, ty)) return changes;
+                changes.push({ x: tx, y: ty, mode: 'paint', dz: 0, color: 0xffb347 });
                 return changes;
             }
 
@@ -24551,6 +24668,11 @@
                 return 0;
             }
 
+            // Every validation gate has passed — the cast WILL happen. Sweep away
+            // all targeting visuals (previews, arrows, ghost blocks, range
+            // overlays) so nothing lingers into the cast animation.
+            if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+
             pushUndoSnapshot(true);
 
             triggerCastAnim(unit, spell);
@@ -24898,19 +25020,10 @@
                 // Hidden charge on an empty passable tile; first enemy to land
                 // on it springs it (see _springTrap). Owner-only sigil decal.
                 if (!state.traps) state.traps = [];
-                if (unitAt(x, y, z) || unitAt(x, y)) {
-                    addLog('Traps need an empty tile.');
-                    playErrorSfx();
-                    return 0;
-                }
-                if (!isTerrainPassable(x, y)) {
-                    addLog('Cannot hide a trap in impassable terrain.');
-                    playErrorSfx();
-                    return 0;
-                }
-                if (state.traps.some(t => t.x === x && t.y === y) ||
-                    (state.bombs || []).some(b => b.x === x && b.y === y)) {
-                    addLog('That tile is already rigged.');
+                // Shared validation (also drives spell greying + menu reasons).
+                const _ptProblem = _placeTrapProblem(x, y);
+                if (_ptProblem) {
+                    addLog(`${spell.name}: ${_ptProblem}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -26196,37 +26309,25 @@
                 // materials (salvage economy). Validation mirrored in
                 // predictTerrainSpellChanges — keep in sync.
                 const blockTerrain = spell.terrainType || 'cobblestone';
-                if (!isInside(x, y) || getTerrainAt(x, y) === 'wall') {
-                    addLog('Cannot build there.');
+                // Shared validation (also drives spell greying + ghost preview).
+                // Enemy standing on the column? The block does NOT politely lift
+                // them onto free high ground — it ERUPTS: crash damage + a 1-tile
+                // shove away from the caster (into your traps / pits / water if
+                // you aimed it right). Only allies ride the block up. Grounded
+                // enemies that cannot be displaced (colossal weight, or nowhere
+                // to shove them) hold the ground and the block cannot form —
+                // rejected BEFORE materials are spent.
+                const _pbInfo = {};
+                const _pbProblem = _placeBlockProblem(unit, spell, x, y, _pbInfo);
+                if (_pbProblem) {
+                    addLog(`${spell.name}: ${_pbProblem}.`);
                     playErrorSfx();
                     return 0;
                 }
-                if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) {
-                    addLog('Cannot build on an objective tile.');
-                    playErrorSfx();
-                    return 0;
-                }
-                const _pbObj = getObjectAt(x, y);
-                if (_pbObj) {
-                    const _pbRule = typeof getObjectRule === 'function' ? getObjectRule(_pbObj) : null;
-                    if (_pbRule && !_pbRule.walkable && !_pbRule.cosmetic) {
-                        addLog('Something already stands on that tile.');
-                        playErrorSfx();
-                        return 0;
-                    }
-                }
-                if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) {
-                    addLog('Cannot build inside a structure.');
-                    playErrorSfx();
-                    return 0;
-                }
-                const _pbIsWater = _isWaterTile(x, y);
-                const _pbOldH = getBaseHeightAt(x, y);
-                if (!_pbIsWater && _pbOldH >= TERRAIN_RESHAPE_CONFIG.maxHeight) {
-                    addLog('That column is already at maximum height.');
-                    playErrorSfx();
-                    return 0;
-                }
+                const _pbIsWater = _pbInfo.isWater;
+                const _pbOldH = _pbInfo.oldH;
+                const _pbEnemyOcc = _pbInfo.enemyOcc || null;
+                const _pbShoveTo = _pbInfo.shoveTo || null;
                 if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
                     addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}.`);
                     playErrorSfx();
@@ -26239,12 +26340,27 @@
                     setTerrainAt(x, y, blockTerrain);
                     addLog(`${unitDisplayName(unit)} sinks a ${spell.name} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
                 } else {
+                    if (_pbEnemyOcc && _pbShoveTo) {
+                        // Erupting block: shove first, then raise the column.
+                        const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
+                        _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
+                        if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
+                        animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180);
+                        const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
+                        applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
+                            sourceUnit: unit, damageType: 'physical'
+                        });
+                        showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
+                        addLog(`${unitDisplayName(unit)}'s ${spell.name} erupts under ${unitDisplayName(_pbEnemyOcc)}, hurling them aside!`);
+                        if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc);
+                        if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
+                    }
                     setBlockAt(x, y, _pbOldH + 1, blockTerrain);
-                    const _pbOcc = unitAt(x, y);
-                    if (_pbOcc && !_pbOcc.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbOcc))) {
-                        _pbOcc.z = _pbOldH + 1;
-                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbOcc, fromX: x, fromY: y });
-                        if (_pbOcc.id !== unit.id) addLog(`${unitDisplayName(_pbOcc)} rides the new block up!`);
+                    const _pbRider = unitAt(x, y);
+                    if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
+                        _pbRider.z = _pbOldH + 1;
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
+                        if (_pbRider.id !== unit.id) addLog(`${unitDisplayName(_pbRider)} rides the new block up!`);
                     }
                     addLog(`${unitDisplayName(unit)} stacks a ${spell.name} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
                 }

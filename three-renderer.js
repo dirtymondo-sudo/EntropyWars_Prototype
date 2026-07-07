@@ -17584,6 +17584,14 @@ const ThreeRenderer = (function () {
        Runs once per frame from renderFrame; a no-op while the pose is stable. */
     function _refreshHoverOnCameraMove(cam) {
         if (_lastMouseClientX === null || !canvas) return;
+        /* Never re-resolve hover (and thereby repaint spell previews/arrows)
+           while an action is executing or during the camera glide right after a
+           cast — this was what made "cleared" previews pop back mid-animation. */
+        if (typeof state !== 'undefined' && state) {
+            if (state._actionExecuting || state._walkAnimActive) return;
+            if (state._suppressHoverPreviewUntil
+                && performance.now() < state._suppressHoverPreviewUntil) return;
+        }
         cam.updateMatrixWorld();
         var e = cam.matrixWorld.elements;
         var sig = e[12].toFixed(1) + ',' + e[13].toFixed(1) + ',' + e[14].toFixed(1) + ','

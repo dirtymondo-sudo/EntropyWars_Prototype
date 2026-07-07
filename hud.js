@@ -2034,6 +2034,24 @@ const _HRLG_TYPE_FS = 11;
 const _HRLG_TYPE_PAD = '2px 8px';
 const _HRLG_SUB_FS = 8;
 const _HRLG_SUB_PAD = '1px 5px';
+// What kind of thing does this spell AIM at? One glanceable chip so the player
+// knows BEFORE clicking whether they'll be picking a tile, an enemy, an ally,
+// or nothing at all — the #1 source of "why is it asking me for an enemy?"
+// confusion with the terraforming spells.
+function spellTargetChip(sp) {
+  if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp)) {
+    return { label: '⟳ SELF', color: '#9aa4b0', title: 'Casts on/around the caster — no aiming needed' };
+  }
+  const k = sp.kind || '';
+  if (['heal', 'shield', 'buff', 'cleanse', 'revive', 'guard', 'healAll', 'manaRestoreAll', 'warCry', 'encore'].includes(k)) {
+    return { label: '♥ ALLY', color: '#57d98a', title: 'Select an allied unit' };
+  }
+  if (typeof isSpellTileTargeted === 'function' && isSpellTileTargeted(sp)) {
+    return { label: '⬚ TILE', color: '#57c7ff', title: 'Select a tile on the board — units optional' };
+  }
+  return { label: '◎ ENEMY', color: '#ff8a7a', title: 'Select an enemy unit' };
+}
+
 function _hrlgSpellBadges(sp, cat, compact) {
   const badges = [];
   if (sp.spellType) badges.push({
@@ -2042,6 +2060,8 @@ function _hrlgSpellBadges(sp, cat, compact) {
     title: 'Spell type — drives type advantage',
   });
   if (compact) return badges;   // quick menus carry lots of chips already
+  const _tc = spellTargetChip(sp);
+  badges.push({ label: _tc.label, style: Object.assign(typeBadgeStyle(_tc.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.9 }), title: _tc.title });
   const _db = spellDeliveryBadge(sp, cat);
   badges.push({ label: _db.label, style: Object.assign(typeBadgeStyle(_db.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }) });
   const _rb = spellRangeBadge(sp);
@@ -2889,6 +2909,9 @@ function spellTagline(sp) {
   else if (k === 'deployObject' || k === 'deployPair') parts.push('Deploy');
   else if (k === 'deployTurret') parts.push('Turret');
   else if (k === 'terrainCreate') parts.push('Terrain');
+  else if (k === 'placeBlock') parts.push('Build block');
+  else if (k === 'buildStructure') parts.push('Structure');
+  else if (k === 'placeTrap') parts.push('Hidden trap');
   else if (k === 'summonWeather') parts.push('Weather');
   else if (k === 'scan' || k === 'remoteView') parts.push('Vision');
   else if (k === 'warpRune') parts.push('Warp rune');
@@ -2936,7 +2959,8 @@ function spellTargetMode(sp) {
   if (k === 'cross') return 'Cross';
   if (k === 'barrage') return 'Barrage';
   if (['zoneHeal', 'zoneDebuff', 'terrainCreate', 'deployObject', 'deployPair',
-       'deployTurret', 'warpRune', 'summonWeather', 'leechSeed', 'seedHeal', 'seedPoison'].includes(k)) return 'Tile Target';
+       'deployTurret', 'warpRune', 'summonWeather', 'leechSeed', 'seedHeal', 'seedPoison',
+       'placeBlock', 'buildStructure', 'placeTrap'].includes(k)) return 'Tile Target';
   if (['dash', 'leapStrike'].includes(k)) return 'Dash Line';
   if (['teleport', 'swap', 'pull', 'displacement'].includes(k)) return k === 'swap' ? 'Swap' : 'Reposition';
   if (['scan', 'remoteView'].includes(k)) return 'Vision';
@@ -3056,7 +3080,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         const dFromTile = distFrom(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
 
-          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty)) continue;
+          // Pass the LANDING z as sourceZ — omitting it makes the LOS ray
+          // infer a z from the (still empty) tile's column, which can differ
+          // from where the unit will actually stand. That mismatch is what
+          // produced "moves into position, then: Terrain blocks the path".
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
 
           if (!bestTile || dFromTile > bestDist) {
             bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z };
@@ -3076,7 +3104,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
         const dFromTile = distFrom(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
-          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty)) continue;
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
           if (!bestTile || dFromTile > bestDist) {
             bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
             bestDist = dFromTile;
@@ -3099,7 +3127,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
           const dFromTile = distFrom(t2.x, t2.y, t2.z);
           if (dFromTile >= 1 && dFromTile <= requiredRange) {
-            if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t2.x, t2.y, tx, ty)) continue;
+            if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t2.x, t2.y, tx, ty, t2.z)) continue;
 
             if (!bestTile || dFromTile > bestDist) {
               bestTile = { moveCost: 2, x: t2.x, y: t2.y, z: t2.z ?? savedZ, via: { x: t1.x, y: t1.y, z: t1.z ?? savedZ } };
@@ -3244,6 +3272,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // placements the engine rejects on occupied tiles, or that never touch the target
     'warpRune', 'buildBridge', 'plantTree',
     'deployObject', 'deployPair', 'deployTurret', 'remoteView',
+    // traps need an EMPTY tile — casting one AT an enemy always fails
+    'placeTrap',
   ]);
   for (const sp of allSpells) {
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
@@ -3260,8 +3290,21 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
     const mpCost = (sp.cost || 0) + mpPenalty;
-    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !(typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence'));
+    // canAffordSpell folds in cooldown + banked materials, so a quick-cast row
+    // never lights up for a spell doSpell would reject.
+    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost
+      && !(typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence'))
+      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
+    // placeBlock aimed at the enemy's tile = the block-shove play; grey the row
+    // when the erupting block can't actually form there (colossal target, max
+    // height, nowhere to shove them).
+    if (sp.kind === 'placeBlock' && typeof _placeBlockProblem === 'function'
+        && _placeBlockProblem(actingUnit, sp, tx, ty)) continue;
+    // buildStructure rows on an enemy only make sense when a plan exists
+    // (fort ring around them, tower beside them); drop dead rows.
+    if (sp.kind === 'buildStructure' && typeof _structurePlanFor === 'function'
+        && !_structurePlanFor(actingUnit, sp, tx, ty)) continue;
 
     const spRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 1);
     const spLos = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
@@ -3830,6 +3873,11 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   if (!a.available) return;
   hideSpellTooltip();
   _clearMoveArrowPreview();
+  // Sweep every lingering targeting visual (range overlays from blade hover,
+  // AoE preview, terrain ghost, arrows) the moment the quick-cast fires —
+  // doSpell/doAttack sweep again post-validation, but the walk of a
+  // move-then-cast happens BEFORE those run.
+  if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
   // Quick-cast fires (or walks-then-fires) immediately — drop the menus
   // in this same tick so the click visibly registered.
   if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(550);
@@ -4217,7 +4265,8 @@ function _computeTileActions(actingUnit, tx, ty) {
     if (!movementKinds.has(sp.kind)) continue;
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpCost = (sp.cost || 0) + mpPenalty;
-    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced;
+    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced
+      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
 
     const spRange = sp.teleportDistance || sp.dashDistance || sp.range || 3;
@@ -4276,20 +4325,40 @@ function _computeTileActions(actingUnit, tx, ty) {
     if (!tileTargetKinds.has(sp.kind)) continue;
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpCost = (sp.cost || 0) + mpPenalty;
-    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced;
+    // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a
+    // spell this menu offers can never bounce off doSpell's own checks.
+    const engineOk = typeof canAffordSpell === 'function' ? canAffordSpell(actingUnit, sp) : true;
+    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced && engineOk;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     const spRange = sp.range || 3;
     const spDist = _spellTileDist(sp);
     const inRange = spDist <= spRange;
     const losBlocked = typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    // Placement kinds: validate THIS tile so the row is greyed with the real
+    // reason ("Needs an empty tile", "Max height", "No room here"…).
+    let placeReason = '';
+    if (sp.kind === 'placeTrap' && typeof _placeTrapProblem === 'function') {
+      placeReason = _placeTrapProblem(tx, ty) || '';
+    } else if (sp.kind === 'placeBlock' && typeof _placeBlockProblem === 'function') {
+      placeReason = _placeBlockProblem(actingUnit, sp, tx, ty) || '';
+    } else if (sp.kind === 'buildStructure' && typeof _structurePlanFor === 'function') {
+      if (!_structurePlanFor(actingUnit, sp, tx, ty)) placeReason = sp.structure === 'bridgeSpan' ? 'Needs a gap to span' : 'No room here';
+    }
 
+    const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(actingUnit, sp) : 0;
+    const needMats = sp.materialCost && typeof canAffordMaterials === 'function' && !canAffordMaterials(actingUnit.player, sp.materialCost);
     let reason = '';
-    if (!canAfford) reason = isSilenced ? 'Silenced' : actingUnit.mp < mpCost ? 'No MP' : 'No AP';
+    if (isSilenced) reason = 'Silenced';
     else if (!tierOk) reason = 'Level req';
+    else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
+    else if (actingUnit.mp < mpCost) reason = 'No MP';
+    else if (unitAP < spellApCost) reason = 'No AP';
+    else if (needMats) reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
     else if (!inRange) reason = 'Out of range';
     else if (losBlocked) reason = 'No line of sight';
+    else if (placeReason) reason = placeReason;
 
-    const canCast = canAfford && tierOk && inRange && !losBlocked;
+    const canCast = canAfford && tierOk && inRange && !losBlocked && !placeReason;
 
     actions.push({
       id: 'spell:' + sp.name, label: sp.name, icon: '✦', category: 'spells',

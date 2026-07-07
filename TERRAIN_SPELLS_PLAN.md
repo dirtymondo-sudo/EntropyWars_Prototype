@@ -116,6 +116,48 @@ like warp runes, inline-SVG so no asset uploads):
 - **Crash-through**: heavier units break through more (colossal even through
   stone lips); feather units bounce off instead of breaking anything.
 
+## Polish pass (2026-07-07, second pass) — targeting, UX, and design fixes
+
+Live-play feedback exposed one systemic bug and one design miss; both are fixed.
+
+**Targeting (the systemic bug).** The three new kinds were never registered in
+`SPELL_KIND_META`, so the engine defaulted them to *enemy-targeted attacks*:
+Tremor Charge demanded a victim click, Steel Block wanted an enemy, and blocks
+could only be built under enemies. They are now first-class TILE-target spells
+(free-aim like terrainCreate), with per-kind prompt lines ("select an empty
+tile to hide the trap on"), tile-colored range paint instead of enemy red, and
+a target-mode chip on every ability blade — **⬚ TILE / ◎ ENEMY / ♥ ALLY /
+⟳ SELF** — so what a spell aims at is readable before the first click.
+*Rule for the future: every new spell kind gets a SPELL_KIND_META entry.*
+
+**placeBlock design fix (the design miss).** Building under an enemy no longer
+gifts them the height advantage. An enemy-occupied column makes the block
+ERUPT: crash damage + a 1-tile shove away from the caster — into your pit,
+snare, moat or lava if you aimed it well (knockback hazards and traps trigger
+on landing). Colossal units hold the ground (cast invalid); allies and the
+caster still ride the block up (pillar-under-your-sniper / self-elevator stay
+the intended plays). The ghost preview marks the shove landing tile, and the
+AI knows the play (hazard/own-trap landings score highest).
+
+**Grey-don't-fail.** A spell row that cannot actually resolve is greyed WITH
+its reason, everywhere (ability drum, tile quick menu, enemy quick menu):
+cooldown (⏳ CD n), materials ("Need 1 🪨"), no valid tile in range ("No
+target"), per-tile placement problems ("Needs an empty tile", "Max height",
+"No room to shove them", "Needs a gap to span"). Shared validity helpers
+(`_placeBlockProblem` / `_placeTrapProblem` / `_structurePlanFor`) feed the
+handlers, the greying, the ghost preview and the AI, so UI and engine can
+never disagree.
+
+**Move-then-cast trust.** The quick-menu "walk into range, then cast" probe
+now line-of-sight-checks from the landing tile's actual height — the source of
+the "moves me into position, then: Terrain blocks the spell path" dead turns.
+
+**Preview hygiene.** One sweep (`clearAllTargetingVisuals`) clears every
+targeting visual — AoE tiles, range overlays, ghost blocks, intent/approach
+arrows — the instant a validated cast begins, from every entry point; hover
+re-resolution is suppressed during the cast so camera glides can't repaint
+previews mid-animation.
+
 ## Delivery & verification
 
 Per repo rules: edit files in place, `node --check` every JS, bump the `?v=`

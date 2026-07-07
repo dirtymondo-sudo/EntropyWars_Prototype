@@ -104,6 +104,65 @@ the ghost preview + a placeBlock/structure cast + a trap trigger.
    nonRepeatableKinds. Kinds also added to hud.js tileTargetKinds and
    hasSpellTargetInRange's always-castable list.
 
+### TERRAFORMING POLISH PASS (2026-07-07, second pass) — targeting/UX fixes
+Token `20260708f` → `20260708g`. Fixes from the user's first live session.
+
+1. **ROOT CAUSE of "Tremor Charge wants an enemy" / "Steel Block needs an enemy
+   target" / "can only build under enemies":** the three new kinds were MISSING
+   from `SPELL_KIND_META` (battle.js), so `_kindMeta` fell back to
+   `{minRange:1, offensive:true}` — setTool routed them into the enemy-unit
+   picker (`spellTargets` view) and tile clicks died in clickTile's Gate A.
+   Fixed: `placeBlock`/`buildStructure`/`placeTrap` registered as
+   `{minRange:0, offensive:false, tileTargeted:true, noStrikeLeap:true}` → they
+   now free-aim like terrainCreate. ⚠ EVERY new spell kind MUST get a
+   SPELL_KIND_META entry or it becomes an "attack" by default. Follow-ups in the
+   same pass: per-kind prompt lines (`_spellTargetPromptText`), ui.js minRange-0
+   highlight list + neutral `spell-range` paint (not enemy-red), hud.js
+   `spellKindLabel` parts + `spellTargetMode` 'Tile Target', data.js
+   SIM_DEFAULTS rows, placeTrap added to hud.js `nonEnemyTargetKinds` (enemy
+   quick menu never offers it — traps need an empty tile).
+2. **placeBlock redesign — no more free high ground for enemies.** Placing on
+   an enemy-occupied column now ERUPTS: ~45 (+spellPower/2) physical crash
+   damage + a 1-tile shove away from the caster (priority: straight away, then
+   laterals; `animateDisplacement` + `_applyKnockbackHazard` + trap trigger, so
+   block-shove-into-snare/pit/water chains work). Colossal or nowhere-to-shove
+   → cast invalid BEFORE materials spend. Allies (and self — self-elevator at
+   minRange 0) still ride the block up. AI scores/picks the shove play (hazard
+   or own-trap landing = big bonus) via exported `g._placeBlockProblem`.
+3. **Placement validity helpers** `_placeBlockProblem(unit,spell,x,y,out)` /
+   `_placeTrapProblem(x,y)` (battle.js, above predictTerrainSpellChanges;
+   exported on GAME with `_structurePlanFor`): single source of truth for the
+   doSpell handlers, `hasSpellTargetInRange` (REAL scans now — a placement
+   spell greys "No target" when no tile in range accepts it), the tile
+   quick-menu per-tile reasons ("Needs an empty tile", "Max height", "No room
+   to shove them"…), the ghost preview (invalid tile = NO ghost) and the AI.
+4. **Grey-don't-fail:** hud.js tile quick menu + enemy quick menu + movement
+   spell rows now run `canAffordSpell` (adds COOLDOWN + MATERIALS to the AP/MP/
+   silence gate) with full reason chain (⏳ CD n / Need 1 🪨 / placement
+   reason). placeBlock/buildStructure rows on an enemy are dropped when the
+   plan/eruption is impossible there.
+5. **"Terrain blocks the spell path" after move-then-cast:** hud.js
+   `findMoveIntoRange` LOS probes now pass the LANDING tile z
+   (`isRangeBlockedByTerrain(t.x,t.y,tx,ty,t.z)`) — omitting sourceZ made
+   map.js infer z from the still-empty column, which could disagree with the
+   post-move unit z and approve blocked approaches.
+6. **Stale previews during cast animations:** new global
+   `clearAllTargetingVisuals()` (battle.js, after clearAttackRangePreview) —
+   sweeps aoe overlay + terrain ghost + intent/approach/plan arrows +
+   spellRange/attackRange/actionPlan*/spellApproach*/moveHover overlays +
+   `_ewHlCache`, and arms `state._suppressHoverPreviewUntil` (~1.4s). Called
+   from doSpell (post-validation, pre-`pushUndoSnapshot`), doAttack (after fog
+   gate) and hud `_fireEnemyAction`. three-renderer
+   `_refreshHoverOnCameraMove` now no-ops while `_actionExecuting` /
+   `_walkAnimActive` / suppress window — camera glides can no longer re-paint
+   the preview mid-animation (that was the "arrows stay during the animation"
+   bug).
+7. **Target-mode chips:** hud.js `spellTargetChip(sp)` → ⟳ SELF / ♥ ALLY /
+   ⬚ TILE / ◎ ENEMY chip on every ability blade (uses the global
+   isSpellSelfCast/isSpellTileTargeted). placeTrap ghost: amber decal on a
+   valid empty tile via predictTerrainSpellChanges (+ ui.js `_terrainKinds`);
+   placeBlock ghost shows the shove landing tile in orange.
+
 ## Gamepad support + camera modes + controls editor (2026-07-07) — state.js, battle.js, hud.js, ui.js, map.js
 Token bumped `20260708b` → `20260708c`. Probe-verified in-browser (scratchpad
 probe_gamepad.js — fake standard-mapping pad injected over navigator.getGamepads;

@@ -2806,7 +2806,7 @@
         } else if (state.actionMode === 'spell' && canUnitAct(_selectedForHl)) {
           const spell = (_selectedForHl.spells || []).find(s => s.name === state.selectedTool) || (_selectedForHl._raceAbilities || []).find(s => s.name === state.selectedTool);
           if (spell) {
-            const minRange = (['heal', 'shield', 'buff', 'scan', 'summonWeather', 'bomb', 'healAll', 'aoe', 'barrage', 'seedHeal', 'seedPoison', 'leechSeed', 'warpRune', 'teleport', 'deployTurret', 'buildBridge', 'warCry', 'encore', 'remoteView'].includes(spell.kind)) ? 0 : 1;
+            const minRange = (['heal', 'shield', 'buff', 'scan', 'summonWeather', 'bomb', 'healAll', 'aoe', 'barrage', 'seedHeal', 'seedPoison', 'leechSeed', 'warpRune', 'teleport', 'deployTurret', 'buildBridge', 'warCry', 'encore', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap'].includes(spell.kind)) ? 0 : 1;
             // 3D range for spell highlights: elevation difference between caster
             // and target counts toward range (combatDist), so these overlays match
             // what doSpell will actually allow — a target far above/below falls out
@@ -2994,7 +2994,9 @@
                       }
                     } else if (['scan'].includes(spell.kind)) {
                       _hlCache.set(posKey(cx, cy), 'inspect');
-                    } else if (['bomb', 'summonWeather', 'aoe', 'remoteView'].includes(spell.kind)) {
+                    } else if (['bomb', 'summonWeather', 'aoe', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap'].includes(spell.kind)) {
+                      // Placement kinds paint the neutral build/aim color — they
+                      // target TILES, so no enemy-red attack highlighting.
                       _hlCache.set(posKey(cx, cy), 'spell-range');
                     } else {
                       const target = _liveUnitMap.get(posKey(cx, cy));
@@ -8004,7 +8006,7 @@
             // from battle.js predictTerrainSpellChanges — same math as the
             // cast), plus a quiet color-coded floor wash. Red is reserved for
             // spells that also deal damage.
-            const _terrainKinds = { terrainCreate: 1, placeBlock: 1, buildStructure: 1 };
+            const _terrainKinds = { terrainCreate: 1, placeBlock: 1, buildStructure: 1, placeTrap: 1 };
             if (_terrainKinds[spell.kind] && typeof predictTerrainSpellChanges === 'function') {
                 const ghostChanges = predictTerrainSpellChanges(unit, spell, x, y);
                 if (ghostChanges.length > 0 && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {

@@ -1563,10 +1563,25 @@
         if (kind === 'placeBlock' && target) {
             if (spell.materialCost && typeof g.canAffordMaterials === 'function' &&
                 !g.canAffordMaterials(unit.player, spell.materialCost)) return 0;
+            const info = {};
+            if (typeof g._placeBlockProblem === 'function' &&
+                g._placeBlockProblem(unit, spell, target.x, target.y, info)) return 0;
             let s = 0;
-            // Best use: raise a pillar under an allied backliner (instant high ground).
+            // Use #1: raise a pillar under an allied backliner (instant high ground).
             const allyOn = [unit, ...(v.allies || [])].find(a => !a.dead && a.x === target.x && a.y === target.y);
             if (allyOn && ['Sniper', 'Gunslinger', 'Black Mage'].includes(allyOn.cls)) s += 22;
+            // Use #2: erupt under an enemy — crash damage + a 1-tile shove. Best
+            // when the shove landing is a hazard or one of our own traps.
+            const enemyOn = v.visibleEnemies.find(e => e.x === target.x && e.y === target.y);
+            if (enemyOn) {
+                s += 16 + getTargetPriority(enemyOn, unit, v) * 0.2;
+                if (info.shoveTo) {
+                    const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
+                    if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 30;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog') s += 12;
+                    if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 25;
+                }
+            }
             const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
             s += nearE * 4;
             return s;
@@ -3614,7 +3629,8 @@
                     if (d < 1 || d > R) continue;
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
-                    if (g.unitAt(tx, ty)) continue;
+                    if (typeof g._placeTrapProblem === 'function'
+                        ? g._placeTrapProblem(tx, ty) : g.unitAt(tx, ty)) continue;
                     let score = 0;
                     for (const e of v.visibleEnemies) {
                         const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
@@ -3628,13 +3644,33 @@
         }
 
         if (kind === 'placeBlock') {
-            // Raise a pillar under an allied backliner in range (high ground).
             const R = _effRange(unit, spell) || 3;
             if (!v.visibleEnemies.length) return null;
+            // Option A: erupt under an enemy in range (crash + shove). Strongly
+            // preferred when the shove landing is a hazard or one of our traps.
+            let bestShove = null, bestShoveS = 0;
+            for (const e of v.visibleEnemies) {
+                if (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) > R) continue;
+                const info = {};
+                if (typeof g._placeBlockProblem === 'function' &&
+                    g._placeBlockProblem(unit, spell, e.x, e.y, info)) continue;
+                let s = 10 + getTargetPriority(e, unit, v) * 0.2;
+                if (info.shoveTo) {
+                    const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
+                    if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 30;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog') s += 12;
+                    if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 25;
+                }
+                if (s > bestShoveS) { bestShoveS = s; bestShove = { x: e.x, y: e.y }; }
+            }
+            // Option B: raise a pillar under an allied backliner (high ground).
             const backline = [unit, ...(v.allies || [])]
                 .filter(a => !a.dead && ['Sniper', 'Gunslinger', 'Black Mage'].includes(a.cls))
                 .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R);
-            return backline.length ? { x: backline[0].x, y: backline[0].y } : null;
+            // Shove wins when it has real payoff (hazard/trap landing), else pillar.
+            if (bestShove && bestShoveS >= 25) return bestShove;
+            if (backline.length) return { x: backline[0].x, y: backline[0].y };
+            return bestShove;
         }
 
         if (kind === 'buildStructure') {
