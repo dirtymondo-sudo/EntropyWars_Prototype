@@ -2887,3 +2887,44 @@ Write `_MF_BUILDERS.prebuilt_foo` + one `EW_MAP_META` row (id/label/desc/w/h/
 teamSize/tier/biomes/base/env/deltaPad). Everything else (Δ variant, GAME_MODES,
 picker card, compatibleMaps, thumbnails) generates. Optionally add it to
 server.js MAP_POOL for ranked and the challenge pools.
+
+## 2026-07-07 (batch 2) — MAP-PROP FOUNDRY: 53 procedural 3D lore pieces
+Follow-up to the map overhaul: user asked for 1-2 signature 3D assets per map
+in the sacred-rings/colossus tradition. Files: **three-renderer.js, map.js,
+data.js, index.html** (token → 20260708b).
+- **53 new `_hz*` builders** (three-renderer.js "MAP-PROP FOUNDRY" section,
+  before the horizon-themes block): pure procedural THREE geometry, terrain-
+  sprite textured via `_hzTex`/`_hzGeoMat` (day/night graded) + `_hzGlowMat`/
+  `_hzGlowCore`/`_hzPulse` bloom accents. Registered in `_MON_BUILDERS`
+  (~line 4400) + `ME_MONUMENT_KINDS` (map.js editor palette, emoji cards).
+  Kinds: lenticular trilithon wickerman sphinx ankh bus mannequin throne
+  seraph bonearch brazier holoboard hovercar excalibur dragonskull blimp
+  jumbotron trident shipwreck babelcrane tablet zeusbolt cydoniaface biodome
+  saucer radardish whalebones cattleskull windmill innersun fossil toadstool
+  fairyring lander serpenthead holopyramid geode basilicadome censer owlidol
+  effigy tpillar handbag greytube blastdoor shiva beamring wetfloorsign
+  securitycam sleigh candycane weatherballoon roadsign.
+- **Functional (collision, map.js `_MON_COLLISION` + validator mirror):**
+  `bus`/`lander` = colossus-style +1 platforms (mantle onto the roof);
+  `owlidol` = obelisk-style blocker. Everything else decorative (solid:false).
+- **Placements** live in each map's forge builder (data.js): every launch map
+  now carries 1-3 signature pieces (Nuketown bus+mannequins, Moon landers,
+  Giza sphinxes+ankhs, Grove owl+effigy, CERN shiva+beamline, Flat Lands
+  weather balloon, Stadium blimp+jumbotron, etc.). Saucers also drift in the
+  'orbs'/'space' horizon themes; lenticulars in 'islands'.
+- **Floating props MUST carry a ground anchor** (tether/beam/shadow disc):
+  `_buildMonumentObj` seats groups by `surfaceY - box.min.y`, so an anchor at
+  y=0 is what keeps a blimp/balloon/inner-sun aloft.
+- **⚠ THREE gotcha that bit this batch:** `group.add(child)` returns the GROUP,
+  so `g.add(_hzGlowCore(...)).position.y = X` moves the whole group (and the
+  engine wipes group position anyway) → the glow lands at the prop's FEET.
+  Position the child in a variable first. Found via the standalone builder
+  harness (scratchpad `check_builders.js`: blank page + three.min.js from the
+  asset cache + stubs; asserts every builder constructs, non-degenerate bbox,
+  min.y ≤ ground). Re-runnable — keep using it for new builders.
+- `_buildMonumentObj`'s silent catch now `console.warn`s the failing kind —
+  probe for 'monument builder failed' in console when testing new kinds.
+- Verified: builder harness 53/53; BFS validator 58/58 maps with the new
+  collision stamps; in-engine Nuketown run = 9/9 monuments built, 0 builder
+  fails, 0 page errors. (Full-scene screenshots unreliable in the sandbox —
+  swiftshader OOM; verify visuals on real hardware.)

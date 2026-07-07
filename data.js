@@ -8795,6 +8795,8 @@ _MF_BUILDERS.prebuilt_heaven = function () {
     M.sym180();
     // monuments: the Pearly Gates + light pillars + guardian columns
     M.mon('goldgate', 9, 9, 4, 3, { rot: 0, solid: false });
+    M.mon('throne', 10, 10, 2, 3, { rot: 180, solid: false });   // vacant. still warm?
+    M.monSym('seraph', 9, 4, 2, 3, { solid: false });
     M.monSym('lightpillar', 4, 4, 1, 4, { solid: false });
     M.monSym('greek', 15, 3, 3, 2, { solid: false });
     M.monSym('stairway', 2, 9, 2, 2, {});
@@ -8830,6 +8832,8 @@ _MF_BUILDERS.prebuilt_hell = function () {
     M.monSym('monolith', 5, 3, 1, 3, {});
     M.monSym('crystal', 14, 5, 2, 2, { solid: false });
     M.mon('rings', 9, 9, 3, 3, { solid: false });
+    M.monSym('bonearch', 4, 9, 3, 2, { solid: false });     // walk through the ribs
+    M.monSym('brazier', 8, 8, 1, 2, { solid: false });
     M.mon('colossus', 3, 16, 2, 3, { rot: 45 });
     M.mon('colossus', 16, 3, 2, 3, { rot: 225 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'scorched') M.rock(x, y, 'rocks_3'); });
@@ -8863,8 +8867,10 @@ _MF_BUILDERS.prebuilt_nuketown = function () {
     // the two facing ranch houses (east yard pad is the mirror of the west one)
     M.building(2, 4, 'building_2');
     M.building(10, 8, 'building_3');
-    // atomic-age props: test vehicle + instrumentation flags
-    M.mon('rover', 6, 6, 1, 1, { rot: 90, solid: false });
+    // atomic-age props: the bus that never left + the neighbors who never mind
+    M.mon('bus', 6, 6, 2, 2, { rot: 0 });                   // solid: mantle onto the roof
+    M.monSym('mannequin', 2, 2, 1, 2, { solid: false });
+    M.monSym('mannequin', 11, 5, 1, 2, { rot: 140, solid: false });
     M.mon('flag', 1, 12, 1, 2, { solid: false });
     M.mon('flag', 12, 1, 1, 2, { solid: false });
     M.spawnEdges('s', 6);
@@ -8901,6 +8907,8 @@ _MF_BUILDERS.prebuilt_stonehenge = function () {
     M.monSym('monolith', 2, 7, 1, 3, { solid: false });
     M.mon('colossus', 12, 12, 2, 1, { rot: 300 });
     M.mon('colossus', 3, 3, 2, 1, { rot: 120 });
+    M.monSym('trilithon', 2, 6, 2, 3, { rot: 90, solid: false });
+    M.mon('wickerman', 12, 5, 2, 4, { rot: 220, solid: false });  // the offering, ember-hearted
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
     return M;
@@ -8930,8 +8938,9 @@ _MF_BUILDERS.prebuilt_giza = function () {
     M.mon('pyramid', 4, 4, 5, 2, {});
     M.mon('pyramid', 15, 15, 5, 2, {});
     // twin guardian sphinxes (the second sphinx was buried, they said)
-    M.mon('colossus', 15, 4, 3, 2, { rot: 270 });
-    M.mon('colossus', 4, 15, 3, 2, { rot: 90 });
+    M.mon('sphinx', 15, 4, 3, 2, { rot: 270, solid: false });
+    M.mon('sphinx', 4, 15, 3, 2, { rot: 90, solid: false });
+    M.monSym('ankh', 2, 6, 1, 3, { solid: false });
     M.monSym('obelisk', 9, 5, 1, 4, {});
     M.spawnEdges('s', 6);
     M.finishSpawns('dirt_2');
@@ -8967,6 +8976,7 @@ _MF_BUILDERS.prebuilt_shasta = function () {
     M.sym180();
     M.monSym('crystal', 6, 7, 2, 2, { solid: false });
     M.monSym('mountain', 2, 17, 3, 3, { solid: false });
+    M.monSym('lenticular', 4, 2, 3, 6, { solid: false });   // the clouds that aren't clouds
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
     return M;
@@ -9011,6 +9021,8 @@ _MF_BUILDERS.prebuilt_cyberpunk = function () {
     M.monSym('fluorescent', 10, 7, 1, 2, { solid: false });
     M.monSym('fluorescent', 16, 11, 1, 2, { rot: 90, solid: false });
     M.monSym('lightpillar', 1, 20, 1, 4, { solid: false });
+    M.monSym('holoboard', 13, 8, 2, 4, { solid: false });   // the ads never sleep
+    M.monSym('hovercar', 5, 12, 2, 1, { rot: 90, solid: false });
     M.mon('rings', 11, 11, 2, 2, { solid: false });
     M.spawnEdges('s', 8);
     M.finishSpawns('urban_street');
@@ -9051,6 +9063,8 @@ _MF_BUILDERS.prebuilt_camelot = function () {
     // the keep + the chapel: mirrored 2×2 halls inside the walls
     M.buildingSym(8, 8, 'church_1');
     M.monSym('gateway', 11, 6, 3, 3, { solid: false });
+    M.mon('excalibur', 13, 10, 1, 3, { rot: 30, solid: false });  // whosoever pulleth
+    M.monSym('dragonskull', 2, 3, 2, 2, { rot: 160, solid: false });
     M.mon('colossus', 5, 18, 2, 3, { rot: 45 });
     M.mon('colossus', 18, 5, 2, 3, { rot: 225 });
     M.monSym('monolith', 20, 20, 1, 2, {});
@@ -9090,7 +9104,8 @@ _MF_BUILDERS.prebuilt_stadium = function () {
     // goalposts + scoreboard + floodlight pillars
     M.mon('gateway', 7, 2, 3, 3, { solid: false });
     M.mon('gateway', 7, 25, 3, 3, { rot: 180, solid: false });
-    M.mon('monolith', 7, 0, 2, 3, { solid: false });
+    M.mon('jumbotron', 7, 0, 3, 4, { solid: false });
+    M.mon('blimp', 7, 13, 3, 7, { rot: 45, solid: false }); // moored over the 50-yard line
     M.monSym('lightpillar', 0, 6, 1, 4, { solid: false });
     M.monSym('lightpillar', 15, 13, 1, 4, { solid: false });
     M.spawnEdges('s', 8);
@@ -9129,6 +9144,8 @@ _MF_BUILDERS.prebuilt_atlantis = function () {
     M.rect(11, 1, 12, 4, 'marble');
     M.sym180();
     M.mon('crystal', 11, 11, 3, 4, { solid: false });
+    M.mon('trident', 12, 11, 1, 4, { rot: 25, solid: false });
+    M.monSym('shipwreck', 3, 15, 3, 2, { rot: 30, solid: false });
     M.mon('rings', 11, 11, 2, 2, { solid: false });
     M.monSym('greek', 4, 4, 3, 2, {});
     M.monSym('greek', 20, 8, 3, 2, { rot: 90 });
@@ -9161,6 +9178,8 @@ _MF_BUILDERS.prebuilt_babel = function () {
     M.sym180();
     // the Tower: a grand stepped ziggurat you can fight up (collision-stamped)
     M.mon('ziggurat', 7, 11, 7, 3, {});
+    M.monSym('babelcrane', 5, 6, 2, 4, { rot: 180, solid: false });
+    M.monSym('tablet', 1, 3, 1, 2, { rot: 20, solid: false });
     M.monSym('arch', 7, 5, 3, 3, { solid: false });
     M.monSym('obelisk', 2, 3, 1, 4, {});
     M.monSym('colossus', 13, 8, 2, 2, { rot: 270 });
@@ -9199,6 +9218,7 @@ _MF_BUILDERS.prebuilt_olympus = function () {
     M.mon('colossus', 8, 15, 2, 4, { rot: 45 });
     M.mon('colossus', 15, 8, 2, 4, { rot: 225 });
     M.mon('lightpillar', 11, 11, 1, 4, { solid: false });
+    M.mon('zeusbolt', 12, 12, 1, 3, { solid: false });      // He threw it. It stuck.
     M.objSym(9, 9, 'torch', {}); M.objSym(14, 9, 'torch', {});
     M.objSym(9, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
     M.spawnEdges('s', 8);
@@ -9236,8 +9256,9 @@ _MF_BUILDERS.prebuilt_mars = function () {
     M.mon('rover', 17, 12, 1, 1, { rot: 205, solid: false });
     // Cydonia: the Face + the D&M pyramid formation (mirrored, for fairness lore
     // says the erosion carved twins)
-    M.mon('colossus', 16, 2, 3, 2, { rot: 90 });
-    M.mon('colossus', 3, 17, 3, 2, { rot: 270 });
+    M.mon('cydoniaface', 16, 2, 3, 2, { rot: 90, solid: false });
+    M.mon('cydoniaface', 3, 17, 3, 2, { rot: 270, solid: false });
+    M.monSym('biodome', 7, 2, 3, 2, { solid: false });
     M.monSym('pyramid_cone', 6, 15, 4, 2, {});
     M.scatter(10, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'moon_2') M.rock(x, y, 'moon'); });
     M.spawnEdges('s', 6);
@@ -9271,7 +9292,8 @@ _MF_BUILDERS.prebuilt_area51 = function () {
     // twin hangars (2×2, roof-walkable)
     M.building(5, 6, 'abandoned_building_1');
     M.building(10, 12, 'building_10');
-    M.mon('rings', 8, 9, 3, 2, { solid: false });        // the tarped craft
+    M.mon('saucer', 8, 9, 3, 3, { solid: false });       // the craft, de-tarped
+    M.monSym('radardish', 14, 2, 2, 3, { rot: 210, solid: false });
     M.mon('flag', 8, 5, 1, 2, { solid: false });
     M.monSym('lightpillar', 1, 1, 1, 4, { solid: false });
     M.monSym('fluorescent', 15, 8, 1, 2, { rot: 90, solid: false });
@@ -9310,6 +9332,8 @@ _MF_BUILDERS.prebuilt_antarctica = function () {
     M.mon('colossus', 11, 10, 3, 2, { rot: 0 });
     M.mon('colossus', 12, 13, 3, 2, { rot: 180 });
     M.monSym('crystal', 4, 6, 2, 3, { solid: false });
+    M.monSym('shipwreck', 18, 4, 3, 2, { rot: 210, solid: false });
+    M.monSym('whalebones', 6, 4, 3, 2, { rot: 40, solid: false });
     M.monSym('mountain', 21, 21, 4, 4, {});
     M.monSym('monolith', 8, 3, 1, 3, {});
     M.spawnEdges('s', 8);
@@ -9346,6 +9370,8 @@ _MF_BUILDERS.prebuilt_skinwalker = function () {
     M.sym180();
     M.building(2, 6, 'abandoned_building_2');            // the weathered barn
     M.mon('rings', 9, 9, 2, 3, { solid: false });        // the thing above the field
+    M.mon('windmill', 6, 4, 2, 4, { rot: 15, solid: false });
+    M.monSym('cattleskull', 11, 6, 1, 3, { rot: 200, solid: false });
     M.monSym('monolith', 18, 6, 1, 3, {});
     M.scatter(10, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_rocky') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
@@ -9390,7 +9416,8 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
     }
     M.mon('gateway', 4, 9, 2, 3, { solid: false });
     M.mon('gateway', 15, 10, 2, 3, { rot: 180, solid: false });
-    M.mon('lightpillar', 9, 14, 1, 4, { solid: false }); // the inner sun's shaft
+    M.mon('innersun', 9, 14, 2, 6, { solid: false });    // the sun they keep down here
+    M.mon('fossil', 15, 13, 3, 2, { rot: 70, solid: false });
     M.mon('crystal', 9, 16, 2, 3, { solid: false });
     M.mon('mountain', 17, 17, 3, 3, {});
     M.mon('island', 2, 17, 3, 2, { solid: false });
@@ -9433,6 +9460,8 @@ _MF_BUILDERS.prebuilt_fairy_forest = function () {
     M.sym180();
     M.mon('crystal', 15, 15, 2, 2, { solid: false });
     M.mon('crystal', 4, 4, 2, 2, { solid: false });
+    M.monSym('toadstool', 3, 14, 2, 3, { solid: false });
+    M.mon('fairyring', 9, 9, 2, 2, { solid: false });       // dance at your peril
     M.monSym('island', 1, 16, 2, 2, { solid: false });   // fae islet drifting over the wood
     M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_3') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
@@ -9464,6 +9493,7 @@ _MF_BUILDERS.prebuilt_moon = function () {
     M.mon('rover', 4, 9, 1, 1, { rot: 120, solid: false });
     M.mon('flag', 12, 7, 1, 2, { rot: 180, solid: false });
     M.mon('rover', 11, 6, 1, 1, { rot: 300, solid: false });
+    M.monSym('lander', 2, 10, 2, 3, {});                 // solid: mantle onto the descent stage
     M.mon('monolith', 7, 7, 1, 3, {});                   // TMA-1
     M.scatter(9, (x, y) => { if (M.hget(x, y) === 3) M.rock(x, y, 'moon'); });
     M.spawnEdges('s', 6);
@@ -9504,7 +9534,8 @@ _MF_BUILDERS.prebuilt_technoticlan = function () {
     M.monSym('fluorescent', 8, 11, 1, 2, { rot: 90, solid: false });
     M.monSym('fluorescent', 11, 8, 1, 2, { solid: false });
     M.mon('crystal', 11, 13, 2, 2, { solid: false });
-    M.mon('rings', 11, 11, 2, 3, { solid: false });
+    M.monSym('serpenthead', 9, 14, 2, 3, { rot: 90, solid: false });
+    M.mon('holopyramid', 11, 11, 2, 4, { solid: false });   // the altar still broadcasts
     M.objSym(6, 6, 'torch', {}); M.objSym(17, 6, 'torch', {});
     M.spawnEdges('s', 8);
     M.finishSpawns('cobblestone');
@@ -9539,7 +9570,8 @@ _MF_BUILDERS.prebuilt_agartha = function () {
     M.rect(18, 3, 20, 5, 'crystal');
     M.sym180();
     // spires, gates of the deep, the inner sun
-    M.mon('lightpillar', 11, 11, 2, 4, { solid: false });
+    M.mon('innersun', 11, 11, 2, 7, { solid: false });
+    M.monSym('geode', 19, 4, 2, 2, { solid: false });
     M.monSym('crystal', 7, 7, 2, 3, { solid: false });
     M.monSym('crystal', 16, 7, 2, 3, { solid: false });
     M.monSym('arch', 11, 2, 3, 3, { solid: false });
@@ -9573,6 +9605,8 @@ _MF_BUILDERS.prebuilt_vatican = function () {
     // the obelisk (a real blocker), saints in their niches, gates
     M.mon('obelisk', 9, 9, 1, 5, {});
     M.buildingSym(8, 1, 'church_1');
+    M.monSym('basilicadome', 5, 1, 3, 4, { solid: false });
+    M.monSym('censer', 7, 8, 1, 3, { solid: false });
     M.monSym('greek', 3, 6, 3, 2, { rot: 45 });
     M.monSym('colossus', 15, 6, 1, 2, { rot: 90 });
     M.objSym(5, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
@@ -9605,7 +9639,8 @@ _MF_BUILDERS.prebuilt_bohemian_grove = function () {
     // the lakeside amphitheater (mirrored twin clearing)
     M.disc(6.5, 6.5, 1.8, 'grass_3');
     M.sym180();
-    M.mon('colossus', 12, 12, 2, 4, { rot: 315 });       // the Owl of the Grove
+    M.mon('owlidol', 12, 12, 2, 4, { rot: 315 });        // the Owl. it was always here
+    M.mon('effigy', 13, 14, 2, 1, { rot: 45, solid: false });
     M.obj(11, 12, 'torch'); M.obj(14, 13, 'torch'); M.obj(12, 14, 'torch');
     M.buildingSym(1, 15, 'building_8');                  // the lodges
     M.monSym('monolith', 6, 6, 1, 2, {});
@@ -9639,8 +9674,9 @@ _MF_BUILDERS.prebuilt_gobekli = function () {
     M.obj(2, 3, 'stairs_2');
     M.sym180();
     // the twin great T-pillars at the sanctum
-    M.mon('monolith', 7, 7, 1, 3, {});
-    M.mon('monolith', 8, 8, 1, 3, {});
+    M.mon('tpillar', 7, 7, 1, 3, { solid: false });
+    M.mon('tpillar', 8, 8, 1, 3, { rot: 180, solid: false });
+    M.monSym('handbag', 3, 2, 2, 2, { rot: 15, solid: false });  // you have seen this shape before
     M.monSym('arch', 12, 2, 2, 2, { solid: false });
     M.monSym('colossus', 2, 12, 2, 1, { rot: 45 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'dirt_3') M.rock(x, y, 'rocks_1'); });
@@ -9673,6 +9709,8 @@ _MF_BUILDERS.prebuilt_dumb = function () {
     M.obj(4, 7, 'barrier_1', { rot: 90 }); M.obj(4, 8, 'barrier_1', { rot: 90 });
     // emergency lighting + signage
     M.sym180();
+    M.monSym('greytube', 0, 3, 1, 3, { solid: false });  // specimen 0. it is awake
+    M.monSym('blastdoor', 6, 6, 2, 3, { solid: false });
     M.monSym('fluorescent', 2, 7, 1, 2, { rot: 90, solid: false });
     M.monSym('fluorescent', 8, 4, 1, 2, { solid: false });
     M.monSym('exitsign', 3, 6, 1, 1, { solid: false });
@@ -9710,7 +9748,8 @@ _MF_BUILDERS.prebuilt_cern = function () {
     M.sym180();
     M.mon('rings', 7, 7, 2, 3, { solid: false });        // the anomaly
     M.mon('lightpillar', 7, 7, 1, 4, { solid: false });
-    M.mon('colossus', 2, 12, 1, 2, { rot: 45 });         // the statue in the courtyard
+    M.mon('shiva', 2, 12, 2, 3, { rot: 45, solid: false }); // the gift from India. it dances
+    M.monSym('beamring', 4, 11, 3, 2, { rot: 20, solid: false });
     M.monSym('fluorescent', 5, 5, 1, 2, { solid: false });
     M.monSym('exitsign', 12, 5, 1, 1, { solid: false });
     M.spawnEdges('s', 6);
@@ -9744,6 +9783,8 @@ _MF_BUILDERS.prebuilt_backrooms = function () {
     M.monSym('fluorescent', 10, 8, 1, 2, { solid: false });
     M.monSym('exitsign', 4, 4, 1, 1, { solid: false });
     M.monSym('exitsign', 12, 3, 1, 1, { solid: false });
+    M.monSym('wetfloorsign', 3, 11, 1, 1, { rot: 30, solid: false });
+    M.monSym('securitycam', 10, 5, 1, 3, { rot: 200, solid: false });
     M.mon('monolith', 7, 7, 1, 2, {});                   // something is here with you
     M.spawnEdges('s', 6);
     M.finishSpawns('carpet');
@@ -9772,6 +9813,8 @@ _MF_BUILDERS.prebuilt_northpole = function () {
     M.sym180();
     M.buildingSym(2, 3, 'building_6');                    // workshop + mirrored stable
     M.monSym('lightpillar', 7, 2, 1, 4, { solid: false }); // aurora beacons
+    M.mon('sleigh', 4, 6, 2, 2, { rot: 320, solid: false });
+    M.monSym('candycane', 5, 5, 1, 3, { solid: false });
     M.monSym('crystal', 12, 6, 2, 2, { solid: false });
     M.mon('flag', 7, 7, 1, 2, { solid: false });          // the actual Pole
     M.spawnEdges('s', 6);
@@ -9796,6 +9839,8 @@ _MF_BUILDERS.prebuilt_flatlands = function () {
     M.obj(4, 2, 'tree_5');
     M.sym180();
     M.rock(7, 7, 'rocks_1');
+    M.mon('weatherballoon', 11, 4, 2, 7, { solid: false }); // swamp gas. Venus. a weather balloon
+    M.mon('roadsign', 4, 11, 1, 3, { rot: 25, solid: false });
     M.scatter(5, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_4') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_4');
