@@ -9082,8 +9082,8 @@ function _mfNew(cfg) {
    symmetry (terrain+heights always; objects mirrored from the top half,
    buildings dropped if their 2×2 pad no longer fits), re-seat spawns as
    two mirrored 4-tile rows, and keep monuments that fit the window. */
-function _mfDelta(full, meta) {
-    const S = 10;
+function _mfDelta(full, meta, S) {
+    S = S || 10;
     const x0 = (meta.deltaX != null) ? meta.deltaX : Math.floor((full.w - S) / 2);
     const y0 = (meta.deltaY != null) ? meta.deltaY : Math.floor((full.h - S) / 2);
     const BUILD_OIDS = new Set(['church', 'shop', 'church_1', 'church_2', 'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'building_11',
@@ -9122,9 +9122,11 @@ function _mfDelta(full, meta) {
         // near-center piece → keep as a single centerpiece instead of doubling it
         if (Math.abs(q.x - lx) > 1 || Math.abs(q.y - ly) > 1) monuments.push(q);
     });
-    // spawns: two mirrored 4-tile rows on the N/S edges, pads scrubbed safe
+    // spawns: two mirrored 4-tile rows on the N/S edges, pads scrubbed safe.
+    // Row is centred on the board so it works at any Δ size (8/10/12).
     const sp1 = [], sp2 = [];
-    for (let i = 0; i < 4; i++) { sp1.push({ x: 3 + i, y: S - 1 }); sp2.push({ x: 3 + i, y: 0 }); }
+    const _sx0 = Math.floor((S - 4) / 2);
+    for (let i = 0; i < 4; i++) { sp1.push({ x: _sx0 + i, y: S - 1 }); sp2.push({ x: _sx0 + i, y: 0 }); }
     const HAZ = new Set([MF_TID.lava, MF_TID.deep_water, MF_TID.poison_bog, MF_TID.poison, MF_TID.cloud_gap, MF_TID.chasm]);
     const base = 3, padKey = meta.deltaPad || 'dirt';
     [sp1, sp2].forEach(list => list.forEach(p => {
@@ -10380,22 +10382,26 @@ const EW_MAP_META = [
             barrierRows: [], barrierOpeningsX: [], hasFloors: false,
             env: meta.env || null, streetLamps: !!meta.streetLamps,
         };
-        // the Δ ranked variant: a 10×10 mirror-balanced crop of the core
-        try {
-            const d = _mfDelta(full, meta);
-            const did = meta.id + '_delta';
-            PREBUILT_MAPS[did] = d;
-            MAP_LAYOUT_PRESETS[did] = {
-                sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: meta.base }, buffer2: null, below: null },
-                barrierRows: [], barrierOpeningsX: [], hasFloors: false,
-                env: meta.env || null, streetLamps: !!meta.streetLamps,
-            };
-            deltas.push({
-                id: did, label: meta.label + ' Δ', w: 10, h: 10, teamSize: 4, tier: meta.tier,
-                biomes: meta.biomes, isDelta: true, base: meta.base, env: meta.env,
-                desc: '10×10 ranked Δ, 4v4 — the mirror-balanced competitive core of ' + meta.label,
-            });
-        } catch (e) { console.error('[MapForge] delta failed: ' + meta.id, e); }
+        // the Δ ranked variants: an 8×8 mirror-balanced 4v4 crop of the core
+        // (the default, used by every mode) plus a roomier 12×12 Arena crop
+        // (auto-selected for Arena, which wants space for towers/nexus/glasses).
+        [{ S: 8, suffix: '_delta', arena: false }, { S: 12, suffix: '_delta_arena', arena: true }].forEach(v => {
+            try {
+                const d = _mfDelta(full, meta, v.S);
+                const did = meta.id + v.suffix;
+                PREBUILT_MAPS[did] = d;
+                MAP_LAYOUT_PRESETS[did] = {
+                    sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: v.S - 1, label: 'Earth', baseTerrain: meta.base }, buffer2: null, below: null },
+                    barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+                    env: meta.env || null, streetLamps: !!meta.streetLamps,
+                };
+                deltas.push({
+                    id: did, label: meta.label + ' Δ' + (v.arena ? ' ⚔' : ''), w: v.S, h: v.S, teamSize: 4, tier: meta.tier,
+                    biomes: meta.biomes, isDelta: true, isDeltaArena: v.arena, base: meta.base, env: meta.env,
+                    desc: v.S + '×' + v.S + (v.arena ? ' Arena Δ' : ' ranked Δ') + ', 4v4 — the mirror-balanced ' + (v.arena ? 'Arena' : 'competitive') + ' core of ' + meta.label,
+                });
+            } catch (e) { console.error('[MapForge] delta failed: ' + meta.id + v.suffix, e); }
+        });
     });
     deltas.forEach(d => EW_MAP_META.push(d));
     if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;

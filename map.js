@@ -1046,8 +1046,10 @@
                 list.push({ modeId: m.id, name: m.label, size: m.w + '×' + m.h, team: m.teamSize, floors: false, w: m.w, h: m.h, isPrebuilt: true, tier: m.tier, biomes: m.biomes });
             });
             list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
-            meta.filter(m => m.isDelta).forEach(m => {
-                list.push({ modeId: m.id, name: m.label, size: '10×10 Δ', team: m.teamSize, floors: false, w: 10, h: 10, isPrebuilt: true, isDelta: true, tier: m.tier, biomes: m.biomes });
+            // Only the 8×8 Δ appears in the picker; the 12×12 Arena Δ is a
+            // hidden sibling that _msConfirm swaps in when the mode is Arena.
+            meta.filter(m => m.isDelta && !m.isDeltaArena).forEach(m => {
+                list.push({ modeId: m.id, name: m.label, size: '8×8 Δ', team: m.teamSize, floors: false, w: 8, h: 8, isPrebuilt: true, isDelta: true, tier: m.tier, biomes: m.biomes });
             });
             return list;
         })();
@@ -1322,11 +1324,21 @@
             playSfx('uiButtonConfirm');
 
             const mp = MS_MAP_LIST[_msSelectedMap];
-            applyGameMode(mp.modeId);
+            const gm = MS_GAME_MODES[_msSelectedGM];
+
+            // Δ maps are 8×8 by default, but Arena wants the roomier 12×12 crop
+            // (towers/nexus/hourglasses need space). Swap in the hidden Arena
+            // sibling map when the selected mode is Arena.
+            let launchModeId = mp.modeId;
+            if (mp.isDelta && gm && gm.id === 'arena'
+                && typeof GAME_MODES !== 'undefined' && GAME_MODES[mp.modeId + '_arena']) {
+                launchModeId = mp.modeId + '_arena';
+            }
+            applyGameMode(launchModeId);
 
             const customTeam = _msSelectedTeamSize;
             if (customTeam >= 1 && customTeam !== CONFIG.teamSize) {
-                const mode = GAME_MODES[mp.modeId];
+                const mode = GAME_MODES[launchModeId];
                 CONFIG.teamSize = customTeam;
 
                 SPAWNS[1] = mode.spawns[1].slice(0, customTeam);
@@ -1372,13 +1384,12 @@
                 });
             }
 
-            const gm = MS_GAME_MODES[_msSelectedGM];
             activeMultiplayerMode = gm.id;
 
             const mpMode = MULTIPLAYER_MODES[gm.id];
             if (mpMode && mpMode.isFFA) {
                 const totalPlayers = _msSelectedTeamSize;
-                const mode = GAME_MODES[mp.modeId];
+                const mode = GAME_MODES[launchModeId];
                 CONFIG.teamSize = 1;
 
                 const allSpawns = [...(mode.spawns[1] || []), ...(mode.spawns[2] || [])];
@@ -1426,7 +1437,7 @@
                builder + roster sizing; CONFIG.gauntletDeploy gates how many actually
                spawn onto the board (handled in makeUnitsFromBuilds). */
             if (gm.id === 'gauntlet') {
-                const mode = GAME_MODES[mp.modeId];
+                const mode = GAME_MODES[launchModeId];
                 const ROSTER = (mpMode && mpMode.rosterSize) || 8;
                 const DEPLOY = (mpMode && mpMode.deploySize) || 4;
                 CONFIG.teamSize = ROSTER;

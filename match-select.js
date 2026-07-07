@@ -505,8 +505,13 @@ function MatchSelect() {
   const multiplayerModes = typeof MULTIPLAYER_MODES !== 'undefined' ? MULTIPLAYER_MODES : {};
 
   const [gmIdx, setGmIdx] = useState(0);
-  const [mapIdx, setMapIdx] = useState(7);
+  // Default to the first Δ map — 4v4 8×8 delta maps are the competitive default.
+  const [mapIdx, setMapIdx] = useState(() => {
+    const di = mapList.findIndex(m => m.isDelta);
+    return di >= 0 ? di : 7;
+  });
   const [sizeFilter, setSizeFilter] = useState(null);
+  const [deltaOnly, setDeltaOnly] = useState(true);
   const [query, setQuery] = useState('');
   const [teamSize, setTeamSize] = useState(0);
   const [ranked, setRanked] = useState(false);
@@ -551,6 +556,7 @@ function MatchSelect() {
     return compatibleMapIndices.filter(i => {
       const m = mapList[i];
       if (!m) return false;
+      if (deltaOnly && !m.isDelta) return false;
       const w = m.w || 8;
       if (sizeFilter === 'sm' && w > 8) return false;
       if (sizeFilter === 'md' && (w < 10 || w > 14)) return false;
@@ -558,7 +564,15 @@ function MatchSelect() {
       if (query && !m.name.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [compatibleMapIndices, sizeFilter, query]);
+  }, [compatibleMapIndices, sizeFilter, deltaOnly, query]);
+
+  // When the Δ toggle flips, keep the selection valid: if the current map is
+  // filtered out, jump to the first map that still matches.
+  useEffect(() => {
+    if (filteredMaps.length > 0 && !filteredMaps.includes(mapIdx)) {
+      setMapIdx(filteredMaps[0]);
+    }
+  }, [deltaOnly]);
 
   useEffect(() => {
     if (compatibleMapIndices.length > 0 && !compatibleMapIndices.includes(mapIdx)) {
@@ -580,6 +594,9 @@ function MatchSelect() {
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const accent = accentForMap(mp);
+  // Arena swaps a Δ map to its 12×12 sibling on launch — reflect that in the UI.
+  const boardSizeLabel = (mp.isDelta && gm.id === 'arena')
+    ? '12×12 Δ' : (mp.size || (mp.w + '×' + mp.h));
   const maxT = maxTeamForMap(mapIdx);
   const teamDisplay = isFFA ? '' + teamSize : teamSize + 'v' + teamSize;
   const winLabel = mpMode.hasTowers ? 'Tower/Elim' :
@@ -760,7 +777,7 @@ function MatchSelect() {
               }}, mp.isPrebuilt ? '· preset map' : '· procedural'),
             ),
             h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-              h(Meta, { label: 'SIZE', val: mp.size || (mp.w + '×' + mp.h), accent: accent }),
+              h(Meta, { label: 'SIZE', val: boardSizeLabel, accent: accent }),
               h(Meta, { label: 'SPAWNS', val: (mp.team || 4) + ' per side' }),
             ),
             LORE[mp.name] && h('div', { style: {
@@ -827,9 +844,13 @@ function MatchSelect() {
           ),
 
           h('div', { style: { display: 'flex', gap: 5, alignItems: 'center' } },
+            h(ChipBtn, {
+              on: deltaOnly, color: EW.chaos,
+              onClick: () => { setDeltaOnly(d => !d); if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); },
+            }, 'Δ MAPS'),
             h('span', { style: {
               fontFamily: '"DotGothic16", monospace', fontSize: 9,
-              color: EW.inkDim, letterSpacing: '0.18em',
+              color: EW.inkDim, letterSpacing: '0.18em', marginLeft: 6,
             }}, 'SIZE'),
             ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) =>
               h(ChipBtn, {
@@ -900,7 +921,7 @@ function MatchSelect() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             fontFamily: '"DotGothic16", monospace', fontSize: 12, color: EW.ink,
           }},
-            h('span', { style: { fontWeight: 600 } }, mp.size || (mp.w + '×' + mp.h)),
+            h('span', { style: { fontWeight: 600 } }, boardSizeLabel),
             h('span', { style: {
               color: EW.inkDim, fontSize: 9, letterSpacing: '0.16em',
             }}, 'FROM MAP')
@@ -981,7 +1002,7 @@ function MatchSelect() {
             h('div', { style: {
               fontFamily: '"DotGothic16", monospace', fontSize: 11,
               color: accent,
-            }}, mp.size || (mp.w + '×' + mp.h))
+            }}, boardSizeLabel)
           ),
           h('div', { style: {
             fontFamily: '"DotGothic16", monospace', fontSize: 9,
@@ -1015,7 +1036,7 @@ function MatchSelect() {
           fontFamily: '"DotGothic16", monospace', fontSize: 10,
           color: EW.inkMute, letterSpacing: '0.18em', marginTop: 2,
         }},
-          h('span', { style: { color: accent } }, mp.size || (mp.w + '×' + mp.h)),
+          h('span', { style: { color: accent } }, boardSizeLabel),
           h('span', { style: { color: EW.inkDim } }, ' · '),
           h('span', { style: { color: EW.ink } }, teamDisplay),
           h('span', { style: { color: EW.inkDim } }, ' · '),

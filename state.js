@@ -314,9 +314,9 @@
         };
 
         /* compatibleMaps are generated from the MapForge roster: every launch
-           map and its Δ variant is playable in every mode (Δ = the 10×10
-           mirror-balanced ranked cut). Gauntlet fields 8-unit rosters, so it
-           keeps the roomier full boards only. */
+           map and its Δ variants are playable in every mode (Δ = the 8×8
+           mirror-balanced ranked cut, plus a 12×12 Arena crop). Gauntlet fields
+           8-unit rosters, so it keeps the roomier full boards only. */
         (function _generateCompatibleMaps() {
             if (typeof EW_MAP_META === 'undefined') return;
             const fulls = EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
