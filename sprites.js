@@ -1320,6 +1320,9 @@ const TERRAIN_SPRITES = {
     bricks_1:         [`${_T}/bricks_1.png`],
     bricks_2:         [`${_T}/bricks_2.png`],
     bricks_3:         [`${_T}/bricks_3.png`],
+    // Castle Fortress (knight spell) — impassable-height wall wearing the
+    // brick texture instead of raw mountain rock.
+    castle_wall:      [`${_T}/bricks_2.png`],
     wood_planks:      [`${_T}/wood_planks.png`],
     wood:             [`${_T}/wood.png`],
     rubble_1:         [`${_T}/rubble_1.png`],

@@ -61,7 +61,7 @@ const ThreeRenderer = (function () {
         tipShade:  1.0   // texture brightness multiplier at the blade tip (full)
     };
     /* terrains that STAY hard cubes (man-made / structured) */
-    var _CUBE_TERRAIN_SET = { bricks_1: 1, bricks_2: 1, bricks_3: 1, bricks: 1, road: 1, road_2: 1, metal: 1, metal_floor: 1 };
+    var _CUBE_TERRAIN_SET = { bricks_1: 1, bricks_2: 1, bricks_3: 1, bricks: 1, castle_wall: 1, road: 1, road_2: 1, metal: 1, metal_floor: 1 };
 
     function _ewValHash(ix, iz) {
         var h = Math.sin(ix * 127.1 + iz * 311.7) * 43758.5453;
@@ -4582,6 +4582,12 @@ const ThreeRenderer = (function () {
                 h = _hashInt(h, 4); h = _hashInt(h, r.x); h = _hashInt(h, r.y); h = _hashVal(h, r.owner);
             }
         }
+        if (state.pixieDust) {
+            for (var pdi = 0; pdi < state.pixieDust.length; pdi++) {
+                var pd = state.pixieDust[pdi];
+                h = _hashInt(h, 7); h = _hashInt(h, pd.x); h = _hashInt(h, pd.y); h = _hashVal(h, pd.owner);
+            }
+        }
         if (state._deployedObjects) {
             for (var di = 0; di < state._deployedObjects.length; di++) {
                 var d = state._deployedObjects[di];
@@ -4604,6 +4610,26 @@ const ThreeRenderer = (function () {
             }
         }
         return h;
+    }
+
+    /* Soft radial glow used for pixie dust motes — generated once on a small
+       canvas so it needs no asset upload and works offline. */
+    var _pixieDustTexture = null;
+    function _getPixieDustTexture() {
+        if (_pixieDustTexture) return _pixieDustTexture;
+        try {
+            var c = document.createElement('canvas');
+            c.width = c.height = 64;
+            var g = c.getContext('2d');
+            var grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.35, 'rgba(255,240,180,0.9)');
+            grad.addColorStop(1, 'rgba(255,220,140,0)');
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 64, 64);
+            _pixieDustTexture = new THREE.CanvasTexture(c);
+        } catch (e) { _pixieDustTexture = null; }
+        return _pixieDustTexture;
     }
 
     function _buildDeployableBillboard(spriteKey, x, y, tint) {
@@ -4889,6 +4915,42 @@ const ThreeRenderer = (function () {
                 var rkey = 'dep_' + (idx++);
                 objectGroup.add(rmesh);
                 deployableMeshes.set(rkey, rmesh);
+            }
+        }
+
+        /* ── Pixie dust motes (fairy passive) — small additive glow sprites
+           hovering over the tile. Visible to BOTH sides: allies collect them,
+           enemies can stamp them out, so they must read as pickups. ── */
+        if (state.pixieDust && state.pixieDust.length) {
+            var _pdTs = CONFIG.tileSize || BASE_TILE;
+            for (var pdi = 0; pdi < state.pixieDust.length; pdi++) {
+                var pd = state.pixieDust[pdi];
+                var pdTex = _getPixieDustTexture();
+                if (!pdTex) continue;
+                var pdGroup = new THREE.Group();
+                for (var pk = 0; pk < 3; pk++) {
+                    var pdMat = new THREE.SpriteMaterial({
+                        map: pdTex, transparent: true, depthWrite: false,
+                        blending: THREE.AdditiveBlending,
+                        color: pk === 1 ? 0xffd9f2 : 0xfff3b0
+                    });
+                    var pdSpr = new THREE.Sprite(pdMat);
+                    var pdScale = _pdTs * (pk === 0 ? 0.26 : 0.17);
+                    pdSpr.scale.set(pdScale, pdScale, 1);
+                    pdSpr.position.set(
+                        (pk - 1) * _pdTs * 0.18,
+                        _pdTs * (0.16 + 0.09 * pk),
+                        (pk === 1 ? 1 : -1) * _pdTs * 0.12
+                    );
+                    pdGroup.add(pdSpr);
+                }
+                var pdTopY = tileTopY(pd.x, pd.y);
+                pdGroup.position.set(pd.x * _pdTs + _pdTs / 2, pdTopY, pd.y * _pdTs + _pdTs / 2);
+                pdGroup._ew_deployable = true;
+                pdGroup._ew_depX = pd.x; pdGroup._ew_depY = pd.y;
+                var pdKey = 'dep_' + (idx++);
+                objectGroup.add(pdGroup);
+                deployableMeshes.set(pdKey, pdGroup);
             }
         }
 

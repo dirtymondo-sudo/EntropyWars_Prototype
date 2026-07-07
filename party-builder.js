@@ -803,7 +803,8 @@ const RACE_TRAITS = {
     { icon: '🗿', name: 'Colossal Frame', desc: 'Too massive to be knocked back or pulled.' },                        // DESIGN
   ],
   'fairy': [
-    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
+    { icon: '✨', name: 'Pixie Dust Trail', desc: 'Sheds glowing dust where she moves — allies who step on a mote recover HP and MP.' }, // CODED
     { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
     { icon: '🌲', name: 'Forest Spirit', desc: 'Moves through trees at full speed.' },                                // CODED
   ],
@@ -817,22 +818,22 @@ const RACE_TRAITS = {
     { icon: '🧠', name: 'Telepathic Network', desc: 'Allies gain +1 AWR while a Grey is on the field.' },             // DESIGN
   ],
   'telepath': [
-    { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground.' },                     // CODED
+    { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground. Grounded below 25% HP.' },  // CODED
     { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
     { icon: '🧠', name: 'Unquiet Mind', desc: 'Immune to sleep and charm.' },                                         // DESIGN
   ],
   'vampire': [
-    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
     { icon: '🩸', name: 'Hemophage', desc: 'Basic attacks drain a portion of the damage as HP.' },                    // DESIGN
     { icon: '🌙', name: 'Creature of the Night', desc: 'Stronger at night; weakened at high noon.' },                 // DESIGN
   ],
   'demon': [
-    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
     { icon: '🌋', name: 'Lava-Born', desc: 'Immune to lava — strides through it at full speed.' },                    // CODED
     { icon: '🔥', name: 'Hellfire Affinity', desc: 'Burns it inflicts last 1 turn longer.' },                         // DESIGN
   ],
   'annunaki': [
-    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed.' },                 // CODED
+    { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
     { icon: '👁️', name: 'Ancient Sight', desc: '+1 vision range; sees over elevation.' },                             // DESIGN
   ],
   'atlantean': [
@@ -899,7 +900,7 @@ const RACE_TRAITS = {
     { icon: '🔫', name: 'Ray Tech', desc: '+10% damage with beam and projectile spells.' },                           // DESIGN
   ],
   'nordic': [
-    { icon: '❄️', name: 'Polar Born', desc: 'Unbothered by snow and ice weather.' },                                  // DESIGN
+    { icon: '🛸', name: 'Federation Envoy', desc: 'A Tall Blonde of the Galactic Federation — light-tech beams, stasis and psychic calm.' }, // LORE
     { icon: '🛡️', name: 'Serene Mind', desc: 'Immune to fear and charm.' },                                           // DESIGN
   ],
   'halfdemon': [

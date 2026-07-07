@@ -104,7 +104,30 @@ const ThreeVFXEffects = (function () {
         poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green' },
     };
 
+    /* Organizational spell `element` tag (data.js) → visual theme. Not a
+       combat type — purely how the generic fallback visuals get tinted when
+       a spell has no bespoke SPELL_MAP entry. Explicit tag beats name-regex. */
+    var _ELEMENT_THEME = {
+        fire: 'fire', ice: 'ice', water: 'ice', lightning: 'lightning',
+        poison: 'poison', nature: 'poison', light: 'divine', shadow: 'unholy',
+        psychic: 'anomaly', arcane: 'anomaly', sonic: 'anomaly',
+        earth: 'human', wind: 'human', blood: 'unholy', metal: 'tech',
+    };
+
+    function _spellDefFor(spellId) {
+        if (!spellId) return null;
+        try {
+            if (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[spellId]) return SPELL_BY_ID[spellId];
+            if (typeof RACE_ABILITY_BY_ID !== 'undefined' && RACE_ABILITY_BY_ID[spellId]) return RACE_ABILITY_BY_ID[spellId];
+        } catch (e) { /* registries load from data.js; absent in isolation */ }
+        return null;
+    }
+
     function _resolveTheme(spellType, spellId, spellName) {
+        var def = _spellDefFor(spellId);
+        if (def && def.element && _ELEMENT_THEME[def.element]) {
+            return _THEME_MAP[_ELEMENT_THEME[def.element]];
+        }
         var s = ((spellId || '') + (spellName || '')).toLowerCase();
         if (/fire|flame|inferno|burn|blaze|scorch|ember|magma|lava|solar|corona/.test(s)) return _THEME_MAP.fire;
         if (/ice|frost|blizzard|freeze|cryo|cold|glacial|frozen|chill/.test(s)) return _THEME_MAP.ice;
@@ -739,6 +762,67 @@ EFFECTS['shootout_impact_center'] = {
 };
 
 SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
+
+/* ─── 2026-07-07 BALANCE PASS — VFX wiring for reworked / new spells ─────
+   Every spell touched by the character balance pass gets a real mapping so
+   nothing falls through to the bare element-tint default. New ids inherit
+   the orphaned bespoke effects of the spells they replaced where the visual
+   still fits; genuinely new looks are authored below. */
+
+/* Skull Crack — bespoke: a hard clang, a stun-ring, and the classic
+   "seeing stars" — sparkles orbiting up from the point of impact. */
+EFFECTS['skullCrack_impact'] = {
+    shake: 'hard',
+    layers: [
+        { sprite: 'flash', ml: 220, z: 10, size0: 120, size1: 34 },
+        { sprite: 'stun-ring', ml: 700, z: 8, size0: 40, size1: 150, opacity0: 0.9, opacity1: 0 },
+        { count: 6, sprite: 'steel-spark', ml: [260, 480], z: 6, offsetXY: 10,
+          vxRange: 160, vyRange: 160, vzRange: [50, 150], gravity: 340, drag: 1.3,
+          size0: [5, 10], size1: 1 },
+        { count: 5, delay: 120, sprite: 'divine-sparkle', ml: [700, 1100], z: 9, offsetXY: 20,
+          vxRange: 40, vyRange: 40, vzRange: [60, 110], gravity: -30, drag: 0.8,
+          size0: [10, 16], size1: [3, 6], opacity0: 0.95, opacity1: 0 },
+    ]
+};
+
+/* Bruiser rework — disruption reads as impact, not filler. */
+SPELL_MAP['haymaker']   = { impact: '_heavyPunch_impact' };
+SPELL_MAP['groundSlam'] = { aoe: 'raceTremorStomp_aoe', impact: 'raceTremorStomp_impact_tile' };
+SPELL_MAP['ironGrip']   = { impact: '_heavyPunch_impact' };
+SPELL_MAP['skullCrack'] = { impact: 'skullCrack_impact' };
+SPELL_MAP['pistolWhip'] = { impact: '_heavyPunch_impact' };
+
+/* Nordic alien rework — light-tech Federation kit. Inherits the orphaned
+   nordic bespokes where they still fit (Thunderclap cross → Resonance
+   Pulse; Runic Ward aura → Pleiadian Shield). */
+SPELL_MAP['raceAuroraRay']        = { beam: 'sentaiBlueWave_beam' };
+SPELL_MAP['raceResonancePulse']   = { descent: 'raceThunderclap_descent', impact: 'thunder1_impact' };
+SPELL_MAP['raceStasisBeam']       = { impact: '_ice_impact_center', bolt: '_bolt_ice' };
+SPELL_MAP['raceFederationBeacon'] = { aura: '_deployObject_aura' };
+SPELL_MAP['racePleiadianShield']  = { aura: 'raceRunicWard_aura' };
+SPELL_MAP['raceNordicAccord']     = { aura: '_buff_divine_aura' };
+
+/* New / renamed race spells. */
+SPELL_MAP['raceBite']       = { impact: '_slashMelee_impact', drainHop: 'lifeDrain_drainHop' };
+SPELL_MAP['raceBadTrip']    = { bolt: '_bolt_psi', impact: '_psychic_dark_impact' };
+SPELL_MAP['raceBlackSmoke'] = { wall: 'sharedPoisonSwamp_tile' };
+SPELL_MAP['repair']         = { aura: '_selfHeal_tech_aura' };
+SPELL_MAP['raceTinFoilHat'] = { aura: '_buff_tech_aura' };
+SPELL_MAP['raceSuppressingFire'] = { impact: '_rangedShot_impact', bolt: '_bolt_bullet' };
+SPELL_MAP['mark1']          = { impact: '_rangedShot_impact', bolt: '_bolt_bullet' };
+
+/* Previously-generic roster spells — assign fitting shared effects. */
+SPELL_MAP['raceAnchor']       = { impact: 'anchorToss_impact' };
+SPELL_MAP['raceWalkThePlank'] = { wall: 'sharedMaelstrom_tile' };
+SPELL_MAP['racePlandemic']    = { aoe: 'raceToxicNova_aoe', impact: 'raceToxicNova_impact_tile' };
+SPELL_MAP['racePlunder']      = { impact: '_slashMelee_impact' };
+SPELL_MAP['raceYoHo']         = { aura: '_zoneHeal_water_aura' };
+SPELL_MAP['raceMeow']         = { aoe: 'raceGlitterburst_aoe' };
+SPELL_MAP['glare']            = { impact: '_psychic_dark_impact' };
+SPELL_MAP['lullaby']          = { impact: '_psychic_dark_impact' };
+SPELL_MAP['discordance']      = { impact: '_dark_debuff_impact' };
+SPELL_MAP['spotter']          = { impact: '_dark_mark_impact' };
+SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
 
     /* ─── BOLT EFFECT DEFINITIONS ────────────────────────────────────
        These are config objects read by _fireBoltMapped(), NOT layer-based
@@ -7006,9 +7090,21 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         aim.rotation.order = 'YXZ';
         root.add(aim);
         var g = _sigBuildGun(kind, ts);
-        /* these are giant STAND weapons — big enough to read from the
-           diorama camera, floating over their summoner */
-        g.group.scale.setScalar(opts.modelScale != null ? opts.modelScale : 2.2);
+        /* Stand-weapon scale, tamed (2026-07-07): the rig hovers at the
+           CASTER's shoulder and must never poke its barrel into the target.
+           Base scale is modest, and for close shots it shrinks further so the
+           muzzle tip stays within ~55% of the caster→target distance — the
+           bullet/tracer (the bolt) is what crosses the gap, not the barrel. */
+        var _gunMuzzleTs = (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
+        var _gunScale = opts.modelScale != null ? opts.modelScale : (opts.sky ? 2.0 : 1.3);
+        if (!opts.sky) {
+            var _twpS = _worldPos(toTx, toTy);
+            var _sdx = _twpS.x - fw.x, _sdz = _twpS.z - fw.z;
+            var _sdl = Math.sqrt(_sdx * _sdx + _sdz * _sdz) || ts;
+            var _maxScale = ((_sdl / ts) * 0.55 - 0.2) / Math.max(0.3, _gunMuzzleTs);
+            _gunScale = Math.max(0.55, Math.min(_gunScale, _maxScale));
+        }
+        g.group.scale.setScalar(_gunScale);
         aim.add(g.group);
 
         /* flat summon disc spinning under the floating weapon (an upright
@@ -7017,6 +7113,7 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
         var glyph = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15, ts * 1.15), glyphMat);
         glyph.rotation.x = -Math.PI / 2;
         glyph.position.y = -ts * 0.38;
+        glyph.scale.setScalar(Math.min(1, 0.55 + 0.35 * _gunScale));
         glyph.renderOrder = 156;
         root.add(glyph);
 
@@ -7076,12 +7173,14 @@ SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
             var swp = _worldPos(toTx, toTy);
             root.position.set(swp.x, swp.y + ts * 2.9, swp.z);
         } else {
+            /* Anchor the rig AT the caster (tiny lean toward the target),
+               shoulder height — the shot visibly leaves from the shooter. */
             var dxr = 0, dzr = 0;
             var twp0 = _worldPos(toTx, toTy);
             var ddx = twp0.x - fw.x, ddz = twp0.z - fw.z;
             var dl = Math.sqrt(ddx * ddx + ddz * ddz) || 1;
             dxr = ddx / dl; dzr = ddz / dl;
-            root.position.set(fw.x + dxr * ts * 0.45, fw.y + ts * 1.15, fw.z + dzr * ts * 0.45);
+            root.position.set(fw.x + dxr * ts * 0.18, fw.y + ts * 0.95, fw.z + dzr * ts * 0.18);
         }
         aimAt(toTx, toTy);
 

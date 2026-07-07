@@ -4,6 +4,103 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Character balance pass + flyer grounding + Balance Lab v2 (2026-07-07) — data.js, battle.js, three-vfx-effects.js, three-renderer.js, sprites.js, party-builder.js
+Token bumped `20260707c` → `20260707d`. Verified: node data-integrity script
+(40+ checks) + in-browser LOCAL_ASSETS probe (scratchpad probe_balance.js,
+17/18 — the 1 "fail" was the probe testing MP gain on a full-MP unit).
+- **Flyer grounding (battle.js)**: `FLYING_ALTITUDE_CONFIG.woundedGroundPct`
+  (0.25, data.js). Below 25% max HP a flyer CRASHES to the ground the moment
+  damage lands (applyDamageToUnit hook → `forceGroundUnit`) and cannot
+  ascend/swoop-takeoff (`canChangeAltitude`/`_skySwoopTakeoff`/requiresFlight
+  gates) until healed back over the line. Helpers `isFlightCrippled` +
+  `forceGroundUnit` exported on GAME. Spells flagged `groundsFlyers: true`
+  (Anchor, Iron Grip, Stasis Beam, Lasso, Earthen Grasp, Gravity Well) slam
+  airborne targets down via the debuff-kind hook; pull/aoePull already did.
+- **New `root` status (data.js STATUS_DEFS)**: blockMove only — rooted units
+  can still act, can't move/dodge/take off. Used by Iron Grip (2t), Anchor
+  (2t), Kneecap Shot (2t).
+- **Job spell pools**: Neuralyzer DELETED. Engineer lost Nuke (politician/
+  general race kits keep SHARED_NUKE) + Tin Foil Hat (→ conspiracy theorist
+  race kit) and gained `repair` (tech heal, Tinker-boosted). War Cry moved
+  Harbinger → Warrior. Suppressing Fire is Agent-only (marksman race kit got
+  its own copy). Headshot renamed **Assassinate** (id `headshot` unchanged).
+  Bruiser rework: Haymaker = deterministic 2-tile knockback (displacement),
+  Ground Slam = guaranteed slow + crater, Skull Crack = unholy anti-caster
+  (silence+drowsy), Iron Grip = root+ground, Rampage path dmg 56→64. Sniper
+  job range 4→3; Precision Shot/Spotter trimmed. Harvester int +5→+12,
+  Life Drain 160, Healing Spring 1 AP.
+- **Race kits**: nordic FULLY reworked to Nordic-alien lore (Aurora Ray /
+  Resonance Pulse / Stasis Beam / Federation Beacon / Pleiadian Shield /
+  Nordic Accord — ids raceAuroraRay etc.). Werewolf Savage Rend → **Bite**
+  (melee lifedrain 30%). Ki Blast → **Ki Volley** (3×45 multiHit; Ki Wave
+  stays the beam). Demon Void Contract → **Devour Soul** (150). Martian
+  Tractor Beam DELETED (merged into grey's Abduction Beam) → new **Black
+  Smoke** (poison line, WotW). Machine elves + **Bad Trip** (dmg + glare/
+  drowsy/slow) + buffs. Bigfoot Reality Shift → **Blurry Photo**; Tremor
+  Stomp 120 + stagger. Telepath Mind Crush → **Migraine** (drowsy). Atlantean
+  Orichalcum Barrier → **Pillar of Atlantis**. Fairy Pixie Dust Trail spell
+  REMOVED → passive. Overperformer trims: MIB (atk 54, Classified Weapon
+  132), vampire (Lifetap 40% drain, Thrall 30, Predator Drop 20/level), QB
+  (hp 538 + all spells trimmed), catgirl (Ninefold 5×28), cowboy (High Noon
+  180), annunaki (Star Decree 160, no Nuke), giant (Boulder 110). Buffs:
+  nordic stats (atk 50/def 38/int 40), homosapien (545hp/52atk + Adrenaline
+  40%), shaman (Spirit Walk 4, Totem 45/turn, Remedy 140), grey (Probe 1
+  AP/120, Abduction 75), martian (Heat Ray 135, WotW turret 95/100hp),
+  pirate (Yo Ho 130, Plank execute 25%), atlantean (Riptide 120, Tide
+  65/turn), ki fighter (Dragon Fist 170).
+- **Pixie Dust Trail passive (battle.js + three-renderer.js)**: fairies shed
+  a dust mote on the tile they leave each move (`state.pixieDust`, max 4/
+  fairy, expires 3 rounds). Allies stepping on a mote collect +40 HP +10 MP
+  (`checkPixieDustPickup`, called from finishMoveAt + doJump); enemies stamp
+  it out. Rendered as additive canvas-glow sprites in rebuildDeployables
+  (hashed into _computeDeployableSerial, seed 7).
+- **Weather naming unified**: all summonWeather spells are "Summon X" —
+  Call Lightning → **Summon Storm**, job Thunderstorm → **Summon
+  Thunderstorm**.
+- **`element` tags (organizational)**: optional `element:` field on ~178
+  spells (fire/ice/lightning/water/earth/wind/poison/nature/shadow/light/
+  psychic/sonic/arcane/blood/metal — doc comment above SPELL_LIBRARY). NOT a
+  combat type. battle.js `classifySpellElement` already preferred it;
+  three-vfx-effects `_resolveTheme` now checks it first via `_spellDefFor`
+  (SPELL_BY_ID/RACE_ABILITY_BY_ID) + `_ELEMENT_THEME` map.
+- **VFX wiring (three-vfx-effects.js)**: all reworked/new spells mapped
+  (see the "2026-07-07 BALANCE PASS" SPELL_MAP block) + previously-generic
+  roster spells (haymaker/groundSlam/ironGrip/pistolWhip/anchor(Toss)/
+  plandemic/plank/meow/yoho/glare/lullaby/discordance/spotter/freeEnergy…).
+  New bespoke EFFECTS: `skullCrack_impact` (clang + stun-ring + seeing
+  stars). Nordic new ids inherit orphaned bespokes (Thunderclap descent →
+  Resonance Pulse, Runic Ward aura → Pleiadian Shield).
+- **Gun rig fix (`_sigGunRig3D`)**: stand-weapon guns were scale 2.2 and
+  pushed 0.45 tiles toward the target — sniper muzzle (1.25 ts) reached
+  ~3.2 tiles, pressing the barrel into the target's face. Now: base scale
+  1.3 (sky rigs 2.0), anchored 0.18 ts off the CASTER at shoulder height
+  (0.95 ts), and scale is distance-capped so the muzzle tip stays within
+  ~55% of the caster→target gap (floor 0.55). Summon glyph scales along.
+  NOT screenshot-verified — SwiftShader jank kept the intro cinematic up
+  past every wait in the sandbox; eyeball live after upload.
+- **Castle Fortress texture**: new `castle_wall` terrain (TERRAIN_RULES
+  clone of mountain, TERRAIN_SPRITES → bricks_2.png, EW_TERRAIN_COLORS
+  entry, three-renderer _CUBE_TERRAIN_SET so it renders as clean masonry
+  cubes). raceShieldWall now creates castle_wall.
+- **Balance Lab v2 (battle.js)**: BALANCE_STATS_VERSION 2 (auto-migrates the
+  v1 localStorage blob). New: `builds` map keyed `race | job (+ sec)` with
+  nested `loadouts` (exact sorted spell list → games/wins); `matchLog`
+  (capped 400) raw per-match records {mode, rounds, winner, comeback,
+  firstKill, firstDeath, teams: both sides' race/job/sec/spells} — opponent
+  composition + build-vs-build analyzable offline; aggregates roundsTotal /
+  comebackWins (winner trailed ≥2 kills) / firstKillWins. Mid-match tracker
+  `_balTrackKill` hooks the applyDamageToUnit kill block; `state._balMatch`
+  reset with warpRunes/pixieDust at the 4 new-match sites. Dashboard: new
+  Builds tab + Avg Len / Comebacks / FK→Win / Log cards; CSV export gained
+  the build category.
+- GOTCHA: mana costs are FORMULA-DERIVED at load (`_applyManaCostFormula`
+  overwrites `spell.cost` unless `manaCostOverride`) — tune dmg/effects,
+  never cost. Slot costs derive from the computed mana.
+- Data that drove the pass (117-match arena export ewbalancestats12): Agent
+  61%/MIB 65% over; nordic 29%/homosapien 33%/shaman 36% under; Sniper 6
+  deaths in 84 games; Suppressing Fire fielded in 106/117 matches. Re-run
+  the lab (`balancesim` mode) to validate.
+
 ## Character portraits everywhere (2026-07-07) — sprites.js, data.js, battle.js, hud.js, three-renderer.js, party-builder.js
 Token bumped `20260707b` → `20260707c`. Probe: scratchpad probe_portraits.js.
 - **Portrait folder**: `Assets/Sprites/character_portraits/<male|female>/<name>.png`

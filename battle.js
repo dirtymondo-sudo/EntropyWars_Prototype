@@ -9069,6 +9069,14 @@
                 }
             }
 
+            // Wounded flyers fall out of the sky the moment they cross the
+            // threshold — a reliable, readable way to ground an airborne kite.
+            if (target.hp > 0 && typeof isFlightCrippled === 'function' && isFlightCrippled(target)
+                && typeof canFly === 'function' && canFly(target)
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                forceGroundUnit(target, { reason: 'wounded' });
+            }
+
             if (target.hp <= 0) {
 
                 // Kill-credit fallback expires: chip damage from >2 rounds ago
@@ -9076,6 +9084,7 @@
                 const _ldsFresh = target._lastDamageSource &&
                     ((state.round || 0) - (target._lastDamageSourceRound || 0)) <= 2;
                 const killer = sourceUnit || (_ldsFresh ? target._lastDamageSource : null) || null;
+                if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
@@ -9912,6 +9921,11 @@
             }
             addLog(`${unitDisplayName(unit)} moves to ${moveLabel}.`, unit.player);
 
+            // Fairy passive: shed pixie dust on the tile she left; anyone
+            // arriving on a mote resolves it (ally collects / enemy stamps).
+            if (unit.race === 'fairy' && typeof dropPixieDust === 'function') dropPixieDust(unit, _originX, _originY);
+            if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
+
             checkOpportunityAttack(unit, _originX, _originY);
 
             if (!_wasAirborne) {
@@ -10445,6 +10459,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
+            state.pixieDust = [];
+            state._balMatch = null;
             state.wards = [];
             state.turrets = [];
             state._deployedObjects = [];
@@ -10538,15 +10554,15 @@
                     const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
                     const preferred = {
-                        'Agent': ['empBurst', 'taser', 'placeBomb', 'sneakSlash', 'knifeThrow'],
+                        'Agent': ['empBurst', 'shadowLunge', 'placeBomb', 'sneakSlash', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                         'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                        'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
+                        'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
                         'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                        'Engineer': ['fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret'],
-                        'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
+                        'Engineer': ['fiveGTower', 'overclock', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
+                        'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
                         'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                         'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
@@ -10677,15 +10693,15 @@
             const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
             const preferred = {
-                'Agent': ['empBurst', 'taser', 'placeBomb', 'sneakSlash', 'knifeThrow'],
+                'Agent': ['empBurst', 'shadowLunge', 'placeBomb', 'sneakSlash', 'knifeThrow'],
                 'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                 'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                'Warrior': ['judgment', 'dragonSlash', 'guardSlash', 'shieldBash', 'fortify'],
+                'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
                 'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                 'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                 'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                'Engineer': ['fiveGTower', 'overclock', 'freeEnergy', 'plasmaGun', 'deployTurret'],
-                'Harbinger': ['requiem', 'encore', 'warCry', 'discordance'],
+                'Engineer': ['fiveGTower', 'overclock', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
+                'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
                 'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                 'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                 'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
@@ -14573,6 +14589,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
+            state.pixieDust = [];
+            state._balMatch = null;
             state.wards = [];
             state.turrets = [];
             state._deployedObjects = [];
@@ -14992,6 +15010,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
+            state.pixieDust = [];
+            state._balMatch = null;
             state.wards = [];
             state.turrets = [];
             state._deployedObjects = [];
@@ -15202,6 +15222,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.warpRunes = [];
+            state.pixieDust = [];
+            state._balMatch = null;
             state.wards = [];
             state.turrets = [];
             state._deployedObjects = [];
@@ -17688,33 +17710,81 @@
         let _balanceSimMode = false;
         let _balanceStats = null;
         let _balanceTab = 'jobs';
-        const BALANCE_STATS_VERSION = 1;
+        const BALANCE_STATS_VERSION = 2;
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
+        const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
         const _BAL_TABS = [
             { id: 'jobs', label: 'Jobs' },
             { id: 'races', label: 'Races' },
+            { id: 'builds', label: 'Builds' },
             { id: 'spells', label: 'Spells' },
             { id: 'secondaryJobs', label: '2nd Job' },
         ];
 
+        /* v2 additions (2026-07-07 balance pass):
+           • builds — bucket per "race | job (+ secondary)" combo, each with a
+             nested loadouts map keyed by the full sorted spell list, so
+             specific spell-combo win rates are queryable (it's rarely a class
+             that's broken — it's an interaction).
+           • matchLog — capped raw per-match records: mode, rounds, winner,
+             BOTH team compositions (race/job/sec/spells per unit), first
+             kill, first death, comeback flag. Opponent-composition and
+             build-vs-build questions get answered offline from this.
+           • roundsTotal / comebackWins / firstKillWins — match-length and
+             momentum aggregates (comeback = winner trailed by ≥2 kills). */
         function _freshBalanceStats() {
             return {
                 version: BALANCE_STATS_VERSION,
                 totalMatches: 0,
                 noContests: 0,
+                roundsTotal: 0,
+                comebackWins: 0,
+                firstKillWins: 0,
                 jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
+                builds: {},
+                matchLog: [],
                 updatedAt: 0,
             };
         }
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes']) {
+            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
+            if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
             if (_balanceStats.noContests == null) _balanceStats.noContests = 0;
             if (_balanceStats.totalMatches == null) _balanceStats.totalMatches = 0;
+            if (_balanceStats.roundsTotal == null) _balanceStats.roundsTotal = 0;
+            if (_balanceStats.comebackWins == null) _balanceStats.comebackWins = 0;
+            if (_balanceStats.firstKillWins == null) _balanceStats.firstKillWins = 0;
+            _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
+        }
+
+        // Mid-match narrative tracker (balance sim only): first blood, first
+        // death, and the running kill ledger for comeback detection. Reset by
+        // the same new-match sites that clear warp runes / pixie dust.
+        function _balTrackKill(killer, victim) {
+            if (!_balanceSimMode) return;
+            if (!state._balMatch) {
+                state._balMatch = { firstKill: null, firstDeath: null, kills: { 1: 0, 2: 0 }, maxDeficit: { 1: 0, 2: 0 } };
+            }
+            const m = state._balMatch;
+            const kp = killer ? killer.player : null;
+            if (kp === 1 || kp === 2) {
+                m.kills[kp]++;
+                if (!m.firstKill) {
+                    m.firstKill = { round: state.round || 0, player: kp, race: killer.race || null, job: killer.cls || killer.job || null };
+                }
+                for (const p of [1, 2]) {
+                    const opp = p === 1 ? 2 : 1;
+                    m.maxDeficit[p] = Math.max(m.maxDeficit[p] || 0, m.kills[opp] - m.kills[p]);
+                }
+            }
+            if (victim && (victim.player === 1 || victim.player === 2) && !m.firstDeath) {
+                m.firstDeath = { round: state.round || 0, player: victim.player, race: victim.race || null, job: victim.cls || victim.job || null };
+            }
         }
 
         function _balBucket(map, key) {
@@ -17732,7 +17802,10 @@
 
         async function loadBalanceStats() {
             try {
-                const raw = await _aiStorageGet('ew-balance-stats-v' + BALANCE_STATS_VERSION);
+                let raw = await _aiStorageGet('ew-balance-stats-v' + BALANCE_STATS_VERSION);
+                // Carry v1 aggregates forward into the v2 schema (ensureBalanceStats
+                // backfills the new fields); saves land on the v2 key from then on.
+                if (!raw && BALANCE_STATS_VERSION > 1) raw = await _aiStorageGet('ew-balance-stats-v1');
                 if (raw) _balanceStats = JSON.parse(raw);
             } catch (e) { _balanceStats = null; }
             return ensureBalanceStats();
@@ -17761,6 +17834,7 @@
             if (winner === 0 || winner === null) {
                 _balanceStats.noContests++;
                 _balanceStats.totalMatches++;
+                state._balMatch = null;
                 saveBalanceStats();
                 return;
             }
@@ -17769,6 +17843,16 @@
             const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
                 ? getActiveMultiplayerMode().id : null;
             if (mode) { const mb = _balBucket(_balanceStats.modes, mode); if (mb) mb.games++; }
+
+            // Match-level aggregates: length, first blood conversion, comebacks.
+            const rounds = state.round || 0;
+            _balanceStats.roundsTotal += rounds;
+            const bm = state._balMatch || null;
+            const comeback = !!(bm && (bm.maxDeficit[winner] || 0) >= 2);
+            if (comeback) _balanceStats.comebackWins++;
+            if (bm && bm.firstKill && bm.firstKill.player === winner) _balanceStats.firstKillWins++;
+
+            const teams = { 1: [], 2: [] };
 
             for (const u of (state.units || [])) {
                 if (u.player !== 1 && u.player !== 2) continue;
@@ -17781,6 +17865,27 @@
                 _balAdd(_balanceStats.jobs, u.cls || u.job, won, kills, dd, dt, died);
                 if (u.race) _balAdd(_balanceStats.races, u.race, won, kills, dd, dt, died);
                 if (u._secondaryJob) _balAdd(_balanceStats.secondaryJobs, u._secondaryJob, won, kills, dd, dt, died);
+
+                // Full-build bucket: race | job (+ secondary), with the exact
+                // spell loadout tallied underneath. Interactions, not classes.
+                const spellNames = (u.spells || []).map(s => s && s.name).filter(Boolean);
+                const buildKey = `${u.race || '?'} | ${u.cls || u.job || '?'}${u._secondaryJob ? ' + ' + u._secondaryJob : ''}`;
+                _balAdd(_balanceStats.builds, buildKey, won, kills, dd, dt, died);
+                const bb = _balanceStats.builds[buildKey];
+                if (bb) {
+                    if (!bb.loadouts) bb.loadouts = {};
+                    const loKey = spellNames.slice().sort().join(', ') || '(no spells)';
+                    if (!bb.loadouts[loKey]) bb.loadouts[loKey] = { games: 0, wins: 0 };
+                    bb.loadouts[loKey].games++;
+                    bb.loadouts[loKey].wins += won;
+                }
+
+                teams[u.player].push({
+                    race: u.race || null,
+                    job: u.cls || u.job || null,
+                    sec: u._secondaryJob || null,
+                    spells: spellNames,
+                });
 
                 // A spell can sit on units on both teams; count each unit that
                 // FIELDS it once (win rate of teams that brought it). Per-unit
@@ -17795,6 +17900,21 @@
                 }
             }
 
+            // Raw match record (capped) — the offline-analysis gold: build
+            // pick/win rates, opponent composition, matchup tables, and the
+            // first-kill/first-death/comeback story all reconstruct from this.
+            _balanceStats.matchLog.push({
+                n: _balanceStats.totalMatches,
+                mode, rounds, winner, comeback,
+                firstKill: bm ? bm.firstKill : null,
+                firstDeath: bm ? bm.firstDeath : null,
+                teams,
+            });
+            if (_balanceStats.matchLog.length > BALANCE_MATCH_LOG_CAP) {
+                _balanceStats.matchLog.splice(0, _balanceStats.matchLog.length - BALANCE_MATCH_LOG_CAP);
+            }
+
+            state._balMatch = null;
             saveBalanceStats();
         }
 
@@ -17909,6 +18029,12 @@
                     <div class="train-card"><span class="train-card-label">No-Contest</span><span class="train-card-value">${nc}</span></div>
                     <div class="train-card"><span class="train-card-label">Flags</span><span class="train-card-value">${flags.length}</span></div>
                 </div>
+                <div class="train-cards">
+                    <div class="train-card" title="average rounds per decisive match"><span class="train-card-label">Avg Len</span><span class="train-card-value">${decisive > 0 ? ((s.roundsTotal || 0) / decisive).toFixed(1) : '—'}r</span></div>
+                    <div class="train-card" title="winner trailed by 2+ kills at some point"><span class="train-card-label">Comebacks</span><span class="train-card-value">${decisive > 0 ? Math.round(((s.comebackWins || 0) / decisive) * 100) + '%' : '—'}</span></div>
+                    <div class="train-card" title="how often the first-blood team goes on to win"><span class="train-card-label">FK→Win</span><span class="train-card-value">${decisive > 0 ? Math.round(((s.firstKillWins || 0) / decisive) * 100) + '%' : '—'}</span></div>
+                    <div class="train-card" title="raw per-match records kept for offline analysis"><span class="train-card-label">Log</span><span class="train-card-value">${(s.matchLog || []).length}</span></div>
+                </div>
 
                 <div class="train-group">
                     <div class="train-group-title">Balance Flags <span style="font-weight:400;text-transform:none;letter-spacing:0">(win-rate vs 50% · ${BALANCE_MIN_SAMPLE}+ games)</span></div>
@@ -17963,6 +18089,7 @@
             const cats = [
                 ['job', _balanceStats.jobs], ['race', _balanceStats.races],
                 ['secondaryJob', _balanceStats.secondaryJobs], ['spell', _balanceStats.spells],
+                ['build', _balanceStats.builds],
             ];
             for (const [cat, m] of cats) {
                 for (const key of Object.keys(m || {})) {
@@ -18131,6 +18258,7 @@
             getHostileUnits, isBossUnit, getBossOccupiedTiles,
             isAllyUnit, isEnemyUnit, _isFFA,
             unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
+            isFlightCrippled, forceGroundUnit,
             canFlyToSky, canDescendUnderground, canReturnToGround,
             unitHasJetpack, unitHasSpelunkingGear,
             SKY_RACES, UNDERGROUND_RACES, unitFinished,
@@ -20274,6 +20402,66 @@
             renderIfDirty();
         }
 
+        /* ── Pixie Dust Trail — fairy racial PASSIVE (2026-07-07 balance pass)
+           Replaces the old Pixie Dust Trail spell. Every time a fairy moves
+           she sheds a glowing dust mote on the tile she left. Allies who step
+           on a mote collect it (+40 HP, +10 MP); enemies stamp it out. Motes
+           expire after 3 rounds and each fairy keeps at most 4 alive. Stored
+           in state.pixieDust: {x, y, owner, casterId, expiresRound}. */
+        const PIXIE_DUST_HEAL = 40;
+        const PIXIE_DUST_MANA = 10;
+        const PIXIE_DUST_LIFETIME_ROUNDS = 3;
+        const PIXIE_DUST_MAX_PER_FAIRY = 4;
+
+        function _prunePixieDust() {
+            if (!state.pixieDust || !state.pixieDust.length) return;
+            const r = state.round || 0;
+            state.pixieDust = state.pixieDust.filter(d => r <= (d.expiresRound ?? r));
+        }
+
+        function dropPixieDust(unit, x, y) {
+            if (!unit || unit.dead || unit.race !== 'fairy') return;
+            if (!state.pixieDust) state.pixieDust = [];
+            _prunePixieDust();
+            if (state.pixieDust.some(d => d.x === x && d.y === y)) return;
+            if (state.units.some(u => !u.dead && u !== unit && u.x === x && u.y === y)) return;
+            const owned = state.pixieDust.filter(d => d.casterId === unit.id);
+            if (owned.length >= PIXIE_DUST_MAX_PER_FAIRY) {
+                state.pixieDust.splice(state.pixieDust.indexOf(owned[0]), 1);
+            }
+            state.pixieDust.push({
+                x, y,
+                owner: unit.player,
+                casterId: unit.id,
+                expiresRound: (state.round || 0) + PIXIE_DUST_LIFETIME_ROUNDS
+            });
+            markDirty('board');
+        }
+
+        function checkPixieDustPickup(unit) {
+            if (!state.pixieDust || !state.pixieDust.length || !unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            _prunePixieDust();
+            const idx = state.pixieDust.findIndex(d => d.x === unit.x && d.y === unit.y);
+            if (idx === -1) return false;
+            const mote = state.pixieDust[idx];
+            if (mote.casterId === unit.id) return false;   // the fairy doesn't eat her own dust
+            state.pixieDust.splice(idx, 1);
+            markDirty('board');
+            if (unit.player === mote.owner) {
+                const healed = Math.min(PIXIE_DUST_HEAL, Math.max(0, (unit.maxHp || 0) - (unit.hp || 0)));
+                unit.hp = Math.min(unit.maxHp, (unit.hp || 0) + PIXIE_DUST_HEAL);
+                unit.mp = Math.min(unit.maxMp || unit.mp + PIXIE_DUST_MANA, (unit.mp || 0) + PIXIE_DUST_MANA);
+                playSfx('healRegen');
+                showFloatingTextForUnit(unit, `✨ +${healed} HP +${PIXIE_DUST_MANA} MP`, 'heal', { durationMs: 1100 });
+                addLog(`✨ ${unitDisplayName(unit)} collects pixie dust! (+${healed} HP, +${PIXIE_DUST_MANA} MP)`);
+                if (typeof flashHeal === 'function') flashHeal(unit);
+            } else {
+                addLog(`${unitDisplayName(unit)} stamps out a patch of pixie dust.`);
+            }
+            return true;
+        }
+
         function checkWarpRuneTrigger(unit) {
             if (!state.warpRunes || !unit || unit.dead) return false;
 
@@ -21335,9 +21523,51 @@
            a grounded flyer sweeps INTO the air as part of the cast — the swoop is
            the spell, so no separate Take Off click (or AP) is required, and the
            drop damage is computed from the real airborne height. */
+        /* ── Grounding flyers (balance pass 2026-07-07) ──────────────────────
+           Two reliable ways to put a flyer on the dirt:
+           1. WOUNDED: below FLYING_ALTITUDE_CONFIG.woundedGroundPct (25%) of
+              max HP a flyer crashes out of the air the moment the damage
+              lands (applyDamageToUnit hook) and cannot ascend / swoop-takeoff
+              again until healed back above the threshold.
+           2. SPELLS: any spell flagged `groundsFlyers: true` (Anchor, Iron
+              Grip, Stasis Beam, Lasso, Earthen Grasp, Gravity Well) slams an
+              airborne target to the ground on hit. Pull/aoePull kinds already
+              grounded on their own; the flag covers plain debuffs too. */
+        function isFlightCrippled(unit) {
+            if (!unit || unit.dead) return false;
+            const pct = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.woundedGroundPct) || 0.25;
+            return (unit.hp || 0) < Math.ceil((unit.maxHp || 1) * pct);
+        }
+
+        function forceGroundUnit(unit, opts = {}) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (typeof canFly !== 'function' || !canFly(unit)) return false;
+            if (typeof isUnitAirborne !== 'function' || !isUnitAirborne(unit)) return false;
+            const groundZ = getHeightAt(unit.x, unit.y);
+            const landedZ = (typeof resolveDescentCollision === 'function')
+                ? resolveDescentCollision(unit, groundZ, { byLabel: opts.byLabel || '' })
+                : groundZ;
+            unit.z = (landedZ === null) ? groundZ : landedZ;
+            if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'out');
+            if (opts.reason === 'wounded') {
+                showFloatingTextForUnit(unit, '💥 CRASH!', 'debuff', { durationMs: 1100 });
+                addLog(`${unitDisplayName(unit)} is too wounded to stay airborne and crashes to the ground!`);
+            } else {
+                showFloatingTextForUnit(unit, '⬇ GROUNDED!', 'debuff', { durationMs: 1100 });
+                addLog(`${unitDisplayName(unit)} is forced out of the sky${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
+            }
+            playSfx('debuff');
+            scheduleBoardRender();
+            return true;
+        }
+
         function _skySwoopTakeoff(unit) {
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
+                addLog(`${unitDisplayName(unit)} is too wounded to fly! (below 25% HP)`);
+                return false;
+            }
             if (typeof getMinFlyingZ !== 'function') return false;
             const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y) : ((unit.z ?? 0) + 8);
             let newZ = Math.max(getMinFlyingZ(unit.x, unit.y), (unit.z ?? 0) + 1);
@@ -21394,6 +21624,7 @@
             unit._jumpedThisTurn = true;
 
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
+            if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
             addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
             playSfx('moveStep');
             checkStealthReveals(unit);
@@ -22261,6 +22492,9 @@
             if (mode === 'ascend') {
                 if (unitZ >= maxZ) {
                     return { ok: false, reason: 'Already at maximum altitude.' };
+                }
+                if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
+                    return { ok: false, reason: 'Too wounded to fly (below 25% HP). Heal up to take off again.' };
                 }
             } else if (mode === 'descend') {
 
@@ -23771,6 +24005,11 @@
                     }
                     applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
                     if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+
+                    // Anti-air debuffs (Anchor, Stasis Beam…) drag flyers down.
+                    if (spell.groundsFlyers && !target.dead && typeof forceGroundUnit === 'function') {
+                        forceGroundUnit(target, { byLabel: `by ${spell.name}` });
+                    }
 
                     /* ── Spellsteal: take one of the target's spells and add it to the caster's kit ── */
                     if (spell.stealSpell && !unit.dead) {
@@ -26308,6 +26547,12 @@
                     playErrorSfx();
                     return 0;
                 }
+                if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                    addLog('Too wounded to fly! (below 25% HP)');
+                    playErrorSfx();
+                    return 0;
+                }
                 pushUndoSnapshot(true);
                 if (spell.requiresFlight) _skySwoopTakeoff(unit);
                 playSfx(spellLaunchSfx(spell));
@@ -26507,6 +26752,12 @@
                 }
                 if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
                     addLog('Only flying units can use this ability.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                    addLog('Too wounded to fly! (below 25% HP)');
                     playErrorSfx();
                     return 0;
                 }
