@@ -136,178 +136,6 @@
                     2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent']
                 }
             },
-            prebuilt_skirmish: {
-                id: 'prebuilt_skirmish', label: 'Skirmish', desc: '8×8 prebuilt, 4v4',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:6,y:6},{x:7,y:6},{x:6,y:7},{x:7,y:7}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_entropy_vale: {
-                id: 'prebuilt_entropy_vale', label: 'Entropy Vale', desc: '16×16 natural landscape, 6v6',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:14,y:14},{x:15,y:14},{x:14,y:15},{x:15,y:15},{x:13,y:15},{x:15,y:13}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:0},{x:0,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'] }
-            },
-            prebuilt_entropy_monuments: {
-                id: 'prebuilt_entropy_monuments', label: 'Monument Proving Grounds', desc: '16×16 flat voxel testbed — real 3D landmarks (pyramid, ziggurat, greek ruin, arch, obelisk, colossus), 6v6',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:14,y:14},{x:15,y:14},{x:14,y:15},{x:15,y:15},{x:13,y:15},{x:15,y:13}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:2,y:0},{x:0,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Warrior','Black Mage'] }
-            },
-            prebuilt_compound: {
-                id: 'prebuilt_compound', label: 'Compound', desc: '12×12 prebuilt, 4v4',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:9,y:10},{x:10,y:10},{x:9,y:11},{x:10,y:11}], 2: [{x:1,y:0},{x:2,y:0},{x:1,y:1},{x:2,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_crossroads: {
-                id: 'prebuilt_crossroads', label: 'Crossroads', desc: '16×16 prebuilt, 4v4',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:7,y:14},{x:8,y:14},{x:7,y:15},{x:8,y:15}], 2: [{x:7,y:0},{x:8,y:0},{x:7,y:1},{x:8,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_citadel: {
-                id: 'prebuilt_citadel', label: 'Citadel', desc: '20×20 prebuilt, 4v4',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:16,y:17},{x:17,y:17},{x:16,y:18},{x:17,y:18}], 2: [{x:2,y:1},{x:3,y:1},{x:2,y:2},{x:3,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_apocalypse: {
-                id: 'prebuilt_apocalypse', label: 'Apocalypse', desc: '36×30 prebuilt, 10v10',
-                boardSize: 36, boardWidth: 36, boardHeight: 30, teamSize: 10,
-                winHourglasses: 5, hiddenItemSpawns: 20, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:2,y:11},{x:1,y:12},{x:2,y:12},{x:1,y:13},{x:2,y:13},{x:1,y:14},{x:2,y:14},{x:1,y:15},{x:2,y:15},{x:1,y:16}], 2: [{x:33,y:11},{x:34,y:12},{x:33,y:12},{x:34,y:13},{x:33,y:13},{x:34,y:14},{x:33,y:14},{x:34,y:15},{x:33,y:15},{x:34,y:16}] },
-                defaultBuilds: { 1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'], 2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'] }
-            },
-            prebuilt_battlefield: {
-                id: 'prebuilt_battlefield', label: 'Battlefield', desc: '12×12 prebuilt, 4v4 — city ruins with dramatic elevation',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:9,y:11},{x:10,y:11},{x:9,y:10},{x:10,y:10}], 2: [{x:1,y:0},{x:2,y:0},{x:1,y:1},{x:2,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_ravine: {
-                id: 'prebuilt_ravine', label: 'Ravine', desc: '10×10 prebuilt, 4v4 — deep canyon with bridges',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:7,y:8},{x:8,y:8},{x:7,y:9},{x:8,y:9}], 2: [{x:1,y:0},{x:2,y:0},{x:1,y:1},{x:2,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_highlands: {
-                id: 'prebuilt_highlands', label: 'Highlands', desc: '16×16 prebuilt, 4v4 — rolling hills with river',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:13,y:14},{x:14,y:14},{x:13,y:15},{x:14,y:15}], 2: [{x:1,y:0},{x:2,y:0},{x:1,y:1},{x:2,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_caldera: {
-                id: 'prebuilt_caldera', label: 'Caldera', desc: '20×20 prebuilt, 4v4 — volcanic crater arena',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:15,y:16},{x:16,y:16},{x:15,y:17},{x:16,y:17}], 2: [{x:3,y:2},{x:4,y:2},{x:3,y:3},{x:4,y:3}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_bastion: {
-                id: 'prebuilt_bastion', label: 'Bastion', desc: '12×12 prebuilt, 4v4 — castle siege with moat',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:10,y:10},{x:11,y:10},{x:10,y:11},{x:11,y:11}], 2: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_mountain: {
-                id: 'prebuilt_mountain', label: 'Mountain', desc: '12×12 prebuilt, 4v4 — volcanic peaks with lava and sanctuaries',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:1,y:1},{x:1,y:0},{x:0,y:0},{x:0,y:1}], 2: [{x:10,y:11},{x:10,y:10},{x:11,y:10},{x:11,y:11}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-
-            prebuilt_moon: {
-                id: 'prebuilt_moon', label: 'Moon', desc: '16×16 prebuilt, 4v4 — lunar surface: craters, rover & the flag',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:0},{x:1,y:0},{x:0,y:1},{x:1,y:1}], 2: [{x:15,y:15},{x:14,y:15},{x:15,y:14},{x:14,y:14}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_heaven: {
-                id: 'prebuilt_heaven', label: 'Heaven', desc: '20×20 prebuilt, 6v6 — golden gates, light pillars & cloud daises',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:9,y:18},{x:10,y:18},{x:8,y:18},{x:11,y:18},{x:9,y:17},{x:10,y:17}], 2: [{x:10,y:1},{x:9,y:1},{x:11,y:1},{x:8,y:1},{x:10,y:2},{x:9,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_backrooms: {
-                id: 'prebuilt_backrooms', label: 'Backrooms', desc: '16×16 prebuilt, 4v4 — yellow maze, damp carpet & humming lights',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:1,y:1},{x:2,y:1},{x:1,y:2},{x:2,y:2}], 2: [{x:14,y:14},{x:13,y:14},{x:14,y:13},{x:13,y:13}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_stonehenge: {
-                id: 'prebuilt_stonehenge', label: 'Stonehenge', desc: '16×16 prebuilt, 6v6 — grass henge: a ring of standing sarsens around a sacred altar',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:7,y:14},{x:8,y:14},{x:6,y:14},{x:9,y:14},{x:7,y:15},{x:8,y:15}], 2: [{x:8,y:1},{x:7,y:1},{x:9,y:1},{x:6,y:1},{x:8,y:0},{x:7,y:0}] },
-                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"] }
-            },
-            prebuilt_giza: {
-                id: 'prebuilt_giza', label: 'Pyramids of Giza', desc: '20×20 prebuilt, 6v6 — desert of the three great pyramids, the Sphinx & twin obelisks',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:1,y:18},{x:2,y:18},{x:1,y:17},{x:2,y:17},{x:0,y:18},{x:3,y:18}], 2: [{x:18,y:1},{x:17,y:1},{x:18,y:2},{x:17,y:2},{x:19,y:1},{x:16,y:1}] },
-                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"] }
-            },
-            prebuilt_atlantis: {
-                id: 'prebuilt_atlantis', label: 'Atlantis', desc: '24×24 prebuilt, 8v8 — half-sunken marble city: bridges, broken columns & a moated crystal spire',
-                boardSize: 24, boardWidth: 24, boardHeight: 24, teamSize: 8,
-                winHourglasses: 4, hiddenItemSpawns: 12, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:1,y:22},{x:2,y:22},{x:1,y:21},{x:2,y:21},{x:3,y:22},{x:1,y:20},{x:3,y:21},{x:4,y:22}], 2: [{x:22,y:1},{x:21,y:1},{x:22,y:2},{x:21,y:2},{x:20,y:1},{x:22,y:3},{x:20,y:2},{x:19,y:1}] },
-                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior","Gunslinger","Black Mage"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior","Gunslinger","Black Mage"] }
-            },
             prebuilt_custommap: {
                 id: 'prebuilt_custommap', label: 'Custom Map', desc: '20×20 prebuilt, 6v6 — elevated urban park: a paved plaza, scattered buildings, trees & a water-lined road',
                 boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 6,
@@ -317,330 +145,36 @@
                 spawns: { 1: [{x:7,y:19},{x:8,y:19},{x:9,y:19},{x:10,y:19},{x:11,y:19},{x:12,y:19}], 2: [{x:7,y:0},{x:8,y:0},{x:9,y:0},{x:10,y:0},{x:11,y:0},{x:12,y:0}] },
                 defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"] }
             },
-            prebuilt_crater: {
-                id: 'prebuilt_crater', label: 'Crater', desc: '16×16 prebuilt, 6v6 — lava crater with urban core',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":15},{"x":0,"y":14},{"x":1,"y":14},{"x":1,"y":15},{"x":1,"y":13},{"x":0,"y":13}], 2: [{"x":15,"y":0},{"x":15,"y":1},{"x":14,"y":1},{"x":14,"y":0},{"x":14,"y":2},{"x":15,"y":2}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_tundra: {
-                id: 'prebuilt_tundra', label: 'Tundra', desc: '8×8 prebuilt, 4v4 — frozen lake arena',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}], 2: [{"x":6,"y":7},{"x":7,"y":7},{"x":6,"y":6},{"x":7,"y":6}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_oasis: {
-                id: 'prebuilt_oasis', label: 'Oasis', desc: '10×10 prebuilt, 4v4 — desert springs',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}], 2: [{"x":8,"y":9},{"x":9,"y":9},{"x":8,"y":8},{"x":9,"y":8}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_quarry: {
-                id: 'prebuilt_quarry', label: 'Quarry', desc: '12×12 prebuilt, 4v4 — deep crystal mine',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}], 2: [{"x":10,"y":11},{"x":11,"y":11},{"x":10,"y":10},{"x":11,"y":10}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_fungal_hollow: {
-                id: 'prebuilt_fungal_hollow', label: 'Fungal Hollow', desc: '8×8 prebuilt, 4v4 — toxic mushroom cave',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}], 2: [{"x":6,"y":7},{"x":7,"y":7},{"x":6,"y":6},{"x":7,"y":6}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_fortress: {
-                id: 'prebuilt_fortress', label: 'Fortress', desc: '16×16 prebuilt, 6v6 — castle siege with moat and keep',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}], 2: [{"x":15,"y":15},{"x":14,"y":15},{"x":15,"y":14},{"x":14,"y":14},{"x":13,"y":15},{"x":15,"y":13}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_volcanic_rift: {
-                id: 'prebuilt_volcanic_rift', label: 'Volcanic Rift', desc: '12×12 prebuilt, 4v4 — lava river splits the battlefield',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":8},{"x":0,"y":9},{"x":1,"y":9},{"x":1,"y":10}], 2: [{"x":11,"y":1},{"x":11,"y":2},{"x":10,"y":2},{"x":10,"y":1}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_babel: {
-                id: 'prebuilt_babel', label: 'Ruins of Babel', desc: '20×20 prebuilt, 6v6 — massive ruined city',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}], 2: [{"x":19,"y":19},{"x":18,"y":19},{"x":19,"y":18},{"x":18,"y":18},{"x":17,"y":19},{"x":19,"y":17}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_archipelago: {
-                id: 'prebuilt_archipelago', label: 'Archipelago', desc: '16×16 prebuilt, 4v4 — island chains with bridges',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":1,"y":1},{"x":2,"y":1},{"x":1,"y":2},{"x":2,"y":2}], 2: [{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":12,"y":12}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_dark_forest: {
-                id: 'prebuilt_dark_forest', label: 'Dark Forest', desc: '10×10 prebuilt, 4v4 — dense woods with sacred clearing',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}], 2: [{"x":8,"y":9},{"x":9,"y":9},{"x":8,"y":8},{"x":9,"y":8}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_skybridge: {
-                id: 'prebuilt_skybridge', label: 'Skybridge', desc: '20×20 prebuilt, 8v8 — elevated platforms linked by bridges',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 8,
-                winHourglasses: 4, hiddenItemSpawns: 12, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2},{"x":2,"y":1},{"x":1,"y":2}], 2: [{"x":19,"y":19},{"x":18,"y":19},{"x":19,"y":18},{"x":18,"y":18},{"x":17,"y":19},{"x":19,"y":17},{"x":17,"y":18},{"x":18,"y":17}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior', 'Gunslinger', 'Black Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior', 'Gunslinger', 'Black Mage'] }
-            },
-            prebuilt_toxic_marsh: {
-                id: 'prebuilt_toxic_marsh', label: 'Toxic Marsh', desc: '12×12 prebuilt, 4v4 — poison swamp with island outposts',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":1,"y":1},{"x":2,"y":1},{"x":1,"y":2},{"x":2,"y":2}], 2: [{"x":9,"y":10},{"x":10,"y":10},{"x":9,"y":9},{"x":10,"y":9}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-
-            prebuilt_temple_ruins: {
-                id: 'prebuilt_temple_ruins', label: 'Temple Ruins', desc: '10×10 prebuilt, 4v4 — sacred temple with crystal paths',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":8,"y":8},{"x":9,"y":9},{"x":8,"y":9},{"x":9,"y":8}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_wasteland: {
-                id: 'prebuilt_wasteland', label: 'Wasteland', desc: '14×14 prebuilt, 6v6 — scorched ruins with lava fissures',
-                boardSize: 14, boardWidth: 14, boardHeight: 14, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":12,"y":12},{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":11,"y":13},{"x":13,"y":11}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":2,"y":0},{"x":0,"y":2}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_frozen_citadel: {
-                id: 'prebuilt_frozen_citadel', label: 'Frozen Citadel', desc: '12×12 prebuilt, 4v4 — ice fortress with deep water moat',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":10,"y":10},{"x":11,"y":11},{"x":10,"y":11},{"x":11,"y":10}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_mushroom_grove: {
-                id: 'prebuilt_mushroom_grove', label: 'Mushroom Grove', desc: '8×8 prebuilt, 3v3 — toxic mushroom arena',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 3,
-                winHourglasses: 2, hiddenItemSpawns: 3, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":6,"y":6},{"x":7,"y":7},{"x":6,"y":7}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage'] }
-            },
-            prebuilt_canyon: {
-                id: 'prebuilt_canyon', label: 'Canyon', desc: '18×10 prebuilt, 6v6 — desert canyon with river crossing',
-                boardSize: 18, boardWidth: 18, boardHeight: 10, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":16,"y":6},{"x":17,"y":7},{"x":16,"y":7},{"x":17,"y":6},{"x":16,"y":5},{"x":17,"y":5}], 2: [{"x":1,"y":3},{"x":0,"y":2},{"x":1,"y":2},{"x":0,"y":3},{"x":1,"y":4},{"x":0,"y":4}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_obsidian_spire: {
-                id: 'prebuilt_obsidian_spire', label: 'Obsidian Spire', desc: '10×10 prebuilt, 4v4 — dark spire rising from lava',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":8,"y":8},{"x":9,"y":9},{"x":8,"y":9},{"x":9,"y":8}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_village_siege: {
-                id: 'prebuilt_village_siege', label: 'Village Siege', desc: '16×12 prebuilt, 6v6 — half-burning village battleground',
-                boardSize: 16, boardWidth: 16, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":1,"y":0},{"x":2,"y":0},{"x":1,"y":1},{"x":2,"y":1},{"x":0,"y":0},{"x":0,"y":1}], 2: [{"x":14,"y":11},{"x":13,"y":11},{"x":14,"y":10},{"x":13,"y":10},{"x":15,"y":11},{"x":15,"y":10}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-            prebuilt_crystal_cavern: {
-                id: 'prebuilt_crystal_cavern', label: 'Crystal Cavern', desc: '12×8 prebuilt, 4v4 — underground crystal mine',
-                boardSize: 12, boardWidth: 12, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":1},{"x":1,"y":1},{"x":0,"y":2},{"x":1,"y":2}], 2: [{"x":11,"y":6},{"x":10,"y":6},{"x":11,"y":5},{"x":10,"y":5}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] }
-            },
-            prebuilt_divided_city: {
-                id: 'prebuilt_divided_city', label: 'Divided City', desc: '20×14 prebuilt, 8v8 — river-split urban warfare',
-                boardSize: 20, boardWidth: 20, boardHeight: 14, teamSize: 8,
-                winHourglasses: 4, hiddenItemSpawns: 12, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":0,"y":0},{"x":1,"y":0},{"x":2,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":1},{"x":0,"y":2},{"x":1,"y":2}], 2: [{"x":19,"y":13},{"x":18,"y":13},{"x":17,"y":13},{"x":19,"y":12},{"x":18,"y":12},{"x":17,"y":12},{"x":19,"y":11},{"x":18,"y":11}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior', 'Gunslinger', 'Black Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior', 'Gunslinger', 'Black Mage'] }
-            },
-            prebuilt_caldera_summit: {
-                id: 'prebuilt_caldera_summit', label: 'Caldera Summit', desc: '14×14 prebuilt, 6v6 — volcanic peak with crystal summit',
-                boardSize: 14, boardWidth: 14, boardHeight: 14, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{"x":12,"y":12},{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":12,"y":11},{"x":13,"y":11}], 2: [{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":2},{"x":0,"y":2}] },
-                defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior'] }
-            },
-
-            prebuilt_apartment: {
-                id: 'prebuilt_apartment', label: 'Apartment', desc: '4×4 prebuilt, 2v2 — cold open tutorial',
-                boardSize: 4, boardWidth: 4, boardHeight: 4, teamSize: 2,
-                winHourglasses: 1, hiddenItemSpawns: 1, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:2},{x:0,y:3}], 2: [{x:3,y:0},{x:3,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Black Mage'], 2: ['Warrior','Black Mage'] }
-            },
-            prebuilt_suburb: {
-                id: 'prebuilt_suburb', label: 'Suburb', desc: '8×8 prebuilt, 4v4 — suburban apocalypse',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:6},{x:1,y:6},{x:0,y:7},{x:1,y:7}], 2: [{x:6,y:0},{x:7,y:0},{x:6,y:1},{x:7,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_rift_plaza: {
-                id: 'prebuilt_rift_plaza', label: 'Rift Plaza', desc: '12×12 prebuilt, 6v6 — urban rift zone',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:9},{x:1,y:9},{x:0,y:10},{x:1,y:10},{x:0,y:11},{x:1,y:11}], 2: [{x:10,y:0},{x:11,y:0},{x:10,y:1},{x:11,y:1},{x:10,y:2},{x:11,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Gunslinger'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_bunker: {
-                id: 'prebuilt_bunker', label: 'Bunker', desc: '8×8 prebuilt, 4v4 — underground facility',
-                boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 3, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:6},{x:1,y:6},{x:0,y:7},{x:1,y:7}], 2: [{x:6,y:0},{x:7,y:0},{x:6,y:1},{x:7,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_cavern: {
-                id: 'prebuilt_cavern', label: 'Cavern', desc: '12×12 prebuilt, 6v6 — crystal cave',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:1,y:9},{x:2,y:9},{x:1,y:10},{x:2,y:10},{x:1,y:11},{x:2,y:11}], 2: [{x:9,y:0},{x:10,y:0},{x:9,y:1},{x:10,y:1},{x:9,y:2},{x:10,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Gunslinger'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_workshop: {
-                id: 'prebuilt_workshop', label: 'Workshop', desc: '12×12 prebuilt, 6v6 — fractal architecture',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:9},{x:1,y:9},{x:0,y:10},{x:1,y:10},{x:0,y:11},{x:1,y:11}], 2: [{x:10,y:0},{x:11,y:0},{x:10,y:1},{x:11,y:1},{x:10,y:2},{x:11,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Gunslinger'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_killbox: {
-                id: 'prebuilt_killbox', label: 'Kill Box', desc: '12×12 prebuilt, 6v6 — ambush zone',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:4,y:4},{x:5,y:4},{x:6,y:4},{x:4,y:5},{x:5,y:5},{x:6,y:5}], 2: [{x:0,y:0},{x:11,y:0},{x:0,y:11},{x:11,y:11},{x:0,y:5},{x:11,y:5}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Gunslinger'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_dreamscape: {
-                id: 'prebuilt_dreamscape', label: 'Dreamscape', desc: '12×12 prebuilt, 6v6 — the Bleed',
-                boardSize: 12, boardWidth: 12, boardHeight: 12, teamSize: 6,
-                winHourglasses: 3, hiddenItemSpawns: 6, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:9},{x:1,y:9},{x:0,y:10},{x:1,y:10},{x:0,y:11},{x:1,y:11}], 2: [{x:10,y:0},{x:11,y:0},{x:10,y:1},{x:11,y:1},{x:10,y:2},{x:11,y:2}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Gunslinger'], 2: ['Warrior','Gunslinger','Black Mage','White Mage','Agent','Warrior'] }
-            },
-            prebuilt_bleed_arena: {
-                id: 'prebuilt_bleed_arena', label: 'Bleed Arena', desc: '10×10 prebuilt, 4v4 — Epoch arena',
-                boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
-                winHourglasses: 2, hiddenItemSpawns: 4, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:4},{x:0,y:5},{x:1,y:4},{x:1,y:5}], 2: [{x:8,y:4},{x:8,y:5},{x:9,y:4},{x:9,y:5}] },
-                defaultBuilds: { 1: ['Warrior','Gunslinger','Black Mage','White Mage'], 2: ['Warrior','Gunslinger','Black Mage','White Mage'] }
-            },
-            prebuilt_lattice: {
-                id: 'prebuilt_lattice', label: 'Lattice Temple', desc: '16×16 prebuilt, 8v8 — ancient Lattice node',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 8,
-                winHourglasses: 3, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:13},{x:1,y:13},{x:0,y:14},{x:1,y:14},{x:0,y:15},{x:1,y:15},{x:2,y:14},{x:2,y:15}], 2: [{x:14,y:0},{x:15,y:0},{x:14,y:1},{x:15,y:1},{x:14,y:2},{x:15,y:2},{x:13,y:0},{x:13,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'], 2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'] }
-            },
-            prebuilt_palimpsest: {
-                id: 'prebuilt_palimpsest', label: 'Palimpsest', desc: '16×16 prebuilt, 8v8 — fractured city',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 8,
-                winHourglasses: 3, hiddenItemSpawns: 10, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:13},{x:1,y:13},{x:0,y:14},{x:1,y:14},{x:0,y:15},{x:1,y:15},{x:2,y:14},{x:2,y:15}], 2: [{x:14,y:0},{x:15,y:0},{x:14,y:1},{x:15,y:1},{x:14,y:2},{x:15,y:2},{x:13,y:0},{x:13,y:1}] },
-                defaultBuilds: { 1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'], 2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'] }
-            },
-            prebuilt_pyramid: {
-                id: 'prebuilt_pyramid', label: 'Pyramid Fortress', desc: '16×16 prebuilt, 8v8 — siege assault',
-                boardSize: 16, boardWidth: 16, boardHeight: 16, teamSize: 8,
-                winHourglasses: 3, hiddenItemSpawns: 8, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: { 1: [{x:0,y:6},{x:0,y:7},{x:0,y:8},{x:0,y:9},{x:1,y:6},{x:1,y:7},{x:1,y:8},{x:1,y:9}], 2: [{x:6,y:6},{x:7,y:6},{x:8,y:6},{x:9,y:6},{x:6,y:9},{x:7,y:9},{x:8,y:9},{x:9,y:9}] },
-                defaultBuilds: { 1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'], 2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','White Mage','Agent','Agent'] }
-            },
-            prebuilt_nexus_core: {
-                id: 'prebuilt_nexus_core', label: 'Nexus Core', desc: '20×20 prebuilt, 10v10 — the Nexus',
-                boardSize: 20, boardWidth: 20, boardHeight: 20, teamSize: 10,
-                winHourglasses: 4, hiddenItemSpawns: 14, blitzMode: true,
-                hasTowers: false, isPrebuilt: true,
-                terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
-                spawns: {
-                    1: [{x:0,y:8},{x:0,y:9},{x:0,y:10},{x:0,y:11},{x:1,y:8},{x:1,y:9},{x:1,y:10},{x:1,y:11},{x:2,y:9},{x:2,y:10}],
-                    2: [{x:19,y:8},{x:19,y:9},{x:19,y:10},{x:19,y:11},{x:18,y:8},{x:18,y:9},{x:18,y:10},{x:18,y:11},{x:17,y:9},{x:17,y:10}]
-                },
-                defaultBuilds: {
-                    1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'],
-                    2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent']
-                }
-            }
         };
+
+        /* ── 2026-07 map overhaul ─────────────────────────────────────────────
+           Every launch map's GAME_MODES entry is GENERATED from the MapForge
+           roster (data.js: EW_MAP_META + PREBUILT_MAPS) so sizes and spawns
+           can never drift from the authored geometry. Custom Map keeps its
+           hand-written entry above. */
+        (function _generatePrebuiltGameModes() {
+            if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return;
+            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent'];
+            EW_MAP_META.forEach(meta => {
+                const pb = PREBUILT_MAPS[meta.id];
+                if (!pb || !pb.spawns) return;
+                const builds = [];
+                for (let i = 0; i < meta.teamSize; i++) builds.push(JOBS[i % JOBS.length]);
+                const area = meta.w * meta.h;
+                GAME_MODES[meta.id] = {
+                    id: meta.id, label: meta.label, desc: meta.desc,
+                    boardSize: Math.max(meta.w, meta.h), boardWidth: meta.w, boardHeight: meta.h,
+                    teamSize: meta.teamSize,
+                    winHourglasses: meta.teamSize >= 8 ? 4 : (area <= 144 ? 2 : 3),
+                    hiddenItemSpawns: area >= 529 ? 12 : (area >= 256 ? 8 : (area >= 144 ? 6 : 4)),
+                    blitzMode: true, hasTowers: false, isPrebuilt: true,
+                    isDelta: !!meta.isDelta, tier: meta.tier || 3, biomes: (meta.biomes || []).slice(),
+                    terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                    spawns: { 1: pb.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: pb.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+                    defaultBuilds: { 1: builds.slice(), 2: builds.slice() },
+                };
+            });
+        })();
 
         const MULTIPLAYER_MODES = {
             arena: {
@@ -659,7 +193,7 @@
                 tiebreaker: null,
                 scoringType: null,
                 suddenDeath: true,
-                compatibleMaps: ['medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             tdm: {
                 id: 'tdm',
@@ -677,7 +211,7 @@
                 tiebreaker: 'sudden_death_kill',
                 scoringType: 'kills',
                 suddenDeath: true,
-                compatibleMaps: ['normal', 'medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             ffa: {
                 id: 'ffa',
@@ -697,7 +231,7 @@
                 suddenDeath: true,
                 isFFA: true,
                 maxPlayers: 10,
-                compatibleMaps: ['normal', 'medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             domination: {
                 id: 'domination',
@@ -716,7 +250,7 @@
                 scoringType: 'domination',
                 suddenDeath: true,
                 pointsPerNexusPerRound: 10,
-                compatibleMaps: ['large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             hotspot: {
                 id: 'hotspot',
@@ -736,7 +270,7 @@
                 scoringType: 'hotspot',
                 suddenDeath: true,
                 pointsPerCapture: 50,
-                compatibleMaps: ['medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             ctf: {
                 id: 'ctf',
@@ -754,7 +288,7 @@
                 tiebreaker: 'sudden_death_flag',
                 scoringType: 'ctf',
                 suddenDeath: true,
-                compatibleMaps: ['large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
             gauntlet: {
                 id: 'gauntlet',
@@ -775,9 +309,23 @@
                 tiebreaker: null,
                 scoringType: 'kills',
                 suddenDeath: false,
-                compatibleMaps: ['medium', 'large', 'xlarge', 'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel', 'prebuilt_apocalypse', 'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera', 'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza', 'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox', 'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest', 'prebuilt_pyramid', 'prebuilt_nexus_core', 'prebuilt_mountain', 'prebuilt_crater', 'prebuilt_tundra', 'prebuilt_oasis', 'prebuilt_quarry', 'prebuilt_fungal_hollow', 'prebuilt_fortress', 'prebuilt_volcanic_rift', 'prebuilt_babel', 'prebuilt_archipelago', 'prebuilt_dark_forest', 'prebuilt_skybridge', 'prebuilt_toxic_marsh', 'prebuilt_temple_ruins', 'prebuilt_wasteland', 'prebuilt_frozen_citadel', 'prebuilt_mushroom_grove', 'prebuilt_canyon', 'prebuilt_obsidian_spire', 'prebuilt_village_siege', 'prebuilt_crystal_cavern', 'prebuilt_divided_city', 'prebuilt_caldera_summit', 'prebuilt_entropy_vale', 'prebuilt_entropy_monuments', 'prebuilt_moon', 'prebuilt_heaven', 'prebuilt_backrooms', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_atlantis', 'prebuilt_custommap'],
+                compatibleMaps: [],   // generated below from the MapForge roster
             },
         };
+
+        /* compatibleMaps are generated from the MapForge roster: every launch
+           map and its Δ variant is playable in every mode (Δ = the 10×10
+           mirror-balanced ranked cut). Gauntlet fields 8-unit rosters, so it
+           keeps the roomier full boards only. */
+        (function _generateCompatibleMaps() {
+            if (typeof EW_MAP_META === 'undefined') return;
+            const fulls = EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
+            const deltas = EW_MAP_META.filter(m => m.isDelta).map(m => m.id);
+            const all = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap'], deltas);
+            Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
+            MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
+            MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+        })();
 
         let activeMultiplayerMode = 'arena';
 
@@ -1295,11 +843,17 @@
                other mode clears them so a custom map's colours never leak onto a
                normal match. (three-renderer reads state.terrainTints in _evTintMat.) */
             state.terrainTints = (modeId === '_custom_editor' && window._customEditorTints)
-                ? Object.assign({}, window._customEditorTints) : null;
+                ? Object.assign({}, window._customEditorTints)
+                : ((typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS[modeId] && PREBUILT_MAPS[modeId].terrainTints)
+                    ? Object.assign({}, PREBUILT_MAPS[modeId].terrainTints) : null);
             /* Opt this map into cosmetic 3D street lamps beside its built
                environment (three-renderer reads state.streetLamps). Natural
                terrain (Entropy Vale) already gets lamps via its own gate. */
             state.streetLamps = !!layout.streetLamps;
+            /* Per-map environment preset: sky tint / stars / fog / horizon
+               scenery theme. three-renderer reads state.mapEnv every frame
+               (see _updateEnvironment) — null means the default cosmic dome. */
+            state.mapEnv = layout.env ? JSON.parse(JSON.stringify(layout.env)) : null;
 
             if (!layout.isElliptical) state.zoneMap = null;
 

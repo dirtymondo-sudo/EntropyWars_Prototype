@@ -982,12 +982,11 @@
         }
 
         const _TRAIN_MAP_POOL = [
-            'prebuilt_skirmish', 'prebuilt_compound', 'prebuilt_crossroads', 'prebuilt_citadel',
-            'prebuilt_battlefield', 'prebuilt_ravine', 'prebuilt_highlands', 'prebuilt_caldera',
-            'prebuilt_bastion', 'prebuilt_apartment', 'prebuilt_suburb', 'prebuilt_rift_plaza',
-            'prebuilt_bunker', 'prebuilt_cavern', 'prebuilt_workshop', 'prebuilt_killbox',
-            'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice', 'prebuilt_palimpsest',
-            'prebuilt_pyramid', 'prebuilt_nexus_core',
+            'prebuilt_shasta_delta', 'prebuilt_stonehenge_delta', 'prebuilt_giza_delta', 'prebuilt_nuketown_delta',
+            'prebuilt_heaven_delta', 'prebuilt_hell_delta', 'prebuilt_cyberpunk_delta', 'prebuilt_camelot_delta',
+            'prebuilt_stadium_delta', 'prebuilt_moon_delta', 'prebuilt_mars_delta', 'prebuilt_backrooms_delta',
+            'prebuilt_stonehenge', 'prebuilt_nuketown', 'prebuilt_moon', 'prebuilt_gobekli',
+            'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_flatlands',
         ];
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
@@ -1034,67 +1033,26 @@
             { id: 'gauntlet', icon: '⚔️', label: 'Gauntlet', desc: 'Pokémon-style. Roster of 8, deploy 4 at a time. No respawns, no round limit. Switch a reserve in for 2 AP. Wipe out the enemy team to win.', tag: 'NEW', locked: false },
         ];
 
-        const MS_MAP_LIST = [
-            { modeId: 'normal', name: 'Skirmish', size: '4×4', team: 2, floors: false, w: 4, h: 4 },
-            { modeId: 'prebuilt_apartment', name: 'Apartment', size: '4×4', team: 2, floors: false, w: 4, h: 4, isPrebuilt: true },
-            { modeId: 'prebuilt_skirmish', name: 'Outpost', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_entropy_vale', name: 'Entropy Vale', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_entropy_monuments', name: 'Monument Proving Grounds', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_suburb', name: 'Suburb', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_bunker', name: 'Bunker', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_ravine', name: 'Ravine', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_bleed_arena', name: 'Bleed Arena', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_compound', name: 'Compound', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_battlefield', name: 'Battlefield', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_bastion', name: 'Bastion', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_rift_plaza', name: 'Rift Plaza', size: '12×12', team: 6, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_cavern', name: 'Cavern', size: '12×12', team: 6, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_workshop', name: 'Workshop', size: '12×12', team: 6, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_killbox', name: 'Kill Box', size: '12×12', team: 6, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_dreamscape', name: 'Dreamscape', size: '12×12', team: 6, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_crossroads', name: 'Crossroads', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_highlands', name: 'Highlands', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_lattice', name: 'Lattice Temple', size: '16×16', team: 8, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_palimpsest', name: 'Palimpsest', size: '16×16', team: 8, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_pyramid', name: 'Pyramid Fortress', size: '16×16', team: 8, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_citadel', name: 'Citadel', size: '20×20', team: 4, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_caldera', name: 'Caldera', size: '20×20', team: 4, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_nexus_core', name: 'Nexus Core', size: '20×20', team: 10, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_apocalypse', name: 'Apocalypse', size: '36×30', team: 10, floors: false, w: 36, h: 30, isPrebuilt: true },
-            { modeId: 'prebuilt_mountain', name: 'Mountain', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_crater', name: 'Crater', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_tundra', name: 'Tundra', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_fungal_hollow', name: 'Fungal Hollow', size: '8×8', team: 4, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_oasis', name: 'Oasis', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_dark_forest', name: 'Dark Forest', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_quarry', name: 'Quarry', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_volcanic_rift', name: 'Volcanic Rift', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_toxic_marsh', name: 'Toxic Marsh', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_fortress', name: 'Fortress', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_archipelago', name: 'Archipelago', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_babel', name: 'Ruins of Babel', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_skybridge', name: 'Skybridge', size: '20×20', team: 8, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_mushroom_grove', name: 'Mushroom Grove', size: '8×8', team: 3, floors: false, w: 8, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_temple_ruins', name: 'Temple Ruins', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_obsidian_spire', name: 'Obsidian Spire', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_frozen_citadel', name: 'Frozen Citadel', size: '12×12', team: 4, floors: false, w: 12, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_crystal_cavern', name: 'Crystal Cavern', size: '12×8', team: 4, floors: false, w: 12, h: 8, isPrebuilt: true },
-            { modeId: 'prebuilt_wasteland', name: 'Wasteland', size: '14×14', team: 6, floors: false, w: 14, h: 14, isPrebuilt: true },
-            { modeId: 'prebuilt_caldera_summit', name: 'Caldera Summit', size: '14×14', team: 6, floors: false, w: 14, h: 14, isPrebuilt: true },
-            { modeId: 'prebuilt_village_siege', name: 'Village Siege', size: '16×12', team: 6, floors: false, w: 16, h: 12, isPrebuilt: true },
-            { modeId: 'prebuilt_canyon', name: 'Canyon', size: '18×10', team: 6, floors: false, w: 18, h: 10, isPrebuilt: true },
-            { modeId: 'prebuilt_divided_city', name: 'Divided City', size: '20×14', team: 8, floors: false, w: 20, h: 14, isPrebuilt: true },
-            { modeId: 'prebuilt_stonehenge', name: 'Stonehenge', size: '16×16', team: 6, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_giza', name: 'Pyramids of Giza', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_atlantis', name: 'Atlantis', size: '24×24', team: 8, floors: false, w: 24, h: 24, isPrebuilt: true },
-            { modeId: 'prebuilt_moon', name: 'Moon', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_heaven', name: 'Heaven', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
-            { modeId: 'prebuilt_backrooms', name: 'Backrooms', size: '16×16', team: 4, floors: false, w: 16, h: 16, isPrebuilt: true },
-            { modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true },
-        ];
+        /* ── 2026-07 map overhaul ────────────────────────────────────────────
+           The picker list is GENERATED from the MapForge roster (data.js
+           EW_MAP_META): full launch maps first (tier order), then Custom Map,
+           then the 10×10 Δ ranked variants. Thumbnails render live from
+           PREBUILT_MAPS.grid as before. */
+        const MS_MAP_LIST = (() => {
+            const list = [];
+            const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+            meta.filter(m => !m.isDelta).forEach(m => {
+                list.push({ modeId: m.id, name: m.label, size: m.w + '×' + m.h, team: m.teamSize, floors: false, w: m.w, h: m.h, isPrebuilt: true, tier: m.tier, biomes: m.biomes });
+            });
+            list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
+            meta.filter(m => m.isDelta).forEach(m => {
+                list.push({ modeId: m.id, name: m.label, size: '10×10 Δ', team: m.teamSize, floors: false, w: 10, h: 10, isPrebuilt: true, isDelta: true, tier: m.tier, biomes: m.biomes });
+            });
+            return list;
+        })();
 
         let _msSelectedGM = 0;
-        let _msSelectedMap = 7;
+        let _msSelectedMap = 0;   // default card: Mount Shasta (first roster map)
         let _msSelectedTeamSize = 0;
         let _msRanked = false;
         let _msOnline = false;

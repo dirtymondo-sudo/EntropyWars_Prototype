@@ -8242,40 +8242,6 @@ const MAP_LAYOUT_PRESETS = {
         barrierRows: [], barrierOpeningsX: [], hasFloors: false
     },
 
-    // Natural-landscape map: smooth rolling heightfield terrain (see three-renderer
-    // BEVEL/natural path). naturalTerrain flag opts this map into the beveled,
-    // sloped-ground rendering; all other maps keep the classic flat-cube voxels.
-    prebuilt_entropy_vale: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, naturalTerrain: true
-    },
-
-    prebuilt_moon: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'moon' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_heaven: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'cloud_thick' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_backrooms: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'carpet' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_stonehenge: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_giza: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_atlantis: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 23, label: 'Earth', baseTerrain: 'water' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
     normal: {
         sections: {
             above:   null,
@@ -8341,201 +8307,6 @@ const MAP_LAYOUT_PRESETS = {
         hasFloors: true,
         isElliptical: true
     },
-
-    prebuilt_skirmish: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_compound: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-
-    prebuilt_crossroads: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-
-    prebuilt_citadel: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_apocalypse: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 29, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_battlefield: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_ravine: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_highlands: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_caldera: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_bastion: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_mountain: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'mountain' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_crater: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'lava' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_tundra: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'ice' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_oasis: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_quarry: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'dirt' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_fungal_hollow: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_fortress: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_volcanic_rift: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'scorched' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_babel: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_archipelago: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'water' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_dark_forest: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'dark_woods' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_skybridge: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_toxic_marsh: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'poison' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_temple_ruins: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_wasteland: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 13, label: 'Earth', baseTerrain: 'scorched' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_frozen_citadel: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'ice' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_mushroom_grove: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'purple_grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_canyon: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_obsidian_spire: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'lava' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_village_siege: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_crystal_cavern: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_divided_city: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 13, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_caldera_summit: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 13, label: 'Earth', baseTerrain: 'dirt' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-
-    prebuilt_apartment: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 3, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_suburb: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_rift_plaza: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_bunker: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_cavern: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_workshop: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'rocks_1' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_killbox: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'cave_floor' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_dreamscape: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 11, label: 'Earth', baseTerrain: 'purple_grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_bleed_arena: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: 'purple_grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_lattice: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_palimpsest: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'urban_street' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false, streetLamps: true
-    },
-    prebuilt_pyramid: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 15, label: 'Earth', baseTerrain: 'desert' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    },
-    prebuilt_nexus_core: {
-        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'purple_grass' }, buffer2: null, below: null },
-        barrierRows: [], barrierOpeningsX: [], hasFloors: false
-    }
 };
 
 let MAP_SECTIONS = {
@@ -8643,3337 +8414,1614 @@ const PREBUILT_MAPS = {
         ],
         spawns: {"1":[{"x":7,"y":19},{"x":8,"y":19},{"x":9,"y":19},{"x":10,"y":19},{"x":11,"y":19},{"x":12,"y":19}],"2":[{"x":7,"y":0},{"x":8,"y":0},{"x":9,"y":0},{"x":10,"y":0},{"x":11,"y":0},{"x":12,"y":0}]}
     },
-    prebuilt_moon: {
-        name: 'Moon', w: 16, h: 16,
-        grid: [
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,15,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,15,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,15,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,15,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75],
-            [75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75]
-        ],
-        heightMap: [
-            [2,2,2,2,2,2,3,3,3,2,2,2,2,2,2,2],
-            [2,2,2,2,2,2,3,3,3,2,2,2,2,2,2,2],
-            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
-            [2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2],
-            [2,2,2,1,1,1,2,2,2,2,1,1,1,2,2,2],
-            [2,2,2,2,1,2,2,3,3,2,2,1,2,2,2,2],
-            [2,2,2,2,2,2,3,3,3,3,2,2,2,2,3,3],
-            [3,3,2,2,2,3,3,3,3,3,3,2,2,2,3,3],
-            [3,3,2,2,2,3,3,3,3,3,3,2,2,2,3,3],
-            [3,3,2,2,2,2,3,3,3,3,2,2,2,2,2,2],
-            [2,2,2,2,1,2,2,3,3,2,2,1,2,2,2,2],
-            [2,2,2,1,1,1,2,2,2,2,1,1,1,2,2,2],
-            [2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2],
-            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
-            [2,2,2,2,2,2,2,3,3,3,2,2,2,2,2,2],
-            [2,2,2,2,2,2,2,3,3,3,2,2,2,2,2,2]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[]],
-            [[],[],[],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[],[],[],[{"oid":51,"leaf":"rocks_1"}],[{"oid":51,"leaf":"rocks_2"}]],
-            [[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[{"oid":51,"leaf":"rocks_3"}]],
-            [[{"oid":51,"leaf":"rocks_4"}],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}]],
-            [[{"oid":51,"leaf":"rocks_5"}],[{"oid":51,"leaf":"rocks_1"}],[],[],[],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[],[],[]],
-            [[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_2"}],[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{"oid":51,"leaf":"rocks_3"}],[{"oid":51,"leaf":"rocks_4"}],[{"oid":51,"leaf":"rocks_5"}],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"monolith","x":8,"y":8,"foot":2,"maxH":7,"seed":42},{"kind":"flag","x":6,"y":9,"foot":1.6,"maxH":3.6,"seed":7},{"kind":"rover","x":9,"y":6,"foot":2.2,"maxH":1.7,"seed":3},{"kind":"crystal","x":2,"y":12,"foot":2,"maxH":4,"seed":11},{"kind":"crystal","x":12,"y":2,"foot":2,"maxH":4,"seed":19},{"kind":"obelisk","x":13,"y":13,"foot":1.6,"maxH":5,"seed":5},{"kind":"obelisk","x":2,"y":2,"foot":1.6,"maxH":5,"seed":6}],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":15,"y":15},{"x":14,"y":15},{"x":15,"y":14},{"x":14,"y":14}]}
-    },
-    prebuilt_heaven: {
-        name: 'Heaven', w: 20, h: 20,
-        grid: [
-            [26,26,26,26,26,26,23,23,23,77,77,23,23,23,26,26,26,26,26,26],
-            [26,26,26,26,23,23,23,23,23,77,77,23,23,23,23,23,26,26,26,26],
-            [26,26,26,26,23,23,23,23,23,77,77,23,23,23,23,23,26,26,26,26],
-            [26,26,26,26,26,54,54,54,23,77,77,23,54,54,54,26,26,26,26,26],
-            [26,23,23,26,54,54,54,54,23,77,77,23,54,54,54,54,26,23,23,26],
-            [26,23,23,54,54,54,54,54,23,77,77,23,54,54,54,54,54,23,23,26],
-            [23,23,23,54,54,54,54,54,77,77,77,77,54,54,54,54,54,23,23,23],
-            [23,23,23,54,54,54,54,54,81,81,81,81,54,54,54,54,54,23,23,23],
-            [23,23,23,23,23,23,77,81,77,77,77,77,81,77,23,23,23,23,23,23],
-            [77,77,77,77,77,77,77,81,77,77,77,77,81,77,77,77,77,77,77,77],
-            [77,77,77,77,77,77,77,81,77,77,77,77,81,77,77,77,77,77,77,77],
-            [23,23,23,23,23,23,77,81,77,77,77,77,81,77,23,23,23,23,23,23],
-            [23,23,23,54,54,54,54,54,81,81,81,81,54,54,54,54,54,23,23,23],
-            [23,23,23,54,54,54,54,54,77,77,77,77,54,54,54,54,54,23,23,23],
-            [26,23,23,54,54,54,54,54,23,77,77,23,54,54,54,54,54,23,23,26],
-            [26,23,23,26,54,54,54,54,23,77,77,23,54,54,54,54,26,23,23,26],
-            [26,26,26,26,26,54,54,54,23,77,77,23,54,54,54,26,26,26,26,26],
-            [26,26,26,26,23,23,23,23,23,77,77,23,23,23,23,23,26,26,26,26],
-            [26,26,26,26,23,23,23,23,23,77,77,23,23,23,23,23,26,26,26,26],
-            [26,26,26,26,26,26,23,23,23,77,77,23,23,23,26,26,26,26,26,26]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0,0,0],
-            [0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0],
-            [0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0],
-            [0,0,0,0,0,5,5,5,4,4,4,4,5,5,5,0,0,0,0,0],
-            [0,4,4,0,5,5,5,5,4,4,4,4,5,5,5,5,0,4,4,0],
-            [0,4,4,5,5,5,5,5,4,4,4,4,5,5,5,5,5,4,4,0],
-            [4,4,4,5,5,5,5,5,4,4,4,4,5,5,5,5,5,4,4,4],
-            [4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,4,4],
-            [4,4,4,4,4,4,4,5,6,6,6,6,5,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,5,6,6,6,6,5,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,5,6,6,6,6,5,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,5,6,6,6,6,5,4,4,4,4,4,4,4],
-            [4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,4,4],
-            [4,4,4,5,5,5,5,5,4,4,4,4,5,5,5,5,5,4,4,4],
-            [0,4,4,5,5,5,5,5,4,4,4,4,5,5,5,5,5,4,4,0],
-            [0,4,4,0,5,5,5,5,4,4,4,4,5,5,5,5,0,4,4,0],
-            [0,0,0,0,0,5,5,5,4,4,4,4,5,5,5,0,0,0,0,0],
-            [0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0],
-            [0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0],
-            [0,0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0,0,0]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"lightpillar","x":9,"y":9,"foot":2.2,"maxH":20,"seed":99},{"kind":"goldgate","x":9,"y":5,"foot":5,"maxH":8,"seed":21},{"kind":"goldgate","x":10,"y":14,"foot":5,"maxH":8,"seed":22},{"kind":"greek","x":5,"y":5,"foot":5,"maxH":6,"seed":31},{"kind":"greek","x":14,"y":5,"foot":5,"maxH":6,"seed":32},{"kind":"greek","x":5,"y":14,"foot":5,"maxH":6,"seed":33},{"kind":"greek","x":14,"y":14,"foot":5,"maxH":6,"seed":34},{"kind":"lightpillar","x":5,"y":5,"foot":1.4,"maxH":16,"seed":41},{"kind":"lightpillar","x":14,"y":5,"foot":1.4,"maxH":16,"seed":42},{"kind":"lightpillar","x":5,"y":14,"foot":1.4,"maxH":16,"seed":43},{"kind":"lightpillar","x":14,"y":14,"foot":1.4,"maxH":16,"seed":44},{"kind":"obelisk","x":2,"y":9,"foot":1.6,"maxH":7,"seed":51},{"kind":"obelisk","x":17,"y":10,"foot":1.6,"maxH":7,"seed":52}],
-        spawns: {"1":[{"x":9,"y":18},{"x":10,"y":18},{"x":8,"y":18},{"x":11,"y":18},{"x":9,"y":17},{"x":10,"y":17}],"2":[{"x":10,"y":1},{"x":9,"y":1},{"x":11,"y":1},{"x":8,"y":1},{"x":10,"y":2},{"x":9,"y":2}]}
-    },
-    prebuilt_backrooms: {
-        name: 'Backrooms', w: 16, h: 16,
-        grid: [
-            [80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80],
-            [80,76,76,76,76,80,76,76,76,76,80,76,76,76,76,80],
-            [80,76,76,76,76,78,76,76,76,76,78,76,76,76,76,80],
-            [80,76,76,76,76,78,76,76,76,76,78,76,76,76,76,80],
-            [80,76,76,76,76,80,76,76,76,76,80,76,76,76,76,80],
-            [80,80,78,78,80,80,80,78,78,80,80,80,78,78,80,80],
-            [80,2,2,2,2,80,76,76,76,76,80,2,2,2,2,80],
-            [80,2,2,2,2,78,76,76,76,76,78,2,2,2,2,80],
-            [80,2,2,2,2,78,76,76,76,76,78,2,2,2,2,80],
-            [80,2,2,2,2,80,76,76,76,76,80,2,2,2,2,80],
-            [80,80,78,78,80,80,80,78,78,80,80,80,78,78,80,80],
-            [80,76,76,76,76,80,76,76,76,76,80,76,76,76,76,80],
-            [80,76,76,76,76,78,76,76,76,76,78,76,76,76,76,80],
-            [80,76,76,76,76,78,76,76,76,76,78,76,76,76,76,80],
-            [80,76,76,76,76,80,76,76,76,76,80,76,76,76,76,80],
-            [80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80]
-        ],
-        heightMap: [
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,4,1,1,4,4,4,1,1,4,4,4,1,1,4,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,4,1,1,4,4,4,1,1,4,4,4,1,1,4,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4],
-            [4,1,1,1,1,4,1,1,1,1,4,1,1,1,1,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"exitsign","x":2,"y":2,"foot":1,"maxH":2.4,"seed":100,"solid":false},{"kind":"exitsign","x":12,"y":2,"foot":1,"maxH":2.4,"seed":101,"solid":false},{"kind":"exitsign","x":7,"y":7,"foot":1,"maxH":2.4,"seed":102,"solid":false},{"kind":"exitsign","x":2,"y":12,"foot":1,"maxH":2.4,"seed":103,"solid":false},{"kind":"exitsign","x":12,"y":12,"foot":1,"maxH":2.4,"seed":104,"solid":false}],
-        spawns: {"1":[{"x":1,"y":1},{"x":2,"y":1},{"x":1,"y":2},{"x":2,"y":2}],"2":[{"x":14,"y":14},{"x":13,"y":14},{"x":14,"y":13},{"x":13,"y":13}]}
-    },
-    prebuilt_stonehenge: {
-        name: "Stonehenge", w: 16, h: 16,
-        grid: [
-            [1,48,1,48,1,1,1,1,1,1,1,48,1,1,1,1],
-            [1,1,1,1,53,8,1,1,1,1,8,1,1,53,1,1],
-            [1,1,53,1,8,8,1,8,8,1,8,8,1,1,1,48],
-            [1,1,1,8,1,1,1,8,8,1,1,1,8,1,53,1],
-            [1,53,8,1,1,1,1,8,8,1,48,1,1,8,1,1],
-            [48,8,8,1,1,1,63,8,8,63,1,1,1,8,8,1],
-            [53,8,1,1,1,63,64,54,54,64,63,48,1,48,8,1],
-            [1,8,1,1,1,1,54,54,54,54,1,48,1,1,8,1],
-            [1,8,1,1,1,1,54,54,54,54,1,1,1,1,8,1],
-            [1,8,1,1,1,63,64,54,54,64,63,1,1,1,8,53],
-            [1,8,8,1,1,1,63,8,8,63,1,1,48,8,8,1],
-            [1,1,8,1,1,48,1,8,8,1,1,1,1,8,1,1],
-            [1,53,1,8,1,1,1,8,8,1,1,1,8,1,1,1],
-            [1,48,1,48,8,8,1,8,8,1,8,8,1,1,53,1],
-            [1,1,1,53,1,8,1,1,1,1,8,1,53,48,1,48],
-            [1,1,1,1,1,1,1,1,1,1,48,1,1,1,1,1]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0],
-            [0,1,0,0,0,1,0,0,0,0,1,0,0,1,0,0],
-            [0,0,1,0,1,1,0,1,0,0,1,1,1,0,0,0],
-            [0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0],
-            [1,0,1,0,1,0,0,1,0,0,0,0,0,1,0,0],
-            [0,1,1,0,0,1,3,0,0,3,0,1,0,1,1,1],
-            [0,1,0,0,0,3,4,1,1,4,3,0,0,0,1,1],
-            [0,1,0,0,0,0,1,1,1,1,0,0,0,0,1,0],
-            [0,1,1,0,0,1,1,1,1,1,0,0,0,0,1,1],
-            [0,1,0,0,0,3,4,1,1,4,3,0,0,0,1,0],
-            [0,1,1,0,1,0,3,0,0,3,0,0,0,1,1,0],
-            [0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0],
-            [0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,1],
-            [0,0,0,0,1,1,0,0,0,0,1,1,1,0,0,0],
-            [0,0,0,0,0,1,0,0,0,0,1,1,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"monolith","x":10,"y":9,"foot":1.6,"maxH":4.2,"seed":139},{"kind":"monolith","x":9,"y":10,"foot":1.6,"maxH":4.2,"seed":137},{"kind":"monolith","x":6,"y":10,"foot":1.6,"maxH":4.2,"seed":128},{"kind":"monolith","x":5,"y":9,"foot":1.6,"maxH":4.2,"seed":124},{"kind":"monolith","x":5,"y":6,"foot":1.6,"maxH":4.2,"seed":121},{"kind":"monolith","x":6,"y":5,"foot":1.6,"maxH":4.2,"seed":123},{"kind":"monolith","x":9,"y":5,"foot":1.6,"maxH":4.2,"seed":132},{"kind":"monolith","x":10,"y":6,"foot":1.6,"maxH":4.2,"seed":136},{"kind":"monolith","x":9,"y":9,"foot":1.4,"maxH":5,"seed":254},{"kind":"monolith","x":9,"y":6,"foot":1.4,"maxH":5,"seed":251},{"kind":"monolith","x":6,"y":9,"foot":1.4,"maxH":5,"seed":239},{"kind":"monolith","x":6,"y":6,"foot":1.4,"maxH":5,"seed":236},{"kind":"rings","x":8,"y":8,"foot":5,"maxH":5,"seed":42},{"kind":"crystal","x":8,"y":8,"foot":1.4,"maxH":3,"seed":77}],
-        spawns: {"1":[{"x":7,"y":14},{"x":8,"y":14},{"x":6,"y":14},{"x":9,"y":14},{"x":7,"y":15},{"x":8,"y":15}],"2":[{"x":8,"y":1},{"x":7,"y":1},{"x":9,"y":1},{"x":6,"y":1},{"x":8,"y":0},{"x":7,"y":0}]}
-    },
-    prebuilt_giza: {
-        name: "Pyramids of Giza", w: 20, h: 20,
-        grid: [
-            [6,6,6,6,6,6,6,6,6,6,6,64,6,6,6,6,6,6,6,6],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,64,6,6,6,6,6],
-            [6,6,6,6,6,8,6,6,6,6,6,6,6,6,8,6,6,6,6,6],
-            [6,8,6,6,6,6,6,6,6,6,6,6,6,8,64,2,2,2,6,6],
-            [6,6,6,6,6,64,6,6,6,64,6,6,64,6,6,2,18,2,6,8],
-            [8,6,6,6,6,6,6,8,6,6,6,6,6,6,6,2,2,2,6,6],
-            [6,64,8,6,6,6,6,6,6,58,6,58,6,6,64,6,6,6,6,6],
-            [64,8,8,6,13,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [6,64,6,6,6,13,64,14,6,6,6,6,14,64,6,6,6,64,6,6],
-            [6,6,6,6,8,58,13,6,6,6,6,6,6,14,8,58,64,6,6,6],
-            [6,6,6,6,6,64,6,13,6,6,64,6,6,6,6,6,6,6,6,6],
-            [6,6,6,6,6,64,58,6,13,6,6,6,6,6,58,6,64,6,6,6],
-            [6,6,6,6,6,6,6,6,14,13,64,6,6,6,8,13,6,6,6,6],
-            [6,6,6,6,6,64,6,6,64,6,13,6,6,13,13,6,6,6,6,6],
-            [6,6,2,2,2,6,6,6,6,6,13,6,6,6,8,6,6,6,6,6],
-            [6,6,2,18,2,6,6,6,6,6,13,6,6,6,6,6,6,6,6,6],
-            [64,6,2,2,2,6,6,64,64,6,13,6,6,6,6,6,6,6,6,6],
-            [6,6,6,64,6,6,6,6,6,6,6,6,6,6,6,64,6,6,6,6],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,8,6,6],
-            [8,6,6,6,6,6,6,6,6,6,6,8,6,6,6,6,6,64,6,64]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
-            [1,1,0,0,0,0,0,0,1,1,0,0,1,1,0,0,1,1,1,1],
-            [1,1,0,0,0,0,0,0,1,1,0,0,1,1,0,0,1,1,1,1],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,1,1],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,1,1],
-            [0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,1],
-            [0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,1],
-            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
-            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0],
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":36}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{"oid":2}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":2}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{"oid":36}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"pyramid","x":4,"y":4,"foot":5,"maxH":5,"seed":301},{"kind":"pyramid","x":10,"y":10,"foot":7,"maxH":9,"seed":302},{"kind":"pyramid","x":15,"y":15,"foot":6,"maxH":7,"seed":303},{"kind":"colossus","x":10,"y":15,"foot":3,"maxH":4,"seed":310},{"kind":"obelisk","x":8,"y":14,"foot":1.6,"maxH":6,"seed":320},{"kind":"obelisk","x":12,"y":14,"foot":1.6,"maxH":6,"seed":321}],
-        spawns: {"1":[{"x":1,"y":18},{"x":2,"y":18},{"x":1,"y":17},{"x":2,"y":17},{"x":0,"y":18},{"x":3,"y":18}],"2":[{"x":18,"y":1},{"x":17,"y":1},{"x":18,"y":2},{"x":17,"y":2},{"x":19,"y":1},{"x":16,"y":1}]}
-    },
-    prebuilt_atlantis: {
-        name: "Atlantis", w: 24, h: 24,
-        grid: [
-            [2,2,3,2,2,2,2,3,2,3,2,3,3,2,2,2,2,2,55,55,55,55,55,55],
-            [3,3,3,2,2,3,2,2,2,2,2,3,3,2,2,2,2,2,55,55,55,55,55,55],
-            [2,2,2,2,2,2,2,2,2,54,54,54,54,54,54,2,2,2,55,55,55,55,55,55],
-            [2,2,2,2,2,2,2,2,2,54,54,54,54,54,54,2,2,2,55,55,55,55,55,55],
-            [2,2,3,14,14,2,2,2,2,54,54,54,54,54,54,2,2,2,55,14,14,55,55,55],
-            [2,2,2,14,14,2,2,2,2,54,54,54,54,54,54,2,2,54,55,14,14,55,55,55],
-            [3,3,2,2,2,2,2,2,2,2,2,4,4,2,2,2,54,2,55,55,55,55,55,55],
-            [2,2,3,2,2,2,2,2,2,3,3,4,4,3,3,54,2,54,2,2,2,2,2,3],
-            [2,2,3,2,2,2,2,2,3,3,2,55,55,2,3,3,2,2,2,2,2,2,3,2],
-            [2,2,54,54,54,54,2,3,3,55,55,55,55,55,55,3,3,2,54,54,54,54,2,2],
-            [2,2,54,54,54,54,2,3,2,55,55,15,15,55,55,2,3,2,54,54,54,54,2,2],
-            [2,2,54,54,54,54,4,4,55,55,15,15,15,15,55,55,4,4,54,54,54,54,2,2],
-            [2,3,54,54,54,54,4,4,55,55,15,15,15,15,55,55,4,4,54,54,54,54,2,2],
-            [2,2,54,54,54,54,2,3,2,55,55,15,15,55,55,2,3,2,54,54,54,54,2,2],
-            [3,2,54,54,54,54,2,3,3,55,55,55,55,55,55,3,3,2,54,54,54,54,2,2],
-            [2,2,3,2,2,2,2,2,3,3,2,55,55,2,3,3,2,2,2,2,2,3,2,2],
-            [2,2,2,2,2,2,54,2,54,3,3,4,4,3,3,2,2,2,2,2,3,2,2,2],
-            [55,55,55,55,55,55,2,54,2,2,2,4,4,2,2,2,2,2,2,2,2,2,2,2],
-            [55,55,55,55,55,55,54,2,2,54,54,54,54,54,54,2,2,2,2,2,2,2,2,2],
-            [55,55,55,55,55,55,2,2,2,54,54,54,54,54,54,2,2,2,2,2,14,14,3,2],
-            [55,55,55,55,14,14,3,2,2,54,54,54,54,54,54,2,2,2,2,2,14,14,2,2],
-            [55,55,55,55,14,14,2,2,3,54,54,54,54,54,54,2,2,2,2,2,2,2,2,2],
-            [55,55,55,55,55,55,2,2,2,3,2,2,2,2,2,3,2,2,3,2,2,2,2,2],
-            [55,55,55,55,55,55,3,2,2,2,2,2,2,2,2,3,2,2,2,3,2,2,2,2]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
-            [0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
-            [0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,1,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0],
-            [0,0,1,1,1,1,0,0,0,1,1,2,2,1,1,0,0,0,1,1,1,1,0,0],
-            [0,0,1,1,1,1,1,1,1,1,2,2,2,2,1,1,1,1,1,1,1,1,0,0],
-            [0,0,1,1,1,1,1,1,1,1,2,2,2,2,1,1,1,1,1,1,1,1,0,0],
-            [0,0,1,1,1,1,0,0,0,1,1,2,2,1,1,0,0,0,1,1,1,1,0,0],
-            [0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,1,0,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,1,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,0,0],
-            [1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,0,0],
-            [1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{"oid":20}],[],[],[],[],[{"oid":17}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{"oid":20}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":20}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{"oid":20}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":19}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{"oid":17}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":20}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{"oid":20}],[],[],[]],
-            [[],[],[],[],[{"oid":17}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{"oid":19}],[],[],[],[],[{"oid":20}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        monuments: [{"kind":"lightpillar","x":11,"y":11,"foot":2.2,"maxH":22,"seed":501},{"kind":"crystal","x":12,"y":12,"foot":2.4,"maxH":6,"seed":502},{"kind":"crystal","x":11,"y":12,"foot":1.6,"maxH":4,"seed":503},{"kind":"colossus","x":11,"y":8,"foot":3,"maxH":5,"seed":510},{"kind":"greek","x":11,"y":3,"foot":4,"maxH":5,"seed":601},{"kind":"greek","x":12,"y":20,"foot":4,"maxH":5,"seed":602},{"kind":"greek","x":3,"y":12,"foot":4,"maxH":5,"seed":603},{"kind":"greek","x":20,"y":11,"foot":4,"maxH":5,"seed":604},{"kind":"obelisk","x":0,"y":23,"foot":1.6,"maxH":6,"seed":701},{"kind":"obelisk","x":23,"y":0,"foot":1.6,"maxH":6,"seed":702}],
-        spawns: {"1":[{"x":1,"y":22},{"x":2,"y":22},{"x":1,"y":21},{"x":2,"y":21},{"x":3,"y":22},{"x":1,"y":20},{"x":3,"y":21},{"x":4,"y":22}],"2":[{"x":22,"y":1},{"x":21,"y":1},{"x":22,"y":2},{"x":21,"y":2},{"x":20,"y":1},{"x":22,"y":3},{"x":20,"y":2},{"x":19,"y":1}]}
-    },
-    prebuilt_entropy_vale: {
-        name: 'Entropy Vale', w: 16, h: 16,
-        grid: [
-            [1,1,1,1,1,1,1,50,8,11,5,5,5,5,11,50],
-            [1,1,1,50,50,50,50,1,8,5,28,28,28,28,5,8],
-            [1,1,1,50,50,1,1,8,11,28,28,28,28,28,28,5],
-            [1,50,1,1,1,8,8,5,5,28,28,28,28,28,28,5],
-            [1,1,1,1,14,5,11,5,28,28,28,28,28,28,28,5],
-            [1,1,1,50,50,8,11,28,28,28,28,28,28,28,28,5],
-            [1,1,1,1,1,5,11,5,28,28,28,28,28,28,5,5],
-            [50,1,1,1,50,1,8,5,5,5,5,5,5,5,5,5],
-            [1,1,1,1,1,8,8,8,74,74,5,5,5,5,5,1],
-            [1,1,2,2,2,8,8,8,74,74,11,5,5,5,5,1],
-            [1,2,3,3,3,8,74,74,8,50,8,11,5,5,1,1],
-            [1,2,3,3,3,3,74,74,1,1,1,1,1,50,50,50],
-            [1,2,3,3,3,3,2,15,1,1,1,1,50,1,1,1],
-            [50,2,3,3,3,3,2,1,1,1,1,8,5,1,1,1],
-            [50,1,2,2,2,2,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,50,1,1,1,1,1]
-        ],
-        heightMap: [
-            [3,3,3,5,6,6,4,6,7,9,10,10,10,10,8,6],
-            [3,3,3,5,6,6,6,6,7,9,11,11,11,11,9,7],
-            [3,3,3,4,6,6,6,7,9,11,11,11,11,11,11,9],
-            [5,4,4,4,6,7,7,9,10,11,11,11,11,11,11,10],
-            [3,3,4,4,6,7,9,10,11,11,11,11,11,11,11,10],
-            [3,3,3,4,6,7,9,11,11,11,11,11,11,11,11,10],
-            [4,3,3,3,4,6,8,10,11,11,11,11,11,11,10,9],
-            [4,3,3,3,4,6,7,9,10,10,10,10,10,10,9,7],
-            [3,3,3,3,3,5,6,6,6,6,10,10,10,10,8,6],
-            [3,3,3,3,3,5,6,6,6,6,8,10,10,9,7,6],
-            [3,3,3,3,3,5,6,6,5,6,7,8,8,7,6,4],
-            [3,3,3,3,3,3,6,6,3,4,6,6,6,6,4,4],
-            [3,3,3,3,3,3,3,3,3,4,6,6,6,5,4,4],
-            [4,3,3,3,3,3,3,3,3,4,6,7,7,3,3,3],
-            [4,3,3,3,3,3,3,3,4,4,6,6,5,3,3,3],
-            [3,3,3,3,3,3,3,4,6,6,6,6,5,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:1,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'center',alignY:'bottom'}],[{oid:2,alignX:'center',alignY:'bottom'}],[{oid:18,alignX:'center',alignY:'bottom'}],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:19,alignX:'center',alignY:'bottom'}],[{oid:25,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}]],
-            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:1,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":14,"y":14},{"x":15,"y":14},{"x":14,"y":15},{"x":15,"y":15},{"x":13,"y":15},{"x":15,"y":13}],"2":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}]}
-    },
-    prebuilt_entropy_monuments: {
-        name: 'Monument Proving Grounds', w: 16, h: 16,
-        // FLAT voxel map: solid grass columns with the standard z=3 ground floor
-        // (heightMap all 3, voxels z0..z3). No naturalTerrain bevel. Every landmark
-        // is a real 3D mesh (state.monuments) reusing the esoteric-background _hz*
-        // geometry, scaled up to read at map scale and seated on the z=3 surface.
-        // foot = footprint width in tiles; maxH caps height in tiles; seed = RNG.
-        monuments: [
-            { kind: 'pyramid',  x: 4,  y: 4,  foot: 6, maxH: 7, seed: 7 },
-            { kind: 'ziggurat', x: 11, y: 4,  foot: 6, maxH: 6, seed: 3 },
-            { kind: 'greek',    x: 4,  y: 11, foot: 7, maxH: 5, seed: 4 },
-            { kind: 'arch',     x: 10, y: 10, foot: 5, maxH: 6, seed: 5 },
-            { kind: 'obelisk',  x: 8,  y: 8,  foot: 2, maxH: 8, seed: 9 },
-            { kind: 'stairway', x: 8,  y: 2,  foot: 6, maxH: 8, seed: 2 },
-            { kind: 'colossus', x: 13, y: 8,  foot: 5, maxH: 3, seed: 6 }
-        ],
-        grid: [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]],
-            [[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:1},{z:3,tid:1}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":14,"y":14},{"x":15,"y":14},{"x":14,"y":15},{"x":15,"y":15},{"x":13,"y":15},{"x":15,"y":13}],"2":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}]}
-    },
-    prebuilt_skirmish: {
-        name: 'Skirmish', w: 8, h: 8,
-        grid: [
-            [54,54,54,0,74,0,48,48],
-            [54,54,35,74,74,74,74,48],
-            [54,54,35,74,74,74,58,48],
-            [74,74,74,13,13,74,74,74],
-            [74,74,74,13,13,74,74,74],
-            [48,58,74,74,74,35,54,54],
-            [48,74,74,74,74,35,54,54],
-            [48,48,0,74,0,54,54,54]
-        ],
-        heightMap: [
-            [6,6,6,0,6,0,6,6],
-            [6,5,3,5,5,5,5,6],
-            [6,5,3,5,5,5,5,6],
-            [6,5,4,3,4,4,5,6],
-            [6,5,4,3,4,4,5,6],
-            [6,5,4,5,5,3,5,6],
-            [6,5,5,5,5,3,5,6],
-            [6,6,0,6,0,6,6,6]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[],[{z:0,tid:74},{z:6,tid:74}],[],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:48},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:48},{z:6,tid:48}]],
-            [[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:8},{z:3,tid:13}],[{z:0,tid:8},{z:4,tid:13}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:6,tid:74}]],
-            [[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:8},{z:3,tid:13}],[{z:0,tid:8},{z:4,tid:13}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:6,tid:74}]],
-            [[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}]],
-            [[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}]],
-            [[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[],[{z:0,tid:74},{z:6,tid:74}],[],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}]],
-            [[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}]],
-            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":6,"y":6},{"x":7,"y":6},{"x":6,"y":7},{"x":7,"y":7}],"2":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}]}
-    },
-    prebuilt_compound: {
-        name: 'Compound', w: 12, h: 12,
-        grid: [
-            [54,54,54,54,48,48,48,48,48,48,48,48],
-            [54,54,54,54,35,74,74,48,48,48,48,48],
-            [54,35,54,54,54,58,74,48,48,48,48,58],
-            [48,48,48,48,48,0,74,48,48,48,58,58],
-            [19,19,48,48,48,74,74,48,48,48,58,58],
-            [19,19,48,48,13,13,13,13,48,48,48,58],
-            [19,48,48,48,13,13,13,13,48,48,48,58],
-            [19,48,48,48,48,74,74,48,48,48,58,58],
-            [19,19,48,48,48,74,0,48,48,48,58,58],
-            [19,19,48,48,48,74,58,54,54,54,35,54],
-            [48,48,48,48,48,74,74,35,54,54,54,54],
-            [48,48,48,48,48,48,48,48,54,54,54,54]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,4,4,3,4,4,3],
-            [4,4,4,4,3,4,4,4,4,4,4,4],
-            [4,3,4,4,4,4,4,4,4,4,4,4],
-            [6,6,5,5,5,0,6,6,5,5,5,5],
-            [6,6,6,6,6,6,6,6,6,6,6,6],
-            [7,7,7,7,7,7,7,7,7,7,7,7],
-            [7,7,7,7,7,7,7,7,7,7,7,7],
-            [6,6,6,7,7,6,6,6,6,7,7,6],
-            [5,5,5,5,5,5,0,5,5,5,5,5],
-            [4,4,4,4,4,4,4,4,4,4,3,4],
-            [4,4,4,4,4,4,4,3,4,4,4,4],
-            [3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}]],
-            [[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:58},{z:4,tid:58}]],
-            [[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:58},{z:5,tid:58}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:58},{z:6,tid:58}]],
-            [[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:8},{z:7,tid:13}],[{z:0,tid:8},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:58},{z:7,tid:58}]],
-            [[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:8},{z:7,tid:13}],[{z:0,tid:8},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:58},{z:7,tid:58}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:58},{z:7,tid:58}],[{z:0,tid:58},{z:6,tid:58}]],
-            [[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:74},{z:5,tid:74}],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:58},{z:5,tid:58}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:19},{z:4,tid:54}]],
-            [[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}]],
-            [[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}]],
-            [[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}]],
-            [[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":9,"y":10},{"x":10,"y":10},{"x":9,"y":11},{"x":10,"y":11}],"2":[{"x":1,"y":0},{"x":2,"y":0},{"x":1,"y":1},{"x":2,"y":1}]}
-    },
-    prebuilt_crossroads: {
-        name: 'Crossroads', w: 16, h: 16,
-        grid: [
-            [0,0,0,0,0,0,46,46,46,46,0,0,0,0,0,0],
-            [0,0,0,0,0,0,54,54,54,54,0,0,0,0,0,0],
-            [0,74,74,74,74,0,0,35,35,0,0,49,49,49,49,0],
-            [0,74,58,74,74,0,48,48,48,48,0,49,49,48,49,0],
-            [0,74,74,58,74,58,48,48,48,48,58,49,49,48,49,0],
-            [0,74,58,74,74,48,48,48,48,48,49,49,48,49,49,0],
-            [0,74,74,74,74,0,48,48,48,48,0,49,49,49,49,0],
-            [0,54,54,35,74,0,48,13,13,48,0,49,35,19,19,0],
-            [0,54,54,35,74,58,48,13,13,48,58,49,35,19,19,0],
-            [0,74,74,74,74,0,48,48,48,48,0,49,49,49,49,0],
-            [0,74,74,58,74,48,48,48,48,48,49,49,48,49,49,0],
-            [0,74,58,74,74,58,48,48,48,48,58,49,49,48,49,0],
-            [0,74,74,58,74,0,48,48,48,48,0,49,49,48,49,0],
-            [0,74,74,74,74,0,0,35,35,0,0,49,49,49,49,0],
-            [0,0,0,0,0,0,54,54,54,54,0,0,0,0,0,0],
-            [0,0,0,0,0,0,46,46,46,46,0,0,0,0,0,0]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0],
-            [0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0],
-            [0,4,4,5,5,0,0,3,3,0,0,5,5,4,4,0],
-            [0,5,5,5,5,0,5,5,5,5,0,5,5,5,5,0],
-            [0,6,6,6,6,6,6,6,6,6,6,6,6,6,6,0],
-            [0,6,6,6,6,6,6,6,6,6,6,6,6,6,6,0],
-            [0,8,8,7,7,0,7,7,7,7,0,7,7,8,8,0],
-            [0,8,8,3,8,0,8,8,8,8,0,8,3,8,8,0],
-            [0,8,8,3,8,8,8,8,8,8,8,8,3,8,8,0],
-            [0,7,7,7,7,0,7,7,7,7,0,7,7,7,7,0],
-            [0,6,6,6,6,6,6,6,6,6,6,6,6,6,6,0],
-            [0,6,6,6,6,6,6,6,6,6,6,6,6,6,6,0],
-            [0,5,5,5,5,0,5,5,5,5,0,5,5,5,5,0],
-            [0,4,4,5,5,0,0,3,3,0,0,5,5,4,4,0],
-            [0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0],
-            [0,0,0,0,0,0,3,3,3,3,0,0,0,0,0,0]
-        ],
-        voxels: [
-            [[],[],[],[],[],[],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[],[],[],[],[],[]],
-            [[],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:49},{z:5,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[],[{z:0,tid:49},{z:7,tid:49}],[{z:0,tid:49},{z:7,tid:49}],[{z:0,tid:49},{z:8,tid:49}],[{z:0,tid:49},{z:8,tid:49}],[]],
-            [[],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:74},{z:8,tid:74}],[],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:48},{z:8,tid:48}],[],[{z:0,tid:49},{z:8,tid:49}],[{z:0,tid:35},{z:3,tid:35}],[{z:0,tid:19},{z:8,tid:19}],[{z:0,tid:19},{z:8,tid:19}],[]],
-            [[],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:58},{z:8,tid:58}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:58},{z:8,tid:58}],[{z:0,tid:49},{z:8,tid:49}],[{z:0,tid:35},{z:3,tid:35}],[{z:0,tid:19},{z:8,tid:19}],[{z:0,tid:19},{z:8,tid:19}],[]],
-            [[],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[],[{z:0,tid:49},{z:7,tid:49}],[{z:0,tid:49},{z:7,tid:49}],[{z:0,tid:49},{z:7,tid:49}],[{z:0,tid:49},{z:7,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:74},{z:5,tid:74}],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:49},{z:5,tid:49}],[]],
-            [[],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[]],
-            [[],[],[],[],[],[],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[],[],[],[],[],[]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":7,"y":14},{"x":8,"y":14},{"x":7,"y":15},{"x":8,"y":15}],"2":[{"x":7,"y":0},{"x":8,"y":0},{"x":7,"y":1},{"x":8,"y":1}]}
-    },
-    prebuilt_citadel: {
-        name: 'Citadel', w: 20, h: 20,
-        grid: [
-            [18,54,54,54,54,54,53,53,53,48,48,48,19,19,19,19,19,19,19,19],
-            [18,46,46,46,46,54,1,1,48,48,48,48,19,19,19,19,19,19,15,15],
-            [54,46,46,46,46,35,48,48,48,48,48,48,19,19,19,19,19,19,15,15],
-            [54,46,46,46,46,35,48,0,0,48,48,48,19,19,19,13,13,19,19,19],
-            [54,54,35,35,54,54,48,0,48,48,48,48,19,19,19,13,13,19,19,19],
-            [48,48,48,48,48,35,48,74,48,48,48,13,13,13,19,19,19,19,19,19],
-            [48,48,48,48,48,48,74,74,48,48,48,13,13,13,19,19,19,19,19,19],
-            [48,48,48,48,48,48,74,74,3,56,56,13,13,13,19,19,0,19,19,0],
-            [48,48,48,48,48,48,48,3,56,56,56,56,13,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,56,56,13,13,56,56,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,56,56,13,13,56,56,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,13,56,56,56,56,3,48,48,48,48,48,48,48],
-            [0,19,19,0,19,19,13,13,13,56,56,3,74,74,48,48,48,48,48,48],
-            [19,19,19,19,19,19,13,13,13,48,48,48,74,74,48,48,48,48,48,48],
-            [19,19,19,19,19,19,13,13,13,48,48,48,74,35,35,48,48,48,48,48],
-            [19,19,19,13,13,19,19,19,48,48,48,0,0,48,49,49,35,35,49,49],
-            [19,19,19,13,13,19,19,19,48,48,48,48,0,48,35,46,46,46,46,49],
-            [15,19,19,19,19,19,19,19,48,48,48,48,48,48,35,46,46,46,46,49],
-            [15,15,19,19,19,19,19,19,22,22,48,48,1,1,49,46,46,46,46,49],
-            [19,15,19,19,19,19,19,19,22,22,48,53,53,53,49,49,49,49,49,49]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,3],
-            [3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,3],
-            [3,3,3,3,3,3,5,0,0,5,5,5,5,5,5,5,5,4,4,3],
-            [3,4,3,3,5,5,5,0,5,5,5,5,6,6,5,5,5,4,4,3],
-            [3,4,4,5,5,3,6,6,6,6,6,6,6,6,6,5,5,4,4,3],
-            [3,4,4,5,5,6,6,6,5,6,6,6,6,6,6,5,5,4,4,3],
-            [4,4,4,5,5,6,6,5,3,5,7,7,7,6,6,5,0,4,4,0],
-            [4,4,4,5,5,6,5,3,5,7,7,7,7,6,6,5,5,4,4,3],
-            [3,4,4,5,5,6,6,5,7,8,8,7,7,6,6,5,5,4,4,3],
-            [4,4,4,5,5,6,6,7,7,8,8,7,5,6,6,5,5,4,4,3],
-            [4,4,4,5,5,6,6,7,7,7,7,5,3,5,6,5,5,4,4,3],
-            [0,4,4,0,5,6,6,7,7,7,5,3,5,6,6,5,5,4,4,3],
-            [3,4,4,5,5,6,6,6,6,6,6,5,6,6,6,5,5,4,4,3],
-            [3,4,4,5,5,6,6,6,6,6,6,6,6,3,3,5,5,4,4,3],
-            [3,4,4,5,5,5,5,5,5,5,5,0,0,5,5,5,3,3,4,3],
-            [4,4,4,5,5,5,5,5,5,5,5,5,0,5,3,3,3,3,3,3],
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,3,3],
-            [3,4,4,4,4,4,4,4,3,3,4,4,4,4,4,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:18},{z:3,tid:18}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:18},{z:3,tid:18}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:15},{z:4,tid:15}],[{z:0,tid:15},{z:3,tid:15}]],
-            [[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:15},{z:4,tid:15}],[{z:0,tid:15},{z:3,tid:15}]],
-            [[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:48},{z:5,tid:48}],[],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:54}],[{z:0,tid:19},{z:4,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:48},{z:5,tid:48}],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[]],
-            [[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:56},{z:7,tid:56}],[{z:0,tid:56},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[],[],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:49}],[{z:0,tid:8},{z:5,tid:49}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:8},{z:4,tid:49}],[{z:0,tid:8},{z:3,tid:49}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:8},{z:3,tid:49}]],
-            [[{z:0,tid:15},{z:4,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'N'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:8},{z:3,tid:49}]],
-            [[{z:0,tid:15},{z:3,tid:15}],[{z:0,tid:15},{z:4,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:22},{z:3,tid:22}],[{z:0,tid:22},{z:3,tid:22}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:8},{z:4,tid:49}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:8},{z:3,tid:49}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:15},{z:3,tid:15}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:22},{z:3,tid:22}],[{z:0,tid:22},{z:3,tid:22}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:8},{z:3,tid:49}],[{z:0,tid:8},{z:3,tid:49}],[{z:0,tid:8},{z:3,tid:49}],[{z:0,tid:8},{z:3,tid:49}],[{z:0,tid:8},{z:3,tid:49}],[{z:0,tid:8},{z:3,tid:49}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'top'}],[],[],[{oid:17,alignX:'right',alignY:'top'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":16,"y":17},{"x":17,"y":17},{"x":16,"y":18},{"x":17,"y":18}],"2":[{"x":2,"y":1},{"x":3,"y":1},{"x":2,"y":2},{"x":3,"y":2}]}
-    },
-    prebuilt_apocalypse: {
-        name: 'Apocalypse', w: 36, h: 30,
-        grid: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,13,53,53,53,53,53,53,53,19,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,1,58,1,13,1,48,48,48,48,48,48,48,19,19,19,19,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,48,48,48,48,48,48,48,48,48,48,48,48,48,48,19,19,19,48,19,19,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,1,58,1,1,13,1,1,1,48,48,48,48,48,48,48,19,19,13,19,13,13,19,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,58,2,1,1,13,1,1,1,1,48,48,48,48,48,48,48,19,13,19,19,13,13,19,10,0,0,0,0,0,0],
-            [0,0,0,0,58,1,1,2,2,0,1,1,1,1,1,48,48,48,48,48,48,48,13,19,10,10,19,19,10,10,19,19,0,0,0,0],
-            [0,0,0,0,1,1,1,1,13,2,58,1,0,1,1,48,48,48,48,48,48,13,19,19,10,19,19,19,19,19,19,19,0,0,0,0],
-            [0,0,0,1,1,1,1,13,1,1,1,1,1,1,1,48,48,48,48,48,13,48,19,19,19,19,19,19,19,19,19,19,19,0,0,0],
-            [0,0,1,1,1,1,13,1,1,1,1,1,1,1,1,48,48,48,48,13,48,48,19,19,19,19,19,19,19,19,19,19,19,19,0,0],
-            [0,0,54,54,54,54,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,19,0,69,19,0,69,19,0,19,19,0,19,0,0],
-            [0,0,54,54,54,35,48,48,48,48,48,48,48,48,48,2,2,48,48,2,2,48,48,48,48,48,48,48,48,48,35,54,54,54,0,0],
-            [0,54,46,46,46,35,48,48,48,48,48,48,48,48,2,3,3,56,56,3,3,2,48,48,48,48,48,48,48,48,35,46,46,46,54,0],
-            [0,54,46,46,46,35,48,48,48,48,48,48,48,48,2,3,56,56,56,56,3,2,48,48,48,48,48,48,48,48,35,46,46,46,54,0],
-            [0,54,46,46,46,35,74,74,74,0,74,74,74,74,74,56,56,13,13,56,56,74,74,74,74,74,0,74,74,74,35,46,46,46,54,0],
-            [0,54,46,46,46,35,74,74,74,74,0,74,74,74,74,56,56,13,13,56,56,74,74,74,74,0,74,74,74,74,35,46,46,46,54,0],
-            [0,54,46,46,46,35,48,48,48,48,48,48,48,48,2,3,56,56,56,56,3,2,48,48,48,48,48,48,48,48,35,46,46,46,54,0],
-            [0,54,46,46,46,35,48,48,48,48,48,48,48,48,2,3,3,56,56,3,3,2,48,48,48,48,48,48,48,48,35,46,46,46,54,0],
-            [0,0,54,54,54,35,48,48,48,48,48,48,48,48,48,2,2,48,48,2,2,48,48,48,48,48,48,48,48,48,35,54,54,54,0,0],
-            [0,0,49,0,49,69,0,49,69,0,49,49,0,49,48,48,13,48,48,48,13,48,74,74,74,74,74,74,74,74,74,74,74,74,0,0],
-            [0,0,49,49,49,49,49,49,49,49,49,49,49,49,48,13,48,48,48,48,48,13,74,74,74,74,74,74,74,74,74,74,74,74,0,0],
-            [0,0,0,49,49,49,49,49,48,49,49,49,49,49,13,48,48,48,48,48,48,48,13,74,74,74,74,74,74,58,74,74,74,0,0,0],
-            [0,0,0,0,49,48,49,49,49,48,10,10,49,13,48,48,48,48,48,48,48,48,74,0,74,58,2,2,74,74,74,74,0,0,0,0],
-            [0,0,0,0,49,49,48,49,49,49,49,10,13,49,48,48,48,48,48,48,48,48,74,74,13,74,0,2,2,74,74,74,0,0,0,0],
-            [0,0,0,0,0,0,49,49,13,13,49,13,49,49,48,48,48,48,48,48,48,48,74,74,58,13,74,74,74,74,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,48,13,13,13,49,49,49,48,48,48,48,48,48,48,48,74,74,74,74,13,74,74,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,49,49,49,49,49,49,48,48,48,48,48,48,48,48,48,48,48,48,48,48,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,49,49,49,49,48,48,48,48,48,48,48,48,74,74,74,74,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,49,53,53,53,53,53,53,53,53,74,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,5,3,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,0,0,0,0,0,0],
-            [0,0,0,0,5,5,5,3,3,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,3,3,5,5,3,3,5,5,0,0,0,0],
-            [0,0,0,0,5,5,5,5,5,3,5,5,0,5,5,5,5,5,5,5,5,5,5,5,3,5,5,5,5,5,5,5,0,0,0,0],
-            [0,0,0,6,6,6,6,6,6,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,6,6,6,6,6,6,6,6,0,0,0],
-            [0,0,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,6,6,5,6,6,6,6,6,6,0,0],
-            [0,0,6,6,6,6,6,6,6,6,6,6,6,6,6,5,5,6,6,5,5,6,6,0,3,5,0,3,5,0,6,6,1,6,0,0],
-            [0,0,5,5,5,3,7,7,7,7,7,7,7,7,5,3,3,5,5,3,3,5,7,7,5,7,7,7,7,7,3,5,5,5,0,0],
-            [0,5,3,3,3,3,7,7,7,7,7,7,7,5,3,3,3,5,5,3,3,3,5,7,7,7,7,7,7,7,3,3,3,3,5,0],
-            [0,5,3,3,3,3,7,7,7,7,7,7,7,5,3,3,5,7,7,5,3,3,5,7,7,7,7,7,7,7,3,3,3,3,5,0],
-            [0,5,3,3,3,3,8,8,8,0,8,8,8,7,5,5,7,8,8,7,5,7,7,8,8,8,0,8,8,8,3,3,3,3,5,0],
-            [0,5,3,3,3,3,8,8,8,8,0,8,8,7,5,5,7,8,8,7,5,7,7,8,8,0,8,8,8,8,3,3,3,3,5,0],
-            [0,5,3,3,3,3,7,7,7,7,7,7,7,5,3,3,5,7,7,5,3,3,5,7,7,7,7,7,7,7,3,3,3,3,5,0],
-            [0,5,3,3,3,3,7,7,7,7,7,7,7,5,3,3,3,5,5,3,3,3,5,7,7,7,7,7,7,7,3,3,3,3,5,0],
-            [0,1,5,5,5,3,7,7,5,7,7,7,7,7,5,3,3,5,5,3,3,5,7,7,7,7,7,7,7,7,3,5,5,5,1,0],
-            [0,1,6,1,5,3,0,5,3,0,6,6,0,6,6,5,5,6,6,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,1,0],
-            [0,0,6,6,6,5,6,6,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,0,0],
-            [0,0,0,6,6,6,6,6,6,6,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,6,6,6,6,6,6,0,0,0],
-            [0,0,0,0,5,5,5,5,5,5,3,3,5,5,5,5,5,5,5,5,5,5,5,0,5,5,3,3,5,5,5,5,0,0,0,0],
-            [0,0,0,0,5,5,5,5,5,5,5,3,5,5,5,5,5,5,5,5,5,5,5,5,5,5,0,3,3,5,5,5,0,0,0,0],
-            [0,0,0,0,0,0,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ],
-        voxels: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{z:0,tid:1},{z:3,tid:1}],[{z:0,tid:13},{z:3,tid:13}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:19},{z:3,tid:19}],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:1},{z:4,tid:1}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:19}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[],[],[],[],[],[]],
-            [[],[],[],[],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[],[],[],[]],
-            [[],[],[],[],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:1},{z:5,tid:1}],[],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[],[],[],[]],
-            [[],[],[],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:5,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[],[],[]],
-            [[],[],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:1},{z:6,tid:1}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[],[]],
-            [[],[],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:19}],[],[{z:0,tid:69},{z:3,tid:69}],[{z:0,tid:19},{z:5,tid:19}],[],[{z:0,tid:69},{z:3,tid:69}],[{z:0,tid:19},{z:5,tid:19}],[],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[],[{z:0,tid:19},{z:6,tid:19}],[],[]],
-            [[],[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'S'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[],[]],
-            [[],[{z:0,tid:54},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:54},{z:5,tid:54}],[]],
-            [[],[{z:0,tid:54},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:54},{z:5,tid:54}],[]],
-            [[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:54}],[]],
-            [[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:8,tid:13}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:7,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:74},{z:8,tid:74}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:54}],[]],
-            [[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:7,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:54}],[]],
-            [[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:8},{z:5,tid:56}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:3},{z:3,tid:3}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:54}],[]],
-            [[],[],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:35},{z:3,tid:35,sd:'E'}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:35},{z:3,tid:35,sd:'W'}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[],[]],
-            [[],[],[{z:0,tid:8},{z:6,tid:49}],[],[{z:0,tid:8},{z:5,tid:49}],[{z:0,tid:69},{z:3,tid:69}],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:69},{z:3,tid:69}],[],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:13}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[],[]],
-            [[],[],[{z:0,tid:8},{z:6,tid:49}],[{z:0,tid:8},{z:6,tid:49}],[{z:0,tid:8},{z:6,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[],[]],
-            [[],[],[],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:49},{z:6,tid:49}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:58},{z:6,tid:58}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[{z:0,tid:74},{z:6,tid:74}],[],[],[]],
-            [[],[],[],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:74},{z:5,tid:74}],[],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[],[],[]],
-            [[],[],[],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:74},{z:5,tid:74}],[],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[],[],[]],
-            [[],[],[],[],[],[],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:49},{z:5,tid:49}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:58},{z:5,tid:58}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[{z:0,tid:74},{z:5,tid:74}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:49},{z:4,tid:49}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[{z:0,tid:74},{z:4,tid:74}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{z:0,tid:49},{z:3,tid:49}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:53},{z:3,tid:53}],[{z:0,tid:74},{z:3,tid:74}],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:14,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[{oid:14,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'top'}],[],[],[{oid:17,alignX:'right',alignY:'top'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'right',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:14,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[{oid:14,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[{oid:29,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":2,"y":11},{"x":1,"y":12},{"x":2,"y":12},{"x":1,"y":13},{"x":2,"y":13},{"x":1,"y":14},{"x":2,"y":14},{"x":1,"y":15},{"x":2,"y":15},{"x":1,"y":16}],"2":[{"x":33,"y":11},{"x":34,"y":12},{"x":33,"y":12},{"x":34,"y":13},{"x":33,"y":13},{"x":34,"y":14},{"x":33,"y":14},{"x":34,"y":15},{"x":33,"y":15},{"x":34,"y":16}]}
-    },
-    prebuilt_battlefield: {
-        name: 'Battlefield', w: 12, h: 12,
-        grid: [
-            [46,46,46,46,35,74,74,5,5,5,5,5],
-            [46,46,46,46,74,58,48,48,5,2,2,5],
-            [35,74,74,71,74,49,49,2,2,2,2,5],
-            [58,74,71,58,48,48,48,2,2,2,5,5],
-            [71,74,74,48,48,2,2,2,2,2,48,5],
-            [74,58,49,48,49,2,2,2,48,48,48,74],
-            [74,19,48,48,2,2,2,49,48,48,58,74],
-            [19,19,19,19,2,2,49,48,48,74,74,71],
-            [19,10,10,10,19,48,48,48,74,58,71,74],
-            [19,10,10,10,19,48,48,74,71,74,74,35],
-            [19,10,10,10,19,19,71,74,46,46,46,46],
-            [19,19,19,19,19,74,58,35,46,46,46,46]
-        ],
-        heightMap: [
-            [7,7,7,7,6,6,6,6,7,7,9,9],
-            [7,7,7,7,6,6,4,4,6,7,9,9],
-            [6,6,6,6,6,4,4,6,6,7,7,7],
-            [6,6,6,6,4,4,4,4,6,6,6,7],
-            [6,6,6,4,4,4,4,4,4,6,4,6],
-            [6,6,4,4,4,4,4,4,4,4,6,6],
-            [6,6,4,4,4,4,4,4,4,4,6,6],
-            [3,3,3,3,4,4,4,4,6,6,6,6],
-            [3,3,3,3,3,4,4,4,6,6,6,6],
-            [3,3,3,3,4,4,4,6,6,6,6,6],
-            [3,3,3,3,4,4,5,6,7,7,7,7],
-            [3,3,3,3,3,5,6,6,7,7,7,7]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:6,tid:35,sd:'E'}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:5}],[{z:0,tid:19},{z:7,tid:5}],[{z:0,tid:19},{z:7,tid:5}],[{z:0,tid:19},{z:9,tid:5}],[{z:0,tid:19},{z:9,tid:5}]],
-            [[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:5}],[{z:0,tid:19},{z:7,tid:2}],[{z:0,tid:19},{z:9,tid:2}],[{z:0,tid:19},{z:9,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:35,sd:'S'}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:49}],[{z:0,tid:19},{z:4,tid:49}],[{z:0,tid:19},{z:6,tid:2}],[{z:0,tid:19},{z:6,tid:2}],[{z:0,tid:19},{z:7,tid:2}],[{z:0,tid:19},{z:7,tid:2}],[{z:0,tid:19},{z:7,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:6,tid:2}],[{z:0,tid:19},{z:6,tid:2}],[{z:0,tid:19},{z:6,tid:5}],[{z:0,tid:19},{z:7,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:6,tid:2}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:49}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:1},{z:4,tid:49}],[{z:0,tid:1},{z:4,tid:2}],[{z:0,tid:1},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:1},{z:4,tid:2}],[{z:0,tid:1},{z:4,tid:2}],[{z:0,tid:1},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:49}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:2}],[{z:0,tid:19},{z:4,tid:49}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:71}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:1},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:35,sd:'N'}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:5,tid:71}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:6,tid:35,sd:'W'}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:38,alignX:'center',alignY:'bottom'}],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:3,alignX:'center',alignY:'bottom'}],[],[{oid:35,alignX:'center',alignY:'bottom'}],[{oid:34,alignX:'center',alignY:'bottom'}],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[{oid:4,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[{oid:38,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":9,"y":11},{"x":10,"y":11}],"2":[{"x":1,"y":0},{"x":2,"y":0}]},
-        sanctuaryZones: [[2,2,2,2,0,0,0,0,0,0,0,0],[2,2,2,2,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,1,1],[0,0,0,0,0,0,0,0,1,1,1,1]]
-    },
-    prebuilt_ravine: {
-        name: 'Ravine', w: 10, h: 10,
-        grid: [
-            [54,54,54,48,48,48,72,72,48,48],
-            [54,46,46,48,72,72,48,48,48,58],
-            [48,48,48,48,72,2,2,48,48,48],
-            [72,48,48,48,4,2,2,48,48,72],
-            [72,72,48,48,4,2,4,48,72,72],
-            [72,72,48,4,2,4,48,48,72,72],
-            [72,48,48,2,2,4,48,48,48,72],
-            [48,48,48,2,2,72,48,48,48,48],
-            [58,48,48,48,72,72,48,46,46,54],
-            [48,48,72,72,48,48,48,54,54,54]
-        ],
-        heightMap: [
-            [7,7,7,7,7,6,7,7,6,6],
-            [7,7,7,7,7,7,5,6,6,4],
-            [6,6,6,6,6,3,3,5,6,6],
-            [7,6,6,6,4,3,3,5,6,7],
-            [7,7,6,6,6,5,4,6,7,7],
-            [7,7,6,4,5,6,6,6,7,7],
-            [7,6,5,3,3,4,6,6,6,7],
-            [6,6,5,3,3,6,6,6,6,6],
-            [4,6,6,5,7,7,7,7,7,7],
-            [6,6,7,7,6,7,7,7,7,7]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:58}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:72}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}]],
-            [[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:4}],[{z:0,tid:2},{z:5,tid:2}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}]],
-            [[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:2},{z:5,tid:2}],[{z:0,tid:8},{z:6,tid:4}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}]],
-            [[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:6,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:54}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:7,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[{oid:37,alignX:'center',alignY:'bottom'}]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}]],
-            [[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":7,"y":8},{"x":8,"y":8},{"x":7,"y":9},{"x":8,"y":9}],"2":[{"x":1,"y":0},{"x":2,"y":0},{"x":1,"y":1},{"x":2,"y":1}]},
-        sanctuaryZones: [[2,2,2,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,1,1,1]]
-    },
-    prebuilt_highlands: {
-        name: 'Highlands', w: 16, h: 16,
-        grid: [
-            [54,54,54,48,48,48,48,48,48,48,48,48,48,48,48,2],
-            [54,54,54,53,48,48,48,48,48,48,48,48,48,48,2,2],
-            [54,54,54,48,48,48,48,48,48,48,48,48,48,2,2,48],
-            [48,53,48,18,48,48,48,48,48,48,48,48,2,2,48,48],
-            [48,48,48,48,48,48,48,48,48,48,48,2,2,48,48,48],
-            [48,48,48,48,48,48,48,48,48,48,4,2,48,48,48,48],
-            [48,48,48,48,48,48,48,58,48,2,2,48,48,48,48,48],
-            [13,13,13,13,13,13,14,13,2,2,13,13,13,13,13,13],
-            [13,13,13,13,13,13,13,2,2,14,13,13,13,13,13,13],
-            [48,48,48,48,48,48,2,2,58,48,48,48,48,48,48,48],
-            [48,48,48,48,48,4,2,48,48,48,48,48,48,48,48,48],
-            [48,48,48,48,2,2,48,48,48,48,48,48,48,48,48,48],
-            [48,48,48,2,2,48,48,48,48,48,48,48,18,48,53,48],
-            [48,48,2,2,48,48,48,48,48,48,48,48,48,54,54,54],
-            [48,2,2,48,48,48,48,48,48,48,48,48,53,54,54,54],
-            [2,2,48,48,48,48,48,48,48,48,48,48,48,54,54,54]
-        ],
-        heightMap: [
-            [8,8,8,8,8,8,8,8,8,8,8,8,8,7,5,3],
-            [8,7,7,7,8,8,7,7,7,7,7,7,7,5,3,3],
-            [8,7,7,5,7,7,7,7,7,7,7,7,5,3,3,5],
-            [8,7,5,3,7,7,6,6,6,6,6,5,3,3,5,7],
-            [8,7,7,5,5,5,5,5,5,5,5,3,3,5,7,8],
-            [8,7,7,6,5,5,5,5,5,5,5,3,5,7,7,8],
-            [8,7,7,6,6,5,4,4,4,3,3,5,6,7,7,8],
-            [8,7,7,6,6,5,4,3,3,3,5,5,6,7,7,8],
-            [8,7,7,6,5,5,4,3,3,4,5,6,6,7,7,8],
-            [8,7,7,6,5,5,3,3,4,4,5,6,6,7,7,8],
-            [8,7,7,6,5,5,3,5,5,5,5,5,7,7,7,8],
-            [8,7,7,5,3,3,5,5,5,5,5,5,7,7,7,8],
-            [8,7,5,3,3,5,6,6,6,6,7,7,3,5,7,8],
-            [7,5,3,3,5,7,7,7,7,7,7,7,5,7,7,8],
-            [5,3,3,5,7,7,7,7,7,7,7,7,7,7,7,8],
-            [3,3,5,7,8,8,8,8,8,8,8,8,8,8,8,8]
-        ],
-        voxels: [
-            [[{z:0,tid:54},{z:8,tid:54}],[{z:0,tid:54},{z:8,tid:54}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}]],
-            [[{z:0,tid:54},{z:8,tid:54}],[{z:0,tid:54},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:8},{z:7,tid:53}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}]],
-            [[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}]],
-            [[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:7,tid:53}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:18},{z:3,tid:18}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}]],
-            [[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:8,tid:48}]],
-            [[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:4}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:8,tid:48}]],
-            [[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:8,tid:48}]],
-            [[{z:0,tid:13},{z:8,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:14},{z:4,tid:14}],[{z:0,tid:13},{z:3,tid:13}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:13}],[{z:0,tid:8},{z:5,tid:13}],[{z:0,tid:8},{z:6,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:8,tid:13}]],
-            [[{z:0,tid:13},{z:8,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:4,tid:13}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:14},{z:4,tid:14}],[{z:0,tid:13},{z:5,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:6,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:7,tid:13}],[{z:0,tid:13},{z:8,tid:13}]],
-            [[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:58},{z:4,tid:58}],[{z:0,tid:48},{z:4,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:8,tid:48}]],
-            [[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:4}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:8,tid:48}]],
-            [[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:5,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:8,tid:48}]],
-            [[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:6,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:18},{z:3,tid:18}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:53}],[{z:0,tid:8},{z:8,tid:48}]],
-            [[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:8,tid:54}]],
-            [[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:48},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:7,tid:53}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:54},{z:7,tid:54}],[{z:0,tid:54},{z:8,tid:54}]],
-            [[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:5,tid:48}],[{z:0,tid:8},{z:7,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:48},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:8},{z:8,tid:48}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:54},{z:8,tid:54}],[{z:0,tid:54},{z:8,tid:54}]]
-        ],
-        objects: [
-            [[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":13,"y":14},{"x":14,"y":14},{"x":13,"y":15},{"x":14,"y":15}],"2":[{"x":1,"y":0},{"x":2,"y":0},{"x":1,"y":1},{"x":2,"y":1}]},
-        sanctuaryZones: [[2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1]]
-    },
-    prebuilt_caldera: {
-        name: 'Caldera', w: 20, h: 20,
-        grid: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,66,66,66,66,66,66,0,0,0,0,0,0,0],
-            [0,0,0,0,0,66,66,66,66,66,66,66,66,66,66,0,0,0,0,0],
-            [0,0,0,0,46,66,63,63,63,63,63,63,63,63,66,66,0,0,0,0],
-            [0,0,0,46,46,63,63,63,19,18,19,19,63,63,63,66,66,0,0,0],
-            [0,0,66,66,63,15,19,19,19,19,19,19,19,19,15,63,66,66,0,0],
-            [0,0,66,63,63,19,19,11,11,11,11,11,11,19,19,63,63,66,0,0],
-            [0,66,66,63,63,19,11,11,10,10,4,10,11,11,19,63,63,66,66,0],
-            [0,66,66,63,19,19,11,10,10,10,4,10,10,11,19,19,63,66,66,0],
-            [0,66,66,63,19,19,11,10,10,66,66,10,10,11,19,19,63,66,66,0],
-            [0,66,66,63,18,19,11,4,4,66,66,4,4,11,19,18,63,66,66,0],
-            [0,66,66,63,19,19,11,10,10,10,4,10,10,11,19,19,63,66,66,0],
-            [0,66,66,63,63,19,11,11,10,10,4,10,11,11,19,63,63,66,66,0],
-            [0,0,66,63,63,19,19,11,11,11,11,11,11,19,19,63,63,66,0,0],
-            [0,0,66,66,63,15,19,19,19,19,19,19,19,19,15,63,66,66,0,0],
-            [0,0,0,66,66,63,63,63,19,19,18,19,63,63,63,46,46,0,0,0],
-            [0,0,0,0,66,66,63,63,63,63,63,63,63,63,66,46,0,0,0,0],
-            [0,0,0,0,0,66,66,66,66,66,66,66,66,66,66,0,0,0,0,0],
-            [0,0,0,0,0,0,0,66,66,66,66,66,66,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ],
-        heightMap: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,10,10,10,10,10,10,0,0,0,0,0,0,0],
-            [0,0,0,0,0,10,10,10,9,9,9,9,10,10,10,0,0,0,0,0],
-            [0,0,0,0,10,10,10,9,7,7,7,7,9,9,10,10,0,0,0,0],
-            [0,0,0,10,10,9,9,7,6,6,6,6,7,7,9,10,10,0,0,0],
-            [0,0,10,10,9,9,9,6,6,6,6,6,6,6,7,9,10,10,0,0],
-            [0,0,10,9,7,6,6,4,4,4,4,4,4,6,6,7,9,10,0,0],
-            [0,10,10,9,7,6,4,4,3,3,4,3,4,4,6,7,9,10,10,0],
-            [0,10,9,7,6,6,4,3,3,3,4,3,3,4,6,6,7,9,10,0],
-            [0,10,9,7,6,6,4,3,3,5,5,3,3,4,6,6,7,9,10,0],
-            [0,10,9,7,6,6,4,4,4,5,6,4,4,4,6,6,7,9,10,0],
-            [0,10,9,7,6,6,4,3,3,3,4,3,3,4,6,6,7,9,10,0],
-            [0,10,10,9,7,6,4,4,3,3,4,3,4,4,6,7,9,10,10,0],
-            [0,0,10,9,7,6,6,4,4,4,4,4,4,6,6,10,10,10,0,0],
-            [0,0,10,10,9,7,6,6,6,6,6,6,6,9,9,10,10,10,0,0],
-            [0,0,0,10,10,9,7,7,6,6,6,6,7,9,9,10,10,0,0,0],
-            [0,0,0,0,10,10,9,9,7,7,7,7,9,9,10,10,0,0,0,0],
-            [0,0,0,0,0,10,10,10,9,9,9,9,10,10,10,0,0,0,0,0],
-            [0,0,0,0,0,0,0,10,10,10,10,10,10,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ],
-        voxels: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[],[],[]],
-            [[],[],[],[],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[],[]],
-            [[],[],[],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:8},{z:6,tid:18}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[]],
-            [[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:15}],[{z:0,tid:19},{z:9,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[]],
-            [[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:66}],[{z:0,tid:19},{z:5,tid:66}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:8},{z:6,tid:18}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:19},{z:5,tid:66}],[{z:0,tid:19},{z:6,tid:66}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:8},{z:6,tid:18}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:10},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[]],
-            [[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[],[]],
-            [[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:9,tid:19}],[{z:0,tid:19},{z:9,tid:15}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[]],
-            [[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:8},{z:6,tid:18}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[],[],[]],
-            [[],[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:7,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:46}],[],[],[],[]],
-            [[],[],[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:9,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[{z:0,tid:19},{z:10,tid:66}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":15,"y":16},{"x":16,"y":16},{"x":15,"y":17},{"x":16,"y":17}],"2":[{"x":3,"y":2},{"x":4,"y":2},{"x":3,"y":3},{"x":4,"y":3}]},
-        sanctuaryZones: [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
-    },
-    prebuilt_bastion: {
-        name: 'Bastion', w: 12, h: 12,
-        grid: [
-            [54,54,48,48,48,48,48,48,48,48,48,48],
-            [46,46,48,48,48,72,72,48,48,48,58,48],
-            [48,48,48,72,2,4,4,2,72,48,48,48],
-            [48,48,72,2,2,71,71,2,2,72,48,48],
-            [48,48,2,2,71,74,74,71,2,2,48,48],
-            [48,72,4,71,74,13,13,74,71,4,72,48],
-            [48,72,4,71,74,13,13,74,71,4,72,48],
-            [48,48,2,2,71,74,74,71,2,2,48,48],
-            [48,48,72,2,2,71,71,2,2,72,48,48],
-            [48,48,48,72,2,4,4,2,72,48,48,48],
-            [48,58,48,48,48,72,72,48,48,48,46,46],
-            [48,48,48,48,48,48,48,48,48,54,54,54]
-        ],
-        heightMap: [
-            [7,7,6,6,4,4,4,4,4,6,6,6],
-            [7,7,6,6,3,3,3,3,4,6,4,6],
-            [6,6,4,3,3,4,4,3,3,4,6,6],
-            [4,4,3,3,3,6,6,3,3,3,4,4],
-            [4,4,3,3,7,8,8,7,3,3,4,4],
-            [4,3,4,6,8,10,10,8,6,4,3,4],
-            [4,3,4,6,8,10,10,8,6,4,3,4],
-            [4,4,3,3,7,8,8,7,3,3,4,4],
-            [4,4,3,3,3,6,6,3,3,3,4,4],
-            [6,6,4,3,3,4,4,3,6,6,6,6],
-            [6,4,6,4,3,3,3,3,6,6,7,7],
-            [6,6,6,4,4,4,4,4,4,6,7,7]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:19},{z:7,tid:71}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:7,tid:71}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:8},{z:10,tid:13}],[{z:0,tid:8},{z:10,tid:13}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:8},{z:10,tid:13}],[{z:0,tid:8},{z:10,tid:13}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:19},{z:7,tid:71}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:7,tid:71}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:19},{z:6,tid:71}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:8},{z:4,tid:4}],[{z:0,tid:2},{z:3,tid:2}],[{z:0,tid:72},{z:6,tid:72}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:72},{z:3,tid:72}],[{z:0,tid:48},{z:3,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:7,tid:46}]],
-            [[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:6,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:8},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}]]
-        ],
-        objects: [
-            [[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[{oid:39,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[{oid:39,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:34,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":10,"y":10},{"x":11,"y":10},{"x":10,"y":11},{"x":11,"y":11}],"2":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}]},
-        sanctuaryZones: [[2,2,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,1,1]]
-    },
-    prebuilt_mountain: {
-        name: 'Mountain', w: 12, h: 12,
-        grid: [
-            [46,46,46,46,13,48,5,5,5,5,5,5],
-            [46,46,46,46,13,48,5,5,5,10,10,5],
-            [35,35,13,13,13,48,48,5,5,10,10,5],
-            [13,13,13,13,50,50,50,48,5,5,5,5],
-            [48,48,48,50,48,48,48,50,48,5,5,5],
-            [48,48,48,48,48,48,48,50,48,48,5,5],
-            [6,48,48,48,50,48,48,48,48,48,48,48],
-            [6,6,48,48,50,48,48,48,50,48,48,48],
-            [3,6,6,48,48,50,50,50,13,13,13,13],
-            [3,3,6,6,48,48,48,13,13,13,35,35],
-            [3,3,3,6,6,48,48,13,46,46,46,46],
-            [3,3,3,3,6,6,48,13,46,46,46,46]
-        ],
-        heightMap: [
-            [11,11,11,10,8,6,10,22,22,25,25,26],
-            [11,11,10,10,8,6,8,22,25,23,23,25],
-            [9,9,8,8,8,6,6,22,25,23,23,25],
-            [8,8,8,8,12,12,12,6,22,25,25,22],
-            [6,6,6,12,6,6,6,12,6,22,26,22],
-            [6,6,6,6,6,6,6,12,6,6,22,11],
-            [5,6,6,6,12,6,6,6,6,6,6,6],
-            [5,5,6,6,12,6,6,6,12,6,6,6],
-            [5,5,5,6,6,12,12,12,8,8,8,8],
-            [5,5,5,5,6,6,6,8,8,8,9,9],
-            [5,5,5,5,5,6,6,8,10,10,11,11],
-            [5,5,5,5,5,5,6,8,10,11,11,11]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:10,tid:5}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:26,tid:5}]],
-            [[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:8,tid:5}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:23,tid:10}],[{z:0,tid:19},{z:23,tid:10}],[{z:0,tid:19},{z:25,tid:5}]],
-            [[{z:0,tid:19},{z:9,tid:35}],[{z:0,tid:19},{z:9,tid:35}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:23,tid:10}],[{z:0,tid:19},{z:23,tid:10}],[{z:0,tid:19},{z:25,tid:5}]],
-            [[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:25,tid:5}],[{z:0,tid:19},{z:22,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:26,tid:5}],[{z:0,tid:19},{z:22,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:22,tid:5}],[{z:0,tid:19},{z:11,tid:5}]],
-            [[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}]],
-            [[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:12,tid:50}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}]],
-            [[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:9,tid:35}],[{z:0,tid:19},{z:9,tid:35}]],
-            [[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}]],
-            [[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:3}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:10,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}],[{z:0,tid:19},{z:11,tid:46}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":1,"y":1},{"x":1,"y":0},{"x":0,"y":0},{"x":0,"y":1}],"2":[{"x":10,"y":11},{"x":10,"y":10},{"x":11,"y":10},{"x":11,"y":11}]},
-        sanctuaryZones: [[1,1,1,1,0,0,0,0,0,0,0,0],[1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,2,2,2,2],[0,0,0,0,0,0,0,0,2,2,2,2]]
-    },
-    prebuilt_crater: {
-        name: 'Crater', w: 16, h: 16,
-        grid: [
-            [10,10,10,10,10,10,10,10,10,10,10,10,10,10,46,46],
-            [10,19,19,19,19,19,19,19,19,19,19,19,19,19,46,46],
-            [10,19,50,50,50,50,50,74,74,10,10,10,10,10,46,46],
-            [10,19,50,50,50,74,74,74,74,74,74,10,10,10,46,46],
-            [10,19,50,50,74,74,13,13,13,13,74,74,10,10,74,74],
-            [10,19,50,74,74,13,13,13,13,13,13,74,74,10,74,74],
-            [10,19,50,74,13,13,13,13,13,13,13,13,74,10,74,74],
-            [74,74,74,74,13,13,13,13,13,13,13,13,74,74,74,74],
-            [74,74,74,74,13,13,13,13,13,13,13,13,74,74,74,74],
-            [74,74,10,74,13,13,13,13,13,13,13,13,74,48,19,10],
-            [74,74,10,74,74,13,13,13,13,13,13,74,74,48,19,10],
-            [74,74,10,10,74,74,13,13,13,13,74,74,48,48,19,10],
-            [46,74,10,10,10,74,74,74,74,74,74,48,48,48,19,10],
-            [46,46,10,10,10,10,10,74,74,48,48,48,48,48,19,10],
-            [46,46,19,19,19,19,19,19,19,19,19,19,19,19,19,10],
-            [46,46,10,10,10,10,10,10,10,10,10,10,10,10,10,10]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,5,6],
-            [3,3,3,3,3,3,3,7,7,3,3,3,3,3,5,6],
-            [3,3,5,5,5,5,5,7,7,3,3,3,3,3,5,6],
-            [3,3,5,6,6,7,7,9,9,7,7,3,3,3,5,6],
-            [3,3,5,6,7,7,7,9,9,7,7,7,3,3,5,6],
-            [3,3,5,7,7,11,11,15,15,9,9,7,7,3,5,6],
-            [3,3,5,7,7,11,11,15,15,9,9,7,7,3,5,6],
-            [5,7,7,9,9,10,10,17,17,15,15,9,9,7,7,6],
-            [6,7,7,9,9,10,10,17,17,15,15,9,9,7,7,5],
-            [6,5,3,7,7,9,9,9,9,9,9,7,7,5,5,3],
-            [6,5,3,7,7,9,9,9,9,9,9,7,7,5,5,3],
-            [6,5,3,3,7,7,7,9,9,7,7,7,7,5,5,3],
-            [6,5,3,3,3,7,7,9,9,7,7,7,7,5,5,3],
-            [6,5,3,3,3,3,3,7,7,5,5,5,5,5,5,3],
-            [6,5,3,3,3,3,3,7,7,5,5,5,5,5,5,3],
-            [6,5,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:6,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:6,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:6,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:6,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:50}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:17,tid:13}],[{z:0,tid:19},{z:17,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:17,tid:13}],[{z:0,tid:19},{z:17,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:15,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:5,tid:74}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:9,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:46}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:48}],[{z:0,tid:19},{z:7,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:46}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:46}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:19},{z:7,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:46}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":15},{"x":0,"y":14},{"x":1,"y":14},{"x":1,"y":15},{"x":1,"y":13},{"x":0,"y":13}],"2":[{"x":15,"y":0},{"x":15,"y":1},{"x":14,"y":1},{"x":14,"y":0},{"x":14,"y":2},{"x":15,"y":2}]},
-        sanctuaryZones: [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
-    },
-    prebuilt_tundra: {
-        name: 'Tundra', w: 8, h: 8,
-        grid: [
-            [9,9,9,48,48,9,9,9],
-            [9,48,48,48,48,48,48,9],
-            [9,48,2,2,2,2,48,9],
-            [48,48,2,9,9,2,48,48],
-            [48,48,2,9,9,2,48,48],
-            [9,48,2,2,2,2,48,9],
-            [9,48,48,48,48,48,48,9],
-            [9,9,9,48,48,9,9,9]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3],
-            [3,4,4,4,4,4,4,3],
-            [3,4,3,3,3,3,4,3],
-            [3,4,3,3,3,3,4,3],
-            [3,4,3,3,3,3,4,3],
-            [3,4,3,3,3,3,4,3],
-            [3,4,4,4,4,4,4,3],
-            [3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}]],
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:9}]],
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:9}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:9}]],
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:9}]],
-            [[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}],[{z:0,tid:19},{z:3,tid:9}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[]],
-            [[],[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":6,"y":7},{"x":7,"y":7},{"x":6,"y":6},{"x":7,"y":6}]}
-    },
-    prebuilt_oasis: {
-        name: 'Oasis', w: 10, h: 10,
-        grid: [
-            [6,6,6,6,6,6,6,6,6,6],
-            [6,6,6,6,48,48,6,6,6,6],
-            [6,6,6,48,48,48,48,6,6,6],
-            [6,6,48,48,2,2,48,48,6,6],
-            [6,48,48,2,18,18,2,48,48,6],
-            [6,48,48,2,18,18,2,48,48,6],
-            [6,6,48,48,2,2,48,48,6,6],
-            [6,6,6,48,48,48,48,6,6,6],
-            [6,6,6,6,48,48,6,6,6,6],
-            [6,6,6,6,6,6,6,6,6,6]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3],
-            [3,4,4,4,4,4,4,4,4,3],
-            [3,4,5,5,5,5,5,5,4,3],
-            [3,4,5,5,3,3,5,5,4,3],
-            [3,4,5,3,3,3,3,5,4,3],
-            [3,4,5,3,3,3,3,5,4,3],
-            [3,4,5,5,3,3,5,5,4,3],
-            [3,4,5,5,5,5,5,5,4,3],
-            [3,4,4,4,4,4,4,4,4,3],
-            [3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:5,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:3,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}],[{z:0,tid:19},{z:3,tid:6}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:35,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":8,"y":9},{"x":9,"y":9},{"x":8,"y":8},{"x":9,"y":8}]}
-    },
-    prebuilt_quarry: {
-        name: 'Quarry', w: 12, h: 12,
-        grid: [
-            [13,63,63,63,63,63,63,63,63,63,63,63],
-            [63,13,72,72,72,72,72,72,72,72,72,63],
-            [63,72,13,8,8,8,8,8,8,8,72,63],
-            [63,72,8,13,13,13,13,13,13,8,72,63],
-            [63,72,8,13,13,19,19,19,13,8,72,63],
-            [63,72,8,13,19,13,15,19,13,8,72,63],
-            [63,72,8,13,19,15,13,19,13,8,72,63],
-            [63,72,8,13,19,19,19,13,13,8,72,63],
-            [63,72,8,13,13,13,13,13,13,8,72,63],
-            [63,72,8,8,8,8,8,8,8,13,72,63],
-            [63,72,72,72,72,72,72,72,72,72,13,63],
-            [63,63,63,63,63,63,63,63,63,63,63,13]
-        ],
-        heightMap: [
-            [11,11,11,10,10,10,10,10,10,10,11,11],
-            [11,10,9,8,8,8,8,8,8,8,9,11],
-            [11,9,8,6,6,6,6,6,6,6,8,10],
-            [10,8,6,6,4,4,4,4,4,6,8,10],
-            [10,8,6,4,5,3,3,3,4,6,8,10],
-            [10,8,6,4,3,4,3,3,4,6,8,10],
-            [10,8,6,4,3,3,4,3,4,6,8,10],
-            [10,8,6,4,3,3,3,5,4,6,8,10],
-            [10,8,6,4,4,4,4,4,6,6,8,10],
-            [10,8,6,6,6,6,6,6,6,8,9,11],
-            [11,9,8,8,8,8,8,8,8,9,10,11],
-            [11,11,10,10,10,10,10,10,10,11,11,11]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}]],
-            [[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:11,tid:63}]],
-            [[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:6,tid:8}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:11,tid:63}]],
-            [[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:8,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:11,tid:63}]],
-            [[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:13}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":10,"y":11},{"x":11,"y":11},{"x":10,"y":10},{"x":11,"y":10}]}
-    },
-    prebuilt_fungal_hollow: {
-        name: 'Fungal Hollow', w: 8, h: 8,
-        grid: [
-            [19,19,19,19,19,19,19,19],
-            [19,16,19,52,52,19,16,19],
-            [19,19,47,47,47,47,19,19],
-            [19,52,47,18,15,47,52,19],
-            [19,52,47,15,18,47,52,19],
-            [19,19,47,47,47,47,19,19],
-            [19,16,19,52,52,19,16,19],
-            [19,19,19,19,19,19,19,19]
-        ],
-        heightMap: [
-            [6,6,6,5,5,6,6,6],
-            [6,5,5,3,3,5,5,6],
-            [6,5,4,4,4,4,5,6],
-            [5,3,4,3,3,4,3,5],
-            [5,3,4,3,3,4,3,5],
-            [6,5,4,4,4,4,5,6],
-            [6,5,5,3,3,5,5,6],
-            [6,6,6,5,5,6,6,6]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:6,tid:19}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}]],
-            [[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}]],
-            [[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:6,tid:19}]],
-            [[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}],[{z:0,tid:19},{z:6,tid:19}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":6,"y":7},{"x":7,"y":7},{"x":6,"y":6},{"x":7,"y":6}]}
-    },
-    prebuilt_fortress: {
-        name: 'Fortress', w: 16, h: 16,
-        grid: [
-            [46,46,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
-            [46,46,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
-            [48,48,2,2,2,2,2,4,4,2,2,2,2,2,48,48],
-            [48,48,2,54,54,54,54,13,13,54,54,54,54,2,48,48],
-            [48,48,2,54,54,74,74,74,74,74,74,54,54,2,48,48],
-            [48,48,2,54,74,74,74,74,74,74,74,74,54,2,48,48],
-            [48,48,2,54,74,74,74,74,74,74,74,74,54,2,48,48],
-            [48,48,2,54,74,74,74,54,54,74,74,74,54,2,48,48],
-            [48,48,2,54,74,74,74,54,54,74,74,74,54,2,48,48],
-            [48,48,2,54,74,74,74,74,74,74,74,74,54,2,48,48],
-            [48,48,2,54,74,74,74,74,74,74,74,74,54,2,48,48],
-            [48,48,2,54,54,74,74,74,74,74,74,54,54,2,48,48],
-            [48,48,2,54,54,54,54,13,13,54,54,54,54,2,48,48],
-            [48,48,2,2,2,2,2,4,4,2,2,2,2,2,48,48],
-            [48,48,48,48,48,48,48,48,48,48,48,48,48,48,46,46],
-            [48,48,48,48,48,48,48,48,48,48,48,48,48,48,46,46]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,4,4,3,3,3,3,3,3,3],
-            [3,3,3,9,9,9,9,4,4,9,9,9,9,3,3,3],
-            [3,3,3,9,11,4,4,4,4,4,4,11,9,3,3,3],
-            [3,3,3,9,4,4,4,4,4,4,4,4,9,3,3,3],
-            [3,3,3,9,4,4,4,4,4,4,4,4,9,3,3,3],
-            [3,3,3,9,4,4,4,14,14,4,4,4,9,3,3,3],
-            [3,3,3,9,4,4,4,14,14,4,4,4,9,3,3,3],
-            [3,3,3,9,4,4,4,4,4,4,4,4,9,3,3,3],
-            [3,3,3,9,4,4,4,4,4,4,4,4,9,3,3,3],
-            [3,3,3,9,11,4,4,4,4,4,4,11,11,3,3,3],
-            [3,3,3,9,9,9,9,4,4,9,9,11,11,3,3,3],
-            [3,3,3,3,3,3,3,4,4,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:14,tid:54}],[{z:0,tid:19},{z:14,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:14,tid:54}],[{z:0,tid:19},{z:14,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:11,tid:54}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}],"2":[{"x":15,"y":15},{"x":14,"y":15},{"x":15,"y":14},{"x":14,"y":14},{"x":13,"y":15},{"x":15,"y":13}]},
-        sanctuaryZones: [[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2]]
-    },
-    prebuilt_volcanic_rift: {
-        name: 'Volcanic Rift', w: 12, h: 12,
-        grid: [
-            [10,10,11,17,63,63,63,63,63,63,63,63],
-            [11,10,10,11,17,63,63,63,63,63,63,63],
-            [11,11,10,10,11,17,63,63,63,63,63,63],
-            [17,11,11,10,10,4,17,63,63,63,63,63],
-            [63,17,11,11,10,10,11,17,63,63,63,63],
-            [63,63,17,11,11,10,10,11,17,63,63,63],
-            [63,63,63,17,11,11,10,10,11,17,63,63],
-            [63,63,63,63,17,11,11,10,10,11,17,63],
-            [63,63,63,63,63,17,4,11,10,10,11,17],
-            [63,63,63,63,63,63,17,11,11,10,10,11],
-            [63,63,63,63,63,63,63,17,11,11,10,10],
-            [63,63,63,63,63,63,63,63,17,11,11,10]
-        ],
-        heightMap: [
-            [3,3,5,7,9,10,10,10,10,10,10,10],
-            [5,3,3,5,7,9,10,10,10,10,10,10],
-            [6,5,3,3,5,7,9,10,10,10,10,10],
-            [8,6,5,3,3,5,7,9,10,10,10,10],
-            [10,8,6,5,3,3,5,7,9,10,10,10],
-            [10,10,8,6,5,3,3,5,7,9,10,10],
-            [10,10,10,8,6,5,3,3,5,7,9,10],
-            [10,10,10,10,8,6,5,3,3,5,7,9],
-            [10,10,10,10,10,8,6,5,3,3,5,7],
-            [10,10,10,10,10,10,8,6,5,3,3,5],
-            [10,10,10,10,10,10,10,8,6,5,3,3],
-            [10,10,10,10,10,10,10,10,8,6,5,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:4}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:10,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}],[{z:0,tid:19},{z:9,tid:63}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:4}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:7,tid:17}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:10,tid:63}],[{z:0,tid:19},{z:8,tid:17}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":8},{"x":0,"y":9},{"x":1,"y":9},{"x":1,"y":10}],"2":[{"x":11,"y":1},{"x":11,"y":2},{"x":10,"y":2},{"x":10,"y":1}]}
-    },
-    prebuilt_babel: {
-        name: 'Ruins of Babel', w: 20, h: 20,
-        grid: [
-            [46,46,46,58,74,74,74,74,58,74,74,74,74,74,74,74,74,74,74,74],
-            [46,46,46,54,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [46,46,46,54,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,54,54,48,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,74,74,74,74,74,74,58,74,74,74,74,74,74,74,74,74,74,74,74],
-            [74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74],
-            [74,54,54,54,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,54,54,54,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,54,54,54,74,74,54,54,13,13,13,13,54,54,74,74,54,54,54,74],
-            [74,74,74,74,74,74,74,74,13,17,17,13,74,74,74,74,74,74,74,74],
-            [74,74,74,74,74,74,74,74,13,17,17,13,74,74,74,74,74,74,74,74],
-            [74,54,54,54,74,74,54,54,13,13,13,13,54,54,74,74,54,54,54,74],
-            [74,54,54,54,74,74,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,54,54,54,74,58,54,54,54,74,74,54,54,54,74,74,54,54,54,74],
-            [74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74],
-            [74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74],
-            [74,54,54,54,74,74,54,54,54,74,74,54,54,54,74,74,48,54,54,74],
-            [58,54,54,54,74,74,54,54,54,74,74,54,54,54,74,74,54,46,46,46],
-            [74,54,54,54,74,74,54,54,54,74,74,54,54,54,58,74,54,46,46,46],
-            [74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,58,46,46,46]
-        ],
-        heightMap: [
-            [3,3,3,5,5,3,3,3,4,3,3,3,3,3,3,3,3,3,3,3],
-            [3,5,7,5,5,3,10,5,6,3,3,5,9,5,3,3,10,10,5,3],
-            [4,9,7,9,9,3,5,6,5,3,3,7,7,7,3,3,5,6,5,3],
-            [3,9,7,9,9,3,7,7,5,3,3,9,7,9,3,3,7,9,7,3],
-            [3,3,3,3,3,3,3,4,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,7,9,10,3,3,9,7,5,3,3,9,9,7,3,3,5,5,7,3],
-            [3,7,9,9,3,3,7,9,7,3,3,7,9,7,3,3,5,9,5,3],
-            [3,9,9,7,3,3,5,7,3,3,3,3,9,7,3,3,7,7,5,3],
-            [3,3,3,3,3,3,3,3,3,16,16,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,16,16,3,3,3,3,3,3,3,3,3],
-            [3,5,7,9,3,3,9,8,3,3,3,3,5,7,3,3,7,5,5,3],
-            [3,7,7,7,3,3,10,6,9,3,3,10,6,9,3,3,5,9,7,3],
-            [3,7,7,5,3,4,10,9,7,3,3,5,7,9,3,3,5,7,9,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,9,9,3],
-            [3,5,7,7,3,3,7,9,7,3,3,7,7,5,3,5,5,9,9,3],
-            [4,6,8,9,3,3,5,7,7,3,3,9,9,7,3,5,5,9,9,3],
-            [3,5,7,7,3,3,7,5,5,3,3,9,7,5,4,3,6,8,7,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:58}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:5,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:4,tid:46}],[{z:0,tid:19},{z:9,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:48}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:16,tid:17}],[{z:0,tid:19},{z:16,tid:17}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:16,tid:17}],[{z:0,tid:19},{z:16,tid:17}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:10,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:9,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:8,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:9,tid:46}],[{z:0,tid:19},{z:9,tid:46}],[{z:0,tid:19},{z:3,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:9,tid:54}],[{z:0,tid:19},{z:7,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:8,tid:46}],[{z:0,tid:19},{z:7,tid:46}],[{z:0,tid:19},{z:3,tid:46}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:58}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}],[{z:0,tid:19},{z:3,tid:46}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2}],"2":[{"x":19,"y":19},{"x":18,"y":19},{"x":19,"y":18},{"x":18,"y":18},{"x":17,"y":19},{"x":19,"y":17}]},
-        sanctuaryZones: [[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2]]
-    },
-    prebuilt_archipelago: {
-        name: 'Archipelago', w: 16, h: 16,
-        grid: [
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,4,13,13,13,13,4,48,48,48,48,2],
-            [2,2,2,2,2,13,4,13,13,4,2,2,2,2,2,2],
-            [2,2,2,2,2,13,13,5,13,13,2,2,2,2,2,2],
-            [48,48,48,48,48,13,13,13,13,13,48,48,48,48,48,2],
-            [48,48,48,48,48,13,4,13,13,4,48,48,48,48,48,2],
-            [48,48,48,48,48,4,2,2,48,48,4,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [48,48,48,48,48,48,2,2,48,48,48,48,48,48,48,2],
-            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,4,4,4,3,3,3,3,3,3,4,4,4,3,3,3],
-            [3,4,6,4,3,3,3,3,3,3,4,6,4,3,3,3],
-            [3,4,4,4,3,3,3,3,3,3,4,4,4,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,4,5,5,5,5,4,3,3,3,3,3],
-            [3,3,3,3,3,5,4,6,6,4,3,3,3,3,3,3],
-            [3,3,3,3,3,5,6,8,7,5,3,3,3,3,3,3],
-            [3,3,3,3,3,5,6,7,7,5,3,3,3,3,3,3],
-            [3,3,3,3,3,5,4,5,5,4,3,3,3,3,3,3],
-            [3,4,4,4,3,4,3,3,3,3,4,4,4,3,3,3],
-            [3,4,6,4,3,3,3,3,3,3,4,6,4,3,3,3],
-            [3,4,4,4,3,3,3,3,3,3,4,4,4,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:8,tid:5}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:35,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":1,"y":1},{"x":2,"y":1},{"x":1,"y":2},{"x":2,"y":2}],"2":[{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":12,"y":12}]}
-    },
-    prebuilt_dark_forest: {
-        name: 'Dark Forest', w: 10, h: 10,
-        grid: [
-            [70,70,50,50,48,48,50,50,70,70],
-            [70,50,50,48,48,48,48,50,50,70],
-            [50,50,48,48,13,13,48,48,50,50],
-            [50,48,48,13,13,13,13,48,48,50],
-            [48,48,13,13,18,18,13,13,48,48],
-            [48,48,13,13,18,18,13,13,48,48],
-            [50,48,48,13,13,13,13,48,48,50],
-            [50,50,48,48,13,13,48,48,50,50],
-            [70,50,50,48,48,48,48,50,50,70],
-            [70,70,50,50,48,48,50,50,70,70]
-        ],
-        heightMap: [
-            [7,7,6,6,4,4,6,6,7,7],
-            [7,6,6,4,4,4,4,6,6,7],
-            [6,6,4,4,3,3,4,4,6,6],
-            [6,4,4,3,3,3,3,4,4,6],
-            [4,4,3,3,3,3,3,3,4,4],
-            [4,4,3,3,3,3,3,3,4,4],
-            [6,4,4,3,3,3,3,4,4,6],
-            [6,6,4,4,3,3,4,4,6,6],
-            [7,6,6,4,4,4,4,6,6,7],
-            [7,7,6,6,4,4,6,6,7,7]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:7,tid:70}]],
-            [[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:70}]],
-            [[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}]],
-            [[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}]],
-            [[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}]],
-            [[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}]],
-            [[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:3,tid:13}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}]],
-            [[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:70}]],
-            [[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:6,tid:50}],[{z:0,tid:19},{z:7,tid:70}],[{z:0,tid:19},{z:7,tid:70}]]
-        ],
-        objects: [
-            [[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}]],
-            [[],[{oid:38,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:38,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[]],
-            [[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1}],"2":[{"x":8,"y":9},{"x":9,"y":9},{"x":8,"y":8},{"x":9,"y":8}]}
-    },
-    prebuilt_skybridge: {
-        name: 'Skybridge', w: 20, h: 20,
-        grid: [
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,4,48,48,48,48,72,72,4,72,72,72,72,72,72],
-            [48,48,48,48,48,48,48,4,48,48,48,48,4,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,48,13,13,13,13,48,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,48,13,17,17,13,48,48,48,48,48,48,48,48],
-            [48,48,48,48,48,48,48,48,13,17,17,13,48,48,48,48,48,48,48,48],
-            [72,72,72,72,72,72,72,48,13,13,13,13,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,4,48,48,48,72,4,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,4,48,48,48,48,72,72,4,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72],
-            [72,72,72,72,72,72,72,48,48,48,48,72,72,72,72,72,72,72,72,72]
-        ],
-        heightMap: [
-            [9,9,9,10,10,7,5,3,3,3,3,5,7,9,9,9,9,9,7,6],
-            [9,10,10,10,10,7,5,3,3,3,3,5,7,9,10,10,10,9,7,6],
-            [9,10,11,11,9,7,5,3,3,3,3,5,7,9,10,11,10,9,7,6],
-            [9,10,11,11,9,7,5,3,3,3,3,5,7,9,10,10,10,9,7,6],
-            [9,9,9,9,9,7,5,3,3,3,3,5,7,9,9,9,9,9,7,6],
-            [7,7,7,7,7,7,5,3,3,3,3,5,7,7,7,7,7,7,7,6],
-            [5,5,5,5,5,5,7,3,3,3,3,5,6,7,5,5,5,5,5,5],
-            [3,3,3,3,3,3,3,9,3,3,3,3,8,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,14,14,14,14,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,14,20,20,14,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,14,20,20,14,3,3,3,3,3,3,3,3],
-            [5,5,5,5,5,5,5,3,14,14,14,14,5,5,5,5,5,5,5,5],
-            [7,7,7,7,7,7,6,8,3,3,3,5,7,7,7,7,7,7,7,6],
-            [9,9,9,9,9,7,7,3,3,3,3,5,7,9,9,9,9,9,7,6],
-            [9,10,10,10,9,7,5,3,3,3,3,5,7,9,10,10,10,9,7,6],
-            [9,10,11,10,9,7,5,3,3,3,3,5,7,9,10,11,10,9,9,6],
-            [9,10,10,10,9,7,5,3,3,3,3,5,7,9,10,10,10,9,9,6],
-            [9,9,9,9,9,7,5,3,3,3,3,5,7,9,9,10,10,9,7,6],
-            [7,7,7,7,7,7,5,3,3,3,3,5,7,7,7,7,7,7,7,6],
-            [6,6,6,6,6,6,5,3,3,3,3,5,6,6,6,6,6,6,6,6]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:7,tid:4}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:9,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:8,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:20,tid:17}],[{z:0,tid:19},{z:20,tid:17}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:20,tid:17}],[{z:0,tid:19},{z:20,tid:17}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}]],
-            [[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:14,tid:13}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:5,tid:72}]],
-            [[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:8,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:4}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:4}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:4}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:11,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:10,tid:72}],[{z:0,tid:19},{z:9,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:7,tid:72}],[{z:0,tid:19},{z:6,tid:72}]],
-            [[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}],[{z:0,tid:19},{z:6,tid:72}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:3,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[{oid:4,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":0},{"x":0,"y":2},{"x":2,"y":1},{"x":1,"y":2}],"2":[{"x":19,"y":19},{"x":18,"y":19},{"x":19,"y":18},{"x":18,"y":18},{"x":17,"y":19},{"x":19,"y":17},{"x":17,"y":18},{"x":18,"y":17}]},
-        sanctuaryZones: [[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2]]
-    },
-    prebuilt_toxic_marsh: {
-        name: 'Toxic Marsh', w: 12, h: 12,
-        grid: [
-            [73,52,52,73,52,52,73,52,52,73,52,52],
-            [52,47,47,47,52,73,52,52,47,47,47,73],
-            [52,47,47,13,13,52,52,73,47,47,47,52],
-            [73,47,13,47,52,52,73,52,47,47,47,52],
-            [52,52,13,52,47,47,47,52,73,52,52,73],
-            [52,73,52,52,47,47,47,47,52,52,73,52],
-            [73,52,52,73,47,47,47,47,52,73,52,52],
-            [52,52,73,52,52,47,47,47,73,13,52,73],
-            [52,47,47,47,73,52,52,73,47,13,47,52],
-            [73,47,47,47,52,52,73,13,13,47,47,52],
-            [52,47,47,47,52,73,52,52,47,47,47,73],
-            [52,73,52,52,73,52,52,73,52,52,73,52]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,4,4,4,3,4,3,3,4,4,4,3],
-            [3,4,4,4,4,3,3,4,4,4,4,3],
-            [3,4,4,5,3,3,5,3,5,4,4,3],
-            [3,3,4,3,5,5,5,3,5,3,3,3],
-            [3,4,3,3,5,7,7,5,3,3,4,3],
-            [3,3,3,5,5,7,7,5,3,4,3,3],
-            [3,3,4,3,3,5,5,6,5,4,3,3],
-            [3,4,4,5,5,3,3,5,5,4,4,3],
-            [3,4,4,4,3,3,4,4,4,4,4,3],
-            [3,4,4,4,3,4,3,3,4,4,4,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:7,tid:47}],[{z:0,tid:19},{z:7,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:7,tid:47}],[{z:0,tid:19},{z:7,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:6,tid:47}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:5,tid:19}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:3,tid:19}]],
-            [[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:52}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:52}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:37,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":1,"y":1},{"x":2,"y":1},{"x":1,"y":2},{"x":2,"y":2}],"2":[{"x":9,"y":10},{"x":10,"y":10},{"x":9,"y":9},{"x":10,"y":9}]}
-    },
-    prebuilt_temple_ruins: {
-        name: 'Temple Ruins', w: 10, h: 10,
-        grid: [
-            [50,50,50,50,50,50,50,50,50,50],
-            [50,48,48,48,35,48,48,48,48,50],
-            [50,48,48,48,15,48,48,48,48,50],
-            [50,48,48,54,54,54,54,48,48,50],
-            [50,48,48,54,18,18,54,15,15,50],
-            [50,15,15,54,18,18,54,48,48,50],
-            [50,48,48,54,54,54,54,48,48,50],
-            [50,48,48,48,48,15,48,48,48,50],
-            [50,48,48,48,48,15,48,48,48,50],
-            [50,50,50,50,50,50,50,50,50,50]
-        ],
-        heightMap: [
-            [4,4,4,4,4,4,4,4,4,4],
-            [4,3,3,3,3,3,3,3,3,4],
-            [4,3,3,3,4,3,3,3,3,4],
-            [4,3,3,5,6,5,5,3,3,4],
-            [4,3,3,5,7,7,6,4,4,4],
-            [4,4,4,6,7,7,5,3,3,4],
-            [4,3,3,5,5,6,5,3,3,4],
-            [4,3,3,3,3,4,3,3,3,4],
-            [4,3,3,3,3,4,3,3,3,4],
-            [4,4,4,4,4,4,4,4,4,4]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:35}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:7,tid:18}],[{z:0,tid:19},{z:7,tid:18}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:7,tid:18}],[{z:0,tid:19},{z:7,tid:18}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:6,tid:54}],[{z:0,tid:19},{z:5,tid:54}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:15}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:3,tid:48}],[{z:0,tid:19},{z:4,tid:50}]],
-            [[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}],[{z:0,tid:19},{z:4,tid:50}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:44,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:45,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":8,"y":8},{"x":9,"y":9},{"x":8,"y":9},{"x":9,"y":8}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}]},
-        sanctuaryZones: [[2,2,2,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,1,1,1]]
-    },
-    prebuilt_wasteland: {
-        name: 'Wasteland', w: 14, h: 14,
-        grid: [
-            [10,11,11,11,11,11,11,11,11,11,11,11,11,11],
-            [11,10,11,11,11,11,11,8,11,11,11,11,11,11],
-            [11,11,10,11,11,58,11,11,11,11,11,11,11,11],
-            [11,11,11,74,74,11,11,11,11,58,11,11,11,11],
-            [11,11,11,74,74,11,11,11,11,11,11,11,11,11],
-            [11,11,58,11,11,10,11,11,11,11,11,11,11,11],
-            [11,8,11,11,11,11,10,11,11,11,11,11,8,11],
-            [11,11,13,13,13,13,13,13,13,13,13,13,11,11],
-            [11,11,11,11,11,11,11,11,10,11,11,11,11,11],
-            [11,11,11,11,11,11,58,11,11,74,74,11,11,11],
-            [11,11,11,11,58,11,11,11,11,74,74,11,11,11],
-            [11,11,11,11,11,11,11,11,58,11,11,10,11,11],
-            [11,11,11,11,11,11,8,11,11,11,11,11,10,11],
-            [11,11,11,11,11,11,11,11,11,11,11,11,11,10]
-        ],
-        heightMap: [
-            [3,4,4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,3,4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,3,4,4,6,4,4,4,4,4,4,4,4],
-            [4,4,4,6,6,4,4,4,4,6,4,4,4,4],
-            [4,4,4,6,6,4,4,4,4,4,4,4,4,4],
-            [4,4,6,4,4,3,4,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,3,4,4,6,6,4,4,4],
-            [4,4,6,6,6,6,5,6,5,6,6,6,4,4],
-            [4,4,4,4,4,4,4,4,3,4,4,4,4,4],
-            [4,4,4,4,4,4,6,6,4,6,6,4,4,4],
-            [4,4,4,4,6,4,6,6,4,6,6,4,4,4],
-            [4,4,4,4,4,4,4,4,6,4,4,3,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4,3,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:8}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:8}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:8}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:58}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:8}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":12,"y":12},{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":11,"y":13},{"x":13,"y":11}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":2,"y":0},{"x":0,"y":2}]},
-        sanctuaryZones: [[2,2,2,0,0,0,0,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0,0,0,0,0],[2,2,2,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,1,1,1]]
-    },
-    prebuilt_frozen_citadel: {
-        name: 'Frozen Citadel', w: 12, h: 12,
-        grid: [
-            [9,9,9,9,9,9,9,9,9,9,9,9],
-            [9,9,9,9,9,9,9,9,9,9,9,9],
-            [9,9,3,3,3,4,4,3,3,3,9,9],
-            [9,9,3,15,15,15,15,15,15,3,9,9],
-            [9,9,3,15,15,15,15,15,15,3,9,9],
-            [9,9,4,15,15,17,17,15,15,4,9,9],
-            [9,9,4,15,15,17,17,15,15,4,9,9],
-            [9,9,3,15,15,15,15,15,15,3,9,9],
-            [9,9,3,15,15,15,15,15,15,3,9,9],
-            [9,9,3,3,3,4,4,3,3,3,9,9],
-            [9,9,9,9,9,9,9,9,9,9,9,9],
-            [9,9,9,9,9,9,9,9,9,9,9,9]
-        ],
-        heightMap: [
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,3,3,3,4,4,3,3,3,4,4],
-            [4,4,3,7,7,6,6,7,7,3,4,4],
-            [4,4,3,7,7,7,7,7,7,3,4,4],
-            [4,4,4,6,7,11,11,7,6,4,4,4],
-            [4,4,4,6,7,11,11,7,6,4,4,4],
-            [4,4,3,7,7,7,7,7,7,3,4,4],
-            [4,4,3,7,7,6,6,7,7,3,4,4],
-            [4,4,3,3,3,4,4,3,3,3,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:11,tid:17}],[{z:0,tid:19},{z:11,tid:17}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:11,tid:17}],[{z:0,tid:19},{z:11,tid:17}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:7,tid:15}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]],
-            [[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}],[{z:0,tid:19},{z:4,tid:9}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":10,"y":10},{"x":11,"y":11},{"x":10,"y":11},{"x":11,"y":10}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}]},
-        sanctuaryZones: [[2,2,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,1,1]]
-    },
-    prebuilt_mushroom_grove: {
-        name: 'Mushroom Grove', w: 8, h: 8,
-        grid: [
-            [73,73,73,73,73,73,73,73],
-            [73,47,47,16,16,47,47,73],
-            [73,47,16,47,47,16,47,73],
-            [73,16,47,52,52,47,16,73],
-            [73,16,47,52,52,47,16,73],
-            [73,47,16,47,47,16,47,73],
-            [73,47,47,16,16,47,47,73],
-            [73,73,73,73,73,73,73,73]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3],
-            [4,4,4,4,4,4,4,4],
-            [5,5,5,5,5,5,5,5],
-            [6,6,5,3,3,5,6,6],
-            [6,6,5,3,3,5,6,6],
-            [5,5,5,5,5,5,5,5],
-            [4,4,4,4,4,4,4,4],
-            [3,3,3,3,3,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:4,tid:10}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:16}],[{z:0,tid:19},{z:4,tid:16}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:10}]],
-            [[{z:0,tid:19},{z:5,tid:10}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:10}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:6,tid:10}]],
-            [[{z:0,tid:19},{z:6,tid:10}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:6,tid:10}]],
-            [[{z:0,tid:19},{z:5,tid:10}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:16}],[{z:0,tid:19},{z:5,tid:47}],[{z:0,tid:19},{z:5,tid:10}]],
-            [[{z:0,tid:19},{z:4,tid:10}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:16}],[{z:0,tid:19},{z:4,tid:16}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:47}],[{z:0,tid:19},{z:4,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:34,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":6,"y":6},{"x":7,"y":7},{"x":6,"y":7}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0}]},
-        sanctuaryZones: [[2,2,0,0,0,0,0,0],[2,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,1]]
-    },
-    prebuilt_canyon: {
-        name: 'Canyon', w: 18, h: 10,
-        grid: [
-            [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],
-            [63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [6,6,65,6,6,6,6,65,6,6,6,18,6,6,6,65,6,6],
-            [2,2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,2],
-            [2,2,2,2,4,2,2,2,2,4,2,2,2,4,2,2,2,2],
-            [6,6,65,6,6,6,18,6,6,6,65,6,6,6,6,65,6,6],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64],
-            [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]
-        ],
-        heightMap: [
-            [11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,6,4,4,4,4,6,4,4,4,5,4,4,4,6,4,4],
-            [3,3,3,3,4,3,3,3,3,4,3,3,3,4,3,3,3,3],
-            [3,3,3,3,4,3,3,3,3,4,3,3,3,4,3,3,3,3],
-            [4,4,6,4,4,4,5,4,4,4,6,4,4,4,4,6,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}]],
-            [[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}],[{z:0,tid:19},{z:6,tid:63}]],
-            [[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}]],
-            [[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:18}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:5,tid:18}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:6,tid:65}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}]],
-            [[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}],[{z:0,tid:19},{z:4,tid:6}]],
-            [[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}],[{z:0,tid:19},{z:6,tid:64}]],
-            [[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}],[{z:0,tid:19},{z:11,tid:5}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":16,"y":6},{"x":17,"y":7},{"x":16,"y":7},{"x":17,"y":6},{"x":16,"y":5},{"x":17,"y":5}],"2":[{"x":1,"y":3},{"x":0,"y":2},{"x":1,"y":2},{"x":0,"y":3},{"x":1,"y":4},{"x":0,"y":4}]},
-        sanctuaryZones: [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
-    },
-    prebuilt_obsidian_spire: {
-        name: 'Obsidian Spire', w: 10, h: 10,
-        grid: [
-            [11,11,10,10,17,17,10,10,11,11],
-            [11,11,10,10,17,17,10,10,11,11],
-            [10,10,10,10,17,17,10,10,10,10],
-            [10,10,10,17,17,17,17,10,10,10],
-            [17,17,17,17,15,15,17,17,17,17],
-            [17,17,17,17,15,15,17,17,17,17],
-            [10,10,10,17,17,17,17,10,10,10],
-            [10,10,10,10,17,17,10,10,10,10],
-            [11,11,10,10,17,17,10,10,11,11],
-            [11,11,10,10,17,17,10,10,11,11]
-        ],
-        heightMap: [
-            [4,4,3,3,5,5,3,3,4,4],
-            [4,4,3,3,5,5,3,3,4,4],
-            [3,3,3,3,5,5,3,3,3,3],
-            [3,3,3,10,10,10,10,3,3,3],
-            [5,5,5,10,14,14,10,5,5,5],
-            [5,5,5,10,14,14,10,5,5,5],
-            [3,3,3,10,10,10,10,3,3,3],
-            [3,3,3,3,5,5,3,3,3,3],
-            [4,4,3,3,5,5,3,3,4,4],
-            [4,4,3,3,5,5,3,3,4,4]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:14,tid:15}],[{z:0,tid:19},{z:14,tid:15}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}]],
-            [[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:14,tid:15}],[{z:0,tid:19},{z:14,tid:15}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:10,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:5,tid:17}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":8,"y":8},{"x":9,"y":9},{"x":8,"y":9},{"x":9,"y":8}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1}]},
-        sanctuaryZones: [[2,2,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,1,1]]
-    },
-    prebuilt_village_siege: {
-        name: 'Village Siege', w: 16, h: 12,
-        grid: [
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,10,11,11,11,11,11],
-            [53,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
-            [53,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,10,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,10,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11],
-            [53,48,48,48,48,48,48,13,13,11,11,11,11,11,11,11]
-        ],
-        heightMap: [
-            [6,4,4,4,4,4,6,6,6,6,4,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,6,4,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,4,4,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,4,4,4,4,4,4,4],
-            [6,4,6,6,4,4,6,6,6,4,3,4,6,6,6,6],
-            [7,6,6,6,6,6,6,6,6,6,5,6,6,6,6,6],
-            [7,6,6,6,6,6,6,6,6,6,6,6,6,5,6,6],
-            [6,4,4,4,6,6,6,6,6,4,6,6,4,3,6,6],
-            [6,4,4,4,4,4,6,6,6,4,4,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,4,3,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,6,4,4,4,4,4,4],
-            [6,4,4,4,4,4,6,6,6,6,4,4,4,4,4,4]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}]],
-            [[{z:0,tid:19},{z:7,tid:53}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}]],
-            [[{z:0,tid:19},{z:7,tid:53}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:6,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:6,tid:53}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:4,tid:48}],[{z:0,tid:19},{z:6,tid:48}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:13}],[{z:0,tid:19},{z:6,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]]
-        ],
-        objects: [
-            [[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:1,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:34,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:3,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[]],
-            [[],[{oid:36,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:38,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":1,"y":0},{"x":2,"y":0},{"x":1,"y":1},{"x":2,"y":1},{"x":0,"y":0},{"x":0,"y":1}],"2":[{"x":14,"y":11},{"x":13,"y":11},{"x":14,"y":10},{"x":13,"y":10},{"x":15,"y":11},{"x":15,"y":10}]},
-        sanctuaryZones: [[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2]]
-    },
-    prebuilt_crystal_cavern: {
-        name: 'Crystal Cavern', w: 12, h: 8,
-        grid: [
-            [63,63,63,63,63,63,63,63,63,63,63,63],
-            [19,19,19,15,19,19,19,19,15,19,19,19],
-            [19,16,19,19,19,15,19,19,19,19,19,19],
-            [19,19,15,2,2,4,2,2,4,15,19,19],
-            [19,19,19,2,2,4,2,2,4,19,19,19],
-            [19,19,19,15,19,19,19,19,15,19,16,19],
-            [19,19,19,19,19,15,19,19,19,19,15,19],
-            [64,64,64,64,64,64,64,64,64,64,64,64]
-        ],
-        heightMap: [
-            [9,9,9,8,9,9,9,9,8,9,9,9],
-            [4,4,4,6,4,4,4,4,6,4,4,4],
-            [4,6,4,4,4,6,4,4,4,4,4,4],
-            [4,4,6,3,3,4,3,3,4,6,4,4],
-            [4,4,4,3,3,4,3,3,4,4,4,4],
-            [4,4,4,6,4,4,4,4,6,4,6,4],
-            [4,4,4,4,4,6,4,4,4,4,6,4],
-            [9,9,9,9,9,8,9,9,9,9,8,9]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:8,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:8,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}],[{z:0,tid:19},{z:9,tid:63}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:3,tid:19}],[{z:0,tid:19},{z:4,tid:4}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:16}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:4,tid:19}],[{z:0,tid:19},{z:6,tid:15}],[{z:0,tid:19},{z:4,tid:19}]],
-            [[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:8,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:9,tid:64}],[{z:0,tid:19},{z:8,tid:64}],[{z:0,tid:19},{z:9,tid:64}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:17,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:18,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":1},{"x":1,"y":1},{"x":0,"y":2},{"x":1,"y":2}],"2":[{"x":11,"y":6},{"x":10,"y":6},{"x":11,"y":5},{"x":10,"y":5}]},
-        sanctuaryZones: [[0,0,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,2,2],[0,0,0,0,0,0,0,0,0,0,0,0]]
-    },
-    prebuilt_divided_city: {
-        name: 'Divided City', w: 20, h: 14,
-        grid: [
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,48,48,2,2,48,48,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,48,48,2,2,48,48,13,74,74,13,74,74,74],
-            [13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74],
-            [74,74,74,13,74,74,13,74,74,2,2,74,74,13,74,74,13,74,74,74]
-        ],
-        heightMap: [
-            [3,3,3,4,4,4,4,4,4,3,3,4,4,4,4,4,4,4,4,3],
-            [4,4,4,4,4,4,4,4,4,3,3,4,4,4,4,4,4,4,4,4],
-            [5,5,5,5,5,5,5,5,5,3,3,5,5,5,5,5,5,5,5,5],
-            [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],
-            [6,7,7,7,7,7,7,6,5,3,3,5,6,7,7,7,7,7,7,6],
-            [7,7,7,7,7,7,7,7,5,3,3,5,7,7,7,7,7,7,7,7],
-            [8,8,8,8,8,8,8,8,8,3,3,8,8,8,8,8,8,8,8,8],
-            [8,8,8,8,8,8,8,8,8,5,5,8,8,8,8,8,8,8,8,8],
-            [7,7,7,7,7,7,7,7,7,3,3,7,7,7,7,7,7,7,7,7],
-            [6,7,7,7,7,7,7,7,7,3,3,7,7,7,7,7,7,7,7,6],
-            [5,5,5,5,5,5,5,5,5,3,3,5,5,5,5,5,5,5,5,5],
-            [5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],
-            [4,4,4,4,4,4,4,4,4,3,3,4,4,4,4,4,4,4,4,4],
-            [3,4,4,4,4,4,4,4,4,3,3,4,4,4,4,4,4,3,3,3]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:3,tid:74}]],
-            [[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}]],
-            [[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}]],
-            [[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:48}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:48}],[{z:0,tid:19},{z:7,tid:48}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}]],
-            [[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:48}],[{z:0,tid:19},{z:8,tid:48}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:8,tid:48}],[{z:0,tid:19},{z:8,tid:48}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}],[{z:0,tid:19},{z:8,tid:74}]],
-            [[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}],[{z:0,tid:19},{z:8,tid:13}]],
-            [[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}]],
-            [[{z:0,tid:19},{z:6,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:13}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:7,tid:74}],[{z:0,tid:19},{z:6,tid:74}]],
-            [[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}],[{z:0,tid:19},{z:5,tid:74}]],
-            [[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}],[{z:0,tid:19},{z:5,tid:13}]],
-            [[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}]],
-            [[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:74}],[{z:0,tid:19},{z:4,tid:13}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}],[{z:0,tid:19},{z:3,tid:74}]]
-        ],
-        objects: [
-            [[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[{oid:1,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[{oid:34,alignX:'center',alignY:'bottom',rot:0,flipX:false,flipY:false}],[],[],[],[],[],[],[]],
-            [[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:28,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":0},{"x":1,"y":0},{"x":2,"y":0},{"x":0,"y":1},{"x":1,"y":1},{"x":2,"y":1},{"x":0,"y":2},{"x":1,"y":2}],"2":[{"x":19,"y":13},{"x":18,"y":13},{"x":17,"y":13},{"x":19,"y":12},{"x":18,"y":12},{"x":17,"y":12},{"x":19,"y":11},{"x":18,"y":11}]},
-        sanctuaryZones: [[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2]]
-    },
-    prebuilt_caldera_summit: {
-        name: 'Caldera Summit', w: 14, h: 14,
-        grid: [
-            [11,11,10,10,10,10,10,10,10,10,10,10,10,10],
-            [11,11,11,11,11,11,11,11,11,11,11,11,11,10],
-            [10,11,63,63,63,63,18,13,63,63,63,63,11,10],
-            [10,11,63,63,63,63,13,13,63,63,63,63,11,10],
-            [10,11,63,63,17,17,13,13,17,17,63,63,11,10],
-            [10,11,63,63,17,17,17,17,17,17,63,63,11,10],
-            [10,11,18,13,13,17,15,15,17,13,13,13,11,10],
-            [10,11,13,13,13,17,15,15,17,13,13,18,11,10],
-            [10,11,63,63,17,17,17,17,17,17,63,63,11,10],
-            [10,11,63,63,17,17,13,13,17,17,63,63,11,10],
-            [10,11,63,63,63,63,13,13,63,63,63,63,11,10],
-            [10,11,63,63,63,63,13,18,63,63,63,63,11,10],
-            [10,11,11,11,11,11,11,11,11,11,11,11,11,11],
-            [10,10,10,10,10,10,10,10,10,10,10,10,11,11]
-        ],
-        heightMap: [
-            [4,4,3,3,3,3,3,3,3,3,3,3,3,3],
-            [4,4,5,5,5,5,5,5,5,5,5,5,5,3],
-            [3,5,13,13,13,12,10,10,12,13,13,13,5,3],
-            [3,5,13,11,11,11,11,11,11,11,11,13,5,3],
-            [3,5,13,11,13,13,13,13,13,13,11,13,5,3],
-            [3,5,12,11,13,14,14,14,14,13,11,12,5,3],
-            [3,5,10,11,13,14,20,20,14,13,11,10,5,3],
-            [3,5,10,11,13,14,20,20,14,13,11,10,5,3],
-            [3,5,12,11,13,14,14,14,14,13,11,12,5,3],
-            [3,5,13,11,13,13,13,13,13,13,11,13,5,3],
-            [3,5,13,11,11,11,11,11,11,11,11,13,5,3],
-            [3,5,13,13,13,12,10,10,12,13,13,13,5,3],
-            [3,5,5,5,5,5,5,5,5,5,5,5,4,4],
-            [3,3,3,3,3,3,3,3,3,3,3,3,4,4]
-        ],
-        voxels: [
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:10,tid:18}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:10,tid:18}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:20,tid:15}],[{z:0,tid:19},{z:20,tid:15}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:20,tid:15}],[{z:0,tid:19},{z:20,tid:15}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:10,tid:18}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:14,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:13,tid:13}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:13,tid:17}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:13}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:11,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:10,tid:13}],[{z:0,tid:19},{z:10,tid:18}],[{z:0,tid:19},{z:12,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:13,tid:63}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:3,tid:10}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:5,tid:11}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]],
-            [[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:3,tid:10}],[{z:0,tid:19},{z:4,tid:11}],[{z:0,tid:19},{z:4,tid:11}]]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":12,"y":12},{"x":13,"y":13},{"x":12,"y":13},{"x":13,"y":12},{"x":12,"y":11},{"x":13,"y":11}],"2":[{"x":1,"y":1},{"x":0,"y":0},{"x":1,"y":0},{"x":0,"y":1},{"x":1,"y":2},{"x":0,"y":2}]},
-        sanctuaryZones: [[2,2,0,0,0,0,0,0,0,0,0,0,0,0],[2,2,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,1,1]]
-    },
-    prebuilt_apartment: {
-        name: 'Apartment', w: 4, h: 4,
-        grid: [
-            [54,74,74,54],
-            [74,74,58,74],
-            [74,58,74,74],
-            [54,74,74,54]
-        ],
-        heightMap: [
-            [3,3,3,3],
-            [3,4,4,3],
-            [3,4,4,3],
-            [3,4,4,3]
-        ],
-        objects: [
-            [[],[],[],[]],
-            [[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[]],
-            [[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":2},{"x":0,"y":3}],"2":[{"x":3,"y":0},{"x":3,"y":1}]}
-    },
-    prebuilt_suburb: {
-        name: 'Suburb', w: 8, h: 8,
-        grid: [
-            [48,48,74,74,74,54,54,48],
-            [48,74,74,13,13,74,54,48],
-            [74,74,58,13,13,58,74,74],
-            [74,13,13,74,74,13,13,74],
-            [74,13,13,74,74,13,13,74],
-            [74,74,58,13,13,59,74,74],
-            [48,54,74,13,13,74,74,48],
-            [48,54,54,74,74,74,48,48]
-        ],
-        heightMap: [
-            [3,3,3,3,4,4,3,3],
-            [4,4,4,4,4,4,4,4],
-            [5,5,5,5,6,6,5,5],
-            [6,6,6,6,6,6,6,6],
-            [6,6,6,6,6,6,6,6],
-            [6,6,6,6,6,6,5,5],
-            [4,4,4,4,4,4,4,4],
-            [3,3,4,4,3,3,3,3]
-        ],
-        objects: [
-            [[{oid:36,alignX:'center',alignY:'bottom'}],[{oid:37,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:35,alignX:'center',alignY:'bottom'}]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[{oid:35,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:36,alignX:'center',alignY:'bottom'}],[{oid:37,alignX:'center',alignY:'bottom'}]]
-        ],
-        spawns: {"1":[{"x":0,"y":6},{"x":1,"y":6},{"x":0,"y":7},{"x":1,"y":7}],"2":[{"x":6,"y":0},{"x":7,"y":0},{"x":6,"y":1},{"x":7,"y":1}]}
-    },
-    prebuilt_rift_plaza: {
-        name: 'Rift Plaza', w: 12, h: 12,
-        grid: [
-            [54,54,74,74,74,74,74,74,74,74,54,54],
-            [54,74,74,13,13,74,74,13,13,74,74,54],
-            [74,74,58,13,74,74,74,74,13,59,74,74],
-            [74,13,13,74,74,15,15,74,74,13,13,74],
-            [74,13,74,74,15,31,31,15,74,74,13,74],
-            [74,74,74,15,31,15,15,31,15,74,74,74],
-            [74,74,74,15,31,15,15,31,15,74,74,74],
-            [74,13,74,74,15,31,31,15,74,74,13,74],
-            [74,13,13,74,74,15,15,74,74,13,13,74],
-            [74,74,60,13,74,74,74,74,13,58,74,74],
-            [54,74,74,13,13,74,74,13,13,74,74,54],
-            [54,54,74,74,74,74,74,74,74,74,54,54]
-        ],
-        heightMap: [
-            [6,6,3,3,3,3,3,3,3,3,5,6],
-            [6,6,3,3,3,3,3,3,3,3,3,5],
-            [3,3,4,3,3,3,3,3,3,4,3,3],
-            [3,3,3,4,4,4,4,3,3,3,3,3],
-            [3,3,3,4,4,6,6,4,3,3,3,3],
-            [3,3,3,4,6,7,7,6,4,3,3,3],
-            [3,3,3,4,6,7,7,6,4,3,3,3],
-            [3,3,3,3,4,6,6,4,3,3,3,3],
-            [3,3,3,3,3,4,4,3,3,3,3,3],
-            [3,3,4,3,3,3,3,3,3,4,3,3],
-            [5,3,3,3,3,3,3,3,3,3,3,5],
-            [6,5,3,3,3,3,3,3,3,3,5,6]
-        ],
-        objects: [
-            [[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:23,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:25,alignX:'center',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[{oid:26,alignX:'center',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":9},{"x":1,"y":9},{"x":0,"y":10},{"x":1,"y":10},{"x":0,"y":11},{"x":1,"y":11}],"2":[{"x":10,"y":0},{"x":11,"y":0},{"x":10,"y":1},{"x":11,"y":1},{"x":10,"y":2},{"x":11,"y":2}]}
-    },
-    prebuilt_bunker: {
-        name: 'Bunker', w: 8, h: 8,
-        grid: [
-            [20,20,19,19,19,19,20,20],
-            [20,19,19,68,68,19,19,20],
-            [19,19,19,19,19,19,19,19],
-            [19,68,19,13,13,19,68,19],
-            [19,68,19,13,13,19,68,19],
-            [19,19,19,19,19,19,19,19],
-            [20,19,19,68,68,19,19,20],
-            [20,20,19,19,19,19,20,20]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3],
-            [3,4,4,3,3,4,4,3],
-            [5,5,5,5,5,5,5,5],
-            [5,3,5,6,6,5,3,5],
-            [5,3,5,6,6,5,3,5],
-            [5,5,5,5,5,5,5,5],
-            [3,4,4,3,3,4,4,3],
-            [3,3,3,3,3,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[]],
-            [[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":6},{"x":1,"y":6},{"x":0,"y":7},{"x":1,"y":7}],"2":[{"x":6,"y":0},{"x":7,"y":0},{"x":6,"y":1},{"x":7,"y":1}]}
-    },
-    prebuilt_cavern: {
-        name: 'Cavern', w: 12, h: 12,
-        grid: [
-            [20,20,20,19,19,19,19,19,19,20,20,20],
-            [20,19,19,19,15,19,19,15,19,19,19,20],
-            [20,19,19,19,19,19,19,19,19,19,19,20],
-            [19,19,19,63,19,19,19,19,64,19,19,19],
-            [19,15,19,19,19,2,2,19,19,19,15,19],
-            [19,19,19,19,2,3,3,2,19,19,19,19],
-            [19,19,19,19,2,3,3,2,19,19,19,19],
-            [19,15,19,19,19,2,2,19,19,19,15,19],
-            [19,19,19,65,19,19,19,19,63,19,19,19],
-            [20,19,19,19,19,19,19,19,19,19,19,20],
-            [20,19,19,19,15,19,19,15,19,19,19,20],
-            [20,20,20,19,19,19,19,19,19,20,20,20]
-        ],
-        heightMap: [
-            [9,8,8,6,6,4,4,6,6,8,8,9],
-            [8,6,6,4,6,4,4,6,4,6,6,8],
-            [8,6,4,4,4,4,4,4,4,4,6,8],
-            [6,4,4,6,4,4,4,4,6,4,4,6],
-            [6,6,4,4,4,3,3,4,4,4,6,6],
-            [4,4,4,4,3,4,4,3,4,4,4,4],
-            [4,4,4,4,3,4,4,3,4,4,4,4],
-            [6,6,4,4,4,3,3,4,4,4,6,6],
-            [6,4,4,6,4,4,4,4,6,4,4,6],
-            [8,6,4,4,4,4,4,4,4,4,6,8],
-            [8,6,6,4,6,4,4,6,4,6,6,8],
-            [9,8,8,6,6,4,4,6,6,8,8,9]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":1,"y":9},{"x":2,"y":9},{"x":1,"y":10},{"x":2,"y":10},{"x":1,"y":11},{"x":2,"y":11}],"2":[{"x":9,"y":0},{"x":10,"y":0},{"x":9,"y":1},{"x":10,"y":1},{"x":9,"y":2},{"x":10,"y":2}]}
-    },
-    prebuilt_workshop: {
-        name: 'Workshop', w: 12, h: 12,
-        grid: [
-            [63,63,15,63,63,15,15,63,63,15,63,63],
-            [63,15,15,15,63,15,15,63,15,15,15,63],
-            [15,15,63,15,15,15,15,15,15,63,15,15],
-            [63,15,15,15,15,63,63,15,15,15,15,63],
-            [63,63,15,15,15,15,15,15,15,15,63,63],
-            [15,15,15,63,15,15,15,15,63,15,15,15],
-            [15,15,15,63,15,15,15,15,63,15,15,15],
-            [63,63,15,15,15,15,15,15,15,15,63,63],
-            [63,15,15,15,15,63,63,15,15,15,15,63],
-            [15,15,63,15,15,15,15,15,15,63,15,15],
-            [63,15,15,15,63,15,15,63,15,15,15,63],
-            [63,63,15,63,63,15,15,63,63,15,63,63]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [5,5,5,5,5,5,5,5,5,5,5,5],
-            [6,6,6,6,6,6,6,6,6,6,6,6],
-            [7,7,7,7,7,7,7,7,7,7,7,7],
-            [7,7,7,7,7,7,7,7,7,7,7,7],
-            [6,6,6,6,6,6,6,6,6,6,6,6],
-            [5,5,5,5,5,5,5,5,5,5,5,5],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [4,4,4,4,4,4,4,4,4,4,4,4],
-            [3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":9},{"x":1,"y":9},{"x":0,"y":10},{"x":1,"y":10},{"x":0,"y":11},{"x":1,"y":11}],"2":[{"x":10,"y":0},{"x":11,"y":0},{"x":10,"y":1},{"x":11,"y":1},{"x":10,"y":2},{"x":11,"y":2}]}
-    },
-    prebuilt_killbox: {
-        name: 'Kill Box', w: 12, h: 12,
-        grid: [
-            [19,19,19,68,19,19,19,19,68,19,19,19],
-            [19,74,74,19,74,74,74,74,19,74,74,19],
-            [19,74,58,19,74,74,74,74,19,59,74,19],
-            [68,19,19,19,19,74,74,19,19,19,19,68],
-            [19,74,74,19,74,74,74,74,19,74,74,19],
-            [19,74,74,74,74,13,13,74,74,74,74,19],
-            [19,74,74,74,74,13,13,74,74,74,74,19],
-            [19,74,74,19,74,74,74,74,19,74,74,19],
-            [68,19,19,19,19,74,74,19,19,19,19,68],
-            [19,74,60,19,74,74,74,74,19,58,74,19],
-            [19,74,74,19,74,74,74,74,19,74,74,19],
-            [19,19,19,68,19,19,19,19,68,19,19,19]
-        ],
-        heightMap: [
-            [7,7,5,3,5,7,7,5,3,5,7,7],
-            [7,6,6,5,6,6,6,6,5,6,6,7],
-            [5,6,6,6,6,6,6,6,6,6,6,5],
-            [3,5,6,5,5,5,5,5,5,6,5,3],
-            [5,6,6,5,4,4,4,4,5,6,6,5],
-            [7,6,6,5,4,3,3,4,5,6,6,7],
-            [7,6,6,5,4,3,3,4,5,6,6,7],
-            [5,6,6,5,4,4,4,4,5,6,6,5],
-            [3,5,6,5,5,5,5,5,5,6,5,3],
-            [5,6,6,6,6,6,6,6,6,6,6,5],
-            [7,6,6,5,6,6,6,6,5,6,6,7],
-            [7,7,5,3,5,7,7,5,3,5,7,7]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":4,"y":4},{"x":5,"y":4},{"x":6,"y":4},{"x":4,"y":5},{"x":5,"y":5},{"x":6,"y":5}],"2":[{"x":0,"y":0},{"x":11,"y":0},{"x":0,"y":11},{"x":11,"y":11},{"x":0,"y":5},{"x":11,"y":5}]}
-    },
-    prebuilt_dreamscape: {
-        name: 'Dreamscape', w: 12, h: 12,
-        grid: [
-            [47,47,73,47,47,31,31,47,47,73,47,47],
-            [47,47,47,47,31,47,47,31,47,47,47,47],
-            [73,47,15,47,47,47,47,47,47,15,47,73],
-            [47,47,47,47,47,47,47,47,47,47,47,47],
-            [47,31,47,47,15,47,47,15,47,47,31,47],
-            [31,47,47,47,47,15,15,47,47,47,47,31],
-            [31,47,47,47,47,15,15,47,47,47,47,31],
-            [47,31,47,47,15,47,47,15,47,47,31,47],
-            [47,47,47,47,47,47,47,47,47,47,47,47],
-            [73,47,15,47,47,47,47,47,47,15,47,73],
-            [47,47,47,47,31,47,47,31,47,47,47,47],
-            [47,47,73,47,47,31,31,47,47,73,47,47]
-        ],
-        heightMap: [
-            [6,6,4,6,5,3,3,5,6,4,6,6],
-            [6,6,6,6,4,5,5,4,6,6,6,6],
-            [4,6,8,6,6,6,6,6,6,8,6,4],
-            [6,6,6,6,6,6,6,6,6,6,6,6],
-            [5,4,6,6,7,6,6,7,6,6,4,5],
-            [3,5,6,6,6,10,10,6,6,6,5,3],
-            [3,5,6,6,6,10,10,6,6,6,5,3],
-            [5,4,6,6,7,6,6,7,6,6,4,5],
-            [6,6,6,6,6,6,6,6,6,6,6,6],
-            [4,6,8,6,6,6,6,6,6,8,6,4],
-            [6,6,6,6,4,5,5,4,6,6,6,6],
-            [6,6,4,6,5,3,3,5,6,4,6,6]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":9},{"x":1,"y":9},{"x":0,"y":10},{"x":1,"y":10},{"x":0,"y":11},{"x":1,"y":11}],"2":[{"x":10,"y":0},{"x":11,"y":0},{"x":10,"y":1},{"x":11,"y":1},{"x":10,"y":2},{"x":11,"y":2}]}
-    },
-    prebuilt_bleed_arena: {
-        name: 'Bleed Arena', w: 10, h: 10,
-        grid: [
-            [73,47,47,47,15,15,47,47,47,73],
-            [47,47,47,47,47,47,47,47,47,47],
-            [47,47,15,47,47,47,47,15,47,47],
-            [47,47,47,47,47,47,47,47,47,47],
-            [15,47,47,47,47,47,47,47,47,15],
-            [15,47,47,47,47,47,47,47,47,15],
-            [47,47,47,47,47,47,47,47,47,47],
-            [47,47,15,47,47,47,47,15,47,47],
-            [47,47,47,47,47,47,47,47,47,47],
-            [73,47,47,47,15,15,47,47,47,73]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3],
-            [3,4,4,4,4,4,4,4,4,3],
-            [3,4,5,5,5,5,5,5,4,3],
-            [3,4,5,6,6,6,6,5,4,3],
-            [3,4,5,6,7,7,6,5,4,3],
-            [3,4,5,6,7,7,6,5,4,3],
-            [3,4,5,6,6,6,6,5,4,3],
-            [3,4,5,5,5,5,5,5,4,3],
-            [3,4,4,4,4,4,4,4,4,3],
-            [3,3,3,3,3,3,3,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":4},{"x":0,"y":5},{"x":1,"y":4},{"x":1,"y":5}],"2":[{"x":8,"y":4},{"x":8,"y":5},{"x":9,"y":4},{"x":9,"y":5}]}
-    },
-    prebuilt_lattice: {
-        name: 'Lattice Temple', w: 16, h: 16,
-        grid: [
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],
-            [6,6,6,6,6,8,8,6,6,8,8,6,6,6,6,6],
-            [6,6,15,6,8,8,13,13,13,13,8,8,6,15,6,6],
-            [6,6,6,8,8,13,13,15,15,13,13,8,8,6,6,6],
-            [6,6,8,8,13,13,15,15,15,15,13,13,8,8,6,6],
-            [6,8,8,13,13,15,15,55,55,15,15,13,13,8,8,6],
-            [6,8,13,13,15,15,55,55,55,55,15,15,13,13,8,6],
-            [6,6,13,15,15,55,55,15,15,55,55,15,15,13,6,6],
-            [6,6,13,15,15,55,55,15,15,55,55,15,15,13,6,6],
-            [6,8,13,13,15,15,55,55,55,55,15,15,13,13,8,6],
-            [6,8,8,13,13,15,15,55,55,15,15,13,13,8,8,6],
-            [6,6,8,8,13,13,15,15,15,15,13,13,8,8,6,6],
-            [6,6,6,8,8,13,13,15,15,13,13,8,8,6,6,6],
-            [6,6,15,6,8,8,13,13,13,13,8,8,6,15,6,6],
-            [6,6,6,6,6,8,8,6,6,8,8,6,6,6,6,6],
-            [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,4,3,3,3,4,4,4,4,3,3,3,4,3,3],
-            [3,3,3,3,3,4,4,6,6,4,4,3,3,3,3,3],
-            [3,3,3,3,4,4,6,6,6,6,4,4,3,3,3,3],
-            [3,3,3,4,4,6,6,7,7,6,6,4,4,3,3,3],
-            [3,3,4,4,6,6,7,7,7,7,6,6,4,4,3,3],
-            [3,3,4,6,6,7,7,9,9,7,7,6,6,4,3,3],
-            [3,3,4,6,6,7,7,9,9,7,7,6,6,4,3,3],
-            [3,3,4,4,6,6,7,7,7,7,6,6,4,4,3,3],
-            [3,3,3,4,4,6,6,7,7,6,6,4,4,3,3,3],
-            [3,3,3,3,4,4,6,6,6,6,4,4,3,3,3,3],
-            [3,3,3,3,3,4,4,6,6,4,4,3,3,3,3,3],
-            [3,3,4,3,3,3,4,4,4,4,3,3,3,4,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":13},{"x":1,"y":13},{"x":0,"y":14},{"x":1,"y":14},{"x":0,"y":15},{"x":1,"y":15},{"x":2,"y":14},{"x":2,"y":15}],"2":[{"x":14,"y":0},{"x":15,"y":0},{"x":14,"y":1},{"x":15,"y":1},{"x":14,"y":2},{"x":15,"y":2},{"x":13,"y":0},{"x":13,"y":1}]}
-    },
-    prebuilt_palimpsest: {
-        name: 'Palimpsest', w: 16, h: 16,
-        grid: [
-            [54,54,74,74,31,31,49,49,49,49,31,31,74,74,54,54],
-            [54,74,74,13,74,31,49,49,49,49,31,74,13,74,74,54],
-            [74,74,58,13,74,74,31,49,49,31,74,74,13,59,74,74],
-            [74,13,13,74,74,74,74,31,31,74,74,74,74,13,13,74],
-            [31,74,74,74,74,15,74,74,74,74,15,74,74,74,74,31],
-            [31,31,74,74,15,15,74,74,74,74,15,15,74,74,31,31],
-            [49,49,31,74,74,74,47,47,47,47,74,74,74,31,49,49],
-            [49,49,49,31,74,74,47,15,15,47,74,74,31,49,49,49],
-            [49,49,49,31,74,74,47,15,15,47,74,74,31,49,49,49],
-            [49,49,31,74,74,74,47,47,47,47,74,74,74,31,49,49],
-            [31,31,74,74,15,15,74,74,74,74,15,15,74,74,31,31],
-            [31,74,74,74,74,15,74,74,74,74,15,74,74,74,74,31],
-            [74,13,13,74,74,74,74,31,31,74,74,74,74,13,13,74],
-            [74,74,60,13,74,74,31,49,49,31,74,74,13,58,74,74],
-            [54,74,74,13,74,31,49,49,49,49,31,74,13,74,74,54],
-            [54,54,74,74,31,31,49,49,49,49,31,31,74,74,54,54]
-        ],
-        heightMap: [
-            [9,8,6,5,3,3,4,4,4,4,3,3,5,6,8,9],
-            [8,6,6,6,5,4,4,4,4,4,4,5,6,6,6,8],
-            [6,7,7,6,6,6,4,4,4,4,6,6,6,7,6,6],
-            [6,7,7,6,6,6,6,4,4,6,6,6,6,6,6,6],
-            [4,6,6,6,6,7,6,6,6,6,7,6,6,6,6,4],
-            [4,4,6,6,8,8,6,6,6,6,8,8,6,6,4,4],
-            [4,4,4,6,8,8,6,6,6,6,8,8,6,4,4,4],
-            [4,4,4,4,6,6,6,8,8,6,6,6,4,4,4,4],
-            [4,4,4,4,6,6,6,8,8,6,6,6,4,4,4,4],
-            [4,4,4,6,6,6,6,8,8,6,6,6,6,4,4,4],
-            [4,4,6,6,7,8,6,6,6,6,8,7,6,6,4,4],
-            [4,6,6,6,6,7,6,6,6,6,7,7,6,6,6,4],
-            [6,6,6,6,6,6,6,4,4,6,7,7,6,6,6,6],
-            [6,6,7,6,6,6,4,4,4,4,6,6,6,7,6,6],
-            [8,6,6,6,5,4,4,4,4,4,4,5,6,6,6,8],
-            [9,8,6,5,3,3,4,4,4,4,3,3,5,6,8,9]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[{oid:24,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[{oid:23,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:25,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[{oid:26,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[{oid:22,alignX:'center',alignY:'bottom'}],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:21,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":13},{"x":1,"y":13},{"x":0,"y":14},{"x":1,"y":14},{"x":0,"y":15},{"x":1,"y":15},{"x":2,"y":14},{"x":2,"y":15}],"2":[{"x":14,"y":0},{"x":15,"y":0},{"x":14,"y":1},{"x":15,"y":1},{"x":14,"y":2},{"x":15,"y":2},{"x":13,"y":0},{"x":13,"y":1}]}
-    },
-    prebuilt_pyramid: {
-        name: 'Pyramid Fortress', w: 16, h: 16,
-        grid: [
-            [6,6,6,6,6,6,6,49,49,6,6,6,6,6,6,6],
-            [6,6,6,6,6,6,49,49,49,49,6,6,6,6,6,6],
-            [6,6,6,6,6,8,8,49,49,8,8,6,6,6,6,6],
-            [6,6,6,6,8,8,13,13,13,13,8,8,6,6,6,6],
-            [6,6,6,8,8,13,13,54,54,13,13,8,8,6,6,6],
-            [6,6,8,8,13,13,54,54,54,54,13,13,8,8,6,6],
-            [6,6,8,13,13,54,54,54,54,54,54,13,13,8,6,6],
-            [6,8,8,13,54,54,54,15,15,54,54,54,13,8,8,6],
-            [6,8,8,13,54,54,54,15,15,54,54,54,13,8,8,6],
-            [6,6,8,13,13,54,54,54,54,54,54,13,13,8,6,6],
-            [6,6,8,8,13,13,54,54,54,54,13,13,8,8,6,6],
-            [6,6,6,8,8,13,13,54,54,13,13,8,8,6,6,6],
-            [6,6,6,6,8,8,13,13,13,13,8,8,6,6,6,6],
-            [6,6,6,6,6,8,8,49,49,8,8,6,6,6,6,6],
-            [6,6,6,6,6,6,49,49,49,49,6,6,6,6,6,6],
-            [6,6,6,6,6,6,6,49,49,6,6,6,6,6,6,6]
-        ],
-        heightMap: [
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,4,4,4,4,3,3,3,3,3,3],
-            [3,3,3,3,3,4,4,6,6,4,4,3,3,3,3,3],
-            [3,3,3,3,4,4,6,7,7,6,4,4,3,3,3,3],
-            [3,3,3,4,4,6,7,7,7,7,6,4,4,3,3,3],
-            [3,3,3,4,6,7,7,9,9,7,7,6,4,3,3,3],
-            [3,3,3,4,6,7,7,9,9,7,7,6,4,3,3,3],
-            [3,3,3,4,4,6,7,7,7,7,6,4,4,3,3,3],
-            [3,3,3,3,4,4,6,7,7,6,4,4,3,3,3,3],
-            [3,3,3,3,3,4,4,6,6,4,4,3,3,3,3,3],
-            [3,3,3,3,3,3,4,4,4,4,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
-            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[{oid:18,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":6},{"x":0,"y":7},{"x":0,"y":8},{"x":0,"y":9},{"x":1,"y":6},{"x":1,"y":7},{"x":1,"y":8},{"x":1,"y":9}],"2":[{"x":6,"y":6},{"x":7,"y":6},{"x":8,"y":6},{"x":9,"y":6},{"x":6,"y":9},{"x":7,"y":9},{"x":8,"y":9},{"x":9,"y":9}]}
-    },
-    prebuilt_nexus_core: {
-        name: 'Nexus Core', w: 20, h: 20,
-        grid: [
-            [31,31,31,49,49,49,47,47,47,47,47,47,47,47,49,49,49,31,31,31],
-            [31,31,49,49,47,47,47,15,15,47,47,15,15,47,47,47,49,49,31,31],
-            [31,49,49,47,47,15,47,47,47,47,47,47,47,47,15,47,47,49,49,31],
-            [49,49,47,47,15,47,47,47,47,47,47,47,47,47,47,15,47,47,49,49],
-            [49,47,47,15,47,47,47,47,47,15,15,47,47,47,47,47,15,47,47,49],
-            [49,47,15,47,47,47,47,15,15,15,15,15,15,47,47,47,47,15,47,49],
-            [47,47,47,47,47,47,15,15,31,31,31,31,15,15,47,47,47,47,47,47],
-            [47,15,47,47,47,15,15,31,31,15,15,31,31,15,15,47,47,47,15,47],
-            [47,15,47,47,47,15,31,31,15,15,15,15,31,31,15,47,47,47,15,47],
-            [47,47,47,47,15,15,31,15,15,15,15,15,15,31,15,15,47,47,47,47],
-            [47,47,47,47,15,15,31,15,15,15,15,15,15,31,15,15,47,47,47,47],
-            [47,15,47,47,47,15,31,31,15,15,15,15,31,31,15,47,47,47,15,47],
-            [47,15,47,47,47,15,15,31,31,15,15,31,31,15,15,47,47,47,15,47],
-            [47,47,47,47,47,47,15,15,31,31,31,31,15,15,47,47,47,47,47,47],
-            [49,47,15,47,47,47,47,15,15,15,15,15,15,47,47,47,47,15,47,49],
-            [49,47,47,15,47,47,47,47,47,15,15,47,47,47,47,47,15,47,47,49],
-            [49,49,47,47,15,47,47,47,47,47,47,47,47,47,47,15,47,47,49,49],
-            [31,49,49,47,47,15,47,47,47,47,47,47,47,47,15,47,47,49,49,31],
-            [31,31,49,49,47,47,47,15,15,47,47,15,15,47,47,47,49,49,31,31],
-            [31,31,31,49,49,49,47,47,47,47,47,47,47,47,49,49,49,31,31,31]
-        ],
-        heightMap: [
-            [3,3,3,4,4,4,6,6,6,6,6,6,6,6,4,4,4,3,3,3],
-            [3,3,4,4,6,6,6,7,7,6,6,7,7,6,6,6,4,4,3,3],
-            [3,4,4,6,6,7,6,6,6,6,6,6,6,6,7,6,6,4,4,3],
-            [4,4,6,6,7,6,6,6,8,8,8,8,6,6,6,7,6,6,4,4],
-            [4,6,6,7,6,6,8,8,9,10,10,9,8,8,6,6,7,6,6,4],
-            [4,6,7,6,6,8,9,10,10,10,10,10,10,9,8,6,6,7,6,4],
-            [6,6,6,6,8,9,10,10,11,11,11,11,10,10,9,8,6,6,6,6],
-            [6,7,6,6,8,10,10,11,11,13,13,11,11,10,10,8,6,6,7,6],
-            [6,7,6,8,9,10,11,11,13,13,13,13,11,11,10,9,8,6,7,6],
-            [6,6,6,8,10,10,11,13,13,14,14,13,13,11,10,10,8,6,6,6],
-            [6,6,6,8,10,10,11,13,13,14,14,13,13,11,10,10,8,6,6,6],
-            [6,7,6,8,9,10,11,11,13,13,13,13,11,11,10,9,8,6,7,6],
-            [6,7,6,6,8,10,10,11,11,13,13,11,11,10,10,8,6,6,7,6],
-            [6,6,6,6,8,9,10,10,11,11,11,11,10,10,9,8,6,6,6,6],
-            [4,6,7,6,6,8,9,10,10,10,10,10,10,9,8,6,6,7,6,4],
-            [4,6,6,7,6,6,8,8,9,10,10,9,8,8,6,6,7,6,6,4],
-            [4,4,6,6,7,6,6,6,8,8,8,8,6,6,6,7,6,6,4,4],
-            [3,4,4,6,6,7,6,6,6,6,6,6,6,6,7,6,6,4,4,3],
-            [3,3,4,4,6,6,6,7,7,6,6,7,7,6,6,6,4,4,3,3],
-            [3,3,3,4,4,4,6,6,6,6,6,6,6,6,4,4,4,3,3,3]
-        ],
-        objects: [
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[{oid:5,alignX:'center',alignY:'bottom'}],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[{oid:17,alignX:'left',alignY:'bottom'}],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
-            [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-        ],
-        spawns: {"1":[{"x":0,"y":8},{"x":0,"y":9},{"x":0,"y":10},{"x":0,"y":11},{"x":1,"y":8},{"x":1,"y":9},{"x":1,"y":10},{"x":1,"y":11},{"x":2,"y":9},{"x":2,"y":10}],"2":[{"x":19,"y":8},{"x":19,"y":9},{"x":19,"y":10},{"x":19,"y":11},{"x":18,"y":8},{"x":18,"y":9},{"x":18,"y":10},{"x":18,"y":11},{"x":17,"y":9},{"x":17,"y":10}]}
-    }
 };
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAP FORGE — procedural prebuilt-map builders (2026-07 map overhaul)
+   ─────────────────────────────────────────────────────────────────────────────
+   Every launch map is BUILT here at load time instead of shipping as a giant
+   hand-authored literal. One builder per map ⇒ layered ground (lava / cave
+   floor / dirt strata under a themed surface), sculpted height, objects,
+   monuments, per-map terrain tints, and a per-map sky/fog/scenery preset
+   (layout.env → state.mapEnv → three-renderer firmament dome).
+   Each full map also auto-generates a 10×10 4v4 "Δ" (delta) variant — the
+   competitive crop of its core, 180°-rotation-symmetric, for ranked play
+   (think Smash Bros. delta stages).
+   ─────────────────────────────────────────────────────────────────────────────
+   ⚠ MF_TID / MF_OID MUST mirror map.js ME_TERRAIN_IDS / ME_OBJECT_IDS
+   (append-only arrays; index = grid id). If a terrain/object is appended
+   there, append it here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const MF_TID = (() => {
+    const L = [null,
+        'grass','water','deep_water','bridge','mountain','desert','tree','dirt','ice','lava',
+        'scorched','well','road','ruins','crystal','mushroom','obsidian','healing_spring','cave_floor','cave_wall',
+        'cave_entrance','cloud','cloud_thick','sky_open','storm','cloud_gap','sky_ruin','mountain_top','tree_top','cliff',
+        'chasm','void','fog_wall','barrier','barrier_passage','nexus','nexus_cave','nexus_sky','sanctuary_church','sanctuary_shop',
+        'tower_base','home_base','beanstalk','beanstalk_top','descent_point','sanctuary','purple_grass','grass_2','wasteland','forest_2',
+        'mountain_2','poison','forest','bricks_1','bricks_2','wood_planks','wood','rubble_1','rubble_2','rubble_3',
+        'rubble_4','poison_bog','rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rock_wall_1','rock_wall_2','dark_woods',
+        'urban_wall','grass_rocky','purple_bog','urban_street','moon','carpet','gold','metal','leaves','wallpaper',
+        'cloud_2','moon_2','moon_3','carpet_2','carpet_3','carpet_4','gold_2','gold_3','metal_2','grass_3',
+        'grass_4','dirt_2','dirt_3','dirt_4','marble','marble_2','cobblestone','cobblestone_2','leaves_2','leaves_3',
+        'leaves_4','leaves_5','aluminium','checkerboard','dungeon','dungeon_2','dungeon_3','dungeon_4','flesh','flesh_2',
+        'flesh_3','drywall','drywall_2','drywall_3','drywall_4','metal_3'];
+    const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
+    return m;
+})();
+
+const MF_OID = (() => {
+    const L = [null,
+        'tree','ruins','church','shop','nexus','nexus_cave','nexus_sky','mountain_top','beanstalk','well',
+        'cave_entrance','barrier_1','barrier_2','barrier_3','barrier_4','barrier_5','column_1','column_2','column_3','column_4',
+        'building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10',
+        'church_1','church_2','poison_seed','tree_2','tree_3','tree_4','tree_5','tree_6','tower_cube','building_11',
+        'ancient_building','abandoned_building_1','abandoned_building_2','stairs','pathway_1','pathway_2','stairs_2','lamp_post','lamp_post_2','grass_tuft',
+        'rock','torch','traffic_light'];
+    const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
+    return m;
+})();
+
+function _mfRng(seed) {
+    let a = (seed | 0) || 1;
+    return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/* A build context. Surface baseline sits at z = baseH (3, matching the
+   custommap convention: strata z0..z2 under a z3 surface). heights are TOP
+   voxel z per tile; hole() makes a genuinely empty column (bottomless void). */
+function _mfNew(cfg) {
+    const W = cfg.w, H = cfg.h;
+    const baseH = (cfg.baseH != null) ? cfg.baseH : 3;
+    const M = {
+        cfg, W, H, baseH,
+        rng: _mfRng(cfg.seed || 1337),
+        ter: [], hgt: [], objs: [], mons: [], holes: [],
+        underTop: cfg.underTop || 'dirt',
+        strata: cfg.strata || ['lava', 'lava', 'cave_floor'],
+        tints: cfg.tints || null,
+        hollow: !!cfg.hollow,
+        lintels: [],            // {x,y,z,t} authored ceiling/overhang blocks (needs hollow)
+        spawnsList: null,
+    };
+    for (let y = 0; y < H; y++) {
+        M.ter.push(new Array(W).fill(MF_TID[cfg.base] || MF_TID.grass_2));
+        M.hgt.push(new Array(W).fill(baseH));
+        const row = []; for (let x = 0; x < W; x++) row.push([]);
+        M.objs.push(row);
+    }
+    M.in = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+    M.t = (x, y, key) => { if (M.in(x, y)) M.ter[y][x] = MF_TID[key] || MF_TID.grass_2; };
+    M.tk = (x, y) => { for (const k in MF_TID) if (MF_TID[k] === M.ter[y][x]) return k; return 'grass_2'; };
+    M.h = (x, y, z) => { if (M.in(x, y)) M.hgt[y][x] = z; };
+    M.hget = (x, y) => M.in(x, y) ? M.hgt[y][x] : baseH;
+    M.rect = (x0, y0, x1, y1, key, z) => {
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+            if (!M.in(x, y)) continue;
+            if (key) M.t(x, y, key);
+            if (z != null) M.h(x, y, z);
+        }
+    };
+    M.box = (x0, y0, x1, y1, key, z) => {           // outline only
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+            if (!M.in(x, y)) continue;
+            if (y !== y0 && y !== y1 && x !== x0 && x !== x1) continue;
+            if (key) M.t(x, y, key);
+            if (z != null) M.h(x, y, z);
+        }
+    };
+    M.disc = (cx, cy, r, key, z) => {
+        for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+            for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+                if (!M.in(x, y)) continue;
+                const d = Math.hypot(x - cx, y - cy);
+                if (d <= r + 0.001) { if (key) M.t(x, y, key); if (z != null) M.h(x, y, z); }
+            }
+    };
+    M.ring = (cx, cy, r0, r1, key, z) => {
+        for (let y = Math.floor(cy - r1); y <= Math.ceil(cy + r1); y++)
+            for (let x = Math.floor(cx - r1); x <= Math.ceil(cx + r1); x++) {
+                if (!M.in(x, y)) continue;
+                const d = Math.hypot(x - cx, y - cy);
+                if (d >= r0 - 0.001 && d <= r1 + 0.001) { if (key) M.t(x, y, key); if (z != null) M.h(x, y, z); }
+            }
+    };
+    M.hole = (x, y, key) => {                        // bottomless void column
+        if (!M.in(x, y)) return;
+        M.t(x, y, key || 'cloud_gap'); M.h(x, y, 0);
+        M.holes.push(x + ',' + y);
+    };
+    M.lintel = (x, y, z, key) => {                   // overhang block (roof/arch top)
+        if (!M.in(x, y)) return;
+        M.lintels.push({ x, y, z, t: MF_TID[key] || MF_TID.bricks_1 });
+        M.hollow = true;
+    };
+    M.obj = (x, y, key, o) => {
+        if (!M.in(x, y)) return;
+        const oid = MF_OID[key]; if (!oid) return;
+        const e = { oid, alignX: 'center', alignY: 'bottom', rot: (o && o.rot) || 0, flipX: !!(o && o.flipX), flipY: !!(o && o.flipY) };
+        if (o && o.leaf) e.leaf = o.leaf;
+        M.objs[y][x].push(e);
+    };
+    M.clearObj = (x, y) => { if (M.in(x, y)) M.objs[y][x] = []; };
+    M.tree = (x, y, kind) => M.obj(x, y, kind || 'tree');
+    M.rock = (x, y, leaf) => M.obj(x, y, 'rock', leaf ? { leaf } : null);
+    M.building = (x, y, key) => {                    // 2×2 footprint: flatten pad, clear props
+        for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+            if (!M.in(x + dx, y + dy)) return;       // never let a building hang off-board
+            M.hgt[y + dy][x + dx] = M.hgt[y][x];
+            M.objs[y + dy][x + dx] = [];
+        }
+        M.obj(x, y, key);
+    };
+    M.mon = (kind, x, y, foot, maxH, o) => {
+        M.mons.push(Object.assign({ kind, x, y, rot: 0, foot: foot || 3, maxH: maxH || 3, seed: Math.floor(M.rng() * 90000) + 1000 }, o || {}));
+    };
+    M.fence = (x0, y0, x1, y1, kind, rot) => {       // run of edge-blocking barrier slabs
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) M.obj(x, y, kind || 'barrier_1', { rot: rot || 0 });
+    };
+    M.scatter = (n, fn) => { for (let i = 0; i < n; i++) fn(Math.floor(M.rng() * W), Math.floor(M.rng() * H), i); };
+    /* 180°-rotation symmetry: copy the authored top half (rows y < H/2) onto
+       the bottom half, rotating coordinates and leaving the middle row(s) as
+       authored. Objects are mirrored too (rot flipped); monuments/buildings
+       must be placed via monSym/buildingSym AFTER this call. */
+    M.sym180 = () => {
+        const half = Math.floor(H / 2);
+        const BLD = new Set(['church', 'shop', 'church_1', 'church_2', 'ancient_building', 'abandoned_building_1',
+            'abandoned_building_2', 'building_11', 'building_1', 'building_2', 'building_3', 'building_4', 'building_5',
+            'building_6', 'building_7', 'building_8', 'building_9', 'building_10'].map(k => MF_OID[k]));
+        for (let y = 0; y < half; y++) for (let x = 0; x < W; x++) {
+            const my = H - 1 - y, mx = W - 1 - x;
+            M.ter[my][mx] = M.ter[y][x];
+            M.hgt[my][mx] = M.hgt[y][x];
+            // 2×2 building anchors don't rotate cleanly — place them via buildingSym AFTER sym180
+            M.objs[my][mx] = M.objs[y][x].filter(e => !BLD.has(e.oid))
+                .map(e => Object.assign({}, e, { rot: ((e.rot || 0) + 180) % 360 }));
+            M.objs[y][x] = M.objs[y][x].filter(e => !BLD.has(e.oid));
+        }
+        // mirror authored holes/lintels from the top half as well
+        const seen = new Set(M.holes);
+        M.holes.slice().forEach(kk => {
+            const [x, y] = kk.split(',').map(Number);
+            if (y < half) { const key2 = (W - 1 - x) + ',' + (H - 1 - y); if (!seen.has(key2)) M.holes.push(key2); }
+        });
+        M.lintels.slice().forEach(L => {
+            if (L.y < half) M.lintels.push({ x: W - 1 - L.x, y: H - 1 - L.y, z: L.z, t: L.t });
+        });
+    };
+    M.monSym = (kind, x, y, foot, maxH, o) => {      // monument + its 180° twin
+        M.mon(kind, x, y, foot, maxH, o);
+        M.mon(kind, W - 1 - x, H - 1 - y, foot, maxH, Object.assign({}, o || {}, { rot: (((o && o.rot) || 0) + 180) % 360 }));
+    };
+    M.buildingSym = (x, y, key) => {                 // building + its 180° twin (anchor shifts)
+        M.building(x, y, key);
+        M.building(W - 2 - x, H - 2 - y, key);
+    };
+    M.objSym = (x, y, key, o) => {
+        M.obj(x, y, key, o);
+        M.obj(W - 1 - x, H - 1 - y, key, Object.assign({}, o || {}, { rot: (((o && o.rot) || 0) + 180) % 360 }));
+    };
+    M.spawns = (a, b) => { M.spawnsList = { 1: a, 2: b }; };
+    /* Edge spawn rows: n tiles centered on the given edge ('n'|'s'|'e'|'w'),
+       team 1 on the first edge, team 2 mirrored. Pads are flattened+cleared. */
+    M.spawnEdges = (edge1, n) => {
+        const mk = (edge) => {
+            const out = [], c = Math.floor((edge === 'n' || edge === 's' ? W : H) / 2) - Math.floor(n / 2);
+            for (let i = 0; i < n; i++) {
+                if (edge === 'n') out.push({ x: c + i, y: 0 });
+                else if (edge === 's') out.push({ x: c + i, y: H - 1 });
+                else if (edge === 'w') out.push({ x: 0, y: c + i });
+                else out.push({ x: W - 1, y: c + i });
+            }
+            return out;
+        };
+        const opp = { n: 's', s: 'n', e: 'w', w: 'e' };
+        M.spawns(mk(edge1), mk(opp[edge1]));
+    };
+    /* Make every spawn pad safe: flat baseline, passable themed terrain,
+       no objects, no hazard, and a clear one-tile apron toward the board. */
+    M.finishSpawns = (padKey) => {
+        const HAZ = new Set([MF_TID.lava, MF_TID.deep_water, MF_TID.poison_bog, MF_TID.poison, MF_TID.cloud_gap, MF_TID.chasm].filter(Boolean));
+        [1, 2].forEach(tm => {
+            (M.spawnsList[tm] || []).forEach(p => {
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    const x = p.x + dx, y = p.y + dy;
+                    if (!M.in(x, y)) continue;
+                    const idx = M.holes.indexOf(x + ',' + y); if (idx >= 0) M.holes.splice(idx, 1);
+                    if (HAZ.has(M.ter[y][x]) || M.hgt[y][x] === 0) M.t(x, y, padKey);
+                    if (Math.abs(M.hgt[y][x] - baseH) > 1) M.h(x, y, baseH);
+                }
+                M.h(p.x, p.y, baseH);
+                if (HAZ.has(M.ter[p.y][p.x])) M.t(p.x, p.y, padKey);
+                M.clearObj(p.x, p.y);
+            });
+        });
+    };
+    /* Assemble the PREBUILT_MAPS entry: voxel columns are strata + fill +
+       surface; holes stay empty; lintels ride above with an air gap. */
+    M.finish = () => {
+        const holeSet = new Set(M.holes);
+        const voxels = [];
+        for (let y = 0; y < H; y++) {
+            const row = [];
+            for (let x = 0; x < W; x++) {
+                const stack = [];
+                if (!holeSet.has(x + ',' + y)) {
+                    const top = Math.max(0, M.hgt[y][x]);
+                    for (let z = 0; z <= top; z++) {
+                        let t;
+                        if (z === top) t = M.ter[y][x];
+                        else if (z < M.strata.length && z < top) t = MF_TID[M.strata[z]] || MF_TID.cave_floor;
+                        else t = MF_TID[M.underTop] || MF_TID.dirt;
+                        stack.push({ z, tid: t });
+                    }
+                    if (M.hgt[y][x] < 0) stack.length = 0; // negative = explicit empty
+                } else {
+                    M.hgt[y][x] = 0;
+                }
+                row.push(stack);
+            }
+            voxels.push(row);
+        }
+        M.lintels.forEach(L => { if (M.in(L.x, L.y)) voxels[L.y][L.x].push({ z: L.z, tid: L.t }); });
+        const entry = {
+            name: M.cfg.name, w: W, h: H,
+            grid: M.ter.map(r => r.slice()),
+            heightMap: M.hgt.map(r => r.slice()),
+            objects: M.objs.map(r => r.map(c => c.slice())),
+            voxels,
+            spawns: M.spawnsList,
+        };
+        if (M.mons.length) entry.monuments = M.mons;
+        if (M.hollow) entry.hollowVoxels = true;
+        if (M.tints) entry.terrainTints = M.tints;
+        return entry;
+    };
+    return M;
+}
+
+/* ── Δ (delta) competitive variant ──────────────────────────────────────────
+   Crop a 10×10 window out of the finished full map, enforce 180°-rotation
+   symmetry (terrain+heights always; objects mirrored from the top half,
+   buildings dropped if their 2×2 pad no longer fits), re-seat spawns as
+   two mirrored 4-tile rows, and keep monuments that fit the window. */
+function _mfDelta(full, meta) {
+    const S = 10;
+    const x0 = (meta.deltaX != null) ? meta.deltaX : Math.floor((full.w - S) / 2);
+    const y0 = (meta.deltaY != null) ? meta.deltaY : Math.floor((full.h - S) / 2);
+    const BUILD_OIDS = new Set(['church', 'shop', 'church_1', 'church_2', 'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'building_11',
+        'building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10']
+        .map(k => MF_OID[k]));
+    const grid = [], heightMap = [], objects = [], voxels = [];
+    for (let y = 0; y < S; y++) {
+        grid.push(full.grid[y0 + y].slice(x0, x0 + S));
+        heightMap.push(full.heightMap[y0 + y].slice(x0, x0 + S));
+        objects.push(full.objects[y0 + y].slice(x0, x0 + S).map(c => c.map(e => Object.assign({}, e))));
+        voxels.push(full.voxels[y0 + y].slice(x0, x0 + S).map(c => c.map(v => Object.assign({}, v))));
+    }
+    // deltas are the strict-fairness variants: buildings are stripped outright
+    // (2×2 anchors can't cleanly rotate-mirror, and Δ boards are too tight for them)
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        objects[y][x] = objects[y][x].filter(e => !BUILD_OIDS.has(e.oid));
+    }
+    // enforce 180° rotational symmetry from the top half
+    for (let y = 0; y < S / 2; y++) for (let x = 0; x < S; x++) {
+        const my = S - 1 - y, mx = S - 1 - x;
+        grid[my][mx] = grid[y][x];
+        heightMap[my][mx] = heightMap[y][x];
+        voxels[my][mx] = voxels[y][x].map(v => Object.assign({}, v));
+        objects[my][mx] = objects[y][x].map(e => Object.assign({}, e, { rot: ((e.rot || 0) + 180) % 360 }));
+    }
+    // monuments: keep top-half ones that fit, mirror them
+    const monuments = [];
+    (full.monuments || []).forEach(m => {
+        const lx = m.x - x0, ly = m.y - y0;
+        const rr = Math.floor((m.foot || 3) / 2);
+        if (lx - rr < 0 || ly - rr < 0 || lx + rr >= S || ly + rr >= S) return;
+        if (ly > (S / 2 - 1)) return;                 // author from the top half only
+        if (ly - rr <= 1) return;                     // keep the spawn rows clear
+        monuments.push(Object.assign({}, m, { x: lx, y: ly }));
+        const q = Object.assign({}, m, { x: S - 1 - lx, y: S - 1 - ly, rot: ((m.rot || 0) + 180) % 360 });
+        // near-center piece → keep as a single centerpiece instead of doubling it
+        if (Math.abs(q.x - lx) > 1 || Math.abs(q.y - ly) > 1) monuments.push(q);
+    });
+    // spawns: two mirrored 4-tile rows on the N/S edges, pads scrubbed safe
+    const sp1 = [], sp2 = [];
+    for (let i = 0; i < 4; i++) { sp1.push({ x: 3 + i, y: S - 1 }); sp2.push({ x: 3 + i, y: 0 }); }
+    const HAZ = new Set([MF_TID.lava, MF_TID.deep_water, MF_TID.poison_bog, MF_TID.poison, MF_TID.cloud_gap, MF_TID.chasm]);
+    const base = 3, padKey = meta.deltaPad || 'dirt';
+    [sp1, sp2].forEach(list => list.forEach(p => {
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const x = p.x + dx, y = p.y + dy;
+            if (x < 0 || y < 0 || x >= S || y >= S) continue;
+            if (HAZ.has(grid[y][x]) || heightMap[y][x] === 0 || !voxels[y][x].length) {
+                grid[y][x] = MF_TID[padKey] || MF_TID.dirt;
+                heightMap[y][x] = base;
+                voxels[y][x] = [{ z: 0, tid: MF_TID.lava }, { z: 1, tid: MF_TID.lava }, { z: 2, tid: MF_TID.cave_floor }, { z: 3, tid: grid[y][x] }];
+            }
+            if (Math.abs(heightMap[y][x] - base) > 1) {
+                heightMap[y][x] = base;
+                voxels[y][x] = voxels[y][x].filter(v => v.z <= base);
+                while (voxels[y][x].length && voxels[y][x][voxels[y][x].length - 1].z > base) voxels[y][x].pop();
+                if (!voxels[y][x].some(v => v.z === base)) voxels[y][x].push({ z: base, tid: grid[y][x] });
+            }
+        }
+        objects[p.y][p.x] = [];
+    }));
+    const entry = {
+        name: full.name + ' Δ', w: S, h: S,
+        grid, heightMap, objects, voxels, monuments,
+        spawns: { 1: sp1, 2: sp2 },
+    };
+    if (full.hollowVoxels) entry.hollowVoxels = true;
+    if (full.terrainTints) entry.terrainTints = Object.assign({}, full.terrainTints);
+    return entry;
+}
+
+/* ═══════════════════════ THE MAPS — Tier 1 (launch core) ═══════════════════ */
+
+const _MF_BUILDERS = {};
+
+/* HEAVEN — 20×20 6v6. Cloud islands over the void: a gilded gate plaza at
+   center, marble causeways, light-pillar daises, healing pools, and
+   bottomless cloud-gap rifts shaping the islands. */
+_MF_BUILDERS.prebuilt_heaven = function () {
+    const M = _mfNew({
+        name: 'Heaven', w: 20, h: 20, base: 'cloud_2', baseH: 3, seed: 7001,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'cloud_thick',
+        tints: { gold: '#ffe9a0', marble: '#fdfdf6' },
+    });
+    // void rifts sculpt the island silhouette (authored top half, mirrored)
+    [[0, 0, 3, 1], [0, 2, 1, 3], [16, 0, 19, 0], [18, 1, 19, 2], [8, 4, 9, 4], [0, 8, 0, 9], [14, 6, 15, 7]]
+        .forEach(r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) M.hole(x, y); });
+    // marble causeway ring + golden gate plaza at center
+    M.ring(9.5, 9.5, 3.2, 4.4, 'marble');
+    M.disc(9.5, 9.5, 2.2, 'gold');
+    M.rect(9, 7, 10, 12, 'marble');                     // N–S processional
+    M.rect(7, 9, 12, 10, 'marble');                     // W–E processional
+    // elevated daises (rangeBonus celestial ruins) — mirrored flanks
+    M.rect(3, 6, 4, 7, 'sky_ruin', 4); M.rect(15, 12, 16, 13, 'sky_ruin', 4);
+    M.rect(2, 12, 3, 13, 'marble', 4); M.rect(16, 6, 17, 7, 'marble', 4);
+    // healing pools by each approach
+    M.rect(6, 3, 7, 4, 'healing_spring'); M.rect(12, 15, 13, 16, 'healing_spring');
+    // thick-cloud slow banks as soft cover lanes
+    M.rect(5, 8, 6, 11, 'cloud_thick'); M.rect(13, 8, 14, 11, 'cloud_thick');
+    M.sym180();
+    // monuments: the Pearly Gates + light pillars + guardian columns
+    M.mon('goldgate', 9, 9, 4, 3, { rot: 0, solid: false });
+    M.monSym('lightpillar', 4, 4, 1, 4, { solid: false });
+    M.monSym('greek', 15, 3, 3, 2, { solid: false });
+    M.monSym('stairway', 2, 9, 2, 2, {});
+    M.spawnEdges('s', 6);
+    M.finishSpawns('cloud_2');
+    return M;
+};
+
+/* HELL — 20×20 6v6. The mirror of Heaven: obsidian altar over a lava river,
+   basalt spike cover, chained colossus, occult rings. */
+_MF_BUILDERS.prebuilt_hell = function () {
+    const M = _mfNew({
+        name: 'Hell', w: 20, h: 20, base: 'scorched', baseH: 3, seed: 6661,
+        strata: ['lava', 'lava', 'obsidian'], underTop: 'obsidian',
+        tints: { scorched: '#e08060', rocks_3: '#b06a50', rock_wall_1: '#a05844', cave_floor: '#9a5a48' },
+    });
+    // lava river snakes W–E through the middle (1-step down: hazardous but escapable)
+    for (let x = 0; x < 20; x++) {
+        const yc = 9 + Math.round(Math.sin(x * 0.55) * 1.4);
+        M.rect(x, yc, x, yc + 1, 'lava', 2);
+    }
+    // two obsidian causeways bridge the river; one risky lava ford mid-map
+    M.rect(4, 8, 5, 11, 'obsidian', 3); M.rect(14, 8, 15, 11, 'obsidian', 3);
+    // central altar: stepped obsidian ziggurat plateau (climbable +1 rings)
+    M.disc(9.5, 9.5, 2.6, 'obsidian', 4);
+    M.rect(9, 9, 10, 10, 'obsidian', 5);
+    // basalt spike walls (mirrored cover, block ground + LoS)
+    [[3, 4], [7, 2], [12, 5], [16, 3], [2, 14]].forEach(p => M.rect(p[0], p[1], p[0] + 1, p[1], 'rock_wall_1', 5));
+    // bone-dry rock fields + cinder pits
+    M.rect(6, 5, 8, 6, 'rocks_3'); M.rect(11, 13, 13, 14, 'rocks_3');
+    M.rect(1, 1, 2, 2, 'lava', 2); M.rect(17, 17, 18, 18, 'lava', 2);
+    M.sym180();
+    M.monSym('monolith', 5, 3, 1, 3, {});
+    M.monSym('crystal', 14, 5, 2, 2, { solid: false });
+    M.mon('rings', 9, 9, 3, 3, { solid: false });
+    M.mon('colossus', 3, 16, 2, 3, { rot: 45 });
+    M.mon('colossus', 16, 3, 2, 3, { rot: 225 });
+    M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'scorched') M.rock(x, y, 'rocks_3'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('scorched');
+    return M;
+};
+
+/* NUKETOWN — 14×14 6v6. Tight symmetric suburbia around an atomic test
+   street: two facing ranch houses, picket fences, hedge cover, test flags. */
+_MF_BUILDERS.prebuilt_nuketown = function () {
+    const M = _mfNew({
+        name: 'Nuketown', w: 14, h: 14, base: 'grass_2', baseH: 3, seed: 5501,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
+        tints: { grass_2: '#9adf7a', road: '#b8b4ac', wasteland: '#d8c890' },
+    });
+    // perimeter: test-site wasteland ring
+    M.box(0, 0, 13, 13, 'wasteland');
+    // the street: N–S road with sidewalks (kill zone)
+    M.rect(6, 0, 7, 13, 'road');
+    M.rect(5, 0, 5, 13, 'urban_street'); M.rect(8, 0, 8, 13, 'urban_street');
+    // house yards (the homes themselves are placed after the mirror)
+    M.rect(1, 3, 4, 6, 'dirt_2');                        // west yard pad
+    // picket fences + hedges (authored top half, mirrored below)
+    M.fence(1, 2, 4, 2, 'barrier_2', 0);
+    M.rect(3, 8, 4, 8, 'leaves', 5);                     // hedge wall cover
+    M.rect(9, 2, 10, 2, 'leaves', 5);
+    M.obj(4, 7, 'tree_5'); M.obj(10, 5, 'traffic_light');
+    M.obj(5, 1, 'lamp_post'); M.obj(9, 9, 'well');
+    M.sym180();
+    // the two facing ranch houses (east yard pad is the mirror of the west one)
+    M.building(2, 4, 'building_2');
+    M.building(10, 8, 'building_3');
+    // atomic-age props: test vehicle + instrumentation flags
+    M.mon('rover', 6, 6, 1, 1, { rot: 90, solid: false });
+    M.mon('flag', 1, 12, 1, 2, { solid: false });
+    M.mon('flag', 12, 1, 1, 2, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* STONEHENGE — 16×16 6v6. The sarsen ring on a ley-line cross: climbing
+   pillar cover, cardinal entrances, an armillary above the altar. */
+_MF_BUILDERS.prebuilt_stonehenge = function () {
+    const M = _mfNew({
+        name: 'Stonehenge', w: 16, h: 16, base: 'grass_2', baseH: 3, seed: 4401,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
+        tints: { purple_grass: '#9a6cff', grass_2: '#8fbf78', rock_wall_1: '#b8b4a8' },
+    });
+    // ley lines: glowing lanes crossing at the altar
+    M.rect(7, 0, 8, 15, 'purple_grass'); M.rect(0, 7, 15, 8, 'purple_grass');
+    // the sarsen ring: 1-tile standing stones (h6 = hard cover) w/ 4 cardinal gaps
+    const C = 7.5, R = 4.6;
+    for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2 + 0.196;
+        const x = Math.round(C + Math.cos(a) * R), y = Math.round(C + Math.sin(a) * R);
+        if ((x >= 7 && x <= 8) || (y >= 7 && y <= 8)) continue;       // cardinal entrances
+        M.t(x, y, 'rock_wall_1'); M.h(x, y, 6);
+    }
+    // barrow mounds (climbable vantage) + druid springs — mirrored
+    M.disc(2.5, 2.5, 1.4, 'grass_3', 4);
+    M.rect(12, 2, 13, 3, 'healing_spring');
+    // fallen trilithon rubble (low platforms) + scattered stones
+    M.rect(11, 11, 12, 11, 'ruins');
+    M.rock(4, 6, 'rocks_1'); M.rock(11, 4, 'rocks_2');
+    M.sym180();
+    M.mon('rings', 7, 7, 2, 3, { solid: false });
+    M.monSym('monolith', 2, 7, 1, 3, { solid: false });
+    M.mon('colossus', 12, 12, 2, 1, { rot: 300 });
+    M.mon('colossus', 3, 3, 2, 1, { rot: 120 });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* PYRAMIDS OF GIZA — 20×20 6v6. Three pyramids on the great diagonal, twin
+   sphinxes, a processional avenue, dune ridges and excavation trenches. */
+_MF_BUILDERS.prebuilt_giza = function () {
+    const M = _mfNew({
+        name: 'Pyramids of Giza', w: 20, h: 20, base: 'desert', baseH: 3, seed: 3301,
+        strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
+        tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
+    });
+    // hard-packed processional avenues (desert is slow; these are the fast lanes)
+    M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
+    // dune ridges (slow high ground) — mirrored arcs
+    M.disc(4, 3, 1.6, 'desert', 4); M.disc(16, 6, 1.4, 'desert', 4);
+    // excavation trenches (defBonus ruins, sunken)
+    M.rect(13, 2, 15, 3, 'ruins', 2); M.rect(4, 16, 6, 17, 'ruins', 2);
+    // twin oases
+    M.rect(2, 8, 3, 9, 'water'); M.t(3, 8, 'healing_spring');
+    M.rect(16, 10, 17, 11, 'water'); M.t(16, 11, 'healing_spring');
+    M.obj(2, 7, 'tree_2'); M.obj(17, 12, 'tree_2');
+    M.sym180();
+    // the three pyramids on the great diagonal — center one is climbable to its crown
+    M.mon('pyramid', 9, 9, 7, 3, {});
+    M.mon('pyramid', 4, 4, 5, 2, {});
+    M.mon('pyramid', 15, 15, 5, 2, {});
+    // twin guardian sphinxes (the second sphinx was buried, they said)
+    M.mon('colossus', 15, 4, 3, 2, { rot: 270 });
+    M.mon('colossus', 4, 15, 3, 2, { rot: 90 });
+    M.monSym('obelisk', 9, 5, 1, 4, {});
+    M.spawnEdges('s', 6);
+    M.finishSpawns('dirt_2');
+    return M;
+};
+
+/* MOUNT SHASTA — 20×20 6v6. Terraced sacred volcano: snow crown with
+   range-bonus rim, switchback ascents, pine forest ring, twin cold lakes,
+   and the Lemurian crystal gates of Telos. */
+_MF_BUILDERS.prebuilt_shasta = function () {
+    const M = _mfNew({
+        name: 'Mount Shasta', w: 20, h: 20, base: 'grass_2', baseH: 3, seed: 2201,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'rocks_1',
+        tints: { mountain_top: '#e6f2ff', mountain_2: '#c8d4e0', grass_2: '#9fce85', grass_3: '#b4dc9a' },
+    });
+    // the mountain: concentric terraces up to a snowy crown (all +1 steps)
+    M.disc(9.5, 9.5, 5.2, 'grass_3', 3);
+    M.disc(9.5, 9.5, 4.0, 'rocks_1', 4);
+    M.disc(9.5, 9.5, 2.9, 'mountain_2', 5);
+    M.disc(9.5, 9.5, 1.6, 'mountain_top', 6);           // snow crown: rangeBonus perch
+    // two mirrored switchback approaches cut clean +1 stairs through the terraces
+    M.rect(9, 4, 10, 4, 'rocks_1', 4); M.rect(9, 5, 10, 5, 'mountain_2', 5);
+    // pine forest ring with winding trails
+    [[2, 2], [4, 1], [1, 5], [16, 2], [14, 1], [3, 12], [1, 15], [6, 16]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
+    [[5, 3], [2, 8], [17, 5], [15, 16]].forEach(p => M.tree(p[0], p[1], 'tree_3'));
+    M.rect(0, 10, 2, 11, 'forest_2');
+    // twin cold lakes (mirrored): shallow rim, deep heart
+    M.disc(15.5, 3.5, 1.7, 'water');
+    M.t(15, 3, 'deep_water'); M.t(16, 3, 'deep_water');
+    M.t(14, 5, 'healing_spring');
+    // Telos: the Lemurian gate into the mountain
+    M.obj(6, 8, 'cave_entrance');
+    M.sym180();
+    M.monSym('crystal', 6, 7, 2, 2, { solid: false });
+    M.monSym('mountain', 2, 17, 3, 3, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* CYBERPUNK CITY — 24×24 8v8. Rain-slick neon grid: fast avenues, walkable
+   rooftops, holo-plazas, alley chokes, parked hovercars. */
+_MF_BUILDERS.prebuilt_cyberpunk = function () {
+    const M = _mfNew({
+        name: 'Cyberpunk City', w: 24, h: 24, base: 'urban_wall', baseH: 3, seed: 8801,
+        strata: ['lava', 'cave_floor', 'metal'], underTop: 'metal',
+        tints: {
+            urban_street: '#8fa8c8', urban_wall: '#6a7290', metal: '#7f9ac0',
+            checkerboard: '#b06ad8', purple_grass: '#41f2d8', road: '#9aa4b8',
+        },
+    });
+    // avenue grid (moveCost 0 = the flow lanes)
+    M.rect(7, 0, 8, 23, 'urban_street'); M.rect(15, 0, 16, 23, 'urban_street');
+    M.rect(0, 7, 23, 8, 'urban_street'); M.rect(0, 15, 23, 16, 'urban_street');
+    // central holo-plaza (neon dance floor) + glyph lines
+    M.rect(9, 9, 14, 14, 'checkerboard');
+    M.rect(11, 0, 12, 23, 'purple_grass'); M.rect(0, 11, 23, 12, 'purple_grass');
+    // raised service platforms (climbable cover)
+    M.rect(5, 5, 6, 5, 'metal', 5); M.rect(17, 18, 18, 18, 'metal', 5);
+    M.rect(10, 4, 13, 4, 'metal', 4); M.rect(10, 19, 13, 19, 'metal', 4);
+    // steam-vent alleys: scorched vents + edge-blocking junk barriers
+    M.t(4, 8, 'scorched'); M.t(19, 15, 'scorched');
+    M.fence(9, 2, 9, 3, 'barrier_4', 90); M.fence(14, 20, 14, 21, 'barrier_4', 90);
+    // parked hover-cars along the curbs
+    M.objSym(6, 9, 'barrier_5', { rot: 90 });
+    M.objSym(9, 6, 'barrier_5', {});
+    M.objSym(17, 12, 'barrier_5', { rot: 90 });
+    M.objSym(3, 17, 'traffic_light', {});
+    M.objSym(6, 0, 'lamp_post_2', {});
+    M.sym180();
+    // city blocks: towers (2×2, roof-walkable)
+    M.buildingSym(2, 2, 'building_5');
+    M.buildingSym(18, 3, 'building_7');
+    M.buildingSym(3, 10, 'building_11');
+    M.buildingSym(19, 10, 'abandoned_building_1');
+    // holographic billboards + searchlights
+    M.monSym('fluorescent', 10, 7, 1, 2, { solid: false });
+    M.monSym('fluorescent', 16, 11, 1, 2, { rot: 90, solid: false });
+    M.monSym('lightpillar', 1, 20, 1, 4, { solid: false });
+    M.mon('rings', 11, 11, 2, 2, { solid: false });
+    M.spawnEdges('s', 8);
+    M.finishSpawns('urban_street');
+    return M;
+};
+
+/* CAMELOT — 24×24 8v8. Dark-fantasy castle siege: curtain walls, twin
+   gatehouses, courtyard objective, moat crossings, graveyard woods. */
+_MF_BUILDERS.prebuilt_camelot = function () {
+    const M = _mfNew({
+        name: 'Camelot', w: 24, h: 24, base: 'grass_2', baseH: 3, seed: 9901,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'bricks_2',
+        tints: { grass_2: '#7a9c6a', bricks_2: '#9a9aa8', rock_wall_2: '#8a8a9a', dark_woods: '#5a7a5a' },
+    });
+    // the king's road N–S through both gates
+    M.rect(11, 0, 12, 23, 'road');
+    // curtain wall (h6) with N/S gatehouses and E/W breach rubble (+1 climb steps)
+    M.box(7, 7, 16, 16, 'rock_wall_2', 6);
+    M.rect(11, 7, 12, 7, 'cobblestone', 3); M.rect(11, 16, 12, 16, 'cobblestone', 3);
+    M.rect(7, 11, 7, 12, 'rubble_2', 4); M.rect(16, 11, 16, 12, 'rubble_2', 4);
+    // corner towers (h7)
+    [[7, 7], [16, 7], [7, 16], [16, 16]].forEach(p => { M.t(p[0], p[1], 'rock_wall_2'); M.h(p[0], p[1], 7); });
+    // courtyard: cobblestone with the round-table dais at its heart
+    M.rect(8, 8, 15, 15, 'cobblestone');
+    M.disc(11.5, 11.5, 1.6, 'gold', 4);
+    // moat segments guarding the west/east approaches + plank bridges
+    M.rect(3, 8, 4, 15, 'deep_water', 2);
+    M.rect(3, 11, 4, 12, 'bridge', 3);
+    // graveyard woods (dark, defBonus stones, dead trees)
+    M.rect(1, 1, 5, 4, 'dark_woods');
+    M.rect(2, 2, 3, 3, 'ruins');
+    M.obj(1, 2, 'tree_5'); M.obj(4, 1, 'tree_6'); M.obj(2, 4, 'tree_5');
+    M.rect(18, 2, 22, 5, 'forest_2');
+    M.obj(19, 3, 'tree_3'); M.obj(21, 4, 'tree_3');
+    // torchlit wall tops
+    M.obj(9, 7, 'torch'); M.obj(14, 7, 'torch');
+    M.sym180();
+    // the keep + the chapel: mirrored 2×2 halls inside the walls
+    M.buildingSym(8, 8, 'church_1');
+    M.monSym('gateway', 11, 6, 3, 3, { solid: false });
+    M.mon('colossus', 5, 18, 2, 3, { rot: 45 });
+    M.mon('colossus', 18, 5, 2, 3, { rot: 225 });
+    M.monSym('monolith', 20, 20, 1, 2, {});
+    M.spawnEdges('s', 8);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* FOOTBALL STADIUM — 16×28 8v8. Full gridiron under the void lights:
+   chalk yard lines, team-color end zones, climbable bleacher tiers,
+   goalpost gateways, midfield sigil. */
+_MF_BUILDERS.prebuilt_stadium = function () {
+    const M = _mfNew({
+        name: 'Football Stadium', w: 16, h: 28, base: 'grass_2', baseH: 3, seed: 7707,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'urban_wall',
+        tints: {
+            grass_2: '#5ec46a', marble: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55',
+            gold: '#ffd34a', urban_wall: '#9aa0ac',
+        },
+    });
+    // end zones (team colors) + goal lines
+    M.rect(2, 2, 13, 3, 'carpet_2'); M.rect(2, 24, 13, 25, 'carpet');
+    // chalk yard lines every 4 rows across the field
+    for (let y = 4; y <= 24; y += 4) M.rect(2, y, 13, y, 'marble');
+    // midfield sigil + hash marks
+    M.rect(7, 13, 8, 14, 'gold');
+    for (let y = 5; y <= 23; y += 2) { M.t(5, y, 'marble'); M.t(10, y, 'marble'); }
+    // bleacher tiers flanking the field (climbable +1 steps up to the rim)
+    M.rect(0, 2, 0, 25, 'urban_wall', 5);
+    M.rect(1, 2, 1, 25, 'urban_wall', 4);
+    M.rect(15, 2, 15, 25, 'urban_wall', 5);
+    M.rect(14, 2, 14, 25, 'urban_wall', 4);
+    // north/south aprons + team tunnels (sunken walk-outs)
+    M.rect(2, 0, 13, 1, 'urban_street');
+    M.rect(7, 1, 8, 1, 'dungeon', 2);
+    M.sym180();
+    // goalposts + scoreboard + floodlight pillars
+    M.mon('gateway', 7, 2, 3, 3, { solid: false });
+    M.mon('gateway', 7, 25, 3, 3, { rot: 180, solid: false });
+    M.mon('monolith', 7, 0, 2, 3, { solid: false });
+    M.monSym('lightpillar', 0, 6, 1, 4, { solid: false });
+    M.monSym('lightpillar', 15, 13, 1, 4, { solid: false });
+    M.spawnEdges('s', 8);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* ═══════════════════════ Tier 2 — roster & lore expansion ══════════════════ */
+
+/* ATLANTIS — 24×24 8v8. Half-sunken marble city: deep-water moat, shallow
+   flooded streets, plaza islands, the crystal spire, broken colonnades. */
+_MF_BUILDERS.prebuilt_atlantis = function () {
+    const M = _mfNew({
+        name: 'Atlantis', w: 24, h: 24, base: 'water', baseH: 3, seed: 1101,
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_2',
+        tints: { marble: '#bfe8ef', marble_2: '#a8d4de', water: '#49c2d8', gold: '#ffe9a0' },
+    });
+    // deep-water moat ring around the city heart (drowning: a soft barrier)
+    M.ring(11.5, 11.5, 5.0, 6.4, 'deep_water', 2);
+    // four cardinal causeways over the moat
+    M.rect(11, 5, 12, 7, 'bridge', 3); M.rect(11, 16, 12, 18, 'bridge', 3);
+    M.rect(5, 11, 7, 12, 'bridge', 3); M.rect(16, 11, 18, 12, 'bridge', 3);
+    // the city heart: marble plaza + gilded core + crystal spire dais
+    M.disc(11.5, 11.5, 4.6, 'marble');
+    M.disc(11.5, 11.5, 2.4, 'gold');
+    M.rect(11, 11, 12, 12, 'crystal', 4);               // spire base: climbable, MP-rich
+    // outer wards: plaza islands rising from the shallows (hop routes)
+    [[3, 3, 5, 5], [18, 3, 20, 5], [2, 8, 4, 9], [19, 14, 21, 15]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble'));
+    [[8, 2, 9, 3], [14, 20, 15, 21]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble_2', 4));
+    // sunken quarters: ruins under the water (defBonus wading fights)
+    M.rect(2, 14, 5, 16, 'ruins', 2); M.rect(18, 7, 21, 9, 'ruins', 2);
+    // gardens of the deep: healing pools
+    M.t(6, 4, 'healing_spring'); M.t(17, 19, 'healing_spring');
+    // dry sand landings by the spawns
+    M.rect(8, 22, 15, 23, 'dirt_3'); M.rect(8, 0, 15, 1, 'dirt_3');
+    M.rect(11, 1, 12, 4, 'marble');
+    M.sym180();
+    M.mon('crystal', 11, 11, 3, 4, { solid: false });
+    M.mon('rings', 11, 11, 2, 2, { solid: false });
+    M.monSym('greek', 4, 4, 3, 2, {});
+    M.monSym('greek', 20, 8, 3, 2, { rot: 90 });
+    M.objSym(3, 8, 'column_2', {}); M.objSym(9, 4, 'column_1', {});
+    M.monSym('colossus', 3, 15, 2, 2, { rot: 315 });
+    M.spawnEdges('s', 8);
+    M.finishSpawns('dirt_3');
+    return M;
+};
+
+/* TOWER OF BABEL — 16×24 6v6. The unfinished tower: a grand climbable
+   ziggurat amid brick streets, scaffolding platforms and rubble of the
+   scattered tongues. */
+_MF_BUILDERS.prebuilt_babel = function () {
+    const M = _mfNew({
+        name: 'Tower of Babel', w: 16, h: 24, base: 'bricks_1', baseH: 3, seed: 1102,
+        strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'bricks_2',
+        tints: { bricks_1: '#d8a878', bricks_2: '#c09468', rubble_2: '#c8a888' },
+    });
+    // fast roads flanking the tower
+    M.rect(2, 0, 3, 23, 'road'); M.rect(12, 0, 13, 23, 'road');
+    // rubble fields + ruins (defBonus digs)
+    M.rect(5, 3, 7, 4, 'rubble_2'); M.rect(1, 6, 2, 7, 'ruins');
+    M.rect(9, 19, 11, 20, 'rubble_3'); M.rect(13, 16, 14, 17, 'ruins');
+    // scaffolding: climbable wooden work-platforms (mirrored)
+    M.rect(5, 6, 6, 7, 'wood_planks', 4);
+    M.obj(5, 7, 'stairs_2');
+    // dry canal (the abandoned water-works)
+    M.rect(0, 11, 3, 12, 'dirt_4', 2); M.rect(12, 11, 15, 12, 'dirt_4', 2);
+    M.sym180();
+    // the Tower: a grand stepped ziggurat you can fight up (collision-stamped)
+    M.mon('ziggurat', 7, 11, 7, 3, {});
+    M.monSym('arch', 7, 5, 3, 3, { solid: false });
+    M.monSym('obelisk', 2, 3, 1, 4, {});
+    M.monSym('colossus', 13, 8, 2, 2, { rot: 270 });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('bricks_1');
+    return M;
+};
+
+/* MOUNT OLYMPUS — 24×24 8v8. Marble acropolis floating over the cloud sea:
+   temple terraces, stairway ascents, storm-charged flank lanes, void rifts. */
+_MF_BUILDERS.prebuilt_olympus = function () {
+    const M = _mfNew({
+        name: 'Mount Olympus', w: 24, h: 24, base: 'cloud_2', baseH: 3, seed: 1201,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'marble_2',
+        tints: { marble: '#f8f8f2', gold: '#ffe27a', cloud_2: '#e8f0ff', sky_ruin: '#d8e2f4' },
+    });
+    // void rifts shape the holy mountain's silhouette
+    [[0, 0, 2, 1], [21, 0, 23, 2], [0, 6, 0, 8], [11, 3, 12, 3], [5, 9, 5, 10]]
+        .forEach(r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) M.hole(x, y); });
+    // the acropolis: grand marble terraces rising to the sacred flame
+    M.disc(11.5, 11.5, 6.5, 'marble');
+    M.disc(11.5, 11.5, 4.4, 'marble', 4);
+    M.disc(11.5, 11.5, 2.4, 'gold', 5);
+    M.rect(11, 11, 12, 12, 'gold', 5);
+    // processional stairways N/S cut the terraces (+1 steps)
+    M.rect(11, 4, 12, 6, 'marble', 3); M.rect(11, 7, 12, 8, 'marble', 4);
+    // storm-charged flank lanes (risky, half-heal)
+    M.rect(2, 10, 3, 13, 'storm'); M.rect(20, 10, 21, 13, 'storm');
+    // celestial-ruin perches (rangeBonus) on the mid flanks
+    M.rect(6, 6, 7, 7, 'sky_ruin', 4); M.rect(16, 16, 17, 17, 'sky_ruin', 4);
+    M.sym180();
+    // temples, colossi of the gods, the eternal flame
+    M.monSym('greek', 8, 8, 3, 2, {});
+    M.monSym('greek', 15, 8, 3, 2, { rot: 180 });
+    M.monSym('stairway', 11, 3, 2, 2, {});
+    M.mon('colossus', 8, 15, 2, 4, { rot: 45 });
+    M.mon('colossus', 15, 8, 2, 4, { rot: 225 });
+    M.mon('lightpillar', 11, 11, 1, 4, { solid: false });
+    M.objSym(9, 9, 'torch', {}); M.objSym(14, 9, 'torch', {});
+    M.objSym(9, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
+    M.spawnEdges('s', 8);
+    M.finishSpawns('cloud_2');
+    return M;
+};
+
+/* MARS — 20×20 6v6. Red regolith: mesa cover, twin dead rovers, the Cydonia
+   face on its pedestal, crater dust bowls under a butterscotch sky. */
+_MF_BUILDERS.prebuilt_mars = function () {
+    const M = _mfNew({
+        name: 'Mars', w: 20, h: 20, base: 'moon_2', baseH: 3, seed: 1301,
+        strata: ['lava', 'cave_floor', 'rocks_4'], underTop: 'rocks_4',
+        tints: {
+            moon_2: '#d87a4a', moon_3: '#b05f38', rocks_4: '#b86844', cliff: '#a05a3a',
+            rocks_2: '#c87450', metal: '#8a9098', ruins: '#c08058',
+        },
+    });
+    // craters: sunken dust bowls with raised rims
+    M.disc(9.5, 9.5, 3.4, 'moon_3', 2);
+    M.ring(9.5, 9.5, 3.4, 4.3, 'rocks_2', 4);
+    // rim breaches: two mirrored ways into the bowl (auto-nexus lands here)
+    M.rect(9, 5, 10, 6, 'moon_3', 3); M.rect(9, 13, 10, 14, 'moon_3', 3);
+    M.rect(9, 8, 10, 11, 'moon_3', 3);
+    // mesas: flat-top buttes (hard cover, h6)
+    M.rect(3, 3, 5, 4, 'cliff', 6); M.rect(14, 15, 16, 16, 'cliff', 6);
+    M.rect(15, 4, 16, 5, 'cliff', 5); M.rect(3, 14, 4, 15, 'cliff', 5);
+    // dune waves (slow-free red sand, +1 vantage arcs)
+    M.disc(5, 9, 1.4, 'moon_2', 4); M.disc(14, 10, 1.4, 'moon_2', 4);
+    // crash sites: twin dead rovers in debris fields (Spirit & Opportunity o7)
+    M.rect(2, 7, 3, 8, 'metal'); M.rect(16, 11, 17, 12, 'metal');
+    M.rect(2, 8, 2, 8, 'ruins');
+    M.sym180();
+    M.mon('rover', 2, 7, 1, 1, { rot: 25, solid: false });
+    M.mon('rover', 17, 12, 1, 1, { rot: 205, solid: false });
+    // Cydonia: the Face + the D&M pyramid formation (mirrored, for fairness lore
+    // says the erosion carved twins)
+    M.mon('colossus', 16, 2, 3, 2, { rot: 90 });
+    M.mon('colossus', 3, 17, 3, 2, { rot: 270 });
+    M.monSym('pyramid_cone', 6, 15, 4, 2, {});
+    M.scatter(10, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'moon_2') M.rock(x, y, 'moon'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('moon_2');
+    return M;
+};
+
+/* AREA 51 — 20×20 6v6. Fenced desert base: airstrip, floodlight towers,
+   twin hangars, and the tarped saucer on its test rig at dead center. */
+_MF_BUILDERS.prebuilt_area51 = function () {
+    const M = _mfNew({
+        name: 'Area 51', w: 20, h: 20, base: 'wasteland', baseH: 3, seed: 1401,
+        strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'metal',
+        tints: { wasteland: '#c8b088', metal: '#9fb2bd', aluminium: '#cfd8e0', road: '#a8a49a', scorched: '#8a7f68' },
+    });
+    // the airstrip: full-length runway on the east side + apron pads
+    M.rect(15, 1, 16, 18, 'road');
+    M.rect(14, 4, 14, 5, 'aluminium'); M.rect(17, 14, 17, 15, 'aluminium');
+    // the restricted compound: warning ring + perimeter fence w/ N-S gates
+    M.box(4, 4, 12, 15, 'scorched');
+    for (let x = 4; x <= 12; x++) { if (x < 7 || x > 9) { M.obj(x, 4, 'barrier_1', {}); M.obj(x, 15, 'barrier_1', { rot: 180 }); } }
+    for (let y = 5; y <= 14; y++) { M.obj(4, y, 'barrier_1', { rot: 270 }); M.obj(12, y, 'barrier_1', { rot: 90 }); }
+    // floodlight towers on the compound corners (tall pillars + lamps on top)
+    [[4, 4], [12, 4], [4, 15], [12, 15]].forEach(p => { M.t(p[0], p[1], 'metal'); M.h(p[0], p[1], 6); M.obj(p[0], p[1], 'lamp_post_2'); });
+    // interior: tarmac + the saucer test rig at dead center
+    M.rect(5, 5, 11, 14, 'dirt_4');
+    M.rect(7, 9, 9, 10, 'aluminium', 4);                 // raised test platform
+    // runway lights + HQ flag + desert scrub
+    M.obj(15, 3, 'lamp_post'); M.obj(16, 16, 'lamp_post');
+    M.sym180();
+    // twin hangars (2×2, roof-walkable)
+    M.building(5, 6, 'abandoned_building_1');
+    M.building(10, 12, 'building_10');
+    M.mon('rings', 8, 9, 3, 2, { solid: false });        // the tarped craft
+    M.mon('flag', 8, 5, 1, 2, { solid: false });
+    M.monSym('lightpillar', 1, 1, 1, 4, { solid: false });
+    M.monSym('fluorescent', 15, 8, 1, 2, { rot: 90, solid: false });
+    M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'wasteland') M.obj(x, y, 'grass_tuft'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('wasteland');
+    return M;
+};
+
+/* ANTARCTICA — 24×24 8v8. The ice wall and what's behind it: seawater
+   channels with iceberg hops, slide-gap chokepoints, frozen colossus. */
+_MF_BUILDERS.prebuilt_antarctica = function () {
+    const M = _mfNew({
+        name: 'Antarctica', w: 24, h: 24, base: 'marble_2', baseH: 3, seed: 1501,
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'ice',
+        tints: {
+            marble_2: '#e4f2fc', ice: '#bfe0ff', mountain_2: '#9fb8cc', deep_water: '#1d4e78',
+            rocks_1: '#8aa4b8', cliff: '#7f98ac',
+        },
+    });
+    // THE ICE WALL: a mid-map rampart with three gaps — every gap floored in ice
+    M.rect(0, 11, 23, 12, 'ice', 7);
+    [[3, 4], [11, 12], [19, 20]].forEach(g => M.rect(g[0], 11, g[1], 12, 'ice', 3));
+    // seawater channels + iceberg hop-chains (mirrored quadrants)
+    M.rect(15, 2, 21, 6, 'deep_water', 2);
+    [[16, 3], [18, 5], [20, 3], [17, 4]].forEach(p => { M.rect(p[0], p[1], p[0], p[1], 'ice', 3); });
+    // pressure ridges + nunatak peaks
+    M.rect(2, 2, 4, 3, 'mountain_2', 5);
+    M.rect(7, 6, 8, 6, 'cliff', 5);
+    // snow trenches (sunken cover lanes)
+    M.rect(5, 8, 10, 9, 'marble_2', 2);
+    // research huts? no — the Old Ones' relics
+    M.rect(2, 8, 3, 9, 'ruins');
+    M.sym180();
+    // the frozen colossus half-buried at the wall's central gap
+    M.mon('colossus', 11, 10, 3, 2, { rot: 0 });
+    M.mon('colossus', 12, 13, 3, 2, { rot: 180 });
+    M.monSym('crystal', 4, 6, 2, 3, { solid: false });
+    M.monSym('mountain', 21, 21, 4, 4, {});
+    M.monSym('monolith', 8, 3, 1, 3, {});
+    M.spawnEdges('s', 8);
+    M.finishSpawns('marble_2');
+    return M;
+};
+
+/* SKINWALKER RANCH — 20×20 6v6. High-desert ranch: barn + corral, twin
+   observation mesas, and the crop-circle anomaly right where the roaming
+   hotspot spawns. */
+_MF_BUILDERS.prebuilt_skinwalker = function () {
+    const M = _mfNew({
+        name: 'Skinwalker Ranch', w: 20, h: 20, base: 'grass_rocky', baseH: 3, seed: 1601,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'rocks_1',
+        tints: { purple_grass: '#c07aff', wasteland: '#c4a878', grass_rocky: '#a8b06a', dirt: '#b89468' },
+    });
+    // the anomaly: concentric crop-circle rings at center (hotspot country)
+    M.ring(9.5, 9.5, 3.6, 4.2, 'purple_grass');
+    M.ring(9.5, 9.5, 2.0, 2.6, 'purple_grass');
+    M.disc(9.5, 9.5, 0.9, 'purple_grass');
+    // the mesa: flat-top with a range-bonus crown, mirrored SW/NE
+    M.rect(14, 2, 17, 4, 'cliff', 5);
+    M.rect(15, 3, 16, 3, 'mountain_top', 6);
+    M.rect(13, 3, 13, 4, 'rocks_2', 4);                  // the scramble up
+    // the ranch: barn, corral fence, water trough, dirt drive
+    M.rect(1, 5, 6, 10, 'dirt');
+    M.fence(1, 9, 5, 9, 'barrier_3', 180);
+    M.fence(6, 5, 6, 8, 'barrier_3', 90);
+    M.obj(5, 6, 'well');
+    // the mutilation site (don't stand in it)
+    M.rect(12, 7, 13, 8, 'poison_bog');
+    // dead cottonwoods + sage
+    M.obj(8, 2, 'tree_5'); M.obj(3, 12, 'tree_6');
+    M.sym180();
+    M.building(2, 6, 'abandoned_building_2');            // the weathered barn
+    M.mon('rings', 9, 9, 2, 3, { solid: false });        // the thing above the field
+    M.monSym('monolith', 18, 6, 1, 3, {});
+    M.scatter(10, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_rocky') M.obj(x, y, 'grass_tuft'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_rocky');
+    return M;
+};
+
+/* HOLLOW EARTH — 20×20 6v6. The world above and the world below, mirrored:
+   a living forest half and its petrified cavern twin, joined by two great
+   gates under a darkness veil. */
+_MF_BUILDERS.prebuilt_hollow_earth = function () {
+    const M = _mfNew({
+        name: 'Hollow Earth', w: 20, h: 20, base: 'grass_2', baseH: 3, seed: 1701,
+        strata: ['lava', 'lava', 'cave_floor'], underTop: 'rocks_3',
+        tints: { cave_floor: '#8a7a9c', mushroom: '#c48ae0', crystal: '#9affe4', dark_woods: '#6a8a5a' },
+    });
+    // surface half (north): meadows, woods, a stream
+    M.rect(0, 0, 19, 9, 'grass_2');
+    [[2, 2], [5, 1], [15, 2], [17, 4], [3, 6]].forEach(p => M.tree(p[0], p[1]));
+    [[8, 3], [12, 1]].forEach(p => M.tree(p[0], p[1], 'tree_3'));
+    M.rect(0, 4, 3, 5, 'water');
+    M.disc(15, 6, 1.4, 'grass_3', 4);
+    M.rect(6, 5, 7, 6, 'dark_woods');
+    // the crossing: darkness veil row with two gate lanes
+    M.rect(0, 9, 19, 10, 'fog_wall');
+    M.rect(4, 9, 5, 10, 'dirt_2'); M.rect(14, 9, 15, 10, 'dirt_2');
+    M.sym180();
+    // now re-theme the south half into the underworld (same geometry = fair)
+    for (let y = 10; y < 20; y++) for (let x = 0; x < 20; x++) {
+        const k = M.tk(x, y);
+        if (k === 'grass_2' || k === 'grass_rocky') M.t(x, y, 'cave_floor');
+        else if (k === 'grass_3') M.t(x, y, 'crystal');
+        else if (k === 'water') M.t(x, y, 'water');
+        else if (k === 'dark_woods') M.t(x, y, 'mushroom');
+        else if (k === 'dirt_2') M.t(x, y, 'dirt_2');
+        M.objs[y][x] = M.objs[y][x].map(e => {
+            // living trees fossilize below (same footprint & cover — mirrored fairness)
+            if (e.oid === MF_OID.tree) return Object.assign({}, e, { oid: MF_OID.tree_5 });
+            if (e.oid === MF_OID.tree_3) return Object.assign({}, e, { oid: MF_OID.tree_6 });
+            return e;
+        });
+    }
+    M.mon('gateway', 4, 9, 2, 3, { solid: false });
+    M.mon('gateway', 15, 10, 2, 3, { rot: 180, solid: false });
+    M.mon('lightpillar', 9, 14, 1, 4, { solid: false }); // the inner sun's shaft
+    M.mon('crystal', 9, 16, 2, 3, { solid: false });
+    M.mon('mountain', 17, 17, 3, 3, {});
+    M.mon('island', 2, 17, 3, 2, { solid: false });
+    M.obj(4, 10, 'cave_entrance'); M.obj(15, 9, 'cave_entrance');
+    M.spawnEdges('s', 6);
+    M.finishSpawns('cave_floor');
+    return M;
+};
+
+/* FAIRY FOREST — 20×20 6v6. Glowing woodland maze: mushroom-ring hedges
+   that eat arrows, root paths, healing springs, crystal toadstools. */
+_MF_BUILDERS.prebuilt_fairy_forest = function () {
+    const M = _mfNew({
+        name: 'Fairy Forest', w: 20, h: 20, base: 'grass_3', baseH: 3, seed: 1801,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
+        tints: {
+            purple_grass: '#8affc8', mushroom: '#ff9ad8', leaves: '#7ae08a',
+            grass_3: '#8fd47f', crystal: '#c8a8ff', healing_spring: '#8affd8',
+        },
+    });
+    // winding fae paths (the three lanes)
+    for (let y = 0; y < 20; y++) {
+        const xw = 3 + Math.round(Math.sin(y * 0.5) * 1.5);
+        M.t(xw, y, 'purple_grass'); M.t(xw + 1, y, 'purple_grass');
+        const xe = 15 + Math.round(Math.cos(y * 0.45) * 1.5);
+        M.t(xe, y, 'purple_grass'); M.t(xe + 1, y, 'purple_grass');
+    }
+    M.rect(9, 0, 10, 19, 'dirt_2');
+    // the fairy ring: a mushroom hedge circle with an open heart (auto-nexus)
+    M.ring(9.5, 9.5, 2.6, 3.4, 'mushroom');
+    M.rect(9, 6, 10, 6, 'grass_3'); M.rect(9, 13, 10, 13, 'grass_3');
+    // dense woods between the lanes (real blocking cover)
+    [[6, 2], [7, 4], [12, 3], [13, 1], [6, 16], [12, 17], [7, 8], [12, 11]].forEach(p => M.tree(p[0], p[1]));
+    [[6, 6], [13, 5], [2, 2], [17, 3]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
+    [[1, 8], [18, 6]].forEach(p => M.tree(p[0], p[1], 'tree_3'));
+    // glades: leaves bowers + crystal toadstools + springs
+    M.disc(3.5, 13.5, 1.4, 'leaves');
+    M.rect(15, 15, 16, 16, 'crystal', 4);
+    M.t(3, 13, 'healing_spring'); M.t(16, 6, 'healing_spring');
+    M.sym180();
+    M.mon('crystal', 15, 15, 2, 2, { solid: false });
+    M.mon('crystal', 4, 4, 2, 2, { solid: false });
+    M.monSym('island', 1, 16, 2, 2, { solid: false });   // fae islet drifting over the wood
+    M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_3') M.obj(x, y, 'grass_tuft'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_3');
+    return M;
+};
+
+/* MOON — 16×16 6v6. The sparse low-grav arena: crater bowls, the landing
+   site (flag + rover), and one black monolith. */
+_MF_BUILDERS.prebuilt_moon = function () {
+    const M = _mfNew({
+        name: 'Moon', w: 16, h: 16, base: 'moon', baseH: 3, seed: 1901,
+        strata: ['lava', 'cave_floor', 'moon_3'], underTop: 'moon_3',
+        tints: { moon: '#c8ccd8', moon_2: '#b0b4c4', moon_3: '#989cb0' },
+    });
+    // the great central crater: sunken bowl + raised rim, two breaches
+    M.disc(7.5, 7.5, 3.2, 'moon_2', 2);
+    M.ring(7.5, 7.5, 3.2, 4.1, 'moon_2', 4);
+    M.rect(7, 3, 8, 4, 'moon', 3); M.rect(7, 11, 8, 12, 'moon', 3);
+    M.rect(7, 6, 8, 9, 'moon_2', 3);
+    // satellite craters (mirrored)
+    M.disc(2.5, 3.5, 1.3, 'moon_3', 2);
+    M.disc(12.5, 2.5, 1.1, 'moon_2', 4);
+    // regolith ridges (cover)
+    M.rect(4, 6, 4, 7, 'moon_3', 5); M.rect(11, 8, 11, 9, 'moon_3', 5);
+    M.sym180();
+    // the landing site (one per hemisphere — Apollo 11 and the one they cut)
+    M.mon('flag', 3, 8, 1, 2, { solid: false });
+    M.mon('rover', 4, 9, 1, 1, { rot: 120, solid: false });
+    M.mon('flag', 12, 7, 1, 2, { rot: 180, solid: false });
+    M.mon('rover', 11, 6, 1, 1, { rot: 300, solid: false });
+    M.mon('monolith', 7, 7, 1, 3, {});                   // TMA-1
+    M.scatter(9, (x, y) => { if (M.hget(x, y) === 3) M.rock(x, y, 'moon'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('moon');
+    return M;
+};
+
+/* ═══════════════════════ Tier 3 — flavor & deep cuts ═══════════════════════ */
+
+/* TECHNOTICLAN — 24×24 8v8. Neon-Aztec canal city: glowing waterways,
+   stone causeways, climbable temple-ziggurats, the tech-altar. */
+_MF_BUILDERS.prebuilt_technoticlan = function () {
+    const M = _mfNew({
+        name: 'Technoticlan', w: 24, h: 24, base: 'cobblestone', baseH: 3, seed: 2001,
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'bricks_2',
+        tints: {
+            cobblestone: '#7a8ba0', water: '#38e8ff', bricks_2: '#c07a9a',
+            purple_grass: '#41f2d8', checkerboard: '#e04aff', gold: '#7affd4',
+        },
+    });
+    // the canal grid: two glowing waterway rings (1-step down, swimmable)
+    M.ring(11.5, 11.5, 7.6, 8.6, 'water', 2);
+    M.ring(11.5, 11.5, 3.6, 4.5, 'water', 2);
+    // stone causeways bridge both rings at the cardinals
+    M.rect(11, 0, 12, 23, 'cobblestone', 3);
+    M.rect(0, 11, 23, 12, 'cobblestone', 3);
+    // glyph-light lanes
+    M.rect(5, 5, 18, 5, 'purple_grass'); M.rect(5, 18, 18, 18, 'purple_grass');
+    // the tech-altar: checkerboard dais at the heart
+    M.rect(10, 10, 13, 13, 'checkerboard', 4);
+    M.rect(11, 11, 12, 12, 'gold', 4);
+    // plaza wards between the rings
+    M.rect(5, 6, 7, 8, 'bricks_2'); M.rect(16, 15, 18, 17, 'bricks_2');
+    M.sym180();
+    // temple-ziggurats you can storm (collision-stamped) + neon glyph totems
+    M.monSym('ziggurat', 5, 16, 5, 3, {});
+    M.mon('ziggurat', 18, 5, 5, 3, {});
+    M.monSym('fluorescent', 8, 11, 1, 2, { rot: 90, solid: false });
+    M.monSym('fluorescent', 11, 8, 1, 2, { solid: false });
+    M.mon('crystal', 11, 13, 2, 2, { solid: false });
+    M.mon('rings', 11, 11, 2, 3, { solid: false });
+    M.objSym(6, 6, 'torch', {}); M.objSym(17, 6, 'torch', {});
+    M.spawnEdges('s', 8);
+    M.finishSpawns('cobblestone');
+    return M;
+};
+
+/* AGARTHA — 24×24 8v8. The inner-earth capital: jade terraces under the
+   central sun-shaft, crystal spires, glowing rivers, mushroom groves. */
+_MF_BUILDERS.prebuilt_agartha = function () {
+    const M = _mfNew({
+        name: 'Agartha', w: 24, h: 24, base: 'cave_floor', baseH: 3, seed: 2101,
+        strata: ['lava', 'lava', 'cave_floor'], underTop: 'rocks_5',
+        tints: {
+            cave_floor: '#a89468', marble: '#bfe8c8', water: '#4ae0c8',
+            crystal: '#8affd8', gold: '#ffe28a', mushroom: '#b8e07a',
+        },
+    });
+    // glowing rivers wind from the corners toward the terraces
+    for (let t = 0; t < 22; t++) {
+        const x = 1 + t, y = 4 + Math.round(Math.sin(t * 0.5) * 2);
+        if (x < 24) M.rect(x, y, x, y + 1, 'water', 2);
+    }
+    // the terraced city: three jade tiers to the sun-shaft plaza
+    M.disc(11.5, 11.5, 6.2, 'marble', 4);
+    M.disc(11.5, 11.5, 4.2, 'marble', 5);
+    M.disc(11.5, 11.5, 2.2, 'gold', 6);
+    // grand staircut approaches at the cardinals (+1 steps all the way up)
+    M.rect(11, 4, 12, 5, 'marble', 3); M.rect(11, 6, 12, 7, 'marble', 4); M.rect(11, 8, 12, 9, 'marble', 5);
+    M.rect(4, 11, 5, 12, 'marble', 3); M.rect(6, 11, 7, 12, 'marble', 4); M.rect(8, 11, 9, 12, 'marble', 5);
+    // mushroom groves (arrow-eating flora) + crystal fields
+    M.rect(3, 16, 5, 18, 'mushroom');
+    M.rect(18, 3, 20, 5, 'crystal');
+    M.sym180();
+    // spires, gates of the deep, the inner sun
+    M.mon('lightpillar', 11, 11, 2, 4, { solid: false });
+    M.monSym('crystal', 7, 7, 2, 3, { solid: false });
+    M.monSym('crystal', 16, 7, 2, 3, { solid: false });
+    M.monSym('arch', 11, 2, 3, 3, { solid: false });
+    M.monSym('ziggurat', 2, 2, 4, 2, {});
+    M.spawnEdges('s', 8);
+    M.finishSpawns('cave_floor');
+    return M;
+};
+
+/* VATICAN CITY — 20×20 6v6. The colonnade piazza: central obelisk, twin
+   basilica steps, fountain pair, consecrated ground. */
+_MF_BUILDERS.prebuilt_vatican = function () {
+    const M = _mfNew({
+        name: 'Vatican City', w: 20, h: 20, base: 'cobblestone', baseH: 3, seed: 2201,
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_2',
+        tints: { cobblestone: '#c8beab', marble: '#f6f3ea', gold: '#ffe9a8', sanctuary: '#ffe8c0' },
+    });
+    // the piazza: marble ellipse inscribed in the square
+    M.disc(9.5, 9.5, 6.4, 'marble');
+    // Bernini colonnades: raised marble arcs (hard cover) crowned with columns
+    M.ring(9.5, 9.5, 5.4, 6.2, 'marble_2', 5);
+    // four grand gaps open the piazza at the diagonals + cardinals
+    [[9, 3, 10, 4], [9, 15, 10, 16], [3, 9, 4, 10], [15, 9, 16, 10]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble', 3));
+    M.rect(2, 2, 4, 4, 'marble', 3); M.rect(15, 15, 17, 17, 'marble', 3);
+    // basilica steps: gilded dais pair (mirrored) with sanctuary ground
+    M.rect(8, 6, 11, 7, 'gold', 4);
+    M.rect(8, 5, 11, 5, 'sanctuary', 4);
+    // fountains
+    M.t(6, 8, 'healing_spring'); M.t(13, 11, 'healing_spring');
+    M.sym180();
+    // the obelisk (a real blocker), saints in their niches, gates
+    M.mon('obelisk', 9, 9, 1, 5, {});
+    M.buildingSym(8, 1, 'church_1');
+    M.monSym('greek', 3, 6, 3, 2, { rot: 45 });
+    M.monSym('colossus', 15, 6, 1, 2, { rot: 90 });
+    M.objSym(5, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
+    M.objSym(7, 12, 'torch', {});
+    M.spawnEdges('s', 6);
+    M.finishSpawns('cobblestone');
+    return M;
+};
+
+/* BOHEMIAN GROVE — 20×20 6v6. Old-growth redwoods around the ritual
+   clearing: the owl idol, the altar fire, lantern paths, the lake stage. */
+_MF_BUILDERS.prebuilt_bohemian_grove = function () {
+    const M = _mfNew({
+        name: 'Bohemian Grove', w: 20, h: 20, base: 'grass_2', baseH: 3, seed: 2301,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
+        tints: { grass_2: '#6a9458', dirt: '#8a7458', dark_woods: '#4a6a48', forest_2: '#5a8450' },
+    });
+    // the creek + wooden footbridges
+    for (let x = 0; x < 20; x++) { const y = 6 + Math.round(Math.sin(x * 0.4) * 1.2); M.t(x, y, 'water'); M.h(x, y, 2); }
+    M.rect(4, 5, 4, 7, 'bridge', 3); M.rect(14, 5, 14, 7, 'bridge', 3);
+    // lantern trails
+    M.rect(9, 0, 10, 19, 'dirt');
+    // old growth: redwood walls of trees (authored N half, mirrored)
+    [[1, 1], [3, 2], [6, 1], [12, 2], [16, 1], [18, 3], [2, 8], [17, 8], [7, 3], [13, 4]].forEach(p => M.tree(p[0], p[1], 'tree_3'));
+    [[5, 8], [15, 2], [11, 1]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
+    M.rect(0, 3, 1, 4, 'dark_woods'); M.rect(18, 6, 19, 7, 'dark_woods');
+    // the ritual clearing (NE-of-center) + altar fire + the Owl
+    M.disc(12.5, 12.5, 2.6, 'dirt');
+    M.rect(12, 12, 13, 13, 'scorched');
+    // the lakeside amphitheater (mirrored twin clearing)
+    M.disc(6.5, 6.5, 1.8, 'grass_3');
+    M.sym180();
+    M.mon('colossus', 12, 12, 2, 4, { rot: 315 });       // the Owl of the Grove
+    M.obj(11, 12, 'torch'); M.obj(14, 13, 'torch'); M.obj(12, 14, 'torch');
+    M.buildingSym(1, 15, 'building_8');                  // the lodges
+    M.monSym('monolith', 6, 6, 1, 2, {});
+    M.t(9, 9, 'healing_spring'); M.t(10, 10, 'healing_spring');
+    M.objSym(9, 2, 'lamp_post', {});
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_2');
+    return M;
+};
+
+/* GÖBEKLI TEPE — 16×16 6v6. The first temple: concentric ring walls,
+   T-pillar sentinels, excavation trenches, the twin great pillars. */
+_MF_BUILDERS.prebuilt_gobekli = function () {
+    const M = _mfNew({
+        name: 'Göbekli Tepe', w: 16, h: 16, base: 'dirt_3', baseH: 3, seed: 2401,
+        strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
+        tints: { rock_wall_1: '#d8c098', bricks_2: '#e0d0b0', dirt_3: '#c8a878', grass_2: '#a8b070' },
+    });
+    // grass fringe at the tell's edge
+    M.box(0, 0, 15, 15, 'grass_2');
+    // outer ring wall (waist-high +1: climbable cover) with 4 gaps
+    M.ring(7.5, 7.5, 5.6, 6.2, 'rock_wall_1', 4);
+    [[7, 1, 8, 2], [7, 13, 8, 14], [1, 7, 2, 8], [13, 7, 14, 8]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'dirt_3', 3));
+    // inner ring (offset gaps, E/W)
+    M.ring(7.5, 7.5, 3.2, 3.9, 'rock_wall_1', 4);
+    M.rect(4, 7, 4, 8, 'dirt_3', 3); M.rect(11, 7, 11, 8, 'dirt_3', 3);
+    // T-pillar sentinels: 1-tile bone-brick pillars on the rings (hard cover)
+    [[7, 4], [4, 5], [11, 5]].forEach(p => { M.t(p[0], p[1], 'bricks_2'); M.h(p[0], p[1], 6); });
+    // excavation trenches (sunken defBonus digs)
+    M.rect(2, 2, 4, 3, 'ruins', 2);
+    M.obj(2, 3, 'stairs_2');
+    M.sym180();
+    // the twin great T-pillars at the sanctum
+    M.mon('monolith', 7, 7, 1, 3, {});
+    M.mon('monolith', 8, 8, 1, 3, {});
+    M.monSym('arch', 12, 2, 2, 2, { solid: false });
+    M.monSym('colossus', 2, 12, 2, 1, { rot: 45 });
+    M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'dirt_3') M.rock(x, y, 'rocks_1'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('dirt_3');
+    return M;
+};
+
+/* D.U.M.B. — 16×16 6v6. Deep Underground Military Base: concrete corridor
+   grid, blast-door chokes, server-bank cover, holding cells, red light. */
+_MF_BUILDERS.prebuilt_dumb = function () {
+    const M = _mfNew({
+        name: 'D.U.M.B.', w: 16, h: 16, base: 'metal', baseH: 3, seed: 2501,
+        strata: ['lava', 'cave_floor', 'dungeon'], underTop: 'dungeon_2',
+        tints: { metal: '#a87878', dungeon_2: '#9a6a6a', metal_2: '#b88484', road: '#8a6a6a', dungeon: '#7a5a5a' },
+    });
+    // the tram rail: a fast W–E spine through the base
+    M.rect(0, 7, 15, 8, 'road');
+    // corridor walls carve the floor into rooms (h6 concrete)
+    M.rect(3, 2, 3, 5, 'dungeon_2', 6); M.rect(4, 2, 7, 2, 'dungeon_2', 6);
+    M.rect(12, 2, 12, 5, 'dungeon_2', 6); M.rect(9, 5, 12, 5, 'dungeon_2', 6);
+    M.rect(6, 4, 6, 5, 'dungeon_2', 6);
+    // holding cells (3-wide pods off the north corridor)
+    M.rect(0, 2, 1, 3, 'dungeon_3');
+    M.obj(1, 2, 'barrier_4', { rot: 90 });               // cell door
+    // server banks: climbable metal blocks (cover you can mantle)
+    M.rect(9, 3, 10, 3, 'metal_2', 4);
+    M.rect(5, 6, 5, 6, 'metal_2', 4);
+    // blast doors on the tram spine (edge-blocking slabs, mirrored)
+    M.obj(4, 7, 'barrier_1', { rot: 90 }); M.obj(4, 8, 'barrier_1', { rot: 90 });
+    // emergency lighting + signage
+    M.sym180();
+    M.monSym('fluorescent', 2, 7, 1, 2, { rot: 90, solid: false });
+    M.monSym('fluorescent', 8, 4, 1, 2, { solid: false });
+    M.monSym('exitsign', 3, 6, 1, 1, { solid: false });
+    M.monSym('exitsign', 13, 2, 1, 1, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('metal');
+    return M;
+};
+
+/* CERN — 16×16 6v6. The collider ring: circular corridor between aluminium
+   wall arcs, the crackling portal anomaly at the interaction point. */
+_MF_BUILDERS.prebuilt_cern = function () {
+    const M = _mfNew({
+        name: 'CERN', w: 16, h: 16, base: 'metal', baseH: 3, seed: 2601,
+        strata: ['lava', 'cave_floor', 'dungeon'], underTop: 'aluminium',
+        tints: {
+            metal: '#9fb4c8', aluminium: '#cfd8e0', gold: '#c88a4a',
+            checkerboard: '#7ae0ff', metal_3: '#8aa0b8', storm: '#6a8ac8',
+        },
+    });
+    // beamline conduits (copper) crossing the floor
+    M.rect(7, 0, 8, 15, 'gold'); M.rect(0, 7, 15, 8, 'gold');
+    // the ring: outer + inner wall arcs with four access gaps
+    M.ring(7.5, 7.5, 6.4, 7.1, 'aluminium', 6);
+    M.ring(7.5, 7.5, 3.4, 4.1, 'aluminium', 6);
+    M.rect(7, 0, 8, 15, 'gold', 3); M.rect(0, 7, 15, 8, 'gold', 3);
+    // segmented tunnel floor between the walls
+    M.ring(7.5, 7.5, 4.2, 6.3, 'metal_3');
+    M.rect(7, 4, 8, 11, 'metal_3', 3);
+    // the interaction point: portal dais + crackling containment ring
+    M.rect(7, 7, 8, 8, 'checkerboard', 4);
+    M.ring(7.5, 7.5, 1.4, 2.0, 'storm');
+    // control terminals (mantle-height cover)
+    M.rect(2, 2, 3, 2, 'metal_2', 4); M.rect(12, 13, 13, 13, 'metal_2', 4);
+    M.sym180();
+    M.mon('rings', 7, 7, 2, 3, { solid: false });        // the anomaly
+    M.mon('lightpillar', 7, 7, 1, 4, { solid: false });
+    M.mon('colossus', 2, 12, 1, 2, { rot: 45 });         // the statue in the courtyard
+    M.monSym('fluorescent', 5, 5, 1, 2, { solid: false });
+    M.monSym('exitsign', 12, 5, 1, 1, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('metal');
+    return M;
+};
+
+/* BACKROOMS — 16×16 6v6. Level 0: yellow wallpaper maze on damp carpet,
+   humming lights, false exits, one flooded corridor. No sky. No stars. */
+_MF_BUILDERS.prebuilt_backrooms = function () {
+    const M = _mfNew({
+        name: 'Backrooms', w: 16, h: 16, base: 'carpet', baseH: 3, seed: 2701,
+        strata: ['lava', 'cave_floor', 'carpet_4'], underTop: 'wallpaper',
+        tints: { carpet: '#c8b878', wallpaper: '#e8d890', water: '#b8b060', carpet_4: '#b0a068' },
+    });
+    // the maze: off-kilter wallpaper walls (h6), three lanes + cross-cuts
+    M.rect(3, 0, 3, 4, 'wallpaper', 6); M.rect(3, 4, 6, 4, 'wallpaper', 6);
+    M.rect(9, 2, 12, 2, 'wallpaper', 6); M.rect(12, 2, 12, 5, 'wallpaper', 6);
+    M.rect(6, 6, 9, 6, 'wallpaper', 6);
+    M.rect(0, 10, 2, 10, 'wallpaper', 6);
+    M.rect(5, 9, 5, 12, 'wallpaper', 6);
+    M.rect(14, 6, 15, 6, 'wallpaper', 6);
+    // identical doorless rooms (slightly different carpet — you noticed)
+    M.rect(0, 0, 2, 2, 'carpet_2'); M.rect(13, 3, 15, 4, 'carpet_3');
+    // the flooded corridor (almond water)
+    M.rect(0, 12, 15, 12, 'water');
+    M.sym180();
+    // the hum: ceiling tubes + EXIT signs that lie
+    M.monSym('fluorescent', 2, 5, 1, 2, { solid: false });
+    M.monSym('fluorescent', 7, 1, 1, 2, { rot: 90, solid: false });
+    M.monSym('fluorescent', 10, 8, 1, 2, { solid: false });
+    M.monSym('exitsign', 4, 4, 1, 1, { solid: false });
+    M.monSym('exitsign', 12, 3, 1, 1, { solid: false });
+    M.mon('monolith', 7, 7, 1, 2, {});                   // something is here with you
+    M.spawnEdges('s', 6);
+    M.finishSpawns('carpet');
+    return M;
+};
+
+/* NORTH POLE — 16×16 6v6. Santa's compound: the workshop, present depots,
+   a frozen slide-pond over the objective, aurora overhead. */
+_MF_BUILDERS.prebuilt_northpole = function () {
+    const M = _mfNew({
+        name: 'North Pole', w: 16, h: 16, base: 'marble_2', baseH: 3, seed: 2801,
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'ice',
+        tints: { marble_2: '#e8f4ff', ice: '#c8e8ff', wood_planks: '#a86848', crystal: '#bfe8ff' },
+    });
+    // the frozen pond: an ice slide-arena right over the center objective
+    M.disc(7.5, 7.5, 2.8, 'ice');
+    // the workshop compound: plank yard + twin buildings + crate depots
+    M.rect(1, 2, 5, 5, 'wood_planks');
+    M.obj(1, 2, 'barrier_3', {}); M.obj(2, 2, 'barrier_3', {});   // stacked presents
+    M.obj(5, 3, 'barrier_3', { rot: 90 });
+    // pine wind-break rows
+    [[8, 1], [10, 2], [13, 1], [1, 8], [2, 11]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
+    // ice sculptures + snow drifts
+    M.rect(12, 6, 12, 7, 'crystal', 4);
+    M.disc(13.5, 12.5, 1.2, 'marble_2', 4);
+    M.sym180();
+    M.buildingSym(2, 3, 'building_6');                    // workshop + mirrored stable
+    M.monSym('lightpillar', 7, 2, 1, 4, { solid: false }); // aurora beacons
+    M.monSym('crystal', 12, 6, 2, 2, { solid: false });
+    M.mon('flag', 7, 7, 1, 2, { solid: false });          // the actual Pole
+    M.spawnEdges('s', 6);
+    M.finishSpawns('marble_2');
+    return M;
+};
+
+/* FLAT LANDS — 16×16 6v6. The eerie empty plane. Two shallow dips. One dead
+   tree. A ring you can barely see. Nothing else. You are being watched. */
+_MF_BUILDERS.prebuilt_flatlands = function () {
+    const M = _mfNew({
+        name: 'Flat Lands', w: 16, h: 16, base: 'grass_4', baseH: 3, seed: 2901,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
+        tints: { grass_4: '#b8c8a8', purple_grass: '#a8b898', dirt_2: '#b0a890' },
+    });
+    // the circle (was it always there?)
+    M.ring(7.5, 7.5, 4.4, 4.9, 'purple_grass');
+    // two shallow dips — the only cover on the whole plane
+    M.rect(3, 5, 4, 6, 'dirt_2', 2);
+    M.rect(11, 9, 12, 10, 'dirt_2', 2);
+    // one dead tree (and its twin, which you don't remember)
+    M.obj(4, 2, 'tree_5');
+    M.sym180();
+    M.rock(7, 7, 'rocks_1');
+    M.scatter(5, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_4') M.obj(x, y, 'grass_tuft'); });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_4');
+    return M;
+};
+
+/* ═══════════════════════ META — roster, biomes, skies ══════════════════════
+   One row per launch map. Everything downstream is generated from this table:
+   PREBUILT_MAPS + MAP_LAYOUT_PRESETS here; GAME_MODES / compatibleMaps in
+   state.js; MS_MAP_LIST in map.js; ranked MAP_POOL in server.js mirrors it.
+   env → state.mapEnv → the firmament dome (tint/stars/nebula/fog) + the
+   horizon-scenery theme ring (see three-renderer _buildHorizonScenery).    */
+
+const EW_MAP_META = [
+    // ── Tier 1 — launch core ──
+    { id: 'prebuilt_shasta', label: 'Mount Shasta', w: 20, h: 20, teamSize: 6, tier: 1, base: 'grass_2',
+      biomes: ['forest', 'inner_earth'], deltaPad: 'grass_2',
+      desc: '20×20 prebuilt, 6v6 — the sacred volcano: snow-crown vantage, switchback terraces, pine woods, twin cold lakes & the Lemurian gate',
+      env: { tint: 0x9fc4e8, tintAmt: 0.30, stars: 0.5, nebula: 0.6, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'islands' } },
+    { id: 'prebuilt_stonehenge', label: 'Stonehenge', w: 16, h: 16, teamSize: 6, tier: 1, base: 'grass_2',
+      biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2',
+      desc: '16×16 prebuilt, 6v6 — the sarsen ring on crossing ley-lines: pillar cover, cardinal entrances, an armillary over the altar',
+      env: { tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'ruins' } },
+    { id: 'prebuilt_giza', label: 'Pyramids of Giza', w: 20, h: 20, teamSize: 6, tier: 1, base: 'desert',
+      biomes: ['desert', 'ancient'], deltaPad: 'dirt_2',
+      desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin sphinxes, processional avenues & excavation trenches',
+      env: { tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
+    { id: 'prebuilt_nuketown', label: 'Nuketown', w: 14, h: 14, teamSize: 6, tier: 1, base: 'grass_2',
+      biomes: ['urban', 'clandestine'], deltaPad: 'grass_2',
+      desc: '14×14 prebuilt, 6v6 — atomic-test suburbia: two facing ranch houses, picket fences, hedges & an open street kill-zone',
+      env: { tint: 0xdfd6a8, tintAmt: 0.30, stars: 0.4, nebula: 0.5, fog: { color: 0xcfc290, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs', density: 0.5 } },
+    { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
+      biomes: ['divine'], deltaPad: 'cloud_2',
+      desc: '20×20 prebuilt, 6v6 — cloud islands over the void: the gilded gates, light-pillar daises, healing pools & bottomless rifts',
+      env: { tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine' } },
+    { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
+      biomes: ['infernal'], deltaPad: 'scorched',
+      desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
+      env: { tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal' } },
+    { id: 'prebuilt_cyberpunk', label: 'Cyberpunk City', w: 24, h: 24, teamSize: 8, tier: 1, base: 'urban_wall', streetLamps: true,
+      biomes: ['neon_city', 'urban'], deltaPad: 'urban_street',
+      desc: '24×24 prebuilt, 8v8 — rain-slick neon grid: fast avenues, walkable rooftops, holo-plaza, alley chokes & parked hovercars',
+      env: { tint: 0x1a0f33, tintAmt: 0.50, stars: 0.7, nebula: 1.3, fog: { color: 0x8a2fd0, amount: 0.5, top: 0.10, band: 0.55 }, scenery: 'city' } },
+    { id: 'prebuilt_camelot', label: 'Camelot', w: 24, h: 24, teamSize: 8, tier: 1, base: 'grass_2',
+      biomes: ['arthurian', 'gothic'], deltaPad: 'cobblestone', deltaX: 7, deltaY: 7,
+      desc: '24×24 prebuilt, 8v8 — dark-fantasy castle siege: curtain walls, twin gatehouses, moat crossings, graveyard woods & the round-table dais',
+      env: { tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'dark' } },
+    { id: 'prebuilt_stadium', label: 'Football Stadium', w: 16, h: 28, teamSize: 8, tier: 1, base: 'grass_2', streetLamps: true,
+      biomes: ['stadium', 'urban'], deltaPad: 'grass_2',
+      desc: '16×28 prebuilt, 8v8 — the void bowl: chalk yard lines, team end zones, climbable bleacher tiers & goalpost gateways',
+      env: { tint: 0x101822, tintAmt: 0.40, stars: 0.9, nebula: 0.6, fog: { color: 0x2a3448, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6 } },
+    // ── Tier 2 — roster & lore expansion ──
+    { id: 'prebuilt_atlantis', label: 'Atlantis', w: 24, h: 24, teamSize: 8, tier: 2, base: 'water',
+      biomes: ['deep_sea', 'ancient'], deltaPad: 'marble',
+      desc: '24×24 prebuilt, 8v8 — the half-sunken capital: deep-water moat, flooded streets, plaza islands & the crystal spire',
+      env: { tint: 0x0e3a4a, tintAmt: 0.45, stars: 0.6, nebula: 0.8, fog: { color: 0x2a8a9a, amount: 0.6, top: 0.08, band: 0.55 }, scenery: 'ruins' } },
+    { id: 'prebuilt_babel', label: 'Tower of Babel', w: 16, h: 24, teamSize: 6, tier: 2, base: 'bricks_1',
+      biomes: ['ancient', 'desert'], deltaPad: 'bricks_1',
+      desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
+      env: { tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids' } },
+    { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
+      biomes: ['divine', 'ancient'], deltaPad: 'marble',
+      desc: '24×24 prebuilt, 8v8 — the marble acropolis over the cloud sea: temple terraces, stair ascents, storm lanes & void rifts',
+      env: { tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine' } },
+    { id: 'prebuilt_mars', label: 'Mars', w: 20, h: 20, teamSize: 6, tier: 2, base: 'moon_2',
+      biomes: ['space', 'desert'], deltaPad: 'moon_2',
+      desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers, the Cydonia face & crater dust bowls',
+      env: { tint: 0x8a3a1a, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0xc88a5a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'space' } },
+    { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
+      biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4',
+      desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
+      env: { tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs' } },
+    { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_2',
+      biomes: ['polar', 'deep_sea'], deltaPad: 'marble_2', deltaY: 7,
+      desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
+      env: { tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
+    { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
+      biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky',
+      desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
+      env: { tint: 0x2a1638, tintAmt: 0.50, stars: 1.2, nebula: 1.1, fog: { color: 0x453058, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'eyes' } },
+    { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
+      biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor',
+      desc: '20×20 prebuilt, 6v6 — the world above and its petrified mirror below, joined by two great gates under a darkness veil',
+      env: { tint: 0x1c1428, tintAmt: 0.45, stars: 0.9, nebula: 1.0, fog: { color: 0x2a2038, amount: 0.55, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
+    { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_3',
+      biomes: ['forest', 'astral'], deltaPad: 'grass_3',
+      desc: '20×20 prebuilt, 6v6 — glowing woodland: mushroom-ring hedges that eat arrows, winding fae paths, springs & crystal toadstools',
+      env: { tint: 0x0e2a1a, tintAmt: 0.50, stars: 1.1, nebula: 1.2, fog: { color: 0x1e4a30, amount: 0.55, top: 0.07, band: 0.55 }, scenery: 'crystals' } },
+    { id: 'prebuilt_moon', label: 'Moon', w: 16, h: 16, teamSize: 6, tier: 2, base: 'moon',
+      biomes: ['space'], deltaPad: 'moon',
+      desc: '16×16 prebuilt, 6v6 — the sparse low-grav arena: crater bowls, regolith ridges, two landing sites & one black monolith',
+      env: { tint: 0x05060d, tintAmt: 0.55, stars: 1.8, nebula: 0.25, fog: { color: 0x0a0c14, amount: 0.15, top: 0.02, band: 0.3 }, scenery: 'space', density: 0.5 } },
+    // ── Tier 3 — flavor & deep cuts ──
+    { id: 'prebuilt_technoticlan', label: 'Technoticlan', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cobblestone',
+      biomes: ['ancient', 'neon_city'], deltaPad: 'cobblestone',
+      desc: '24×24 prebuilt, 8v8 — neon-Aztec canal city: glowing waterways, stone causeways, storming-ziggurats & the tech-altar',
+      env: { tint: 0x0d1f2a, tintAmt: 0.50, stars: 0.9, nebula: 1.4, fog: { color: 0x0fdccf, amount: 0.45, top: 0.08, band: 0.5 }, scenery: 'pyramids' } },
+    { id: 'prebuilt_agartha', label: 'Agartha', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cave_floor',
+      biomes: ['inner_earth', 'ancient'], deltaPad: 'marble',
+      desc: '24×24 prebuilt, 8v8 — the inner-earth capital: jade terraces under the sun-shaft, crystal spires, glowing rivers & mushroom groves',
+      env: { tint: 0x2a1f0d, tintAmt: 0.40, stars: 0.3, nebula: 0.9, fog: { color: 0x8a6f3a, amount: 0.5, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
+    { id: 'prebuilt_vatican', label: 'Vatican City', w: 20, h: 20, teamSize: 6, tier: 3, base: 'cobblestone',
+      biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble',
+      desc: '20×20 prebuilt, 6v6 — the colonnade piazza: central obelisk, twin basilica steps, fountains & consecrated ground',
+      env: { tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
+    { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
+      biomes: ['forest', 'clandestine'], deltaPad: 'dirt',
+      desc: '20×20 prebuilt, 6v6 — old-growth redwoods around the ritual clearing: the Owl, the altar fire, lantern trails & the creek',
+      env: { tint: 0x0d1810, tintAmt: 0.55, stars: 0.8, nebula: 0.7, fog: { color: 0x16281a, amount: 0.65, top: 0.09, band: 0.6 }, scenery: 'eyes', density: 0.6 } },
+    { id: 'prebuilt_gobekli', label: 'Göbekli Tepe', w: 16, h: 16, teamSize: 6, tier: 3, base: 'dirt_3',
+      biomes: ['ancient', 'desert'], deltaPad: 'dirt_3',
+      desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
+      env: { tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
+    { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal',
+      biomes: ['underground_base', 'clandestine'], deltaPad: 'metal',
+      desc: '16×16 prebuilt, 6v6 — deep underground military base: corridor grid, blast-door chokes, server-bank cover & red emergency light',
+      env: { tint: 0x180a0a, tintAmt: 0.60, stars: 0.0, nebula: 0.15, fog: { color: 0x3a1010, amount: 0.7, top: 0.12, band: 0.7 }, scenery: 'none' } },
+    { id: 'prebuilt_cern', label: 'CERN', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal',
+      biomes: ['underground_base', 'astral'], deltaPad: 'metal_3',
+      desc: '16×16 prebuilt, 6v6 — the collider ring: tunnel arcs, copper beamlines, control terminals & the crackling portal anomaly',
+      env: { tint: 0x0a1018, tintAmt: 0.55, stars: 0.15, nebula: 0.5, fog: { color: 0x103048, amount: 0.6, top: 0.10, band: 0.6 }, scenery: 'none' } },
+    { id: 'prebuilt_backrooms', label: 'Backrooms', w: 16, h: 16, teamSize: 6, tier: 3, base: 'carpet',
+      biomes: ['astral'], deltaPad: 'carpet',
+      desc: '16×16 prebuilt, 6v6 — level 0: yellow wallpaper maze, damp carpet, humming lights, false exits & one flooded corridor',
+      env: { tint: 0xc8b25e, tintAmt: 0.80, stars: 0.0, nebula: 0.0, fog: { color: 0xd8c470, amount: 0.75, top: 0.15, band: 0.8 }, scenery: 'none' } },
+    { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_2',
+      biomes: ['polar'], deltaPad: 'marble_2',
+      desc: '16×16 prebuilt, 6v6 — the workshop compound: present depots, pine wind-breaks, aurora beacons & a frozen slide-pond objective',
+      env: { tint: 0x0d1424, tintAmt: 0.50, stars: 1.4, nebula: 1.6, fog: { color: 0x1c2c48, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'islands', density: 0.6 } },
+    { id: 'prebuilt_flatlands', label: 'Flat Lands', w: 16, h: 16, teamSize: 6, tier: 3, base: 'grass_4',
+      biomes: ['astral'], deltaPad: 'grass_4',
+      desc: '16×16 prebuilt, 6v6 — the eerie empty plane: two shallow dips, one dead tree, a circle you can barely see. You are being watched',
+      env: { tint: 0xc0c8b8, tintAmt: 0.60, stars: 0.05, nebula: 0.1, fog: { color: 0xd0d8c8, amount: 0.8, top: 0.20, band: 0.9 }, scenery: 'eyes', density: 0.35 } },
+];
+
+/* Build + register everything: full maps and their Δ variants. */
+(function _mfRegisterAll() {
+    const deltas = [];
+    EW_MAP_META.forEach(meta => {
+        let full;
+        try { full = _MF_BUILDERS[meta.id]().finish(); }
+        catch (e) { console.error('[MapForge] builder failed: ' + meta.id, e); return; }
+        PREBUILT_MAPS[meta.id] = full;
+        MAP_LAYOUT_PRESETS[meta.id] = {
+            sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: meta.h - 1, label: 'Earth', baseTerrain: meta.base }, buffer2: null, below: null },
+            barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+            env: meta.env || null, streetLamps: !!meta.streetLamps,
+        };
+        // the Δ ranked variant: a 10×10 mirror-balanced crop of the core
+        try {
+            const d = _mfDelta(full, meta);
+            const did = meta.id + '_delta';
+            PREBUILT_MAPS[did] = d;
+            MAP_LAYOUT_PRESETS[did] = {
+                sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 9, label: 'Earth', baseTerrain: meta.base }, buffer2: null, below: null },
+                barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+                env: meta.env || null, streetLamps: !!meta.streetLamps,
+            };
+            deltas.push({
+                id: did, label: meta.label + ' Δ', w: 10, h: 10, teamSize: 4, tier: meta.tier,
+                biomes: meta.biomes, isDelta: true, base: meta.base, env: meta.env,
+                desc: '10×10 ranked Δ, 4v4 — the mirror-balanced competitive core of ' + meta.label,
+            });
+        } catch (e) { console.error('[MapForge] delta failed: ' + meta.id, e); }
+    });
+    deltas.forEach(d => EW_MAP_META.push(d));
+    if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;
+})();
+
+/* ═══════════════════════ RACE BIOME TAGS ═══════════════════════════════════
+   Natural-habitat tags per race, matching map `biomes` — group the roster by
+   home turf (map-race affinity UI, themed rosters, future biome buffs).
+   Helpers: EW_racesForBiome('forest'), EW_mapsForRace('bigfoot').          */
+
+const EW_RACE_BIOMES = {
+    'homosapien': ['urban', 'stadium'], 'pirate': ['deep_sea'], 'giant': ['ancient', 'divine'],
+    'fairy': ['forest', 'astral'], 'martian': ['space'], 'nordic': ['space', 'clandestine'],
+    'grey': ['space', 'clandestine'], 'bigfoot': ['forest'], 'shadow entity': ['forest', 'astral'],
+    'reptilian': ['inner_earth', 'clandestine'], 'ai': ['underground_base', 'neon_city'],
+    'robot': ['neon_city'], 'android': ['neon_city'], 'angel': ['divine'], 'seraphim': ['divine'],
+    'orb of light': ['divine', 'astral'], 'demon': ['infernal'], 'succubus': ['infernal', 'astral'],
+    'skeleton': ['arthurian', 'infernal'], 'mech': ['neon_city'], 'ghost': ['gothic', 'holy_city'],
+    'zombie': ['urban'], 'annunaki': ['ancient', 'desert'], 'skinwalker': ['ranch'],
+    'werewolf': ['forest', 'gothic'], 'gargoyle': ['holy_city', 'gothic'], 'djinn': ['desert'],
+    'anubis': ['desert', 'ancient'], 'catgirl': ['underground_base', 'neon_city'],
+    'mantid': ['space', 'clandestine'], 'antperson': ['inner_earth'], 'mothman': ['forest', 'ranch'],
+    'siren': ['deep_sea'], 'scarecrow': ['ranch'], 'glitch': ['astral'], 'machine elves': ['astral'],
+    'cyclops': ['divine', 'ancient'], 'cyborg': ['neon_city'], 'demon prince': ['infernal'],
+    'demon princess': ['infernal'], 'dreameater': ['astral'], 'fallen angel': ['infernal', 'ancient'],
+    'goatman': ['forest', 'ranch'], 'halfdemon': ['infernal', 'clandestine'], 'mermaid': ['deep_sea'],
+    'nephilim': ['ancient', 'divine'], 'vampire': ['gothic', 'holy_city'], 'voidweaver': ['astral'],
+    'cosmic wraith': ['space', 'astral'], 'superhero': ['urban', 'stadium'], 'general': ['clandestine'],
+    'droid': ['neon_city'], 'antihero': ['urban', 'neon_city'],
+    'conspiracy theorist': ['clandestine', 'ranch'], 'overlord': ['infernal'], 'chosen one': ['ancient'],
+    'politician': ['clandestine'], 'atlantean': ['deep_sea', 'ancient'],
+    'dinosaur': ['inner_earth', 'ancient'], 'dragon': ['arthurian'], 'ghoul': ['infernal', 'gothic'],
+    'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
+    'loch ness monster': ['deep_sea', 'polar'], 'yeti': ['polar'], 'knight': ['arthurian'],
+    'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
+    'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
+    'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
+    'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
+    'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
+    'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
+    'ki fighter': ['stadium'], 'king arthur': ['arthurian'], 'king kong': ['urban', 'forest'],
+    'minotaur': ['ancient', 'divine'], 'necromancer': ['gothic', 'infernal'],
+    'occulus': ['divine', 'astral'], 'quarterback': ['stadium'], 'robinhood': ['forest', 'arthurian'],
+    'santa clause': ['polar'], 'super sentai': ['urban', 'stadium'],
+    'symbiote': ['underground_base', 'space'], 'valkraye': ['divine'], 'watcher': ['divine', 'astral'],
+};
+
+(function _mfApplyRaceBiomes() {
+    try {
+        Object.keys(EW_RACE_BIOMES).forEach(k => {
+            if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[k]) RACE_PROFILES[k].biomes = EW_RACE_BIOMES[k].slice();
+        });
+        if (typeof window !== 'undefined') {
+            window.EW_RACE_BIOMES = EW_RACE_BIOMES;
+            window.EW_racesForBiome = biome => Object.keys(EW_RACE_BIOMES).filter(k => EW_RACE_BIOMES[k].includes(biome));
+            window.EW_mapsForRace = race => {
+                const tags = EW_RACE_BIOMES[race] || [];
+                return EW_MAP_META.filter(m => !m.isDelta && m.biomes && m.biomes.some(b => tags.includes(b))).map(m => m.id);
+            };
+        }
+    } catch (e) { console.warn('[MapForge] race biome tagging failed', e); }
+})();
 
 /* ── Spawn Zone Constants ── */
 const RECALL_AP_COST = 2;
@@ -12088,13 +10136,14 @@ const LEVEL_UP_GAINS = {
 };
 
 const _CHAL_MAP_POOL_SMALL  = ['normal'];
-const _CHAL_MAP_POOL_MED    = ['medium', 'prebuilt_apartment', 'prebuilt_skirmish', 'prebuilt_bunker'];
-const _CHAL_MAP_POOL_LARGE  = ['large', 'prebuilt_suburb', 'prebuilt_compound', 'prebuilt_crossroads',
-                               'prebuilt_workshop', 'prebuilt_battlefield', 'prebuilt_cavern',
-                               'prebuilt_killbox', 'prebuilt_rift_plaza'];
-const _CHAL_MAP_POOL_XLARGE = ['xlarge', 'prebuilt_citadel', 'prebuilt_apocalypse',
-                                'prebuilt_dreamscape', 'prebuilt_bleed_arena', 'prebuilt_lattice',
-                                'prebuilt_nexus_core', 'prebuilt_caldera', 'prebuilt_highlands'];
+const _CHAL_MAP_POOL_MED    = ['medium', 'prebuilt_moon_delta', 'prebuilt_stonehenge_delta', 'prebuilt_nuketown_delta',
+                               'prebuilt_backrooms_delta', 'prebuilt_dumb_delta', 'prebuilt_flatlands_delta'];
+const _CHAL_MAP_POOL_LARGE  = ['large', 'prebuilt_stonehenge', 'prebuilt_moon', 'prebuilt_gobekli',
+                               'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms',
+                               'prebuilt_northpole', 'prebuilt_flatlands', 'prebuilt_nuketown'];
+const _CHAL_MAP_POOL_XLARGE = ['xlarge', 'prebuilt_shasta', 'prebuilt_giza', 'prebuilt_heaven',
+                                'prebuilt_hell', 'prebuilt_mars', 'prebuilt_area51',
+                                'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest'];
 
 const _CHAL_ENEMY_TIER_EASY   = ['zombie', 'skeleton', 'robot', 'giant', 'bigfoot', 'goatman'];
 const _CHAL_ENEMY_TIER_MID    = ['zombie', 'skeleton', 'robot', 'giant', 'demon', 'halfdemon',

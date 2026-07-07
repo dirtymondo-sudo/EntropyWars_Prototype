@@ -2814,3 +2814,76 @@ This is Claude Code on the web: the container is ephemeral and the repo is clone
 fresh each session. Commit `CLAUDE.md`, `playtest.js`, this file, and `package.json`
 to the branch so future sessions auto-load context (CLAUDE.md) and reuse the harness.
 `node_modules/`, `package-lock.json`, and `shots/` are gitignored.
+
+## 2026-07-07 MAP OVERHAUL — MapForge: the entire launch roster is now GENERATED
+User asked for a full map redo: lore-driven competitive maps, layered ground
+(lava→cave floor→dirt under a themed surface), per-map skies/backdrops, race
+biome tags, and a "Smash delta stage" way to normalize any map into a fair
+ranked board. Files touched: **data.js, state.js, map.js, three-renderer.js,
+server.js, index.html** (all but server/index are on R2 — re-upload together;
+server.js redeploys on Render with index.html).
+
+### The system (data.js "MAP FORGE" section, after PREBUILT_MAPS)
+- Every launch map is BUILT AT LOAD TIME by a `_MF_BUILDERS[id]` function using
+  a small authoring kit (`_mfNew`: rect/disc/ring/hole/lintel/obj/mon/building/
+  sym180/spawnEdges/finishSpawns). `EW_MAP_META` (same file) is the single
+  source of truth: label/desc/size/teamSize/tier/biomes/env per map. data.js
+  shrank ~3.5k lines because the giant literal grids are gone.
+- **Roster**: 29 lore maps (T1: Shasta/Stonehenge/Giza/Nuketown/Heaven/Hell/
+  Cyberpunk/Camelot/Stadium; T2: Atlantis/Babel/Olympus/Mars/Area51/Antarctica/
+  Skinwalker/HollowEarth/FairyForest/Moon; T3: Technoticlan/Agartha/Vatican/
+  BohemianGrove/Gobekli/DUMB/CERN/Backrooms/NorthPole/Flatlands) + Custom Map
+  (kept verbatim). ALL old prebuilts were deleted per user instruction.
+- **Δ variants**: `_mfDelta` crops a 10×10 window (meta.deltaX/Y, default
+  centered) out of each finished map, strips buildings, enforces 180°-rotation
+  symmetry (terrain+heights+objects; monuments mirrored, near-center ones kept
+  single, spawn-row ones dropped), re-seats 4v4 spawns on N/S rows → 29
+  `prebuilt_*_delta` ranked maps, auto-registered everywhere.
+- **Layered ground**: every column = strata z0..z2 (per-map, e.g. Hell
+  lava/lava/obsidian, Heaven cloud_thick all the way) + themed surface at
+  z3 (baseline). Raised cover = h5+ (blocks ground move, MAX_CLIMB=1); steps
+  = h4; hazard pits carved to h2 (always 1-step escapable); `hole()` = truly
+  empty column (bottomless void — Heaven/Olympus rifts, terrain cloud_gap).
+- **Tints**: maps carry `terrainTints` {terrainKey:'#hex'} (multiplicative).
+  state.js applyGameMode now copies PREBUILT_MAPS[id].terrainTints →
+  state.terrainTints for prebuilts (was editor-only). Same texture, different
+  map, different color (Mars = moon_2 tinted rust; Backrooms yellows; Stadium
+  end zones = carpet/carpet_2 tinted team colors).
+- **Per-map sky/env**: MAP_LAYOUT_PRESETS[id].env → state.mapEnv →
+  three-renderer `_updateEnvironment`: `{tint,tintAmt,stars,nebula,
+  fog:{color,amount,top,band}, scenery:'divine|infernal|ruins|pyramids|
+  crystals|orbs|eyes|islands|city|space|dark|none', density}`. New dome
+  uniforms uMapTint/uMapTintAmt/uMapStars/uMapNebula; map fog feeds the same
+  uFog* pipeline as the pause-menu retro fog (user fog wins while enabled);
+  `_hzThemeRoster()` re-weights the floating horizon landmarks per theme
+  (Heaven floats goldgates+stairways, Skinwalker/Flatlands get watching
+  eyeballs, Moon is near-empty, underground maps are 'none' + heavy fog).
+- **Race biomes**: `EW_RACE_BIOMES` (data.js) stamps `biomes:[...]` onto every
+  RACE_PROFILES entry; maps carry matching meta.biomes. Helpers:
+  `EW_racesForBiome('forest')`, `EW_mapsForRace('bigfoot')`. No UI yet —
+  data + grouping only, per user ("not sure what to do with them yet").
+- **Generated plumbing** (never hand-sync again): state.js builds
+  GAME_MODES entries from EW_MAP_META+PREBUILT_MAPS (spawns come from the
+  built map!), and regenerates all 7 MULTIPLAYER_MODES.compatibleMaps;
+  map.js MS_MAP_LIST is generated (fulls in tier order → Custom Map → Δs);
+  server.js MAP_POOL lists Δs (team 4) + fulls (team 6/8) — hand-mirrored,
+  update it when the roster changes. Challenge pools (_CHAL_MAP_POOL_*) and
+  map.js _TRAIN_MAP_POOL now reference the new ids.
+- **Validation**: scratchpad `validate_maps.js` (rebuild it from this recipe if
+  lost: stub window/PREBUILT_MAPS/MAP_LAYOUT_PRESETS/RACE_PROFILES, eval the
+  forge, then per map assert dims, tid/oid ranges, voxel-stack consistency,
+  building pads flat+on-board, spawns safe, Δ symmetry, and height-aware BFS
+  from team-1 spawns with monument collision stamped → team 2 reachable, ≥90%
+  of non-wall passable tiles reachable, center reachable). All 58 pass.
+- **Gotchas learned**: (1) NEVER place 2×2 buildings before `sym180()` — the
+  object mirror shifts anchors by one tile (sym180 now strips building oids;
+  place via buildingSym AFTER). (2) Monument collision (`pyramid/ziggurat/
+  stairway/obelisk/colossus`) must be part of any reachability check.
+  (3) Icebergs/hop-islands must sit exactly +1 over the water they rise from.
+  (4) The asset cache is URL-keyed INCLUDING ?v= — after a token bump, serve
+  repo files via LOCAL_ASSETS (all .js/.css) or the first probe run refetches.
+### Adding a map now = ONE data.js edit
+Write `_MF_BUILDERS.prebuilt_foo` + one `EW_MAP_META` row (id/label/desc/w/h/
+teamSize/tier/biomes/base/env/deltaPad). Everything else (Δ variant, GAME_MODES,
+picker card, compatibleMaps, thumbnails) generates. Optionally add it to
+server.js MAP_POOL for ranked and the challenge pools.
