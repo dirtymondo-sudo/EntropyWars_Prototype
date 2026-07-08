@@ -87,7 +87,8 @@
         let best = null, bestD = Infinity;
         for (const e of g.getHostileUnits(unit.player)) {
             if (e.dead) continue;
-            if (typeof g.unitHasStatus === 'function' && g.unitHasStatus(e, 'invisible')) continue;
+            if (typeof g.unitHasStatus === 'function' && g.unitHasStatus(e, 'invisible')
+                && !g.unitHasStatus(e, 'marked')) continue;
             const d = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
             if (d < bestD) { bestD = d; best = e; }
         }
@@ -364,7 +365,7 @@
         g.state.teamVision = prevTeamVision;
 
         const visibleEnemies = g.getHostileUnits(player)
-            .filter(e => !g.unitHasStatus(e, 'invisible'))
+            .filter(e => !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')))
             .filter(e => !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, player)))
             .filter(e => visTiles.has(g.posKey(e.x, e.y)));
 

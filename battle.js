@@ -4343,6 +4343,11 @@
             if (!unit || unit.dead) return false;
             if (unit.player === viewer) return false;
 
+            /* A Marked unit cannot hide: tracking implants, spotter dye and
+               blood-marks pierce invisibility and smoke alike. Mark first,
+               then the cloak means nothing — reliable stealth counterplay. */
+            if (unitHasStatus(unit, 'marked')) return false;
+
             const invisible = unitHasStatus(unit, 'invisible');
 
             let smokeHidden = false;
@@ -4365,7 +4370,11 @@
             if (smokeHidden && !invisible) {
                 for (const f of state.units) {
                     if (f.dead || f.player !== viewer) continue;
-                    if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) return false;
+                    /* Keen senses pierce the haze: units with exceptional
+                       awareness (AWR 6+ — greys, telepaths, seers) spot
+                       smoke-hidden enemies from 2 tiles instead of 1. */
+                    const detectR = (f.awr || 3) >= 6 ? 2 : 1;
+                    if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= detectR) return false;
                 }
             }
             return true;
@@ -4414,7 +4423,10 @@
                 let revealer = null;
                 for (const f of candidates) {
                     if (f.dead || f.player === u.player) continue;
-                    if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= 1) { revealer = f; break; }
+                    /* High-awareness units (AWR 6+) sense cloaked enemies from
+                       2 tiles away — the seer's answer to invisibility. */
+                    const detectR = (f.awr || 3) >= 6 ? 2 : 1;
+                    if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= detectR) { revealer = f; break; }
                 }
                 if (!revealer) continue;
 
@@ -9399,6 +9411,17 @@
                 target.hp -= finalDamage;
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
+
+                /* Taking a hit blows your cover: blood spatter and the stagger of
+                   impact give a hidden unit away. Any damage dealt by an enemy
+                   strips Invisible — AoE sweeps, traps and turrets are the
+                   reliable counterplay to stealth. */
+                if (sourceUnit && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, 'invisible')) {
+                    clearStatus(target, 'invisible');
+                    addLog(`👁️ ${unitDisplayName(target)} is revealed — the hit gives them away!`, target.player);
+                    if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '👁️ Revealed!', 'debuff');
+                }
+
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
 
@@ -22678,7 +22701,7 @@
                 return 0;
             }
 
-            if (unitHasStatus(target, 'invisible')) {
+            if (unitHasStatus(target, 'invisible') && !unitHasStatus(target, 'marked')) {
                 addLog(`${unitDisplayName(target)} is camouflaged and cannot be targeted.`);
                 playErrorSfx();
                 return 0;
