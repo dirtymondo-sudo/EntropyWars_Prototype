@@ -2594,7 +2594,7 @@ const SKY_EVENT_DURATION = 2;
 
 const RACE_BASE_STATS = {
 
-    'giant':         { hp: 635, mp: 60,  atk: 40, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 3 },
+    'giant':         { hp: 635, mp: 60,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
     'robot':         { hp: 620, mp: 65,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
     'mech':          { hp: 630, mp: 68,  atk: 38, def: 50, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
     'gargoyle':      { hp: 585, mp: 90,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
@@ -2605,12 +2605,12 @@ const RACE_BASE_STATS = {
     'demon':         { hp: 580, mp: 90,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
     'bigfoot':       { hp: 605, mp: 78,  atk: 68, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
     'antperson':     { hp: 565, mp: 105, atk: 64, def: 28, mdef: 24, move: 2, awr: 3, int: 26, spd: 7 },
-    'werewolf':      { hp: 575, mp: 95,  atk: 76, def: 24, mdef: 18, move: 3, awr: 3, int: 15, spd: 9 },
+    'werewolf':      { hp: 575, mp: 95,  atk: 70, def: 24, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
 
     'angel':         { hp: 480, mp: 195, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
     'ghost':         { hp: 485, mp: 192, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
 
-    'nordic':        { hp: 535, mp: 142, atk: 50, def: 38, mdef: 29, move: 2, awr: 3, int: 40, spd: 5 },
+    'nordic':        { hp: 535, mp: 142, atk: 56, def: 38, mdef: 29, move: 2, awr: 3, int: 40, spd: 5 },
     'fairy':         { hp: 466, mp: 208, atk: 24, def: 22, mdef: 44, move: 4, awr: 5, int: 62, spd: 9 },
     'scarecrow':     { hp: 530, mp: 152, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
     'grey':          { hp: 465, mp: 208, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
@@ -2622,7 +2622,7 @@ const RACE_BASE_STATS = {
     'android':       { hp: 518, mp: 142, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
     'shadow entity': { hp: 496, mp: 162, atk: 58, def: 20, mdef: 35, move: 4, awr: 5, int: 45, spd: 10 },
     'reptilian':     { hp: 535, mp: 128, atk: 68, def: 26, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
-    'catgirl':       { hp: 508, mp: 152, atk: 62, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 9 },
+    'catgirl':       { hp: 508, mp: 152, atk: 62, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
     'mantid':        { hp: 490, mp: 168, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
     'skinwalker':    { hp: 508, mp: 152, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
 
@@ -2643,7 +2643,7 @@ const RACE_BASE_STATS = {
     'knight':        { hp: 610, mp: 80,  atk: 52, def: 45, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
     'shaman':        { hp: 545, mp: 165, atk: 38, def: 30, mdef: 36, move: 2, awr: 3, int: 48, spd: 5 },
     'mad scientist': { hp: 480, mp: 185, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
-    'cowboy':        { hp: 540, mp: 125, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 8 },
+    'cowboy':        { hp: 540, mp: 125, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
     'men in black':  { hp: 520, mp: 140, atk: 54, def: 28, mdef: 31, move: 3, awr: 5, int: 38, spd: 9 },
     'telepath':      { hp: 465, mp: 210, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 68, spd: 7 },
     'marksman':      { hp: 505, mp: 130, atk: 66, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
@@ -2821,12 +2821,12 @@ const RACE_PHYSIQUE = {
 
 const JOB_MODIFIERS = {
     'Warrior': {
-        hp: 120,
+        hp: 135,
         mp: -15,
-        atk: 16,
-        def: 20,
-        mdef: 4,
-        move: 1,
+        atk: 24,
+        def: 22,
+        mdef: 8,
+        move: 2,
         awr: -1,
         int: -10,
         spd: -1,
@@ -2836,7 +2836,7 @@ const JOB_MODIFIERS = {
     'Gunslinger': {
         hp: 30,
         mp: -10,
-        atk: 24,
+        atk: 18,
         def: 5,
         mdef: 2,
         move: 0,
@@ -2890,18 +2890,18 @@ const JOB_MODIFIERS = {
         mp: 70,
         atk: -16,
         def: -5,
-        mdef: 18,
+        mdef: 14,
         move: 0,
         awr: +1,
-        int: 30,
+        int: 24,
         spd: 0,
         range: 2,
         inspect: 1
     },
     'Harvester': {
-        hp: 80,
+        hp: 95,
         mp: 20,
-        atk: 16,
+        atk: 20,
         def: 10,
         mdef: 6,
         move: 0,
@@ -2913,11 +2913,11 @@ const JOB_MODIFIERS = {
     },
 
     'Engineer': {
-        hp: 50,
+        hp: 80,
         mp: 10,
-        atk: 0,
-        def: 10,
-        mdef: 8,
+        atk: 8,
+        def: 14,
+        mdef: 10,
         move: 0,
         awr: 0,
         int: 5,
@@ -2927,14 +2927,14 @@ const JOB_MODIFIERS = {
     },
 
     'Harbinger': {
-        hp: -30,
+        hp: -15,
         mp: 40,
         atk: -24,
         def: -5,
         mdef: 10,
         move: 0,
         awr: +1,
-        int: 15,
+        int: 20,
         spd: +1,
         range: 1,
         inspect: 1
@@ -4118,10 +4118,10 @@ const SPELL_LIBRARY = [
         school: 'Engineer',
         classRestriction: 'Engineer',
         maxActivePerCaster: 2,
-        turretHp: 30,
-        turretDmg: 100,
+        turretHp: 60,
+        turretDmg: 110,
         turretRange: 3,
-        desc: 'Deploy a turret on an empty tile (1 AP). It paints the nearest enemy within 3 tiles with a targeting laser — the shot lands at the end of the round for 100 damage. Max 2 per Engineer. Enemies can destroy turrets.'
+        desc: 'Deploy a turret on an empty tile (1 AP). It paints the nearest enemy within 3 tiles with a targeting laser — the shot lands at the end of the round for 110 damage. Max 2 per Engineer. Enemies can destroy turrets.'
     },
     {
         id: 'overclock',
@@ -4166,15 +4166,15 @@ const SPELL_LIBRARY = [
         element: 'lightning',
         name: 'Free Energy',
         type: 'heal',
-        cost: 50,
+        cost: 40,
         equipCost: 20,
-        mpRestore: 20,
+        mpRestore: 35,
         range: 0,
         kind: 'manaRestoreAll',
         tier: 'II',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Tap into zero-point energy to restore 20 MP to every OTHER living ally. The engineer keeps none for themself.'
+        desc: 'Tap into zero-point energy to restore 35 MP to every OTHER living ally. The engineer keeps none for themself.'
     },
 
     {
@@ -4691,7 +4691,7 @@ const SPELL_LIBRARY = [
         cost: 25,
         equipCost: 15,
         apCost: 1,
-        heal: 128,
+        heal: 155,
         range: 2,
         kind: 'heal',
         tier: 'I',
@@ -5035,9 +5035,9 @@ const SPELL_LIBRARY = [
         element: 'earth',
         name: 'Bulwark Ring',
         type: 'utility',
-        cost: 55,
+        cost: 45,
         equipCost: 25,
-        apCost: 2,
+        apCost: 1,
         range: 3,
         kind: 'buildStructure',
         structure: 'fortRing',
@@ -5836,8 +5836,8 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', cost: 30, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [28, 28, 28, 28, 28],
-          desc: 'Furious 5-hit melee combo. 140 total damage. Shreds through shields.' },
+          hitDamages: [22, 22, 22, 22, 22],
+          desc: 'Furious 5-hit melee combo. 110 total damage. Shreds through shields.' },
         { id: 'raceNimbleDodge', spellType: 'human', element: 'wind', name: 'Nimble Dodge',
           type: 'utility', cost: 15, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 2,
@@ -5965,7 +5965,7 @@ const RACE_ABILITIES = {
     ],
     'cowboy': [
         { id: 'raceFanTheHammer', spellType: 'human', element: 'metal', name: 'Fan the Hammer',
-          type: 'damage', cost: 25, dmg: 60, range: 2,
+          type: 'damage', cost: 28, dmg: 48, range: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           projectileOverride: 'proj-bullet',
           desc: 'Fire wildly at everything nearby. 3×3 physical damage around the target.' },
@@ -6060,7 +6060,7 @@ const RACE_ABILITIES = {
     ],
     'wizard': [
         { id: 'raceArcaneBlast', spellType: 'unholy', element: 'arcane', name: 'Arcane Blast',
-          type: 'damage', cost: 30, dmg: 120, range: 4,
+          type: 'damage', cost: 38, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           desc: 'Unleash raw arcane energy. 3×3 area magic damage.' },
         { id: 'raceSpellsteal', spellType: 'unholy', element: 'arcane', name: 'Spellsteal',
