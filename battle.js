@@ -1581,6 +1581,32 @@
                 }
             }
 
+            // 🗺️ Elemental TILE cast (Pokémon-HM style): no unit here, but the
+            // spell's element reacts with this terrain — cast AT the tile.
+            // Lightning aimed at a lake conducts through the whole connected
+            // pool (zapping enemies even beyond cast range), fire torches
+            // grass/trees, frost freezes water or douses flames.
+            if (!target) {
+                const _etc = _elementalTileCastInfo(spell, x, y);
+                if (_etc) {
+                    playSfx(spellLaunchSfx(spell));
+                    _spellFocusCamera(unit, x, y);
+                    unit.mp -= effectiveSpellCost;
+                    const _etcTravelMs = actionMs(420);
+                    playProjectile(unit.x, unit.y, x, y, 'damage', _etcTravelMs, spell.spellType, spell.projectileOverride || null, spell);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name} at ${coordLabel(x, y)} — it ${_etc.hint}!`);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle') return;
+                        showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                        triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                    }, _etcTravelMs + actionMs(60));
+                    window.setTimeout(() => { finishAction(); }, _etcTravelMs + actionMs(520));
+                    return { handled: true, returnVal: 1 };
+                }
+            }
+
             // No valid target
             if (!target || isAllyUnit(target, unit)) {
                 addLog('Choose an enemy target for that spell.');
@@ -1963,17 +1989,16 @@
             addLog(`❄️ ${spell.name} flash-freezes the water solid — the pool turns to slick ice${frozenUnits ? `, locking ${frozenUnits} unit${frozenUnits !== 1 ? 's' : ''} in place` : ''}!`);
         }
 
-        // 🔥 The forest goes up: connected trees burn down to scorched ground
-        // (clearing the tree cover), and units caught in the blaze start burning.
+        // 🔥 The forest goes up: connected trees CATCH FIRE and keep burning —
+        // the blaze lives on the board (state.burningTiles), bites anyone who
+        // stays in it, can spread into surrounding grass, and only razes the
+        // stand to scorched earth once the fuel burns out. Units caught at
+        // ignition start burning immediately.
         function _reactFireForest(caster, spell, ox, oy, stand) {
             if (!stand || !stand.length) return;
-            let ignited = 0;
+            let ignited = 0, lit = 0;
             for (const t of stand) {
-                const o = getObjectAt(t.x, t.y);
-                if (o && /^tree/.test(o)) setObjectAt(t.x, t.y, null);
-                // A burned planted tree stops empowering its owner's team.
-                _removePlantedTreeAt(t.x, t.y);
-                setTerrainAt(t.x, t.y, 'scorched');
+                if (igniteTile(t.x, t.y, 2, caster)) lit++;
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying) {
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} wildfire: `, caster);
@@ -1983,7 +2008,7 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`🔥 ${spell.name} sets the forest ablaze — the fire tears through the woods, razing ${stand.length} tile${stand.length !== 1 ? 's' : ''} to scorched earth${ignited ? ` and torching ${ignited} unit${ignited !== 1 ? 's' : ''}` : ''}!`);
+            addLog(`🔥 ${spell.name} sets the forest ablaze — ${lit} tile${lit !== 1 ? 's' : ''} catch fire${ignited ? `, torching ${ignited} unit${ignited !== 1 ? 's' : ''}` : ''}! The blaze will burn (and spread) until the fuel is spent.`);
         }
 
         // 🔥💧 Fire melts ice: the connected ice sheet thaws back to shallow
@@ -2066,6 +2091,7 @@
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
+            let _lit = 0, _doused = 0;
             for (const tile of tiles) {
                 if (!tile || !isInside(tile.x, tile.y)) continue;
                 if (handled.has(tile.x + ',' + tile.y)) continue;
@@ -2092,8 +2118,212 @@
                     const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
                     vein.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactCrystalShatter(caster, spell, tile.x, tile.y, vein);
+                } else if (el === 'fire' && _isFlammableTile(tile.x, tile.y)) {
+                    // 🔥 fire on open fuel (grass, leaves, planks): the tile
+                    // catches — the wildfire system takes it from there.
+                    handled.add(tile.x + ',' + tile.y);
+                    if (igniteTile(tile.x, tile.y, 2, caster)) _lit++;
+                } else if (el === 'cold' && _tileIsBurning(tile.x, tile.y)) {
+                    // ❄️ frost smothers ground fire.
+                    handled.add(tile.x + ',' + tile.y);
+                    if (extinguishTile(tile.x, tile.y)) _doused++;
                 }
             }
+            if (_lit) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+                addLog(`🔥 ${spell.name} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
+            }
+            if (_doused) {
+                scheduleBoardRender();
+                addLog(`❄️ ${spell.name} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 🔥 BURNING TILES — persistent ground fire (2026-07-08).
+        // Fire spells no longer just repaint terrain: they IGNITE it. A burning
+        // tile keeps flames on it for `t` rounds (rendered by the persistent
+        // emitter in three-vfx-effects.js reading state.burningTiles), scorches
+        // any grounded unit standing in / stepping into it, SPREADS to adjacent
+        // flammable terrain (grass, trees, leaves, wood) each round, and chars
+        // to `scorched` when the fuel is spent. Host-authoritative online:
+        // state.burningTiles is a plain object so it rides the state-sync
+        // broadcast for free.
+        // ═══════════════════════════════════════════════════════════════════
+        const BURNING_TILE_DAMAGE = 24;      // standing in the flames, per round
+        const BURNING_ENTER_DAMAGE = 18;     // walking into the flames
+        const BURNING_KNOCKIN_DAMAGE = 30;   // being thrown into the flames
+        const BURNING_SPREAD_CHANCE = 0.45;  // per adjacent fuel tile, per round
+        const BURNING_TILE_CAP = 48;         // a wildfire, not a map wipe
+
+        const _FLAMMABLE_TERRAIN = new Set([
+            'grass', 'grass_2', 'grass_3', 'grass_4', 'grass_rocky', 'purple_grass',
+            'tree', 'tree_top', 'forest', 'forest_2', 'dark_woods',
+            'leaves', 'leaves_2', 'leaves_3', 'leaves_4', 'leaves_5',
+            'wood', 'wood_planks', 'mushroom'
+        ]);
+
+        function _ensureBurningState() {
+            if (!state.burningTiles || typeof state.burningTiles !== 'object') state.burningTiles = {};
+            return state.burningTiles;
+        }
+
+        function _tileIsBurning(x, y) {
+            return !!(state.burningTiles && state.burningTiles[x + ',' + y]);
+        }
+
+        // Fuel check: can a fire CATCH here? (Fires may still be placed on
+        // non-fuel ground by spells — Wall of Fire burns on bare rock — but
+        // spread only crosses fuel.)
+        function _isFlammableTile(x, y) {
+            if (!isInside(x, y)) return false;
+            if (_FLAMMABLE_TERRAIN.has(getTerrainAt(x, y))) return true;
+            const o = getObjectAt(x, y);
+            return !!(o && /^tree/.test(o));
+        }
+
+        // Wet/frozen ground smothers any fire instantly.
+        function _tileSmothersFire(x, y) {
+            const t = getTerrainAt(x, y);
+            return t === 'water' || t === 'deep_water' || t === 'ice';
+        }
+
+        function igniteTile(x, y, rounds, byUnit) {
+            if (!isInside(x, y)) return false;
+            if (_tileSmothersFire(x, y)) return false;
+            const b = _ensureBurningState();
+            const k = x + ',' + y;
+            const prev = b[k];
+            b[k] = {
+                x, y,
+                t: Math.max(rounds || 2, prev ? prev.t : 0),
+                p: byUnit ? byUnit.player : (prev ? prev.p : 0)
+            };
+            return true;
+        }
+
+        function extinguishTile(x, y) {
+            if (!state.burningTiles) return false;
+            const k = x + ',' + y;
+            if (!state.burningTiles[k]) return false;
+            delete state.burningTiles[k];
+            return true;
+        }
+
+        // The fuel is spent: trees fall, grass/planks char to scorched earth.
+        function _burnOutTile(x, y) {
+            const o = getObjectAt(x, y);
+            if (o && /^tree/.test(o)) setObjectAt(x, y, null);
+            _removePlantedTreeAt(x, y);
+            if (_FLAMMABLE_TERRAIN.has(getTerrainAt(x, y))) setTerrainAt(x, y, 'scorched');
+        }
+
+        // Shared "the flames bite" hit: damage + burn status. Flyers and
+        // lava-adapted (fireproof) races shrug it off.
+        function _burnUnitOnTile(u, dmg, msg) {
+            if (!u || u.dead || u._dying) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return false;
+            applyDamageToUnit(u, dmg, msg || `${unitDisplayName(u)} is scorched by the burning ground: `, {
+                ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn'
+            });
+            if (!u.dead && typeof applyStatusPayload === 'function') {
+                applyStatusPayload(u, { id: 'burn', duration: 2 }, 'Ground fire: ', null);
+            }
+            showFloatingTextForUnit(u, '🔥', 'damage', { durationMs: 900 });
+            if (typeof playSfx === 'function') playSfx('burningDamage');
+            return true;
+        }
+
+        // Once per round (end-of-round pipeline): flames bite whoever stands in
+        // them, spread through connected fuel, and burn down to scorched earth.
+        function tickBurningTiles() {
+            const b = state.burningTiles;
+            if (!b || !Object.keys(b).length) return;
+
+            // 1) Fires whose ground got flooded / frozen since last round go out.
+            for (const k of Object.keys(b)) {
+                const f = b[k];
+                if (!f || !isInside(f.x, f.y) || _tileSmothersFire(f.x, f.y)) delete b[k];
+            }
+
+            // 2) The flames bite everyone standing in them.
+            let scorchedUnits = 0;
+            for (const u of state.units) {
+                if (u.dead || u._dying) continue;
+                if (!b[u.x + ',' + u.y]) continue;
+                if (_burnUnitOnTile(u, BURNING_TILE_DAMAGE)) scorchedUnits++;
+            }
+
+            // 3) Burn down: tick every fire, char what's spent.
+            let burnedOut = 0;
+            for (const k of Object.keys(b)) {
+                const f = b[k];
+                f.t -= 1;
+                if (f.t <= 0) {
+                    _burnOutTile(f.x, f.y);
+                    delete b[k];
+                    burnedOut++;
+                }
+            }
+
+            // 4) Spread: each surviving fire tries to catch adjacent fuel.
+            const spread = [];
+            let total = Object.keys(b).length;
+            for (const k of Object.keys(b)) {
+                const f = b[k];
+                const nbrs = [[f.x + 1, f.y], [f.x - 1, f.y], [f.x, f.y + 1], [f.x, f.y - 1]];
+                for (const n of nbrs) {
+                    if (total + spread.length >= BURNING_TILE_CAP) break;
+                    const nk = n[0] + ',' + n[1];
+                    if (b[nk] || spread.some(s => s.x === n[0] && s.y === n[1])) continue;
+                    if (!_isFlammableTile(n[0], n[1])) continue;
+                    if (Math.random() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p });
+                }
+            }
+            for (const s of spread) {
+                b[s.x + ',' + s.y] = { x: s.x, y: s.y, t: 2, p: s.p };
+            }
+
+            if (scorchedUnits || burnedOut || spread.length) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+                const bits = [];
+                if (scorchedUnits) bits.push(`scorches ${scorchedUnits} unit${scorchedUnits !== 1 ? 's' : ''}`);
+                if (spread.length) bits.push(`spreads to ${spread.length} tile${spread.length !== 1 ? 's' : ''}`);
+                if (burnedOut) bits.push(`${burnedOut} tile${burnedOut !== 1 ? 's' : ''} burn${burnedOut === 1 ? 's' : ''} out to scorched earth`);
+                addLog(`🔥 The ground fire ${bits.join(', ')}.`);
+            }
+        }
+
+        // ── 🗺️ Elemental TILE casts (Pokémon-HM style, 2026-07-08) ──────────
+        // A single-target elemental damage spell may be aimed at a reactive
+        // TILE instead of an enemy: bolt the lake to conduct through the whole
+        // pool (hitting enemies beyond cast range), fireball the brush to start
+        // a wildfire, melt ice, freeze water, shatter crystal. Returns a
+        // {el, hint} descriptor when (x,y) is a legal elemental tile target
+        // for this spell, else null.
+        function _elementalTileCastInfo(spell, x, y) {
+            if (!spell || spell.kind !== 'damage') return null;
+            if (!isInside(x, y)) return null;
+            const el = classifySpellElement(spell);
+            if (!el) return null;
+            if (el === 'lightning') {
+                if (_isWaterTile(x, y)) return { el, hint: 'electrifies the water' };
+                if (_isMetalTile(x, y)) return { el, hint: 'electrifies the metal' };
+                if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
+                if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
+            } else if (el === 'fire') {
+                if (_isIceTile(x, y)) return { el, hint: 'melts the ice' };
+                if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
+                if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
+                if (_isFlammableTile(x, y)) return { el, hint: 'sets the ground ablaze' };
+            } else if (el === 'cold') {
+                if (_isWaterTile(x, y)) return { el, hint: 'flash-freezes the water' };
+                if (_tileIsBurning(x, y)) return { el, hint: 'douses the flames' };
+            }
+            return null;
         }
 
         // 🌋 Knockback into hazards — element-agnostic. When a spell shoves or
@@ -2126,6 +2356,11 @@
                 addLog(`🌊 ${unitDisplayName(unit)} is knocked into deep water and starts to drown!`);
                 showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
+            } else if (_tileIsBurning(unit.x, unit.y)) {
+                // Shoved into a burning tile → the flames bite immediately.
+                _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
+                    `${unitDisplayName(unit)} is hurled into the flames: `);
+                addLog(`🔥 ${unitDisplayName(unit)} is knocked into the burning ground!`);
             }
             // Shoved/pulled onto a hidden trap → it springs. "Drag them into
             // the snare" is exactly the play the trap arsenal wants to reward.
@@ -10508,6 +10743,11 @@
             checkOpportunityAttack(unit, _originX, _originY);
 
             if (!_wasAirborne) {
+                // Walking into ground fire hurts NOW (and sets you burning).
+                if (_tileIsBurning(x, y)) {
+                    _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
+                        `${unitDisplayName(unit)} steps into the flames: `);
+                }
                 const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
@@ -11616,7 +11856,17 @@
             const meta = _kindMeta(spell);
             if (meta.allyOnly)     return 'Select an ally for ' + nm + '.';
             if (meta.tileTargeted) return nm + ': select a target tile.';
-            if (meta.offensive)    return 'Select an enemy target for ' + nm + '.';
+            if (meta.offensive) {
+                // Elemental damage spells double as HM-style terrain casts —
+                // say so, or nobody will ever try clicking the lake.
+                if (spell.kind === 'damage') {
+                    const _el = classifySpellElement(spell);
+                    if (_el === 'lightning') return 'Select an enemy for ' + nm + ' — or strike water/metal to conduct the shock through it.';
+                    if (_el === 'fire')      return 'Select an enemy for ' + nm + ' — or aim at grass, trees or ice to set the terrain ablaze / melt it.';
+                    if (_el === 'cold')      return 'Select an enemy for ' + nm + ' — or freeze a body of water solid.';
+                }
+                return 'Select an enemy target for ' + nm + '.';
+            }
             return 'Select a target for ' + nm + '.';
         }
 
@@ -17028,6 +17278,7 @@
 
                     tickSkyEvent();
                     tickWeather();
+                    tickBurningTiles();
                     state.round += 1;
                     tickMatchClock();
                     checkZodiacRotation();
@@ -18927,6 +19178,10 @@
             materialCostLabel, getTerrainMaterial,
             // placement validity (shared by menus / previews / AI)
             _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
+            // 🔥 burning tiles + 🗺️ elemental tile casts (shared by HUD / AI)
+            _elementalTileCastInfo, classifySpellElement,
+            igniteTile, extinguishTile, tickBurningTiles,
+            _isFlammableTile, _isWaterTile, _floodConnectedTiles,
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
             getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
             settleWaterAround, checkTrapTrigger,
@@ -20148,6 +20403,18 @@
                     rangeColor = 0xcc44aa;
                 }
                 ThreeRenderer.setOverlay('spellRange', rangeTiles, rangeColor, 0.45);
+                // 🗺️ Elemental damage spells: tint the tiles the spell can be
+                // cast AT directly (water for lightning, brush for fire, …) in
+                // the element's color so the HM-style tile targets are readable
+                // at a glance inside the red range wash.
+                if (spell.kind === 'damage') {
+                    const _etcTiles = rangeTiles.filter(t => !unitAt(t.x, t.y) && _elementalTileCastInfo(spell, t.x, t.y));
+                    if (_etcTiles.length) {
+                        const _el = classifySpellElement(spell);
+                        const _etcColor = _el === 'lightning' ? 0x66ddff : _el === 'fire' ? 0xff9922 : 0x99eeff;
+                        ThreeRenderer.setOverlay('spellRangeElem', _etcTiles, _etcColor, 0.6);
+                    }
+                }
                 return;
             }
 
@@ -20167,7 +20434,10 @@
         function clearSpellRangePreview() {
             for (const t of _spellRangePreviewTiles) t.classList.remove('spell-range-preview');
             _spellRangePreviewTiles = [];
-            if (typeof ThreeRenderer !== 'undefined') ThreeRenderer.clearOverlay('spellRange');
+            if (typeof ThreeRenderer !== 'undefined') {
+                ThreeRenderer.clearOverlay('spellRange');
+                ThreeRenderer.clearOverlay('spellRangeElem');
+            }
         }
         window.clearSpellRangePreview = clearSpellRangePreview;
 
@@ -20643,13 +20913,23 @@
                     return _execAction(() => doSpell(actingUnit, x, y, state._clickedZ));
                 } else {
                     let validTargets;
+                    let _etcSpell = null;
                     if (state.actionMenuView === 'attackTargets') {
                         validTargets = _getAttackValidTargets(actingUnit);
                     } else {
                         const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool) || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
                         validTargets = spell ? _getSpellValidTargets(actingUnit, spell) : [];
+                        _etcSpell = spell;
                     }
-                    const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
+                    let isValidTarget = validTargets.some(t => t.x === x && t.y === y);
+                    // 🗺️ Elemental tile cast: an empty element-reactive tile in
+                    // cast range is a legitimate free-aim target for an
+                    // elemental damage spell (bolt the lake, torch the brush).
+                    if (!isValidTarget && _etcSpell && !clickedUnit
+                        && _elementalTileCastInfo(_etcSpell, x, y)
+                        && getSpellRangeTiles(actingUnit, _etcSpell).some(t => t.x === x && t.y === y)) {
+                        isValidTarget = true;
+                    }
                     if (!isValidTarget) {
 
                         // Out of range, but the unit may be able to step into range
@@ -26791,6 +27071,26 @@
                         }
                     }
                     addLog(`${unitDisplayName(unit)} uses ${spell.name}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
+
+                    // 🔥 Fire terrain-walls IGNITE what they touch: the wall
+                    // keeps burning on the board for several rounds (biting
+                    // anyone who stands in or crosses it) and can spread into
+                    // adjacent grass/trees. This is what makes Wall of Fire an
+                    // actual wall of fire instead of a one-shot flash.
+                    const _tcEl = classifySpellElement(spell);
+                    if (affectedTiles.length > 0 && (spell.burningRounds || _tcEl === 'fire')) {
+                        let _tcLit = 0;
+                        for (const at of affectedTiles) {
+                            if (igniteTile(at.x, at.y, spell.burningRounds || 3, unit)) _tcLit++;
+                        }
+                        if (_tcLit) addLog(`🔥 ${spell.name} leaves ${_tcLit} tile${_tcLit !== 1 ? 's' : ''} BURNING — the flames will rage (and spread) for the next few rounds!`);
+                    }
+                    // Terrain-shaping spells now feed the element→terrain
+                    // reaction system too (a fire wall cast into a treeline
+                    // starts a forest fire, etc.).
+                    if (_tcEl && affectedTiles.length > 0) {
+                        triggerTerrainSpellReaction(unit, spell, affectedTiles);
+                    }
 
                     if (spell.terrainDeform && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
