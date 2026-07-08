@@ -5301,7 +5301,15 @@
 
             if (window.RenderBus) window.RenderBus.emit('unit:died', { unit, killer });
 
-            if (window.ThreeAnim && window.ThreeAnim.isActive()) window.ThreeAnim.death(unit.id);
+            if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.death(unit.id);
+                // Deaths land in slow motion: ~half a second at 40% speed while
+                // the knock-down/spin plays, then time snaps back. Killing hits
+                // skip the impact freeze so the two effects never fight.
+                if (window.ThreeAnim.slowMo && !(typeof _skipVisuals === 'function' && _skipVisuals())) {
+                    window.ThreeAnim.slowMo(0.4, 550);
+                }
+            }
 
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;
             setTimeout(() => {

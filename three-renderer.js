@@ -1114,6 +1114,43 @@ const ThreeRenderer = (function () {
     var WIGGLE_AMP = 5;
     var CAST_BOB_AMP = 8;
 
+    // ── Warped animation clock (impact freezes / death slow-mo) ─────────────
+    // Every combat tween (walk/strike/death/projectile/float/hit-fx/…) and the
+    // GLB mixers read _animNow() instead of performance.now(). The clock runs
+    // 1:1 with real time normally; setTimeWarp(scale, ms) makes it crawl (or
+    // stop) for a real-time window — a 60–110ms near-freeze on heavy hits, a
+    // ~40% slow-mo on deaths — then it resumes seamlessly with no time jump.
+    // Ambient layers (water, sky, fog, plates) stay on the real clock so the
+    // world keeps breathing while the action hangs.
+    var _warpNow = performance.now();
+    var _warpLastReal = _warpNow;
+    var _warpScale = 1;
+    var _warpEndsAt = 0;
+    function _animNow() { return _warpNow; }
+    function _tickAnimClock() {
+        var real = performance.now();
+        var dt = real - _warpLastReal;
+        _warpLastReal = real;
+        if (dt < 0) dt = 0;
+        if (dt > 250) dt = 250;   // tab-away safety: never lurch forward
+        if (real < _warpEndsAt) dt *= _warpScale;
+        else _warpScale = 1;
+        _warpNow += dt;
+    }
+    function setTimeWarp(scale, durationMs) {
+        var real = performance.now();
+        // A stronger (slower) warp already running keeps the stage — a weaker
+        // request during a freeze is dropped rather than cutting it short.
+        if (real < _warpEndsAt && scale > _warpScale) return;
+        _warpScale = Math.max(0, Math.min(1, Number(scale) || 1));
+        _warpEndsAt = real + Math.max(0, Number(durationMs) || 0);
+    }
+    function _resetTimeWarp() {
+        _warpScale = 1;
+        _warpEndsAt = 0;
+        _warpLastReal = performance.now();
+    }
+
     var _lastVfxTime = 0;
     var _lastFluidTime = 0;
 
@@ -1165,8 +1202,13 @@ const ThreeRenderer = (function () {
     var FLOAT_RISE_PX = 110;
 
     var _floatTileStagger = {};
-    var FLOAT_STAGGER_Y = 36;
-    var FLOAT_STAGGER_WINDOW = 600;
+    var FLOAT_STAGGER_Y = 28;
+    var FLOAT_STAGGER_WINDOW = 900;
+    // Same-tile pops also cascade in TIME (not just a Y offset): each queued
+    // pop waits this much longer before firing, so "-47" → "BACKSTAB!" → "×2
+    // WEAK!" read one after another instead of landing as a single blur.
+    var FLOAT_STAGGER_DELAY_MS = 150;
+    var FLOAT_STAGGER_DELAY_MAX = 600;
 
     // Damage/heal/mana NUMBERS render with a vertical gradient (`grad`, top→bottom)
     // and a heavier gothic-serif weight; WORD callouts ("SUPER EFFECTIVE", "DODGE!")
@@ -1177,26 +1219,31 @@ const ThreeRenderer = (function () {
     var _GRAD_LIFE = ['#c8ffd6', '#48e06d', '#12993a']; // pale → deep green (heal)
     var _GRAD_MANA = ['#d6f1ff', '#5bb8ff', '#1f6fe0']; // pale → deep blue (mana)
     var _GRAD_GOLD = ['#fff3b0', '#ffd24a', '#e0a000']; // light → amber (gold/AP/level)
+    var _GRAD_VOLT = ['#eafcff', '#5fd4ff', '#2f7cff']; // white → electric blue (combo chains)
     var _FLOAT_STYLES = {
-        'damage':        { color: '#ff5a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 52 },
-        'heal':          { color: '#5cf07e', grad: _GRAD_LIFE, stroke: '#052813', fontSize: 50 },
-        'mp':            { color: '#6ec8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 44 },
-        'revive':        { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 50 },
-        'crit':          { color: '#ffcc00', grad: _GRAD_GOLD, stroke: '#3a1a00', fontSize: 64, label: true },
-        'dodge':         { color: '#d6d9e6', stroke: '#10131c', fontSize: 42, label: true },
-        'counter':       { color: '#ff9a55', grad: _GRAD_FIRE, stroke: '#2a1000', fontSize: 44, label: true },
-        'xp':            { color: '#dda0ff', stroke: '#22103a', fontSize: 36, label: true },
-        'levelup':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 56, label: true },
-        'streak':        { color: '#ff6a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 50, label: true },
-        'laststd':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 54, label: true },
-        'overkill':      { color: '#ff3a2a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 60, label: true },
-        'achieve':       { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 42, label: true },
-        'protect-block': { color: '#5cb8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 42, label: true },
-        'pickup':        { color: '#ffd86b', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 40 },
-        'buff':          { color: '#9fe6ff', stroke: '#052236', fontSize: 42, label: true },
-        'debuff':        { color: '#d68cff', stroke: '#22103a', fontSize: 42, label: true },
-        'status':        { color: '#ffd86b', stroke: '#3a2600', fontSize: 40, label: true },
-        'neutral':       { color: '#f0f0f0', stroke: '#101010', fontSize: 42, label: true },
+        'damage':        { color: '#ff5a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 47 },
+        'critdmg':       { color: '#ffcc00', grad: _GRAD_GOLD, stroke: '#3a1a00', fontSize: 52 },
+        'combo':         { color: '#5fd4ff', grad: _GRAD_VOLT, stroke: '#041a3a', fontSize: 46 },
+        'total':         { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 50 },
+        'mult':          { color: '#ffd86b', stroke: '#3a2600', fontSize: 33, label: true },
+        'heal':          { color: '#5cf07e', grad: _GRAD_LIFE, stroke: '#052813', fontSize: 44 },
+        'mp':            { color: '#6ec8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 38 },
+        'revive':        { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 46 },
+        'crit':          { color: '#ffcc00', grad: _GRAD_GOLD, stroke: '#3a1a00', fontSize: 56, label: true },
+        'dodge':         { color: '#d6d9e6', stroke: '#10131c', fontSize: 38, label: true },
+        'counter':       { color: '#ff9a55', grad: _GRAD_FIRE, stroke: '#2a1000', fontSize: 40, label: true },
+        'xp':            { color: '#dda0ff', stroke: '#22103a', fontSize: 33, label: true },
+        'levelup':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 52, label: true },
+        'streak':        { color: '#ff6a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 44, label: true },
+        'laststd':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 50, label: true },
+        'overkill':      { color: '#ff3a2a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 56, label: true },
+        'achieve':       { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 38, label: true },
+        'protect-block': { color: '#5cb8ff', grad: _GRAD_MANA, stroke: '#031f3c', fontSize: 38, label: true },
+        'pickup':        { color: '#ffd86b', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 36 },
+        'buff':          { color: '#9fe6ff', stroke: '#052236', fontSize: 37, label: true },
+        'debuff':        { color: '#d68cff', stroke: '#22103a', fontSize: 37, label: true },
+        'status':        { color: '#ffd86b', stroke: '#3a2600', fontSize: 36, label: true },
+        'neutral':       { color: '#f0f0f0', stroke: '#101010', fontSize: 37, label: true },
     };
 
     var hitFxGroup = null;
@@ -7050,7 +7097,7 @@ const ThreeRenderer = (function () {
         var clip = act.getClip();
         var scale = Math.abs(act.timeScale) || 1;
         var ms = Math.min((clip.duration / scale) * 1000, 1400);
-        ue._ew_oneShot = { name: name, until: performance.now() + ms };
+        ue._ew_oneShot = { name: name, until: _animNow() + ms };
         _playUnitModelAnim(ue, name, true);
         return true;
     }
@@ -7061,7 +7108,7 @@ const ThreeRenderer = (function () {
     var _modelClockPrev = 0;
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
-        var now = performance.now();
+        var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
         unitEntries.forEach(function (entry, uid) {
@@ -10755,7 +10802,7 @@ const ThreeRenderer = (function () {
         _walkTweens.set(unit.id, {
             path: fullPath,
             segs: segs,
-            startTime: performance.now(),
+            startTime: _animNow(),
             totalMs: totalMs,
             isFlying: _isFlying,
             onDone: onDone || null
@@ -10768,7 +10815,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateWalkTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
 
@@ -10885,7 +10932,7 @@ const ThreeRenderer = (function () {
         _displaceTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ,
             toX: toX, toY: toY, toZ: toZ,
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: _dpDur,
             sprint: _dpDist >= 2
         });
@@ -10909,7 +10956,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateDisplaceTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         var _dpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
@@ -10966,7 +11013,7 @@ const ThreeRenderer = (function () {
         _jumpTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ || 0,
             toX: toX, toY: toY, toZ: toZ || 0,
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: durationMs || 480,
             arcPeak: arcPeak
         });
@@ -10975,7 +11022,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateJumpTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         var _jpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
@@ -11028,7 +11075,7 @@ const ThreeRenderer = (function () {
                 if (ue && ue.model) {
                     ue.model.scale.set(1, 1, 1);
                     // Arm the touchdown squash (played by _updateUnitModels).
-                    ue._ew_landAt = performance.now();
+                    ue._ew_landAt = _animNow();
                 }
                 if (ue && ue.group && ue.group.visible) {
                     _spawnGroundPuff(tw.toX, tw.toY, 5, { vxy: 100 });
@@ -11064,7 +11111,7 @@ const ThreeRenderer = (function () {
         _strikeTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromSY: fromSY,
             toX: tx, toY: ty, toSY: toSY,
-            startTime: performance.now(),
+            startTime: _animNow(),
             leapMs: leapMs, holdMs: holdMs, returnMs: returnMs,
             totalMs: leapMs + holdMs + returnMs,
             arcPeak: arcPeak,
@@ -11076,7 +11123,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateStrikeTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var ts = CONFIG.tileSize || BASE_TILE;
         var toRemove = [];
         for (var entry of _strikeTweens) {
@@ -11160,7 +11207,7 @@ const ThreeRenderer = (function () {
         // the 'death' state while this tween runs.
         var _isModelDeath = !!entry.mixer;
         _deathTweens.set(unitId, {
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: _isModelDeath ? MODEL_DEATH_MS : DEATH_MS,
             isModel: _isModelDeath,
             group: entry.group,
@@ -11170,7 +11217,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateDeathTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _deathTweens) {
             var uid = entry[0], tw = entry[1];
@@ -11299,7 +11346,7 @@ const ThreeRenderer = (function () {
             mesh: mesh,
             startX: startX, startY: startY, startZ: startZ,
             endX: endX, endY: endY, endZ: endZ,
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
             spinSpeed: (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
@@ -11316,7 +11363,7 @@ const ThreeRenderer = (function () {
 
     function _updateProjectileTweens() {
         if (_projTweens.length === 0) return;
-        var now = performance.now();
+        var now = _animNow();
         var cam = ThreeCamera.getCamera();
         var i = _projTweens.length;
         while (i--) {
@@ -11549,7 +11596,7 @@ const ThreeRenderer = (function () {
             fromTX: fromX, fromTY: fromY,
 
             phase: 'shoot',
-            startTime: performance.now(),
+            startTime: _animNow(),
             shootMs: Math.max(40, shootMs || 280),
 
             retractFrom: null, retractTo: null,
@@ -11583,7 +11630,7 @@ const ThreeRenderer = (function () {
                 tw.retractTo = casterPos;
 
                 tw.retractNewFrom = newTo;
-                tw.retractStartTime = performance.now();
+                tw.retractStartTime = _animNow();
                 tw.retractMs = Math.max(40, retractMs || 200);
                 return;
             }
@@ -11594,7 +11641,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _tetherTweens.length; i++) {
             if (_tetherTweens[i].id === tetherId && !_tetherTweens[i].removed) {
                 _tetherTweens[i].phase = 'fade';
-                _tetherTweens[i].fadeStartTime = performance.now();
+                _tetherTweens[i].fadeStartTime = _animNow();
                 _tetherTweens[i].fadeMs = fadeMs || 200;
                 return;
             }
@@ -11603,7 +11650,7 @@ const ThreeRenderer = (function () {
 
     function _updateTetherTweens() {
         if (_tetherTweens.length === 0) return;
-        var now = performance.now();
+        var now = _animNow();
         var i = _tetherTweens.length;
         while (i--) {
             var tw = _tetherTweens[i];
@@ -11675,6 +11722,13 @@ const ThreeRenderer = (function () {
         var isNumber = /^[+\-]?\d/.test(raw.trim()) && !style.label;
 
         var fontSize = style.fontSize || 48;
+        // Damage-class numbers scale with magnitude — chip damage whispers,
+        // heavy hits shout. The style's base size is the CAP (never bigger),
+        // so the hierarchy reads: chip < solid < heavy < crit/combo color.
+        if (isNumber && (kind === 'damage' || kind === 'critdmg' || kind === 'combo')) {
+            var mag = Math.abs(parseInt(raw.replace(/[^0-9\-]/g, ''), 10) || 0);
+            fontSize = Math.round(fontSize * (mag < 20 ? 0.78 : mag < 45 ? 0.88 : mag < 80 ? 0.96 : 1));
+        }
         // Gothic / serif face (loaded in index.html) for that JRPG damage-number look.
         var fontFamily = "'Cinzel', Georgia, 'Times New Roman', serif";
         var fontWeight = isNumber ? '900' : '700';
@@ -11798,14 +11852,15 @@ const ThreeRenderer = (function () {
         var tileKey = tileX + ',' + tileY;
         var stag = _floatTileStagger[tileKey];
         var staggerIdx = 0;
-        if (stag && (performance.now() - stag.time) < FLOAT_STAGGER_WINDOW) {
+        if (stag && (_animNow() - stag.time) < FLOAT_STAGGER_WINDOW) {
             stag.count++;
-            stag.time = performance.now();
+            stag.time = _animNow();
             staggerIdx = stag.count;
         } else {
-            _floatTileStagger[tileKey] = { count: 0, time: performance.now() };
+            _floatTileStagger[tileKey] = { count: 0, time: _animNow() };
         }
         var staggerLift = staggerIdx * FLOAT_STAGGER_Y;
+        var staggerDelay = Math.min(staggerIdx * FLOAT_STAGGER_DELAY_MS, FLOAT_STAGGER_DELAY_MAX);
 
         var unitAtTile = (typeof unitAt === 'function') ? unitAt(tileX, tileY) : null;
         var zLevel;
@@ -11824,7 +11879,7 @@ const ThreeRenderer = (function () {
         var wx = tileX * ts + ts / 2 + jx;
         var wz = tileY * ts + ts / 2 + jy;
 
-        var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd');
+        var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd' || kind === 'total');
 
         var tw = {
             id: ++_floatIdCounter,
@@ -11833,7 +11888,8 @@ const ThreeRenderer = (function () {
             wz: wz,
             startY: startY,
             riseY: FLOAT_RISE_PX,
-            startTime: performance.now(),
+            startTime: _animNow(),
+            delayMs: staggerDelay,
             durationMs: Math.max(400, durationMs || 900),
             isBig: isBig,
             staggerIdx: staggerIdx
@@ -11848,7 +11904,7 @@ const ThreeRenderer = (function () {
 
     function _updateFloatTextTweens() {
         if (_floatTweens.length === 0) return;
-        var now = performance.now();
+        var now = _animNow();
         var cam = ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
         var screenH = _parentEl ? _parentEl.clientHeight : 0;
@@ -11858,7 +11914,13 @@ const ThreeRenderer = (function () {
         var i = _floatTweens.length;
         while (i--) {
             var tw = _floatTweens[i];
-            var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
+            // Queued same-tile pop still waiting its turn — keep it hidden.
+            var elapsed = now - tw.startTime - (tw.delayMs || 0);
+            if (elapsed < 0) {
+                if (tw.el) tw.el.style.opacity = '0';
+                continue;
+            }
+            var t = Math.min(elapsed / tw.durationMs, 1);
 
             var riseT = 1 - Math.pow(1 - t, 3);
             var worldY = tw.startY + tw.riseY * riseT;
@@ -11972,14 +12034,14 @@ const ThreeRenderer = (function () {
             cols: sheet.cols,
             rows: sheet.rows,
             frames: sheet.frames,
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: Math.max(200, durationMs || 380)
         });
     }
 
     function _updateHitFxTweens() {
         if (_hitFxTweens.length === 0) return;
-        var now = performance.now();
+        var now = _animNow();
         var cam = ThreeCamera.getCamera();
         var i = _hitFxTweens.length;
         while (i--) {
@@ -12043,7 +12105,7 @@ const ThreeRenderer = (function () {
                         _lungeTweens.set(uid, {
                             dx: dir.dx * LUNGE_DIST,
                             dz: dir.dy * LUNGE_DIST,
-                            startTime: performance.now(),
+                            startTime: _animNow(),
                             durationMs: LUNGE_MS
                         });
                     }
@@ -12079,7 +12141,7 @@ const ThreeRenderer = (function () {
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
-                            startTime: performance.now(),
+                            startTime: _animNow(),
                             durationMs: CAST_MS
                         });
                     }
@@ -12096,7 +12158,7 @@ const ThreeRenderer = (function () {
                         _dodgeTweens.set(uid, {
                             dx: dir.dx * DODGE_DIST,
                             dz: dir.dy * DODGE_DIST,
-                            startTime: performance.now(),
+                            startTime: _animNow(),
                             durationMs: DODGE_MS
                         });
                     }
@@ -12109,7 +12171,7 @@ const ThreeRenderer = (function () {
             for (var uid of state.hitFlashIds) {
                 if (!_prevHitFlashIds.has(uid) && !_flashTweens.has(uid)) {
                     var _hk = (state.hitFlashKindById && state.hitFlashKindById[uid]) || 'hit';
-                    _flashTweens.set(uid, { startTime: performance.now(), durationMs: FLASH_MS, kind: _hk });
+                    _flashTweens.set(uid, { startTime: _animNow(), durationMs: FLASH_MS, kind: _hk });
                     // Rigged models flinch (hit-reaction clip) alongside the
                     // flash — unless the unit is dying (death clip owns it).
                     if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
@@ -12121,7 +12183,7 @@ const ThreeRenderer = (function () {
         if (state.healFlashIds) {
             for (var uid of state.healFlashIds) {
                 if (!_prevHealFlashIds.has(uid) && !_flashTweens.has(uid)) {
-                    _flashTweens.set(uid, { startTime: performance.now(), durationMs: FLASH_MS, kind: 'heal' });
+                    _flashTweens.set(uid, { startTime: _animNow(), durationMs: FLASH_MS, kind: 'heal' });
                 }
             }
             _prevHealFlashIds = new Set(state.healFlashIds);
@@ -12130,7 +12192,7 @@ const ThreeRenderer = (function () {
         if (state.statusWiggleIds) {
             for (var uid of state.statusWiggleIds) {
                 if (!_prevWiggleIds.has(uid) && !_wiggleTweens.has(uid)) {
-                    _wiggleTweens.set(uid, { startTime: performance.now(), durationMs: WIGGLE_MS });
+                    _wiggleTweens.set(uid, { startTime: _animNow(), durationMs: WIGGLE_MS });
                 }
             }
             _prevWiggleIds = new Set(state.statusWiggleIds);
@@ -12207,7 +12269,7 @@ const ThreeRenderer = (function () {
         }
 
         _spriteAnimTweens.set(uid, {
-            startTime: performance.now(),
+            startTime: _animNow(),
             durationMs: (kind === 'spell') ? SPRITE_ANIM_SPELL_MS : SPRITE_ANIM_ATTACK_MS,
             cols: cols,
             rows: rows,
@@ -12247,7 +12309,7 @@ const ThreeRenderer = (function () {
 
     function _updateSpriteAnimTweens() {
         if (_spriteAnimTweens.size === 0) return;
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _spriteAnimTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12275,7 +12337,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateLungeTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _lungeTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12305,7 +12367,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateDodgeTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _dodgeTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12335,7 +12397,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateCastTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _castTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12391,7 +12453,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateFlashTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _flashTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12449,7 +12511,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateWiggleTweens() {
-        var now = performance.now();
+        var now = _animNow();
         var toRemove = [];
         for (var entry of _wiggleTweens) {
             var uid = entry[0], tw = entry[1];
@@ -12480,6 +12542,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateAnimations() {
+        _tickAnimClock();
         _syncCombatAnims();
         _updateWalkTweens();
         _updateDisplaceTweens();
@@ -12501,6 +12564,7 @@ const ThreeRenderer = (function () {
     }
 
     function _clearAnimations() {
+        _resetTimeWarp();
         _walkTweens.clear();
         _displaceTweens.clear();
         _jumpTweens.clear();
@@ -18520,6 +18584,7 @@ const ThreeRenderer = (function () {
         showIntentBadges, clearIntentBadges, worldToScreen,
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startDeathTween,
+        setTimeWarp,
 
         startProjectileTween,
 
@@ -18641,6 +18706,16 @@ window.ThreeAnim = {
 
     hitEffect: function(tileX, tileY, variant, isCrit, durationMs) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startHitEffect(tileX, tileY, variant, isCrit, durationMs);
+    },
+
+    // Impact frame: near-freeze all combat animation for a real-time beat.
+    hitstop: function(durationMs) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.setTimeWarp(0.05, durationMs);
+    },
+
+    // Death slow-mo etc: run combat animation at `scale` speed for `durationMs`.
+    slowMo: function(scale, durationMs) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.setTimeWarp(scale, durationMs);
     },
 
     isActive: function() { return ThreeRenderer.isActive(); }

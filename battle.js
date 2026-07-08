@@ -4791,8 +4791,9 @@
         }
         function _realTriggerHitstop_impl(durationMs) {
             if (_skipVisuals()) return;
-
-            return;
+            if (window.ThreeAnim && window.ThreeAnim.isActive() && window.ThreeAnim.hitstop) {
+                window.ThreeAnim.hitstop(durationMs);
+            }
         }
 
         function showBattleDialogue(messages, duration) {
@@ -4916,6 +4917,30 @@
 
             if (unit.dead && !unit._dying) return;
             showFloatingTextAtTile(unit.x, unit.y, textValue, kind, opts);
+        }
+
+        /* ── Combo damage tally ──────────────────────────────────────────────
+           Any burst of ≥2 hits on the same unit inside a short window (a
+           multi-hit spell, crit + counter + follow-up exchange, overlapping
+           AoEs) gets one summarizing gold "N TOTAL!" pop after the flurry
+           settles — the payoff number that says what the whole exchange was
+           worth without making the player add up the individual pops. */
+        const _dmgTallies = {};
+        function _tallyDamage(target, amount) {
+            if (!target || _skipVisuals() || _bufferingRoundEvents) return;
+            const key = target.id;
+            const t = _dmgTallies[key] || (_dmgTallies[key] = { total: 0, hits: 0, timer: null });
+            t.total += amount;
+            t.hits++;
+            t.x = target.x;
+            t.y = target.y;
+            if (t.timer) clearTimeout(t.timer);
+            t.timer = window.setTimeout(() => {
+                delete _dmgTallies[key];
+                if (t.hits < 2 || state.phase !== 'battle' || state.winner) return;
+                showFloatingTextAtTile(t.x, t.y, `${t.total} TOTAL!`, 'total',
+                    { durationMs: 1500, jitterX: 0, jitterY: 0 });
+            }, 1200);
         }
 
         function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
@@ -9360,13 +9385,33 @@
                 const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
                 finalDamage = Math.max(1, Math.round(finalDamage * _typeMult));
 
+                // Surface the hidden math: small ×N callouts for every live
+                // multiplier so the player sees WHY a number came out big.
+                // Attacker-side buffs (zodiac) pop over the attacker, the
+                // matchup/positioning results pop over the target — spreads
+                // the visual load across both tiles.
+                const _multCallout = (u, txt, ms) => {
+                    if (damageType === 'dot' || _skipVisuals()) return;
+                    showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
+                };
+                if (_typeMult > 1) _multCallout(target, `×${_typeMult} WEAK!`);
+                else if (_typeMult < 1) _multCallout(target, `×${_typeMult} RESIST`);
+                // Zodiac is a whole-match buff — call it out once per round
+                // per unit, not on every single swing.
+                if (getZodiacBonus(sourceUnit).active && sourceUnit._zodiacCalloutRound !== state.round) {
+                    sourceUnit._zodiacCalloutRound = state.round;
+                    _multCallout(sourceUnit, '★ ZODIAC +10%', 900);
+                }
+
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(sourceUnit);
                     const tgtH = getUnitStandingHeight(target);
                     if (srcH > tgtH) {
 
                         const heightAdv = srcH - tgtH;
-                        finalDamage = Math.max(1, Math.round(finalDamage * (1 + DOWNHILL_DAMAGE_BONUS * heightAdv)));
+                        const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
+                        finalDamage = Math.max(1, Math.round(finalDamage * _hgMult));
+                        _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
                     } else if (tgtH > srcH) {
 
                         const heightAdv = tgtH - srcH;
@@ -9473,14 +9518,39 @@
                     }
                 }
                 flashUnit(target.id, opts.flashColor || 'hit');
-                showFloatingTextForUnit(target, `-${finalDamage}`, 'damage');
+
+                // Damage number style: crit hits pop gold, counter/follow-up
+                // chain hits pop electric blue (kind supplied by the caller),
+                // plain hits stay red.
+                const _floatKind = opts.floatKind || (opts.isCrit ? 'critdmg' : 'damage');
+                const _lethalHit = target.hp <= 0;
+
+                // Impact frame: heavy hits freeze the action on contact, then
+                // the number and the damage SFX land together as time resumes —
+                // the freeze sells the weight, the sound confirms it. Lethal
+                // hits skip the freeze (the death slow-mo owns that beat), and
+                // buffered end-of-round replays keep their own pacing.
+                let _impactFreezeMs = 0;
+                if (damageType !== 'dot' && !_lethalHit && finalDamage >= 30
+                    && !_skipVisuals() && !_bufferingRoundEvents) {
+                    _impactFreezeMs = finalDamage >= 80 ? 110 : finalDamage >= 50 ? 85 : 60;
+                }
+                const _popDamageFeedback = () => {
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
+                    if (damageType !== 'dot') {
+                        const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
+                        playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
+                    }
+                };
+                if (_impactFreezeMs > 0) {
+                    triggerHitstop(_impactFreezeMs);
+                    window.setTimeout(_popDamageFeedback, _impactFreezeMs + 20);
+                } else {
+                    _popDamageFeedback();
+                }
+                _tallyDamage(target, finalDamage);
 
                 if (window.RenderBus) window.RenderBus.emit('unit:damaged', { unit: target, damage: finalDamage });
-
-                if (damageType !== 'dot') {
-                    const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
-                    playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
-                }
 
                 if (damageType !== 'dot') {
                     const isPhysical = damageType === 'physical';
@@ -9497,10 +9567,6 @@
                         isCrit: isBigHit || isKill,
                         variant
                     });
-
-                    if (finalDamage >= 30) {
-                        triggerHitstop(finalDamage >= 80 ? 100 : finalDamage >= 50 ? 75 : 55);
-                    }
 
                     const _bloodIsKill = target.hp <= 0;
                     const _bloodIsSuperEff = typeNote && typeNote.includes('super effective');
@@ -22971,7 +23037,8 @@
                         if (_typeNote) _activeCinematic.showTypeEffect(_typeNote);
                     }
                     const killed = applyDamageToUnit(target, damage, `${unitDisplayName(unit)} attacks${isCrit ? ' (CRIT!)' : ''}: `, {
-                        sourceUnit: unit
+                        sourceUnit: unit,
+                        isCrit
                     });
 
                     if (killed) {
@@ -23032,7 +23099,8 @@
                         _showPressFeedback(_counterAttacker, _counterPressRes);
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
-                            ignoreArmor: false
+                            ignoreArmor: false,
+                            floatKind: 'combo'
                         });
                         checkWin();
                     }, actionMs(500));
@@ -23074,7 +23142,8 @@
                                 addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
                                 showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
                                 applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
-                                    sourceUnit: _fuAlly
+                                    sourceUnit: _fuAlly,
+                                    floatKind: 'combo'
                                 });
                                 checkWin();
                             }, actionMs(280));
