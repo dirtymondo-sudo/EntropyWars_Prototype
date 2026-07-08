@@ -1510,7 +1510,7 @@ function PartyBuilder() {
         // ── SUBCLASS — a second job that feeds the pool below and shifts stats ──
         !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
           h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— Auto —'),
+          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
           h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
 
@@ -1651,7 +1651,7 @@ function PartyBuilder() {
                 const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
                   h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
                   h('div', { style:{ flex:1, minWidth:0 }},
-                    h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— Auto —'),
+                    h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
                     h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
                   autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
                 for (const j of jobs) {

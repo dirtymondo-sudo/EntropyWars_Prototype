@@ -3226,7 +3226,7 @@
             const allJobs = (typeof JOB_MODIFIERS !== 'undefined') ? Object.keys(JOB_MODIFIERS)
                           : (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
 
-            const secOptions = allJobs.filter(j => j && j !== cls);
+            const secOptions = allJobs.filter(j => j && j !== cls && j !== 'Freelancer');
             const secJob = secOptions.length > 0 ? secOptions[randInt(secOptions.length)] : '';
             meta.secondaryJob = secJob;
 
