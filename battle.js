@@ -9394,8 +9394,28 @@
                     if (damageType === 'dot' || _skipVisuals()) return;
                     showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
                 };
-                if (_typeMult > 1) _multCallout(target, `×${_typeMult} WEAK!`);
-                else if (_typeMult < 1) _multCallout(target, `×${_typeMult} RESIST`);
+                // Clean 2-decimal multiplier, trailing zeros stripped:
+                // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
+                const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
+                // STAB and the type matchup are TWO SEPARATE mechanics that
+                // happen to multiply together — never show their blended
+                // product (a "×0.94 RESIST" reads as nonsense). Decompose:
+                // the type matchup (weak/resist) is the ENEMY'S property → pops
+                // on the target; STAB (your own same-type +25%) is YOUR bonus →
+                // pops on the caster. So a resisted same-type spell shows
+                // "×0.75 RESIST" on them AND "×1.25 STAB" on you.
+                if (!typeEffectOverride) {
+                    const _spellType = opts.spellType || null;
+                    const _hasStab = _spellType && (sourceUnit.types || []).includes(_spellType);
+                    const _stabMult = _hasStab
+                        ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+                    // Back out the pure matchup factor from the net multiplier
+                    // so it stays exact if the type-chart values ever change.
+                    const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
+                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
+                    else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
+                    if (_hasStab) _multCallout(sourceUnit, `${_fmtMult(_stabMult)} STAB`, 900);
+                }
                 // Zodiac is a whole-match buff — call it out once per round
                 // per unit, not on every single swing.
                 if (getZodiacBonus(sourceUnit).active && sourceUnit._zodiacCalloutRound !== state.round) {
