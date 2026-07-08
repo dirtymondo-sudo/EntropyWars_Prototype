@@ -3246,3 +3246,33 @@ data.js, index.html** (token → 20260708b).
   collision stamps; in-engine Nuketown run = 9/9 monuments built, 0 builder
   fails, 0 page errors. (Full-scene screenshots unreliable in the sandbox —
   swiftshader OOM; verify visuals on real hardware.)
+
+## Targeting / nameplate / death-HP internals (2026-07-08 session)
+- **Team-validity is centralized** in `_getSpellValidTargets` / `_getAttackValidTargets`
+  (battle.js) — the target drum ('spellTargets'/'attackTargets' views) and their
+  clickTile branch are pre-filtered. The FREE-AIM 'spells' view + its hover path
+  used to be range-only; now gated by `_spellTargetTeamOk(unit, spell, x, y)`
+  (skips tileTargeted/selfCast/directional kinds). Items gated by
+  `_itemTargetTeamOk` (potions=allies, banes=enemies).
+- **Nameplate visibility chokepoint**: `window._ewTargetableUnitIds` (Set of unit
+  ids, or null=show all). Built in ui.js's highlight-cache block from `_hlCache`
+  tile classes (units on 'spell-range*/attack/move*' tiles are excluded; 'heal'/
+  'attack enemy'/'move ally'/'inspect' included). Consumed each frame by
+  `_updatePlateVisibility()` (three-renderer.js). During `state._actionExecuting`
+  ui.js now PRESERVES the set, and `_focusPlatesForAction(unit, x, y)` (battle.js,
+  called at every player action-execution site) narrows it to caster + units
+  within the spell's aoeRadius/auraRadius of the target tile — so only relevant
+  bars show during animations.
+- **`.tp-targeted` CSS exists but nothing ever sets it** — plate emphasis is done
+  via visibility filtering + `_updatePlateEffBadges`, not that class.
+- **Killing-blow HP drain bug root cause**: the frame loop skipped BOTH
+  rebuildUnits() and `_patchPlateStats()` while any tween ran; a kill always has a
+  death tween in flight by the next frame, so the fatal hit's `width=0%` was never
+  written. Fixed: `_patchPlateStats()` now runs during tweens (with
+  `_lastUnitSerial` restored afterwards — the function refreshes it as a side
+  effect, which would otherwise swallow the deferred post-tween rebuild).
+- **Zero-range aura spells (War Cry etc.)**: `previewSpellRange` used to bail on
+  `!spell.range`; now draws the `auraRadius || aoeRadius` ring around the caster.
+- Death timeline: `defeatUnit` (map.js) sets `_dying` immediately, `dead=true`
+  ~800 ms later; plates are dropped on the rebuild after `dead` flips, and
+  `rebuildUnits` skips `dead || _dying` units. HP-bar CSS drain is 0.25 s.

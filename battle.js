@@ -19325,6 +19325,7 @@
 
                     if (targets.length === 1 && targets[0].unit && targets[0].unit.id === unit.id) {
                         state._actionExecuting = true;
+                        _focusPlatesForAction(unit, unit.x, unit.y);
                         clearAoePreview();
                         clearHoveredTarget();
                         clearSpellRangePreview();
@@ -19343,6 +19344,7 @@
                 } else if (spell && isSpellSelfCast(spell)) {
 
                     state._actionExecuting = true;
+                    _focusPlatesForAction(unit, unit.x, unit.y);
                     clearAoePreview();
                     clearHoveredTarget();
                     clearSpellRangePreview();
@@ -19427,6 +19429,59 @@
             }
             targets.sort((a, b) => a.dist - b.dist);
             return targets;
+        }
+
+        /* Team gate for free-aim ('spells' view) hover/click: an ally-only spell
+           (heal/buff/shield/cleanse/guard) must never arm a confirm on an enemy,
+           and an offensive spell must never arm one on an ally. Tile-targeted,
+           self-cast and directional kinds aim at tiles/lines, so any occupant is
+           legitimate splash — they pass through untouched. Empty tiles also pass:
+           the existing range / approach logic decides those. */
+        function _spellTargetTeamOk(unit, spell, x, y) {
+            if (!unit || !spell) return true;
+            const km = _kindMeta(spell);
+            if (isSpellTileTargeted(spell) || isSpellSelfCast(spell) || km.directional) return true;
+            const tu = unitAt(x, y);
+            if (!tu || tu.dead) return true;
+            if (km.offensive && isAllyUnit(tu, unit)) return false;
+            if (!km.offensive && km.allyOnly && !isAllyUnit(tu, unit)) return false;
+            return true;
+        }
+
+        /* Same idea for targeted items: potions only land on living allies,
+           bane strips only on living enemies. Other items keep free aim. */
+        function _itemTargetTeamOk(unit, tool, x, y) {
+            if (!unit || !tool) return true;
+            const tu = unitAt(x, y);
+            if (tool === 'healPotion' || tool === 'manaPotion') {
+                return !!(tu && !tu.dead && !isEnemyUnit(tu, unit));
+            }
+            if (ITEM_RULES[tool]?.baneType) {
+                return !!(tu && !tu.dead && !isAllyUnit(tu, unit));
+            }
+            return true;
+        }
+
+        /* While an action animates, collapse the nameplate filter to the caster
+           plus the units actually affected (target-tile occupant + AoE/aura
+           splash). The renderer hides every other plate via
+           window._ewTargetableUnitIds, and ui.js preserves this set for as long
+           as state._actionExecuting holds, so only the relevant health bars stay
+           on screen during the effect. */
+        function _focusPlatesForAction(unit, x, y) {
+            if (!unit) return;
+            let r = 0;
+            if (state.actionMode === 'spell') {
+                const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                    || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                r = sp ? (sp.aoeRadius || sp.auraRadius || 0) : 0;
+            }
+            const s = new Set([unit.id]);
+            for (const u of state.units) {
+                if (u.dead) continue;
+                if (Math.abs(u.x - x) + Math.abs(u.y - y) <= r) s.add(u.id);
+            }
+            window._ewTargetableUnitIds = s;
         }
 
         function isSpellTileTargeted(spell) {
@@ -19813,6 +19868,7 @@
                 && (state.pendingTarget.z == null || z == null || state.pendingTarget.z === z)) {
 
                 state._actionExecuting = true;
+                _focusPlatesForAction(unit, x, y);
                 clearAoePreview();
                 clearHoveredTarget();
                 state.pendingTarget = null;
@@ -19937,7 +19993,33 @@
             const unit = getSelectedUnit();
             if (!unit) return;
             const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
-            if (!spell || !spell.range) return;
+            if (!spell) return;
+
+            // Zero-range self-cast auras (War Cry, Encore, aoeOriginSelf bursts…)
+            // have no cast range, but their EFFECT radius is what the player
+            // wants to see on hover — draw that ring around the caster instead
+            // of silently showing nothing.
+            if (!spell.range) {
+                const auraR = spell.auraRadius || spell.aoeRadius || 0;
+                if (!auraR) return;
+                const auraTiles = [];
+                for (let ty = 0; ty < bh(); ty++) {
+                    for (let tx = 0; tx < bw(); tx++) {
+                        if (Math.abs(tx - unit.x) + Math.abs(ty - unit.y) <= auraR) auraTiles.push({ x: tx, y: ty });
+                    }
+                }
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    const auraColor = _kindMeta(spell).offensive ? 0xff5544 : 0x4488ff;
+                    ThreeRenderer.setOverlay('spellRange', auraTiles, auraColor, 0.45);
+                } else {
+                    const _sz = bw();
+                    for (const t of auraTiles) {
+                        const tile = boardEl.children[t.y * _sz + t.x];
+                        if (tile) { tile.classList.add('spell-range-preview'); _spellRangePreviewTiles.push(tile); }
+                    }
+                }
+                return;
+            }
 
             const isDirectional = !!_kindMeta(spell).directional;
             const isCross = spell.kind === 'cross';
@@ -20167,7 +20249,22 @@
                                 return false;
                             }
                         }
+                        // Wrong-team occupant → no confirm target on hover.
+                        if (!_spellTargetTeamOk(unit, spell, x, y)) {
+                            clearAoePreview();
+                            return false;
+                        }
                     }
+                }
+            }
+
+            // Targeted items (potions / banes): hovering a wrong-team unit must
+            // not arm a confirm — potions aim at allies, banes at enemies.
+            if (state.actionMode === 'item' && !_stHoverGrab) {
+                const _itmUnit = getSelectedUnit();
+                if (_itmUnit && !_itemTargetTeamOk(_itmUnit, state.selectedTool, x, y)) {
+                    clearAoePreview();
+                    return false;
                 }
             }
 
@@ -20524,7 +20621,38 @@
                         return;
                     }
                     }
+
+                    // Team gate (mirrors the hover path): clicking a wrong-team
+                    // unit never arms a confirm — error out with guidance and
+                    // fall back to inspecting the clicked unit.
+                    if (!_spellTargetTeamOk(actingUnit, spell, x, y)) {
+                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                        addLog(_kindMeta(spell).offensive ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                        playErrorSfx();
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                        if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                            return;
+                        }
+                        return;
+                    }
                 }
+            }
+
+            // Targeted items: a heal/mana potion click must land on a living
+            // ally, a bane strip on a living enemy — reject anything else
+            // before the confirm step instead of erroring after two clicks.
+            if (needsConfirm && state.actionMode === 'item'
+                && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y)) {
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                playErrorSfx();
+                markDirty('board', 'hud');
+                renderIfDirty();
+                if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                    return;
+                }
+                return;
             }
 
             if (needsConfirm) {
@@ -20552,6 +20680,7 @@
             }
 
             state._actionExecuting = true;
+            if (needsConfirm) _focusPlatesForAction(actingUnit, x, y);
 
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
             clearAoePreview();

@@ -17985,7 +17985,19 @@ const ThreeRenderer = (function () {
         if (uSer !== _lastUnitSerial) {
 
             if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0) {
-
+                /* Structural rebuilds must wait for tweens to settle (a rebuild
+                   would snap positions), but plate stats are DOM-only — patch
+                   them live so damage still drains the HP bar mid-animation.
+                   Critically, a killing blow ALWAYS has a death tween in flight
+                   by the next frame, so without this the fatal hit's drain to 0
+                   was never rendered: the bar froze at its pre-hit width until
+                   the plate vanished. _patchPlateStats() refreshes
+                   _lastUnitSerial as a side effect, which would swallow the
+                   deferred rebuild once tweens end — restore it so the
+                   structural pass still runs then. */
+                var _tweenSer = _lastUnitSerial;
+                _patchPlateStats();
+                _lastUnitSerial = _tweenSer;
             } else {
                 var sSer = _computeUnitStructuralSerial();
                 if (sSer !== _lastStructuralSerial) {

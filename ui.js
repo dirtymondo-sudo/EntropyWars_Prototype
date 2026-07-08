@@ -2982,15 +2982,17 @@
                       } else {
                         _hlCache.set(posKey(cx, cy), 'spell-range-bg');
                       }
-                    } else if (['heal', 'shield', 'buff'].includes(spell.kind)) {
-                      if (state.actionMenuView === 'spellTargets') {
-
-                        const friendlyTarget = _liveUnitMap.get(posKey(cx, cy));
-                        if (friendlyTarget && isAllyUnit(friendlyTarget, _selectedForHl)) {
-                          _hlCache.set(posKey(cx, cy), 'heal');
-                        }
-                      } else {
+                    } else if (['heal', 'shield', 'buff', 'cleanse', 'guard'].includes(spell.kind)) {
+                      // Ally-only kinds: green-light ONLY friendly occupants — an
+                      // enemy standing in range must never read as a valid target
+                      // (it also drops off the nameplate filter below). The rest
+                      // of the range paints as neutral background so reach stays
+                      // readable in the free-aim view.
+                      const friendlyTarget = _liveUnitMap.get(posKey(cx, cy));
+                      if (friendlyTarget && isAllyUnit(friendlyTarget, _selectedForHl)) {
                         _hlCache.set(posKey(cx, cy), 'heal');
+                      } else if (state.actionMenuView !== 'spellTargets') {
+                        _hlCache.set(posKey(cx, cy), 'spell-range-bg');
                       }
                     } else if (['scan'].includes(spell.kind)) {
                       _hlCache.set(posKey(cx, cy), 'inspect');
@@ -3038,7 +3040,11 @@
         window._ewHlCache = _hlCacheStore;
 
         var _noFilterModes = { move:1, jump:1, reshape:1, altitude:1, ward:1, flair:1, warpStone:1, ping:1 };
-        if (!_selectedForHl || !state.actionMode || _noFilterModes[state.actionMode] || state._actionExecuting || state.phase !== 'battle') {
+        if (state._actionExecuting && state.phase === 'battle') {
+          // Mid-action: keep whatever plate filter was captured when the action
+          // fired (_focusPlatesForAction narrows it to caster + affected units),
+          // so only the relevant health bars stay up during the animation.
+        } else if (!_selectedForHl || !state.actionMode || _noFilterModes[state.actionMode] || state.phase !== 'battle') {
           window._ewTargetableUnitIds = null;
         } else {
 
