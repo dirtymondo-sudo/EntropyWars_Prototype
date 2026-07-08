@@ -1959,9 +1959,9 @@ const ThreeRenderer = (function () {
             treadUV.setXY(3, 1, vLo);
             treadUV.needsUpdate = true;
 
-            var treadMat = topTex
+            var treadMat = _evTintMat(topTex
                 ? new THREE.MeshLambertMaterial({ map: topTex })
-                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x556655) });
+                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x556655) }), tKey);
             var tread = new THREE.Mesh(treadGeo, treadMat);
             tread.position.set(0, stepTopY, stepZ);
             group.add(tread);
@@ -1989,9 +1989,9 @@ const ThreeRenderer = (function () {
             rUVattr.needsUpdate = true;
 
             var rTex = sideTex || topTex;
-            var riserMat = rTex
+            var riserMat = _evTintMat(rTex
                 ? new THREE.MeshLambertMaterial({ map: rTex })
-                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322) });
+                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322) }), sKey || tKey);
             var riser = new THREE.Mesh(riserGeo, riserMat);
             riser.position.set(0, riserBottom + riserH / 2, riserZ);
             group.add(riser);
@@ -2045,9 +2045,9 @@ const ThreeRenderer = (function () {
             geo.computeVertexNormals();
 
             var sTex = sideTex || topTex;
-            var mat = sTex
+            var mat = _evTintMat(sTex
                 ? new THREE.MeshLambertMaterial({ map: sTex, side: THREE.DoubleSide })
-                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322), side: THREE.DoubleSide });
+                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322), side: THREE.DoubleSide }), sKey || tKey);
 
             return new THREE.Mesh(geo, mat);
         }
@@ -2060,9 +2060,9 @@ const ThreeRenderer = (function () {
             var backGeo = new THREE.PlaneGeometry(ts, backH);
 
             var bTex = sideTex || topTex;
-            var backMat = bTex
+            var backMat = _evTintMat(bTex
                 ? new THREE.MeshLambertMaterial({ map: bTex })
-                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322) });
+                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x443322) }), sKey || tKey);
             var backWall = new THREE.Mesh(backGeo, backMat);
             backWall.position.set(0, lowY + backH / 2, halfD);
             group.add(backWall);
@@ -2186,6 +2186,44 @@ const ThreeRenderer = (function () {
                 } else if (stairInfo) {
                     m = _buildStairMesh(x, y, ts, elevStep, tKey, sKey, stairInfo);
                     m._ew_isStair = true;
+                    /* Editor-authored stairs sit on TOP of a voxel column. This
+                       branch used to replace the whole tile's render, so every
+                       block underneath the staircase visually vanished. Draw the
+                       supporting column too: solid boxes for every block below
+                       the stair, with the barrier_passage top block substituted
+                       by the terrain beneath it (so the support reads as ground,
+                       not as a stray passage cube). */
+                    if (col && col.length > 1 && col[col.length - 1].stairDir) {
+                        var supBelowT = col[col.length - 2].terrain || 'grass';
+                        var supRuns = [];
+                        var supStart = -1, supPrevZ = -1, supTerr = null;
+                        for (var sbi = 0; sbi < col.length; sbi++) {
+                            var sb = col[sbi];
+                            /* top (stair) block renders as supBelowT ground */
+                            var sbT = (sbi === col.length - 1) ? supBelowT : (sb.terrain || 'grass');
+                            if (supStart === -1) { supStart = sb.z; supTerr = sbT; }
+                            else if (sb.z !== supPrevZ + 1 || sbT !== supTerr) {
+                                supRuns.push({ fromZ: supStart, toZ: supPrevZ, terrain: supTerr });
+                                supStart = sb.z; supTerr = sbT;
+                            }
+                            supPrevZ = sb.z;
+                        }
+                        if (supStart !== -1) supRuns.push({ fromZ: supStart, toZ: supPrevZ, terrain: supTerr });
+                        for (var sri = 0; sri < supRuns.length; sri++) {
+                            var srun = supRuns[sri];
+                            if (srun.terrain && srun.terrain.indexOf('void') === 0) continue;
+                            var srB = srun.fromZ * elevStep, srT = (srun.toZ + 1) * elevStep;
+                            var srH = srT - srB;
+                            if (srH < 0.5) continue;
+                            var srSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[srun.terrain] ?? null) : null;
+                            var srMesh = new THREE.Mesh(_getBoxGeo(ts, srH), buildBoxMaterials(srun.terrain, srSKey));
+                            /* Stair group origin is y=0 (no column -elevStep shift):
+                               voxel z spans [(z-1)·step, z·step] so the support top
+                               meets the stair base at topZ·step exactly. */
+                            srMesh.position.set(0, srB + srH / 2 - elevStep, 0);
+                            m.add(srMesh);
+                        }
+                    }
                 } else if (col && col.length > 1) {
 
                     m = new THREE.Group();
@@ -2283,29 +2321,17 @@ const ThreeRenderer = (function () {
                             var rIsFluid = !!_FLUID_TERRAIN_SET[rTopTerrain];
                             var rIsLava = (rTopTerrain === 'lava');
 
-                            var rTopTex = getTerrainTexture(rTopTerrain);
-                            var rSideTex = getTerrainTexture(rSKey || rSideTerrain);
-                            if (rSideTex) {
-                                rSideTex.wrapS = THREE.RepeatWrapping;
-                                rSideTex.wrapT = THREE.RepeatWrapping;
-                            }
                             var rMats;
                             if (rIsFluid) {
                                 rMats = buildFluidBoxMaterials(rTopTerrain, rSKey);
                             } else if (rIsLava) {
                                 rMats = buildLavaBoxMaterials(rTopTerrain, rSKey);
                             } else {
-
-                                rMats = [];
-                                for (var fi = 0; fi < 6; fi++) {
-                                    var fIsTop = (fi === 2);
-                                    var fTex = fIsTop ? rTopTex : rSideTex;
-                                    if (fTex) { rMats.push(new THREE.MeshLambertMaterial({ map: fTex })); }
-                                    else {
-                                        var fc = new THREE.Color(fIsTop ? 0x556655 : 0x443322);
-                                        rMats.push(new THREE.MeshLambertMaterial({ color: fc }));
-                                    }
-                                }
+                                /* Shared cached materials (tint-aware): the old inline
+                                   MeshLambertMaterial loop here skipped _evTintMat, so
+                                   the map-editor colour tint never applied to stacked /
+                                   elevated columns — i.e. to most edited terrain. */
+                                rMats = buildBoxMaterials(rTopTerrain, rSKey);
                             }
                             var rGeo = _getBoxGeo(ts, rH);
                             var rMesh = new THREE.Mesh(rGeo, rMats);
@@ -4725,6 +4751,26 @@ const ThreeRenderer = (function () {
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
             else if (ok === 'rock')               m = _buildRock3D(x, y);
             else if (ok === 'torch')              m = _buildTorch3D(ok, x, y);
+            else if (ok === 'gravestone' || ok === 'bone_pile' || ok === 'bone_wall' ||
+                     ok === 'atlantis_pillar' || ok === 'totem_pole' || ok === 'federation_beacon') {
+                /* Spell-prop 3D models placed from the map editor — reuse the
+                   exact builders the spells spawn. Graves take a per-tile seed
+                   (stable look per tile); the rest take a neutral owner. */
+                var _spSeed = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 100000 + 1;
+                m = ok === 'gravestone'        ? _buildGravestone3D(x, y, _spSeed)
+                  : ok === 'bone_pile'         ? _buildBonePile3D(x, y, _spSeed)
+                  : ok === 'bone_wall'         ? _buildBoneWall3D(x, y, 1)
+                  : ok === 'atlantis_pillar'   ? _buildAtlantisPillar3D(x, y, 1)
+                  : ok === 'totem_pole'        ? _buildTotemPole3D(x, y, 1)
+                  :                              _buildFederationBeacon3D(x, y, 1);
+                if (m) {
+                    m._ew_deployable = false;   // editor decoration, not a live spell object
+                    /* Respect the editor-authored rotation (Select-tool dial). */
+                    var _spStk = (typeof getObjectStack === 'function') ? getObjectStack(x, y) : null;
+                    var _spE = _spStk && _spStk.length ? _spStk[_spStk.length - 1] : null;
+                    if (_spE && _spE.rot) m.rotation.y = -_spE.rot * Math.PI / 180;
+                }
+            }
             else if (_isTreeKey(ok))              m = _buildFoliageObj(ok, x, y) || _buildTree3D(ok, x, y);
             else if (_isBuildingKey(ok)) {
                 /* 2×2 houses occupy four tiles but only the NW-anchor draws the

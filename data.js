@@ -1102,7 +1102,46 @@ const TERRAIN_RULES = {
     drywall_4:  { label: 'Drywall IV',  short: 'DY4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     metal_3:    { label: 'Metal Grate III', short: 'MT3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     tilefloor:   { label: 'Tile Floor',    short: 'TIL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    tilefloor_2: { label: 'Tile Floor II', short: 'TI2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
+    tilefloor_2: { label: 'Tile Floor II', short: 'TI2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    /* 2026-07-08 — the full R2 terrain-folder batch promoted from texture-only
+       keys to placeable editor terrains. All plain passable floors. */
+    bricks_3:       { label: 'Bricks III',      short: 'BR3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    marble_light:   { label: 'Pale Marble',     short: 'MBL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    leather:        { label: 'Leather',         short: 'LTH', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    leather_2:      { label: 'Leather II',      short: 'LT2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    enamel_2:       { label: 'Enamel',          short: 'ENM', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    mars:           { label: 'Mars Regolith',   short: 'MRS', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    mars_2:         { label: 'Mars Rock',       short: 'MR2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    fur:            { label: 'Fur',             short: 'FUR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    fur_2:          { label: 'Fur II',          short: 'FR2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    fur_3:          { label: 'Fur III',         short: 'FR3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    skin:           { label: 'Skin',            short: 'SKN', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    rubber:         { label: 'Rubber',          short: 'RBR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    rubber_2:       { label: 'Rubber II',       short: 'RB2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    damask:         { label: 'Damask',          short: 'DMK', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    damask_2:       { label: 'Damask II',       short: 'DM2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    damask_3:       { label: 'Damask III',      short: 'DM3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    damask_4:       { label: 'Damask IV',       short: 'DM4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    floral:         { label: 'Floral',          short: 'FLR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    floral_2:       { label: 'Floral II',       short: 'FL2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    diamond:        { label: 'Diamond Plate',   short: 'DIA', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    brokenglass:    { label: 'Broken Glass',    short: 'GLS', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    gunmetal:       { label: 'Gunmetal',        short: 'GUN', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    gunmetal_2:     { label: 'Gunmetal II',     short: 'GN2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    copper:         { label: 'Copper',          short: 'CPR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    concrete_floor: { label: 'Concrete',        short: 'CNC', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    checkerboard_2: { label: 'Checkerboard II', short: 'CH2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    checkerboard_3: { label: 'Checkerboard III',short: 'CH3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    drywall_5:      { label: 'Drywall V',       short: 'DY5', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    dirt_slope:     { label: 'Dirt Slope',      short: 'DSL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    grass_dark_fantasy: { label: 'Dark Grass',  short: 'DGR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    rocks_dark_fantasy: { label: 'Dark Rocks',  short: 'DRK', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    ice_1:          { label: 'Ice II',          short: 'IC2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    igloo:          { label: 'Igloo Block',     short: 'IGL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    latticegarden:  { label: 'Garden Lattice',  short: 'LAT', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    noise:          { label: 'Static Noise',    short: 'NSE', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    tigerfur:       { label: 'Tiger Fur',       short: 'TGR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    tigerfur_2:     { label: 'Tiger Fur II',    short: 'TG2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
 };
 
 const OBJECT_RULES = {
@@ -1619,6 +1658,71 @@ const OBJECT_RULES = {
         healMultiplier: 1,
         gameHeight: 0,
         cosmetic: true,
+    },
+    /* 2026-07-08 — spell-prop 3D models as placeable map decorations (the same
+       builders the spells use in three-renderer.js). Graves are walk-over
+       cosmetics; the wall/pillar/totem/beacon are solid obstacles. */
+    gravestone: {
+        label: 'Gravestone',
+        short: 'GRV',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 0,
+        cosmetic: true,
+    },
+    bone_pile: {
+        label: 'Bone Pile',
+        short: 'BNP',
+        passable: true,
+        blocksLanding: false,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 0,
+        cosmetic: true,
+    },
+    bone_wall: {
+        label: 'Bone Wall',
+        short: 'BNW',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: true,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
+    },
+    atlantis_pillar: {
+        label: 'Atlantis Pillar',
+        short: 'ATP',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
+    },
+    totem_pole: {
+        label: 'Totem Pole',
+        short: 'TTM',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
+    },
+    federation_beacon: {
+        label: 'Beacon Pylon',
+        short: 'BCN',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: false,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
     },
 };
 const JOB_ARCHETYPES = {
@@ -8909,7 +9013,12 @@ const MF_TID = (() => {
         'cloud_2','moon_2','moon_3','carpet_2','carpet_3','carpet_4','gold_2','gold_3','metal_2','grass_3',
         'grass_4','dirt_2','dirt_3','dirt_4','marble','marble_2','cobblestone','cobblestone_2','leaves_2','leaves_3',
         'leaves_4','leaves_5','aluminium','checkerboard','dungeon','dungeon_2','dungeon_3','dungeon_4','flesh','flesh_2',
-        'flesh_3','drywall','drywall_2','drywall_3','drywall_4','metal_3'];
+        'flesh_3','drywall','drywall_2','drywall_3','drywall_4','metal_3',
+        // 2026-07-08 — append-only mirror of map.js ME_TERRAIN_IDS
+        'bricks_3','marble_light','leather','leather_2','enamel_2','mars','mars_2','fur','fur_2','fur_3',
+        'skin','rubber','rubber_2','damask','damask_2','damask_3','damask_4','floral','floral_2','diamond',
+        'brokenglass','gunmetal','gunmetal_2','copper','concrete_floor','checkerboard_2','checkerboard_3','drywall_5','dirt_slope','grass_dark_fantasy',
+        'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();
@@ -8921,7 +9030,9 @@ const MF_OID = (() => {
         'building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10',
         'church_1','church_2','poison_seed','tree_2','tree_3','tree_4','tree_5','tree_6','tower_cube','building_11',
         'ancient_building','abandoned_building_1','abandoned_building_2','stairs','pathway_1','pathway_2','stairs_2','lamp_post','lamp_post_2','grass_tuft',
-        'rock','torch','traffic_light'];
+        'rock','torch','traffic_light',
+        // 2026-07-08 — append-only mirror of map.js ME_OBJECT_IDS (spell props)
+        'gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();

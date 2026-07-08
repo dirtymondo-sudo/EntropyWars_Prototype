@@ -1196,6 +1196,15 @@ const _TRAFFIC_LIGHT_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(
     '</svg>'
 );
 
+/* Emoji-on-SVG palette thumbnails for 3D-only spell props (editor palette
+   only — the in-game render is the procedural 3D builder in three-renderer.js).
+   Inline data URIs, so no extra asset upload is needed. */
+const _emojiPropIcon = (emoji) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">' +
+    '<rect width="64" height="64" rx="10" fill="#2a2438"/>' +
+    '<text x="32" y="45" font-size="34" text-anchor="middle">' + emoji + '</text></svg>'
+);
+
 const OBJECT_SPRITES = {
     church:       { url: `${_O}/church_2.png` },
     shop:         { url: `${_O}/itemshop.png` },
@@ -1270,6 +1279,17 @@ const OBJECT_SPRITES = {
        slot (entry.leaf): 'floor' stands on the tile top, 'wall' hangs off the
        side of the neighbouring tile the entry's rot points at, Minecraft-style. */
     torch:        { url: `${_S}/torch.png`, model3d: true },
+    /* 2026-07-08 — spell-prop 3D models exposed as placeable editor objects.
+       In-game renders are the SAME procedural builders the spells use
+       (three-renderer.js: _buildGravestone3D, _buildBonePile3D, _buildBoneWall3D,
+       _buildAtlantisPillar3D, _buildTotemPole3D, _buildFederationBeacon3D).
+       The urls are editor palette thumbnails only. */
+    gravestone:        { url: _emojiPropIcon('🪦'), model3d: true },
+    bone_pile:         { url: _emojiPropIcon('💀'), model3d: true },
+    bone_wall:         { url: _emojiPropIcon('🦴'), model3d: true },
+    atlantis_pillar:   { url: _emojiPropIcon('🏛️'), model3d: true },
+    totem_pole:        { url: _emojiPropIcon('🪶'), model3d: true },
+    federation_beacon: { url: _emojiPropIcon('🗼'), model3d: true },
 };
 
 const TERRAIN_SPRITES = {

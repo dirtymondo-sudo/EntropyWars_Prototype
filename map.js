@@ -5159,6 +5159,35 @@
                 return;
             }
 
+            /* Custom editor / community maps: the author placed their spawn
+               points deliberately, on terrain they sculpted. The edge-row
+               relocation + flatten/BFS-lower pass below was rewriting that
+               work ("play tested a map and it changed/sunk the terrain around
+               the spawn zones"). Use the authored spawn tiles verbatim — no
+               terrain edits — exactly like Mystery Dungeon. */
+            if (typeof activeGameMode !== 'undefined'
+                && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community')
+                && sp1.length > 0 && sp2.length > 0) {
+                state.spawnZones = {
+                    1: sp1.map(p => ({ x: p.x, y: p.y })),
+                    2: sp2.map(p => ({ x: p.x, y: p.y })),
+                };
+                for (const unit of state.units) {
+                    const zoneArr = state.spawnZones[unit.player];
+                    if (!zoneArr || zoneArr.length === 0) continue;
+                    const idx = parseInt(unit.id.split('-')[1], 10);
+                    unit._spawnIndex = idx < zoneArr.length ? idx : 0;
+                    if (!unit.dead) {
+                        const tile = zoneArr[unit._spawnIndex] || zoneArr[0];
+                        unit.x = tile.x;
+                        unit.y = tile.y;
+                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
+                    }
+                }
+                console.log('[SpawnZones] custom map — authored spawns used verbatim (no terrain rewrite)');
+                return;
+            }
+
             state.spawnZones = {};
 
             /* Determine orientation from SPAWNS hint */
@@ -6246,6 +6275,48 @@
             'drywall_3',
             'drywall_4',
             'metal_3',
+            // 2026-07-08 — append-only. The full R2 terrain-folder batch that was
+            // registered in sprites.js as texture-only keys, now placeable in the
+            // editor (⚠ keep data.js MF_TID mirrored).
+            'bricks_3',
+            'marble_light',
+            'leather',
+            'leather_2',
+            'enamel_2',
+            'mars',
+            'mars_2',
+            'fur',
+            'fur_2',
+            'fur_3',
+            'skin',
+            'rubber',
+            'rubber_2',
+            'damask',
+            'damask_2',
+            'damask_3',
+            'damask_4',
+            'floral',
+            'floral_2',
+            'diamond',
+            'brokenglass',
+            'gunmetal',
+            'gunmetal_2',
+            'copper',
+            'concrete_floor',
+            'checkerboard_2',
+            'checkerboard_3',
+            'drywall_5',
+            'dirt_slope',
+            'grass_dark_fantasy',
+            'rocks_dark_fantasy',
+            'ice_1',
+            'igloo',
+            'latticegarden',
+            'noise',
+            'tigerfur',
+            'tigerfur_2',
+            'tilefloor',
+            'tilefloor_2',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -6311,23 +6382,34 @@
             // 2026-07 — cosmetic 3D traffic light; its red/yellow/green lamps
             // cycle between rounds (see _buildTrafficLight3D in three-renderer.js)
             'traffic_light',
+            // 2026-07-08 — spell-prop 3D models exposed as placeable decorations
+            // (⚠ keep data.js MF_OID mirrored; renders wired in three-renderer.js)
+            'gravestone',
+            'bone_pile',
+            'bone_wall',
+            'atlantis_pillar',
+            'totem_pole',
+            'federation_beacon',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
 
         const ME_PALETTE_CATS = [
-            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
-            { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rubble_1','rubble_2','rubble_3','rubble_4'] },
-            { label: 'Urban', keys: ['bricks_1','bricks_2','marble','marble_2','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4'] },
+            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
+            { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rocks_dark_fantasy','rubble_1','rubble_2','rubble_3','rubble_4'] },
+            { label: 'Urban', keys: ['bricks_1','bricks_2','bricks_3','marble','marble_2','marble_light','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4','drywall_5'] },
+            { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','checkerboard_2','checkerboard_3','latticegarden','igloo'] },
+            { label: 'Metal & Glass', keys: ['gunmetal','gunmetal_2','copper','diamond','brokenglass','noise'] },
+            { label: 'Fabric & Hide', keys: ['leather','leather_2','fur','fur_2','fur_3','tigerfur','tigerfur_2','skin','rubber','rubber_2','enamel_2','damask','damask_2','damask_3','damask_4','floral','floral_2'] },
             { label: 'Dungeon', keys: ['dungeon','dungeon_2','dungeon_3','dungeon_4'] },
             { label: 'Flesh', keys: ['flesh','flesh_2','flesh_3'] },
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
-            { label: 'Water', keys: ['water','deep_water','bridge','ice'] },
+            { label: 'Water', keys: ['water','deep_water','bridge','ice','ice_1'] },
             { label: 'Lava', keys: ['lava'] },
             { label: 'Mountain', keys: ['mountain','mountain_2','cliff'] },
             { label: 'Cave', keys: ['cave_floor','cave_wall','cave_entrance'] },
             { label: 'Foliage', keys: ['forest','forest_2','leaves','leaves_2','leaves_3','leaves_4','leaves_5','ruins'] },
-            { label: 'Lunar', keys: ['moon','moon_2','moon_3'] },
+            { label: 'Lunar & Mars', keys: ['moon','moon_2','moon_3','mars','mars_2'] },
             { label: 'Sky', keys: ['cloud','cloud_2','cloud_thick','sky_open','storm','cloud_gap','sky_ruin','tree_top'] },
             { label: 'Special', keys: ['void','chasm','fog_wall','barrier','barrier_passage'] },
             { label: '⚙ Structures', keys: ['sanctuary','descent_point'], isGameMode: true },
@@ -6344,6 +6426,7 @@
             { label: 'Churches', keys: ['church_1','church_2'] },
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
             { label: 'Props', keys: ['lamp_post','lamp_post_2','torch','traffic_light'] },
+            { label: 'Spell Props', keys: ['gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon'] },
         ];
 
         let _meW = 12, _meH = 12;
@@ -6482,8 +6565,48 @@
         let _meSelectedMonRef = null;             // index into _meMonuments of the monument picked for rotate
         let _meDialDragging = false;              // true while the user drags the rotation dial
 
+        /* Per-object placement memory: the last orientation (rot / mirror /
+           align / texture-variant) the user set for each object key. Placing
+           that object again reuses it — set a stair to face East once and
+           every stair after that comes out facing East until changed. Updated
+           both from the pre-place palette controls (at placement time) and
+           from the Select-tool dial / mirror / variant edits. */
+        const _meObjPlaceMemory = {};
+        function _meRememberObjPlacement(key, entry) {
+            if (!key || !entry) return;
+            _meObjPlaceMemory[key] = {
+                rot: entry.rot || 0,
+                flipX: !!entry.flipX,
+                flipY: !!entry.flipY,
+                alignX: entry.alignX || 'center',
+                alignY: entry.alignY || 'bottom',
+                leaf: entry.leaf || null
+            };
+        }
+        /* Load the remembered orientation for an object key into the live
+           brush settings (so the palette controls reflect it too). */
+        function _meRecallObjPlacement(key) {
+            const mem = _meObjPlaceMemory[key];
+            if (!mem) return;
+            _meSelectedRot = mem.rot;
+            _meSelectedFlipX = mem.flipX;
+            _meSelectedFlipY = mem.flipY;
+            _meSelectedAlignX = mem.alignX;
+            _meSelectedAlignY = mem.alignY;
+            if (mem.leaf) {
+                if (_meIsTreeKey(key)) _meSelectedLeaf = mem.leaf;
+                else if (_meIsRockKey(key)) _meSelectedRockTex = mem.leaf;
+                else if (_meIsTorchKey(key)) _meSelectedTorchMount = mem.leaf;
+            }
+        }
+
         let _meVoxels = null;
         let _meActiveZ = 0;
+        /* Z-lock: when ON, paint/erase target EXACTLY the active Z layer —
+           this is how you slot blocks UNDERNEATH existing blocks (under an
+           overhang) or carve a specific buried layer. When OFF (default) the
+           brush targets the visible surface like before. */
+        let _meZLock = false;
         const ME_MAX_Z = 20;
 
         const _meUndoStack = [];
@@ -6583,11 +6706,10 @@
         function _meSetVoxel(x, y, z, tid) {
             if (!_meVoxels) _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
             const col = _meVoxels[y][x];
-            /* The flat ground shown on a fresh tile is a render-time "for show"
-               base (see _meSyncToState): the voxel column is actually empty. Lay
-               that ground down for REAL (z0) before stacking a block above it, so
-               the base layer doesn't vanish the moment you build on top of it. */
-            if (z > 0 && !col.some(b => b.z === 0)) {
+            /* Ensure a real ground layer exists before stacking above an empty
+               column — EXCEPT in Z-lock mode, where the user is deliberately
+               placing free-floating blocks at an exact layer. */
+            if (z > 0 && !_meZLock && !col.some(b => b.z === 0)) {
                 const baseTid = (_meGrid?.[y]?.[x]) || ((typeof ME_TERRAIN_TO_ID !== 'undefined' && ME_TERRAIN_TO_ID['grass']) || 1);
                 col.push({ z: 0, tid: baseTid });
             }
@@ -6649,6 +6771,27 @@
             return _meVoxels?.[y]?.[x] || [];
         }
 
+        /* Migration for maps saved before empty tiles became real void holes:
+           they were drawn as grass, so make them ACTUAL grass at z0 on load.
+           (Erased holes made after this change save as truly empty columns
+           only until the next save writes them back — holes the author digs
+           stay holes because erase now happens on real floor blocks.) */
+        function _meFillEmptyWithGrass() {
+            if (!_meVoxels) { _meBuildVoxelsFromLegacy(); return; }
+            const gTid = ME_TERRAIN_TO_ID['grass'] || 1;
+            for (let y = 0; y < _meH; y++) {
+                for (let x = 0; x < _meW; x++) {
+                    if (!_meVoxels[y]) _meVoxels[y] = [];
+                    const col = _meVoxels[y][x];
+                    if (!col || col.length === 0) {
+                        const tid = _meGrid?.[y]?.[x] || 0;
+                        _meVoxels[y][x] = [{ z: 0, tid: tid || gTid }];
+                    }
+                }
+            }
+            _meSyncVoxelsToLegacy();
+        }
+
         /* The Z that a paint / fill should write to. When a tile already has a
            column, target its VISIBLE top block as long as the active layer sits
            at or below it — so you can recolour / re-terrain the surface you can
@@ -6656,6 +6799,7 @@
            up to the column's height. Painting with the active Z set ABOVE the
            column still writes there, so stacking / raising a new layer works. */
         function _meSurfacePaintZ(x, y) {
+            if (_meZLock) return _meActiveZ;   /* exact-layer mode */
             const col = _meGetColumn(x, y);
             if (col.length) {
                 const topZ = col[col.length - 1].z;
@@ -6704,7 +6848,11 @@
 
         function _meInit() {
             if (!_meGrid) {
-                _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(0));
+                /* Brand-new map: start from a REAL grass floor at z0 (not the
+                   old empty-grid-rendered-as-grass illusion) so the Erase tool
+                   can visibly dig holes from the very first click. */
+                const gTid = ME_TERRAIN_TO_ID['grass'] || 1;
+                _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(gTid));
             }
             if (!_meObjects) { _meObjects = _meEmptyObjGrid(_meH, _meW); }
             if (!_meMonuments) { _meMonuments = []; }
@@ -6733,7 +6881,10 @@
                 const row = [];
                 for (let x = 0; x < w; x++) {
                     const tid = _meGrid[y]?.[x] || 0;
-                    row.push(tid === 0 ? 'grass' : (ME_TERRAIN_IDS[tid] || 'grass'));
+                    /* Empty tiles are genuine holes ('void'), so the Erase tool
+                       visibly removes ground. New/cleared maps get a REAL grass
+                       floor at z0 instead (see _meInit/_meClear). */
+                    row.push(tid === 0 ? 'void' : (ME_TERRAIN_IDS[tid] || 'grass'));
                 }
                 state.boardTerrain.push(row);
             }
@@ -6757,7 +6908,7 @@
                         } else {
 
                             const tid = _meGrid[vy]?.[vx] || 0;
-                            const terrain = tid === 0 ? 'grass' : (ME_TERRAIN_IDS[tid] || 'grass');
+                            const terrain = tid === 0 ? 'void' : (ME_TERRAIN_IDS[tid] || 'grass');
                             vRow.push([{ z: 0, terrain: terrain }]);
                         }
                     }
@@ -7048,6 +7199,47 @@
                 _editorOverlay3DLabels.push(tag2d);
             };
 
+            /* ── Auto-zone preview: where the engine would place spawn zones,
+               nexus capture zones and CTF flags for THIS map size when the map
+               is played in the standard modes. Toggled from the toolbar; the
+               layout recomputes automatically when the map is resized. ── */
+            if (_meShowZones) {
+                const az = _meComputeAutoZones();
+                const zP1Mat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.20, side: THREE.DoubleSide, depthWrite: false });
+                const zP2Mat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.20, side: THREE.DoubleSide, depthWrite: false });
+                const zNexMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+                const zoneTopY = (x, y) => Math.max(ts * 0.25, (state.boardHeights?.[y]?.[x] ?? 0) * ts * 0.5) + 0.4;
+                const addZoneLabel = (x, y, txt, bg) => {
+                    const el = document.createElement('div');
+                    el.className = 'me-3d-label me-3d-zone-label';
+                    el.textContent = txt;
+                    el.style.cssText = 'font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;pointer-events:none;' +
+                        'background:' + bg + ';color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.7);font-family:DotGothic16,monospace;white-space:nowrap;';
+                    const c2 = new THREE.CSS2DObject(el);
+                    c2.position.set(x * ts + ts / 2, zoneTopY(x, y) + 18, y * ts + ts / 2);
+                    _editorOverlay3DGroup.add(c2);
+                    _editorOverlay3DLabels.push(c2);
+                };
+                const drawZoneTile = (x, y, mat) => {
+                    if (x < 0 || y < 0 || x >= bw || y >= bh) return;
+                    const pl = new THREE.Mesh(planeGeo, mat);
+                    pl.rotation.x = -Math.PI / 2;
+                    pl.position.set(x * ts + ts / 2, zoneTopY(x, y), y * ts + ts / 2);
+                    _editorOverlay3DGroup.add(pl);
+                };
+                az.p1.forEach(t => drawZoneTile(t.x, t.y, zP1Mat));
+                az.p2.forEach(t => drawZoneTile(t.x, t.y, zP2Mat));
+                if (az.p1.length) addZoneLabel(az.p1[Math.floor(az.p1.length / 2)].x, az.p1[Math.floor(az.p1.length / 2)].y, 'P1 SPAWN ZONE', 'rgba(48,100,220,0.9)');
+                if (az.p2.length) addZoneLabel(az.p2[Math.floor(az.p2.length / 2)].x, az.p2[Math.floor(az.p2.length / 2)].y, 'P2 SPAWN ZONE', 'rgba(210,50,50,0.9)');
+                for (const nz of az.nexus) {
+                    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) drawZoneTile(nz.x + dx, nz.y + dy, zNexMat);
+                    addZoneLabel(nz.x, nz.y, nz.label, 'rgba(190,140,20,0.92)');
+                }
+                for (const fl of az.flags) {
+                    addZoneLabel(fl.x, fl.y, '⚑ CTF FLAG P' + fl.player, fl.player === 1 ? 'rgba(48,100,220,0.9)' : 'rgba(210,50,50,0.9)');
+                }
+            }
+
             const _selMon = _meSelectedMonEntry();
             if (_selMon) {
                 const rr = Math.max(1, Math.floor((_selMon.foot || 3) / 2));
@@ -7068,6 +7260,87 @@
 
         window._meUpdateEditorOverlays = _meUpdateEditorOverlays;
         window._meRebuildEditorOverlays3D = _meRebuildEditorOverlays3D;
+
+        /* ── Auto-zone preview toggle + layout math ─────────────────────────
+           Mirrors the engine's own placement rules so the preview matches what
+           a real match would do at this map size:
+           - spawn zones: autoGenerateSpawnZones (edge strip, centered, length =
+             team size, orientation from the authored spawn hint);
+           - nexus zones: _autoPlaceNexusIfNeeded (2×2 at the centre; on maps
+             ≥16×16 also NW/SE zones on the diagonal at min(w,h)/4);
+           - CTF flags: the middle tile of each spawn zone. */
+        let _meShowZones = false;
+
+        function _meComputeAutoZones() {
+            const w = _meW, h = _meH;
+            const sp1 = _meSpawns[1] || [], sp2 = _meSpawns[2] || [];
+            const teamSize = Math.max(1, Math.min(6, Math.min(sp1.length || 4, sp2.length || 4)));
+
+            let orientation = 'vertical';
+            if (sp1.length > 0 && sp2.length > 0) {
+                const avgY1 = sp1.reduce((s, p) => s + p.y, 0) / sp1.length;
+                const avgY2 = sp2.reduce((s, p) => s + p.y, 0) / sp2.length;
+                const avgX1 = sp1.reduce((s, p) => s + p.x, 0) / sp1.length;
+                const avgX2 = sp2.reduce((s, p) => s + p.x, 0) / sp2.length;
+                if (Math.abs(avgX1 - avgX2) > Math.abs(avgY1 - avgY2) * 1.5) orientation = 'horizontal';
+            }
+
+            const p1 = [], p2 = [];
+            if (orientation === 'vertical') {
+                let p1Row = h - 1, p2Row = 0;
+                if (sp1.length && sp2.length) {
+                    const avgY1 = sp1.reduce((s, p) => s + p.y, 0) / sp1.length;
+                    const avgY2 = sp2.reduce((s, p) => s + p.y, 0) / sp2.length;
+                    p1Row = avgY1 > avgY2 ? h - 1 : 0;
+                    p2Row = p1Row === h - 1 ? 0 : h - 1;
+                }
+                const startCol = Math.max(0, Math.floor((w - teamSize) / 2));
+                for (let i = 0; i < teamSize; i++) {
+                    const col = Math.min(startCol + i, w - 1);
+                    p1.push({ x: col, y: p1Row });
+                    p2.push({ x: col, y: p2Row });
+                }
+            } else {
+                let p1Col = 0, p2Col = w - 1;
+                if (sp1.length && sp2.length) {
+                    const avgX1 = sp1.reduce((s, p) => s + p.x, 0) / sp1.length;
+                    const avgX2 = sp2.reduce((s, p) => s + p.x, 0) / sp2.length;
+                    p1Col = avgX1 < avgX2 ? 0 : w - 1;
+                    p2Col = p1Col === 0 ? w - 1 : 0;
+                }
+                const startRow = Math.max(0, Math.floor((h - teamSize) / 2));
+                for (let i = 0; i < teamSize; i++) {
+                    const row = Math.min(startRow + i, h - 1);
+                    p1.push({ x: p1Col, y: row });
+                    p2.push({ x: p2Col, y: row });
+                }
+            }
+
+            const nexus = [];
+            const cx = Math.floor(w / 2) - 1, cy = Math.floor(h / 2) - 1;   // 2×2 zone anchor
+            if (w >= 16 && h >= 16) {
+                const off = Math.floor(Math.min(w, h) / 4);
+                nexus.push({ x: cx, y: cy, label: '◈ NEXUS (CENTER)' });
+                nexus.push({ x: cx - off, y: cy - off, label: '◈ NEXUS (NW)' });
+                nexus.push({ x: cx + off, y: cy + off, label: '◈ NEXUS (SE)' });
+            } else {
+                nexus.push({ x: cx, y: cy, label: '◈ NEXUS ZONE' });
+            }
+
+            const flags = [];
+            if (p1.length) flags.push({ x: p1[Math.floor(p1.length / 2)].x, y: p1[Math.floor(p1.length / 2)].y, player: 1 });
+            if (p2.length) flags.push({ x: p2[Math.floor(p2.length / 2)].x, y: p2[Math.floor(p2.length / 2)].y, player: 2 });
+
+            return { p1, p2, nexus, flags };
+        }
+
+        window._meToggleZonePreview = function() {
+            _meShowZones = !_meShowZones;
+            _meSfx('uiButtonConfirm');
+            const btn = document.getElementById('meZonesBtn');
+            if (btn) btn.classList.toggle('active', _meShowZones);
+            _meRebuildEditorOverlays3D();
+        };
 
         /* The editor's base stylesheet lives in styles-editor.css (R2). This
            injects an additive layer that organizes the HUD into clean labeled
@@ -7194,6 +7467,8 @@
                 }
                 .me-editor-hud .me-hud-size-row button:hover,
                 .me-editor-hud .me-z-btn:hover { background: rgba(90,76,140,0.95); }
+                .me-editor-hud .me-z-lock { width: auto; padding: 0 8px; font-size: 10px; white-space: nowrap; }
+                .me-editor-hud .me-z-lock.active { background: linear-gradient(180deg,#8c64ff,#6c46e1); border-color: rgba(190,170,255,0.9); color: #fff; box-shadow: 0 0 0 1px rgba(190,170,255,0.5); }
                 .me-editor-hud .me-size-val, .me-editor-hud .me-z-value { min-width: 22px; text-align: center; font-weight: 700; color: #fff; }
                 .me-editor-hud .me-label, .me-editor-hud .me-z-label, .me-editor-hud .me-elev-label { font-size: 11px; color: rgba(210,205,235,0.85); }
                 .me-editor-hud .me-z-hint { font-size: 10px; color: rgba(170,255,210,0.8); margin-left: auto; }
@@ -7359,6 +7634,7 @@
                 .me-editor-hud .me-tbtn:hover:not([disabled]) { background: rgba(86,72,130,0.95); border-color: rgba(160,140,255,0.5); }
                 .me-editor-hud .me-tbtn:active:not([disabled]) { transform: translateY(1px); }
                 .me-editor-hud .me-tbtn[disabled] { opacity: 0.38; cursor: default; }
+                .me-editor-hud .me-tbtn.active { background: linear-gradient(180deg,#8c64ff,#6c46e1); color: #fff; border-color: rgba(190,170,255,0.9); box-shadow: 0 0 0 1px rgba(190,170,255,0.5); }
                 .me-editor-hud .me-tbar-sep { flex: 0 0 1px; align-self: center; width: 1px; height: 24px; background: rgba(255,255,255,0.12); }
 
                 /* ── File row (name / save / load / delete) — single row ── */
@@ -7429,6 +7705,158 @@
                     color: var(--gold,#ffd24a); line-height: 1; text-align: center;
                 }
                 .me-editor-hud .me-rot-slider { width: 100%; accent-color: #ffd24a; }
+
+                /* ═══ 2026-07 PRO SKIN — tightened, neutral, editing-suite look ═══
+                   A restrained dark-slate surface system (à la Photoshop panels):
+                   consistent 1px hairlines, flat surfaces with subtle elevation,
+                   one violet accent, crisp focus/active states, kbd chips. */
+                .me-editor-hud {
+                    background: linear-gradient(180deg, rgba(24,23,31,0.985), rgba(17,16,23,0.985));
+                    border-left: 1px solid rgba(255,255,255,0.07);
+                    box-shadow: -12px 0 28px rgba(0,0,0,0.45);
+                    gap: 7px;
+                }
+                .me-editor-hud .me-hud-header {
+                    padding: 2px 2px 6px;
+                    border-bottom: 1px solid rgba(255,255,255,0.07);
+                }
+                .me-editor-hud .me-hud-title {
+                    font-size: 12.5px;
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    color: #d6d1ef;
+                }
+                .me-editor-hud .me-section {
+                    background: rgba(255,255,255,0.028);
+                    border: 1px solid rgba(255,255,255,0.055);
+                    border-radius: 7px;
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+                }
+                .me-editor-hud .me-section-label { color: rgba(196,188,235,0.9); }
+                .me-editor-hud .me-section-label:hover { color: #fff; }
+
+                /* Flat, consistent control surfaces. */
+                .me-editor-hud .me-tool,
+                .me-editor-hud .me-tbtn,
+                .me-editor-hud .me-btn,
+                .me-editor-hud .me-z-btn,
+                .me-editor-hud .me-hbtn,
+                .me-editor-hud .me-hud-back,
+                .me-editor-hud .me-hud-size-row button,
+                .me-editor-hud .me-tab {
+                    background: #2b2936;
+                    border: 1px solid #3d3a4c;
+                    border-radius: 6px;
+                    color: #d5d1e6;
+                    transition: background 0.08s, border-color 0.08s, transform 0.05s;
+                }
+                .me-editor-hud .me-tool:hover,
+                .me-editor-hud .me-tbtn:hover:not([disabled]),
+                .me-editor-hud .me-btn:hover:not([disabled]),
+                .me-editor-hud .me-z-btn:hover,
+                .me-editor-hud .me-hbtn:hover,
+                .me-editor-hud .me-hud-back:hover,
+                .me-editor-hud .me-hud-size-row button:hover,
+                .me-editor-hud .me-tab:hover {
+                    background: #37344a;
+                    border-color: #57517a;
+                }
+                .me-editor-hud .me-tool.active,
+                .me-editor-hud .me-tab.active,
+                .me-editor-hud .me-hbtn.active,
+                .me-editor-hud .me-tbtn.active,
+                .me-editor-hud .me-z-lock.active {
+                    background: linear-gradient(180deg, #7a5cff, #5f43e6);
+                    border-color: #a892ff;
+                    color: #fff;
+                    box-shadow: 0 0 0 1px rgba(168,146,255,0.45), 0 2px 8px rgba(95,67,230,0.35);
+                }
+                .me-editor-hud .me-tool-p1.active { background: linear-gradient(180deg,#5b9bff,#2f6fdf); border-color:#9cc4ff; }
+                .me-editor-hud .me-tool-p2.active { background: linear-gradient(180deg,#ff6b6b,#d23b3b); border-color:#ffb0b0; }
+
+                /* kbd shortcut chips inside tool buttons. */
+                .me-editor-hud .me-tool kbd {
+                    font-family: inherit;
+                    font-size: 8.5px;
+                    line-height: 1;
+                    margin-left: 6px;
+                    padding: 2px 4px 1px;
+                    border-radius: 3px;
+                    background: rgba(0,0,0,0.32);
+                    border: 1px solid rgba(255,255,255,0.16);
+                    color: rgba(230,225,250,0.75);
+                }
+                .me-editor-hud .me-tool.active kbd { background: rgba(0,0,0,0.25); color: #fff; }
+
+                /* Palette grid: bigger swatches, hover raise, crisp selection. */
+                .me-editor-hud .me-palette { gap: 5px; padding: 6px 4px; }
+                .me-editor-hud .me-pal-item {
+                    border-radius: 6px;
+                    border: 1px solid transparent;
+                    padding: 4px 2px 3px;
+                    transition: transform 0.06s, background 0.08s, border-color 0.08s;
+                }
+                .me-editor-hud .me-pal-item:hover {
+                    background: rgba(122,92,255,0.14);
+                    border-color: rgba(168,146,255,0.45);
+                    transform: translateY(-1px);
+                }
+                .me-editor-hud .me-pal-item.active {
+                    background: rgba(122,92,255,0.26);
+                    border-color: #a892ff;
+                    box-shadow: 0 0 0 1px rgba(168,146,255,0.55);
+                }
+                .me-editor-hud .me-pal-swatch {
+                    border-radius: 5px;
+                    border: 1px solid rgba(255,255,255,0.10);
+                    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+                    image-rendering: pixelated;
+                }
+                .me-editor-hud .me-pal-cat {
+                    letter-spacing: 0.14em;
+                    color: rgba(190,182,230,0.72);
+                    border-top: 1px solid rgba(255,255,255,0.055);
+                    padding-top: 7px;
+                }
+
+                /* Inputs. */
+                .me-editor-hud .me-search,
+                .me-editor-hud .me-name-input,
+                .me-editor-hud .me-load-select,
+                .me-editor-hud .me-tint-hexinput {
+                    background: #1c1a24;
+                    border: 1px solid #3d3a4c;
+                    border-radius: 6px;
+                    color: #e6e2f5;
+                }
+                .me-editor-hud .me-search:focus,
+                .me-editor-hud .me-name-input:focus,
+                .me-editor-hud .me-tint-hexinput:focus {
+                    outline: none;
+                    border-color: #a892ff;
+                    box-shadow: 0 0 0 2px rgba(122,92,255,0.25);
+                }
+
+                /* Toolbar + filebar read as one compact command strip. */
+                .me-editor-hud .me-toolbar,
+                .me-editor-hud .me-filebar {
+                    background: rgba(255,255,255,0.028);
+                    border: 1px solid rgba(255,255,255,0.055);
+                    border-radius: 7px;
+                    padding: 5px;
+                }
+                .me-editor-hud .me-help-bar {
+                    background: rgba(122,92,255,0.08);
+                    border: 1px solid rgba(122,92,255,0.20);
+                    color: rgba(214,209,239,0.68);
+                }
+                .me-editor-hud .me-btn-play {
+                    background: linear-gradient(180deg,#35d97a,#1ea757);
+                    border: 1px solid #5cf09a;
+                    box-shadow: 0 2px 10px rgba(30,167,87,0.35);
+                }
+                .me-editor-hud .me-btn-play:hover { background: linear-gradient(180deg,#46e588,#27b863); }
+                .me-editor-hud .me-btn-danger { background: rgba(150,40,40,0.85); border-color: rgba(255,120,120,0.4); }
             `;
             document.head.appendChild(s);
         }
@@ -7463,6 +7891,8 @@
                     <button class="me-tbtn" onclick="window._meFill()" title="Fill the board with the selected tile"><span class="ico">▩</span>Fill</button>
                     <button class="me-tbtn" onclick="window._meRandomize()" title="Randomize the board"><span class="ico">🎲</span>Random</button>
                     <span class="me-tbar-sep"></span>
+                    <button class="me-tbtn" id="meZonesBtn" onclick="window._meToggleZonePreview()" title="Show where spawn zones, nexus zones and CTF flags would be auto-placed for this map size"><span class="ico">🗺️</span>Zones</button>
+                    <span class="me-tbar-sep"></span>
                     <button class="me-tbtn" onclick="window._meImport()" title="Import a map from text"><span class="ico">⬇</span>Import</button>
                     <button class="me-tbtn" onclick="window._meExport()" title="Export this map to text"><span class="ico">⬆</span>Export</button>
                 </div>
@@ -7476,7 +7906,7 @@
                     <button class="me-btn me-btn-danger me-btn-icon" onclick="window._meDeleteSaved()" title="Delete the selected saved map">🗑️</button>
                 </div>
 
-                <div class="me-help-bar">Click to place · drag to paint · right-click a tile for options · Ctrl+Z / Ctrl+Y</div>
+                <div class="me-help-bar">Click to place · drag to paint · right-click a tile to inspect · <b>B</b>rush <b>O</b>bject <b>V</b>select <b>E</b>rase · <b>R</b> rotate · <b>[ ]</b> Z layer · <b>L</b> Z-lock · Ctrl+Z/Y undo</div>
 
                 <div class="me-section collapsed" id="meSec-size">
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-size')"><span class="me-sec-caret">▾</span> Canvas Size · <span id="meSizeSummary">${_meW}×${_meH}</span></button>
@@ -7498,13 +7928,13 @@
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-tools')"><span class="me-sec-caret">▾</span> Tools</button>
                     <div class="me-section-body">
                     <div class="me-tool-row">
-                        <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')" title="Paint terrain">🖌️ Paint</button>
-                        <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')" title="Place objects">🏠 Object</button>
-                        <button class="me-tool" id="meTool-select" onclick="window._meSetTool('select')" title="Select & rotate a placed object">🎯 Select</button>
+                        <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')" title="Paint terrain (B)">🖌️ Paint<kbd>B</kbd></button>
+                        <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')" title="Place objects (O)">🏠 Object<kbd>O</kbd></button>
+                        <button class="me-tool" id="meTool-select" onclick="window._meSetTool('select')" title="Select & rotate a placed object (V)">🎯 Select<kbd>V</kbd></button>
                     </div>
                     <div class="me-tool-row">
-                        <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')" title="Erase terrain at this tile">🧹 Erase</button>
-                        <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')" title="Erase the top object on this tile">✖ Erase Obj</button>
+                        <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')" title="Erase terrain — digs a real hole (E)">🧹 Erase<kbd>E</kbd></button>
+                        <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')" title="Erase the top object on this tile (X)">✖ Erase Obj<kbd>X</kbd></button>
                     </div>
                     <div class="me-tool-row">
                         <button class="me-tool me-tool-p1" id="meTool-spawn1" onclick="window._meSetTool('spawn1')" title="Place a Player 1 spawn">🔵 P1 Spawn</button>
@@ -7526,6 +7956,7 @@
                         <button class="me-z-btn" onclick="window._meAdjustZ(-1)">−</button>
                         <span class="me-z-value" id="meActiveZVal">${_meActiveZ}</span>
                         <button class="me-z-btn" onclick="window._meAdjustZ(1)">+</button>
+                        <button class="me-z-btn me-z-lock" id="meZLockBtn" onclick="window._meToggleZLock()" title="Z-Lock — paint/erase EXACTLY this layer, so you can slot blocks UNDERNEATH existing blocks or carve buried layers">🔓 Z-Lock</button>
                         <span class="me-z-hint" id="meZHint"></span>
                     </div>
                     <div class="me-elev-picker-wrap">
@@ -7685,6 +8116,19 @@
                     else if (e.key === 'r' || e.key === 'R') {
                         const kind = _meSelectedMonEntry() ? 'mon' : (_meSelectedObjEntry() ? 'obj' : null);
                         if (kind) { e.preventDefault(); window._meRotateSelBy(kind, e.shiftKey ? -45 : 45); }
+                    }
+                    /* Pro-editor single-key tool shortcuts (no modifiers). */
+                    else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                        const k = e.key.toLowerCase();
+                        if (k === 'b')      { e.preventDefault(); window._meSetTool('paint'); }
+                        else if (k === 'o') { e.preventDefault(); window._meSetTool('object'); }
+                        else if (k === 'v') { e.preventDefault(); window._meSetTool('select'); }
+                        else if (k === 'e') { e.preventDefault(); window._meSetTool('erase'); }
+                        else if (k === 'x') { e.preventDefault(); window._meSetTool('eraseObj'); }
+                        else if (k === 'l') { e.preventDefault(); window._meToggleZLock(); }
+                        else if (k === 'g') { e.preventDefault(); window._meToggleZonePreview(); }
+                        else if (k === '[') { e.preventDefault(); window._meAdjustZ(-1); }
+                        else if (k === ']') { e.preventDefault(); window._meAdjustZ(1); }
                     }
                 };
                 document.addEventListener('keydown', window._meKeyHandler);
@@ -8131,6 +8575,7 @@
         window._mePickObject = function(key) {
             _meSfx('uiCursorFocus');
             _meSelectedObject = key;
+            _meRecallObjPlacement(key);
             _meTool = 'object';
             _mePaletteTab = 'objects';
             _meSelectedObjRef = null;
@@ -8352,22 +8797,26 @@
             const e = _meSelectedObjEntry(); if (!e) return;
             e.rot = ((+deg % 360) + 360) % 360;
             _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+            _meRememberObjPlacement(ME_OBJECT_IDS[e.oid], e);
             _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meRotateSelectedBy = function(delta) {
             const e = _meSelectedObjEntry(); if (!e) return;
             e.rot = ((((e.rot || 0) + delta) % 360) + 360) % 360;
             _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+            _meRememberObjPlacement(ME_OBJECT_IDS[e.oid], e);
             _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meFlipSelected = function(axis) {
             const e = _meSelectedObjEntry(); if (!e) return;
             if (axis === 'x') e.flipX = !e.flipX; else e.flipY = !e.flipY;
+            _meRememberObjPlacement(ME_OBJECT_IDS[e.oid], e);
             _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meSetSelectedLeaf = function(lf) {
             const e = _meSelectedObjEntry(); if (!e) return;
             e.leaf = lf;
+            _meRememberObjPlacement(ME_OBJECT_IDS[e.oid], e);
             _meRenderGrid(); _meRefreshObjects3D(); _meRenderPalette();
         };
         window._meDeleteSelectedObj = function() {
@@ -8403,6 +8852,7 @@
                 const e = _meSelectedObjEntry(); if (!e) return;
                 e.rot = deg;
                 _meApplyStairDirFromRot(_meSelectedObjRef.x, _meSelectedObjRef.y, e);
+                _meRememberObjPlacement(ME_OBJECT_IDS[e.oid], e);
             }
             /* During a drag we update the dial DOM in place (rebuilding the whole
                palette would destroy the element mid-drag and drop pointer capture). */
@@ -8472,12 +8922,29 @@
                 _meRenderPalette();
             }
 
+            _meUpdateZHint();
+        };
+
+        function _meUpdateZHint() {
             const hint = document.getElementById('meZHint');
-            if (hint) {
-                if (t === 'paint') hint.textContent = `Paint at Z=${_meActiveZ}`;
-                else if (t === 'erase') hint.textContent = `Erase at Z=${_meActiveZ}`;
-                else hint.textContent = '';
+            if (!hint) return;
+            const lockTxt = _meZLock ? ' · locked' : '';
+            if (_meTool === 'paint') hint.textContent = `Paint at Z=${_meActiveZ}${lockTxt}`;
+            else if (_meTool === 'erase') hint.textContent = `Erase at Z=${_meActiveZ}${lockTxt}`;
+            else if (_meZLock) hint.textContent = `Z-Lock on (Z=${_meActiveZ})`;
+            else hint.textContent = '';
+        }
+
+        window._meToggleZLock = function() {
+            _meZLock = !_meZLock;
+            _meSfx('uiButtonConfirm');
+            const btn = document.getElementById('meZLockBtn');
+            if (btn) {
+                btn.classList.toggle('active', _meZLock);
+                btn.textContent = (_meZLock ? '🔒' : '🔓') + ' Z-Lock';
             }
+            _meUpdateZHint();
+            _meRenderGrid();
         };
 
         function _meRenderElevationPalette() {
@@ -8537,16 +9004,7 @@
             const val = document.getElementById('meActiveZVal');
             if (val) val.textContent = _meActiveZ;
 
-            const hint = document.getElementById('meZHint');
-            if (hint) {
-                if (_meTool === 'paint') {
-                    hint.textContent = `Paint at Z=${_meActiveZ}`;
-                } else if (_meTool === 'erase') {
-                    hint.textContent = `Erase at Z=${_meActiveZ}`;
-                } else {
-                    hint.textContent = '';
-                }
-            }
+            _meUpdateZHint();
             _meRenderGrid();
         };
 
@@ -9079,6 +9537,10 @@
                 const entry = _meObjEntry(oid, _meSelectedAlignX, _meSelectedAlignY, rotOv !== null ? rotOv : _meSelectedRot, _meSelectedFlipX, _meSelectedFlipY, leaf);
                 _meSfx('itemThrow');
                 _meObjects[py][px].push(entry);
+                /* Remember this orientation for the NEXT placement of the same
+                   object (skip the wall-torch auto-rotate override — that rot
+                   is contextual to the clicked wall face, not a preference). */
+                if (rotOv === null) _meRememberObjPlacement(_meSelectedObject, entry);
                 if (_meGrid[py][px] === 0) _meGrid[py][px] = 1;
 
                 if (_meSelectedObject === 'stairs' || _meSelectedObject === 'stairs_2') {
@@ -9157,9 +9619,18 @@
                     }
                 }
             } else if (_meTool === 'erase') {
-
-                if (_meGetVoxel(x, y, _meActiveZ)) _meSfx('block');
-                _meRemoveVoxel(x, y, _meActiveZ);
+                /* Erase the block the user can SEE: with Z-lock off, target the
+                   block at the active Z if there is one, otherwise the column's
+                   top block (previously erase silently targeted _meActiveZ only,
+                   which usually held no block — "erase does nothing"). Z-lock on
+                   → erase exactly the active layer. */
+                let ez = _meActiveZ;
+                if (!_meZLock && !_meGetVoxel(x, y, ez)) {
+                    const ecol = _meGetColumn(x, y);
+                    if (ecol.length) ez = ecol[ecol.length - 1].z;
+                }
+                if (_meGetVoxel(x, y, ez)) _meSfx('block');
+                _meRemoveVoxel(x, y, ez);
 
                 const col = _meGetColumn(x, y);
                 if (col.length === 0) {
@@ -9383,6 +9854,7 @@
             }
             _meW = nw;
             _meRenderGrid();
+            _meRebuildEditorOverlays3D();   // zone preview + markers track the new size
         };
 
         window._meResizeH = function(delta) {
@@ -9406,11 +9878,15 @@
             }
             _meH = nh;
             _meRenderGrid();
+            _meRebuildEditorOverlays3D();   // zone preview + markers track the new size
         };
 
         window._meClear = function() {
             _mePushUndo();
-            _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(0));
+            /* Clear back to a flat grass floor (like a fresh canvas). Use the
+               Erase tool to dig actual void holes where you want them. */
+            const gTid = ME_TERRAIN_TO_ID['grass'] || 1;
+            _meGrid = Array.from({ length: _meH }, () => Array(_meW).fill(gTid));
             _meObjects = _meEmptyObjGrid(_meH, _meW);
             _meMonuments = [];
             _meSelectedObjRef = null;
@@ -9418,7 +9894,9 @@
             _meSpawns = { 1: [], 2: [] };
             _meSanctuaryZones = _meEmptySanctuaryGrid(_meH, _meW);
             _meHeights = _meEmptyHeightGrid(_meH, _meW);
-            _meVoxels = _meEmptyVoxelGrid(_meH, _meW);
+            /* Real z0 blocks for the grass floor — an empty voxel grid would be
+               zeroed back into the grid by the next _meSyncVoxelsToLegacy. */
+            _meBuildVoxelsFromLegacy();
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
             if (zVal) zVal.textContent = _meActiveZ;
@@ -9488,6 +9966,9 @@
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
+                /* fmt 2 = empty columns are REAL void holes; older saves treat
+                   empty as grass and get back-filled on load. */
+                fmt: 2,
                 ts: Date.now()
             };
             const maps = _meGetSavedMaps();
@@ -9532,6 +10013,7 @@
             } else {
                 _meBuildVoxelsFromLegacy();
             }
+            if (!(m.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era save
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
             if (zVal) zVal.textContent = _meActiveZ;
@@ -9563,7 +10045,8 @@
                 heights: _meHeights,
                 voxels: _meVoxels,
                 monuments: _meMonuments || [],
-                terrainTints: _meTerrainTints
+                terrainTints: _meTerrainTints,
+                fmt: 2
             };
             const json = JSON.stringify(data);
             navigator.clipboard.writeText(json).then(() => {
@@ -9596,6 +10079,7 @@
                 } else {
                     _meBuildVoxelsFromLegacy();
                 }
+                if (!(data.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era map
                 _meActiveZ = 0;
                 if (data.name) document.getElementById('meMapName').value = data.name;
                 _meRenderGrid();
@@ -10146,7 +10630,10 @@
                 for (let x = 0; x < _meW; x++) {
                     const col = _meVoxels ? (_meVoxels[y]?.[x] || []) : [];
                     if (col.length === 0) {
-                        tRow.push('grass');
+                        /* Erased tiles play as impassable void holes — matching
+                           what the editor shows — instead of silently becoming
+                           grass at match time. */
+                        tRow.push('void');
                         hRow.push(0);
                     } else if (col.length === 1) {
 
