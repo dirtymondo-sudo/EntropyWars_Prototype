@@ -133,6 +133,46 @@
             _showTitlePage('modePage');
         };
 
+        /* ── Mystery Dungeon entry point (main menu) ──────────────────────────
+           Skips the map picker entirely: set the 'dungeon' ruleset, load the
+           Guild Hub board, and go straight to the party builder. Locking the
+           party in calls startMatch(), whose MD hook (battle.js) strips the
+           CPU team and populates the hub with roster NPCs. Stepping onto the
+           cave entrance starts the 10-floor run. */
+        window._goToMysteryDungeon = function() {
+            playSfx('uiButtonConfirm');
+            if (typeof GAME_MODES === 'undefined' || !GAME_MODES.md_hub) {
+                addLog('Mystery Dungeon data failed to load.');
+                return;
+            }
+            window._msCpuOnly = true;
+            state.isRankedMatch = false;
+            state._customRoundLimit = 0;
+            state._mdRun = null;
+            state._mdPhase = 'hub';
+            state._mdEnded = false;
+
+            activeMultiplayerMode = 'dungeon';
+            applyGameMode('md_hub');
+            CONFIG.gauntletDeploy = 0;
+
+            state.controllers[1] = CTRL.LOCAL;
+            state.controllers[2] = CTRL.AI;
+            state.showPlayer2Builder = false;
+            state.squadLeaderMode = false;
+
+            window.requestAnimationFrame(() => {
+                if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                render();
+            });
+
+            dismissTitleScreen();
+            render();
+
+            state.audioUnlocked = true;
+            syncMusicToState().catch(() => {});
+        };
+
         function _resetLobbyPages(showId) {
             ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
                 var el = document.getElementById(p);
@@ -5303,7 +5343,10 @@
 
                 unit._damageContributors = {};
                 unit._debuffContributors = {};
-                if (typeof _isGauntlet === 'function' && _isGauntlet()) {
+                if ((typeof _isGauntlet === 'function' && _isGauntlet()) ||
+                    (typeof _isDungeonMode === 'function' && _isDungeonMode())) {
+                    /* Gauntlet + Mystery Dungeon: no respawns — the fallen stay down
+                       (MD party members return when the run ends, back at the hub). */
                     unit._respawnIn = null;
                 } else {
                     unit._respawnIn = Math.min(Math.pow(2, unit._deathCount - 1), 8);
@@ -5336,6 +5379,11 @@
                 } else if (_gauntlet) {
                     const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
                     addLog(`💀 ${unitDisplayName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+                    shakeBoard('normal');
+                } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                    addLog(unit.player === 1
+                        ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
+                        : `💀 ${unitDisplayName(unit)} is defeated!`);
                     shakeBoard('normal');
                 } else {
                     addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
@@ -5695,7 +5743,9 @@
 
             applyLevelUpRewards(newUnit, 1);
 
-            const _isCampaign = (typeof state !== 'undefined') && state.isCampaign;
+            /* Mystery Dungeon reuses the campaign leveling pipeline for its
+               floor-scaled enemies (partyMeta._campaignEnemyLevel). */
+            const _isCampaign = (typeof state !== 'undefined') && (state.isCampaign || !!state._mdRun);
             const _campaignLevel = identityOverride?._campaignLevel || identityOverride?._campaignEnemyLevel || 0;
 
             if (_isCampaign && _campaignLevel > 0) {

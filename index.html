@@ -47,12 +47,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260708u">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260708u">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260708u">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260708u">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260708v">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260708v">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260708v">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260708v">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260708u">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260708v">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -66,7 +66,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260708v"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -391,7 +391,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260708u" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260708v" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -438,6 +438,7 @@
                 <div class="mm-buttons">
                     <button class="mm-btn mm-btn-multiplayer" onclick="window._goToPlayHub()"><span class="mm-label">Play</span><span class="mm-desc-text">Quick play, friendly match, or vs CPU</span></button>
                     <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()"><span class="mm-label">Challenge</span><span class="mm-desc-text">How many battles can you survive?</span></button>
+                    <button class="mm-btn mm-btn-dungeon" onclick="window._goToMysteryDungeon()"><span class="mm-label">Mystery Dungeon</span><span class="mm-desc-text">Descend 10 floors — find the stairs, survive</span></button>
                     <button class="mm-btn mm-btn-profile" onclick="if(typeof window._mountReactProfile==='function') window._mountReactProfile();"><span class="mm-label">Profile</span><span class="mm-desc-text">Stats, history &amp; achievements</span></button>
                     <button class="mm-btn mm-btn-codex" onclick="window._goToCodex()"><span class="mm-label">Codex</span><span class="mm-desc-text">Classified subject dossiers</span></button>
                     <button class="mm-btn mm-btn-shop" onclick="window._goToShop()"><span class="mm-label">Shop&nbsp;<span id="mmShopBadge" class="mm-shop-badge" style="display:none;background:#ffd86a;color:#221a08;border-radius:50%;width:16px;height:16px;font-size:11px;font-weight:700;align-items:center;justify-content:center;vertical-align:middle">!</span></span><span class="mm-desc-text">Declassify &amp; unlock new vessels</span></button>
@@ -894,18 +895,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260708v"></script>
     <script>window._spritesLoaded = true;</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260708v"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260708u';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260708v';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1056,23 +1057,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260708v"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260708v"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260708v"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1102,14 +1103,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260708u"></script>
-    <script src="https://cdn.entropywars.net/ai.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260708v"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260708v"></script>
     <!-- "Claude" AI override: MUST load after ai.js (wraps window.aiTakeTurn) -->
-    <script src="https://cdn.entropywars.net/ainew.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/ainew.js?v=20260708v"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260708u"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260708v"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">

@@ -15028,6 +15028,393 @@
         }
         window.startCampaignBattle = startCampaignBattle;
 
+        /* ═══════════════════ MYSTERY DUNGEON — RUNTIME ═══════════════════════
+           State model (all on `state`):
+             _mdPhase  'hub' | 'floor'
+             _mdRun    null in the hub until a run starts; during a run:
+                       { dungeonId, floor, seed, partyState, startedAt }
+                       partyState = survivors carried between floors
+                       [{build,name,loadout,meta,hp,mp}] (null on floor 1)
+             _mdStairs / _mdEntrance   trigger tiles for the current board
+             _mdEnded / _mdTransitioning   re-entrancy guards
+           Flow: hub → step on entrance → _mdStartRun → _mdLoadFloor →
+           startMatch … step on stairs → _mdAdvanceFloor (carry HP/MP,
+           regenerate board, startMatch again) … floor 10 stairs or party
+           wipe → _mdEndRun → overlay → _mdReturnToHub.
+           The 'dungeon' ruleset never routes through checkWin's stock
+           branches or finalizeMatch — _mdCheckWin owns the outcome.        */
+
+        function _mdActiveDungeon() {
+            const id = state._mdRun ? state._mdRun.dungeonId : 'agartha_depths';
+            return (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[id]) || null;
+        }
+
+        /* Runs inside startMatch right after units are built for ANY dungeon
+           board (hub or floor). */
+        function _mdOnBattlePrepared() {
+            if (state._mdPhase === 'hub') {
+                /* No enemies in the hub — drop the CPU team, seat the roster. */
+                state.units = state.units.filter(u => u.player !== 2);
+                _mdSpawnHubNpcs();
+                state._mdStairs = null;
+                const hub = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_hub : null;
+                state._mdEntrance = (hub && hub._mdEntrance) ? hub._mdEntrance.map(p => ({ x: p.x, y: p.y })) : [];
+                state._mdEnded = false;
+            } else if (state._mdPhase === 'floor' && state._mdRun) {
+                const pb = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_floor : null;
+                state._mdStairs = (pb && pb._mdStairs) ? { x: pb._mdStairs.x, y: pb._mdStairs.y } : null;
+                state._mdEntrance = [];
+                /* carry HP/MP from the previous floor */
+                const carry = state._mdRun.partyState;
+                if (carry) {
+                    for (const u of state.units) {
+                        if (u.player !== 1) continue;
+                        const idx = parseInt(String(u.id).split('-')[1], 10);
+                        const c = Number.isFinite(idx) ? carry[idx] : null;
+                        if (!c) continue;
+                        u.hp = Math.max(1, Math.min(u.maxHp, c.hp));
+                        u.mp = Math.max(0, Math.min(u.maxMp, c.mp));
+                    }
+                }
+                /* final-floor boss: first CPU slot gets the crown */
+                const spec = pb && pb._mdEnemySpec;
+                if (spec && spec.boss) {
+                    const boss = state.units.find(u => u.player === 2 && u.id === '2-0');
+                    if (boss) {
+                        boss._isBoss = true;
+                        boss._mdBoss = true;
+                        boss.name = 'Dungeon Lord';
+                        boss.maxHp = Math.round(boss.maxHp * 1.6);
+                        boss.hp = boss.maxHp;
+                        boss.atk = Math.round(boss.atk * 1.2);
+                    }
+                }
+            }
+        }
+
+        /* Populate the hub with the player's unlocked characters (the ones not
+           already in the party). Pure scenery: never in the turn order (see
+           buildBlitzTurnOrder), 0 AP, friendly so they can't be targeted. */
+        function _mdSpawnHubNpcs() {
+            const hub = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_hub : null;
+            const spots = (hub && hub._mdNpcSpots) ? hub._mdNpcSpots : [];
+            if (!spots.length || typeof isUnitUnlocked !== 'function' || typeof AVAILABLE_RACES === 'undefined') return;
+            const partyRaces = new Set((state.partyMeta?.[1] || []).map(m => m && m.race).filter(Boolean));
+            const pool = AVAILABLE_RACES.filter(rk => {
+                try { return isUnitUnlocked(rk) && !partyRaces.has(rk); } catch (e) { return false; }
+            });
+            for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+            const n = Math.min(spots.length, pool.length);
+            for (let i = 0; i < n; i++) {
+                const race = pool[i];
+                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+                const template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+                const genders = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : ['male'];
+                try {
+                    const npc = createUnit('npc-' + i, 1, spots[i].x, spots[i].y, template, emptyLoadout(), { race, gender: genders[randInt(genders.length)] || 'male' });
+                    npc._mdNpc = true;
+                    npc.ap = 0;
+                    npc.name = race.charAt(0).toUpperCase() + race.slice(1);
+                    state.units.push(npc);
+                } catch (e) { console.error('[MD] hub NPC spawn failed:', race, e); }
+            }
+        }
+
+        /* Move-completion hook (called next to checkFlagPickup): did a party
+           unit land on the hub entrance or the floor stairs? */
+        function _mdCheckStairs(unit) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (!unit || unit.player !== 1 || unit._mdNpc || unit.dead || unit._dying) return;
+            if (state._mdTransitioning || state._mdEnded) return;
+            if (state._mdPhase === 'hub') {
+                const ent = state._mdEntrance || [];
+                if (ent.some(p => p.x === unit.x && p.y === unit.y)) _mdStartRun();
+            } else if (state._mdPhase === 'floor') {
+                const s = state._mdStairs;
+                if (s && unit.x === s.x && unit.y === s.y) _mdAdvanceFloor();
+            }
+        }
+
+        function _mdStartRun() {
+            const dungeonId = 'agartha_depths';
+            const D = (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[dungeonId]) || null;
+            if (!D || typeof generateMdFloor !== 'function') { addLog('⛔ The dungeon gate is sealed (dungeon data missing).'); return; }
+            state._mdTransitioning = true;
+            /* snapshot the home party — floors compact it to survivors, the hub restores it */
+            state._mdHomeParty = {
+                builds: (state.partyBuilds[1] || []).slice(),
+                names: (state.partyNames[1] || []).slice(),
+                loadouts: (state.loadouts[1] || []).map(l => JSON.parse(JSON.stringify(l || {}))),
+                meta: (state.partyMeta[1] || []).map(m => JSON.parse(JSON.stringify(m || {}))),
+            };
+            state._mdRun = {
+                dungeonId,
+                floor: 1,
+                seed: (Math.random() * 0x7FFFFFFF) | 0,
+                partyState: null,
+                startedAt: Date.now(),
+            };
+            try { const sv = loadMdSave(); sv.runs = (sv.runs || 0) + 1; saveMdSave(sv); } catch (e) {}
+            addLog(`🗝️ Entering ${D.label} — ${D.floors} floors below. Find the stairs on each one!`);
+            if (typeof showCombatBanner === 'function') showCombatBanner('🗝️ ' + D.label, 'Floor 1 — find the stairs!', 'neutral');
+            setTimeout(() => { state._mdTransitioning = false; _mdLoadFloor(); }, 700);
+        }
+
+        /* Generate + register the current floor, seat both parties, relaunch. */
+        function _mdLoadFloor() {
+            const run = state._mdRun;
+            if (!run) return;
+            const D = _mdActiveDungeon();
+            /* compact the party to the survivors carried from the last floor */
+            if (run.partyState) {
+                state.partyBuilds[1] = run.partyState.map(p => p.build);
+                state.partyNames[1] = run.partyState.map(p => p.name);
+                state.loadouts[1] = run.partyState.map(p => p.loadout || emptyLoadout());
+                state.partyMeta[1] = run.partyState.map(p => p.meta || {});
+            }
+            const partySize = Math.max(1, (state.partyBuilds[1] || []).length);
+            let entry;
+            try {
+                entry = generateMdFloor(run.dungeonId, run.floor, run.seed, partySize);
+                _mdRegisterFloor(entry);
+            } catch (e) {
+                console.error('[MD] floor generation failed', e);
+                addLog('⛔ The passage down has collapsed (floor generation failed). The run ends.');
+                _mdEndRun(false);
+                return;
+            }
+            state._mdPhase = 'floor';
+            applyGameMode('md_floor');
+            /* enemy party AFTER applyGameMode (which pads both parties to the
+               P1 team size — the CPU roster is its own length, like campaign) */
+            const spec = entry._mdEnemySpec || { count: 3, races: ['skeleton'], levelRange: [1, 2], boss: null };
+            state.partyBuilds[2] = [];
+            state.partyNames[2] = [];
+            state.loadouts[2] = [];
+            state.partyMeta[2] = [];
+            for (let i = 0; i < spec.count; i++) {
+                const isBoss = !!(spec.boss && i === 0);
+                const race = isBoss ? spec.boss.race : spec.races[i % spec.races.length];
+                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+                const lo = spec.levelRange[0], hi = spec.levelRange[1];
+                const lvl = isBoss ? spec.boss.level : (lo + randInt(Math.max(1, hi - lo + 1)));
+                const genders = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : ['male'];
+                state.partyBuilds[2][i] = job;
+                state.partyNames[2][i] = isBoss ? 'Dungeon Lord' : race.charAt(0).toUpperCase() + race.slice(1);
+                state.loadouts[2][i] = emptyLoadout();
+                state.partyMeta[2][i] = {
+                    race,
+                    gender: genders[randInt(genders.length)] || 'male',
+                    _campaignEnemyLevel: Math.min(lvl, (typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 10),
+                    _campaignEnemyXp: 0,
+                };
+            }
+            /* gentle difficulty ramp on the shared challenge-AI multiplier */
+            state._challengeAiMult = Math.min(1.35, 0.9 + run.floor * 0.045);
+            state.controllers[1] = CTRL.LOCAL;
+            state.controllers[2] = CTRL.AI;
+            startMatch();
+        }
+
+        function _mdAdvanceFloor() {
+            const run = state._mdRun;
+            if (!run || state._mdTransitioning || state._mdEnded) return;
+            const D = _mdActiveDungeon();
+            state._mdTransitioning = true;
+            /* carry the survivors (identity + loadout + current HP/MP) */
+            const survivors = [];
+            for (const u of state.units) {
+                if (u.player !== 1 || u.dead || u._dying || u._mdNpc) continue;
+                const idx = parseInt(String(u.id).split('-')[1], 10);
+                if (!Number.isFinite(idx)) continue;
+                survivors.push({
+                    build: state.partyBuilds[1][idx],
+                    name: state.partyNames[1][idx],
+                    loadout: state.loadouts[1][idx] || emptyLoadout(),
+                    meta: state.partyMeta[1][idx] || {},
+                    hp: u.hp, mp: u.mp,
+                });
+            }
+            if (!survivors.length) { state._mdTransitioning = false; _mdEndRun(false); return; }
+            run.partyState = survivors;
+            run.floor += 1;
+            try {
+                const sv = loadMdSave();
+                if ((run.floor - 1) > (sv.bestFloor || 0)) { sv.bestFloor = run.floor - 1; saveMdSave(sv); }
+            } catch (e) {}
+            if (run.floor > D.floors) { state._mdTransitioning = false; _mdEndRun(true); return; }
+            addLog(`⬇ Floor ${run.floor - 1} cleared — descending to Floor ${run.floor}…`);
+            if (typeof showCombatBanner === 'function') showCombatBanner(`⬇ FLOOR ${run.floor}`, `${D.label} — find the stairs!`, 'neutral');
+            setTimeout(() => { state._mdTransitioning = false; _mdLoadFloor(); }, 900);
+        }
+
+        /* Called by checkWin's dungeon branch after every death/action. */
+        function _mdCheckWin() {
+            if (state._mdEnded || state._mdTransitioning) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying && !u._mdNpc).length;
+            if (p1Alive === 0) _mdEndRun(false);
+        }
+
+        function _mdEndRun(victory) {
+            if (state._mdEnded || !state._mdRun) return;
+            state._mdEnded = true;
+            state._mdTransitioning = true;
+            const run = state._mdRun;
+            const D = _mdActiveDungeon();
+            /* halt the engine: a set winner stops every turn/AI loop, and the
+               dungeon checkWin branch never routes to finalizeMatch */
+            state.winner = victory ? 1 : 2;
+            state._winLogged = true;
+            state._winCondition = victory ? 'md_clear' : 'md_wipe';
+            _stopMatchClockInterval();
+            if (typeof _stopShotClock === 'function') _stopShotClock();
+
+            const floorsCleared = victory ? D.floors : Math.max(0, run.floor - 1);
+            const gold = floorsCleared * 40 + (victory ? 400 : 0);
+            let sv = null;
+            try {
+                sv = loadMdSave();
+                sv.bestFloor = Math.max(sv.bestFloor || 0, floorsCleared);
+                if (victory) sv.clears = (sv.clears || 0) + 1;
+                sv.goldEarned = (sv.goldEarned || 0) + gold;
+                saveMdSave(sv);
+            } catch (e) {}
+            try {
+                if (gold > 0 && window.ProfileSystem && typeof window.ProfileSystem.creditLocalGold === 'function') {
+                    window.ProfileSystem.creditLocalGold(gold);
+                }
+            } catch (e) {}
+            try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
+
+            addLog(victory
+                ? `🏆 ${D.label} CLEARED! All ${D.floors} floors conquered. +${gold} gold.`
+                : `☠️ The party has fallen on Floor ${run.floor}. Floors cleared: ${floorsCleared}. +${gold} gold.`);
+            if (!state.devAutoSim) { try { playStinger(victory ? 'victory' : 'defeat'); } catch (e) {} }
+            setTimeout(() => _mdShowResultOverlay(victory, floorsCleared, gold, sv), victory ? 600 : 1100);
+        }
+
+        function _mdShowResultOverlay(victory, floorsCleared, gold, sv) {
+            const D = _mdActiveDungeon();
+            const vicSky = document.getElementById('vicSky');
+            const vicGround = document.getElementById('vicGround');
+            const vicTitle = document.getElementById('vicTitle');
+            const vicSubtitle = document.getElementById('vicSubtitle');
+            const vicMatchInfo = document.getElementById('vicMatchInfo');
+            const vicParty = document.getElementById('vicParty');
+            const vicAwards = document.getElementById('vicAwards');
+            const vicParticles = document.getElementById('vicParticles');
+            const vicBottom = document.getElementById('vicBottom');
+            if (!vicTitle || !vicBottom) { window._mdReturnToHub(); return; }
+
+            const wonClass = victory ? 'victory' : 'defeat';
+            if (vicSky) vicSky.className = 'vic-sky ' + wonClass;
+            if (vicGround) vicGround.className = 'vic-ground ' + wonClass;
+            vicTitle.textContent = victory ? 'Dungeon Cleared!' : 'The Party Has Fallen';
+            vicTitle.className = 'vic-title ' + wonClass;
+            if (vicSubtitle) vicSubtitle.innerHTML = victory
+                ? `${D.label} — all ${D.floors} floors conquered!`
+                : `${D.label} — you made it to Floor <b>${(state._mdRun && state._mdRun.floor) || 1}</b> (cleared ${floorsCleared})`;
+
+            let particleHtml = '';
+            if (victory && vicParticles) {
+                for (let i = 0; i < 30; i++) {
+                    const x = Math.random() * 100, y = 20 + Math.random() * 60;
+                    particleHtml += `<div class="vic-particle" style="left:${x}%;top:${y}%;width:${1 + Math.random() * 2}px;height:${1 + Math.random() * 2}px;animation-delay:${Math.random() * 4}s"></div>`;
+                }
+            }
+            if (vicParticles) vicParticles.innerHTML = particleHtml;
+
+            if (vicMatchInfo) {
+                vicMatchInfo.innerHTML = `<div class="camp-gold-section">
+                    <div class="camp-gold-row"><span>Floors Cleared</span><span class="camp-gold-val">${floorsCleared} / ${D.floors}</span></div>
+                    <div class="camp-gold-row total"><span>Gold Earned</span><span class="camp-gold-val">+${gold}g</span></div>
+                    ${sv ? `<div class="camp-gold-row"><span>Best Depth</span><span class="camp-gold-val">Floor ${sv.bestFloor || 0}</span></div>
+                    <div class="camp-gold-row"><span>Total Clears</span><span class="camp-gold-val">${sv.clears || 0}</span></div>` : ''}
+                </div>`;
+            }
+            if (vicParty) {
+                const party = (state.units || []).filter(u => u.player === 1 && !u._mdNpc);
+                const POSITIONS = [
+                    { scale: 1.6, bottom: '8%', zIdx: 10, mx: '0px' },
+                    { scale: 1.3, bottom: '12%', zIdx: 8, mx: '-120px' },
+                    { scale: 1.3, bottom: '12%', zIdx: 8, mx: '120px' },
+                    { scale: 1.0, bottom: '16%', zIdx: 6, mx: '-220px' },
+                    { scale: 1.0, bottom: '16%', zIdx: 6, mx: '220px' },
+                ];
+                const sorted = [...party].sort((a, b) => (a.dead !== b.dead) ? (a.dead ? 1 : -1) : (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0));
+                let partyHtml = '';
+                for (let i = 0; i < sorted.length && i < POSITIONS.length; i++) {
+                    const u = sorted[i], p = POSITIONS[i];
+                    const sprite = (typeof getBattleMapSpriteUrl === 'function') ? getBattleMapSpriteUrl(u) : '';
+                    const px = Math.round(128 * p.scale);
+                    partyHtml += `<div class="vic-unit${u.dead ? ' dead' : ''}" style="position:absolute;bottom:${p.bottom};left:50%;margin-left:calc(${p.mx} - ${px / 2}px);z-index:${p.zIdx}">
+                        <div class="vic-unit-img" style="width:${px}px;height:${px}px;background-image:url('${sprite}');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated"></div>
+                        <div class="vic-unit-shadow" style="width:${px * 0.7}px"></div>
+                        <div class="vic-unit-name p1">${escapeHtml(unitDisplayName(u))}</div>
+                    </div>`;
+                }
+                vicParty.innerHTML = partyHtml;
+            }
+            if (vicAwards) vicAwards.innerHTML = '';
+            ['vicEloBadge', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicStatsTableWrap'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = '';
+            });
+            vicBottom.innerHTML = `
+                <button class="primary camp-btn" onclick="window._mdReturnToHub()">🏘 Return to Hub</button>
+                <button class="warn camp-btn" onclick="window._mdExitToMenu()">Main Menu</button>
+            `;
+            resultOverlay.classList.remove('hidden');
+        }
+
+        /* Back to the Guild Hub: restore the pre-run party, reload the hub board. */
+        window._mdReturnToHub = function() {
+            playSfx('uiButtonConfirm');
+            if (typeof hideResultOverlay === 'function') hideResultOverlay();
+            const home = state._mdHomeParty;
+            if (home) {
+                state.partyBuilds[1] = home.builds.slice();
+                state.partyNames[1] = home.names.slice();
+                state.loadouts[1] = home.loadouts.map(l => JSON.parse(JSON.stringify(l)));
+                state.partyMeta[1] = home.meta.map(m => JSON.parse(JSON.stringify(m)));
+            }
+            state._mdRun = null;
+            state._mdPhase = 'hub';
+            state._mdEnded = false;
+            state._mdTransitioning = false;
+            state.winner = null;
+            state._winLogged = false;
+            state._winCondition = null;
+            state._endingReason = null;
+            state._stalemateRounds = 0;
+            state._lastActivityTotal = 0;
+            state._challengeAiMult = null;
+            activeMultiplayerMode = 'dungeon';
+            applyGameMode('md_hub');
+            state.controllers[1] = CTRL.LOCAL;
+            state.controllers[2] = CTRL.AI;
+            startMatch();
+        };
+
+        window._mdExitToMenu = function() {
+            playSfx('uiButtonConfirm');
+            if (typeof hideResultOverlay === 'function') hideResultOverlay();
+            const home = state._mdHomeParty;
+            if (home) {
+                state.partyBuilds[1] = home.builds.slice();
+                state.partyNames[1] = home.names.slice();
+                state.loadouts[1] = home.loadouts.map(l => JSON.parse(JSON.stringify(l)));
+                state.partyMeta[1] = home.meta.map(m => JSON.parse(JSON.stringify(m)));
+            }
+            state._mdRun = null;
+            state._mdPhase = null;
+            state._mdEnded = false;
+            state._mdTransitioning = false;
+            state._challengeAiMult = null;
+            window.backToMainMenu();
+        };
+
         function _campaignCalcStars() { return 1; }
 
         function finalizeCampaignBattle() {
@@ -16938,6 +17325,9 @@
             state.activeWeather = [];
             state.announcementQueue = [];
             prepareBattleStateFromCurrentBuilds();
+            /* Mystery Dungeon: strip the CPU team + seat roster NPCs (hub), or
+               carry party HP/MP + crown the boss (floor). */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) _mdOnBattlePrepared();
             clearUndoStack();
 
             const _builderOv = document.getElementById('builderOverlay');
@@ -16946,7 +17336,12 @@
             if (_mapRow) _mapRow.style.display = '';
 
             const _cutsceneScript = getCutsceneForCurrentLevel();
-            const _launchVSSplash = () => showVSSplash(function _afterVSSplash() {
+            /* Mystery Dungeon skips the VS splash — floor-to-floor transitions
+               (and the hub) should feel like one continuous crawl. */
+            const _launchVSSplash = () => ((typeof _isDungeonMode === 'function' && _isDungeonMode())
+                ? _afterVSSplash()
+                : showVSSplash(_afterVSSplash));
+            function _afterVSSplash() {
 
             if (mpMode.hasFlags) {
                 /* Place flags at the center of each team's spawn zone */
@@ -16974,6 +17369,13 @@
             } else if (mpMode.id === 'arena') {
                 const rl = mpMode.roundLimit || '?';
                 addLog(`🏰 Arena! ${rl}-round limit. Destroy the tower, collect hourglasses, or wipe out the enemy. Composite score decides if no winner.`);
+            } else if (mpMode.id === 'dungeon') {
+                if (state._mdPhase === 'hub') {
+                    addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
+                } else if (state._mdRun) {
+                    const foes = state.units.filter(u => u.player === 2 && !u.dead).length;
+                    addLog(`🗝️ Floor ${state._mdRun.floor} — find the stairs and step onto them! ${foes} enem${foes === 1 ? 'y' : 'ies'} lurk${foes === 1 ? 's' : ''} in the dark. No respawns!`);
+                }
             }
 
             if (getActiveGameMode().blitzMode) {
@@ -17016,7 +17418,7 @@
                 });
             });
 
-            });
+            }
 
             // Loading screen first (the real asset gate — GLBs, battle track,
             // sprites), then the VS splash plays as a pure cinematic over a
@@ -17483,7 +17885,9 @@
                     processRespawns();
 
                     const _smMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                    if (!_smMode || !_smMode.roundLimit)
+                    /* Mystery Dungeon is exploration — long quiet stretches are
+                       normal, never void the match as a stalemate. */
+                    if ((!_smMode || !_smMode.roundLimit) && !(_smMode && _smMode.isDungeon))
                     {
                         const totalDmgNow = state.units.reduce((s, u) => s + (u._trackDmgDealt || 0) + (u._trackDmgReceived || 0), 0);
                         const totalSpellsCast = state.units.reduce((s, u) => s + (u._trackSpellsCast || 0), 0);
@@ -21587,6 +21991,8 @@
             checkStealthReveals(unit);
 
             if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
+
+            if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
 
             if (state.wards && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
                 const wardIdx = state.wards.findIndex(w => w.x === unit.x && w.y === unit.y && w.owner !== unit.player);
@@ -28841,6 +29247,10 @@
 
         function checkWinConditionOnly() {
 
+            /* Mystery Dungeon resolves its own outcome (_mdCheckWin) — killing
+               every enemy on a floor must NOT end the match. */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
+
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
 
@@ -28862,6 +29272,13 @@
         }
 
         function checkWin() {
+            /* Mystery Dungeon owns its outcome: party wipe ends the run via
+               _mdEndRun (never finalizeMatch), enemy wipe ends nothing, and
+               reaching the stairs is handled on move completion. */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                if (typeof _mdCheckWin === 'function') _mdCheckWin();
+                return;
+            }
             if (state.winner) {
                 if (!state._winLogged) {
                     state._winLogged = true;
@@ -29160,6 +29577,8 @@
 
         function _startShotClock() {
             if (!state.shotClock) return;
+            /* Mystery Dungeon: exploration has no turn timer. */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return;
             state.shotClock.startedAt = Date.now();
             state.shotClock.pausedAt = null;
             state.shotClock.active = true;

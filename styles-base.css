@@ -2345,6 +2345,7 @@
         .mm-btn-friendly:hover .mm-label { color: var(--blue); }
         .mm-btn-vscpu:hover .mm-label { color: var(--purple); }
         .mm-btn-campaign:hover .mm-label { color: var(--gold); }
+        .mm-btn-dungeon:hover .mm-label { color: #b98ef0; }
         .mm-btn-settings:hover .mm-label { color: var(--muted); }
         .mm-btn-codex:hover .mm-label { color: #60d0a0; }
         .mm-settings-body {

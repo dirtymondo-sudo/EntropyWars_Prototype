@@ -192,6 +192,14 @@ const ThreeCamera = (function () {
         threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
     }
 
+    /* One shared Raycaster for all picking — these run on every mousemove AND
+       every camera-move frame, so per-call allocation was pure GC churn. */
+    let _pickRaycaster = null;
+    function _getPickRaycaster() {
+        if (!_pickRaycaster) _pickRaycaster = new THREE.Raycaster();
+        return _pickRaycaster;
+    }
+
     function screenToTile(screenX, screenY, canvas, terrainGroup, objectGroup) {
         if (!threeCamera || !terrainGroup) return null;
 
@@ -201,7 +209,7 @@ const ThreeCamera = (function () {
             -((screenY - rect.top)  / rect.height) * 2 + 1
         );
 
-        const raycaster = new THREE.Raycaster();
+        const raycaster = _getPickRaycaster();
         raycaster.setFromCamera(ndc, threeCamera);
 
         const hits = raycaster.intersectObjects(terrainGroup.children, true);
@@ -267,7 +275,7 @@ const ThreeCamera = (function () {
             -((screenY - rect.top)  / rect.height) * 2 + 1
         );
 
-        const raycaster = new THREE.Raycaster();
+        const raycaster = _getPickRaycaster();
         raycaster.setFromCamera(ndc, threeCamera);
 
         const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(planeY || 0));
@@ -290,7 +298,7 @@ const ThreeCamera = (function () {
             -((screenY - rect.top)  / rect.height) * 2 + 1
         );
 
-        const raycaster = new THREE.Raycaster();
+        const raycaster = _getPickRaycaster();
         raycaster.setFromCamera(ndc, threeCamera);
 
         const hits = raycaster.intersectObjects(unitGroup.children, true);

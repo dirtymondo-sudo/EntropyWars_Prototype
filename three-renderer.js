@@ -2347,6 +2347,7 @@ const ThreeRenderer = (function () {
         _lastHeightVersion = state._heightVersion || 0;
         _lastVoxelVersion = state._voxelVersion || 0;
         _objectsDirty = true;
+        _lavaMeshCache = null;   // tile meshes changed — re-collect the lava list lazily
 
         if (ThreePost && ThreePost.rebuildLavaLights) {
             ThreePost.rebuildLavaLights(lavaTiles, tileTopY, ts);
@@ -2563,7 +2564,15 @@ const ThreeRenderer = (function () {
         _shadowsDirty = true;
     }
 
+    /* Perf: this hash walks the whole board, and the render loop polls it
+       every frame. Board objects change rarely (spells/editor), so cache the
+       result for a short window — a ≤200ms delay before an object rebuild is
+       imperceptible, while the per-frame O(area) scan disappears. */
+    var _objSerialCacheVal = null;
+    var _objSerialCacheAt = 0;
     function _computeObjectSerial() {
+        var _nowMs = performance.now();
+        if (_objSerialCacheVal !== null && (_nowMs - _objSerialCacheAt) < 200) return _objSerialCacheVal;
         var s = 0, _bw = (typeof bw === 'function') ? bw() : 0, _bh = (typeof bh === 'function') ? bh() : 0;
         if (state.boardObjects) {
             for (var y = 0; y < _bh; y++) {
@@ -2605,6 +2614,8 @@ const ThreeRenderer = (function () {
                 if (mo.kind) { for (var mc = 0; mc < mo.kind.length; mc++) s += mo.kind.charCodeAt(mc); }
             }
         }
+        _objSerialCacheVal = s;
+        _objSerialCacheAt = _nowMs;
         return s;
     }
     /* §4.4 (ROADMAP): the _compute*Serial functions used to concatenate
@@ -3967,6 +3978,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    var _rockMatCache = {};
     function _buildRockCluster3D(x, y, texOverride) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
@@ -3992,10 +4004,20 @@ const ThreeRenderer = (function () {
 
             var shade = 0.5 + _sr() * 0.3;
             var mat;
-            /* Entropy Vale colour tint removed — rocks use the default grey shading on every map */
-            mat = rockTex
-                ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(shade, shade * 0.95, shade * 0.9), depthWrite: true })
-                : new THREE.MeshBasicMaterial({ color: new THREE.Color(shade * 0.6, shade * 0.55, shade * 0.5), depthWrite: true });
+            /* Entropy Vale colour tint removed — rocks use the default grey shading on every map.
+               Perf: shade is quantized to 8 steps and the materials cached —
+               big boards used to allocate a fresh material for EVERY rock
+               (hundreds of one-off materials per rebuild). */
+            var _shadeQ = Math.round(shade * 16) / 16;
+            var _rmKey = (rockTex ? (rockTex.uuid || 'tex') : 'flat') + '|' + _shadeQ;
+            mat = _rockMatCache[_rmKey];
+            if (!mat) {
+                mat = rockTex
+                    ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(_shadeQ, _shadeQ * 0.95, _shadeQ * 0.9), depthWrite: true })
+                    : new THREE.MeshBasicMaterial({ color: new THREE.Color(_shadeQ * 0.6, _shadeQ * 0.55, _shadeQ * 0.5), depthWrite: true });
+                mat._ew_shared = true;   // survives deco rebuild disposal
+                _rockMatCache[_rmKey] = mat;
+            }
 
             var rock = new THREE.Mesh(baseGeo, mat);
             rock.scale.set(radius, radius, radius);
@@ -4459,6 +4481,32 @@ const ThreeRenderer = (function () {
         return (state._terrainVersion || 0) * 65599 + (state._heightVersion || 0);
     }
 
+    /* Perf (§ big-board FPS cliff): decorations used to be one Mesh PER TILE
+       (a 20×20 grass map ≈ 200+ grass draw calls), each also shadow-casting
+       and raycast-tested on every hover/pan — the dominant O(area) cost on
+       large boards. Now:
+         • all auto-scatter grass tufts are baked into ONE merged mesh
+           (shared material, world-space verts) — one draw call per board;
+         • grass density scales down as board area grows (same look up close,
+           far fewer blades in total on huge maps);
+         • every decoration is excluded from raycasting (they're cosmetic —
+           the tile beneath resolves the pick) and from shadow casting. */
+    var _noopRaycast = function () {};
+    function _decoAppendTuftWorld(g, verts, cols, uvs) {
+        /* bake a tuft group's local geometry into world-space arrays */
+        var mesh = g.children && g.children[0];
+        if (!mesh || !mesh.geometry) return;
+        var pos = mesh.geometry.getAttribute('position');
+        var col = mesh.geometry.getAttribute('color');
+        var uv = mesh.geometry.getAttribute('uv');
+        var ox = g.position.x, oy = g.position.y, oz = g.position.z;
+        for (var i = 0; i < pos.count; i++) {
+            verts.push(pos.getX(i) + ox, pos.getY(i) + oy, pos.getZ(i) + oz);
+            cols.push(col.getX(i), col.getY(i), col.getZ(i));
+            uvs.push(uv.getX(i), uv.getY(i));
+        }
+        mesh.geometry.dispose();
+    }
     function rebuildTerrainDecorations() {
         if (!objectGroup) return;
         /* Clear old decorations */
@@ -4470,6 +4518,19 @@ const ThreeRenderer = (function () {
 
         var _bw = (typeof bw === 'function') ? bw() : 0;
         var _bh = (typeof bh === 'function') ? bh() : 0;
+
+        /* Density falloff: full coverage up to 12×12, then thin out with area
+           so total blade count stays roughly constant on big boards. */
+        var _area = Math.max(1, _bw * _bh);
+        var _covScale = _area <= 144 ? 1 : Math.max(0.28, 144 / _area);
+        var _cov = Math.max(24, Math.round(GRASS.coverage * _covScale));
+
+        /* Fog of war reveals decorations per tile (see _applyFogVisibility), so
+           a single merged mesh can't be used there — same tradeoff as the
+           terrain batcher. Fog matches keep per-tile tufts (still no shadows,
+           no raycast); everything else gets the one-draw-call merge. */
+        var _mergeGrass = !(state.fogOfWar && typeof _fogGridWanted === 'function' && _fogGridWanted());
+        var _gVerts = [], _gCols = [], _gUvs = [];
 
         for (var dy = 0; dy < _bh; dy++) {
             for (var dx = 0; dx < _bw; dx++) {
@@ -4485,9 +4546,12 @@ const ThreeRenderer = (function () {
                    Coexists fine with the boulder scatter below. */
                 if (GRASS.enabled && GRASS.autoScatter && _GRASS_TERRAIN_SET[terrain]) {
                     var gHash = (dx * 263 + dy * 521 + 91) & 0xFF;
-                    if (gHash < GRASS.coverage) {
+                    if (gHash < _cov) {
                         var gt = _buildGrassTuft3D(dx, dy);
-                        if (gt) _terrainDecoGroup.add(gt);
+                        if (gt) {
+                            if (_mergeGrass) _decoAppendTuftWorld(gt, _gVerts, _gCols, _gUvs);
+                            else _terrainDecoGroup.add(gt);
+                        }
                     }
                 }
 
@@ -4510,6 +4574,26 @@ const ThreeRenderer = (function () {
                 if (m) _terrainDecoGroup.add(m);
             }
         }
+
+        /* one merged mesh for every grass tuft on the board */
+        if (_gVerts.length) {
+            var mgGeo = new THREE.BufferGeometry();
+            mgGeo.setAttribute('position', new THREE.Float32BufferAttribute(_gVerts, 3));
+            mgGeo.setAttribute('color',    new THREE.Float32BufferAttribute(_gCols, 3));
+            mgGeo.setAttribute('uv',       new THREE.Float32BufferAttribute(_gUvs, 2));
+            var mgMesh = new THREE.Mesh(mgGeo, _getGrassMat());
+            mgMesh.matrixAutoUpdate = false;
+            _terrainDecoGroup.add(mgMesh);
+        }
+
+        /* decorations are cosmetic: never raycast, never cast/receive shadows */
+        _terrainDecoGroup.traverse(function (o) {
+            if (!o.isMesh) return;
+            o.raycast = _noopRaycast;
+            o.castShadow = false;
+            o.receiveShadow = false;
+            o._ew_shadowFlagged = true;   // preempt _flagMeshShadows re-enabling them
+        });
 
         objectGroup.add(_terrainDecoGroup);
         _lastTerrainDecoSerial = _computeTerrainDecoSerial();
@@ -17022,17 +17106,27 @@ const ThreeRenderer = (function () {
 
     function isActive() { return active; }
 
+    /* Perf: the old version walked EVERY tile mesh every frame just to find
+       the lava ones — O(board area) per frame even on lava-free maps. The
+       lava set only changes on a terrain rebuild, so collect it once per
+       rebuild (rebuildTerrain nulls the cache) and iterate only that. */
+    var _lavaMeshCache = null;
     function _updateLavaEmissive() {
+        if (_lavaMeshCache === null) {
+            _lavaMeshCache = [];
+            for (var centry of tileMeshes) {
+                if (centry[1]._ew_isLava) _lavaMeshCache.push(centry[1]);
+            }
+        }
+        if (_lavaMeshCache.length === 0) return;
+
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var isNight = (cycle === 'night');
         var baseInt = isNight ? 0.7 : 0.25;
         var now = performance.now() * 0.001;
-        var idx = 0;
 
-        for (var entry of tileMeshes) {
-            var mesh = entry[1];
-            if (!mesh._ew_isLava) continue;
-
+        for (var idx = 0; idx < _lavaMeshCache.length; idx++) {
+            var mesh = _lavaMeshCache[idx];
             var pulse = 1.0
                 + 0.15 * Math.sin(now * 1.5 + idx * 2.1)
                 + 0.08 * Math.sin(now * 3.7 + idx * 1.3);
@@ -17043,7 +17137,6 @@ const ThreeRenderer = (function () {
                     mats[i].emissiveIntensity = eInt;
                 }
             }
-            idx++;
         }
     }
 

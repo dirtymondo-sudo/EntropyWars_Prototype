@@ -311,6 +311,25 @@
                 suddenDeath: false,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
+            dungeon: {
+                id: 'dungeon',
+                label: 'Mystery Dungeon',
+                icon: '🗝️',
+                desc: 'PvE dungeon crawl. Take a party of 4 into a 10-floor dungeon: find the stairs on every floor, survive to the bottom. No respawns during a run — the fallen return at the Guild Hub.',
+                roundLimit: 0,
+                timeLimitSec: 0,
+                hasTowers: false,
+                hasNexus: false,
+                hasHourglasses: false,
+                hasFlags: false,
+                respawns: false,
+                isDungeon: true,
+                winConditions: ['md_run'],   // resolved by the MD runtime in battle.js, not checkWin's stock branches
+                tiebreaker: null,
+                scoringType: null,
+                suddenDeath: false,
+                compatibleMaps: [],   // never map-picked: the hub + generated floors load directly
+            },
         };
 
         /* compatibleMaps are generated from the MapForge roster: every launch
@@ -325,7 +344,52 @@
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
             MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+            /* Mystery Dungeon never appears in the PvP map picker — its hub and
+               generated floors are loaded directly by the MD runtime. */
+            MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
         })();
+
+        /* ── Mystery Dungeon board registrations ──────────────────────────────
+           The Guild Hub is a real prebuilt map (built in data.js) that must NOT
+           be in EW_MAP_META (no Δ variants, no picker card), so its GAME_MODES
+           entry is written here by hand. 'md_floor' gets a placeholder that
+           _mdRegisterFloor (data.js) overwrites with each generated floor. */
+        (function _registerMdGameModes() {
+            if (typeof PREBUILT_MAPS === 'undefined') return;
+            const hub = PREBUILT_MAPS[typeof MD_HUB_ID !== 'undefined' ? MD_HUB_ID : 'md_hub'];
+            if (hub && hub.spawns) {
+                GAME_MODES.md_hub = {
+                    id: 'md_hub', label: 'Guild Hub', desc: '8×8 hub — the roster hangs out here between dungeon runs',
+                    boardSize: 8, boardWidth: hub.w, boardHeight: hub.h, teamSize: 4,
+                    winHourglasses: 0, hiddenItemSpawns: 0,
+                    blitzMode: true, hasTowers: false, isPrebuilt: true,
+                    terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                    spawns: { 1: hub.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: hub.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+                    defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] },
+                };
+            }
+        })();
+
+        function _isDungeonMode() {
+            return typeof activeMultiplayerMode !== 'undefined' && activeMultiplayerMode === 'dungeon';
+        }
+        window._isDungeonMode = _isDungeonMode;
+
+        /* Mystery Dungeon persistent progress (independent of the campaign and
+           account wallets — mirrors how the challenge saves keep to themselves). */
+        const MD_SAVE_KEY = 'ew-md-save-v1';
+        function loadMdSave() {
+            try {
+                const raw = localStorage.getItem(MD_SAVE_KEY);
+                const s = raw ? JSON.parse(raw) : null;
+                return Object.assign({ bestFloor: 0, clears: 0, runs: 0, goldEarned: 0 }, s || {});
+            } catch (e) { return { bestFloor: 0, clears: 0, runs: 0, goldEarned: 0 }; }
+        }
+        function saveMdSave(s) {
+            try { localStorage.setItem(MD_SAVE_KEY, JSON.stringify(s || {})); } catch (e) {}
+        }
+        window.loadMdSave = loadMdSave;
+        window.saveMdSave = saveMdSave;
 
         let activeMultiplayerMode = 'arena';
 
@@ -339,7 +403,8 @@
         let _blitzTurnIndex = 0;
 
         function buildBlitzTurnOrder() {
-            const alive = state.units.filter(u => !u.dead);
+            // Hub-world roster NPCs (Mystery Dungeon) are scenery: never in the turn order.
+            const alive = state.units.filter(u => !u.dead && !u._mdNpc);
 
             const tiers = {};
             for (const u of alive) {

@@ -4,6 +4,78 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## MYSTERY DUNGEON MODE + BIG-MAP PERF PASS (2026-07-08) — data.js, state.js, map.js, battle.js, three-renderer.js, three-camera.js, index.html, styles-base.css
+
+New PvE mode: PMD-style dungeon crawl. Entry = **main-menu "Mystery Dungeon" button**
+(`window._goToMysteryDungeon`, map.js) → party builder → **Guild Hub** (8×8, id
+`md_hub`) where the player's UNLOCKED roster loiters as NPCs → step on the east-edge
+cave entrance → 10 procedurally generated maze floors (id `md_floor`) → stairs on
+floor 10 = clear. Gold banked via `ProfileSystem.creditLocalGold`.
+
+- **Data layer (data.js, after `_mfRegisterAll`):** `MD_DUNGEONS` registry (one
+  dungeon: `agartha_depths`, themed on prebuilt_agartha), `_mdBuildHub()` (registers
+  `PREBUILT_MAPS.md_hub` + layout preset; hub entry carries `_mdEntrance` +
+  `_mdNpcSpots`), `generateMdFloor(dungeonId, floor, seed, partySize)` (rooms +
+  L-corridors + loop + dead-end stubs; walls = height-6 `cave_wall` columns on a
+  height-3 floor → blocks ground move (MAX_CLIMB 1) AND LOS, zero engine special-
+  casing; emits a full PREBUILT_MAPS-shaped entry + `_mdStairs` + `_mdEnemySpec`),
+  `_mdRegisterFloor(entry)` (rewrites `PREBUILT_MAPS/MAP_LAYOUT_PRESETS/GAME_MODES
+  ['md_floor']` per floor). Floors are non-square (12×9 → 20×15), floor 10 = boss
+  arena. Generator validated headless: rooms/spawns/stairs all BFS-reachable across
+  50 seed/floor combos (scratchpad test_mdgen.js pattern).
+- **Ruleset:** `MULTIPLAYER_MODES.dungeon` (state.js) — `respawns:false`,
+  `roundLimit:0`, `isDungeon:true`, `winConditions:['md_run']` (a sentinel: NO stock
+  checkWin branch fires). `compatibleMaps` = [] (never in the PvP picker). `md_hub`
+  GAME_MODES entry is hand-registered in state.js (kept OUT of EW_MAP_META so no Δ
+  variants/picker cards get generated).
+- **Runtime (battle.js, "MYSTERY DUNGEON — RUNTIME" block after
+  startCampaignBattle):** state model `state._mdPhase` ('hub'|'floor'),
+  `state._mdRun` {dungeonId, floor, seed, partyState}, guards `_mdEnded`/
+  `_mdTransitioning`. Hooks: (1) startMatch calls `_mdOnBattlePrepared()` after
+  `prepareBattleStateFromCurrentBuilds()` — hub: strips P2 units + spawns roster
+  NPCs (`_mdNpc:true`, ap 0, player 1 so they're untargetable; filtered out of
+  `buildBlitzTurnOrder` in state.js); floor: re-applies carried HP/MP, crowns the
+  `2-0` unit as boss (+60% HP, `_isBoss`) on floor 10. (2) `_mdCheckStairs(unit)`
+  in `completeMoveAlongPath` next to `checkFlagPickup` — entrance tile starts the
+  run, stairs tile → `_mdAdvanceFloor()` (survivors' build/loadout/meta/HP/MP →
+  `run.partyState`, party arrays compacted, board regenerated via
+  `applyGameMode('md_floor')` + `startMatch()`, campaign-style, no reload).
+  (3) `checkWin`/`checkWinConditionOnly` short-circuit for dungeon → `_mdCheckWin`
+  (P1 wipe = `_mdEndRun(false)`; enemy wipe ends NOTHING — floors stay explorable).
+  (4) stalemate no-contest voider + shot clock disabled for dungeon. Enemies are
+  generated per floor like campaign (partyMeta `_campaignEnemyLevel`; the createUnit
+  campaign-level gate in map.js now also accepts `state._mdRun`). Run end →
+  `_mdShowResultOverlay` (vic* DOM) → `_mdReturnToHub()` (restores the pre-run
+  party snapshot `state._mdHomeParty`, reloads hub). VS splash is skipped for all
+  dungeon boards. Persistent progress: `ew-md-save-v1` (bestFloor/clears/runs) via
+  `loadMdSave/saveMdSave` (state.js).
+- **NOT done yet (v2 candidates):** fog-of-war exploration (works but disables the
+  terrain/grass merge — see below), items/chests on floors, multiple dungeons
+  (registry supports it), hub interactions (talk to NPCs), mid-run save/resume
+  across reloads, XP/leveling for the player party during a run.
+
+**Big-map perf pass (why >8×8 tanked weak GPUs; Minecraft comparison):** Minecraft
+merges chunks into few big meshes; we drew almost everything per-tile ×3 (main +
+shadow depth + raycast). Fixed in three-renderer.js/three-camera.js:
+1. **Grass tufts now bake into ONE merged mesh** per board (was: 1 mesh/draw call
+   per tuft, ~59% of grass tiles) — world-space verts, shared material. Under
+   fog-of-war it falls back to per-tile tufts (fog reveals decos per tile), same
+   policy as the terrain batcher.
+2. **All terrain decorations (grass/rocks/crystals) no longer cast/receive shadows
+   and are excluded from raycasting** (`raycast = noop`, `_ew_shadowFlagged` set
+   preemptively) — they were tripling the per-tile cost via the sun depth pass and
+   every hover/pan pick.
+3. **Grass density scales down past 12×12** (`coverage × 144/area`, floor 0.28) so
+   total blade count stays ~constant on huge boards.
+4. **`_updateLavaEmissive` no longer walks every tile mesh every frame** — lava
+   list cached per terrain rebuild (`_lavaMeshCache`, nulled in rebuildTerrain).
+5. **`_computeObjectSerial` (full-board hash, polled every frame) is TTL-cached
+   200ms** — object rebuilds can lag placement by ≤200ms, imperceptible.
+6. **Rock cluster materials quantized+cached** (`_rockMatCache`, was a fresh
+   material per rock) and **one shared Raycaster** in three-camera.js picking.
+   Remaining known big-map costs (untouched): terrain merge still off under
+   fog-of-war/editor; ~7-pass post stack has no low-spec off switch.
+
 ## FIRE/WATER/LIGHTNING VFX PASS (2026-07-08) — three-vfx-effects.js, three-renderer.js, battle.js
 
 - **Burning tiles are ray-marched volumetric fire.** `_syncTileFlames()` in
