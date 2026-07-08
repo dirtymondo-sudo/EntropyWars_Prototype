@@ -4410,7 +4410,8 @@ const ThreeRenderer = (function () {
             weatherballoon: _hzWeatherBalloon, roadsign: _hzRoadSign,
             // 2026-07 gap-fill batch — graveyard / unholy / arcane lore pieces
             woodcross: _hzWoodCross, skull: _hzGrinSkull,
-            fleshmound: _hzFleshMound, tome: _hzTome
+            fleshmound: _hzFleshMound, tome: _hzTome,
+            igloo: _hzIgloo, rosewindow: _hzRoseWindow
         };
         return _MON_BUILDERS;
     }
@@ -14678,11 +14679,18 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xf0cd6e); };
         var marble = _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xfdfaf0);
+        // royal damask upholstery on the seat and backrest
+        var damask = function () { return _hzGeoMat(_hzTex('damask') || _hzTex('carpet'), 0xc03a4a); };
         _hzAt(g, _hzBox(ts * 2.6, ts * 0.5, ts * 2.6, ts, marble), 0, ts * 0.25, 0);
         _hzAt(g, _hzBox(ts * 1.5, ts * 0.55, ts * 1.4, ts, gold()), 0, ts * 0.5 + ts * 0.28, 0);          // seat
+        _hzAt(g, _hzBox(ts * 1.34, ts * 0.16, ts * 1.24, ts, damask()), 0, ts * 0.5 + ts * 0.63, 0);      // seat cushion
         _hzAt(g, _hzBox(ts * 1.5, ts * 2.6, ts * 0.32, ts, gold()), 0, ts * 0.5 + ts * 1.3, ts * 0.55);   // high back
+        _hzAt(g, _hzBox(ts * 1.2, ts * 2.1, ts * 0.06, ts, damask()), 0, ts * 0.5 + ts * 1.45, ts * 0.37); // back panel
         _hzAt(g, _hzBox(ts * 0.28, ts * 0.9, ts * 1.2, ts, gold()), -ts * 0.75, ts * 1.2, 0);             // arms
         _hzAt(g, _hzBox(ts * 0.28, ts * 0.9, ts * 1.2, ts, gold()), ts * 0.75, ts * 1.2, 0);
+        // damask runner spilling down the dais steps
+        var runner = _hzBox(ts * 0.9, ts * 0.05, ts * 1.4, ts, damask());
+        _hzAt(g, runner, 0, ts * 0.53, -ts * 1.5, 0, 0, -0.32);
         var haloMat = _hzGlowMat(0xfff2c8, 0.55);
         var halo = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.75, ts * 0.06, 8, 26), haloMat);
         _hzAt(g, halo, 0, ts * 3.6, ts * 0.35);
@@ -15349,6 +15357,21 @@ const ThreeRenderer = (function () {
             _hzAt(g, _hzCyl(ts * 0.12, ts * 0.12, drumH * 0.9, 6, ts, marble(0xe6dfc8)),
                 Math.cos(a) * (R + ts * 0.1), drumH / 2, Math.sin(a) * (R + ts * 0.1));
         }
+        // stained-glass windows between the columns, lit from within
+        var glassTints = [0xd84a5a, 0x4a7ad8, 0xd8b04a, 0x5ab86a, 0xa85ad8];
+        for (var w = 0; w < 5; w++) {
+            var wa = w * Math.PI * 2 / 5 + Math.PI / 10;
+            var glassMat = _hzGeoMat(_hzTex('brokenglass') || _hzTex('crystal'), glassTints[w]);
+            glassMat.side = THREE.DoubleSide;
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.55, drumH * 0.6), glassMat);
+            _hzAt(g, pane, Math.cos(wa) * (R + ts * 0.03), drumH * 0.52, Math.sin(wa) * (R + ts * 0.03),
+                -wa + Math.PI / 2);
+            var wglowMat = _hzGlowMat(glassTints[w], 0.35);
+            var wglow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.55, drumH * 0.6), wglowMat);
+            _hzAt(g, wglow, Math.cos(wa) * (R + ts * 0.06), drumH * 0.52, Math.sin(wa) * (R + ts * 0.06),
+                -wa + Math.PI / 2);
+            if (w < 2) _hzPulse(wglowMat, null, 0.12, 0, 0.3 + w * 0.2);
+        }
         var dome = new THREE.Mesh(new THREE.SphereGeometry(R * 0.98, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
             _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x7a9a8a));
         _hzAt(g, dome, 0, drumH, 0);
@@ -15846,6 +15869,76 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    // ── North Pole / polar wastes: a snow-block igloo, hearth-lit inside ──
+    function _hzIgloo(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var block = function (c) { return _hzGeoMat(_hzTex('igloo') || _hzTex('ice'), c || 0xeef4fa); };
+        var R = ts * (1.1 + rng() * 0.6);
+        var domeGeo = new THREE.SphereGeometry(R, 14, 9, 0, Math.PI * 2, 0, Math.PI / 2);
+        _hzScaleUV(domeGeo, R / ts * 5, R / ts * 3);
+        var dome = new THREE.Mesh(domeGeo, block());
+        dome.scale.y = 0.82;
+        g.add(dome);
+        // entrance tunnel: a half-cylinder vault poking out of the dome
+        var tunLen = R * 0.85, tunR = R * 0.38;
+        var tunGeo = new THREE.CylinderGeometry(tunR, tunR, tunLen, 10, 1, false, 0, Math.PI);
+        _hzScaleUV(tunGeo, 3, 2);
+        var tunnel = new THREE.Mesh(tunGeo, block(0xe4ecf4));
+        tunnel.material.side = THREE.DoubleSide;
+        _hzAt(g, tunnel, 0, tunR * 0.02, -R - tunLen * 0.28, Math.PI / 2, 0, Math.PI / 2);
+        // the doorway, warm with hearth-light — someone is home
+        var doorMat = _hzGlowMat(0xffb868, 0.55);
+        var door = new THREE.Mesh(new THREE.CircleGeometry(tunR * 0.8, 12, 0, Math.PI), doorMat);
+        _hzAt(g, door, 0, 0, -R - tunLen * 0.78);
+        _hzPulse(doorMat, null, 0.2, 0, 0.35 + rng() * 0.3);
+        // smoke-hole glow at the crown
+        var crown = _hzGlowCore(ts * 0.14, 0xffd9a0, 0xffb868);
+        crown.position.y = R * 0.85; g.add(crown);
+        return g;
+    }
+
+    // ── Gothic ruin: the last wall of a cathedral, rose window still glowing ──
+    function _hzRoseWindow(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var stone = function (c) { return _hzGeoMat(_hzTex('bricks_2') || _hzTex('ruins'), c || 0xb8aa92); };
+        var R = ts * (1.0 + rng() * 0.5);                       // rose radius
+        var cy = R + ts * 1.6;                                  // window centre height
+        // ruined wall stubs flanking the window
+        _hzAt(g, _hzBox(ts * 0.7, cy + R * 0.6, ts * 0.5, ts, stone()), -(R + ts * 0.55), (cy + R * 0.6) / 2, 0);
+        _hzAt(g, _hzBox(ts * 0.7, cy + R * (0.2 + rng() * 0.5), ts * 0.5, ts, stone(0xaa9c84)),
+            R + ts * 0.55, (cy + R * 0.4) / 2, 0);
+        _hzAt(g, _hzBox((R + ts * 0.9) * 2, ts * 1.0, ts * 0.5, ts, stone()), 0, ts * 0.5, 0);   // sill wall
+        // stone ring + spoke tracery
+        var ringGeo = new THREE.TorusGeometry(R, ts * 0.14, 7, 26);
+        _hzTileUV(ringGeo, 2 * Math.PI * R, ts, ts);
+        _hzAt(g, new THREE.Mesh(ringGeo, stone(0xc2b49c)), 0, cy, 0);
+        for (var sp = 0; sp < 6; sp++) {
+            var spoke = _hzBox(ts * 0.07, R * 1.9, ts * 0.09, ts, stone(0xc2b49c));
+            _hzAt(g, spoke, 0, cy, 0, 0, sp * Math.PI / 6);
+        }
+        // the glass itself: jewel-toned petals lit from beyond the wall
+        var petals = [0xd84a5a, 0x4a7ad8, 0xd8b04a, 0x5ab86a, 0xa85ad8, 0xd87a4a];
+        for (var p = 0; p < 6; p++) {
+            var pa = p * Math.PI / 3 + Math.PI / 6;
+            var petalMat = _hzGeoMat(_hzTex('brokenglass') || _hzTex('crystal'), petals[p]);
+            petalMat.side = THREE.DoubleSide;
+            var petal = new THREE.Mesh(new THREE.CircleGeometry(R * 0.34, 10), petalMat);
+            _hzAt(g, petal, Math.cos(pa) * R * 0.55, cy + Math.sin(pa) * R * 0.55, 0);
+        }
+        var heartMat = _hzGeoMat(_hzTex('brokenglass') || _hzTex('crystal'), 0xe8d060);
+        heartMat.side = THREE.DoubleSide;
+        var heart = new THREE.Mesh(new THREE.CircleGeometry(R * 0.3, 12), heartMat);
+        _hzAt(g, heart, 0, cy, 0);
+        // dawn light through the glass (glow disc floating just behind)
+        var beamMat = _hzGlowMat(0xffe9b8, 0.28);
+        var beam = new THREE.Mesh(new THREE.CircleGeometry(R * 1.05, 20), beamMat);
+        _hzAt(g, beam, 0, cy, ts * 0.12);
+        _hzPulse(beamMat, null, 0.10, 0, 0.25 + rng() * 0.2);
+        return g;
+    }
+
     // ── Per-map horizon themes ────────────────────────────────────────────
     // Each theme re-weights the free-floating landmark roster so a map's void
     // reads on-theme: Heaven floats golden gates and stairways, Hell leans
@@ -15859,17 +15952,19 @@ const ThreeRenderer = (function () {
             divine: [
                 [0.15, _hzGoldGate, false, 0.00, 0.45], [0.31, _hzLightPillar, false, -0.15, 0.50],
                 [0.45, _hzStairway, false, -0.30, 0.55], [0.60, _hzGreekRuin, false, -0.35, 0.50],
-                [0.73, _hzFloatingIsland, false, -0.30, 0.60], [0.83, _hzTome, false, -0.20, 0.60],
-                [0.93, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
+                [0.68, _hzFloatingIsland, false, -0.30, 0.60], [0.78, _hzTome, false, -0.20, 0.60],
+                [0.86, _hzRoseWindow, false, -0.35, 0.50],
+                [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
                 [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
                 [0.54, _hzMountain, false, -0.30, 0.25], [0.66, _hzCrystalShards, true, -0.55, 0.45],
                 [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
                 [0.94, _hzFleshMound, false, -0.50, 0.30], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
             ruins: [
-                [0.24, _hzGreekRuin, false, -0.40, 0.50], [0.40, _hzStairway, false, -0.45, 0.55],
-                [0.54, _hzColossus, false, -0.45, 0.45], [0.66, _hzObelisk, false, -0.45, 0.55],
-                [0.78, _hzGateway, false, -0.40, 0.55], [0.88, _hzWoodCross, false, -0.45, 0.45],
+                [0.22, _hzGreekRuin, false, -0.40, 0.50], [0.36, _hzStairway, false, -0.45, 0.55],
+                [0.50, _hzColossus, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
+                [0.72, _hzGateway, false, -0.40, 0.55], [0.82, _hzWoodCross, false, -0.45, 0.45],
+                [0.91, _hzRoseWindow, false, -0.42, 0.50],
                 [1.00, _hzFloatingIsland, false, -0.50, 0.60]],
             pyramids: [
                 [0.30, _hzModelPyramid, false, -0.40, 0.45], [0.50, _hzZiggurat, false, -0.40, 0.50],

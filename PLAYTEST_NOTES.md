@@ -51,9 +51,16 @@ Token `20260708h` → `20260708j`. Syntax-checked only (RULE #1c), not playteste
    skin = Backrooms mannequin + flesh-mound lobes. `tilefloor`/`tilefloor_2`
    are REAL terrains (data.js TERRAIN_RULES + stone salvage family in
    battle.js getTerrainMaterial): D.U.M.B. floor/spawns/deltaPad → tilefloor,
-   CERN → tilefloor_2. Still unused, ready to theme: damask (thrones/palace),
-   diamond, brokenglass (stained glass?), fur/tigerfur, floral, igloo,
-   latticegarden, dark_fantasy variants.
+   CERN → tilefloor_2. Still unused, ready to theme: diamond, fur/tigerfur,
+   floral, latticegarden, dark_fantasy variants, noise, dirt_slope.
+8b. **Damask / igloo / stained glass** (token → `20260708k`): _hzThrone got a
+   damask seat cushion + back panel + dais runner. `_hzIgloo` (igloo.png dome,
+   vaulted entrance tunnel, hearth-lit doorway) — monument kind `igloo`, 3
+   placed on the North Pole map (data.js monSym/mon). `_hzRoseWindow` (ruined
+   cathedral wall, stone tracery ring, 6 brokenglass jewel petals + glowing
+   heart) — kind `rosewindow`, added to divine + ruins sky rosters.
+   `_hzBasilicaDome` drum now has 5 stained-glass windows (brokenglass tinted
+   jewel colors + inner pulse glow) between its columns.
 8. **New signature spell VFX** (three-vfx-effects.js, `_spell3DGeometry`):
    `_sigSacredRings3D` armillary = the seraphim's signature (raceAbsolution,
    raceRapture, and around the raceDivineJudgment blade drop — the "football"

@@ -10213,6 +10213,9 @@ _MF_BUILDERS.prebuilt_northpole = function () {
     M.monSym('lightpillar', 7, 2, 1, 4, { solid: false }); // aurora beacons
     M.mon('sleigh', 4, 6, 2, 2, { rot: 320, solid: false });
     M.monSym('candycane', 5, 5, 1, 3, { solid: false });
+    // elf housing: snow-block igloos, hearths lit
+    M.monSym('igloo', 11, 3, 2, 2, { rot: 150, solid: false });
+    M.mon('igloo', 1, 12, 2, 2, { rot: 40, solid: false });
     M.monSym('crystal', 12, 6, 2, 2, { solid: false });
     M.mon('flag', 7, 7, 1, 2, { solid: false });          // the actual Pole
     M.spawnEdges('s', 6);
