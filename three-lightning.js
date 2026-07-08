@@ -46,7 +46,7 @@ const ThreeLightning = (function () {
     }
 
     var DEFAULTS = {
-        color:          0x88ccff,
+        color:          0xf2f8ff,   /* whiter-hot core; the blue lives in the glow */
         glowColor:      0x4488ff,
         coreWidth:      6,
         glowWidth:      18,
@@ -328,6 +328,28 @@ const ThreeLightning = (function () {
         _initialized = false;
     }
 
+    /* Brief bright flash + expanding glow at the strike point. Rendered via
+       the shared ThreeVFX sprite pool (additive 'flash'/'spark-elec', so it
+       catches the bloom pass). px is in vfx space (x/y tile-px, z up) — the
+       same space boltVfx receives. Subtle: two short-lived sprites. */
+    function _impactFlash(px, size) {
+        if (!window.ThreeVFX || !window.ThreeVFX.isActive || !window.ThreeVFX.isActive()) return;
+        window.ThreeVFX.spawn({
+            x: px.x, y: px.y, z: px.z + 4,
+            mode: 'billboard', sprite: 'flash',
+            ml: 130,
+            size0: size, size1: size * 0.25,
+            opacity0: 1, opacity1: 0,
+        });
+        window.ThreeVFX.spawn({
+            x: px.x, y: px.y, z: px.z + 4,
+            mode: 'billboard', sprite: 'spark-elec',
+            ml: 220,
+            size0: size * 0.5, size1: size * 1.4,
+            opacity0: 0.7, opacity1: 0,
+        });
+    }
+
     function boltVfx(fromPx, toPx, opts) {
         var SLAB_OFFSET = 3;
         var cfg = (typeof CONFIG !== 'undefined') ? CONFIG : { boardPadding: 2 };
@@ -342,7 +364,12 @@ const ThreeLightning = (function () {
             y: toPx.z + SLAB_OFFSET,
             z: toPx.y - pad,
         };
-        return bolt(from, to, opts);
+        var entry = bolt(from, to, opts);
+        if (entry && !(opts && opts.impactFlash === false)) {
+            var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
+            _impactFlash(toPx, (opts && opts.impactFlashSize) || ts * 0.3);
+        }
+        return entry;
     }
 
     function strikeFromSky(tx, ty, opts) {
@@ -360,6 +387,8 @@ const ThreeLightning = (function () {
 
         var skyOffX = _rn(-ts * 0.3, ts * 0.3);
         var skyOffY = _rn(-ts * 0.3, ts * 0.3);
+
+        if (opts.impactFlashSize == null) opts.impactFlashSize = ts * 0.55;
 
         return boltVfx(
             { x: cx + skyOffX, y: cy + skyOffY, z: groundZ + skyHeight },
@@ -401,6 +430,7 @@ const ThreeLightning = (function () {
                 coreWidth: 4,
                 glowWidth: 12,
                 durationMs: 220,
+                impactFlashSize: ts * 0.22,
             }, opts)
         );
     }

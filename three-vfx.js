@@ -105,12 +105,21 @@ const ThreeVFX = (function () {
         'spiderweb-1':       { r: 0.70, g: 0.70, b: 0.85, blend: 'nrm' },
         'inkblot':           { r: 0.10, g: 0.06, b: 0.14, blend: 'nrm' },
 
-        'wave-1':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
-        'wave-2':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
-        'wave-3':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
-        'wave-4':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
-        'wave-5':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
-        'wave-6':            { r: 1.00, g: 1.00, b: 1.00, blend: 'nrm' },
+        /* procedural water splash frames (see _waveFrameDefs) — additive +
+           cyan tint so the bright crests catch the bloom pass */
+        'wave-1':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+        'wave-2':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+        'wave-3':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+        'wave-4':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+        'wave-5':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+        'wave-6':            { r: 0.60, g: 0.88, b: 1.00, blend: 'add' },
+
+        /* tesseract storm shapes — additive so the falling holo-shapes glow
+           (rain drop/splash materials read this table via _TESS_SPRITES too) */
+        'tess-tri':          { r: 0.55, g: 1.00, b: 0.86, blend: 'add' },
+        'tess-circle':       { r: 0.55, g: 1.00, b: 0.86, blend: 'add' },
+        'tess-square':       { r: 0.55, g: 1.00, b: 0.86, blend: 'add' },
+        'tess-splash':       { r: 0.75, g: 1.00, b: 0.92, blend: 'add' },
 
         'target-ring':       { r: 1.00, g: 0.30, b: 0.30, blend: 'world' },
         'target-ring-gold':  { r: 1.00, g: 0.85, b: 0.30, blend: 'world' },
@@ -275,13 +284,127 @@ const ThreeVFX = (function () {
         'tess-circle':     _R2 + 'holocircle.png',
         'tess-square':     _R2 + 'holosquare.png',
         'inkblot':         _R2 + 'inkblot.png',
-        'wave-1':          _R2 + 'wave_1.png',
-        'wave-2':          _R2 + 'wave_2.png',
-        'wave-3':          _R2 + 'wave_3.png',
-        'wave-4':          _R2 + 'wave_4.png',
-        'wave-5':          _R2 + 'wave_5.png',
-        'wave-6':          _R2 + 'wave_6.png',
     };
+
+    /* ── Procedural wave sprites ─────────────────────────────────────────
+       The old wave_1..6.png art no longer fits the game, so the six frames
+       are drawn on a canvas instead of loaded from R2: concentric soft
+       ripple rings + caustic-bright arcs + flying droplets, cyan→deep-blue
+       radial palette with white-hot crests. Frame index 0..5 animates one
+       ripple expanding and decaying (the existing wave frame-swap animation
+       loops it). Drawn once at atlas build — both into the 64px atlas cell
+       and as a 128px hi-res texture — so every particle shares textures.  */
+    var _proceduralDefs = {
+        'wave-1': 0, 'wave-2': 1, 'wave-3': 2,
+        'wave-4': 3, 'wave-5': 4, 'wave-6': 5,
+    };
+    var _WAVE_HIRES = 128;
+
+    function _drawWaveFrame(ctx, cx, cy, sz, frame) {
+        var t = frame / 5;                     // 0 → birth, 1 → dissipated
+        var half = sz / 2;
+        var mx = cx + half, my = cy + half;
+        var fade = 1 - t * t;                  // overall decay
+        ctx.save();
+        ctx.clearRect(cx, cy, sz, sz);
+        ctx.beginPath();
+        ctx.arc(mx, my, half, 0, Math.PI * 2);
+        ctx.clip();
+
+        /* deep water body glow — shrinks + dims as the splash dies */
+        var body = ctx.createRadialGradient(mx, my, 0, mx, my, half);
+        body.addColorStop(0.00, 'rgba(150,220,255,' + (0.55 * fade) + ')');
+        body.addColorStop(0.30, 'rgba(60,150,235,'  + (0.40 * fade) + ')');
+        body.addColorStop(0.65, 'rgba(20,70,160,'   + (0.22 * fade) + ')');
+        body.addColorStop(1.00, 'rgba(5,25,80,0)');
+        ctx.fillStyle = body;
+        ctx.fillRect(cx, cy, sz, sz);
+
+        /* concentric ripple rings — expand outward with the frame */
+        for (var ri = 0; ri < 3; ri++) {
+            var rt = t + ri * 0.28;
+            if (rt > 1.15) continue;
+            var rad = half * (0.16 + 0.78 * Math.min(1, rt));
+            var thick = half * (0.055 + 0.11 * rt);
+            var rAlpha = Math.max(0, (1 - rt) * (ri === 0 ? 0.95 : 0.55)) * fade;
+            if (rAlpha <= 0.02) continue;
+            var inner = Math.max(0, rad - thick), outer = Math.min(half, rad + thick);
+            var ring = ctx.createRadialGradient(mx, my, inner, mx, my, outer);
+            ring.addColorStop(0.00, 'rgba(90,190,255,0)');
+            ring.addColorStop(0.50, 'rgba(225,248,255,' + rAlpha + ')');
+            ring.addColorStop(1.00, 'rgba(90,190,255,0)');
+            ctx.beginPath();
+            ctx.arc(mx, my, outer, 0, Math.PI * 2);
+            ctx.fillStyle = ring;
+            ctx.fill();
+        }
+
+        /* caustic-bright crest arcs riding the lead ripple */
+        var leadRad = half * (0.16 + 0.78 * Math.min(1, t));
+        var arcAlpha = (1 - t) * 0.9;
+        if (arcAlpha > 0.03) {
+            ctx.lineCap = 'round';
+            for (var ai = 0; ai < 4; ai++) {
+                var a0 = frame * 0.9 + ai * 1.62;
+                var span = 0.5 + (ai % 2) * 0.45;
+                ctx.beginPath();
+                ctx.arc(mx, my, leadRad, a0, a0 + span);
+                ctx.strokeStyle = 'rgba(255,255,255,' + (arcAlpha * (0.55 + 0.45 * (ai % 2))) + ')';
+                ctx.lineWidth = Math.max(1, half * 0.05);
+                ctx.stroke();
+            }
+        }
+
+        /* droplets thrown up and out — rise early frames, fall late */
+        var arc = t < 0.5 ? t * 2 : (1 - t) * 2;   // up-then-down envelope
+        for (var di = 0; di < 6; di++) {
+            var da = frame * 0.7 + di * 1.047;
+            var dr = half * (0.30 + 0.55 * t) * (0.8 + 0.35 * ((di * 7) % 3) / 2);
+            var dx = mx + Math.cos(da) * dr;
+            var dy = my + Math.sin(da) * dr * 0.8 - half * 0.28 * arc;
+            var ds = half * (0.05 + 0.05 * arc) * (di % 2 ? 1 : 0.7);
+            var dAlpha = Math.max(0, 0.9 * fade - 0.1 * di);
+            if (dAlpha <= 0.03 || ds < 0.5) continue;
+            var drop = ctx.createRadialGradient(dx, dy, 0, dx, dy, ds);
+            drop.addColorStop(0, 'rgba(240,252,255,' + dAlpha + ')');
+            drop.addColorStop(0.55, 'rgba(120,200,255,' + (dAlpha * 0.7) + ')');
+            drop.addColorStop(1, 'rgba(60,140,230,0)');
+            ctx.beginPath();
+            ctx.arc(dx, dy, ds, 0, Math.PI * 2);
+            ctx.fillStyle = drop;
+            ctx.fill();
+        }
+
+        /* white-hot core crest — big at birth, gone by mid-life */
+        var coreAlpha = Math.max(0, 1 - t * 1.8);
+        if (coreAlpha > 0.02) {
+            var core = ctx.createRadialGradient(mx, my, 0, mx, my, half * 0.34);
+            core.addColorStop(0, 'rgba(255,255,255,' + coreAlpha + ')');
+            core.addColorStop(0.45, 'rgba(190,240,255,' + (coreAlpha * 0.75) + ')');
+            core.addColorStop(1, 'rgba(90,190,255,0)');
+            ctx.beginPath();
+            ctx.arc(mx, my, half * 0.34, 0, Math.PI * 2);
+            ctx.fillStyle = core;
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    function _buildProceduralHiRes() {
+        for (var key in _proceduralDefs) {
+            var cvs = document.createElement('canvas');
+            cvs.width = _WAVE_HIRES; cvs.height = _WAVE_HIRES;
+            var ctx = cvs.getContext('2d');
+            _drawWaveFrame(ctx, 0, 0, _WAVE_HIRES, _proceduralDefs[key]);
+            var tex = new THREE.CanvasTexture(cvs);
+            tex.premultiplyAlpha = false;
+            tex.magFilter = THREE.LinearFilter;
+            tex.minFilter = THREE.LinearFilter;
+            tex.needsUpdate = true;
+            _hiResTextures[key] = tex;
+        }
+    }
 
     function _buildAtlas() {
         var cvs = document.createElement('canvas');
@@ -308,6 +431,8 @@ const ThreeVFX = (function () {
             var gdef = _gradientDefs[allKeys[i]];
             if (gdef) {
                 _drawGradientCell(ctx, cx, cy, ATLAS_CELL, gdef);
+            } else if (_proceduralDefs[allKeys[i]] != null) {
+                _drawWaveFrame(ctx, cx, cy, ATLAS_CELL, _proceduralDefs[allKeys[i]]);
             } else if (!_imageDefs[allKeys[i]]) {
                 var sc = _spriteMap[allKeys[i]];
                 if (sc) _drawSoftCircle(ctx, cx, cy, ATLAS_CELL, sc.r, sc.g, sc.b);
@@ -324,6 +449,8 @@ const ThreeVFX = (function () {
         _atlasReady = true;
 
         _extractAllSpriteTextures();
+
+        _buildProceduralHiRes();
 
         _loadImageSprites(ctx, cvs);
 
@@ -544,6 +671,12 @@ const ThreeVFX = (function () {
             skyHeight: 320,
         },
     };
+
+    /* Tesseract-storm sprites render through the rain mesh pools (which
+       bypass the particle blend table), so they get their additive blend +
+       boosted cyan-green tint (>1 channels multiply up toward the storm's
+       0x00ffc8) applied at spawn time — flat billboards become bloom-lit. */
+    var _TESS_SPRITES = { 'tess-tri': 1, 'tess-circle': 1, 'tess-square': 1, 'tess-splash': 1 };
 
     var _rainDropMeshes = [];
     var _rainSplashMeshes = [];
@@ -1426,6 +1559,13 @@ const ThreeVFX = (function () {
         var entry = _rainDropMeshes[d.slotIdx];
         if (entry) {
             entry.material.map = _getSpriteTexture(d.spriteKey);
+            if (_TESS_SPRITES[d.spriteKey]) {
+                entry.material.blending = THREE.AdditiveBlending;
+                entry.material.color.setRGB(0.7, 1.9, 1.6);
+            } else {
+                entry.material.blending = THREE.NormalBlending;
+                entry.material.color.setRGB(1, 1, 1);
+            }
             entry.material.needsUpdate = true;
             entry.inUse = true;
         }
@@ -1456,6 +1596,13 @@ const ThreeVFX = (function () {
         var entry = _rainSplashMeshes[s.slotIdx];
         if (entry) {
             entry.material.map = _getSpriteTexture(s.spriteKey);
+            if (_TESS_SPRITES[s.spriteKey]) {
+                entry.material.blending = THREE.AdditiveBlending;
+                entry.material.color.setRGB(1.5, 1.5, 1.5);
+            } else {
+                entry.material.blending = THREE.NormalBlending;
+                entry.material.color.setRGB(1, 1, 1);
+            }
             entry.material.needsUpdate = true;
             entry.inUse = true;
         }
@@ -1579,7 +1726,7 @@ const ThreeVFX = (function () {
                     }
                 }
                 dEntry.mesh.scale.set(d.w, d.h, 1);
-                dEntry.material.opacity = 0.7;
+                dEntry.material.opacity = _TESS_SPRITES[d.spriteKey] ? 0.95 : 0.7;
                 dEntry.mesh.visible = true;
             }
         }

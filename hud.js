@@ -4321,8 +4321,16 @@ function _computeTileActions(actingUnit, tx, ty) {
     'placeBlock', 'buildStructure', 'placeTrap',
   ]);
 
+  // 🗺️ Elemental tile casts (HM-style): a damage spell whose element reacts
+  // with THIS tile (lightning→water/metal, fire→grass/trees/ice, frost→water)
+  // is offered on the tile menu like a tile-target spell would be.
+  const _elemTileOk = (sp) => sp.kind === 'damage'
+    && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty))
+    && typeof G._elementalTileCastInfo === 'function'
+    && !!G._elementalTileCastInfo(sp, tx, ty);
+
   for (const sp of allSpells) {
-    if (!tileTargetKinds.has(sp.kind)) continue;
+    if (!tileTargetKinds.has(sp.kind) && !_elemTileOk(sp)) continue;
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpCost = (sp.cost || 0) + mpPenalty;
     // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a

@@ -3276,3 +3276,34 @@ data.js, index.html** (token → 20260708b).
 - Death timeline: `defeatUnit` (map.js) sets `_dying` immediately, `dead=true`
   ~800 ms later; plates are dropped on the rebuild after `dead` flips, and
   `rebuildUnits` skips `dead || _dying` units. HP-bar CSS drain is 0.25 s.
+
+## Elemental overhaul (2026-07-08, session "elemental-spells-animations")
+- **`state.burningTiles`** = `{ "x,y": {x, y, t, p} }` (t = rounds left, p = igniting
+  player). API in battle.js: `igniteTile(x,y,rounds,byUnit)`, `extinguishTile`,
+  `_isFlammableTile`, `tickBurningTiles()` (called in the end-of-round pipeline just
+  before `state.round += 1`). Flames: bite occupants 24/round (+burn), 18 on walk-in
+  (`finishMoveAt`), 30 on knock-in (`_applyKnockbackHazard`), spread 45%/adjacent
+  fuel tile/round (grass/tree/leaves/wood families, cap 48 tiles), burn out → tile
+  chars to `scorched` (trees felled). Water/ice/flooding smothers. Syncs online
+  automatically via `_serializeState`. VFX: `_tickBurningTiles` in
+  three-vfx-effects.js reads the same structure (looping flame/ember/smoke).
+- **Wall of Fire** (`burningRounds: 3` in data.js) now ignites its line via the
+  `terrainCreate` branch, which ALSO now calls `triggerTerrainSpellReaction`.
+  `_reactFireForest` ignites the connected stand (burns over time) instead of
+  instantly scorching it.
+- **HM-style elemental tile casts**: `_elementalTileCastInfo(spell, x, y)`
+  (exported on GAME) — `kind:'damage'` spells with a fire/lightning/cold element
+  can target reactive tiles: lightning→water/metal/crystal/trees (water conduction
+  hits every unit in the connected pool, i.e. beyond cast range), fire→ice/crystal/
+  trees/any flammable, cold→water or burning tiles (douse). Execution is a branch
+  in `_resolveOffensiveTarget` (before the "No valid target" bail). Wired into:
+  clickTile spellTargets validation, `previewSpellRange` (element-colored
+  `spellRangeElem` overlay on castable tiles), `_spellTargetPromptText` hints,
+  hud.js `_computeTileActions` (`_elemTileOk`), ai.js `_elementalTileFallback`
+  (used when no enemy is in direct range; `{x,y,_elemTile}` targets get a flat
+  score in `scoreSpell`).
+- **VFX**: `wave-1..6` sprites are now PROCEDURAL canvas frames (additive cyan) —
+  wave_*.png no longer loaded; `_ELEMENT_THEME.water` → new `'water'` theme.
+  Tesseract rain shapes render additive+bright (bloom glow). Water/deep_water tile
+  tops have animated caustics/sparkle (uniforms `uFluidTime`/`uFluidTile`, ticked
+  in `_updateFluidWaves`; lava untouched). Lightning: whiter core + impact flash.

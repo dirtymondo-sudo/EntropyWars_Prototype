@@ -1272,6 +1272,14 @@
         const kind = spell.kind;
 
         if (['damage', 'ricochet', 'multiHit'].includes(kind)) {
+            // Elemental tile cast: the target is a TILE, not a unit — score it
+            // flat (the fallback picker only returns tiles the reaction makes
+            // worthwhile) and skip the unit-based math below.
+            if (target && target._elemTile) {
+                let s = (spell.dmg || 112) * 0.8;
+                if (unit.cls === 'Black Mage') s *= 1.5;
+                return s;
+            }
             let s = spell.dmg || 112;
             if (spell.hitDamages) s = spell.hitDamages.reduce((a, b) => a + b, 0);
             for (const eff of (spell.statusEffects || [])) {
@@ -3429,6 +3437,48 @@
         if (score > 0) out.push({ type: 'recall', score });
     }
 
+    // 🗺️ Best elemental TILE target for a damage spell (HM-style casts): scans
+    // tiles in cast range for element-reactive terrain and scores by how many
+    // enemies the reaction would actually reach (lightning→connected water
+    // body, fire→enemies near the ignition point). Returns {x,y,_elemTile} or
+    // null when no tile is worth the MP.
+    function _elementalTileFallback(unit, spell, v) {
+        const g = G();
+        if (typeof g._elementalTileCastInfo !== 'function') return null;
+        const range = _effRange(unit, spell);
+        let best = null, bestScore = 0;
+        for (let dy = -range; dy <= range; dy++) {
+            for (let dx = -range; dx <= range; dx++) {
+                const d = Math.abs(dx) + Math.abs(dy);
+                if (d < 1 || d > range) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (!g.isInside(x, y)) continue;
+                if (g.unitAt(x, y)) continue;
+                if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, x, y)) continue;
+                const info = g._elementalTileCastInfo(spell, x, y);
+                if (!info) continue;
+                let score = 0;
+                if (info.el === 'lightning' && typeof g._floodConnectedTiles === 'function'
+                    && typeof g._isWaterTile === 'function' && g._isWaterTile(x, y)) {
+                    const body = g._floodConnectedTiles(x, y, g._isWaterTile, 80);
+                    for (const t of body) {
+                        if (v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)) score += 90;
+                        if (v.allies.some(a => a.x === t.x && a.y === t.y)) score -= 60;
+                    }
+                } else if (info.el === 'fire') {
+                    // torching the ground near enemies has delayed payoff
+                    for (const e of v.visibleEnemies) {
+                        const ed = Math.abs(e.x - x) + Math.abs(e.y - y);
+                        if (ed <= 1) score += 50;
+                        else if (ed <= 2) score += 20;
+                    }
+                }
+                if (score > bestScore) { bestScore = score; best = { x, y, _elemTile: true }; }
+            }
+        }
+        return best;
+    }
+
     function findSpellTarget(unit, spell, v) {
         const g = G();
         const kind = spell.kind;
@@ -3442,7 +3492,11 @@
                     priority: getTargetPriority(e, unit, v)
                 }))
                 .filter(e => e.dist >= 1 && e.dist <= _aiEffSpellRange && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.enemy.x, e.enemy.y)));
-            if (!inRange.length) return null;
+            // 🗺️ Elemental tile cast fallback: no enemy in direct range, but a
+            // reactive tile might still reach them — bolt the pool an enemy is
+            // wading in (the conduction hits beyond cast range), or torch the
+            // brush at their feet.
+            if (!inRange.length) return kind === 'damage' ? _elementalTileFallback(unit, spell, v) : null;
 
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain'].includes(kind)) {
                 const dmg = spell.dmg || 112;

@@ -964,6 +964,11 @@ const ThreeRenderer = (function () {
 
     var _FLUID_TERRAIN_SET = { water: true, deep_water: true, lava: true };
     var _fluidTimeSec = 0;
+    /* Shared shader uniform objects for the animated water tops. Every fluid
+       top material points at these SAME objects, so the per-frame update in
+       _updateFluidWaves is O(1) no matter how many tiles are on the board. */
+    var _fluidTimeUniform = { value: 0 };
+    var _fluidTileUniform = { value: 1 };   // world units per tile (tracks _lastBuiltTileSize)
 
     var _fluidTextures = {};
 
@@ -1516,6 +1521,22 @@ const ThreeRenderer = (function () {
         var off1 = _fluidTextures[terrainKey + '_off1'];
         var off2 = _fluidTextures[terrainKey + '_off2'];
 
+        /* Water-only surface upgrade: animated procedural caustics + sparse
+           sparkle glints + a gentle living hue/brightness swell, layered UNDER
+           the existing scrolling wave textures. Lava is untouched (isWater is
+           false there, so it compiles exactly the old shader). Patterns are in
+           WORLD space (world xz / tileSize) so adjacent tiles animate as one
+           continuous sheet. Fragment-only — box tops have no vertex resolution
+           for displacement. All math is a handful of sin/cos, no extra texture
+           fetches, and the time/tile uniforms are shared module-level objects. */
+        var isWater = (terrainKey === 'water' || terrainKey === 'deep_water');
+        var isDeep = (terrainKey === 'deep_water');
+        /* deep_water: dimmer caustics + darker saturated deep-blue tint so
+           depth reads clearly against shallow water. */
+        var caustStr = isDeep ? '0.16' : '0.34';
+        var caustEmis = isDeep ? '0.10' : '0.22';
+        var glintStr = isDeep ? '0.6' : '0.95';
+
         mat.onBeforeCompile = function(shader) {
             shader.uniforms.uWave1 = { value: waveTex1 };
             shader.uniforms.uWave2 = { value: waveTex2 };
@@ -1545,7 +1566,73 @@ const ThreeRenderer = (function () {
                 '  diffuseColor.rgb = mix(diffuseColor.rgb, w2.rgb, uWaveOp2 * w2.a);\n' +
                 '}\n'
             );
+
+            if (isWater) {
+                shader.uniforms.uFluidTime = _fluidTimeUniform;
+                shader.uniforms.uFluidTile = _fluidTileUniform;
+
+                /* r128's <worldpos_vertex> only defines worldPosition behind
+                   envmap/shadow defines, so carry our own varying. `transformed`
+                   is in scope right after that include. */
+                shader.vertexShader = shader.vertexShader.replace(
+                    'void main() {',
+                    'varying vec3 vEwWorldPos;\n' +
+                    'void main() {'
+                );
+                shader.vertexShader = shader.vertexShader.replace(
+                    '#include <worldpos_vertex>',
+                    '#include <worldpos_vertex>\n' +
+                    'vEwWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\n'
+                );
+
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    'void main() {',
+                    'uniform float uFluidTime;\n' +
+                    'uniform float uFluidTile;\n' +
+                    'varying vec3 vEwWorldPos;\n' +
+                    'void main() {'
+                );
+
+                /* After <emissivemap_fragment> both diffuseColor and
+                   totalEmissiveRadiance are live; emissive additions bypass the
+                   Lambert lighting so glints stay bright enough to cross the
+                   bloom threshold (~0.72). */
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    '#include <emissivemap_fragment>',
+                    '#include <emissivemap_fragment>\n' +
+                    '{\n' +
+                    '  float ewT = uFluidTime;\n' +
+                    '  vec2 ewP = vEwWorldPos.xz / max(uFluidTile, 0.0001);\n' +
+                    /* Caustics: 3 drifting interference patterns; pow() of the
+                       constructive sum leaves bright ripple filaments. */
+                    '  float ewC1 = sin(ewP.x * 6.1 + ewT * 1.7) * cos(ewP.y * 5.3 - ewT * 1.3);\n' +
+                    '  float ewC2 = sin((ewP.x + ewP.y) * 4.7 - ewT * 2.3) * cos((ewP.x - ewP.y) * 3.9 + ewT * 1.6);\n' +
+                    '  float ewC3 = sin(ewP.x * 9.7 - ewP.y * 8.3 + ewT * 2.9);\n' +
+                    '  float ewSum = ewC1 + ewC2 + 0.6 * ewC3;\n' +
+                    '  float ewCaust = pow(clamp(ewSum * 0.385 + 0.5, 0.0, 1.0), 5.0);\n' +
+                    '  diffuseColor.rgb += vec3(0.35, 0.8, 0.9) * (ewCaust * ' + caustStr + ');\n' +
+                    '  totalEmissiveRadiance += vec3(0.2, 0.55, 0.6) * (ewCaust * ' + caustEmis + ');\n' +
+                    /* Sparkle glints: high-frequency triple product, hard
+                       thresholded so only occasional pixels flash. */
+                    '  float ewG = sin(ewP.x * 23.0 + ewT * 3.1) * sin(ewP.y * 19.0 - ewT * 2.7) * sin((ewP.x + ewP.y) * 31.0 + ewT * 4.3);\n' +
+                    '  float ewGlint = smoothstep(0.97, 0.995, ewG);\n' +
+                    '  totalEmissiveRadiance += vec3(0.85, 0.95, 1.0) * (ewGlint * ' + glintStr + ');\n' +
+                    /* Gentle living brightness/hue swell across the sheet. */
+                    '  float ewSwell = 0.5 + 0.5 * sin(ewT * 0.7 + (ewP.x + ewP.y) * 0.4);\n' +
+                    '  diffuseColor.rgb *= 0.95 + 0.09 * ewSwell;\n' +
+                    '  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.92, 1.0, 1.1), 0.25 + 0.2 * sin(ewT * 0.45));\n' +
+                    (isDeep
+                        ? '  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.45, 0.62, 1.25), 0.5);\n'
+                        : '') +
+                    '}\n'
+                );
+            }
         };
+        /* The injected GLSL now differs per terrain key (water gets the caustic
+           block, lava keeps the plain wave blend) but onBeforeCompile.toString()
+           — three's default program cache key — is identical for all of them.
+           Key on the terrain so water/deep_water/lava don't share a program. */
+        mat.customProgramCacheKey = function() { return 'ew_fluid_' + terrainKey; };
 
         mat._ew_fluidTop = true;
         mat._ew_fluidType = terrainKey;
@@ -16951,6 +17038,10 @@ const ThreeRenderer = (function () {
     function _updateFluidWaves(dt) {
         _fluidTimeSec += dt;
         var t = _fluidTimeSec;
+        /* Shared uniform objects referenced by every water top material —
+           one write here animates all tiles (caustics/glints/swell). */
+        _fluidTimeUniform.value = t;
+        _fluidTileUniform.value = (_lastBuiltTileSize > 0) ? _lastBuiltTileSize : 1;
         var types = ['water', 'deep_water', 'lava'];
         for (var ti = 0; ti < types.length; ti++) {
             var fKey = types[ti];

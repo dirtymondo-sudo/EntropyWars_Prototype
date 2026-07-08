@@ -3545,6 +3545,7 @@ const SPELL_LIBRARY = [
         terrainType: 'scorched',
         tileCount: 3,
         orientable: true,
+        burningRounds: 3,
         damageType: 'magic',
         tier: 'II',
         school: 'Black Mage',
@@ -3554,7 +3555,7 @@ const SPELL_LIBRARY = [
             id: 'burn',
             duration: 2
         }],
-        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns, and leaves scorched terrain behind.'
+        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
     },
     {
         id: 'darkPact',

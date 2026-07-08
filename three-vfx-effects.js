@@ -93,6 +93,7 @@ const ThreeVFXEffects = (function () {
     var _THEME_MAP = {
         fire:      { core: 'flame-hot',    trail: 'ember',       burst: 'explosion-orange', ring: 'target-ring' },
         ice:       { core: 'frost-crystal', trail: 'ice-shard',  burst: 'frost-mist',       ring: 'target-ring-blue' },
+        water:     { core: 'wave-1',        trail: 'frost-mist', burst: 'water-splash',     ring: 'target-ring-blue' },
         lightning: { core: 'spark-elec',    trail: 'lightning',   burst: 'spark-blue',       ring: 'stun-ring' },
         divine:    { core: 'divine-sparkle', trail: 'holy-light', burst: 'holy-pillar',      ring: 'halo-ring' },
         unholy:    { core: 'dark-flame',    trail: 'void-mist',  burst: 'psi-pulse',        ring: 'target-ring' },
@@ -108,7 +109,7 @@ const ThreeVFXEffects = (function () {
        combat type — purely how the generic fallback visuals get tinted when
        a spell has no bespoke SPELL_MAP entry. Explicit tag beats name-regex. */
     var _ELEMENT_THEME = {
-        fire: 'fire', ice: 'ice', water: 'ice', lightning: 'lightning',
+        fire: 'fire', ice: 'ice', water: 'water', lightning: 'lightning',
         poison: 'poison', nature: 'poison', light: 'divine', shadow: 'unholy',
         psychic: 'anomaly', arcane: 'anomaly', sonic: 'anomaly',
         earth: 'human', wind: 'human', blood: 'unholy', metal: 'tech',
@@ -557,6 +558,128 @@ const ThreeVFXEffects = (function () {
         }
     }
 
+    /* ── Burning tiles: looping fire on state.burningTiles ──────────────
+       Gameplay code maintains state.burningTiles = { "x,y": {x, y, t} }
+       (t = rounds remaining; entries are removed when the fire goes out;
+       the object may be null/undefined/empty). This ticker emits the same
+       layer vocabulary as EFFECTS['wallOfFire_tile'] — y-locked flame /
+       flame-hot tongues, rising embers, occasional smoke, and a faint
+       world-space fire-glow pool — but rate-limited per tile so it can
+       cover 20+ tiles without flooding the particle pools. Positioning
+       reuses the zone ticker's tilePx/tileZ helpers, so elevated tiles
+       burn on their top surface. */
+    var _burnAcc = 0;
+    var _BURN_RATE_MS = 160;
+
+    function _tickBurningTiles(dt) {
+        if (!_canSpawn()) return;
+        if (typeof state === 'undefined' || !state.burningTiles) return;
+        if (state.devAutoSim || state.animationsDisabled) return;
+        if (_catOff('zones')) return;
+
+        var ts = _cfg().tileSize || 128;
+
+        _burnAcc += dt * 1000;
+        if (_burnAcc < _BURN_RATE_MS) return;
+        /* after a long stall (tab-out, load hitch) don't burst-spawn the backlog */
+        if (_burnAcc > _BURN_RATE_MS * 3) _burnAcc = _BURN_RATE_MS * 3;
+
+        while (_burnAcc >= _BURN_RATE_MS) {
+            _burnAcc -= _BURN_RATE_MS;
+
+            var tileCount = 0;
+            for (var ck in state.burningTiles) { if (state.burningTiles[ck]) tileCount++; }
+            if (tileCount === 0) return;
+            /* soft budget: past ~16 tiles, each tile skips a share of ticks */
+            var budget = Math.min(1, 16 / tileCount);
+
+            for (var key in state.burningTiles) {
+                var bt = state.burningTiles[key];
+                if (!bt) continue;
+                if (Math.random() > budget) continue;
+
+                var center = tilePx(bt.x, bt.y);
+                var baseZ = tileZ(bt.x, bt.y);
+                /* dying fires (t=1) burn a little lower and dimmer */
+                var vig = Math.min(1, 0.7 + 0.15 * (bt.t || 1));
+
+                /* main tongue — y-locked, tapered, rises as it fades */
+                _spawn({
+                    _zone: true,
+                    x: center.x + rn(-ts * 0.28, ts * 0.28),
+                    y: center.y + rn(-ts * 0.28, ts * 0.28),
+                    z: baseZ + 2,
+                    mode: 'y-locked',
+                    sprite: (Math.random() < 0.3) ? 'flame-hot' : 'flame',
+                    ml: 360 + rn(0, 260),
+                    w0: rn(14, 24), w1: rn(5, 10),
+                    h0: rn(24, 42), h1: rn(64, 118) * vig,
+                    opacity0: 0.9 * vig, opacity1: 0,
+                });
+
+                /* quick licking tip */
+                if (Math.random() < 0.5) {
+                    _spawn({
+                        _zone: true,
+                        x: center.x + rn(-ts * 0.3, ts * 0.3),
+                        y: center.y + rn(-ts * 0.3, ts * 0.3),
+                        z: baseZ + rn(4, 14),
+                        mode: 'y-locked', sprite: 'flame',
+                        ml: 160 + rn(0, 160),
+                        w0: rn(7, 12), w1: rn(3, 6),
+                        h0: rn(12, 22), h1: rn(36, 70) * vig,
+                        opacity0: 1, opacity1: 0,
+                        vz: rn(20, 60),
+                    });
+                }
+
+                /* rising ember spark */
+                if (Math.random() < 0.6) {
+                    _spawn({
+                        _zone: true,
+                        x: center.x + rn(-ts * 0.35, ts * 0.35),
+                        y: center.y + rn(-ts * 0.35, ts * 0.35),
+                        z: baseZ + rn(4, 16),
+                        vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(60, 170),
+                        mode: 'billboard', sprite: 'ember',
+                        ml: 450 + rn(0, 400),
+                        size0: 3 + rn(0, 5), size1: 1,
+                        opacity0: 1, opacity1: 0,
+                        gravity: 240, drag: 1.2,
+                    });
+                }
+
+                /* occasional smoke puff */
+                if (Math.random() < 0.16) {
+                    _spawn({
+                        _zone: true,
+                        x: center.x + rn(-ts * 0.25, ts * 0.25),
+                        y: center.y + rn(-ts * 0.25, ts * 0.25),
+                        z: baseZ + rn(30, 60),
+                        vx: rn(-4, 4), vy: rn(-4, 4), vz: rn(24, 50),
+                        mode: 'billboard', sprite: 'smoke',
+                        ml: 800 + rn(0, 500),
+                        size0: 26 + rn(0, 18), size1: 70 + rn(0, 40),
+                        opacity0: 0.4, opacity1: 0,
+                        drag: 0.4,
+                    });
+                }
+
+                /* faint warm light pool on the ground */
+                if (Math.random() < 0.28) {
+                    _spawn({
+                        _zone: true,
+                        x: center.x, y: center.y, z: baseZ + 2,
+                        mode: 'world', sprite: 'fire-glow',
+                        ml: 420 + rn(0, 200),
+                        size0: ts * 0.55, size1: ts * 0.75,
+                        opacity0: 0.4 * vig, opacity1: 0,
+                    });
+                }
+            }
+        }
+    }
+
     function startTornado3D() {  }
     function stopTornado3D()  {  }
     function isTornado3DActive() { return false; }
@@ -569,12 +692,14 @@ const ThreeVFXEffects = (function () {
         _tickProjectiles(dt);
         _tickBolts(dt);
         _tickPersistentZones(dt);
+        _tickBurningTiles(dt);
     }
 
     function clear() {
         _projEffects.length = 0;
         _boltEffects.length = 0;
         _zoneSpawnAcc = 0;
+        _burnAcc = 0;
         stopTornado3D();
         stopSandstorm3D();
     }
@@ -823,6 +948,93 @@ SPELL_MAP['lullaby']          = { impact: '_psychic_dark_impact' };
 SPELL_MAP['discordance']      = { impact: '_dark_debuff_impact' };
 SPELL_MAP['spotter']          = { impact: '_dark_mark_impact' };
 SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
+
+/* ─── WATER PASS — hand-authored overrides on the procedural wave art ────
+   The wave-1..6 frames are now procedural glowing splash/ripple sprites
+   (three-vfx.js), so the bespoke water effects get rebuilt to lean on them:
+   an expanding world-space ripple ring, an upward spray of droplets pulled
+   back down by gravity, and a lingering blue mist. These ids are the ones
+   the shared water spells route through — sharedTidalSurge (beam impact),
+   sharedMaelstrom / raceWalkThePlank (wall), raceRiptide + raceTidalSlam
+   (aoe → _water_impact_tile/_water_impact_center). Counts stay modest:
+   walls and aoes hit many tiles at once. */
+EFFECTS['_water_impact_tile'] = {
+    layers: [
+        /* expanding ripple flat on the ground */
+        { anchor: 'floor', mode: 'world', sprite: 'wave-1', ml: 700, z: 3,
+          size0: 34, size1: 118, opacity0: 0.85, opacity1: 0 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 650, z: 2,
+          size0: 44, size1: 104, opacity0: 0.5, opacity1: 0 },
+        /* upward spray, gravity brings it back down */
+        { count: 6, anchor: 'floor', sprite: 'water-splash', ml: [300, 550], z: 4,
+          offsetXY: 10, vxRange: 90, vyRange: 90, vzRange: [60, 160],
+          gravity: 300, drag: 1.2, size0: [6, 11], size1: 2, opacity0: 0.95 },
+        /* lingering mist */
+        { count: 2, delayMs: 90, anchor: 'floor', sprite: 'frost-mist', ml: [500, 850], z: 8,
+          offsetXY: 14, vzRange: [10, 28], drag: 0.5,
+          size0: [16, 26], size1: [40, 62], opacity0: 0.4 },
+    ]
+};
+
+EFFECTS['_water_impact_center'] = {
+    shake: 'normal',
+    layers: [
+        { anchor: 'floor', sprite: 'flash', ml: 180, z: 10, size0: 100, size1: 28, opacity0: 0.9 },
+        /* double ripple — second ring chases the first */
+        { anchor: 'floor', mode: 'world', sprite: 'wave-1', ml: 900, z: 3,
+          size0: 48, size1: 170, opacity0: 0.9, opacity1: 0 },
+        { delayMs: 140, anchor: 'floor', mode: 'world', sprite: 'wave-1', ml: 800, z: 4,
+          size0: 30, size1: 120, opacity0: 0.65, opacity1: 0 },
+        /* tall central plume */
+        { anchor: 'floor', mode: 'y-locked', sprite: 'wave-1', ml: 550,
+          w0: 70, w1: 42, h0: 60, h1: 160, opacity0: 0.8, opacity1: 0 },
+        /* big spray fan */
+        { count: 10, anchor: 'floor', sprite: 'water-splash', ml: [350, 650], z: 4,
+          offsetXY: 8, vxRange: 140, vyRange: 140, vzRange: [80, 220],
+          gravity: 320, drag: 1.2, size0: [7, 13], size1: 2 },
+        /* mist crown */
+        { count: 3, delayMs: 160, anchor: 'floor', sprite: 'frost-mist', ml: [600, 1000], z: 10,
+          offsetXY: 16, vzRange: [12, 34], drag: 0.5,
+          size0: [20, 32], size1: [52, 80], opacity0: 0.45 },
+    ]
+};
+
+/* Maelstrom / Walk the Plank wall tiles — churns twice per tile so the
+   whirl reads as sustained rather than one splash. */
+EFFECTS['sharedMaelstrom_tile'] = {
+    shake: 'normal',
+    _loop: 2,
+    _loopMs: 280,
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 800, z: 2,
+          size0: 50, size1: 135, opacity0: 0.6, opacity1: 0 },
+        { anchor: 'floor', mode: 'world', sprite: 'wave-1', ml: 750, z: 3,
+          size0: 40, size1: 128, opacity0: 0.85, opacity1: 0 },
+        { count: 5, anchor: 'floor', sprite: 'water-splash', ml: [300, 600], z: 4,
+          offsetXY: 12, vxRange: 80, vyRange: 80, vzRange: [60, 170],
+          gravity: 280, drag: 1.2, size0: [6, 12], size1: 2, opacity0: 0.9 },
+        { anchor: 'floor', mode: 'y-locked', sprite: 'wave-1', ml: 600,
+          w0: 56, w1: 34, h0: 68, h1: 148, opacity0: 0.7, opacity1: 0 },
+        { count: 2, delayMs: 110, anchor: 'floor', sprite: 'frost-mist', ml: [500, 850], z: 8,
+          offsetXY: 14, vzRange: [10, 26], drag: 0.5,
+          size0: [16, 26], size1: [44, 66], opacity0: 0.38 },
+    ]
+};
+
+EFFECTS['sharedTidalSurge_impact_tile'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'wave-1', ml: 650, z: 3,
+          size0: 32, size1: 108, opacity0: 0.8, opacity1: 0 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 600, z: 2,
+          size0: 44, size1: 96, opacity0: 0.45, opacity1: 0 },
+        { count: 5, anchor: 'floor', sprite: 'water-splash', ml: [300, 550], z: 4,
+          offsetXY: 8, vxRange: 110, vyRange: 110, vzRange: [50, 140],
+          gravity: 280, drag: 1.3, size0: [5, 10], size1: 2, opacity0: 0.9 },
+        { count: 2, delayMs: 90, anchor: 'floor', sprite: 'frost-mist', ml: [450, 750], z: 8,
+          offsetXY: 12, vzRange: [10, 24], drag: 0.5,
+          size0: [14, 22], size1: [36, 54], opacity0: 0.35 },
+    ]
+};
 
     /* ─── BOLT EFFECT DEFINITIONS ────────────────────────────────────
        These are config objects read by _fireBoltMapped(), NOT layer-based
