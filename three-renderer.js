@@ -3507,13 +3507,20 @@ const ThreeRenderer = (function () {
         arm.position.set(0, poleH + ts * 0.21, -(ts * 0.17 + armLen / 2));
         g.add(arm);
 
-        /* three-lamp head hanging off the end of the arm */
+        /* three-lamp head hanging off the end of the arm. The whole yellow
+           head assembly lives in its own pivot group turned 90° on the arm:
+           a real mast-arm signal faces the oncoming traffic driving UNDER
+           the arm (perpendicular to it), not down the arm's own axis. */
         var headW = ts * 0.17, headH = ts * 0.46, headD = ts * 0.13;
         var headY = poleH + ts * 0.21 - headH / 2 - ts * 0.02;
         var headZ = -(ts * 0.17 + armLen) + headD * 0.2;
+        var headG = new THREE.Group();
+        headG.position.set(0, 0, headZ);
+        headG.rotation.y = Math.PI / 2;
+        g.add(headG);
         var head = new THREE.Mesh(new THREE.BoxGeometry(headW, headH, headD), housingMat);
-        head.position.set(0, headY, headZ);
-        g.add(head);
+        head.position.set(0, headY, 0);
+        headG.add(head);
 
         /* lamps (red top / yellow mid / green bottom) — self-lit discs that
            _updateTrafficLights swaps between dark and bright each round, each
@@ -3524,12 +3531,12 @@ const ThreeRenderer = (function () {
         for (var li = 0; li < order.length; li++) {
             var cn = order[li];
             var ly = headY + headH * (0.30 - 0.30 * li);
-            var lz = headZ - headD / 2 - ts * 0.006;
+            var lz = -headD / 2 - ts * 0.006;
             var lm = new THREE.MeshBasicMaterial({ color: _TL_DARK[cn], fog: false });
             var lamp = new THREE.Mesh(new THREE.CylinderGeometry(lampR, lampR, ts * 0.018, 10), lm);
             lamp.rotation.x = Math.PI / 2;
             lamp.position.set(0, ly, lz);
-            g.add(lamp);
+            headG.add(lamp);
             lampMats[cn] = lm;
 
             /* visor hood: open half-cylinder shading the top of the lamp
@@ -3539,13 +3546,13 @@ const ThreeRenderer = (function () {
                 visorMat);
             visor.rotation.x = Math.PI / 2;
             visor.position.set(0, ly, lz - ts * 0.018);
-            g.add(visor);
+            headG.add(visor);
 
             if (typeof _hzGlowCore === 'function') {
                 var glow = _hzGlowCore(lampR * 0.9, _TL_BRIGHT[cn]);
                 glow.position.set(0, ly, lz - ts * 0.03);
                 glow.visible = false;
-                g.add(glow);
+                headG.add(glow);
                 glows[cn] = glow;
             }
         }
@@ -4400,7 +4407,10 @@ const ThreeRenderer = (function () {
             handbag: _hzHandbag, greytube: _hzGreyTube, blastdoor: _hzBlastDoor,
             shiva: _hzShiva, beamring: _hzBeamRing, wetfloorsign: _hzWetFloorSign,
             securitycam: _hzSecurityCam, sleigh: _hzSleigh, candycane: _hzCandyCane,
-            weatherballoon: _hzWeatherBalloon, roadsign: _hzRoadSign
+            weatherballoon: _hzWeatherBalloon, roadsign: _hzRoadSign,
+            // 2026-07 gap-fill batch — graveyard / unholy / arcane lore pieces
+            woodcross: _hzWoodCross, skull: _hzGrinSkull,
+            fleshmound: _hzFleshMound, tome: _hzTome
         };
         return _MON_BUILDERS;
     }
@@ -4627,6 +4637,14 @@ const ThreeRenderer = (function () {
                     h = _hashInt(h, 5); h = _hashInt(h, d.x); h = _hashInt(h, d.y);
                     h = _hashVal(h, d.ownerPlayer); h = _hashStr(h, d.spellName || ''); h = _hashInt(h, d.hp);
                 }
+            }
+        }
+        if (state._gatePairs) {
+            for (var gpi = 0; gpi < state._gatePairs.length; gpi++) {
+                var gp = state._gatePairs[gpi];
+                h = _hashInt(h, 9); h = _hashInt(h, gp.x1); h = _hashInt(h, gp.y1);
+                h = _hashInt(h, gp.x2); h = _hashInt(h, gp.y2);
+                h = _hashVal(h, gp.ownerPlayer); h = _hashVal(h, gp.usesLeft);
             }
         }
         /* Gravestones: any dead (not mid-death-animation) unit is a tile prop.
@@ -4860,6 +4878,287 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ──────────────────────────────────────────────────────────────────────
+       DEPLOYABLE 3D MODELS (2026-07 gap-fill) — every persistent deployObject
+       used to fall through to a flat colored quad except the Tesla Coil.
+       These give each one a real prop in the Tesla Coil's style: pixel
+       terrain sprites via _getTeslaTex + MeshBasicMaterial, built at ts
+       scale, positioned on the tile top, owner-tinted accent glow.
+       ────────────────────────────────────────────────────────────────────── */
+    function _deployMat(file, tint, rx, ry) {
+        return new THREE.MeshBasicMaterial({
+            map: _getTeslaTex(file, rx, ry),
+            color: new THREE.Color(tint), depthWrite: true,
+        });
+    }
+    function _deployGlowMat(color, opacity) {
+        return new THREE.MeshBasicMaterial({
+            color: new THREE.Color(color), transparent: true,
+            opacity: opacity != null ? opacity : 0.5,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+            side: THREE.DoubleSide,
+        });
+    }
+    function _deployFinish(g, x, y, scale) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        g.rotation.y = (x * 7 + y * 13) % 6;
+        if (scale) g.scale.setScalar(scale);
+        g.position.set(x * ts + ts / 2, tileTopY(x, y), y * ts + ts / 2);
+        return g;
+    }
+
+    /* Bone Wall (skeleton) — a palisade of giant femurs lashed together. */
+    function _buildBoneWall3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var boneMat = _deployMat('marble_2.png', 0xd8cdb4);
+        var oldBone = _deployMat('marble_2.png', 0xbfb296);
+        var n = 5;
+        for (var i = 0; i < n; i++) {
+            var bx = (i - (n - 1) / 2) * ts * 0.17;
+            var bh = ts * (0.5 + 0.14 * Math.sin(i * 2.1 + x + y));
+            var m = (i % 2) ? boneMat : oldBone;
+            var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.055, bh, 7), m);
+            shaft.position.set(bx, bh / 2, 0);
+            shaft.rotation.z = (i - (n - 1) / 2) * 0.07;
+            g.add(shaft);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 6, 5), m);
+            knob.position.set(bx - Math.sin(shaft.rotation.z) * bh / 2, bh, 0);
+            g.add(knob);
+        }
+        /* one femur lashed across the palisade */
+        var cross = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.8, 7), boneMat);
+        cross.rotation.z = Math.PI / 2 + 0.12;
+        cross.position.y = ts * 0.34;
+        g.add(cross);
+        /* a warning skull spiked on the tallest stake */
+        var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.085, 8, 6), boneMat);
+        skull.scale.set(1, 0.9, 1.1);
+        skull.position.set(0, ts * 0.72, 0);
+        g.add(skull);
+        var eyeMat = _deployGlowMat(ownerPlayer === 1 ? 0x55aaff : 0xff5555, 0.8);
+        for (var e = -1; e <= 1; e += 2) {
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.018, 5, 4), eyeMat);
+            eye.position.set(e * ts * 0.032, ts * 0.73, -ts * 0.075);
+            g.add(eye);
+        }
+        return _deployFinish(g, x, y, 1.25);
+    }
+
+    /* Pillar of Atlantis (atlantean) — fluted marble column, orichalcum bands. */
+    function _buildAtlantisPillar3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var marbleMat = _deployMat('marble_light.png', 0xeaf2ee);
+        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var plinth = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.26, ts * 0.08, 10), marbleMat);
+        plinth.position.y = ts * 0.04; g.add(plinth);
+        var col = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.15, ts * 0.62, 12), marbleMat);
+        col.position.y = ts * 0.39; g.add(col);
+        /* flutes: thin ridges around the shaft */
+        for (var f = 0; f < 6; f++) {
+            var fa = f * Math.PI / 3;
+            var ridge = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.58, 5), marbleMat);
+            ridge.position.set(Math.cos(fa) * ts * 0.13, ts * 0.39, Math.sin(fa) * ts * 0.13);
+            g.add(ridge);
+        }
+        var cap = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.36, ts * 0.09, ts * 0.36), goldMat);
+        cap.position.y = ts * 0.745; g.add(cap);
+        /* glowing orichalcum band — sunken-city power still humming */
+        var bandMat = _deployGlowMat(0x3ee6c4, 0.6);
+        var band = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.15, ts * 0.02, 6, 18), bandMat);
+        band.rotation.x = Math.PI / 2;
+        band.position.y = ts * 0.39; g.add(band);
+        var crest = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.07, 0), _deployGlowMat(0x3ee6c4, 0.75));
+        crest.position.y = ts * 0.86; g.add(crest);
+        return _deployFinish(g, x, y, 1.3);
+    }
+
+    /* Totem Drop (shaman) — three carved faces stacked, wings at the crown. */
+    function _buildTotemPole3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var tints = [0xc98d4a, 0x9a6a3c, 0xd8a860];
+        var eyeMat = _deployGlowMat(0x66ff88, 0.85);
+        for (var s = 0; s < 3; s++) {
+            var segMat = _deployMat('wood.png', tints[s]);
+            var sy = ts * (0.14 + s * 0.24);
+            var seg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.15, ts * 0.16, ts * 0.24, 9), segMat);
+            seg.position.y = sy; g.add(seg);
+            /* carved brow + beak-nose on each face */
+            var brow = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.2, ts * 0.035, ts * 0.05), segMat);
+            brow.position.set(0, sy + ts * 0.06, -ts * 0.15); g.add(brow);
+            var beak = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.045, ts * 0.11, 5), segMat);
+            beak.rotation.x = -Math.PI / 2;
+            beak.position.set(0, sy, -ts * 0.18); g.add(beak);
+            for (var e = -1; e <= 1; e += 2) {
+                var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.02, 5, 4), eyeMat);
+                eye.position.set(e * ts * 0.06, sy + ts * 0.03, -ts * 0.15);
+                g.add(eye);
+            }
+        }
+        /* thunderbird wings at the crown */
+        var wingMat = _deployMat('wood_planks.png', 0xb07840);
+        for (var w = -1; w <= 1; w += 2) {
+            var wing = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.34, ts * 0.1, ts * 0.04), wingMat);
+            wing.position.set(w * ts * 0.24, ts * 0.72, 0);
+            wing.rotation.z = w * 0.45;
+            g.add(wing);
+        }
+        /* healing shimmer rising off the totem */
+        var aura = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.14, ts * 0.3, 8, 1, true), _deployGlowMat(0x66ff88, 0.22));
+        aura.position.y = ts * 0.92; g.add(aura);
+        return _deployFinish(g, x, y, 1.3);
+    }
+
+    /* Federation Beacon (nordic) — sleek pylon, a healing crystal adrift above. */
+    function _buildFederationBeacon3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var alumMat = _deployMat('aluminium.png', 0xdde2ea);
+        var darkMat = _deployMat('metal.png', 0x9aa2ac);
+        var base = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.26, ts * 0.07, 10), darkMat);
+        base.position.y = ts * 0.035; g.add(base);
+        var pylon = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.045, ts * 0.13, ts * 0.62, 8), alumMat);
+        pylon.position.y = ts * 0.38; g.add(pylon);
+        for (var f = 0; f < 3; f++) {
+            var fa = f * Math.PI * 2 / 3;
+            var fin = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.3, ts * 0.1), alumMat);
+            fin.position.set(Math.cos(fa) * ts * 0.14, ts * 0.18, Math.sin(fa) * ts * 0.14);
+            fin.rotation.y = -fa;
+            g.add(fin);
+        }
+        /* the crystal floats free above the pylon tip, ringed in light */
+        var crysMat = _deployGlowMat(0x8fd8ff, 0.85);
+        var crys = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.1, 0), crysMat);
+        crys.position.y = ts * 0.85;
+        crys.scale.y = 1.5;
+        g.add(crys);
+        var haloMat = _deployGlowMat(0xbfe8ff, 0.4);
+        var halo = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.15, ts * 0.014, 6, 20), haloMat);
+        halo.rotation.x = Math.PI / 2;
+        halo.position.y = ts * 0.85; g.add(halo);
+        return _deployFinish(g, x, y, 1.3);
+    }
+
+    /* Lucid Trap (dreameater) — a dreamcatcher staked into the tile. */
+    function _buildLucidSnare3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var woodMat = _deployMat('wood.png', 0x8a6a48);
+        var stake = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.028, ts * 0.5, 6), woodMat);
+        stake.position.y = ts * 0.25; g.add(stake);
+        var hoopMat = _deployMat('wood.png', 0xa07850);
+        var hoop = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.18, ts * 0.018, 6, 20), hoopMat);
+        hoop.position.y = ts * 0.62; g.add(hoop);
+        /* the web: chords strung across the hoop */
+        var webMat = _deployGlowMat(0xd8b0ff, 0.5);
+        for (var c = 0; c < 3; c++) {
+            var ca = c * Math.PI / 3;
+            var chord = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.004, ts * 0.004, ts * 0.34, 4), webMat);
+            chord.position.y = ts * 0.62;
+            chord.rotation.z = ca;
+            g.add(chord);
+        }
+        var dream = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.045, 7, 6), _deployGlowMat(0xc79bff, 0.8));
+        dream.position.y = ts * 0.62; g.add(dream);
+        /* hanging feathers */
+        for (var fe = -1; fe <= 1; fe++) {
+            var feather = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.12, 5), _deployMat('marble_2.png', 0xe8e2f2));
+            feather.position.set(fe * ts * 0.1, ts * 0.36, 0);
+            feather.rotation.x = Math.PI;
+            g.add(feather);
+        }
+        return _deployFinish(g, x, y, 1.25);
+    }
+
+    /* Flashbang Mine (gnome) — squat brass disc mine with an armed lamp. */
+    function _buildFlashbangMine3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var brassMat = _deployMat('gold.png', 0xc8a850);
+        var ironMat = _deployMat('gunmetal.png', 0xb8bec8);
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.19, ts * 0.09, 12), brassMat);
+        body.position.y = ts * 0.045; g.add(body);
+        var lid = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), ironMat);
+        lid.position.y = ts * 0.09; g.add(lid);
+        /* trigger studs around the rim */
+        for (var s = 0; s < 6; s++) {
+            var sa = s * Math.PI / 3;
+            var stud = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.016, ts * 0.05, 5), ironMat);
+            stud.position.set(Math.cos(sa) * ts * 0.15, ts * 0.1, Math.sin(sa) * ts * 0.15);
+            stud.rotation.z = Math.PI / 2; stud.rotation.y = -sa;
+            g.add(stud);
+        }
+        /* the armed lamp — gnome engineering never blinks quietly */
+        var lamp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.032, 6, 5),
+            _deployGlowMat(ownerPlayer === 1 ? 0x55aaff : 0xff5555, 0.9));
+        lamp.position.y = ts * 0.19; g.add(lamp);
+        return _deployFinish(g, x, y, 1.2);
+    }
+
+    var _DEPLOY_3D_BUILDERS = {
+        raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
+        raceBoneWall: _buildBoneWall3D,
+        raceOrichalcumBarrier: _buildAtlantisPillar3D,
+        raceTotemDrop: _buildTotemPole3D,
+        raceFederationBeacon: _buildFederationBeacon3D,
+        raceLucidTrap: _buildLucidSnare3D,
+        raceFlashbangMine: _buildFlashbangMine3D,
+    };
+    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
+
+    /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
+       state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:
+       anubis tomb-doors for Grave Passage, an excavated ant-mound for
+       Tunnel Network. */
+    function _buildGraveGate3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var stoneMat = _deployMat('desert.png', 0xd9bd82);
+        var goldMat = _deployMat('gold.png', 0xd8b458);
+        for (var j = -1; j <= 1; j += 2) {
+            var jamb = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.72, ts * 0.14), stoneMat);
+            jamb.position.set(j * ts * 0.2, ts * 0.36, 0); g.add(jamb);
+        }
+        var lintel = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.56, ts * 0.12, ts * 0.16), stoneMat);
+        lintel.position.y = ts * 0.78; g.add(lintel);
+        var ankh = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.05, ts * 0.016, 6, 12), goldMat);
+        ankh.position.y = ts * 0.92; g.add(ankh);
+        var ankhStem = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.1, ts * 0.03), goldMat);
+        ankhStem.position.y = ts * 0.845; g.add(ankhStem);
+        /* the doorway itself: a sheet of underworld dusk */
+        var voidMat = _deployGlowMat(0x9a68ff, 0.4);
+        var portal = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.62), voidMat);
+        portal.position.y = ts * 0.37; g.add(portal);
+        return _deployFinish(g, x, y, 1.25);
+    }
+    function _buildTunnelMound3D(x, y, ownerPlayer) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var dirtMat = _deployMat('dirt.png', 0xa5825e);
+        var mound = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), dirtMat);
+        mound.scale.y = 0.65; g.add(mound);
+        /* excavated spoil scattered around the lip */
+        for (var r = 0; r < 4; r++) {
+            var ra = r * Math.PI / 2 + 0.4;
+            var clod = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.045, 0), dirtMat);
+            clod.position.set(Math.cos(ra) * ts * 0.33, ts * 0.02, Math.sin(ra) * ts * 0.33);
+            g.add(clod);
+        }
+        /* the shaft mouth, black as the underground it leads to */
+        var holeMat = new THREE.MeshBasicMaterial({ color: 0x0a0806, depthWrite: false });
+        var hole = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.14, 12), holeMat);
+        hole.rotation.x = -Math.PI / 2;
+        hole.position.y = ts * 0.2; g.add(hole);
+        /* faint pheromone shimmer so the network's endpoints read as linked */
+        var scentMat = _deployGlowMat(ownerPlayer === 1 ? 0x55aaff : 0xff5555, 0.25);
+        var scent = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.16, ts * 0.014, 6, 16), scentMat);
+        scent.rotation.x = Math.PI / 2;
+        scent.position.y = ts * 0.22; g.add(scent);
+        return _deployFinish(g, x, y, 1.25);
+    }
+
     function rebuildDeployables() {
         if (!objectGroup) return;
 
@@ -5078,13 +5377,16 @@ const ThreeRenderer = (function () {
                     }
                 }
 
-                /* Tesla Coil trap — full 3D coil model instead of a marker */
-                if (dObj.spellId === 'raceTeslaTrap') {
-                    var teslaG = _buildTeslaCoil3D(dx, dy, dObj.ownerPlayer);
-                    teslaG._ew_deployable = true;
-                    teslaG._ew_depX = dx; teslaG._ew_depY = dy;
-                    objectGroup.add(teslaG);
-                    deployableMeshes.set(dKey, teslaG);
+                /* Bespoke 3D deployable models (Tesla Coil, Bone Wall, Pillar
+                   of Atlantis, Totem Drop, Federation Beacon, Lucid Trap,
+                   Flashbang Mine) — full props instead of a marker quad */
+                var _d3fn = _DEPLOY_3D_BUILDERS[dObj.spellId];
+                if (_d3fn) {
+                    var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
+                    d3g._ew_deployable = true;
+                    d3g._ew_depX = dx; d3g._ew_depY = dy;
+                    objectGroup.add(d3g);
+                    deployableMeshes.set(dKey, d3g);
                     continue;
                 }
 
@@ -5108,6 +5410,25 @@ const ThreeRenderer = (function () {
                 markerMesh._ew_depX = dx; markerMesh._ew_depY = dy;
                 objectGroup.add(markerMesh);
                 deployableMeshes.set(dKey, markerMesh);
+            }
+        }
+
+        /* ── Teleport gate pairs (Grave Passage / Tunnel Network) — a prop on
+           BOTH endpoints. Announced in the log when cast, so they render for
+           both players. */
+        if (state._gatePairs) {
+            for (var gpi = 0; gpi < state._gatePairs.length; gpi++) {
+                var gp = state._gatePairs[gpi];
+                var gpBuild = /tunnel/i.test(gp.spellName || '') ? _buildTunnelMound3D : _buildGraveGate3D;
+                var ends = [[gp.x1, gp.y1], [gp.x2, gp.y2]];
+                for (var ge = 0; ge < 2; ge++) {
+                    var gm = gpBuild(ends[ge][0], ends[ge][1], gp.ownerPlayer);
+                    gm._ew_deployable = true;
+                    gm._ew_depX = ends[ge][0]; gm._ew_depY = ends[ge][1];
+                    var gpKey = 'dep_' + (idx++);
+                    objectGroup.add(gm);
+                    deployableMeshes.set(gpKey, gm);
+                }
             }
         }
 
@@ -13954,6 +14275,37 @@ const ThreeRenderer = (function () {
     // blocking) — tactical cover on these maps comes from terrain height.
 
     // Planted Stars-and-Stripes — a rigid (airless-moon) flag on a metal pole.
+    // The cloth is a single canvas-painted plane (13 stripes, starred canton)
+    // hung from a horizontal top crossbar, with a frozen ripple baked into the
+    // geometry — the way the real Apollo flags hang.
+    var _hzFlagTex = null;
+    function _hzGetFlagTexture() {
+        if (_hzFlagTex) return _hzFlagTex;
+        var cv = document.createElement('canvas');
+        cv.width = 256; cv.height = 160;
+        var c = cv.getContext('2d');
+        var sh = cv.height / 13;
+        for (var i = 0; i < 13; i++) {
+            c.fillStyle = (i % 2 === 0) ? '#c0312b' : '#f2f2f2';
+            c.fillRect(0, i * sh, cv.width, sh + 1);
+        }
+        var cw = cv.width * 0.42, ch = sh * 7;                  // canton
+        c.fillStyle = '#2a3b7a';
+        c.fillRect(0, 0, cw, ch);
+        c.fillStyle = '#f2f2f2';
+        for (var row = 0; row < 9; row++) {                     // 50 stars: 6/5 staggered rows
+            var n = (row % 2 === 0) ? 6 : 5;
+            for (var s = 0; s < n; s++) {
+                var sx = cw * ((s + ((row % 2) ? 1 : 0.5)) / 6);
+                var sy = ch * ((row + 0.5) / 9);
+                c.fillRect(sx - 2, sy - 2, 4, 4);
+            }
+        }
+        _hzFlagTex = new THREE.CanvasTexture(cv);
+        _hzFlagTex.magFilter = THREE.NearestFilter;
+        _hzFlagTex.minFilter = THREE.NearestMipmapNearestFilter;
+        return _hzFlagTex;
+    }
     function _hzFlag(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
@@ -13962,19 +14314,28 @@ const ThreeRenderer = (function () {
         pole.position.y = poleH * 0.5; g.add(pole);
         var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 8, 6), _hzGeoMat(_hzTex('gold'), 0xffd873));
         knob.position.y = poleH + ts * 0.05; g.add(knob);
-        var fw = ts * 2.3, fh = ts * 1.35, stripes = 7, sh = fh / stripes;
+        var fw = ts * 2.3, fh = ts * 1.35;
         var flag = new THREE.Group();
-        for (var i = 0; i < stripes; i++) {
-            var col = (i % 2 === 0) ? 0xc0312b : 0xf2f2f2;      // red / white
-            var strip = _hzBox(fw, sh, ts * 0.04, ts, _hzGeoMat(null, col));
-            strip.position.set(fw * 0.5, fh - sh * (i + 0.5), 0);
-            flag.add(strip);
+        // top crossbar the cloth hangs from (the Apollo deploy rod)
+        var bar = _hzCyl(poleR * 0.4, poleR * 0.4, fw + ts * 0.1, 6, ts, _hzGeoMat(_hzTex('metal'), 0xb9bec8));
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(fw * 0.5, fh + ts * 0.02, 0);
+        flag.add(bar);
+        // cloth: one textured plane with a frozen ripple baked into the verts
+        var clothGeo = new THREE.PlaneGeometry(fw, fh, 16, 1);
+        var pos = clothGeo.getAttribute('position');
+        var ripplePhase = rng() * Math.PI * 2;
+        for (var vi = 0; vi < pos.count; vi++) {
+            var u = (pos.getX(vi) + fw / 2) / fw;               // 0 at hoist → 1 at fly end
+            pos.setZ(vi, Math.sin(u * Math.PI * 3 + ripplePhase) * ts * 0.09 * u);
         }
-        var ch = sh * 4, cw = fw * 0.42;                        // blue canton
-        var canton = _hzBox(cw, ch, ts * 0.05, ts, _hzGeoMat(null, 0x2a3b7a));
-        canton.position.set(cw * 0.5, fh - ch * 0.5, ts * 0.012);
-        flag.add(canton);
-        flag.position.set(poleR, poleH - fh, 0);
+        clothGeo.computeVertexNormals();
+        var clothMat = _hzGeoMat(_hzGetFlagTexture(), 0xffffff);
+        clothMat.side = THREE.DoubleSide;
+        var cloth = new THREE.Mesh(clothGeo, clothMat);
+        cloth.position.set(fw * 0.5, fh * 0.5, 0);
+        flag.add(cloth);
+        flag.position.set(poleR, poleH - fh - ts * 0.1, 0);
         flag.rotation.y = -0.12;                                // a slight curl
         g.add(flag);
         return g;
@@ -14300,7 +14661,7 @@ const ThreeRenderer = (function () {
     function _hzMannequin(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var pale = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble'), 0xe8ded2); };
+        var pale = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble_light'), 0xe8ded2); };
         var base = _hzGeoMat(_hzTex('metal'), 0x565a62);
         _hzAt(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.42, ts * 0.5, ts * 0.12, 10), base), 0, ts * 0.06, 0);
         _hzAt(g, _hzCyl(ts * 0.05, ts * 0.05, ts * 0.9, 6, ts, base), 0, ts * 0.55, 0);                   // stand rod
@@ -14316,7 +14677,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xf0cd6e); };
-        var marble = _hzGeoMat(_hzTex('marble'), 0xfdfaf0);
+        var marble = _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xfdfaf0);
         _hzAt(g, _hzBox(ts * 2.6, ts * 0.5, ts * 2.6, ts, marble), 0, ts * 0.25, 0);
         _hzAt(g, _hzBox(ts * 1.5, ts * 0.55, ts * 1.4, ts, gold()), 0, ts * 0.5 + ts * 0.28, 0);          // seat
         _hzAt(g, _hzBox(ts * 1.5, ts * 2.6, ts * 0.32, ts, gold()), 0, ts * 0.5 + ts * 1.3, ts * 0.55);   // high back
@@ -14334,7 +14695,7 @@ const ThreeRenderer = (function () {
     function _hzSeraph(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var marble = function () { return _hzGeoMat(_hzTex('marble'), 0xf6f3e8); };
+        var marble = function () { return _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xf6f3e8); };
         _hzAt(g, _hzCyl(ts * 0.8, ts * 1.0, ts * 0.5, 10, ts, marble()), 0, ts * 0.25, 0);
         _hzAt(g, _hzCyl(ts * 0.34, ts * 0.62, ts * 2.4, 9, ts, marble()), 0, ts * 1.7, 0);                // robed body
         _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 9, 7), marble()), 0, ts * 3.2, 0);
@@ -14590,7 +14951,7 @@ const ThreeRenderer = (function () {
     function _hzZeusBolt(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var marble = _hzGeoMat(_hzTex('marble'), 0xf2efe4);
+        var marble = _hzGeoMat(_hzTex('marble_2') || _hzTex('marble'), 0xf2efe4);
         var crack = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.8, 0), marble);
         crack.scale.y = 0.4;
         _hzAt(g, crack, 0, ts * 0.3, 0);
@@ -14649,26 +15010,50 @@ const ThreeRenderer = (function () {
     }
 
     // ── Area 51 (and the 'orbs'/'space' skies): the saucer itself ──
+    // Same seven-point lathe hull profile as the hero spell saucer
+    // (_sigBuildUFO in three-vfx-effects.js) clad in the same riveted
+    // metal.png, so the landed craft and the one that abducts you are
+    // unmistakably the same machine.
     function _hzSaucer(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var hull = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc9cfd8); };
         var lift = ts * 1.1;
-        var disc = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.9, 18, 10), hull());
-        disc.scale.y = 0.26;
-        _hzAt(g, disc, 0, lift + ts * 0.5, 0);
-        var dome = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.72, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), hull());
-        _hzAt(g, dome, 0, lift + ts * 0.78, 0);
-        for (var i = 0; i < 8; i++) {                                   // rim lights
-            var a = i * Math.PI / 4;
-            var lm = _hzGlowMat(i % 2 ? 0x7affc8 : 0xffd27a, 0.75);
-            var l = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 5), lm);
-            _hzAt(g, l, Math.cos(a) * ts * 1.55, lift + ts * 0.5, Math.sin(a) * ts * 1.55);
-            if (i < 2) _hzPulse(lm, l, 0.3, 0.1, 0.9 + i * 0.4);
+        var R = ts * 1.9;                                               // hull radius
+        var hullY = lift + ts * 0.5;
+        var pts = [
+            new THREE.Vector2(0.001, -0.16),
+            new THREE.Vector2(0.35, -0.14),
+            new THREE.Vector2(0.75, -0.08),
+            new THREE.Vector2(1.0, 0.0),
+            new THREE.Vector2(0.78, 0.10),
+            new THREE.Vector2(0.45, 0.16),
+            new THREE.Vector2(0.001, 0.18),
+        ];
+        var hullGeo = new THREE.LatheGeometry(pts, 40);
+        _hzScaleUV(hullGeo, 6, 2);
+        var hull = new THREE.Mesh(hullGeo, _hzGeoMat(_hzTex('metal') || _hzTex('aluminium'), 0xd0d4dc));
+        hull.scale.setScalar(R);
+        _hzAt(g, hull, 0, hullY, 0);
+        var rimMat = _hzGlowMat(0x9adcff, 0.5);
+        var rim = new THREE.Mesh(new THREE.TorusGeometry(R, R * 0.03, 8, 48), rimMat);
+        rim.rotation.x = Math.PI / 2;
+        _hzAt(g, rim, 0, hullY, 0);
+        _hzPulse(rimMat, null, 0.15, 0, 0.5);
+        var domeMat = _hzGlowMat(0x9adcff, 0.55);
+        var dome = new THREE.Mesh(
+            new THREE.SphereGeometry(R * 0.34, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+        _hzAt(g, dome, 0, hullY + R * 0.14, 0);
+        for (var i = 0; i < 10; i++) {                                  // rim lights
+            var a = i * Math.PI * 2 / 10;
+            var lm = _hzGlowMat(0xaaffcc, 0.75);
+            var l = new THREE.Mesh(new THREE.SphereGeometry(R * 0.045, 6, 5), lm);
+            _hzAt(g, l, Math.cos(a) * R * 0.88, hullY - R * 0.02, Math.sin(a) * R * 0.88);
+            if (i < 3) _hzPulse(lm, l, 0.3, 0.1, 0.9 + i * 0.4);
         }
+        var strutMat = _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc9cfd8);
         for (var s = 0; s < 3; s++) {                                   // landing struts
             var a2 = s * Math.PI * 2 / 3 + 0.5;
-            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.07, lift + ts * 0.3, 5, ts, hull()),
+            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.07, lift + ts * 0.3, 5, ts, strutMat),
                 Math.cos(a2) * ts * 1.0, (lift + ts * 0.3) / 2, Math.sin(a2) * ts * 1.0, 0, Math.cos(a2) * 0.3, Math.sin(a2) * 0.3);
         }
         var beamMat = _hzGlowMat(0xa0ffd0, 0.14);
@@ -14955,7 +15340,7 @@ const ThreeRenderer = (function () {
     function _hzBasilicaDome(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var marble = function (c) { return _hzGeoMat(_hzTex('marble'), c || 0xf2ecdc); };
+        var marble = function (c) { return _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), c || 0xf2ecdc); };
         var drumH = ts * 1.6, R = ts * 1.7;
         var drum = _hzCyl(R, R, drumH, 14, ts, marble());
         _hzAt(g, drum, 0, drumH / 2, 0);
@@ -15232,7 +15617,7 @@ const ThreeRenderer = (function () {
     function _hzCandyCane(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var white = function () { return _hzGeoMat(_hzTex('marble'), 0xf6f2ea); };
+        var white = function () { return _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xf6f2ea); };
         var red = function () { return _hzGeoMat(_hzTex('carpet') || _hzTex('bricks_1'), 0xd0342a); };
         var H = ts * 3.2, segs = 8;
         for (var i = 0; i < segs; i++) {                                 // striped shaft
@@ -15285,6 +15670,182 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    // ── Graveyard: a weathered wooden cross, leaning where it was planted ──
+    function _hzWoodCross(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var wood = function (c) { return _hzGeoMat(_hzTex('wood_planks') || _hzTex('wood'), c || 0x9a7b52); };
+        var H = ts * (2.6 + rng() * 1.4), bw = ts * 0.22;
+        var lean = (rng() - 0.5) * 0.22;
+        var upright = _hzBox(bw, H, bw * 0.8, ts, wood());
+        _hzAt(g, upright, 0, H * 0.5, 0, 0, lean);
+        var armW = H * 0.62;
+        var arm = _hzBox(armW, bw, bw * 0.8, ts, wood(0x8f7048));
+        // the crossbeam rides the upright's lean and sags a touch off-square
+        _hzAt(g, arm, Math.sin(lean) * -H * 0.68, Math.cos(lean) * H * 0.68, 0, 0, lean + (rng() - 0.5) * 0.1);
+        // rope lashing at the join
+        var rope = _hzCyl(bw * 0.72, bw * 0.72, bw * 0.5, 6, ts, _hzGeoMat(_hzTex('dirt'), 0x6e5a3a));
+        _hzAt(g, rope, Math.sin(lean) * -H * 0.68, Math.cos(lean) * H * 0.68, 0, 0, 0, Math.PI / 2 + lean);
+        // small rock cairn heaped at the foot
+        for (var i = 0; i < 4; i++) {
+            var rr = ts * (0.16 + rng() * 0.14);
+            var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0),
+                _hzGeoMat(_hzTex('rocks_2') || _hzTex('rock'), 0x9a9284));
+            rock.scale.y = 0.7;
+            _hzAt(g, rock, (rng() - 0.5) * ts * 0.7, rr * 0.5, (rng() - 0.5) * ts * 0.7, rng() * Math.PI);
+        }
+        return g;
+    }
+
+    // ── Unholy wastes: a colossal half-buried skull, grinning or screaming ──
+    function _hzGrinSkull(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var bone = function (c) { return _hzGeoMat(_hzTex('marble_2') || _hzTex('drywall'), c || 0xd8cdb4); };
+        var R = ts * (1.4 + rng() * 0.9);                        // cranium radius
+        var laughing = rng() < 0.5;                              // grin wide … or scream
+        var cy = R * 0.72;                                       // buried to the cheekbones
+        var cranium = new THREE.Mesh(new THREE.SphereGeometry(R, 14, 10), bone());
+        cranium.scale.set(1, 0.92, 1.08);
+        _hzAt(g, cranium, 0, cy, 0);
+        // brow ridge shading the sockets
+        var brow = _hzBox(R * 1.5, R * 0.22, R * 0.3, ts, bone(0xcfc4aa));
+        _hzAt(g, brow, 0, cy + R * 0.18, -R * 0.82);
+        // eye sockets: dark hollows with an ember burning deep inside
+        var socketMat = _hzGeoMat(null, 0x14100c);
+        var emberCol = laughing ? 0xffb84a : 0xff4433;
+        for (var side = -1; side <= 1; side += 2) {
+            var socket = new THREE.Mesh(new THREE.SphereGeometry(R * 0.26, 8, 6), socketMat);
+            socket.scale.z = 0.5;
+            _hzAt(g, socket, side * R * 0.38, cy + R * 0.05, -R * 0.86);
+            var emberMat = _hzGlowMat(emberCol, 0.85);
+            var ember = new THREE.Mesh(new THREE.SphereGeometry(R * 0.09, 6, 5), emberMat);
+            _hzAt(g, ember, side * R * 0.38, cy + R * 0.05, -R * 0.9);
+            _hzPulse(emberMat, ember, 0.35, 0.12, laughing ? 1.6 : 0.5);
+        }
+        // nasal hollow
+        var nose = new THREE.Mesh(new THREE.ConeGeometry(R * 0.12, R * 0.26, 5), socketMat);
+        _hzAt(g, nose, 0, cy - R * 0.18, -R * 0.94, 0, 0, -Math.PI / 2.2);
+        // upper teeth row curving with the jawline
+        var nT = 7;
+        for (var t = 0; t < nT; t++) {
+            var a = (-0.5 + t / (nT - 1)) * 1.15;
+            var tooth = _hzBox(R * 0.13, R * 0.22, R * 0.1, ts, bone(0xe8e0cc));
+            _hzAt(g, tooth, Math.sin(a) * R * 0.72, cy - R * 0.5, -Math.cos(a) * R * 0.86, -a);
+        }
+        // the lower jaw lies fallen in front — agape mid-laugh, or torn wide
+        var jawDrop = laughing ? R * 0.55 : R * 0.95;
+        var jaw = new THREE.Group();
+        var jawArcGeo = new THREE.TorusGeometry(R * 0.66, R * 0.14, 7, 12, Math.PI);
+        _hzTileUV(jawArcGeo, R * 4, ts, ts);
+        var jawArc = new THREE.Mesh(jawArcGeo, bone(0xccc0a6));
+        jawArc.rotation.x = -Math.PI / 2;
+        jaw.add(jawArc);
+        for (var jt = 0; jt < 5; jt++) {
+            var ja = (-0.5 + jt / 4) * 1.0;
+            var jtooth = _hzBox(R * 0.11, R * 0.18, R * 0.09, ts, bone(0xe8e0cc));
+            jtooth.position.set(Math.sin(ja) * R * 0.62, R * 0.12, -Math.cos(ja) * R * 0.62);
+            jtooth.rotation.y = -ja;
+            jaw.add(jtooth);
+        }
+        jaw.position.set((rng() - 0.5) * R * 0.3, R * 0.14, -R * 0.9 - jawDrop);
+        jaw.rotation.y = (rng() - 0.5) * 0.5;
+        g.add(jaw);
+        return g;
+    }
+
+    // ── Unholy wastes: a heap of living flesh, all eyes and teeth ──
+    function _hzFleshMound(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var fleshKeys = ['flesh', 'flesh_2', 'flesh_3'];
+        var R = ts * (1.2 + rng() * 1.0);
+        // overlapping squashed lobes make the mass read as grown, not built
+        var lobes = 4 + (rng() * 3 | 0);
+        for (var i = 0; i < lobes; i++) {
+            var lr = R * (0.45 + rng() * 0.5);
+            var lobeGeo = new THREE.SphereGeometry(lr, 10, 8);
+            _hzScaleUV(lobeGeo, lr / ts * 4, lr / ts * 3);
+            var lobe = new THREE.Mesh(lobeGeo,
+                _hzGeoMat(_hzTex(fleshKeys[(rng() * fleshKeys.length) | 0]), 0xb98a8a));
+            lobe.scale.y = 0.55 + rng() * 0.25;
+            var a = rng() * Math.PI * 2, d = rng() * R * 0.7;
+            _hzAt(g, lobe, Math.cos(a) * d, lr * lobe.scale.y * 0.55, Math.sin(a) * d, rng() * Math.PI);
+        }
+        // unblinking eyes stud the mass — the mound is watching
+        var eyes = 3 + (rng() * 3 | 0);
+        for (var e = 0; e < eyes; e++) {
+            var er = ts * (0.08 + rng() * 0.08);
+            var ea = rng() * Math.PI * 2, ed = R * (0.35 + rng() * 0.55);
+            var eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(er, 7, 6),
+                _hzGeoMat(_hzTex('enamel') || null, 0xf0e8d8));
+            _hzAt(g, eyeWhite, Math.cos(ea) * ed, R * (0.35 + rng() * 0.45), Math.sin(ea) * ed);
+            var pupilMat = _hzGlowMat(rng() < 0.5 ? 0xffd040 : 0x8fff70, 0.8);
+            var pupil = new THREE.Mesh(new THREE.SphereGeometry(er * 0.45, 5, 4), pupilMat);
+            _hzAt(g, pupil, Math.cos(ea) * (ed + er * 0.7), R * (0.35 + rng() * 0.45), Math.sin(ea) * (ed + er * 0.7));
+            _hzPulse(pupilMat, pupil, 0.3, 0.08, 0.3 + rng() * 0.6);
+        }
+        // stray fangs erupting where no mouth should be
+        var fangs = 4 + (rng() * 4 | 0);
+        for (var f = 0; f < fangs; f++) {
+            var fa = rng() * Math.PI * 2, fd = R * (0.4 + rng() * 0.5);
+            var fang = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, ts * (0.2 + rng() * 0.25), 5),
+                _hzGeoMat(_hzTex('enamel') || null, 0xe8dfc8));
+            _hzAt(g, fang, Math.cos(fa) * fd, R * (0.2 + rng() * 0.4), Math.sin(fa) * fd,
+                0, (rng() - 0.5) * 1.2, (rng() - 0.5) * 1.2);
+        }
+        return g;
+    }
+
+    // ── Arcane library / Heaven: a colossal tome hanging open in the air ──
+    function _hzTome(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var holy = rng() < 0.5;                                  // gilt bible … or dark grimoire
+        var coverCol = holy ? 0x7a2f28 : 0x2c2438;               // red leather / midnight leather
+        var glowCol = holy ? 0xffe9a8 : 0xb08fff;
+        var lift = ts * (1.2 + rng() * 1.6);
+        var W = ts * 1.5, L = ts * 2.0, coverT = ts * 0.09;
+        var splay = 0.38;                                        // opening angle of each half
+        var cover = function () { return _hzGeoMat(_hzTex('carpet_3') || _hzTex('carpet') || null, coverCol); };
+        var pages = function () { return _hzGeoMat(_hzTex('marble_light') || _hzTex('drywall'), 0xf2ead2); };
+        for (var side = -1; side <= 1; side += 2) {
+            var half = new THREE.Group();
+            var cb = _hzBox(W, coverT, L, ts, cover());
+            cb.position.x = side * W * 0.5;
+            half.add(cb);
+            var pb = _hzBox(W * 0.92, coverT * 2.2, L * 0.92, ts, pages());
+            pb.position.set(side * W * 0.5, coverT * 1.6, 0);
+            half.add(pb);
+            half.rotation.z = side * splay;
+            half.position.y = lift;
+            g.add(half);
+        }
+        // spine ridge under the gutter
+        var spine = _hzBox(ts * 0.2, coverT * 1.6, L, ts, cover());
+        _hzAt(g, spine, 0, lift - ts * 0.04, 0);
+        if (holy) {                                              // gold cross inlaid on the spine-end
+            var goldM = _hzGeoMat(_hzTex('gold'), 0xe8c860);
+            _hzAt(g, _hzBox(ts * 0.05, ts * 0.3, ts * 0.05, ts, goldM), 0, lift - ts * 0.22, L * 0.5);
+            _hzAt(g, _hzBox(ts * 0.16, ts * 0.05, ts * 0.05, ts, goldM), 0, lift - 0.16 * ts, L * 0.5);
+        }
+        // light spilling from the open pages
+        var pgGlow = _hzGlowMat(glowCol, 0.4);
+        var shaft = new THREE.Mesh(new THREE.ConeGeometry(W * 0.5, ts * 1.6, 8, 1, true), pgGlow);
+        _hzAt(g, shaft, 0, lift + ts * 0.9, 0);
+        _hzPulse(pgGlow, null, 0.15, 0, 0.4 + rng() * 0.3);
+        var core = _hzGlowCore(ts * 0.3, glowCol, glowCol);
+        core.position.y = lift + ts * 0.28; g.add(core);
+        // drifting rune motes rising off the page
+        for (var m = 0; m < 3; m++) {
+            var moteMat = _hzGlowMat(glowCol, 0.5);
+            var mote = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.06, 0), moteMat);
+            _hzAt(g, mote, (rng() - 0.5) * W, lift + ts * (0.5 + m * 0.4), (rng() - 0.5) * L * 0.5);
+            _hzPulse(moteMat, mote, 0.4, 0.15, 0.5 + m * 0.3);
+        }
+        return g;
+    }
+
     // ── Per-map horizon themes ────────────────────────────────────────────
     // Each theme re-weights the free-floating landmark roster so a map's void
     // reads on-theme: Heaven floats golden gates and stairways, Hell leans
@@ -15296,18 +15857,20 @@ const ThreeRenderer = (function () {
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
             divine: [
-                [0.16, _hzGoldGate, false, 0.00, 0.45], [0.34, _hzLightPillar, false, -0.15, 0.50],
-                [0.50, _hzStairway, false, -0.30, 0.55], [0.68, _hzGreekRuin, false, -0.35, 0.50],
-                [0.82, _hzFloatingIsland, false, -0.30, 0.60], [0.92, _hzSacredRings, true, -0.30, 0.65],
-                [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
+                [0.15, _hzGoldGate, false, 0.00, 0.45], [0.31, _hzLightPillar, false, -0.15, 0.50],
+                [0.45, _hzStairway, false, -0.30, 0.55], [0.60, _hzGreekRuin, false, -0.35, 0.50],
+                [0.73, _hzFloatingIsland, false, -0.30, 0.60], [0.83, _hzTome, false, -0.20, 0.60],
+                [0.93, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
-                [0.28, _hzMonolith, false, -0.55, 0.35], [0.46, _hzColossus, false, -0.50, 0.30],
-                [0.64, _hzMountain, false, -0.30, 0.25], [0.78, _hzCrystalShards, true, -0.55, 0.45],
-                [0.90, _hzObelisk, false, -0.50, 0.40], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
+                [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
+                [0.54, _hzMountain, false, -0.30, 0.25], [0.66, _hzCrystalShards, true, -0.55, 0.45],
+                [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
+                [0.94, _hzFleshMound, false, -0.50, 0.30], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
             ruins: [
-                [0.26, _hzGreekRuin, false, -0.40, 0.50], [0.44, _hzStairway, false, -0.45, 0.55],
-                [0.58, _hzColossus, false, -0.45, 0.45], [0.72, _hzObelisk, false, -0.45, 0.55],
-                [0.86, _hzGateway, false, -0.40, 0.55], [1.00, _hzFloatingIsland, false, -0.50, 0.60]],
+                [0.24, _hzGreekRuin, false, -0.40, 0.50], [0.40, _hzStairway, false, -0.45, 0.55],
+                [0.54, _hzColossus, false, -0.45, 0.45], [0.66, _hzObelisk, false, -0.45, 0.55],
+                [0.78, _hzGateway, false, -0.40, 0.55], [0.88, _hzWoodCross, false, -0.45, 0.45],
+                [1.00, _hzFloatingIsland, false, -0.50, 0.60]],
             pyramids: [
                 [0.30, _hzModelPyramid, false, -0.40, 0.45], [0.50, _hzZiggurat, false, -0.40, 0.50],
                 [0.66, _hzObelisk, false, -0.45, 0.55], [0.80, _hzMonolith, false, -0.50, 0.55],
@@ -15336,9 +15899,10 @@ const ThreeRenderer = (function () {
                 [0.64, _hzFloatingIsland, false, -0.58, 0.66], [0.76, _hzModelEyeball, true, -0.50, 0.70],
                 [0.88, _hzSaucer, false, -0.45, 0.68], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
-                [0.30, _hzMonolith, false, -0.52, 0.60], [0.52, _hzColossus, false, -0.45, 0.45],
-                [0.72, _hzMountain, false, -0.25, 0.25], [0.88, _hzGateway, false, -0.45, 0.55],
-                [1.00, _hzObelisk, false, -0.45, 0.58]],
+                [0.26, _hzMonolith, false, -0.52, 0.60], [0.46, _hzColossus, false, -0.45, 0.45],
+                [0.62, _hzMountain, false, -0.25, 0.25], [0.76, _hzGateway, false, -0.45, 0.55],
+                [0.86, _hzObelisk, false, -0.45, 0.58], [0.94, _hzGrinSkull, false, -0.45, 0.40],
+                [1.00, _hzWoodCross, false, -0.42, 0.45]],
         };
         return _HZ_THEME_ROSTERS[name] || null;
     }
