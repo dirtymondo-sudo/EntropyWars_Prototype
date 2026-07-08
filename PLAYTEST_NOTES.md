@@ -6,16 +6,20 @@ matchmaking/relay — all gameplay logic is client-side.
 
 ## FIRE/WATER/LIGHTNING VFX PASS (2026-07-08) — three-vfx-effects.js, three-renderer.js, battle.js
 
-- **Burning tiles are now shader flames, not sprites.** `_syncTileFlames()` in
+- **Burning tiles are ray-marched volumetric fire.** `_syncTileFlames()` in
   three-vfx-effects.js reconciles `state.burningTiles` every frame into per-tile
-  meshes: 3 crossed planes (shared unit PlaneGeometry, origin at base) running a
-  procedural ShaderMaterial — domain-warped 4-octave fbm scrolling upward erodes a
-  3-tongue envelope, black→red→orange→white heat ramp, crisp alpha cut, normal
-  blending. `uVig` dims/lowers dying fires (t rounds left) and drives a grow-in on
-  ignite. The old y-locked `flame`/`flame-hot` gradient sprites (they read as pale
-  blobs) were removed from `_tickBurningTiles`; it now only spawns embers/smoke/
-  ground glow. Scene comes from `ThreeVFX._getScene()`; meshes rebuilt if the scene
-  ref changes; disposed in `clear()`.
+  meshes: a unit BoxGeometry (BackSide, base lifted +2px off the tile to avoid
+  z-fighting) whose fragment shader marches 18 jittered steps through a 3D flame
+  density field — 4 offset noise-eroded tapering columns, 3-octave 3D value-noise
+  fbm advected downward + a fine detail octave — accumulating emission through a
+  black→red→orange→white heat ramp. `uCamLocal` (camera in unit-box space) is
+  updated in `onBeforeRender` via `worldToLocal`. `uVig` dims/squashes dying fires
+  (t rounds left) and drives a grow-in on ignite. Crossed-plane v1 (looked flat/
+  cartoonish) and the older gradient sprites are gone; `_tickBurningTiles` only
+  spawns embers/smoke/ground glow now. Scene comes from `ThreeVFX._getScene()`;
+  meshes rebuilt if the scene ref changes; disposed in `clear()`. The flame shape/
+  colors were tuned with an offline Node raymarcher (scratchpad fire_raymarch.js
+  pattern) — port changes back there if retuning.
 - **Water tops use the iterative turbulence caustic.** In `_buildFluidTopMat`
   (three-renderer.js) the old sin-interference caustics + fat glints (the "blobs on
   the water") were replaced by the classic 4-iteration sin/cos filament caustic in

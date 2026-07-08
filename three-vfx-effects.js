@@ -571,25 +571,26 @@ const ThreeVFXEffects = (function () {
     var _burnAcc = 0;
     var _BURN_RATE_MS = 160;
 
-    /* ── Shader flames for burning tiles ─────────────────────────────
-       Real fire: three crossed planes per tile running a procedural
-       flame fragment shader — domain-warped fbm noise scrolling upward
-       erodes a multi-tongue envelope, colored through a black→red→
-       orange→yellow→white heat ramp with a crisp alpha cut so the
-       tongues have real silhouettes. (The old approach — soft radial
-       gradient sprites — is what read as pale blobs.) Meshes are
-       reconciled against state.burningTiles every frame from tick();
-       the ember/smoke/glow particles in _tickBurningTiles layer on
-       top of these. */
+    /* ── Volumetric flames for burning tiles ─────────────────────────
+       Ray-marched procedural fire (the THREE.Fire technique): each
+       burning tile gets a box whose fragment shader marches the camera
+       ray through a 3D flame density field — four offset noise-eroded
+       tapering columns advected downward by fbm turbulence — and
+       accumulates emission through a black→red→orange→white heat ramp.
+       Because it's a true volume, the fire has depth, soft edges and
+       parallax from every camera angle (no billboards, no flat planes).
+       Meshes are reconciled against state.burningTiles every frame from
+       tick(); the ember/smoke/glow particles in _tickBurningTiles layer
+       on top of these. */
     var _tileFlames = {};          // "x,y" -> { group, mats, age }
     var _tileFlameScene = null;
     var _tileFlameGeo = null;
     var _tileFlameTime = 0;
 
     var _FLAME_VERT = [
-        'varying vec2 vUv;',
+        'varying vec3 vLocal;',
         'void main() {',
-        '  vUv = uv;',
+        '  vLocal = position;',
         '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
         '}'
     ].join('\n');
@@ -598,93 +599,132 @@ const ThreeVFXEffects = (function () {
         'uniform float uTime;',
         'uniform float uSeed;',
         'uniform float uVig;',
-        'varying vec2 vUv;',
-        'float ewHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
-        'float ewNoise(vec2 p) {',
-        '  vec2 i = floor(p), f = fract(p);',
-        '  vec2 u = f * f * (3.0 - 2.0 * f);',
-        '  return mix(mix(ewHash(i), ewHash(i + vec2(1.0, 0.0)), u.x),',
-        '             mix(ewHash(i + vec2(0.0, 1.0)), ewHash(i + vec2(1.0, 1.0)), u.x), u.y);',
+        'uniform vec3 uCamLocal;',
+        'varying vec3 vLocal;',
+        'float ewHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }',
+        'float ewNoise(vec3 p) {',
+        '  vec3 i = floor(p), f = fract(p);',
+        '  vec3 u = f * f * (3.0 - 2.0 * f);',
+        '  return mix(mix(mix(ewHash(i),                    ewHash(i + vec3(1.0, 0.0, 0.0)), u.x),',
+        '                 mix(ewHash(i + vec3(0.0, 1.0, 0.0)), ewHash(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),',
+        '             mix(mix(ewHash(i + vec3(0.0, 0.0, 1.0)), ewHash(i + vec3(1.0, 0.0, 1.0)), u.x),',
+        '                 mix(ewHash(i + vec3(0.0, 1.0, 1.0)), ewHash(i + vec3(1.0, 1.0, 1.0)), u.x), u.y), u.z);',
         '}',
-        'float ewFbm(vec2 p) {',
+        'float ewFbm(vec3 p) {',
         '  float v = 0.0, a = 0.5;',
-        '  for (int i = 0; i < 4; i++) {',
+        '  for (int i = 0; i < 3; i++) {',
         '    v += a * ewNoise(p);',
-        '    p = p * 2.02 + vec2(1.7, 4.1);',
+        '    p = p * 2.02 + vec3(1.7, 4.1, 8.3);',
         '    a *= 0.5;',
         '  }',
         '  return v;',
         '}',
-        /* one flame tongue in its own 0..1 uv space */
-        'vec4 ewFlame(vec2 uv, float t, float seed) {',
-        '  vec2 w = vec2(uv.x * 2.6 + seed, uv.y * 3.4 - t * 2.4);',
-        '  float warp = ewFbm(vec2(w.x, w.y + 2.0 - t * 1.1));',
-        '  float n = ewFbm(vec2(w.x + warp * 1.4, w.y));',
-        '  float x = uv.x - 0.5 + (n - 0.5) * 0.42 * (0.25 + uv.y) + sin(t * 2.3 + seed * 7.0) * 0.05 * uv.y;',
-        '  float halfW = 0.30 * (1.0 - uv.y * 0.85) + 0.03;',
-        '  float body = 1.0 - smoothstep(halfW * 0.15, halfW, abs(x));',
-        '  float fl = body * (1.25 - uv.y * (0.85 + 0.5 * (1.0 - n))) - (1.0 - n) * 0.28;',
-        '  fl = clamp(fl, 0.0, 1.0);',
-        '  float alpha = smoothstep(0.08, 0.34, fl);',
-        '  float r = smoothstep(0.02, 0.18, fl);',
-        '  float g = smoothstep(0.18, 0.55, fl) * 0.85 + smoothstep(0.55, 0.9, fl) * 0.15;',
-        '  float b = smoothstep(0.50, 0.95, fl) * 0.9;',
-        '  float core = smoothstep(0.55, 0.95, fl) * (1.0 - uv.y * 0.6);',
-        '  g = min(1.0, g + core * 0.25);',
-        '  b = min(1.0, b + core * 0.55);',
-        '  return vec4(r, g, b, alpha);',
+        /* one noise-eroded tapering flame column */
+        'float ewCore(vec3 p, float n, float n2, float t, vec2 off, float h, float w, float ph) {',
+        '  float v = (p.y + 0.5) / h;',
+        '  if (v >= 1.0) return 0.0;',
+        '  float sway = sin(t * 2.3 + uSeed + ph) * 0.10 * v;',
+        '  float cx = p.x - off.x + sway + (n - 0.5) * 0.30 * (0.25 + v);',
+        '  float cz = p.z - off.y + (n - 0.5) * 0.22 * (0.25 + v);',
+        '  float r = length(vec2(cx, cz));',
+        '  float prof = (0.24 * (1.0 - v * 0.82) + 0.02) * w;',
+        '  float cd = 1.0 - r / prof;',
+        '  return cd + (n - 0.5) * 1.25 + (n2 - 0.5) * 0.4 - v * (0.5 + 0.55 * (1.0 - n));',
         '}',
-        /* three overlapping tongues across the quad, max-blended */
+        /* flame density at a point in the unit box, four offset cores */
+        'float ewDensity(vec3 p, float t) {',
+        '  float n  = ewFbm(vec3(p.x * 5.2 + uSeed, p.y * 5.8 - t * 3.0, p.z * 5.2 - uSeed));',
+        '  float n2 = ewNoise(vec3(p.x * 11.0 - uSeed, p.y * 12.0 - t * 5.2, p.z * 11.0 + uSeed));',
+        '  float d = ewCore(p, n, n2, t, vec2(-0.20, -0.12), 0.72, 0.85, 0.0);',
+        '  d = max(d, ewCore(p, n, n2, t, vec2(0.03, 0.14),  1.00, 1.00, 9.2));',
+        '  d = max(d, ewCore(p, n, n2, t, vec2(0.22, -0.16), 0.62, 0.78, 17.5));',
+        '  d = max(d, ewCore(p, n, n2, t, vec2(-0.05, -0.24), 0.55, 0.70, 27.9));',
+        '  return clamp(d, 0.0, 1.0);',
+        '}',
+        /* black→red→orange→yellow→white heat ramp, cooler with height */
+        'vec3 ewHeat(float d, float v) {',
+        '  float heat = clamp(d * (1.35 - v * 0.55), 0.0, 1.0);',
+        '  float r = smoothstep(0.02, 0.14, heat);',
+        '  float g = smoothstep(0.24, 0.62, heat) * 0.72;',
+        '  float b = smoothstep(0.60, 0.97, heat) * 0.55;',
+        '  float core = smoothstep(0.68, 0.98, heat);',
+        '  return vec3(r, min(1.0, g + core * 0.28), min(1.0, b + core * 0.45));',
+        '}',
         'void main() {',
-        '  float t = uTime;',
-        '  vec4 best = vec4(0.0);',
-        '  vec4 f; vec2 uv;',
-        '  uv = vec2((vUv.x - 0.28) / 0.62 + 0.5, vUv.y / 0.75);',
-        '  if (uv.x > 0.0 && uv.x < 1.0 && uv.y < 1.0) { f = ewFlame(uv, t, uSeed); if (f.a > best.a) best = f; }',
-        '  uv = vec2((vUv.x - 0.52) / 0.85 + 0.5, vUv.y);',
-        '  if (uv.x > 0.0 && uv.x < 1.0)               { f = ewFlame(uv, t, uSeed + 11.3); if (f.a > best.a) best = f; }',
-        '  uv = vec2((vUv.x - 0.74) / 0.58 + 0.5, vUv.y / 0.68);',
-        '  if (uv.x > 0.0 && uv.x < 1.0 && uv.y < 1.0) { f = ewFlame(uv, t, uSeed + 23.7); if (f.a > best.a) best = f; }',
-        '  best.a *= uVig;',
-        '  if (best.a < 0.02) discard;',
-        '  gl_FragColor = best;',
+        '  vec3 ro = uCamLocal;',
+        '  vec3 rd = normalize(vLocal - ro);',
+        '  vec3 inv = 1.0 / rd;',
+        '  vec3 tA = (vec3(-0.5) - ro) * inv;',
+        '  vec3 tB = (vec3(0.5) - ro) * inv;',
+        '  vec3 tMin = min(tA, tB), tMax = max(tA, tB);',
+        '  float t0 = max(max(tMin.x, tMin.y), tMin.z);',
+        '  float t1 = min(min(tMax.x, tMax.y), tMax.z);',
+        '  t0 = max(t0, 0.0);',
+        '  if (t1 <= t0) discard;',
+        '  float dt = (t1 - t0) / 18.0;',
+        /* per-pixel jitter hides marching bands */
+        '  float j = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);',
+        '  vec3 acc = vec3(0.0);',
+        '  float accA = 0.0;',
+        '  for (int i = 0; i < 18; i++) {',
+        '    if (accA > 0.97) break;',
+        '    float tt = t0 + (float(i) + j) * dt;',
+        '    vec3 p = ro + rd * tt;',
+        '    float d = ewDensity(p, uTime);',
+        '    if (d < 0.01) continue;',
+        '    vec3 c = ewHeat(d, p.y + 0.5);',
+        '    float a = clamp(d * dt * 7.0, 0.0, 1.0);',
+        '    float w = a * (1.0 - accA);',
+        '    acc += c * w * 1.6;',
+        '    accA += w;',
+        '  }',
+        '  accA = min(accA * 1.15, 1.0) * uVig;',
+        '  if (accA < 0.015) discard;',
+        '  vec3 col = min(acc / max(accA, 0.0001), 1.0) + acc * 0.25;',
+        '  gl_FragColor = vec4(min(col, 1.0), accA);',
         '}'
     ].join('\n');
 
     function _tileFlameGeoGet() {
         if (_tileFlameGeo) return _tileFlameGeo;
-        var g = new THREE.PlaneGeometry(1, 1);
-        g.translate(0, 0.5, 0);            /* origin at the flame base */
+        var g = new THREE.BoxGeometry(1, 1, 1);
         g._ew_shared = true;               /* survives _disposeR sweeps */
         _tileFlameGeo = g;
         return g;
     }
 
+    function _tileFlameOnBeforeRender(renderer, scene, camera) {
+        /* camera position in this mesh's local (unit-box) space — the
+           fragment shader marches rays from here */
+        var u = this.material.uniforms.uCamLocal.value;
+        u.copy(camera.position);
+        this.worldToLocal(u);
+    }
+
     function _buildTileFlame(bt) {
         var ts = _cfg().tileSize || 128;
         var group = new THREE.Group();
-        var mats = [];
-        var angles = [0, Math.PI / 3, 2 * Math.PI / 3];
-        for (var i = 0; i < 3; i++) {
-            var mat = new THREE.ShaderMaterial({
-                uniforms: {
-                    uTime: { value: 0 },
-                    uSeed: { value: ((bt.x * 13.7 + bt.y * 7.3 + i * 31.1) % 97) + i * 3.1 },
-                    uVig:  { value: 0 },
-                },
-                vertexShader: _FLAME_VERT,
-                fragmentShader: _FLAME_FRAG,
-                transparent: true,
-                depthWrite: false,
-                side: THREE.DoubleSide,
-            });
-            var m = new THREE.Mesh(_tileFlameGeoGet(), mat);
-            m.scale.set(ts * 0.92, ts * 1.25, 1);
-            m.rotation.y = angles[i];
-            group.add(m);
-            mats.push(mat);
-        }
-        return { group: group, mats: mats, age: 0 };
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0 },
+                uSeed: { value: ((bt.x * 13.7 + bt.y * 7.3) % 97) },
+                uVig:  { value: 0 },
+                uCamLocal: { value: new THREE.Vector3() },
+            },
+            vertexShader: _FLAME_VERT,
+            fragmentShader: _FLAME_FRAG,
+            transparent: true,
+            depthWrite: false,
+            /* back faces: the volume still renders with the camera inside */
+            side: THREE.BackSide,
+        });
+        var m = new THREE.Mesh(_tileFlameGeoGet(), mat);
+        var h = ts * 1.4;
+        m.scale.set(ts * 1.0, h, ts * 1.0);
+        m.position.y = h * 0.5;        /* box base sits on the tile surface */
+        m.onBeforeRender = _tileFlameOnBeforeRender;
+        group.add(m);
+        return { group: group, mats: [mat], age: 0 };
     }
 
     function _disposeTileFlame(key, skipSceneRemove) {
@@ -728,7 +768,8 @@ const ThreeVFXEffects = (function () {
                 _tileFlames[k2] = entry;
             }
             var c = tilePx(bt.x, bt.y);
-            entry.group.position.set(c.x - pad, tileZ(bt.x, bt.y) + 1, c.y - pad);
+            /* +2: keeps the volume's bottom face off the tile top (z-fight) */
+            entry.group.position.set(c.x - pad, tileZ(bt.x, bt.y) + 2, c.y - pad);
             entry.age += dt;
             var grow = Math.min(1, entry.age * 2.5);          /* ignite grow-in */
             var vig = Math.min(1, 0.62 + 0.19 * (bt.t || 1)); /* dying fires burn low */
