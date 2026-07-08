@@ -4998,7 +4998,7 @@ function _injectHudHideStyles() {
       box-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }
     .ew-hints-bar {
-      position: absolute; top: calc(84px * var(--ew-hud-scale, 1));
+      position: absolute; top: calc(8px + 132px * var(--ew-hud-scale, 1));
       left: 50%; transform: translateX(-50%);
       display: flex; gap: 15px; align-items: center; z-index: 58;
       pointer-events: none;
@@ -5704,7 +5704,7 @@ function _injectHudHideStyles() {
     }
     /* ── view tab: names the open menu, riding the top of the clock ── */
     .hrlg-view-tab {
-      position: absolute; left: 128px; bottom: 320px; max-width: 320px; height: 24px;
+      position: absolute; left: 128px; bottom: 358px; max-width: 320px; height: 24px;
       display: flex; align-items: center; gap: 6px; padding: 0 16px 0 11px;
       background: linear-gradient(100deg, #0c101f 0%, rgba(10,12,21,0.88) 100%);
       border: 1px solid var(--hfc-soft); border-left: 3px solid var(--hfc);

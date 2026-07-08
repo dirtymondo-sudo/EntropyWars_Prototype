@@ -2349,8 +2349,13 @@
         .mm-btn-codex:hover .mm-label { color: #60d0a0; }
         .mm-settings-body {
             max-width: 400px;
+            width: 100%;
             margin: 0 auto;
             padding-top: 8px;
+            padding-bottom: 24px;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
         }
         .mm-elo-display {
             margin-top: 24px;
