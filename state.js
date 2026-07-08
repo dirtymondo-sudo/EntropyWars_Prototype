@@ -360,12 +360,12 @@
             if (hub && hub.spawns) {
                 GAME_MODES.md_hub = {
                     id: 'md_hub', label: 'Guild Hub', desc: '8×8 hub — the roster hangs out here between dungeon runs',
-                    boardSize: 8, boardWidth: hub.w, boardHeight: hub.h, teamSize: 4,
+                    boardSize: 8, boardWidth: hub.w, boardHeight: hub.h, teamSize: 1,
                     winHourglasses: 0, hiddenItemSpawns: 0,
                     blitzMode: true, hasTowers: false, isPrebuilt: true,
                     terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
                     spawns: { 1: hub.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: hub.spawns[2].map(p => ({ x: p.x, y: p.y })) },
-                    defaultBuilds: { 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'], 2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'] },
+                    defaultBuilds: { 1: ['Warrior'], 2: ['Warrior'] },
                 };
             }
         })();

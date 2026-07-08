@@ -10711,8 +10711,12 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     while (spawns1.length < partySize) spawns1.push(spawns1[0] || { x: spawnRoom.cx, y: spawnRoom.cy });
     spawns1.forEach(p => { M.t(p.x, p.y, D.floorTerrain); M.clearObj(p.x, p.y); });
 
-    /* 6) enemies: distributed across the non-spawn rooms, densest far away */
-    const enemyCount = isBossFloor ? 5 : Math.min(3 + Math.floor(floor * 0.6), 8);
+    /* 6) enemies: distributed across the non-spawn rooms, densest far away.
+       Count scales with the PLAYER party size (a solo delver meets far fewer
+       foes than a full squad) and with depth. */
+    const enemyCount = isBossFloor
+        ? Math.min(2 + partySize, 6)
+        : Math.max(2, Math.min(1 + Math.floor(floor / 2) + partySize, 8));
     const enemyRooms = rooms.filter(r => r !== spawnRoom);
     const spawns2 = [];
     let guard = 0;
@@ -10730,8 +10734,10 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     entry._mdStairs = stairs;
     entry._mdFloor = floor;
     entry._mdDungeonId = D.id;
-    const lvlLo = Math.max(1, Math.floor(floor * 0.8));
-    const lvlHi = Math.min(10, floor + 1);
+    /* enemy levels shadow the delver's run level (= current floor, applied in
+       _mdLoadFloor), staying a step behind so depth stays winnable solo */
+    const lvlLo = Math.max(1, floor - 1);
+    const lvlHi = Math.min(10, floor);
     /* themed enemy list, rotated per floor for variety */
     const races = [];
     for (let i = 0; i < enemyCount; i++) races.push(D.enemyRaces[(floor + i) % D.enemyRaces.length]);
@@ -10739,7 +10745,7 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
         count: enemyCount,
         races,
         levelRange: [lvlLo, lvlHi],
-        boss: isBossFloor ? { race: D.bossRace, level: Math.min(10, lvlHi + 2) } : null,
+        boss: isBossFloor ? { race: D.bossRace, level: Math.min(10, floor + 1) } : null,
     };
     const basePb = PREBUILT_MAPS[D.baseMapId];
     if (basePb && basePb.terrainTints) entry.terrainTints = Object.assign({}, basePb.terrainTints);

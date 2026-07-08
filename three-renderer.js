@@ -3979,6 +3979,141 @@ const ThreeRenderer = (function () {
     }
 
     var _rockMatCache = {};
+
+    /* Shared helper: one lumpy boulder mesh (deformed icosahedron, boulder
+       texture, quantized-shade cached material) — used by the rock clusters
+       and the Mystery Dungeon cave-entrance prop. */
+    function _makeBoulderMesh(radius, shade, seed) {
+        var rockTex = _getBoulderTexture();
+        var baseGeo = new THREE.IcosahedronGeometry(1, 1);
+        var posAttr = baseGeo.getAttribute('position');
+        for (var vi = 0; vi < posAttr.count; vi++) {
+            var vx = posAttr.getX(vi), vy = posAttr.getY(vi), vz = posAttr.getZ(vi);
+            var noise = 1 + 0.28 * Math.sin(vx * 7.3 + vy * 11.1 + seed) * Math.cos(vz * 5.7 + vx * 3.2 + seed * 2);
+            posAttr.setXYZ(vi, vx * noise, vy * noise * 0.8, vz * noise);
+        }
+        posAttr.needsUpdate = true;
+        baseGeo.computeVertexNormals();
+        var q = Math.round(Math.max(0.2, Math.min(1, shade)) * 16) / 16;
+        var key = (rockTex ? (rockTex.uuid || 'tex') : 'flat') + '|' + q;
+        var mat = _rockMatCache[key];
+        if (!mat) {
+            mat = rockTex
+                ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(q, q * 0.95, q * 0.9), depthWrite: true })
+                : new THREE.MeshBasicMaterial({ color: new THREE.Color(q * 0.6, q * 0.55, q * 0.5), depthWrite: true });
+            mat._ew_shared = true;
+            _rockMatCache[key] = mat;
+        }
+        var mesh = new THREE.Mesh(baseGeo, mat);
+        mesh.scale.set(radius, radius, radius);
+        return mesh;
+    }
+
+    /* Mystery Dungeon: the Guild Hub cave entrance — a rocky arch (jamb
+       boulders + lintel + back mound) around a black opening, built from real
+       geometry with the boulder texture (no billboard sprite). The opening
+       faces the board center so it always reads from the play camera. */
+    function _buildCaveEntrance3D(objKey, x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var g = new THREE.Group();
+
+        var seed = (x * 131 + y * 197 + 77) & 0xFFFF;
+        var _sr = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
+
+        /* jambs */
+        var jL = _makeBoulderMesh(ts * 0.42, 0.62, 3.1);
+        jL.position.set(-ts * 0.40, ts * 0.30, 0);
+        g.add(jL);
+        var jR = _makeBoulderMesh(ts * 0.44, 0.55, 7.6);
+        jR.position.set(ts * 0.42, ts * 0.32, 0);
+        g.add(jR);
+        /* lintel across the top */
+        var lin = _makeBoulderMesh(ts * 0.52, 0.68, 5.4);
+        lin.scale.y *= 0.62;
+        lin.position.set(0, ts * 0.78, -ts * 0.06);
+        g.add(lin);
+        /* back mound (fills the silhouette behind the mouth) */
+        var back = _makeBoulderMesh(ts * 0.58, 0.45, 9.9);
+        back.position.set(0, ts * 0.34, -ts * 0.34);
+        g.add(back);
+        /* scattered base rubble */
+        for (var ri = 0; ri < 3; ri++) {
+            var rr = _makeBoulderMesh(ts * (0.08 + _sr() * 0.09), 0.5 + _sr() * 0.25, 11 + ri * 2.7);
+            rr.position.set((_sr() - 0.5) * ts * 0.9, ts * 0.06, ts * (0.25 + _sr() * 0.2));
+            g.add(rr);
+        }
+        /* the black mouth — an unlit dark quad recessed between the jambs */
+        var mouthMat = new THREE.MeshBasicMaterial({ color: 0x07050a, depthWrite: true });
+        mouthMat._ew_shared = true;
+        var mouth = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.54, ts * 0.62), mouthMat);
+        mouth.position.set(0, ts * 0.33, ts * 0.02);
+        g.add(mouth);
+        /* faint violet glow rim above the mouth so it reads as a portal */
+        var rimMat = new THREE.MeshBasicMaterial({ color: 0x8a5cff, transparent: true, opacity: 0.85 });
+        rimMat._ew_shared = true;
+        var rim = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.58, ts * 0.05), rimMat);
+        rim.position.set(0, ts * 0.66, ts * 0.03);
+        g.add(rim);
+
+        /* face the board center */
+        var cx = ((typeof bw === 'function') ? bw() : 8) / 2 - 0.5;
+        var cy = ((typeof bh === 'function') ? bh() : 8) / 2 - 0.5;
+        g.rotation.y = Math.atan2(cx - x, cy - y);
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
+    }
+
+    /* Mystery Dungeon: the floor exit — a subway-style descent well: stone
+       curbs around a black hole with steps sinking into it, plus a bright
+       cyan trim so it pops in dark caves. Sits on 'descent_point' tiles. */
+    function _buildDescentStairs3D(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(x, y);
+        var g = new THREE.Group();
+
+        var stoneMat = new THREE.MeshBasicMaterial({ color: 0x6b6f7a, map: _getBoulderTexture() || null, depthWrite: true });
+        stoneMat._ew_shared = true;
+        var darkMat = new THREE.MeshBasicMaterial({ color: 0x05040a, depthWrite: true });
+        darkMat._ew_shared = true;
+        var trimMat = new THREE.MeshBasicMaterial({ color: 0x39d8ff });
+        trimMat._ew_shared = true;
+
+        /* the hole */
+        var hole = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.66, ts * 0.66), darkMat);
+        hole.rotation.x = -Math.PI / 2;
+        hole.position.y = 1.2;
+        g.add(hole);
+
+        /* stone curbs on three sides (open side = entry, faces +z/south) */
+        var curbH = ts * 0.16, curbT = ts * 0.09;
+        var mk = function (wdt, dep, px, pz) {
+            var c = new THREE.Mesh(new THREE.BoxGeometry(wdt, curbH, dep), stoneMat);
+            c.position.set(px, curbH / 2, pz);
+            g.add(c);
+            /* glowing top trim */
+            var t = new THREE.Mesh(new THREE.BoxGeometry(wdt * 0.96, 1.6, dep * 0.5), trimMat);
+            t.position.set(px, curbH + 0.9, pz);
+            g.add(t);
+        };
+        mk(ts * 0.84, curbT, 0, -ts * 0.375);                    // back
+        mk(curbT, ts * 0.75, -ts * 0.375, -ts * 0.02);           // left
+        mk(curbT, ts * 0.75, ts * 0.375, -ts * 0.02);            // right
+
+        /* three step slabs sinking toward the hole from the open side */
+        for (var si = 0; si < 3; si++) {
+            var stepY = ts * (0.10 - si * 0.045);
+            if (stepY <= 0.5) break;
+            var s = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.6, stepY, ts * 0.16), stoneMat);
+            s.position.set(0, stepY / 2 + 0.6, ts * (0.28 - si * 0.17));
+            g.add(s);
+        }
+
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        return g;
+    }
+
     function _buildRockCluster3D(x, y, texOverride) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
@@ -4714,9 +4849,14 @@ const ThreeRenderer = (function () {
             else if (ok === 'stairs' || ok === 'stairs_2') {
                 /* Stairs are drawn as the 3D staircase by the barrier_passage
                    terrain mesh (_buildStairMesh) — don't also draw the flat
-                   billboard sprite for the object. */
-                continue;
+                   billboard sprite for the object. EXCEPT on Mystery Dungeon
+                   'descent_point' tiles, where the exit gets a real 3D
+                   descent-well prop instead. */
+                var _stTer = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null;
+                if (_stTer === 'descent_point') m = _buildDescentStairs3D(x, y);
+                else continue;
             }
+            else if (ok === 'cave_entrance')      m = _buildCaveEntrance3D(ok, x, y);
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
             else if (ok === 'traffic_light')      m = _buildTrafficLight3D(ok, x, y);
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);
@@ -7318,6 +7458,7 @@ const ThreeRenderer = (function () {
                     if (_displaceTweens.has(uid)) leanTarget = entry._ew_sprinting ? 0.20 : 0.09;
                     else if (_strikeTweens.has(uid)) leanTarget = 0.15;
                     else if (_walkTweens.has(uid)) leanTarget = 0.09;
+                    else if (_freeRoam && uid === _freeRoam.uid && _freeRoam.moving) leanTarget = _freeRoam.running ? 0.17 : 0.08;
                 }
                 var lean = entry.model._ew_lean || 0;
                 lean += (leanTarget - lean) * Math.min(1, dt * 10);
@@ -7353,6 +7494,7 @@ const ThreeRenderer = (function () {
             var want;
             if (_deathTweens.has(uid)) want = 'death';
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
+            else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
             else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
                      || _strikeTweens.has(uid)) want = 'walk';
@@ -12724,8 +12866,193 @@ const ThreeRenderer = (function () {
         return null;
     }
 
+    /* ══════════════ HUB FREE-ROAM (Mystery Dungeon Guild Hub) ══════════════
+       Real-time WASD/arrow movement for ONE unit — no turns, no tiles. The
+       controller owns the unit's wrapper-group position (float tile coords),
+       plays walk/idle/jump GLB clips, banks into turns, and follows with the
+       camera. Collision = the same unitCanTraverse gate pathfinding uses, so
+       trees/water/board edges behave exactly like turn-mode. Shift = run,
+       Space = hop. Battle.js starts/stops it via ThreeRenderer.hubFreeRoam
+       and hears tile changes through window._mdFreeRoamTile (entrance check).
+       While active, the unit-serial rebuild is deferred (same trick as walk
+       tweens) so integer-tile updates never trigger a full rebuildUnits. */
+    var _freeRoam = null;   // { uid, fx, fy, heading, keys, jumpT, lastMs, moving, running, want }
+    var _frKeyDown = null, _frKeyUp = null, _frBlur = null;
+
+    function _frNormKey(e) {
+        var k = (e.key || '').toLowerCase();
+        if (k === 'arrowup') return 'w';
+        if (k === 'arrowdown') return 's';
+        if (k === 'arrowleft') return 'a';
+        if (k === 'arrowright') return 'd';
+        if (k === 'shift') return 'shift';
+        if (k === ' ' || k === 'spacebar') return 'space';
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd') return k;
+        return null;
+    }
+
+    function _freeRoamStart(uid) {
+        if (!uid) return;
+        var unit = null;
+        try { unit = (state.units || []).find(function (u) { return u.id === uid; }); } catch (e) {}
+        _freeRoam = {
+            uid: uid,
+            fx: unit ? unit.x : 0, fy: unit ? unit.y : 0,
+            heading: Math.PI,        // face the camera-ish on arrival
+            keys: {}, jumpT: -1, lastMs: 0, moving: false, running: false, want: 'idle',
+        };
+        _frKeyDown = function (e) {
+            if (!_freeRoam) return;
+            var t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            var k = _frNormKey(e);
+            if (!k) return;
+            _freeRoam.keys[k] = true;
+            if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
+        };
+        _frKeyUp = function (e) {
+            if (!_freeRoam) return;
+            var k = _frNormKey(e);
+            if (k) _freeRoam.keys[k] = false;
+        };
+        _frBlur = function () { if (_freeRoam) _freeRoam.keys = {}; };
+        window.addEventListener('keydown', _frKeyDown, true);
+        window.addEventListener('keyup', _frKeyUp, true);
+        window.addEventListener('blur', _frBlur);
+    }
+
+    function _freeRoamStop() {
+        if (_frKeyDown) { window.removeEventListener('keydown', _frKeyDown, true); _frKeyDown = null; }
+        if (_frKeyUp) { window.removeEventListener('keyup', _frKeyUp, true); _frKeyUp = null; }
+        if (_frBlur) { window.removeEventListener('blur', _frBlur); _frBlur = null; }
+        if (_freeRoam) {
+            /* leave the unit on its rounded tile with the model parked there */
+            var fr = _freeRoam;
+            _freeRoam = null;
+            try {
+                var unit = (state.units || []).find(function (u) { return u.id === fr.uid; });
+                var e = _getUnitEntry(fr.uid);
+                if (unit && e && e.group) {
+                    var ts = CONFIG.tileSize || BASE_TILE;
+                    unit.x = Math.round(fr.fx); unit.y = Math.round(fr.fy);
+                    e.group.position.set(unit.x * ts + ts / 2, _tileSurfaceY(unit.x, unit.y, null), unit.y * ts + ts / 2);
+                    _playUnitModelAnim(e, 'idle');
+                }
+            } catch (err) {}
+        }
+    }
+
+    function _frTileOpen(unit, tx, ty) {
+        try {
+            if (typeof isInside === 'function' && !isInside(tx, ty)) return false;
+            if (typeof unitCanTraverse === 'function') {
+                var z = (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
+                return !!unitCanTraverse(unit, tx, ty, z);
+            }
+        } catch (e) {}
+        return true;
+    }
+
+    function _freeRoamTick() {
+        if (!_freeRoam) return;
+        var fr = _freeRoam;
+        var now = performance.now();
+        var dt = fr.lastMs ? Math.min(0.05, (now - fr.lastMs) / 1000) : 0.016;
+        fr.lastMs = now;
+        var unit = null;
+        try { unit = (state.units || []).find(function (u) { return u.id === fr.uid; }); } catch (e) {}
+        var entry = _getUnitEntry(fr.uid);
+        if (!unit || unit.dead) return;
+        if (!entry || !entry.group) return;   // model still loading — retry next frame
+
+        var k = fr.keys;
+        var ix = (k.d ? 1 : 0) - (k.a ? 1 : 0);
+        var iy = (k.s ? 1 : 0) - (k.w ? 1 : 0);
+
+        /* camera-relative: W walks away from the camera regardless of orbit */
+        var mx = 0, my = 0;
+        if (ix || iy) {
+            var fwdX = 0, fwdZ = -1;
+            try {
+                var cam = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
+                if (cam) {
+                    var dir = new THREE.Vector3();
+                    cam.getWorldDirection(dir);
+                    var len = Math.hypot(dir.x, dir.z);
+                    if (len > 0.001) { fwdX = dir.x / len; fwdZ = dir.z / len; }
+                }
+            } catch (e) {}
+            var rightX = -fwdZ, rightZ = fwdX;
+            mx = fwdX * (-iy) + rightX * ix;
+            my = fwdZ * (-iy) + rightZ * ix;
+            var ml = Math.hypot(mx, my);
+            if (ml > 0.001) { mx /= ml; my /= ml; }
+        }
+        var moving = !!(mx || my);
+        var running = !!k.shift;
+        var speed = running ? 5.6 : 2.8;   // tiles per second
+
+        if (moving) {
+            /* axis-separated slide so walls don't stop diagonal motion dead */
+            var nx = fr.fx + mx * speed * dt;
+            var ny = fr.fy + my * speed * dt;
+            var pad = 0.32;   // body radius in tiles — keeps the model off wall faces
+            var txX = Math.round(nx + Math.sign(mx) * pad);
+            if (_frTileOpen(unit, txX, Math.round(fr.fy))) fr.fx = nx;
+            var tyY = Math.round(ny + Math.sign(my) * pad);
+            if (_frTileOpen(unit, Math.round(fr.fx), tyY)) fr.fy = ny;
+            fr.heading = Math.atan2(mx, my);
+        }
+
+        /* commit integer tile to game state; battle.js hears about crossings
+           (entrance detection) */
+        var tX = Math.round(fr.fx), tY = Math.round(fr.fy);
+        if (unit.x !== tX || unit.y !== tY) {
+            unit.x = tX; unit.y = tY;
+            try { unit.z = (state.boardHeights && state.boardHeights[tY]) ? (state.boardHeights[tY][tX] || 0) : unit.z; } catch (e) {}
+            try { if (typeof window._mdFreeRoamTile === 'function') window._mdFreeRoamTile(unit); } catch (e) {}
+            if (!_freeRoam) return;   // the tile change may have started the dungeon (controller stopped)
+        }
+
+        /* cosmetic hop */
+        if (k.space && fr.jumpT < 0) fr.jumpT = 0;
+        var yJump = 0;
+        if (fr.jumpT >= 0) {
+            fr.jumpT += dt;
+            var JT = 0.55;
+            if (fr.jumpT >= JT) { fr.jumpT = -1; entry._ew_landAt = _animNow(); }
+            else yJump = Math.sin((fr.jumpT / JT) * Math.PI) * (CONFIG.tileSize || BASE_TILE) * 0.75;
+        }
+
+        /* drive the wrapper group */
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var sy = _tileSurfaceY(tX, tY, null);
+        var sink = entry.group._ew_subSink || 0;
+        entry.group.position.set(fr.fx * ts + ts / 2, sy - sink + yJump, fr.fy * ts + ts / 2);
+        entry.group._ew_spriteTopY = sy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+
+        /* smooth shortest-arc turn toward the heading */
+        var cur = entry.group.rotation.y || 0;
+        var diff = fr.heading - cur;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        entry.group.rotation.y = cur + diff * Math.min(1, dt * 12);
+
+        /* clip request — consumed by _updateUnitModels */
+        fr.moving = moving;
+        fr.running = running;
+        fr.want = (fr.jumpT >= 0) ? 'jump' : (moving ? 'walk' : 'idle');
+        if (moving && entry.actions && entry.actions.walk) {
+            entry.actions.walk.timeScale = ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * (running ? 1.75 : 1);
+        }
+
+        /* camera follow (battle.js owns the camera controller) */
+        try { if (typeof window._mdFreeRoamCam === 'function') window._mdFreeRoamCam(fr.fx, fr.fy); } catch (e) {}
+    }
+
     function _updateAnimations() {
         _tickAnimClock();
+        _freeRoamTick();
         _syncCombatAnims();
         _updateWalkTweens();
         _updateDisplaceTweens();
@@ -18244,7 +18571,7 @@ const ThreeRenderer = (function () {
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {
 
-            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0) {
+            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0 || _freeRoam) {
                 /* Structural rebuilds must wait for tweens to settle (a rebuild
                    would snap positions), but plate stats are DOM-only — patch
                    them live so damage still drains the HP bar mid-animation.
@@ -18712,6 +19039,7 @@ const ThreeRenderer = (function () {
     }
 
     function hasActiveAnims() {
+        if (_freeRoam) return true;   // hub free-roam moves the unit every frame
         if (_floatTweens.length > 0) return true;
         if (_projTweens.length > 0) return true;
         if (_tetherTweens.length > 0) return true;
@@ -18791,6 +19119,13 @@ const ThreeRenderer = (function () {
         startHitEffect,
 
         hasActiveAnims,
+
+        /* Mystery Dungeon Guild Hub: real-time free-roam movement controller */
+        hubFreeRoam: {
+            start: _freeRoamStart,
+            stop: _freeRoamStop,
+            active: function () { return !!_freeRoam; },
+        },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */
         markShadowsDirty,

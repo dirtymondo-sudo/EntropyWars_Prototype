@@ -781,6 +781,42 @@ window._entropyOrbsFly = function(player, amount, sourceUnit) {
 function Scoreboard({ st }) {
   if (!st) return null;
 
+  /* ── Mystery Dungeon ─────────────────────────────────────────────────────
+     Hub: no scoreboard at all (it's a town, not a match). Floors: a compact
+     badge showing the dungeon name + current floor instead of score/round. */
+  const mdMode = (typeof window._isDungeonMode === 'function') && window._isDungeonMode();
+  if (mdMode) {
+    if (st._mdPhase !== 'floor' || !st._mdRun) return null;
+    const mdD = (typeof MD_DUNGEONS !== 'undefined' && st._mdRun.dungeonId && MD_DUNGEONS[st._mdRun.dungeonId]) || null;
+    const mdTotal = mdD ? mdD.floors : 10;
+    const mdAlive = (st.units || []).filter(u => u.player === 2 && !u.dead && !u._dying).length;
+    const mdMono = '"DotGothic16", monospace';
+    const mdSerif = '"Cinzel", serif';
+    return h('div', {
+      className: 'ew-scoreboard',
+      style: {
+        position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', alignItems: 'center', gap: 14, zIndex: 10,
+        background: EW.panel, border: '1px solid ' + EW.panelEdge,
+        boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
+        clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+      },
+    },
+      h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
+        (mdD ? mdD.label : 'Mystery Dungeon')),
+      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3 } },
+        h('span', { style: { fontFamily: mdMono, fontSize: 9, letterSpacing: '0.2em', color: EW.inkMute } }, 'FLOOR'),
+        h('span', { style: { fontFamily: mdSerif, fontSize: 24, fontWeight: 600, color: EW.time, lineHeight: 1, textShadow: '0 0 10px ' + EW.time + '55', marginLeft: 4 } },
+          st._mdRun.floor),
+        h('span', { style: { fontFamily: mdMono, fontSize: 12, color: EW.inkMute } }, '/' + mdTotal),
+      ),
+      h('span', { style: { width: 1, height: 22, background: EW.panelEdge } }),
+      h('span', { style: { fontFamily: mdMono, fontSize: 11, color: mdAlive ? EW.chaos : '#7fdc9a' } },
+        mdAlive ? ('☠ ' + mdAlive + ' foe' + (mdAlive === 1 ? '' : 's')) : '✓ floor clear'),
+      h('span', { style: { fontFamily: mdMono, fontSize: 10, color: EW.inkMute } }, '🗝 find the stairs'),
+    );
+  }
+
   const mode = _getModeInfo(st);
 
   const elapsed = st.startTime ? Math.floor((Date.now() - st.startTime) / 1000) : 0;

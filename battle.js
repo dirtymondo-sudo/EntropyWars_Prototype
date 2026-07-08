@@ -15049,9 +15049,42 @@
             return (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[id]) || null;
         }
 
+        function _mdStopFreeRoam() {
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam) ThreeRenderer.hubFreeRoam.stop();
+            } catch (e) {}
+        }
+
+        /* Kick off hub free-roam once the board+model are up. Retries briefly:
+           the GLB entry appears a few frames after startMatch. */
+        function _mdStartFreeRoam() {
+            if (!_isDungeonMode() || state._mdPhase !== 'hub') return;
+            const u = state.units.find(x => x.player === 1 && !x._mdNpc && !x.dead);
+            if (!u) return;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam && ThreeRenderer.isActive && ThreeRenderer.isActive()) {
+                    ThreeRenderer.hubFreeRoam.start(u.id);
+                    addLog('🎮 WASD / arrows to walk · SHIFT to run · SPACE to hop. Head for the cave!');
+                    return;
+                }
+            } catch (e) {}
+            setTimeout(_mdStartFreeRoam, 500);
+        }
+
+        /* Free-roam callbacks from the renderer */
+        window._mdFreeRoamCam = function (fx, fy) {
+            try {
+                if (typeof camera !== 'undefined' && camera) { camera.x = fx; camera.y = fy; }
+            } catch (e) {}
+        };
+        window._mdFreeRoamTile = function (unit) {
+            if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
+        };
+
         /* Runs inside startMatch right after units are built for ANY dungeon
            board (hub or floor). */
         function _mdOnBattlePrepared() {
+            _mdStopFreeRoam();   // never carry a stale controller across boards
             if (state._mdPhase === 'hub') {
                 /* No enemies in the hub — drop the CPU team, seat the roster. */
                 state.units = state.units.filter(u => u.player !== 2);
@@ -15140,6 +15173,7 @@
             const D = (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[dungeonId]) || null;
             if (!D || typeof generateMdFloor !== 'function') { addLog('⛔ The dungeon gate is sealed (dungeon data missing).'); return; }
             state._mdTransitioning = true;
+            _mdStopFreeRoam();
             /* snapshot the home party — floors compact it to survivors, the hub restores it */
             state._mdHomeParty = {
                 builds: (state.partyBuilds[1] || []).slice(),
@@ -15172,6 +15206,11 @@
                 state.loadouts[1] = run.partyState.map(p => p.loadout || emptyLoadout());
                 state.partyMeta[1] = run.partyState.map(p => p.meta || {});
             }
+            /* PMD-style run progression: the delver's level equals the current
+               floor (units are rebuilt per floor, so createUnit's campaign-level
+               pipeline applies it — the createUnit gate also accepts _mdRun). */
+            const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 10, Math.max(1, run.floor));
+            (state.partyMeta[1] || []).forEach(m => { if (m) m._campaignLevel = runLvl; });
             const partySize = Math.max(1, (state.partyBuilds[1] || []).length);
             let entry;
             try {
@@ -15260,6 +15299,7 @@
             if (state._mdEnded || !state._mdRun) return;
             state._mdEnded = true;
             state._mdTransitioning = true;
+            _mdStopFreeRoam();
             const run = state._mdRun;
             const D = _mdActiveDungeon();
             /* halt the engine: a set winner stops every turn/AI loop, and the
@@ -15399,6 +15439,7 @@
 
         window._mdExitToMenu = function() {
             playSfx('uiButtonConfirm');
+            _mdStopFreeRoam();
             if (typeof hideResultOverlay === 'function') hideResultOverlay();
             const home = state._mdHomeParty;
             if (home) {
@@ -17413,9 +17454,16 @@
                 if (!state.cameraDisabled) {
                     resetBoardCamera(true);
                 }
-                showRoundBanner(state.round, () => {
+                if (typeof _isDungeonMode === 'function' && _isDungeonMode() && state._mdPhase === 'hub') {
+                    /* hub: no "ROUND 1" — free-roam takes over */
+                    if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
-                });
+                    setTimeout(_mdStartFreeRoam, 450);
+                } else {
+                    showRoundBanner(state.round, () => {
+                        maybeAdvanceTurn();
+                    });
+                }
             });
 
             }
@@ -20023,6 +20071,10 @@
         }
 
         function selectUnit(unitId) {
+            /* Mystery Dungeon hub is free-roam — no unit selection, no action
+               menus, no tile targeting. The renderer's hubFreeRoam controller
+               owns all input there. */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode() && state._mdPhase === 'hub') return;
             const unit = state.units.find(u => u.id === unitId && !u.dead);
             if (!unit || state.phase !== 'battle') return;
 

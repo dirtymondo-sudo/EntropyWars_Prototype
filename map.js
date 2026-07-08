@@ -134,44 +134,167 @@
         };
 
         /* ── Mystery Dungeon entry point (main menu) ──────────────────────────
-           Skips the map picker entirely: set the 'dungeon' ruleset, load the
-           Guild Hub board, and go straight to the party builder. Locking the
-           party in calls startMatch(), whose MD hook (battle.js) strips the
-           CPU team and populates the hub with roster NPCs. Stepping onto the
-           cave entrance starts the 10-floor run. */
+           Flow: main menu → character-select page (pick ONE unlocked character,
+           PMD-style) → Guild Hub (free-roam). No map picker, no party builder.
+           startMatch's MD hook (battle.js) strips the CPU team and populates
+           the hub with the rest of the unlocked roster as NPCs; walking onto
+           the cave entrance starts the 10-floor run. */
+        let _mdCharSel = { race: null, gender: null };
+
         window._goToMysteryDungeon = function() {
             playSfx('uiButtonConfirm');
             if (typeof GAME_MODES === 'undefined' || !GAME_MODES.md_hub) {
                 addLog('Mystery Dungeon data failed to load.');
                 return;
             }
+            state.gameState = GS.MODE_SELECT;
+            _mdRenderCharSelect();
+            _showTitlePage('mdCharPage');
+        };
+
+        window._mdCharBack = function() {
+            playSfx('uiButtonConfirm');
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+        };
+
+        function _mdUnlockedRoster() {
+            const races = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
+            return races.filter(rk => {
+                try { return typeof isUnitUnlocked === 'function' && isUnitUnlocked(rk); } catch (e) { return false; }
+            });
+        }
+
+        function _mdRaceLabel(rk) {
+            try {
+                if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label) return RACE_PROFILES[rk].label;
+            } catch (e) {}
+            return rk.replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        function _mdCharImgUrl(rk, gender) {
+            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            try {
+                if (typeof getUnitPortraitUrl === 'function') {
+                    const p = getUnitPortraitUrl({ race: rk, gender });
+                    if (p) return p;
+                }
+            } catch (e) {}
+            try {
+                if (typeof window.getR2RaceSpriteUrl === 'function') return window.getR2RaceSpriteUrl(rk, gender || 'male', job) || '';
+            } catch (e) {}
+            return '';
+        }
+
+        function _mdRenderCharSelect() {
+            const body = document.getElementById('mdCharBody');
+            if (!body) return;
+            const pool = _mdUnlockedRoster();
+            if (!pool.length) {
+                body.innerHTML = '<div class="md-char-empty">No characters unlocked yet — visit the Shop to declassify your first vessel.</div>';
+                return;
+            }
+            if (!_mdCharSel.race || !pool.includes(_mdCharSel.race)) {
+                _mdCharSel.race = pool[0];
+                _mdCharSel.gender = null;
+            }
+            const genders = (typeof getAvailableGendersForRace === 'function') ? (getAvailableGendersForRace(_mdCharSel.race) || ['male']) : ['male'];
+            if (!_mdCharSel.gender || !genders.includes(_mdCharSel.gender)) _mdCharSel.gender = genders[0];
+
+            const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { bestFloor: 0, clears: 0 };
+            let html = '<div class="md-char-intro">Pick who you\'ll take into <b>Agartha Depths</b> — 10 floors, no respawns. '
+                + 'Your other unlocked characters wait at the Guild Hub.'
+                + (sv.bestFloor > 0 ? ` &nbsp;·&nbsp; Best depth: <b>Floor ${sv.bestFloor}</b> · Clears: <b>${sv.clears || 0}</b>` : '')
+                + '</div>';
+            html += '<div class="md-char-grid">';
+            for (const rk of pool) {
+                const sel = rk === _mdCharSel.race;
+                const g = sel ? _mdCharSel.gender : ((typeof getAvailableGendersForRace === 'function') ? (getAvailableGendersForRace(rk) || ['male'])[0] : 'male');
+                const img = _mdCharImgUrl(rk, g);
+                const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+                html += `<div class="md-char-card${sel ? ' selected' : ''}" onclick="window._mdCharPick('${rk.replace(/'/g, "\\'")}')">`
+                    + (img ? `<div class="md-char-img" style="background-image:url('${img}')"></div>` : '<div class="md-char-img"></div>')
+                    + `<div class="md-char-name">${_mdRaceLabel(rk)}</div>`
+                    + `<div class="md-char-job">${job}</div>`
+                    + '</div>';
+            }
+            html += '</div>';
+            html += '<div class="md-char-footer">';
+            if (genders.length > 1) {
+                html += '<div class="md-char-genders">' + genders.map(g =>
+                    `<button class="md-char-gender${g === _mdCharSel.gender ? ' on' : ''}" onclick="window._mdCharGender('${g}')">${g === 'female' ? '♀ Female' : '♂ Male'}</button>`
+                ).join('') + '</div>';
+            }
+            html += `<button class="md-char-start" onclick="window._mdCharStart()">🏘 ENTER THE GUILD HUB</button>`;
+            html += '</div>';
+            body.innerHTML = html;
+        }
+
+        window._mdCharPick = function(rk) {
+            playSfx('uiButtonConfirm');
+            _mdCharSel.race = rk;
+            _mdCharSel.gender = null;
+            _mdRenderCharSelect();
+        };
+
+        window._mdCharGender = function(g) {
+            playSfx('uiButtonConfirm');
+            _mdCharSel.gender = g;
+            _mdRenderCharSelect();
+        };
+
+        window._mdCharStart = function() {
+            playSfx('uiButtonConfirm');
+            if (!_mdCharSel.race) return;
+            _mdStartHubWithChar(_mdCharSel.race, _mdCharSel.gender || 'male');
+        };
+
+        /* Seat the chosen character as a party of ONE and launch the hub
+           directly (same shape as startCampaignBattle: set the arrays, set the
+           mode, call startMatch — no party builder). */
+        function _mdStartHubWithChar(race, gender) {
             window._msCpuOnly = true;
             state.isRankedMatch = false;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'hub';
             state._mdEnded = false;
+            state._mdTransitioning = false;
+            state.squadLeaderMode = false;
+            state.showPlayer2Builder = false;
+            CONFIG.gauntletDeploy = 0;
 
             activeMultiplayerMode = 'dungeon';
             applyGameMode('md_hub');
-            CONFIG.gauntletDeploy = 0;
+            CONFIG.teamSize = 1;
+
+            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+            state.partyBuilds[1] = [job];
+            state.partyNames[1] = [_mdRaceLabel(race)];
+            state.partyMeta[1] = [{ race, gender }];
+            state.loadouts[1] = [(typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass(job, race) : emptyLoadout()];
+
+            /* CPU slot must merely validate — the hub strips team 2 anyway */
+            state.partyBuilds[2] = ['Warrior'];
+            state.partyNames[2] = [getDefaultUnitName('Warrior')];
+            state.partyMeta[2] = [{}];
+            state.loadouts[2] = [(typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass('Warrior', '') : emptyLoadout()];
 
             state.controllers[1] = CTRL.LOCAL;
             state.controllers[2] = CTRL.AI;
-            state.showPlayer2Builder = false;
-            state.squadLeaderMode = false;
 
-            window.requestAnimationFrame(() => {
-                if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
-                render();
-            });
-
-            dismissTitleScreen();
-            render();
-
+            /* hide the title overlay (mirrors dismissTitleScreen, minus the
+               party-builder transition) and boot the hub */
+            if (startOverlay) {
+                startOverlay.classList.add('hidden');
+                startOverlay.style.display = 'none';
+                startOverlay.style.pointerEvents = 'none';
+                startOverlay.setAttribute('aria-hidden', 'true');
+            }
             state.audioUnlocked = true;
             syncMusicToState().catch(() => {});
-        };
+            if (typeof window.startMatch === 'function') window.startMatch();
+        }
 
         function _resetLobbyPages(showId) {
             ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
@@ -5013,6 +5136,19 @@
                 : (CONFIG.teamSize || 4);
             const sp1 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[1])) ? SPAWNS[1] : [];
             const sp2 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[2])) ? SPAWNS[2] : [];
+
+            /* Mystery Dungeon: spawns are authored by the hub/floor generator
+               (party in the spawn room, enemies deep in the maze). The edge-row
+               relocation below would drag everyone to the border AND flatten/
+               carve those tiles — defacing the maze walls. Use the authored
+               spawn tiles verbatim. */
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                state.spawnZones = {
+                    1: sp1.map(p => ({ x: p.x, y: p.y })),
+                    2: sp2.map(p => ({ x: p.x, y: p.y })),
+                };
+                return;
+            }
 
             state.spawnZones = {};
 
