@@ -10482,6 +10482,303 @@ const EW_MAP_META = [
     if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;
 })();
 
+/* ═══════════════════════ MYSTERY DUNGEON — DATA LAYER ══════════════════════
+   PMD-style dungeon crawl. This block owns:
+     • MD_DUNGEONS — the dungeon registry (theme = an existing map's aesthetic)
+     • _mdBuildHub() — the 8×8 Guild Hub map (registered once at load)
+     • generateMdFloor() — the procedural maze-floor generator; each floor is
+       emitted as a normal PREBUILT_MAPS-shaped entry and re-registered under
+       the fixed id 'md_floor', so the whole board / renderer / pathfinding
+       stack treats it like any other prebuilt map.
+   Runtime (stairs, floor advance, hub NPCs, run state) lives in battle.js;
+   the 'dungeon' ruleset lives in state.js MULTIPLAYER_MODES; the menu entry
+   is window._goToMysteryDungeon (map.js / index.html).
+   Layout language: floors sit at column height 3 (the MapForge surface
+   baseline); walls are height-6 columns — a +3 step blocks ground movement
+   (MAX_CLIMB is 1) AND blocks line-of-sight via the 3D voxel ray, so mazes
+   need no special-case rules anywhere in the engine.                       */
+
+const MD_HUB_ID = 'md_hub';
+const MD_FLOOR_ID = 'md_floor';
+
+const MD_DUNGEONS = {
+    agartha_depths: {
+        id: 'agartha_depths',
+        label: 'Agartha Depths',
+        desc: 'Descend 10 floors into the inner-earth capital. Find the stairs on every floor; the fallen do not return until the run ends.',
+        floors: 10,
+        baseMapId: 'prebuilt_agartha',      // aesthetic source (tints)
+        floorTerrain: 'cave_floor',
+        wallTerrain: 'cave_wall',
+        accentTerrains: ['dirt_3', 'rocks_1', 'marble'],
+        poolTerrain: 'water',
+        stairsTerrain: 'descent_point',
+        enemyRaces: ['reptilian', 'antperson', 'skeleton', 'goatman', 'annunaki', 'demon'],
+        bossRace: 'annunaki',
+        /* same family as prebuilt_agartha's env, darkened for the depths */
+        env: { tint: 0x241a0b, tintAmt: 0.50, stars: 0.15, nebula: 0.8, fog: { color: 0x5e4a28, amount: 0.65, top: 0.10, band: 0.6 }, scenery: 'crystals', density: 0.45 },
+    },
+};
+
+/* The 8×8 Guild Hub: a cozy plaza where the roster hangs out between runs.
+   No enemies ever spawn here; the cave entrance on the east edge starts a
+   dungeon run when a party unit steps onto it. */
+function _mdBuildHub() {
+    const M = _mfNew({ name: 'Guild Hub', w: 8, h: 8, base: 'grass_2', baseH: 3, seed: 4242, underTop: 'dirt', strata: ['lava', 'dirt', 'cave_floor'] });
+    /* paths: an avenue running to the cave gate, a cross path north-south */
+    M.rect(1, 3, 7, 4, 'road', 3);
+    M.rect(3, 1, 4, 6, 'cobblestone', 3);
+    /* the spring plaza at the center — free healing while you idle */
+    M.t(3, 3, 'healing_spring'); M.t(4, 4, 'healing_spring');
+    /* greenery + lighting */
+    M.tree(1, 1); M.tree(6, 1, 'tree_3'); M.tree(1, 6, 'tree_4'); M.tree(6, 6, 'tree_2');
+    M.obj(2, 2, 'torch'); M.obj(5, 2, 'torch'); M.obj(2, 5, 'torch'); M.obj(5, 5, 'torch');
+    M.rock(5, 3);
+    /* the dungeon gate: both east-edge tiles trigger the run */
+    M.t(7, 3, 'cave_entrance'); M.t(7, 4, 'cave_entrance');
+    M.obj(7, 3, 'cave_entrance');
+    M.spawns(
+        [{ x: 2, y: 3 }, { x: 2, y: 4 }, { x: 3, y: 2 }, { x: 3, y: 5 }],
+        [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 0, y: 6 }, { x: 1, y: 6 }]   // unused (no enemies in the hub)
+    );
+    const entry = M.finish();
+    entry._mdEntrance = [{ x: 7, y: 3 }, { x: 7, y: 4 }];
+    /* where roster NPCs loiter (skipping spawns/paths/gate) */
+    entry._mdNpcSpots = [
+        { x: 1, y: 2 }, { x: 5, y: 1 }, { x: 6, y: 2 }, { x: 1, y: 5 },
+        { x: 5, y: 6 }, { x: 2, y: 6 }, { x: 6, y: 5 }, { x: 4, y: 1 },
+    ];
+    return entry;
+}
+
+(function _mdRegisterHub() {
+    try {
+        const hub = _mdBuildHub();
+        PREBUILT_MAPS[MD_HUB_ID] = hub;
+        MAP_LAYOUT_PRESETS[MD_HUB_ID] = {
+            sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
+            barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+            env: { tint: 0x14201a, tintAmt: 0.35, stars: 0.8, nebula: 0.5, fog: { color: 0x2a3c30, amount: 0.35, top: 0.05, band: 0.5 }, scenery: 'islands', density: 0.5 },
+            streetLamps: false,
+        };
+    } catch (e) { console.error('[MD] hub build failed', e); }
+})();
+
+/* ── The floor generator ───────────────────────────────────────────────────
+   Classic Mystery-Dungeon layout: solid rock, carve 4-7 rooms, connect them
+   with 1-wide L-corridors (spanning chain + one loop), then punch a few
+   dead-end stubs so the maze reads as a maze. Non-square boards, sizes grow
+   with depth. Deterministic per (dungeon, seed, floor).
+   partySize controls how many team-1 spawn tiles are emitted.             */
+function generateMdFloor(dungeonId, floor, seed, partySize) {
+    const D = MD_DUNGEONS[dungeonId] || MD_DUNGEONS.agartha_depths;
+    partySize = Math.max(1, partySize || 4);
+    const isBossFloor = floor >= D.floors;
+    const W = Math.min(12 + floor, 20);
+    const H = Math.min(9 + Math.floor(floor * 0.7), 15);
+    const FLOOR_H = 3, WALL_H = 6;
+    const M = _mfNew({
+        name: D.label + ' — F' + floor, w: W, h: H, base: D.wallTerrain, baseH: 3,
+        seed: (((seed | 0) || 1) * 31 + floor * 7919) | 0,
+        underTop: 'dirt', strata: ['lava', 'cave_floor', 'cave_floor'],
+    });
+    const rng = M.rng;
+    const ri = n => Math.floor(rng() * n);
+
+    /* start solid: everything is wall */
+    M.rect(0, 0, W - 1, H - 1, D.wallTerrain, WALL_H);
+
+    const isFloorTile = (x, y) => M.in(x, y) && M.hget(x, y) === FLOOR_H;
+    const carveTile = (x, y) => { if (x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2) { M.t(x, y, D.floorTerrain); M.h(x, y, FLOOR_H); } };
+
+    /* 1) rooms */
+    const rooms = [];
+    const targetRooms = isBossFloor ? 3 : Math.min(4 + Math.floor(floor / 3), 7);
+    if (isBossFloor) {
+        /* boss arena: one big central hall + two antechambers */
+        const bw2 = Math.min(9, W - 6), bh2 = Math.min(7, H - 6);
+        const bx = Math.floor((W - bw2) / 2), by = Math.floor((H - bh2) / 2);
+        for (let y = by; y < by + bh2; y++) for (let x = bx; x < bx + bw2; x++) carveTile(x, y);
+        rooms.push({ x0: bx, y0: by, x1: bx + bw2 - 1, y1: by + bh2 - 1, cx: bx + (bw2 >> 1), cy: by + (bh2 >> 1) });
+    }
+    let attempts = 0;
+    while (rooms.length < targetRooms && attempts < 80) {
+        attempts++;
+        const rw = 3 + ri(4), rh = 3 + ri(3);
+        const rx = 1 + ri(Math.max(1, W - rw - 2));
+        const ry = 1 + ri(Math.max(1, H - rh - 2));
+        /* keep a 1-tile wall gap between rooms so they don't fuse */
+        let clash = false;
+        for (const r of rooms) {
+            if (rx <= r.x1 + 1 && rx + rw - 1 >= r.x0 - 1 && ry <= r.y1 + 1 && ry + rh - 1 >= r.y0 - 1) { clash = true; break; }
+        }
+        if (clash) continue;
+        for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) carveTile(x, y);
+        rooms.push({ x0: rx, y0: ry, x1: rx + rw - 1, y1: ry + rh - 1, cx: rx + (rw >> 1), cy: ry + (rh >> 1) });
+    }
+    /* degenerate safety: if placement starved, carve a fallback hall */
+    if (rooms.length < 2) {
+        const rx = 1, ry = 1, rw = Math.max(3, W - 2), rh = Math.max(3, H - 2);
+        for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) carveTile(x, y);
+        rooms.length = 0;
+        rooms.push({ x0: rx, y0: ry, x1: rx + rw - 1, y1: ry + rh - 1, cx: rx + (rw >> 1), cy: ry + (rh >> 1) });
+        rooms.push(rooms[0]);
+    }
+
+    /* 2) corridors: chain the rooms in placement order (already random), then
+       add one loop connection so the maze isn't a pure tree */
+    const carveCorridor = (x0, y0, x1, y1) => {
+        let x = x0, y = y0;
+        const xFirst = rng() < 0.5;
+        const stepX = () => { while (x !== x1) { x += (x1 > x) ? 1 : -1; carveTile(x, y); } };
+        const stepY = () => { while (y !== y1) { y += (y1 > y) ? 1 : -1; carveTile(x, y); } };
+        carveTile(x, y);
+        if (xFirst) { stepX(); stepY(); } else { stepY(); stepX(); }
+    };
+    for (let i = 0; i + 1 < rooms.length; i++) carveCorridor(rooms[i].cx, rooms[i].cy, rooms[i + 1].cx, rooms[i + 1].cy);
+    if (rooms.length > 3) {
+        const a = rooms[ri(rooms.length)], b = rooms[(rooms.indexOf(a) + 2) % rooms.length];
+        carveCorridor(a.cx, a.cy, b.cx, b.cy);
+    }
+
+    /* 3) dead-end stubs off random corridor/room tiles */
+    const stubCount = isBossFloor ? 1 : 2 + (floor % 2);
+    for (let s = 0; s < stubCount; s++) {
+        let sx = 1 + ri(W - 2), sy = 1 + ri(H - 2), tries = 0;
+        while (!isFloorTile(sx, sy) && tries++ < 40) { sx = 1 + ri(W - 2); sy = 1 + ri(H - 2); }
+        if (!isFloorTile(sx, sy)) continue;
+        const dir = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }][ri(4)];
+        const len = 2 + ri(3);
+        for (let k = 1; k <= len; k++) {
+            const nx = sx + dir.x * k, ny = sy + dir.y * k;
+            if (nx < 1 || ny < 1 || nx > W - 2 || ny > H - 2) break;
+            carveTile(nx, ny);
+        }
+    }
+
+    /* 4) theming: accent patches, crystals, mushroom cover, a pool, a spring,
+       torches near walls. All cosmetic/soft — never blocks the maze. */
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        if (!isFloorTile(x, y)) continue;
+        const roll = rng();
+        if (roll < 0.07) M.t(x, y, D.accentTerrains[ri(D.accentTerrains.length)]);
+        else if (roll < 0.095) M.t(x, y, 'crystal');
+        else if (roll < 0.115) M.t(x, y, 'mushroom');
+        else if (roll < 0.145 && (
+            !isFloorTile(x + 1, y) || !isFloorTile(x - 1, y) || !isFloorTile(x, y + 1) || !isFloorTile(x, y - 1)
+        )) M.obj(x, y, 'torch');
+        else if (roll < 0.16) M.rock(x, y);
+    }
+    if (!isBossFloor && rooms.length > 2 && rng() < 0.6) {
+        const pr = rooms[1 + ri(rooms.length - 1)];
+        if (pr.x1 - pr.x0 >= 3 && pr.y1 - pr.y0 >= 2) {
+            M.t(pr.cx, pr.cy, D.poolTerrain); M.t(pr.cx + 1, pr.cy, D.poolTerrain);
+        }
+    }
+    if (rng() < 0.4) {
+        const hr = rooms[ri(rooms.length)];
+        M.t(hr.x0 + 1, hr.y0 + 1, 'healing_spring');
+    }
+
+    /* 5) spawn room (first placed) + stairs in the farthest room */
+    const spawnRoom = rooms[0];
+    let stairsRoom = rooms[0], bestD = -1;
+    for (const r of rooms) {
+        const d = Math.abs(r.cx - spawnRoom.cx) + Math.abs(r.cy - spawnRoom.cy);
+        if (d > bestD) { bestD = d; stairsRoom = r; }
+    }
+    const roomTiles = (r, excl) => {
+        const out = [];
+        for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
+            if (!isFloorTile(x, y)) continue;
+            if (excl && excl.some(p => p.x === x && p.y === y)) continue;
+            out.push({ x, y });
+        }
+        return out;
+    };
+    const stairs = { x: stairsRoom.cx, y: stairsRoom.cy };
+    M.t(stairs.x, stairs.y, D.stairsTerrain);
+    M.h(stairs.x, stairs.y, FLOOR_H);
+    M.clearObj(stairs.x, stairs.y);
+    M.obj(stairs.x, stairs.y, 'stairs_2');
+
+    const p1Tiles = roomTiles(spawnRoom, [stairs]);
+    /* cluster the party around the spawn-room center */
+    p1Tiles.sort((a, b) =>
+        (Math.abs(a.x - spawnRoom.cx) + Math.abs(a.y - spawnRoom.cy)) -
+        (Math.abs(b.x - spawnRoom.cx) + Math.abs(b.y - spawnRoom.cy)));
+    const spawns1 = p1Tiles.slice(0, partySize);
+    while (spawns1.length < partySize) spawns1.push(spawns1[0] || { x: spawnRoom.cx, y: spawnRoom.cy });
+    spawns1.forEach(p => { M.t(p.x, p.y, D.floorTerrain); M.clearObj(p.x, p.y); });
+
+    /* 6) enemies: distributed across the non-spawn rooms, densest far away */
+    const enemyCount = isBossFloor ? 5 : Math.min(3 + Math.floor(floor * 0.6), 8);
+    const enemyRooms = rooms.filter(r => r !== spawnRoom);
+    const spawns2 = [];
+    let guard = 0;
+    while (spawns2.length < enemyCount && guard++ < 200) {
+        const r = enemyRooms.length ? enemyRooms[ri(enemyRooms.length)] : stairsRoom;
+        const cand = roomTiles(r, [stairs].concat(spawns1, spawns2));
+        if (!cand.length) continue;
+        spawns2.push(cand[ri(cand.length)]);
+    }
+    while (spawns2.length < enemyCount) spawns2.push({ x: stairsRoom.cx, y: stairsRoom.cy });
+    spawns2.forEach(p => M.clearObj(p.x, p.y));
+    M.spawns(spawns1, spawns2);
+
+    const entry = M.finish();
+    entry._mdStairs = stairs;
+    entry._mdFloor = floor;
+    entry._mdDungeonId = D.id;
+    const lvlLo = Math.max(1, Math.floor(floor * 0.8));
+    const lvlHi = Math.min(10, floor + 1);
+    /* themed enemy list, rotated per floor for variety */
+    const races = [];
+    for (let i = 0; i < enemyCount; i++) races.push(D.enemyRaces[(floor + i) % D.enemyRaces.length]);
+    entry._mdEnemySpec = {
+        count: enemyCount,
+        races,
+        levelRange: [lvlLo, lvlHi],
+        boss: isBossFloor ? { race: D.bossRace, level: Math.min(10, lvlHi + 2) } : null,
+    };
+    const basePb = PREBUILT_MAPS[D.baseMapId];
+    if (basePb && basePb.terrainTints) entry.terrainTints = Object.assign({}, basePb.terrainTints);
+    return entry;
+}
+
+/* Register a freshly generated floor under the fixed 'md_floor' id so
+   applyGameMode('md_floor') + startMatch() load it like any prebuilt map.
+   GAME_MODES lives in state.js (loads after data.js), so the entry is
+   (re)written here at call time — the caller always runs post-boot. */
+function _mdRegisterFloor(entry) {
+    const D = MD_DUNGEONS[entry._mdDungeonId] || MD_DUNGEONS.agartha_depths;
+    PREBUILT_MAPS[MD_FLOOR_ID] = entry;
+    MAP_LAYOUT_PRESETS[MD_FLOOR_ID] = {
+        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: entry.h - 1, label: 'Earth', baseTerrain: D.floorTerrain }, buffer2: null, below: null },
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+        env: D.env ? JSON.parse(JSON.stringify(D.env)) : null, streetLamps: false,
+    };
+    if (typeof GAME_MODES !== 'undefined') {
+        GAME_MODES[MD_FLOOR_ID] = {
+            id: MD_FLOOR_ID, label: entry.name, desc: entry.name,
+            boardSize: Math.max(entry.w, entry.h), boardWidth: entry.w, boardHeight: entry.h,
+            teamSize: (entry.spawns[1] || []).length,
+            winHourglasses: 0, hiddenItemSpawns: 0,
+            blitzMode: true, hasTowers: false, isPrebuilt: true,
+            terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+            spawns: { 1: entry.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: entry.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+            defaultBuilds: { 1: [], 2: [] },
+        };
+    }
+    return entry;
+}
+
+if (typeof window !== 'undefined') {
+    window.MD_DUNGEONS = MD_DUNGEONS;
+    window.generateMdFloor = generateMdFloor;
+    window._mdRegisterFloor = _mdRegisterFloor;
+}
+
 /* ═══════════════════════ RACE BIOME TAGS ═══════════════════════════════════
    Natural-habitat tags per race, matching map `biomes` — group the roster by
    home turf (map-race affinity UI, themed rosters, future biome buffs).
