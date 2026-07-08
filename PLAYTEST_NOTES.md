@@ -4,6 +4,68 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 3D GEOMETRY/TEXTURE PASS (2026-07-08) — three-renderer.js, three-vfx-effects.js, sprites.js, data.js, battle.js
+Token `20260708h` → `20260708j`. Syntax-checked only (RULE #1c), not playtested.
+1. **Textures.** R2 terrain folder holds exactly THREE marbles: `marble.png`,
+   `marble_2.png`, `marble_light.png` (the last was unregistered — now a
+   texture-only `TERRAIN_SPRITES.marble_light` entry, NOT a placeable terrain).
+   Prop builders that wore muddy `marble` (throne, seraph, basilica, candy cane,
+   mannequin) now wear `marble_light`; Zeus-bolt slab wears `marble_2`. Probed
+   the CDN for other variants (marble_3+, bone, skull, granite, stone…): 404.
+2. **Traffic light** (`_buildTrafficLight3D`): the yellow signal-head assembly
+   (housing+lamps+visors+glows) now lives in a `headG` pivot rotated 90° at the
+   mast-arm end so lamps face traffic passing UNDER the arm, not down the arm.
+3. **Moon flag** (`_hzFlag`): canvas-painted stars-and-stripes
+   (`_hzGetFlagTexture`, cached) on a 16-segment plane with a frozen sine
+   ripple + top crossbar rod — replaces the 7 flat-color stripe boxes.
+4. **Saucer unification** (`_hzSaucer`): Area-51/sky saucer rebuilt on the SAME
+   7-point LatheGeometry hull profile + metal.png cladding as the hero spell
+   UFO (`_sigBuildUFO`, three-vfx-effects.js) — glow dome, torus rim, 10 rim
+   lights; struts + tractor beam kept.
+5. **Deployables now have real 3D props** — `_DEPLOY_3D_BUILDERS` map (next to
+   the old Tesla special-case in `rebuildDeployables`): Bone Wall (femur
+   palisade + skull), Pillar of Atlantis (fluted marble_light column, glowing
+   orichalcum band), Totem Drop (3 carved faces + thunderbird wings), Federation
+   Beacon (aluminium pylon + floating crystal), Lucid Trap (dreamcatcher),
+   Flashbang Mine (brass disc mine). Builders share `_deployMat`/`_deployGlowMat`
+   /`_deployFinish` helpers (Tesla-coil style: `_getTeslaTex` + MeshBasic).
+6. **Gate pairs finally render.** `state._gatePairs` (Grave Passage / Tunnel
+   Network) had NO visual at all. Both endpoints now draw a prop in
+   rebuildDeployables (`_buildGraveGate3D` sandstone tomb door w/ purple void,
+   `_buildTunnelMound3D` dirt mound w/ shaft hole), and gate pairs are hashed
+   into `_computeDeployableSerial` (tag 9, incl. usesLeft).
+7. **New monuments** registered in `_monBuilders` + horizon theme rosters:
+   `woodcross` (_hzWoodCross → ruins/dark), `skull` (_hzGrinSkull, laughing-or-
+   screaming half-buried skull → infernal/dark), `fleshmound` (_hzFleshMound,
+   eyes+fangs meat heap → infernal), `tome` (_hzTome, floating open
+   bible/grimoire → divine). Usable as on-board `state.monuments` kinds too.
+8a. **R2 terrain folder is BIGGER than the code registry** (user screenshots,
+   2026-07-08). Now ALL registered in `TERRAIN_SPRITES` (texture-only keys):
+   leather(_2), enamel_2, mars(_2), fur(_2,_3), tigerfur(_2), skin, rubber(_2),
+   damask(1-4), floral(_2), diamond, brokenglass, gunmetal(_2), copper,
+   concrete_floor, checkerboard_2/3, drywall_5, dirt_slope,
+   grass/rocks_dark_fantasy, ice_1, igloo, latticegarden, noise, tilefloor(_2).
+   Applied: **enamel = bone** everywhere (bone arch, dragon skull, whalebones,
+   cattle skull, grin skull, Bone Wall deployable, spectral skull VFX);
+   leather = tome/book covers; mars = Cydonia face; rubber = weather balloon;
+   skin = Backrooms mannequin + flesh-mound lobes. `tilefloor`/`tilefloor_2`
+   are REAL terrains (data.js TERRAIN_RULES + stone salvage family in
+   battle.js getTerrainMaterial): D.U.M.B. floor/spawns/deltaPad → tilefloor,
+   CERN → tilefloor_2. Still unused, ready to theme: damask (thrones/palace),
+   diamond, brokenglass (stained glass?), fur/tigerfur, floral, igloo,
+   latticegarden, dark_fantasy variants.
+8. **New signature spell VFX** (three-vfx-effects.js, `_spell3DGeometry`):
+   `_sigSacredRings3D` armillary = the seraphim's signature (raceAbsolution,
+   raceRapture, and around the raceDivineJudgment blade drop — the "football"
+   treatment); `_sigSkull3D` (laugh: chattering jaw / else looming scream —
+   raceSoulDrain, raceCurseOfDecay, raceDeathPact, raceHexOfAgony);
+   `_sigFleshMound3D` (racePlaguefield, raceDarkResurrection, raceShamblingHorde);
+   `_sigCrystalBall3D` (raceCrystalBall, raceProphecyOfDisaster); `_sigTome3D`
+   (raceDivineLight, exorcism holy variant); `_sigWoodCross3D` (exorcism,
+   raceSmite). ⚠ Geometry only fires for intents that reach the registry:
+   impact/aoe/aura/wall/descent — NOT bolt. Glow planes tip toward the diorama
+   camera with `rotation.x = -0.6` (there is no ThreeRenderer.camera export).
+
 ## TERRAFORMING OVERHAUL (2026-07-07) — battle.js, data.js, ui.js, hud.js, ai.js, state.js, sprites.js, three-renderer.js
 Token `20260708d` → `20260708e`. Design doc: `TERRAIN_SPELLS_PLAN.md` (repo
 root). Six systems, all building on existing plumbing. NOT playtested this

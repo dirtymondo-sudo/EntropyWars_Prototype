@@ -4911,8 +4911,8 @@ const ThreeRenderer = (function () {
     function _buildBoneWall3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var boneMat = _deployMat('marble_2.png', 0xd8cdb4);
-        var oldBone = _deployMat('marble_2.png', 0xbfb296);
+        var boneMat = _deployMat('enamel.png', 0xd8cdb4);
+        var oldBone = _deployMat('enamel.png', 0xbfb296);
         var n = 5;
         for (var i = 0; i < n; i++) {
             var bx = (i - (n - 1) / 2) * ts * 0.17;
@@ -14661,7 +14661,7 @@ const ThreeRenderer = (function () {
     function _hzMannequin(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var pale = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble_light'), 0xe8ded2); };
+        var pale = function () { return _hzGeoMat(_hzTex('skin') || _hzTex('drywall'), 0xe8ded2); };
         var base = _hzGeoMat(_hzTex('metal'), 0x565a62);
         _hzAt(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.42, ts * 0.5, ts * 0.12, 10), base), 0, ts * 0.06, 0);
         _hzAt(g, _hzCyl(ts * 0.05, ts * 0.05, ts * 0.9, 6, ts, base), 0, ts * 0.55, 0);                   // stand rod
@@ -14718,7 +14718,7 @@ const ThreeRenderer = (function () {
     function _hzBoneArch(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xd8cbb2); };
+        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xd8cbb2); };
         var ribs = 4 + (rng() * 2 | 0);
         for (var i = 0; i < ribs; i++) {
             var r = ts * (2.2 - i * 0.16);
@@ -14813,7 +14813,7 @@ const ThreeRenderer = (function () {
     function _hzDragonSkull(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xcfc3a8); };
+        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xcfc3a8); };
         var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.05, 10, 8), bone());
         skull.scale.set(1, 0.85, 1.1);
         _hzAt(g, skull, 0, ts * 1.0, ts * 0.2);
@@ -14970,7 +14970,7 @@ const ThreeRenderer = (function () {
     function _hzCydoniaFace(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var rock = function (c) { return _hzGeoMat(_hzTex('cliff') || _hzTex('rocks_4'), c || 0xa05a3a); };
+        var rock = function (c) { return _hzGeoMat(_hzTex('mars') || _hzTex('cliff'), c || 0xb06a48); };
         var mesa = _hzBox(ts * 3.2, ts * 1.1, ts * 4.4, ts, rock());
         _hzAt(g, mesa, 0, ts * 0.55, 0);
         _hzAt(g, _hzBox(ts * 2.4, ts * 0.35, ts * 0.7, ts, rock(0xb0684a)), 0, ts * 1.25, -ts * 1.3);     // brow
@@ -15085,7 +15085,7 @@ const ThreeRenderer = (function () {
     function _hzWhalebones(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('marble_2') || _hzTex('drywall'), 0xdcd4c2); };
+        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xdcd4c2); };
         var ribs = 6 + (rng() * 3 | 0);
         for (var i = 0; i < ribs; i++) {
             var r = ts * (1.7 - Math.abs(i - ribs / 2) * 0.16);
@@ -15104,7 +15104,7 @@ const ThreeRenderer = (function () {
     function _hzCattleSkull(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xe0d6c0); };
+        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xe0d6c0); };
         var wood = _hzGeoMat(_hzTex('wood'), 0x6e5638);
         _hzAt(g, _hzCyl(ts * 0.09, ts * 0.12, ts * 2.2, 6, ts, wood), 0, ts * 1.1, 0);                    // stake
         var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.5, 9, 7), bone());
@@ -15637,7 +15637,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var lift = ts * 6.2;
-        var skinMat = _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xf0eee8);
+        var skinMat = _hzGeoMat(_hzTex('rubber') || _hzTex('drywall'), 0xf0eee8);
         var balloon = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.35, 14, 10), skinMat);
         balloon.scale.y = 1.15;
         _hzAt(g, balloon, 0, lift, 0);
@@ -15701,7 +15701,7 @@ const ThreeRenderer = (function () {
     function _hzGrinSkull(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var bone = function (c) { return _hzGeoMat(_hzTex('marble_2') || _hzTex('drywall'), c || 0xd8cdb4); };
+        var bone = function (c) { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), c || 0xd8cdb4); };
         var R = ts * (1.4 + rng() * 0.9);                        // cranium radius
         var laughing = rng() < 0.5;                              // grin wide … or scream
         var cy = R * 0.72;                                       // buried to the cheekbones
@@ -15807,7 +15807,7 @@ const ThreeRenderer = (function () {
         var lift = ts * (1.2 + rng() * 1.6);
         var W = ts * 1.5, L = ts * 2.0, coverT = ts * 0.09;
         var splay = 0.38;                                        // opening angle of each half
-        var cover = function () { return _hzGeoMat(_hzTex('carpet_3') || _hzTex('carpet') || null, coverCol); };
+        var cover = function () { return _hzGeoMat(_hzTex('leather') || _hzTex('carpet_3') || null, coverCol); };
         var pages = function () { return _hzGeoMat(_hzTex('marble_light') || _hzTex('drywall'), 0xf2ead2); };
         for (var side = -1; side <= 1; side += 2) {
             var half = new THREE.Group();

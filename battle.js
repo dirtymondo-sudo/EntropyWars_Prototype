@@ -2368,6 +2368,7 @@
             if (t === 'mountain' || t === 'mountain_2' || t === 'mountain_top' || t === 'castle_wall' ||
                 t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0 || t.indexOf('rock') === 0 ||
                 t.indexOf('rubble') === 0 || t.indexOf('marble') === 0 || t.indexOf('dungeon') === 0 ||
+                t.indexOf('tilefloor') === 0 ||
                 t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff') return 'stone';
             return null;
         }

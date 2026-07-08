@@ -7592,6 +7592,417 @@ SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
         }, dm);
     }
 
+    /* ── SACRED RINGS — the seraphim's armillary halo: nested counter-
+       spinning gold rings around a burning core, the same "rings" motif as
+       the _hzSacredRings horizon monument. The seraphim's signature — every
+       spell of hers summons it, the way every quarterback spell throws the
+       football. ─────────────────────────────────────────────────────────── */
+    function _sigSacredRings3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0xffd875;
+        var coreColor = opts.coreColor != null ? opts.coreColor : 0xfff2c8;
+        var R = ts * (opts.radiusTiles != null ? opts.radiusTiles : 0.85);
+        var lift = opts.lift != null ? opts.lift : ts * (opts.sky ? 2.6 : 0.9);
+        var growMs = opts.growMs != null ? opts.growMs : 260;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 950;
+        var fadeMs = opts.fadeMs != null ? opts.fadeMs : 380;
+
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y + lift, wp.z);
+        var rings = [];
+        var nR = opts.count != null ? opts.count : 3;
+        for (var i = 0; i < nR; i++) {
+            var rm = _sigMat(color);
+            var rr = R * (0.55 + i * 0.3);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(rr, R * 0.045, 8, 42), rm);
+            ring.rotation.set(i * 1.1 + 0.4, i * 0.7, i * 0.5);
+            ring.renderOrder = 158 + i;
+            g.add(ring);
+            rings.push({ mesh: ring, mat: rm, axis: i });
+        }
+        var coreMat = _sigMat(coreColor);
+        var core = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.22, 0), coreMat);
+        core.renderOrder = 163;
+        g.add(core);
+        var haloMat = _sigMat(color, { map: _sigGlowTex() });
+        var halo = new THREE.Mesh(new THREE.PlaneGeometry(R * 3.2, R * 3.2), haloMat);
+        /* tip toward the diorama camera so the aura reads on screen */
+        halo.rotation.x = -0.6;
+        halo.renderOrder = 157;
+        g.add(halo);
+
+        var totalMs = growMs + holdMs + fadeMs;
+        _sigRun(g, totalMs, function (el) {
+            var op;
+            if (el < growMs) op = _sigEaseOutCubic(el / growMs);
+            else if (el < growMs + holdMs) op = 1;
+            else op = 1 - (el - growMs - holdMs) / fadeMs;
+            var s = (el < growMs) ? (0.3 + 0.7 * _sigEaseOutBack(el / growMs)) : 1;
+            g.scale.set(s, s, s);
+            for (var i = 0; i < rings.length; i++) {
+                var r = rings[i];
+                var dir = (i % 2) ? -1 : 1;
+                r.mesh.rotation.x += dir * 0.014;
+                r.mesh.rotation.y += dir * 0.021;
+                r.mat.opacity = op * 0.7;
+            }
+            core.rotation.y += 0.03;
+            coreMat.opacity = op * (0.75 + 0.2 * Math.sin(el * 0.012));
+            haloMat.opacity = op * 0.32;
+        });
+    }
+
+    /* ── SPECTRAL SKULL — a death's-head apparition over the target. laugh:
+       the jaw chatters through a silent cackle; otherwise it tears open in a
+       slow scream while the skull looms closer. ─────────────────────────── */
+    function _sigSkull3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var scale = opts.scale != null ? opts.scale : 1;
+        var R = ts * 0.42 * scale;
+        var boneCol = opts.boneColor != null ? opts.boneColor : 0xd8e6dc;
+        var eyeCol = opts.eyeColor != null ? opts.eyeColor : 0x88ff66;
+        var laugh = !!opts.laugh;
+        var boneMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('enamel.png', 2, 2),
+            color: new THREE.Color(boneCol), transparent: true, opacity: 0,
+            depthWrite: false,
+        });
+        var g = new THREE.Group();
+        var hoverY = wp.y + ts * (opts.hover != null ? opts.hover : 1.35);
+        g.position.set(wp.x, hoverY + ts * 1.2, wp.z);
+
+        var cranium = new THREE.Mesh(new THREE.SphereGeometry(R, 12, 9), boneMat);
+        cranium.scale.set(1, 0.94, 1.06);
+        g.add(cranium);
+        var cheeks = new THREE.Mesh(new THREE.BoxGeometry(R * 1.35, R * 0.5, R * 0.9), boneMat);
+        cheeks.position.set(0, -R * 0.45, -R * 0.15);
+        g.add(cheeks);
+        var eyes = [];
+        for (var side = -1; side <= 1; side += 2) {
+            var socketMat = new THREE.MeshBasicMaterial({
+                color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
+            var socket = new THREE.Mesh(new THREE.CircleGeometry(R * 0.24, 10), socketMat);
+            socket.position.set(side * R * 0.38, R * 0.02, -R * 1.0);
+            g.add(socket);
+            var em = _sigMat(eyeCol);
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(R * 0.1, 6, 5), em);
+            eye.position.set(side * R * 0.38, R * 0.02, -R * 1.02);
+            eye.renderOrder = 160;
+            g.add(eye);
+            eyes.push({ mat: em, socketMat: socketMat });
+        }
+        /* teeth on the upper arc */
+        for (var t = 0; t < 6; t++) {
+            var ta = (-0.5 + t / 5) * 1.0;
+            var tooth = new THREE.Mesh(new THREE.BoxGeometry(R * 0.11, R * 0.2, R * 0.09), boneMat);
+            tooth.position.set(Math.sin(ta) * R * 0.55, -R * 0.72, -Math.cos(ta) * R * 0.72);
+            g.add(tooth);
+        }
+        /* hinged lower jaw */
+        var jaw = new THREE.Group();
+        jaw.position.set(0, -R * 0.62, -R * 0.1);
+        var jawBone = new THREE.Mesh(new THREE.TorusGeometry(R * 0.5, R * 0.12, 6, 10, Math.PI), boneMat);
+        jawBone.rotation.x = -Math.PI / 2;
+        jawBone.position.z = -R * 0.3;
+        jaw.add(jawBone);
+        for (var jt = 0; jt < 4; jt++) {
+            var ja = (-0.5 + jt / 3) * 0.9;
+            var jtooth = new THREE.Mesh(new THREE.BoxGeometry(R * 0.09, R * 0.16, R * 0.08), boneMat);
+            jtooth.position.set(Math.sin(ja) * R * 0.45, R * 0.14, -R * 0.3 - Math.cos(ja) * R * 0.5);
+            jaw.add(jtooth);
+        }
+        g.add(jaw);
+
+        var inMs = 300, holdMs = opts.holdMs != null ? opts.holdMs : (laugh ? 1000 : 850), fadeMs = 380;
+        var totalMs = inMs + holdMs + fadeMs;
+        _sigRun(g, totalMs, function (el) {
+            var op;
+            if (el < inMs) {
+                var t0 = _sigEaseOutCubic(el / inMs);
+                op = t0;
+                g.position.y = hoverY + ts * 1.2 * (1 - t0);
+            } else if (el < inMs + holdMs) {
+                op = 1;
+                var th = (el - inMs) / holdMs;
+                g.position.y = hoverY + Math.sin(th * Math.PI * 2) * ts * 0.05;
+                if (!laugh) { var loom = 1 + th * 0.25; g.scale.set(loom, loom, loom); }
+            } else {
+                op = 1 - (el - inMs - holdMs) / fadeMs;
+            }
+            /* jaw: chattering cackle, or one long widening scream */
+            if (laugh) {
+                jaw.rotation.x = Math.max(0, Math.sin(el * 0.02)) * 0.55;
+                g.rotation.z = Math.sin(el * 0.01) * 0.06;
+            } else {
+                jaw.rotation.x = Math.min(1.0, el / (inMs + holdMs)) * 0.9;
+            }
+            boneMat.opacity = op * 0.85;
+            for (var e = 0; e < eyes.length; e++) {
+                eyes[e].mat.opacity = op * (0.8 + 0.2 * Math.sin(el * 0.015 + e));
+                eyes[e].socketMat.opacity = op * 0.9;
+            }
+        });
+    }
+
+    /* ── FLESH MOUND — a mass of living meat erupts from the tile, watches,
+       and sinks back under. Necromancer / zombie / unholy ground spells. ── */
+    function _sigFleshMound3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var scale = opts.scale != null ? opts.scale : 1;
+        var R = ts * 0.5 * scale;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var fleshTexes = ['flesh.png', 'skin.png', 'flesh_2.png', 'flesh_3.png'];
+        var lobes = [];
+        for (var i = 0; i < 5; i++) {
+            var lm = new THREE.MeshBasicMaterial({
+                map: _sigTerrainTex(fleshTexes[i % fleshTexes.length], 2, 2),
+                color: new THREE.Color(opts.tint != null ? opts.tint : 0xb98a8a),
+                transparent: true, opacity: 0, depthWrite: true,
+            });
+            var lr = R * (0.45 + (i * 37 % 10) * 0.05);
+            var lobe = new THREE.Mesh(new THREE.SphereGeometry(lr, 9, 7), lm);
+            var a = i * 2.4, d = (i % 3) * R * 0.3;
+            lobe.position.set(Math.cos(a) * d, lr * 0.35, Math.sin(a) * d);
+            lobe.scale.y = 0.6;
+            g.add(lobe);
+            lobes.push({ mesh: lobe, mat: lm, phase: i * 1.7 });
+        }
+        var eyes = [];
+        for (var e = 0; e < 4; e++) {
+            var em = _sigMat(e % 2 ? 0xffd040 : 0x8fff70);
+            var ea = e * 1.6 + 0.5;
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(R * 0.09, 6, 5), em);
+            eye.position.set(Math.cos(ea) * R * 0.6, R * (0.4 + (e % 2) * 0.2), Math.sin(ea) * R * 0.6);
+            eye.renderOrder = 160;
+            g.add(eye);
+            eyes.push(em);
+        }
+        var toothMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('enamel.png', 1, 1), color: new THREE.Color(0xe8dfc8),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        for (var f = 0; f < 5; f++) {
+            var fa = f * 1.3 + 0.9;
+            var fang = new THREE.Mesh(new THREE.ConeGeometry(R * 0.07, R * 0.3, 5), toothMat);
+            fang.position.set(Math.cos(fa) * R * 0.55, R * 0.35, Math.sin(fa) * R * 0.55);
+            fang.rotation.z = Math.cos(fa) * 0.6;
+            fang.rotation.x = -Math.sin(fa) * 0.6;
+            g.add(fang);
+        }
+
+        var riseMs = 380, holdMs = opts.holdMs != null ? opts.holdMs : 1100, sinkMs = 450;
+        var totalMs = riseMs + holdMs + sinkMs;
+        _sigRun(g, totalMs, function (el) {
+            var op, sy;
+            if (el < riseMs) {
+                var t0 = _sigEaseOutCubic(el / riseMs);
+                op = t0; sy = 0.05 + 0.95 * t0;
+            } else if (el < riseMs + holdMs) {
+                op = 1; sy = 1;
+            } else {
+                var t2 = (el - riseMs - holdMs) / sinkMs;
+                op = 1 - t2; sy = 1 - 0.9 * _sigEaseInCubic(t2);
+            }
+            g.scale.y = sy;
+            for (var i = 0; i < lobes.length; i++) {
+                var L = lobes[i];
+                var breathe = 1 + 0.07 * Math.sin(el * 0.006 + L.phase);
+                L.mesh.scale.x = breathe; L.mesh.scale.z = breathe;
+                L.mat.opacity = op;
+            }
+            toothMat.opacity = op;
+            for (var e2 = 0; e2 < eyes.length; e2++) {
+                eyes[e2].opacity = op * (0.7 + 0.3 * Math.sin(el * 0.01 + e2 * 2));
+            }
+        });
+    }
+
+    /* ── CRYSTAL BALL — the fortune teller's orb rises, the vision swirls
+       inside it, and it flashes as the future locks in. ────────────────── */
+    function _sigCrystalBall3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = ts * 0.34;
+        var g = new THREE.Group();
+        var baseY = wp.y + ts * 0.5;
+        g.position.set(wp.x, baseY, wp.z);
+        /* brass stand */
+        var standMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gold.png', 1, 1), color: new THREE.Color(0xc8a850),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var stand = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.55, R * 0.8, R * 0.5, 10), standMat);
+        stand.position.y = -R * 1.05;
+        g.add(stand);
+        /* the glass */
+        var glassMat = _sigMat(0xaee6ff);
+        var glass = new THREE.Mesh(new THREE.SphereGeometry(R, 18, 14), glassMat);
+        glass.renderOrder = 161;
+        g.add(glass);
+        /* the vision fog inside — tipped toward the diorama camera */
+        var fogMat = _sigMat(0xc79bff, { map: _sigGlowTex() });
+        var fog = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.7, R * 1.7), fogMat);
+        fog.rotation.x = -0.6;
+        fog.renderOrder = 160;
+        g.add(fog);
+        var sparkMat = _sigMat(0xffffff);
+        var spark = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.16, 0), sparkMat);
+        spark.renderOrder = 162;
+        g.add(spark);
+
+        var inMs = 280, holdMs = opts.holdMs != null ? opts.holdMs : 900, fadeMs = 350;
+        var totalMs = inMs + holdMs + fadeMs;
+        var flashAt = inMs + holdMs * 0.62;
+        _sigRun(g, totalMs, function (el) {
+            var op;
+            if (el < inMs) { var t0 = _sigEaseOutCubic(el / inMs); op = t0; g.position.y = baseY - ts * 0.3 * (1 - t0); }
+            else if (el < inMs + holdMs) { op = 1; g.position.y = baseY + Math.sin((el - inMs) * 0.004) * ts * 0.05; }
+            else op = 1 - (el - inMs - holdMs) / fadeMs;
+            glassMat.opacity = op * 0.38;
+            standMat.opacity = op * 0.9;
+            fog.rotation.z += 0.02;
+            var nearFlash = Math.max(0, 1 - Math.abs(el - flashAt) / 220);
+            fogMat.opacity = op * (0.35 + 0.45 * nearFlash);
+            spark.rotation.y += 0.05; spark.rotation.x += 0.03;
+            sparkMat.opacity = op * (0.25 + 0.75 * nearFlash);
+            var sp = 1 + nearFlash * 1.6;
+            spark.scale.set(sp, sp, sp);
+        });
+    }
+
+    /* ── ARCANE TOME — a great book swings open over the caster's target and
+       burns its verse into the air. holy: gilt bible palette. ───────────── */
+    function _sigTome3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var holy = !!opts.holy;
+        var coverCol = opts.coverColor != null ? opts.coverColor : (holy ? 0x8a3a30 : 0x352a48);
+        var glowCol = opts.glowColor != null ? opts.glowColor : (holy ? 0xffe9a8 : 0xb08fff);
+        var W = ts * 0.5, L = ts * 0.68, T = ts * 0.045;
+        var g = new THREE.Group();
+        var hoverY = wp.y + ts * (opts.hover != null ? opts.hover : 1.5);
+        g.position.set(wp.x, hoverY, wp.z);
+        var coverMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('leather.png', 1, 1), color: new THREE.Color(coverCol),
+            transparent: true, opacity: 0, depthWrite: true, side: THREE.DoubleSide,
+        });
+        var pageMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('marble_light.png', 1, 1), color: new THREE.Color(0xf2ead2),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var halves = [];
+        for (var side = -1; side <= 1; side += 2) {
+            var half = new THREE.Group();
+            var cb = new THREE.Mesh(new THREE.BoxGeometry(W, T, L), coverMat);
+            cb.position.x = side * W * 0.5;
+            half.add(cb);
+            var pb = new THREE.Mesh(new THREE.BoxGeometry(W * 0.9, T * 1.8, L * 0.9), pageMat);
+            pb.position.set(side * W * 0.5, T * 1.3, 0);
+            half.add(pb);
+            g.add(half);
+            halves.push({ grp: half, side: side });
+        }
+        var glowMat = _sigMat(glowCol, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * 3.4, W * 3.4), glowMat);
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = T * 3;
+        glow.renderOrder = 159;
+        g.add(glow);
+        var runes = [];
+        for (var m = 0; m < 4; m++) {
+            var rm = _sigMat(glowCol);
+            var rune = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.035, 0), rm);
+            rune.renderOrder = 161;
+            g.add(rune);
+            runes.push({ mesh: rune, mat: rm, phase: m * 1.5 });
+        }
+
+        var inMs = 320, holdMs = opts.holdMs != null ? opts.holdMs : 1000, fadeMs = 360;
+        var totalMs = inMs + holdMs + fadeMs;
+        _sigRun(g, totalMs, function (el) {
+            var op, open;
+            if (el < inMs) {
+                var t0 = _sigEaseOutCubic(el / inMs);
+                op = t0; open = t0;
+                g.position.y = hoverY - ts * 0.4 * (1 - t0);
+            } else if (el < inMs + holdMs) {
+                op = 1; open = 1;
+                g.position.y = hoverY + Math.sin((el - inMs) * 0.003) * ts * 0.06;
+            } else {
+                var t2 = (el - inMs - holdMs) / fadeMs;
+                op = 1 - t2; open = 1;
+            }
+            /* covers swing from clapped-shut to splayed-open */
+            for (var h = 0; h < 2; h++) {
+                halves[h].grp.rotation.z = halves[h].side * (1.35 - open * 1.0);
+            }
+            g.rotation.y += 0.004;
+            coverMat.opacity = op;
+            pageMat.opacity = op;
+            glowMat.opacity = op * 0.4 * open;
+            for (var r = 0; r < runes.length; r++) {
+                var ru = runes[r];
+                var ang = el * 0.002 + ru.phase;
+                ru.mesh.position.set(Math.cos(ang) * W * 1.1, T * 4 + Math.sin(el * 0.004 + ru.phase) * ts * 0.14 + open * ts * 0.12, Math.sin(ang) * W * 1.1);
+                ru.mesh.rotation.y += 0.04;
+                ru.mat.opacity = op * 0.7 * open;
+            }
+        });
+    }
+
+    /* ── WOODEN CROSS — rammed into the earth at the target, blazing with
+       consecrated light. For the cross-pattern / exorcism spells. ───────── */
+    function _sigWoodCross3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var scale = opts.scale != null ? opts.scale : 1;
+        var H = ts * 1.3 * scale, bw = ts * 0.1 * scale;
+        var glowCol = opts.glowColor != null ? opts.glowColor : 0xffe9a8;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var woodMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('wood_planks.png', 1, 2), color: new THREE.Color(0xa98a5e),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var upright = new THREE.Mesh(new THREE.BoxGeometry(bw, H, bw * 0.8), woodMat);
+        upright.position.y = H * 0.5;
+        g.add(upright);
+        var arm = new THREE.Mesh(new THREE.BoxGeometry(H * 0.6, bw, bw * 0.8), woodMat);
+        arm.position.y = H * 0.7;
+        g.add(arm);
+        var glowMat = _sigMat(glowCol, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(H * 1.6, H * 1.6), glowMat);
+        glow.position.y = H * 0.68;
+        /* tip toward the diorama camera so the halo reads on screen */
+        glow.rotation.x = -0.6;
+        glow.renderOrder = 158;
+        g.add(glow);
+
+        var inMs = 240, holdMs = opts.holdMs != null ? opts.holdMs : 800, fadeMs = 340;
+        var totalMs = inMs + holdMs + fadeMs;
+        _sigRun(g, totalMs, function (el) {
+            var op;
+            if (el < inMs) {
+                var t0 = _sigEaseOutBack(el / inMs);
+                op = _sigClamp01(el / inMs);
+                g.scale.y = Math.max(0.05, t0);
+            } else if (el < inMs + holdMs) { op = 1; g.scale.y = 1; }
+            else op = 1 - (el - inMs - holdMs) / fadeMs;
+            woodMat.opacity = op;
+            glowMat.opacity = op * (0.3 + 0.15 * Math.sin(el * 0.008));
+        });
+    }
+
     var _spell3DGeometry = {
 
         bubble:              function(tx, ty, r) { _spawnBubbleDome(tx, ty, r); },
@@ -7831,14 +8242,18 @@ SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
             hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
             sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
         }); },
-        raceDivineJudgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'raceDivineJudgment_descent', {
-            glowColor: 0xffcc55, circleColor: 0xffdd88,
-            bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
-            guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
-            len: (_cfg().tileSize || 128) * 3.0,
-            hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
-            sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
-        }); },
+        raceDivineJudgment: function(tx, ty) {
+            _sigJudgmentSword3D(tx, ty, 'raceDivineJudgment_descent', {
+                glowColor: 0xffcc55, circleColor: 0xffdd88,
+                bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
+                guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
+                len: (_cfg().tileSize || 128) * 3.0,
+                hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
+                sparkSprite: 'divine-sparkle', moteSprite: 'holy-light',
+            });
+            /* the seraphim's armillary opens in the sky the blade falls from */
+            _sigSacredRings3D(tx, ty, { sky: true, holdMs: 1200, radiusTiles: 1.1 });
+        },
         divineIntervention: function(tx, ty) {
             _sigMagicCircle3D(tx, ty, {
                 color: 0xffdd88, radiusPx: (_cfg().tileSize || 128) * 1.4,
@@ -7857,6 +8272,10 @@ SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
             var ts0 = _cfg().tileSize || 128;
             _sigMagicCircle3D(tx, ty, { color: 0xffee99, radiusPx: ts0 * 1.1, holdMs: 500, spin: 0.005 });
             _sigLightPillar3D(tx, ty, { color: 0xfff2bb, ms: 700, height: 520, radius: ts0 * 0.3 });
+            /* the rite itself: a wooden cross rammed into the tile, the
+               scripture held open over it */
+            _sigWoodCross3D(tx, ty, { holdMs: 900 });
+            _sigTome3D(tx, ty, { holy: true, hover: 2.1, holdMs: 800 });
         },
         mindShatter: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
@@ -7884,6 +8303,63 @@ SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
                 hoverH: (_cfg().tileSize || 128) * 2.8,
                 beam: true, beamColor: 0x55ff99,
             });
+        },
+
+        /* ── SERAPHIM — the sacred rings are her signature: every spell in
+           the kit summons the armillary, the way every quarterback spell
+           throws the football. (Divine Judgment gets them up top, around
+           the falling blade.) ─────────────────────────────────────────── */
+        raceAbsolution: function(tx, ty, r) {
+            _sigSacredRings3D(tx, ty, { holdMs: 1100, radiusTiles: 0.9 + (r || 0) * 0.3 });
+            _sigLightPillar3D(tx, ty, { color: 0xfff2c8, ms: 1100, height: 640 });
+        },
+        raceRapture: function(tx, ty, r) {
+            _sigSacredRings3D(tx, ty, { holdMs: 950, radiusTiles: 0.8 + (r || 0) * 0.3, lift: (_cfg().tileSize || 128) * 1.4 });
+        },
+
+        /* ── DEATH'S-HEADS — spectral skulls for the drain / curse kits ── */
+        raceSoulDrain: function(tx, ty) {
+            _sigSkull3D(tx, ty, { eyeColor: 0x88ff66, boneColor: 0xcfe6d2, holdMs: 800 });
+        },
+        raceCurseOfDecay: function(tx, ty) {
+            /* the curse laughs at you */
+            _sigSkull3D(tx, ty, { laugh: true, eyeColor: 0xb06fff, boneColor: 0xd8cfe6 });
+        },
+        raceDeathPact: function(tx, ty) {
+            _sigSkull3D(tx, ty, { laugh: true, eyeColor: 0xff5544, boneColor: 0xe6d8d2, scale: 0.85, hover: 1.6 });
+            _sigMagicCircle3D(tx, ty, { color: 0xaa3333, radiusPx: (_cfg().tileSize || 128) * 1.0, holdMs: 700, spin: 0.003 });
+        },
+        raceHexOfAgony: function(tx, ty) {
+            _sigSkull3D(tx, ty, { eyeColor: 0xff8833, boneColor: 0xe0d6c4, scale: 0.9 });
+        },
+
+        /* ── FLESH — the necromancer / zombie ground kits raise living meat ── */
+        racePlaguefield: function(tx, ty, r) {
+            _sigFleshMound3D(tx, ty, { scale: 1 + (r || 1) * 0.4, tint: 0x9aa06a, holdMs: 1300 });
+        },
+        raceDarkResurrection: function(tx, ty) {
+            _sigFleshMound3D(tx, ty, { scale: 1.1, holdMs: 1100 });
+            _sigMagicCircle3D(tx, ty, { color: 0x66ff88, radiusPx: (_cfg().tileSize || 128) * 1.2, holdMs: 1000, spin: 0.002 });
+        },
+        raceShamblingHorde: function(tx, ty) {
+            _sigFleshMound3D(tx, ty, { scale: 0.8, holdMs: 700 });
+        },
+
+        /* ── DIVINATION — the fortune teller consults the orb ── */
+        raceCrystalBall: function(tx, ty) {
+            _sigCrystalBall3D(tx, ty, { holdMs: 1000 });
+        },
+        raceProphecyOfDisaster: function(tx, ty) {
+            _sigCrystalBall3D(tx, ty, { holdMs: 850 });
+        },
+
+        /* ── SCRIPTURE — the priest's word made geometry ── */
+        raceDivineLight: function(tx, ty) {
+            _sigTome3D(tx, ty, { holy: true, holdMs: 900, hover: 1.7 });
+        },
+        raceSmite: function(tx, ty) {
+            /* holy wrath plants a blazing cross on the stricken tile */
+            _sigWoodCross3D(tx, ty, { holdMs: 750, scale: 1.1 });
         },
     };
 

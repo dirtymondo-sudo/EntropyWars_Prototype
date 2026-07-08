@@ -1090,7 +1090,9 @@ const TERRAIN_RULES = {
     drywall_2:  { label: 'Drywall II',  short: 'DY2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_3:  { label: 'Drywall III', short: 'DY3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_4:  { label: 'Drywall IV',  short: 'DY4', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    metal_3:    { label: 'Metal Grate III', short: 'MT3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
+    metal_3:    { label: 'Metal Grate III', short: 'MT3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    tilefloor:   { label: 'Tile Floor',    short: 'TIL', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    tilefloor_2: { label: 'Tile Floor II', short: 'TI2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
 };
 
 const OBJECT_RULES = {
@@ -10085,9 +10087,9 @@ _MF_BUILDERS.prebuilt_gobekli = function () {
    grid, blast-door chokes, server-bank cover, holding cells, red light. */
 _MF_BUILDERS.prebuilt_dumb = function () {
     const M = _mfNew({
-        name: 'D.U.M.B.', w: 16, h: 16, base: 'metal', baseH: 3, seed: 2501,
+        name: 'D.U.M.B.', w: 16, h: 16, base: 'tilefloor', baseH: 3, seed: 2501,
         strata: ['lava', 'cave_floor', 'dungeon'], underTop: 'dungeon_2',
-        tints: { metal: '#a87878', dungeon_2: '#9a6a6a', metal_2: '#b88484', road: '#8a6a6a', dungeon: '#7a5a5a' },
+        tints: { tilefloor: '#a87878', metal: '#a87878', dungeon_2: '#9a6a6a', metal_2: '#b88484', road: '#8a6a6a', dungeon: '#7a5a5a' },
     });
     // the tram rail: a fast W–E spine through the base
     M.rect(0, 7, 15, 8, 'road');
@@ -10112,7 +10114,7 @@ _MF_BUILDERS.prebuilt_dumb = function () {
     M.monSym('exitsign', 3, 6, 1, 1, { solid: false });
     M.monSym('exitsign', 13, 2, 1, 1, { solid: false });
     M.spawnEdges('s', 6);
-    M.finishSpawns('metal');
+    M.finishSpawns('tilefloor');
     return M;
 };
 
@@ -10120,10 +10122,10 @@ _MF_BUILDERS.prebuilt_dumb = function () {
    wall arcs, the crackling portal anomaly at the interaction point. */
 _MF_BUILDERS.prebuilt_cern = function () {
     const M = _mfNew({
-        name: 'CERN', w: 16, h: 16, base: 'metal', baseH: 3, seed: 2601,
+        name: 'CERN', w: 16, h: 16, base: 'tilefloor_2', baseH: 3, seed: 2601,
         strata: ['lava', 'cave_floor', 'dungeon'], underTop: 'aluminium',
         tints: {
-            metal: '#9fb4c8', aluminium: '#cfd8e0', gold: '#c88a4a',
+            tilefloor_2: '#9fb4c8', metal: '#9fb4c8', aluminium: '#cfd8e0', gold: '#c88a4a',
             checkerboard: '#7ae0ff', metal_3: '#8aa0b8', storm: '#6a8ac8',
         },
     });
@@ -10149,7 +10151,7 @@ _MF_BUILDERS.prebuilt_cern = function () {
     M.monSym('fluorescent', 5, 5, 1, 2, { solid: false });
     M.monSym('exitsign', 12, 5, 1, 1, { solid: false });
     M.spawnEdges('s', 6);
-    M.finishSpawns('metal');
+    M.finishSpawns('tilefloor_2');
     return M;
 };
 
@@ -10350,12 +10352,12 @@ const EW_MAP_META = [
       biomes: ['ancient', 'desert'], deltaPad: 'dirt_3',
       desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
       env: { tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
-    { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal',
-      biomes: ['underground_base', 'clandestine'], deltaPad: 'metal',
+    { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor',
+      biomes: ['underground_base', 'clandestine'], deltaPad: 'tilefloor',
       desc: '16×16 prebuilt, 6v6 — deep underground military base: corridor grid, blast-door chokes, server-bank cover & red emergency light',
       env: { tint: 0x180a0a, tintAmt: 0.60, stars: 0.0, nebula: 0.15, fog: { color: 0x3a1010, amount: 0.7, top: 0.12, band: 0.7 }, scenery: 'none' } },
-    { id: 'prebuilt_cern', label: 'CERN', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal',
-      biomes: ['underground_base', 'astral'], deltaPad: 'metal_3',
+    { id: 'prebuilt_cern', label: 'CERN', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor_2',
+      biomes: ['underground_base', 'astral'], deltaPad: 'tilefloor_2',
       desc: '16×16 prebuilt, 6v6 — the collider ring: tunnel arcs, copper beamlines, control terminals & the crackling portal anomaly',
       env: { tint: 0x0a1018, tintAmt: 0.55, stars: 0.15, nebula: 0.5, fog: { color: 0x103048, amount: 0.6, top: 0.10, band: 0.6 }, scenery: 'none' } },
     { id: 'prebuilt_backrooms', label: 'Backrooms', w: 16, h: 16, teamSize: 6, tier: 3, base: 'carpet',

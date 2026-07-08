@@ -1368,6 +1368,10 @@ const TERRAIN_SPRITES = {
     dirt_4:           [`${_T}/dirt_4.png`],
     marble:           [`${_T}/marble.png`],
     marble_2:         [`${_T}/marble_2.png`],
+    /* Pale polished marble — texture-only key (not a placeable terrain);
+       used by the 3D prop builders (thrones, statues, basilicas) which
+       looked muddy wearing plain marble.png. */
+    marble_light:     [`${_T}/marble_light.png`],
     cobblestone:      [`${_T}/cobblestone.png`],
     cobblestone_2:    [`${_T}/cobblestone_2.png`],
     leaves_2:         [`${_T}/leaves_2.png`],
@@ -1392,6 +1396,47 @@ const TERRAIN_SPRITES = {
     drywall_3:        [`${_T}/drywall_3.png`],
     drywall_4:        [`${_T}/drywall_4.png`],
     metal_3:          [`${_T}/metal_3.png`],
+
+    // 2026-07-08 full R2 terrain-folder registration — texture-only keys (not
+    // placeable terrains) so _hzTex()/prop builders can wear any of them.
+    // Textures are lazy-loaded on first use, so unused keys cost nothing.
+    leather:          [`${_T}/leather.png`],
+    leather_2:        [`${_T}/leather_2.png`],
+    enamel_2:         [`${_T}/enamel_2.png`],
+    mars:             [`${_T}/mars.png`],
+    mars_2:           [`${_T}/mars_2.png`],
+    fur:              [`${_T}/fur.png`],
+    fur_2:            [`${_T}/fur_2.png`],
+    fur_3:            [`${_T}/fur_3.png`],
+    skin:             [`${_T}/skin.png`],
+    rubber:           [`${_T}/rubber.png`],
+    rubber_2:         [`${_T}/rubber_2.png`],
+    damask:           [`${_T}/damask.png`],
+    damask_2:         [`${_T}/damask_2.png`],
+    damask_3:         [`${_T}/damask_3.png`],
+    damask_4:         [`${_T}/damask_4.png`],
+    floral:           [`${_T}/floral.png`],
+    floral_2:         [`${_T}/floral_2.png`],
+    diamond:          [`${_T}/diamond.png`],
+    brokenglass:      [`${_T}/brokenglass.png`],
+    gunmetal:         [`${_T}/gunmetal.png`],
+    gunmetal_2:       [`${_T}/gunmetal_2.png`],
+    copper:           [`${_T}/copper.png`],
+    concrete_floor:   [`${_T}/concrete_floor.png`],
+    checkerboard_2:   [`${_T}/checkerboard_2.png`],
+    checkerboard_3:   [`${_T}/checkerboard_3.png`],
+    drywall_5:        [`${_T}/drywall_5.png`],
+    dirt_slope:       [`${_T}/dirt_slope.png`],
+    grass_dark_fantasy: [`${_T}/grass_dark_fantasy.png`],
+    rocks_dark_fantasy: [`${_T}/rocks_dark_fantasy.png`],
+    ice_1:            [`${_T}/ice_1.png`],
+    igloo:            [`${_T}/igloo.png`],
+    latticegarden:    [`${_T}/latticegarden.png`],
+    noise:            [`${_T}/noise.png`],
+    tigerfur:         [`${_T}/tigerfur.png`],
+    tigerfur_2:       [`${_T}/tigerfur_2.png`],
+    tilefloor:        [`${_T}/tilefloor.png`],
+    tilefloor_2:      [`${_T}/tilefloor_2.png`],
 };
 
 const TERRAIN_SIDE_SPRITES = {
