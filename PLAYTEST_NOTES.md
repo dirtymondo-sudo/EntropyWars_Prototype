@@ -20,6 +20,16 @@ matchmaking/relay — all gameplay logic is client-side.
   meshes rebuilt if the scene ref changes; disposed in `clear()`. The flame shape/
   colors were tuned with an offline Node raymarcher (scratchpad fire_raymarch.js
   pattern) — port changes back there if retuning.
+- **Fire spells spawn volumetric flame bursts.** `_spawnEffect` checks each
+  effect def once (`_flameVolumeInfo`, cached on the def) for floor-anchored
+  `flame`/`flame-hot` sprite layers; if found it spawns `spawnFlameBurst3D(tx,ty,
+  {lifeMs,hScale,rScale})` — the same ray-marched volume as burning tiles with a
+  grow-in/rage/fade envelope — and SKIPS those flat sprite layers (torso-anchored
+  flame layers on burning units keep their sprites). Life/size derive from the
+  skipped layers' ml/h1. Re-triggering a tile mid-burst (wall-of-fire re-ignition)
+  extends the burn instead of stacking meshes; concurrent bursts capped at 24.
+  Covers impacts, per-tile AoE bursts and walls — they all funnel through
+  `_spawnEffect`. Exported as `ThreeVFXEffects.spawnFlameBurst3D` for bespoke use.
 - **Water tops use the iterative turbulence caustic.** In `_buildFluidTopMat`
   (three-renderer.js) the old sin-interference caustics + fat glints (the "blobs on
   the water") were replaced by the classic 4-iteration sin/cos filament caustic in

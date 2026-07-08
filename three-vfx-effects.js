@@ -571,6 +571,113 @@ const ThreeVFXEffects = (function () {
     var _burnAcc = 0;
     var _BURN_RATE_MS = 160;
 
+    /* ── Transient volumetric flame bursts for fire-tagged spells ────
+       Same ray-marched fire volume as the burning tiles, but with a
+       short life envelope: quick grow-in, rage, fade-and-squash out.
+       Spawned automatically by _spawnEffect for any effect whose layer
+       list uses the flat 'flame'/'flame-hot' sprites (those layers are
+       skipped in favour of the volume — torso-anchored ones excepted),
+       so every fire spell — impacts, AoEs, walls — upgrades at once.
+       Re-triggering a tile mid-burst (wall re-ignition) extends the
+       burn instead of stacking meshes. */
+    var _flameBursts = {};          // "x,y" -> entry
+    var _flameBurstScene = null;
+    var _flameBurstTime = 0;        // seconds, shared clock
+    var _FLAME_BURST_CAP = 24;
+
+    function _maxNum(v) { return Array.isArray(v) ? Math.max(v[0], v[1]) : (v || 0); }
+
+    /* scan an effect def once for floor-anchored flame sprite layers;
+       derive the volume's life + size from them. Cached on the def. */
+    function _flameVolumeInfo(def) {
+        if (def._fireVol !== undefined) return def._fireVol;
+        var maxLife = 0, maxH = 0, found = false;
+        for (var i = 0; i < (def.layers ? def.layers.length : 0); i++) {
+            var l = def.layers[i];
+            if ((l.sprite === 'flame' || l.sprite === 'flame-hot') && l.anchor !== 'torso') {
+                found = true;
+                maxLife = Math.max(maxLife, (l.delayMs || 0) + _maxNum(l.ml));
+                maxH = Math.max(maxH, _maxNum(l.h1 != null ? l.h1 : l.size1), _maxNum(l.h0 != null ? l.h0 : l.size0));
+            }
+        }
+        if (!found) { def._fireVol = null; return null; }
+        var hScale = Math.min(1.0, Math.max(0.45, maxH / 210));
+        def._fireVol = {
+            lifeMs: Math.min(3200, Math.max(500, maxLife)),
+            hScale: hScale,
+            rScale: 0.7 + 0.3 * hScale,
+        };
+        return def._fireVol;
+    }
+
+    function _disposeFlameBurst(key, skipSceneRemove) {
+        var e = _flameBursts[key];
+        if (!e) return;
+        if (!skipSceneRemove && e.group.parent) e.group.parent.remove(e.group);
+        for (var i = 0; i < e.mats.length; i++) e.mats[i].dispose();
+        delete _flameBursts[key];
+    }
+
+    function _disposeAllFlameBursts(skipSceneRemove) {
+        for (var k in _flameBursts) _disposeFlameBurst(k, skipSceneRemove);
+    }
+
+    function spawnFlameBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn() || typeof THREE === 'undefined') return;
+        if (_catOff('spells')) return;
+        if (typeof state !== 'undefined' && (state.devAutoSim || state.animationsDisabled)) return;
+        var scene = (window.ThreeVFX && ThreeVFX._getScene) ? ThreeVFX._getScene() : null;
+        if (!scene) return;
+        if (scene !== _flameBurstScene) {
+            _disposeAllFlameBursts(true);
+            _flameBurstScene = scene;
+        }
+        var key = tx + ',' + ty;
+        var life = (opts.lifeMs != null ? opts.lifeMs : 900) / 1000;
+        var e = _flameBursts[key];
+        if (e) {
+            /* re-ignition: extend the burn, keep the bigger flame */
+            e.until = Math.max(e.until, _flameBurstTime + life);
+            return;
+        }
+        var count = 0;
+        for (var k in _flameBursts) { if (k) count++; }
+        if (count >= _FLAME_BURST_CAP) return;
+        e = _buildFlameVolume(((tx * 17.3 + ty * 11.9) % 89), opts.hScale || 1, opts.rScale || 1);
+        var c = tilePx(tx, ty);
+        var pad = _cfg().boardPadding || 2;
+        /* +2: keeps the volume's bottom face off the tile top (z-fight) */
+        e.group.position.set(c.x - pad, tileZ(tx, ty) + 2, c.y - pad);
+        e.born = _flameBurstTime;
+        e.until = _flameBurstTime + life;
+        scene.add(e.group);
+        _flameBursts[key] = e;
+    }
+
+    function _tickFlameBursts(dt) {
+        _flameBurstTime += dt;
+        var scene = (window.ThreeVFX && ThreeVFX._getScene) ? ThreeVFX._getScene() : null;
+        if (scene !== _flameBurstScene) {
+            _disposeAllFlameBursts(true);
+            _flameBurstScene = scene;
+            return;
+        }
+        for (var key in _flameBursts) {
+            var e = _flameBursts[key];
+            if (!e) continue;
+            if (_flameBurstTime >= e.until) { _disposeFlameBurst(key); continue; }
+            var ramp = Math.min(1, (_flameBurstTime - e.born) / 0.13);   /* ignite */
+            var fade = Math.min(1, (e.until - _flameBurstTime) / 0.28);  /* die down */
+            var vig = ramp * (0.35 + 0.65 * fade);
+            e.group.scale.y = (0.45 + 0.55 * ramp) * (0.55 + 0.45 * fade);
+            for (var mi = 0; mi < e.mats.length; mi++) {
+                e.mats[mi].uniforms.uTime.value = _flameBurstTime;
+                e.mats[mi].uniforms.uVig.value = vig;
+            }
+        }
+    }
+
     /* ── Volumetric flames for burning tiles ─────────────────────────
        Ray-marched procedural fire (the THREE.Fire technique): each
        burning tile gets a box whose fragment shader marches the camera
@@ -693,21 +800,15 @@ const ThreeVFXEffects = (function () {
         return g;
     }
 
-    function _tileFlameOnBeforeRender(renderer, scene, camera) {
-        /* camera position in this mesh's local (unit-box) space — the
-           fragment shader marches rays from here */
-        var u = this.material.uniforms.uCamLocal.value;
-        u.copy(camera.position);
-        this.worldToLocal(u);
-    }
-
-    function _buildTileFlame(bt) {
+    /* shared builder: one volumetric flame box. hScale/rScale size it
+       relative to the standard burning-tile fire (ts wide, 1.4·ts tall). */
+    function _buildFlameVolume(seed, hScale, rScale) {
         var ts = _cfg().tileSize || 128;
         var group = new THREE.Group();
         var mat = new THREE.ShaderMaterial({
             uniforms: {
                 uTime: { value: 0 },
-                uSeed: { value: ((bt.x * 13.7 + bt.y * 7.3) % 97) },
+                uSeed: { value: seed },
                 uVig:  { value: 0 },
                 uCamLocal: { value: new THREE.Vector3() },
             },
@@ -719,12 +820,26 @@ const ThreeVFXEffects = (function () {
             side: THREE.BackSide,
         });
         var m = new THREE.Mesh(_tileFlameGeoGet(), mat);
-        var h = ts * 1.4;
-        m.scale.set(ts * 1.0, h, ts * 1.0);
+        var h = ts * 1.4 * (hScale || 1);
+        m.scale.set(ts * (rScale || 1), h, ts * (rScale || 1));
         m.position.y = h * 0.5;        /* box base sits on the tile surface */
         m.onBeforeRender = _tileFlameOnBeforeRender;
         group.add(m);
-        return { group: group, mats: [mat], age: 0 };
+        return { group: group, mats: [mat] };
+    }
+
+    function _tileFlameOnBeforeRender(renderer, scene, camera) {
+        /* camera position in this mesh's local (unit-box) space — the
+           fragment shader marches rays from here */
+        var u = this.material.uniforms.uCamLocal.value;
+        u.copy(camera.position);
+        this.worldToLocal(u);
+    }
+
+    function _buildTileFlame(bt) {
+        var e = _buildFlameVolume(((bt.x * 13.7 + bt.y * 7.3) % 97), 1, 1);
+        e.age = 0;
+        return e;
     }
 
     function _disposeTileFlame(key, skipSceneRemove) {
@@ -877,6 +992,7 @@ const ThreeVFXEffects = (function () {
         _tickBolts(dt);
         _tickPersistentZones(dt);
         _syncTileFlames(dt);
+        _tickFlameBursts(dt);
         _tickBurningTiles(dt);
     }
 
@@ -886,6 +1002,7 @@ const ThreeVFXEffects = (function () {
         _zoneSpawnAcc = 0;
         _burnAcc = 0;
         _disposeAllTileFlames();
+        _disposeAllFlameBursts();
         stopTornado3D();
         stopSandstorm3D();
     }
@@ -1412,8 +1529,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var baseZFloor = unitSurfaceZ(anchor.tx, anchor.ty);
         var baseZTorso = baseZFloor + unitZBoost();
 
+        /* fire-tagged effects get a ray-marched volumetric flame at the
+           tile; their flat floor-anchored flame sprite layers are skipped
+           (torso-anchored flames on burning units keep their sprites) */
+        var fireVol = _flameVolumeInfo(effectDef);
+        if (fireVol) spawnFlameBurst3D(anchor.tx, anchor.ty, fireVol);
+
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
+            if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
+                layer.anchor !== 'torso') continue;
             var count = layer.count || 1;
             if (layer.delayMs && layer.delayMs > 0) {
                 (function(l, c, cpx, zf, zt) {
@@ -9027,6 +9152,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         disposeSandstormVortex: _disposeSandstormVortex,
 
         __playFx: __playFx,
+        spawnFlameBurst3D: spawnFlameBurst3D,
 
         _EFFECTS: EFFECTS,
         _SPELL_MAP: SPELL_MAP,
