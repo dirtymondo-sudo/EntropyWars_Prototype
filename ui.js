@@ -4516,6 +4516,12 @@
                 initiateWarpStone(unit);
                 return;
             }
+
+            // Combat stims (any ITEM_RULES entry with selfBoost) are self-use.
+            if (unit && ITEM_RULES[itemKey]?.selfBoost) {
+                useStimItem(unit, itemKey);
+                return;
+            }
             setTool('item', itemKey);
             state.actionMenuView = 'items';
             renderBattleSelectionUI({
@@ -4999,6 +5005,38 @@
             showFloatingTextForUnit(unit, `💊 CURED`, 'heal', { durationMs: 1200 });
             playSfx('uiConfirm');
 
+            renderAfterCombat();
+        }
+
+        // Combat stims: self-use consumables that grant stat stages (ITEM_RULES
+        // entries carrying a `selfBoost` map). Costs an action, like a potion.
+        function useStimItem(unit, itemKey) {
+            if (!unit || unit.dead) return;
+            const rule = ITEM_RULES[itemKey];
+            if (!rule || !rule.selfBoost) return;
+            if ((unit.items?.[itemKey] || 0) <= 0) {
+                addLog(`No ${rule.name} left.`);
+                playErrorSfx();
+                return;
+            }
+            if (!canUnitAct(unit)) {
+                addLog('That unit already acted this round.');
+                playErrorSfx();
+                return;
+            }
+            pushUndoSnapshot(true);
+            unit.items[itemKey] -= 1;
+            applyStatStageBoost(unit, rule.selfBoost, `${rule.name}: `, unit);
+            addLog(`${rule.icon} ${unitDisplayName(unit)} uses ${rule.name}!`);
+            playSfx('uiConfirm');
+            spendAP(unit, AP_COST_ACTION);
+            if (!unit._itemLog) unit._itemLog = {};
+            unit._itemLog[itemKey] = (unit._itemLog[itemKey] || 0) + 1;
+            state.actionMode = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.actionMenuView = (!unitFinished(unit) && !unit.dead) ? 'items' : 'root';
+            endUnitIfDone(unit);
             renderAfterCombat();
         }
 

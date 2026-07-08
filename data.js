@@ -51,6 +51,16 @@ const EQUIP_DEFS = {
     'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Long-range scouting tool. Reveals distant tiles.', stat: 'awr', statVal: 2 },
     'jetpack': { slot: 'accessory1', label: 'Jetpack', desc: 'Fly to the sky without nexus control. Ignores terrain movement cost.', stat: 'move', statVal: 1 },
     'spelunking_gear': { slot: 'accessory1', label: 'Spelunking Gear', desc: 'Descend underground without nexus control. +1 AWR.', stat: 'awr', statVal: 1 },
+    // ── Combat & utility accessories (held-item effects, hooked in battle.js/map.js) ──
+    'chrono_locket': { slot: 'accessory1', label: 'Chrono Locket', desc: 'A sliver of borrowed time. Regenerates an extra 5% max HP at the end of every round.' },
+    'martyrs_talisman': { slot: 'accessory1', label: "Martyr's Talisman", desc: 'Defies the first killing blow each life — survive at 1 HP. Recharges on respawn.' },
+    'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
+    'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
+    'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 INT, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
+    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
+    'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
+    'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
+    'dowsing_rod': { slot: 'accessory1', label: 'Dowsing Rod', desc: 'Twitches over buried danger: at the end of each round, enemy traps within 3 tiles of the bearer are revealed to your team.' },
 };
 
 const DEFAULT_JOB_EQUIPMENT = {};
@@ -3190,6 +3200,45 @@ const ITEM_RULES = {
         max: 1,
         desc: 'Teleport to any tile within 3 range. Ignores terrain.',
         shopPrice: 75
+    },
+    entropyGrenade: {
+        name: 'Entropy Grenade',
+        icon: '💣',
+        max: 2,
+        desc: 'Throw at an enemy. 60 magic damage, plus 36 splash damage to every other unit — friend or foe — in the 3x3 blast.',
+        // Rides the bane throw pipeline (targeting, range, AI). baneType 'none'
+        // never matches a unit type, so it is always neutral damage.
+        baneType: 'none',
+        baneDmg: 0,
+        baseDmg: 60,
+        aoeDmg: 36,
+        aoeRadius: 1,
+        proj: 'proj-bomb',
+        shopPrice: 70
+    },
+    adrenalStim: {
+        name: 'Adrenal Stim',
+        icon: '💉',
+        max: 2,
+        desc: 'Self only. +2 ATK stages for 3 rounds.',
+        selfBoost: { atk: 2 },
+        shopPrice: 55
+    },
+    bulwarkStim: {
+        name: 'Bulwark Stim',
+        icon: '🧱',
+        max: 2,
+        desc: 'Self only. +2 DEF and +2 MDEF stages for 3 rounds.',
+        selfBoost: { def: 2, mdef: 2 },
+        shopPrice: 55
+    },
+    psiStim: {
+        name: 'Psi Stim',
+        icon: '🧠',
+        max: 2,
+        desc: 'Self only. +2 INT stages for 3 rounds.',
+        selfBoost: { int: 2 },
+        shopPrice: 55
     }
 };
 
@@ -3237,6 +3286,22 @@ const ITEM_META = {
     warpStone: {
         icon: '🌀',
         short: 'WARP'
+    },
+    entropyGrenade: {
+        icon: '💣',
+        short: 'NADE'
+    },
+    adrenalStim: {
+        icon: '💉',
+        short: 'ATK+'
+    },
+    bulwarkStim: {
+        icon: '🧱',
+        short: 'DEF+'
+    },
+    psiStim: {
+        icon: '🧠',
+        short: 'INT+'
     }
 };
 

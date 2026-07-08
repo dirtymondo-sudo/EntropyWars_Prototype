@@ -3813,6 +3813,35 @@
                 }
             }
 
+            // ── Censer of Purity: once per round, an enemy-inflicted debuff is
+            // instantly purged, and the censer lashes back at the culprit for
+            // 40% of the bearer's ATK. The debuff still "landed" (resist rolls,
+            // XP for the applier) — it just doesn't stick.
+            if (isEnemyDebuff && typeof unitHasAccessory === 'function'
+                && unitHasAccessory(target, 'purity_censer')
+                && target._censerRound !== (state.round || 0)) {
+                target._censerRound = state.round || 0;
+                clearStatus(target, payload.id);
+                if (payload.id === 'marked') target.markBonus = 0;
+                addLog(`⚱️ ${unitDisplayName(target)}'s Censer of Purity burns away ${meta.label}!`);
+                showFloatingTextForUnit(target, '⚱️ PURGED', 'buff', { durationMs: 1100 });
+                if (sourceUnit && !sourceUnit.dead && !sourceUnit._dying) {
+                    const _censerDmg = Math.max(10, Math.floor((target.atk || 0) * 0.4));
+                    const _censerSrc = sourceUnit, _censerBearer = target;
+                    window.setTimeout(() => {
+                        if (_censerSrc.dead || _censerSrc._dying || state.winner) return;
+                        applyDamageToUnit(_censerSrc, _censerDmg, `${unitDisplayName(_censerBearer)}'s censer lashes back: `, {
+                            sourceUnit: _censerBearer,
+                            allowMarkBonus: false,
+                            damageType: 'magic',
+                            typeEffect: 'neutral',
+                            floatKind: 'combo'
+                        });
+                        checkWin();
+                    }, 400);
+                }
+            }
+
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
@@ -4238,7 +4267,10 @@
             for (const u of state.units) {
                 if (u.dead || u._dying) continue;
                 if (u.hp < u.maxHp) {
-                    const amt = Math.max(1, Math.round(u.maxHp * REGEN_PERCENT));
+                    // Chrono Locket: +5% max HP on top of the baseline regen.
+                    const _regenPct = REGEN_PERCENT
+                        + (typeof unitHasAccessory === 'function' && unitHasAccessory(u, 'chrono_locket') ? 0.05 : 0);
+                    const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
                     const actual = u.hp - before;
@@ -4255,6 +4287,45 @@
                     const mpActual = u.mp - mpBefore;
                     if (mpActual > 0) {
                         manaRestored.push({ unit: u, amount: mpActual });
+                    }
+                }
+            }
+
+            // ── Detection accessories sweep at the end of every round ──
+            if (typeof unitHasAccessory === 'function') {
+                for (const u of state.units) {
+                    if (u.dead || u._dying) continue;
+                    // Hagstone: invisible enemies within 4 tiles of the bearer
+                    // are revealed (their camouflage is stripped outright).
+                    if (unitHasAccessory(u, 'hagstone')) {
+                        for (const e of state.units) {
+                            if (e.dead || e._dying || e.player === u.player) continue;
+                            if (!unitHasStatus(e, 'invisible')) continue;
+                            const _hd = Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y));
+                            if (_hd > 4) continue;
+                            clearStatus(e, 'invisible');
+                            addLog(`👁️ ${unitDisplayName(u)}'s Hagstone pierces the veil — ${unitDisplayName(e)} is revealed!`);
+                            showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
+                        }
+                    }
+                    // Dowsing Rod: enemy traps within 3 tiles of the bearer are
+                    // revealed to the bearer's whole team (rendered like own traps).
+                    if (unitHasAccessory(u, 'dowsing_rod') && state.traps && state.traps.length) {
+                        let _found = 0;
+                        for (const t of state.traps) {
+                            if (t.owner === u.player) continue;
+                            if (t._revealedTo && t._revealedTo[u.player]) continue;
+                            const _td = Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y));
+                            if (_td > 3) continue;
+                            if (!t._revealedTo) t._revealedTo = {};
+                            t._revealedTo[u.player] = true;
+                            _found++;
+                        }
+                        if (_found > 0) {
+                            addLog(`🪄 ${unitDisplayName(u)}'s Dowsing Rod quivers — ${_found} hidden enemy trap${_found > 1 ? 's' : ''} revealed nearby!`, u.player);
+                            showFloatingTextForUnit(u, '🪄 TRAPS FOUND', 'buff', { durationMs: 1200 });
+                            scheduleBoardRender();
+                        }
                     }
                 }
             }
@@ -9879,6 +9950,19 @@
                 forceGroundUnit(target, { reason: 'wounded' });
             }
 
+            // ── Martyr's Talisman: defy the first killing blow each life ──
+            // Fires on ANY lethal damage (hits, DoT, environment) — one save
+            // per life, recharged when the unit eventually dies and respawns.
+            if (target.hp <= 0 && !target._talismanSpent && typeof unitHasAccessory === 'function'
+                && unitHasAccessory(target, 'martyrs_talisman')) {
+                target._talismanSpent = true;
+                target.hp = 1;
+                addLog(`✨ ${unitDisplayName(target)}'s Martyr's Talisman flares — they defy death and hold on at 1 HP!`);
+                showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
+                flashUnit(target.id, 'heal');
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            }
+
             if (target.hp <= 0) {
 
                 // Kill-credit fallback expires: chip damage from >2 rounds ago
@@ -10491,7 +10575,7 @@
             return true;
         }
 
-        const TRADEABLE_ITEM_KEYS = ['healPotion', 'manaPotion', 'scanner', 'panacea', 'warpStone', 'humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'];
+        const TRADEABLE_ITEM_KEYS = ['healPotion', 'manaPotion', 'scanner', 'panacea', 'warpStone', 'humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane', 'entropyGrenade', 'adrenalStim', 'bulwarkStim', 'psiStim'];
 
         function canTradeWithUnit(source, target) {
             if (!source || !target || source.id === target.id) return false;
@@ -23355,6 +23439,29 @@
                             return;
                         }
                     }
+
+                    // ── Echo Band: the basic attack strikes twice — a fast echo
+                    // hit at 50% damage. No crit reroll, no mark consumption, and
+                    // it can't be dodged (the opening was already made); counters
+                    // and follow-ups key off the FIRST hit only.
+                    if (!killed && !target.dead && !target._dying
+                        && typeof unitHasAccessory === 'function' && unitHasAccessory(unit, 'echo_band')) {
+                        const _echoTarget = target;
+                        const _echoDmg = Math.max(12, Math.floor(damage * 0.5));
+                        window.setTimeout(() => {
+                            if (state.winner || _echoTarget.dead || _echoTarget._dying || unit.dead) return;
+                            if (_isMeleeStrike) animateStrikeLeap(unit, _echoTarget.x, _echoTarget.y);
+                            else triggerAttackAnim(unit, _echoTarget.x, _echoTarget.y);
+                            playSfx('basicAttack');
+                            showFloatingTextForUnit(unit, 'ECHO!', 'counter', { durationMs: 900 });
+                            applyDamageToUnit(_echoTarget, _echoDmg, `${unitDisplayName(unit)}'s Echo Band strikes again: `, {
+                                sourceUnit: unit,
+                                allowMarkBonus: false,
+                                floatKind: 'combo'
+                            });
+                            checkWin();
+                        }, actionMs(420));
+                    }
                 }
 
                 unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
@@ -24871,7 +24978,7 @@
                 }, _throwDelay + actionMs(120));
                 window.setTimeout(() => {
                     playSfx('itemThrow');
-                    playProjectileToUnit(unit, target, 'proj-bane-' + baneRule.baneType, _throwTravelMs);
+                    playProjectileToUnit(unit, target, baneRule.proj || ('proj-bane-' + baneRule.baneType), _throwTravelMs);
                 }, _throwDelay + actionMs(120));
 
                 const _baneImpactMs = _throwDelay + actionMs(120) + _throwTravelMs + actionMs(80);
@@ -24891,6 +24998,25 @@
                         window.setTimeout(() => {
                             showFloatingTextForUnit(target, 'SUPER EFFECTIVE!', 'streak');
                         }, actionMs(400));
+                    }
+
+                    // Entropy Grenade (or any aoeRadius bane-family item): the
+                    // blast splashes EVERY other unit in the area — allies too.
+                    // Friendly fire is the skill check that keeps it fair.
+                    if (baneRule.aoeRadius > 0 && baneRule.aoeDmg > 0) {
+                        const _blastX = target.x, _blastY = target.y;
+                        shakeBoard('normal');
+                        for (const other of state.units) {
+                            if (other.dead || other._dying || other.id === target.id) continue;
+                            const _bd = Math.max(Math.abs(other.x - _blastX), Math.abs(other.y - _blastY));
+                            if (_bd > baneRule.aoeRadius) continue;
+                            applyDamageToUnit(other, baneRule.aoeDmg, `${baneRule.name} blast: `, {
+                                sourceUnit: other.player === unit.player ? null : unit,
+                                allowMarkBonus: false,
+                                damageType: 'magic',
+                                typeEffect: 'neutral'
+                            });
+                        }
                     }
                 }, _baneImpactMs);
 
@@ -25083,6 +25209,24 @@
                 state._teleportingUnit = null;
                 return 0;
             }
+
+            // ── Berserker's Brand / Archon's Focus (choice lock): the raw stat
+            // boost comes at a price — each life, the unit is locked to the
+            // first spell it commits to until it falls and respawns. Basic
+            // attacks and items are unaffected.
+            const _brandAccName = (typeof unitHasAccessory === 'function')
+                ? (unitHasAccessory(unit, 'berserkers_brand') ? "Berserker's Brand"
+                    : unitHasAccessory(unit, 'archons_focus') ? "Archon's Focus" : null)
+                : null;
+            if (_brandAccName && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId) {
+                const _lockedSpell = (unit.spells || []).concat(unit._raceAbilities || [])
+                    .find(s => s && s.id === unit._brandLockSpellId);
+                addLog(`🔒 ${unitDisplayName(unit)} is bound by the ${_brandAccName} — only ${_lockedSpell?.name || 'their chosen spell'} can be cast this life.`);
+                state._teleportingUnit = null;
+                playErrorSfx();
+                return 0;
+            }
+
             const _rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
 
             const _spellClickTarget = unitAt(x, y, z);
@@ -25196,6 +25340,14 @@
             if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
 
             pushUndoSnapshot(true);
+
+            // Choice lock commits here — every validation gate has passed, so
+            // this cast WILL happen and it becomes the unit's bound spell.
+            if (_brandAccName && !unit._brandLockSpellId) {
+                unit._brandLockSpellId = spell.id;
+                addLog(`🔒 The ${_brandAccName} binds ${unitDisplayName(unit)} to ${spell.name} for this life!`);
+                showFloatingTextForUnit(unit, `🔒 ${spell.name}`, 'buff', { durationMs: 1200 });
+            }
 
             triggerCastAnim(unit, spell);
 

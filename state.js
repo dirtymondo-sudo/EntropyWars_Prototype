@@ -2901,7 +2901,7 @@
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
             while (totalItems > CONFIG.unitItemSlots) {
-                const trimOrder = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType).concat(['manaPotion','healPotion','scanner']);
+                const trimOrder = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType).concat(['adrenalStim','bulwarkStim','psiStim','manaPotion','healPotion','scanner']);
                 let trimmed = false;
                 for (const k of trimOrder) { if (normalized.items[k] > 0) { normalized.items[k]--; trimmed = true; break; } }
                 if (!trimmed) break;

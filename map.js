@@ -3796,6 +3796,12 @@
             return unit?.equipment?.accessory1 === 'telescope' || unit?.equipment?.accessory2 === 'telescope';
         }
 
+        // Generic accessory check — new held-item hooks should use this instead
+        // of adding one more unitHasX helper per accessory.
+        function unitHasAccessory(unit, accessoryId) {
+            return unit?.equipment?.accessory1 === accessoryId || unit?.equipment?.accessory2 === accessoryId;
+        }
+
         function removeAccessoryFromUnit(unit, accessoryId) {
             if (!unit?.equipment) return;
             if (unit.equipment.accessory1 === accessoryId) {
@@ -5284,6 +5290,13 @@
 
             if (state.wards) state.wards = state.wards.filter(w => w.placedBy !== unit.id);
 
+            // Per-life accessory state recharges with the next life: the
+            // Martyr's Talisman can defy death again, the Brand/Focus spell
+            // lock re-picks on the first cast, the Censer purge guard resets.
+            unit._talismanSpent = false;
+            unit._brandLockSpellId = null;
+            unit._censerRound = null;
+
             if (!unit._isBoss) {
                 unit._deathCount = (unit._deathCount || 0) + 1;
                 unit._matchDeaths = (unit._matchDeaths || 0) + 1;
@@ -5825,6 +5838,36 @@
                     }
                 }
             }
+            }
+
+            // ── Accessory stat bonuses become REAL here ──────────────────────
+            // computeEquipBonuses was previously only used for the party-builder
+            // stat preview; in-battle units never received their statVal. Fold
+            // the bonuses into the unit's base stats at build time so every
+            // accessory's listed stat actually applies in combat.
+            if (typeof computeEquipBonuses === 'function' && newUnit.equipment) {
+                const _eqB = computeEquipBonuses(newUnit.equipment);
+                if (_eqB.hp) { newUnit.maxHp += _eqB.hp; newUnit.hp = newUnit.maxHp; }
+                if (_eqB.mp) { newUnit.maxMp += _eqB.mp; newUnit.mp = newUnit.maxMp; }
+                newUnit.atk += _eqB.atk || 0;
+                newUnit.def += _eqB.def || 0;
+                newUnit.mdef = (newUnit.mdef || 0) + (_eqB.mdef || 0);
+                newUnit.move += _eqB.move || 0;
+                newUnit.awr = (newUnit.awr || 0) + (_eqB.awr || 0);
+                newUnit.intStat = (newUnit.intStat || 0) + (_eqB.int || 0);
+                newUnit.spd = (newUnit.spd || 0) + (_eqB.spd || 0);
+            }
+
+            // Grapnel Gauntlet: the accessory bakes the Grapple ability into the
+            // unit's spell list (cheaper than the sailor version — it's hardware,
+            // not technique). Added AFTER the loadout spell assignment above so
+            // it can't be clobbered.
+            if (unitHasAccessory(newUnit, 'grapnel_gauntlet') && typeof getSpellById === 'function') {
+                const _grapple = getSpellById('raceGrapple');
+                if (_grapple && !(newUnit.spells || []).some(s => s && s.id === 'raceGrapple')) {
+                    if (!Array.isArray(newUnit.spells)) newUnit.spells = [];
+                    newUnit.spells.push({ ..._grapple, cost: 12 });
+                }
             }
 
             return newUnit;

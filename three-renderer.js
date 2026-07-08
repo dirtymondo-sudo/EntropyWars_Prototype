@@ -4757,6 +4757,7 @@ const ThreeRenderer = (function () {
                 var tp = state.traps[tpi];
                 h = _hashInt(h, 8); h = _hashInt(h, tp.x); h = _hashInt(h, tp.y);
                 h = _hashVal(h, tp.owner); h = _hashStr(h, tp.trapType || '');
+                h = _hashInt(h, (tp._revealedTo && tp._revealedTo[1] ? 1 : 0) + (tp._revealedTo && tp._revealedTo[2] ? 2 : 0));
             }
         }
         if (state.pixieDust) {
@@ -5392,7 +5393,9 @@ const ThreeRenderer = (function () {
             var _trapTs = CONFIG.tileSize || BASE_TILE;
             for (var tpi2 = 0; tpi2 < state.traps.length; tpi2++) {
                 var tpr = state.traps[tpi2];
-                if (tpr.owner !== _trapVp) continue;
+                // Own traps always render; enemy traps only once a Dowsing Rod
+                // (or similar) has revealed them to the viewer's team.
+                if (tpr.owner !== _trapVp && !(tpr._revealedTo && tpr._revealedTo[_trapVp])) continue;
                 var tSprites = TRAP_TILE_SPRITES[tpr.trapType];
                 if (!tSprites || !tSprites.length) continue;
                 var ttex = getTexture(tSprites[0]);
