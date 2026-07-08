@@ -1041,6 +1041,42 @@ function _hydrateEffects() {
 var EFFECTS = _hydrateEffects();
 var SPELL_MAP = _EFX_DATA.S;
 
+/* ─── DEBUFF BURST — the negative counterpart of _buff_burst / _heal_burst ──
+   Debuffs used to fly a green DOM "proj-debuff" sprite at the enemy. This is
+   the same target-anchored aura burst the buffs/heals use, recoloured and
+   re-choreographed to read as CORRUPTION rather than blessing:
+     • buffs pop a BRIGHT flash + GOLD/GREEN sparkles that RISE and calm
+       EXPANDING rings; here the flash is dim, the motes are dark purple
+       (void-mist / dark-flame) that RAIN DOWN onto the target, and the rings
+       are blood-red and CONTRACT (closing in / binding).
+   Fired via ThreeVFXEffects.fireDebuff(tx, ty). */
+EFFECTS['_debuff_burst'] = {
+    layers: [
+        /* dim, muted pop — the opposite of the buff's bright flash */
+        { sprite: 'flash', ml: 160, size0: 48, size1: 14, opacity0: 0.5 },
+        /* corrupt motes raining DOWN onto the target (buff sparkles rise —
+           these sink to feel oppressive); start high, fall, accelerate */
+        { count: 22, anchor: 'floor', sprite: 'void-mist', ml: [500, 900], offsetXY: 16,
+          z: [45, 80], vxRange: 12, vyRange: 12, vzRange: [-70, -45], gravity: 45, drag: 0.4,
+          size0: [7, 12], size1: 2, opacity0: 0.85 },
+        /* second, delayed fall — dark-flame embers of decay */
+        { count: 16, delayMs: 300, anchor: 'floor', sprite: 'dark-flame', ml: [400, 700], offsetXY: 14,
+          z: [45, 80], vxRange: 12, vyRange: 12, vzRange: [-70, -45], gravity: 45, drag: 0.4,
+          size0: [7, 12], size1: 2, opacity0: 0.85 },
+        /* low psi haze swirling and settling around the feet */
+        { count: 14, anchor: 'floor', sprite: 'psi-pulse', ml: [400, 800], offsetXY: 22,
+          z: [4, 26], vxRange: 22, vyRange: 22, vzRange: [-12, 8], gravity: 25, drag: 0.5,
+          size0: [4, 8], size1: 1, opacity0: 0.7 },
+        /* blood-red rings that CONTRACT inward (bind / clamp) — mirror of the
+           heal's calm expanding green rings */
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.75 },
+        { delayMs: 300, anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.6 },
+        { delayMs: 600, anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.5 },
+        /* lingering dark pall over the target */
+        { anchor: 'floor', mode: 'world', sprite: 'void-mist', ml: 1200, z: 1, size0: 90, size1: 76, opacity0: 0.4 },
+    ]
+};
+
 /* ─── WALL OF FIRE — hand-authored "real fire" override ──────────────────
    The auto-generated wallOfFire_tile read as a couple of flat flame quads.
    This rebuilds it as a dense, layered, flickering sheet of flame: a warm
@@ -1689,6 +1725,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function fireBuff(tx, ty) {
         if (_suppressed() || _catOff('buffs')) return;
         _fireUtility('_buff_burst', { tx: tx, ty: ty });
+    }
+
+    function fireDebuff(tx, ty) {
+        if (_suppressed() || _catOff('buffs')) return;
+        _fireUtility('_debuff_burst', { tx: tx, ty: ty });
     }
 
     var _statusEffectMap = {
@@ -9090,6 +9131,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireHeal: fireHeal,
         fireMana: fireMana,
         fireBuff: fireBuff,
+        fireDebuff: fireDebuff,
         fireStatus: fireStatus,
         fireLevelUp: fireLevelUp,
         fireDeath: fireDeath,

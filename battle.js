@@ -15,6 +15,10 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBuff) ThreeVFXEffects.fireBuff(tx, ty);
         }
+        function _vfxDebuff(tx, ty) {
+            if (_skipVisuals()) return;
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDebuff) ThreeVFXEffects.fireDebuff(tx, ty);
+        }
         function _vfxStatus(statusId, tx, ty) {
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireStatus) ThreeVFXEffects.fireStatus(statusId, tx, ty);
@@ -26166,7 +26170,10 @@
                 const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
                 const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                 completionDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
-                window.setTimeout(() => playProjectileToUnit(unit, target, 'proj-debuff', cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), projectileDelay);
+                // Debuffs bloom a dark corruption aura ON the enemy (the negative
+                // counterpart of the buff/heal aura) instead of flying the old
+                // green "proj-debuff" sprite across the board.
+                window.setTimeout(() => _vfxDebuff(target.x, target.y), projectileDelay);
 
                 /* ── UFO flyover for alien debuff spells — the crop-circle 3D
                    saucer (ThreeVFXEffects.sigUFO3D), replacing the old flat
