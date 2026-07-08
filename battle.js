@@ -15131,11 +15131,14 @@
         function _mdSpawnHubNpcs() {
             const hub = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_hub : null;
             const spots = (hub && hub._mdNpcSpots) ? hub._mdNpcSpots : [];
-            if (!spots.length || typeof isUnitUnlocked !== 'function' || typeof AVAILABLE_RACES === 'undefined') return;
+            if (!spots.length || typeof AVAILABLE_RACES === 'undefined') return;
+            /* the hub population is the MD roster (recruited by clearing the
+               dungeon) minus whoever you're playing — so a fresh save starts
+               ALONE, and each clear adds a new face to the plaza */
             const partyRaces = new Set((state.partyMeta?.[1] || []).map(m => m && m.race).filter(Boolean));
-            const pool = AVAILABLE_RACES.filter(rk => {
-                try { return isUnitUnlocked(rk) && !partyRaces.has(rk); } catch (e) { return false; }
-            });
+            const sv = (typeof loadMdSave === 'function') ? loadMdSave() : null;
+            const owned = new Set((sv && sv.unlockedRaces) || []);
+            const pool = AVAILABLE_RACES.filter(rk => owned.has(rk) && !partyRaces.has(rk));
             for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
             const n = Math.min(spots.length, pool.length);
             for (let i = 0; i < n; i++) {
@@ -15313,13 +15316,30 @@
             const floorsCleared = victory ? D.floors : Math.max(0, run.floor - 1);
             const gold = floorsCleared * 40 + (victory ? 400 : 0);
             let sv = null;
+            let newAlly = null;
             try {
                 sv = loadMdSave();
                 sv.bestFloor = Math.max(sv.bestFloor || 0, floorsCleared);
-                if (victory) sv.clears = (sv.clears || 0) + 1;
+                if (victory) {
+                    sv.clears = (sv.clears || 0) + 1;
+                    /* recruit a new ally: a random race joins the MD roster —
+                       playable next run, hanging out at the Guild Hub */
+                    const owned = new Set(sv.unlockedRaces || []);
+                    const allyPool = ((typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : []).filter(rk => {
+                        if (owned.has(rk)) return false;
+                        try { if (typeof isRace3DReady === 'function' && !isRace3DReady(rk)) return false; } catch (e) {}
+                        return true;
+                    });
+                    if (allyPool.length) {
+                        newAlly = allyPool[randInt(allyPool.length)];
+                        sv.unlockedRaces = (sv.unlockedRaces || []).concat([newAlly]);
+                    }
+                }
                 sv.goldEarned = (sv.goldEarned || 0) + gold;
                 saveMdSave(sv);
             } catch (e) {}
+            if (newAlly) addLog(`🤝 ${newAlly.charAt(0).toUpperCase() + newAlly.slice(1)} joins the Guild Hub! They're playable on your next run.`);
+            state._mdNewAlly = newAlly;
             try {
                 if (gold > 0 && window.ProfileSystem && typeof window.ProfileSystem.creditLocalGold === 'function') {
                     window.ProfileSystem.creditLocalGold(gold);
@@ -15366,9 +15386,11 @@
             if (vicParticles) vicParticles.innerHTML = particleHtml;
 
             if (vicMatchInfo) {
+                const ally = state._mdNewAlly;
                 vicMatchInfo.innerHTML = `<div class="camp-gold-section">
                     <div class="camp-gold-row"><span>Floors Cleared</span><span class="camp-gold-val">${floorsCleared} / ${D.floors}</span></div>
                     <div class="camp-gold-row total"><span>Gold Earned</span><span class="camp-gold-val">+${gold}g</span></div>
+                    ${ally ? `<div class="camp-gold-row"><span>🤝 New Ally Recruited</span><span class="camp-gold-val">${ally.charAt(0).toUpperCase() + ally.slice(1)}</span></div>` : ''}
                     ${sv ? `<div class="camp-gold-row"><span>Best Depth</span><span class="camp-gold-val">Floor ${sv.bestFloor || 0}</span></div>
                     <div class="camp-gold-row"><span>Total Clears</span><span class="camp-gold-val">${sv.clears || 0}</span></div>` : ''}
                 </div>`;

@@ -10512,7 +10512,6 @@ const MD_DUNGEONS = {
         wallTerrain: 'cave_wall',
         accentTerrains: ['dirt_3', 'rocks_1', 'marble'],
         poolTerrain: 'water',
-        stairsTerrain: 'descent_point',
         enemyRaces: ['reptilian', 'antperson', 'skeleton', 'goatman', 'annunaki', 'demon'],
         bossRace: 'annunaki',
         /* same family as prebuilt_agartha's env, darkened for the depths */
@@ -10534,9 +10533,13 @@ function _mdBuildHub() {
     M.tree(1, 1); M.tree(6, 1, 'tree_3'); M.tree(1, 6, 'tree_4'); M.tree(6, 6, 'tree_2');
     M.obj(2, 2, 'torch'); M.obj(5, 2, 'torch'); M.obj(2, 5, 'torch'); M.obj(5, 5, 'torch');
     M.rock(5, 3);
-    /* the dungeon gate: both east-edge tiles trigger the run */
-    M.t(7, 3, 'cave_entrance'); M.t(7, 4, 'cave_entrance');
-    M.obj(7, 3, 'cave_entrance');
+    /* the dungeon gate: both east-edge tiles trigger the run. Plain dark
+       stone underfoot (the 'cave_entrance' TERRAIN carries sprite art — not
+       wanted); the visual is the game's own 'geode' monument: an open rock
+       shell full of glowing crystals, the mouth of the Agartha crystal cave.
+       'geode' has no _MON_COLLISION profile, so the tiles stay walkable. */
+    M.t(7, 3, 'cave_floor'); M.t(7, 4, 'cave_floor');
+    M.mon('geode', 7, 3, 3, 3);
     M.spawns(
         [{ x: 2, y: 3 }, { x: 2, y: 4 }, { x: 3, y: 2 }, { x: 3, y: 5 }],
         [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 0, y: 6 }, { x: 1, y: 6 }]   // unused (no enemies in the hub)
@@ -10696,11 +10699,14 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
         }
         return out;
     };
+    /* The exit is the engine's OWN 1×1×1 staircase (the same 3D stairs every
+       map uses): a barrier_passage tile whose top voxel carries an explicit
+       stairDir — see _isStairTile/_buildStairMesh in three-renderer. No new
+       geometry, no object sprite. */
     const stairs = { x: stairsRoom.cx, y: stairsRoom.cy };
-    M.t(stairs.x, stairs.y, D.stairsTerrain);
+    M.t(stairs.x, stairs.y, 'barrier_passage');
     M.h(stairs.x, stairs.y, FLOOR_H);
     M.clearObj(stairs.x, stairs.y);
-    M.obj(stairs.x, stairs.y, 'stairs_2');
 
     const p1Tiles = roomTiles(spawnRoom, [stairs]);
     /* cluster the party around the spawn-room center */
@@ -10731,6 +10737,16 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     M.spawns(spawns1, spawns2);
 
     const entry = M.finish();
+    /* stamp the staircase direction: it ascends toward a wall neighbour when
+       one exists (reads as "leading out of the floor") */
+    let sdHigh = 'N';
+    if (!isFloorTile(stairs.x + 1, stairs.y)) sdHigh = 'E';
+    else if (!isFloorTile(stairs.x - 1, stairs.y)) sdHigh = 'W';
+    else if (!isFloorTile(stairs.x, stairs.y + 1)) sdHigh = 'S';
+    else if (!isFloorTile(stairs.x, stairs.y - 1)) sdHigh = 'N';
+    const _sdOpp = { N: 'S', S: 'N', E: 'W', W: 'E' };
+    const _stStack = entry.voxels[stairs.y] && entry.voxels[stairs.y][stairs.x];
+    if (_stStack && _stStack.length) _stStack[_stStack.length - 1].sd = _sdOpp[sdHigh];
     entry._mdStairs = stairs;
     entry._mdFloor = floor;
     entry._mdDungeonId = D.id;

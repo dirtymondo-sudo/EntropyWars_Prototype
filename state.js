@@ -378,12 +378,21 @@
         /* Mystery Dungeon persistent progress (independent of the campaign and
            account wallets — mirrors how the challenge saves keep to themselves). */
         const MD_SAVE_KEY = 'ew-md-save-v1';
+        /* Mystery Dungeon keeps its OWN character roster, separate from the
+           account unlocks: you start ALONE with one delver; clearing the
+           dungeon recruits new allies who then hang out at the Guild Hub. */
+        const MD_STARTER_RACES = ['homosapien'];
         function loadMdSave() {
+            let s = null;
             try {
                 const raw = localStorage.getItem(MD_SAVE_KEY);
-                const s = raw ? JSON.parse(raw) : null;
-                return Object.assign({ bestFloor: 0, clears: 0, runs: 0, goldEarned: 0 }, s || {});
-            } catch (e) { return { bestFloor: 0, clears: 0, runs: 0, goldEarned: 0 }; }
+                s = raw ? JSON.parse(raw) : null;
+            } catch (e) { s = null; }
+            const out = Object.assign({ bestFloor: 0, clears: 0, runs: 0, goldEarned: 0 }, s || {});
+            if (!Array.isArray(out.unlockedRaces) || !out.unlockedRaces.length) {
+                out.unlockedRaces = MD_STARTER_RACES.slice();
+            }
+            return out;
         }
         function saveMdSave(s) {
             try { localStorage.setItem(MD_SAVE_KEY, JSON.stringify(s || {})); } catch (e) {}

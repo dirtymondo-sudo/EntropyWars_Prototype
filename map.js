@@ -158,11 +158,14 @@
             _showTitlePage('mainMenuPage');
         };
 
+        /* The MD roster is its own progression (ew-md-save-v1.unlockedRaces):
+           one starter, more recruited by clearing the dungeon. Deliberately
+           NOT the account unlocks — the run starts alone. */
         function _mdUnlockedRoster() {
             const races = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
-            return races.filter(rk => {
-                try { return typeof isUnitUnlocked === 'function' && isUnitUnlocked(rk); } catch (e) { return false; }
-            });
+            const sv = (typeof loadMdSave === 'function') ? loadMdSave() : null;
+            const owned = new Set((sv && sv.unlockedRaces) || ['homosapien']);
+            return races.filter(rk => owned.has(rk));
         }
 
         function _mdRaceLabel(rk) {
@@ -203,7 +206,9 @@
 
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { bestFloor: 0, clears: 0 };
             let html = '<div class="md-char-intro">Pick who you\'ll take into <b>Agartha Depths</b> — 10 floors, no respawns. '
-                + 'Your other unlocked characters wait at the Guild Hub.'
+                + (pool.length > 1
+                    ? 'Recruited allies hang out at the Guild Hub.'
+                    : 'You start alone — clear the dungeon to recruit allies to the Guild Hub.')
                 + (sv.bestFloor > 0 ? ` &nbsp;·&nbsp; Best depth: <b>Floor ${sv.bestFloor}</b> · Clears: <b>${sv.clears || 0}</b>` : '')
                 + '</div>';
             html += '<div class="md-char-grid">';
@@ -272,7 +277,11 @@
             state.partyBuilds[1] = [job];
             state.partyNames[1] = [_mdRaceLabel(race)];
             state.partyMeta[1] = [{ race, gender }];
-            state.loadouts[1] = [(typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass(job, race) : emptyLoadout()];
+            /* auto spell/item kit, but NO surprise accessories — the delver
+               starts with the class's default equipment only */
+            const _mdLd = (typeof optimizeLoadoutForClass === 'function') ? optimizeLoadoutForClass(job, race) : emptyLoadout();
+            if (_mdLd) _mdLd.equipment = { accessory1: null, accessory2: null };
+            state.loadouts[1] = [_mdLd];
 
             /* CPU slot must merely validate — the hub strips team 2 anyway */
             state.partyBuilds[2] = ['Warrior'];

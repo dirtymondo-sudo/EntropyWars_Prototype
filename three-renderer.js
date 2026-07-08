@@ -3980,140 +3980,6 @@ const ThreeRenderer = (function () {
 
     var _rockMatCache = {};
 
-    /* Shared helper: one lumpy boulder mesh (deformed icosahedron, boulder
-       texture, quantized-shade cached material) — used by the rock clusters
-       and the Mystery Dungeon cave-entrance prop. */
-    function _makeBoulderMesh(radius, shade, seed) {
-        var rockTex = _getBoulderTexture();
-        var baseGeo = new THREE.IcosahedronGeometry(1, 1);
-        var posAttr = baseGeo.getAttribute('position');
-        for (var vi = 0; vi < posAttr.count; vi++) {
-            var vx = posAttr.getX(vi), vy = posAttr.getY(vi), vz = posAttr.getZ(vi);
-            var noise = 1 + 0.28 * Math.sin(vx * 7.3 + vy * 11.1 + seed) * Math.cos(vz * 5.7 + vx * 3.2 + seed * 2);
-            posAttr.setXYZ(vi, vx * noise, vy * noise * 0.8, vz * noise);
-        }
-        posAttr.needsUpdate = true;
-        baseGeo.computeVertexNormals();
-        var q = Math.round(Math.max(0.2, Math.min(1, shade)) * 16) / 16;
-        var key = (rockTex ? (rockTex.uuid || 'tex') : 'flat') + '|' + q;
-        var mat = _rockMatCache[key];
-        if (!mat) {
-            mat = rockTex
-                ? new THREE.MeshBasicMaterial({ map: rockTex, color: new THREE.Color(q, q * 0.95, q * 0.9), depthWrite: true })
-                : new THREE.MeshBasicMaterial({ color: new THREE.Color(q * 0.6, q * 0.55, q * 0.5), depthWrite: true });
-            mat._ew_shared = true;
-            _rockMatCache[key] = mat;
-        }
-        var mesh = new THREE.Mesh(baseGeo, mat);
-        mesh.scale.set(radius, radius, radius);
-        return mesh;
-    }
-
-    /* Mystery Dungeon: the Guild Hub cave entrance — a rocky arch (jamb
-       boulders + lintel + back mound) around a black opening, built from real
-       geometry with the boulder texture (no billboard sprite). The opening
-       faces the board center so it always reads from the play camera. */
-    function _buildCaveEntrance3D(objKey, x, y) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var topY = tileTopY(x, y);
-        var g = new THREE.Group();
-
-        var seed = (x * 131 + y * 197 + 77) & 0xFFFF;
-        var _sr = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
-
-        /* jambs */
-        var jL = _makeBoulderMesh(ts * 0.42, 0.62, 3.1);
-        jL.position.set(-ts * 0.40, ts * 0.30, 0);
-        g.add(jL);
-        var jR = _makeBoulderMesh(ts * 0.44, 0.55, 7.6);
-        jR.position.set(ts * 0.42, ts * 0.32, 0);
-        g.add(jR);
-        /* lintel across the top */
-        var lin = _makeBoulderMesh(ts * 0.52, 0.68, 5.4);
-        lin.scale.y *= 0.62;
-        lin.position.set(0, ts * 0.78, -ts * 0.06);
-        g.add(lin);
-        /* back mound (fills the silhouette behind the mouth) */
-        var back = _makeBoulderMesh(ts * 0.58, 0.45, 9.9);
-        back.position.set(0, ts * 0.34, -ts * 0.34);
-        g.add(back);
-        /* scattered base rubble */
-        for (var ri = 0; ri < 3; ri++) {
-            var rr = _makeBoulderMesh(ts * (0.08 + _sr() * 0.09), 0.5 + _sr() * 0.25, 11 + ri * 2.7);
-            rr.position.set((_sr() - 0.5) * ts * 0.9, ts * 0.06, ts * (0.25 + _sr() * 0.2));
-            g.add(rr);
-        }
-        /* the black mouth — an unlit dark quad recessed between the jambs */
-        var mouthMat = new THREE.MeshBasicMaterial({ color: 0x07050a, depthWrite: true });
-        mouthMat._ew_shared = true;
-        var mouth = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.54, ts * 0.62), mouthMat);
-        mouth.position.set(0, ts * 0.33, ts * 0.02);
-        g.add(mouth);
-        /* faint violet glow rim above the mouth so it reads as a portal */
-        var rimMat = new THREE.MeshBasicMaterial({ color: 0x8a5cff, transparent: true, opacity: 0.85 });
-        rimMat._ew_shared = true;
-        var rim = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.58, ts * 0.05), rimMat);
-        rim.position.set(0, ts * 0.66, ts * 0.03);
-        g.add(rim);
-
-        /* face the board center */
-        var cx = ((typeof bw === 'function') ? bw() : 8) / 2 - 0.5;
-        var cy = ((typeof bh === 'function') ? bh() : 8) / 2 - 0.5;
-        g.rotation.y = Math.atan2(cx - x, cy - y);
-
-        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
-        return g;
-    }
-
-    /* Mystery Dungeon: the floor exit — a subway-style descent well: stone
-       curbs around a black hole with steps sinking into it, plus a bright
-       cyan trim so it pops in dark caves. Sits on 'descent_point' tiles. */
-    function _buildDescentStairs3D(x, y) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var topY = tileTopY(x, y);
-        var g = new THREE.Group();
-
-        var stoneMat = new THREE.MeshBasicMaterial({ color: 0x6b6f7a, map: _getBoulderTexture() || null, depthWrite: true });
-        stoneMat._ew_shared = true;
-        var darkMat = new THREE.MeshBasicMaterial({ color: 0x05040a, depthWrite: true });
-        darkMat._ew_shared = true;
-        var trimMat = new THREE.MeshBasicMaterial({ color: 0x39d8ff });
-        trimMat._ew_shared = true;
-
-        /* the hole */
-        var hole = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.66, ts * 0.66), darkMat);
-        hole.rotation.x = -Math.PI / 2;
-        hole.position.y = 1.2;
-        g.add(hole);
-
-        /* stone curbs on three sides (open side = entry, faces +z/south) */
-        var curbH = ts * 0.16, curbT = ts * 0.09;
-        var mk = function (wdt, dep, px, pz) {
-            var c = new THREE.Mesh(new THREE.BoxGeometry(wdt, curbH, dep), stoneMat);
-            c.position.set(px, curbH / 2, pz);
-            g.add(c);
-            /* glowing top trim */
-            var t = new THREE.Mesh(new THREE.BoxGeometry(wdt * 0.96, 1.6, dep * 0.5), trimMat);
-            t.position.set(px, curbH + 0.9, pz);
-            g.add(t);
-        };
-        mk(ts * 0.84, curbT, 0, -ts * 0.375);                    // back
-        mk(curbT, ts * 0.75, -ts * 0.375, -ts * 0.02);           // left
-        mk(curbT, ts * 0.75, ts * 0.375, -ts * 0.02);            // right
-
-        /* three step slabs sinking toward the hole from the open side */
-        for (var si = 0; si < 3; si++) {
-            var stepY = ts * (0.10 - si * 0.045);
-            if (stepY <= 0.5) break;
-            var s = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.6, stepY, ts * 0.16), stoneMat);
-            s.position.set(0, stepY / 2 + 0.6, ts * (0.28 - si * 0.17));
-            g.add(s);
-        }
-
-        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
-        return g;
-    }
-
     function _buildRockCluster3D(x, y, texOverride) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
@@ -4849,14 +4715,11 @@ const ThreeRenderer = (function () {
             else if (ok === 'stairs' || ok === 'stairs_2') {
                 /* Stairs are drawn as the 3D staircase by the barrier_passage
                    terrain mesh (_buildStairMesh) — don't also draw the flat
-                   billboard sprite for the object. EXCEPT on Mystery Dungeon
-                   'descent_point' tiles, where the exit gets a real 3D
-                   descent-well prop instead. */
-                var _stTer = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null;
-                if (_stTer === 'descent_point') m = _buildDescentStairs3D(x, y);
-                else continue;
+                   billboard sprite for the object. (Mystery Dungeon floors use
+                   that same staircase: their exit tile is authored as a
+                   barrier_passage voxel with an explicit stairDir.) */
+                continue;
             }
-            else if (ok === 'cave_entrance')      m = _buildCaveEntrance3D(ok, x, y);
             else if (ok === 'lamp_post' || ok === 'lamp_post_2') m = _buildLampPostObj(ok, x, y);
             else if (ok === 'traffic_light')      m = _buildTrafficLight3D(ok, x, y);
             else if (ok === 'grass_tuft')         m = _buildGrassTuft3D(x, y);

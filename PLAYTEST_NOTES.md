@@ -4,6 +4,28 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## MYSTERY DUNGEON round 3 fixes (2026-07-08, same session) — feedback pass
+
+- **Own roster, start ALONE:** MD progression is separate from account unlocks —
+  `ew-md-save-v1.unlockedRaces`, starts `['homosapien']` (`MD_STARTER_RACES`,
+  state.js). Char select lists only that roster; hub NPCs come only from it
+  (fresh save = empty plaza). Each dungeon CLEAR recruits one random 3D-ready
+  race (`_mdEndRun`, shown on the result overlay + log).
+- **Stairs = the engine's existing 3D staircase**, not custom geometry: the
+  floor exit tile is `barrier_passage` with an explicit `sd` (stairDir) on its
+  top voxel (stamped post-`M.finish()` in `generateMdFloor`; ascends toward a
+  wall neighbour). `_isStairTile`/`_buildStairMesh` render it like any map;
+  objects are auto-skipped on barrier_passage tiles. My custom
+  `_buildDescentStairs3D` prop is REMOVED.
+- **Cave = existing 'geode' monument** (open rock shell + glowing crystals, no
+  `_MON_COLLISION` profile → walkable) at the hub gate; gate tiles are plain
+  `cave_floor`. GOTCHA discovered: the `cave_entrance` TERRAIN carries sprite
+  art via TERRAIN_SPRITES (that was "the cave sprites"), and the object key is
+  in `_CROSS_BILLBOARD_KEYS` — avoid both for 3D-looking props. My custom
+  `_buildCaveEntrance3D` rock-blob prop is REMOVED (looked bad).
+- **No surprise accessories:** the delver's auto-kit strips accessory1/2
+  (class default equipment applies); spells/items still auto-filled.
+
 ## MYSTERY DUNGEON MODE + BIG-MAP PERF PASS (2026-07-08) — data.js, state.js, map.js, battle.js, three-renderer.js, three-camera.js, index.html, styles-base.css
 
 New PvE mode: PMD-style dungeon crawl. Entry = **main-menu "Mystery Dungeon" button**
