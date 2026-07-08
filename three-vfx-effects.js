@@ -571,6 +571,175 @@ const ThreeVFXEffects = (function () {
     var _burnAcc = 0;
     var _BURN_RATE_MS = 160;
 
+    /* ── Shader flames for burning tiles ─────────────────────────────
+       Real fire: three crossed planes per tile running a procedural
+       flame fragment shader — domain-warped fbm noise scrolling upward
+       erodes a multi-tongue envelope, colored through a black→red→
+       orange→yellow→white heat ramp with a crisp alpha cut so the
+       tongues have real silhouettes. (The old approach — soft radial
+       gradient sprites — is what read as pale blobs.) Meshes are
+       reconciled against state.burningTiles every frame from tick();
+       the ember/smoke/glow particles in _tickBurningTiles layer on
+       top of these. */
+    var _tileFlames = {};          // "x,y" -> { group, mats, age }
+    var _tileFlameScene = null;
+    var _tileFlameGeo = null;
+    var _tileFlameTime = 0;
+
+    var _FLAME_VERT = [
+        'varying vec2 vUv;',
+        'void main() {',
+        '  vUv = uv;',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}'
+    ].join('\n');
+
+    var _FLAME_FRAG = [
+        'uniform float uTime;',
+        'uniform float uSeed;',
+        'uniform float uVig;',
+        'varying vec2 vUv;',
+        'float ewHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'float ewNoise(vec2 p) {',
+        '  vec2 i = floor(p), f = fract(p);',
+        '  vec2 u = f * f * (3.0 - 2.0 * f);',
+        '  return mix(mix(ewHash(i), ewHash(i + vec2(1.0, 0.0)), u.x),',
+        '             mix(ewHash(i + vec2(0.0, 1.0)), ewHash(i + vec2(1.0, 1.0)), u.x), u.y);',
+        '}',
+        'float ewFbm(vec2 p) {',
+        '  float v = 0.0, a = 0.5;',
+        '  for (int i = 0; i < 4; i++) {',
+        '    v += a * ewNoise(p);',
+        '    p = p * 2.02 + vec2(1.7, 4.1);',
+        '    a *= 0.5;',
+        '  }',
+        '  return v;',
+        '}',
+        /* one flame tongue in its own 0..1 uv space */
+        'vec4 ewFlame(vec2 uv, float t, float seed) {',
+        '  vec2 w = vec2(uv.x * 2.6 + seed, uv.y * 3.4 - t * 2.4);',
+        '  float warp = ewFbm(vec2(w.x, w.y + 2.0 - t * 1.1));',
+        '  float n = ewFbm(vec2(w.x + warp * 1.4, w.y));',
+        '  float x = uv.x - 0.5 + (n - 0.5) * 0.42 * (0.25 + uv.y) + sin(t * 2.3 + seed * 7.0) * 0.05 * uv.y;',
+        '  float halfW = 0.30 * (1.0 - uv.y * 0.85) + 0.03;',
+        '  float body = 1.0 - smoothstep(halfW * 0.15, halfW, abs(x));',
+        '  float fl = body * (1.25 - uv.y * (0.85 + 0.5 * (1.0 - n))) - (1.0 - n) * 0.28;',
+        '  fl = clamp(fl, 0.0, 1.0);',
+        '  float alpha = smoothstep(0.08, 0.34, fl);',
+        '  float r = smoothstep(0.02, 0.18, fl);',
+        '  float g = smoothstep(0.18, 0.55, fl) * 0.85 + smoothstep(0.55, 0.9, fl) * 0.15;',
+        '  float b = smoothstep(0.50, 0.95, fl) * 0.9;',
+        '  float core = smoothstep(0.55, 0.95, fl) * (1.0 - uv.y * 0.6);',
+        '  g = min(1.0, g + core * 0.25);',
+        '  b = min(1.0, b + core * 0.55);',
+        '  return vec4(r, g, b, alpha);',
+        '}',
+        /* three overlapping tongues across the quad, max-blended */
+        'void main() {',
+        '  float t = uTime;',
+        '  vec4 best = vec4(0.0);',
+        '  vec4 f; vec2 uv;',
+        '  uv = vec2((vUv.x - 0.28) / 0.62 + 0.5, vUv.y / 0.75);',
+        '  if (uv.x > 0.0 && uv.x < 1.0 && uv.y < 1.0) { f = ewFlame(uv, t, uSeed); if (f.a > best.a) best = f; }',
+        '  uv = vec2((vUv.x - 0.52) / 0.85 + 0.5, vUv.y);',
+        '  if (uv.x > 0.0 && uv.x < 1.0)               { f = ewFlame(uv, t, uSeed + 11.3); if (f.a > best.a) best = f; }',
+        '  uv = vec2((vUv.x - 0.74) / 0.58 + 0.5, vUv.y / 0.68);',
+        '  if (uv.x > 0.0 && uv.x < 1.0 && uv.y < 1.0) { f = ewFlame(uv, t, uSeed + 23.7); if (f.a > best.a) best = f; }',
+        '  best.a *= uVig;',
+        '  if (best.a < 0.02) discard;',
+        '  gl_FragColor = best;',
+        '}'
+    ].join('\n');
+
+    function _tileFlameGeoGet() {
+        if (_tileFlameGeo) return _tileFlameGeo;
+        var g = new THREE.PlaneGeometry(1, 1);
+        g.translate(0, 0.5, 0);            /* origin at the flame base */
+        g._ew_shared = true;               /* survives _disposeR sweeps */
+        _tileFlameGeo = g;
+        return g;
+    }
+
+    function _buildTileFlame(bt) {
+        var ts = _cfg().tileSize || 128;
+        var group = new THREE.Group();
+        var mats = [];
+        var angles = [0, Math.PI / 3, 2 * Math.PI / 3];
+        for (var i = 0; i < 3; i++) {
+            var mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uSeed: { value: ((bt.x * 13.7 + bt.y * 7.3 + i * 31.1) % 97) + i * 3.1 },
+                    uVig:  { value: 0 },
+                },
+                vertexShader: _FLAME_VERT,
+                fragmentShader: _FLAME_FRAG,
+                transparent: true,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+            });
+            var m = new THREE.Mesh(_tileFlameGeoGet(), mat);
+            m.scale.set(ts * 0.92, ts * 1.25, 1);
+            m.rotation.y = angles[i];
+            group.add(m);
+            mats.push(mat);
+        }
+        return { group: group, mats: mats, age: 0 };
+    }
+
+    function _disposeTileFlame(key, skipSceneRemove) {
+        var e = _tileFlames[key];
+        if (!e) return;
+        if (!skipSceneRemove && e.group.parent) e.group.parent.remove(e.group);
+        for (var i = 0; i < e.mats.length; i++) e.mats[i].dispose();
+        delete _tileFlames[key];
+    }
+
+    function _disposeAllTileFlames(skipSceneRemove) {
+        for (var k in _tileFlames) _disposeTileFlame(k, skipSceneRemove);
+    }
+
+    function _syncTileFlames(dt) {
+        var scene = (window.ThreeVFX && ThreeVFX._getScene) ? ThreeVFX._getScene() : null;
+        if (scene !== _tileFlameScene) {
+            /* renderer torn down / rebuilt — the old scene took the meshes with it */
+            _disposeAllTileFlames(true);
+            _tileFlameScene = scene || null;
+        }
+        var active = scene && _canSpawn() && typeof THREE !== 'undefined' &&
+                     typeof state !== 'undefined' &&
+                     !state.devAutoSim && !state.animationsDisabled && !_catOff('zones');
+        var burning = (active && state.burningTiles) ? state.burningTiles : null;
+
+        for (var key in _tileFlames) {
+            if (!burning || !burning[key]) _disposeTileFlame(key);
+        }
+        if (!burning) return;
+
+        _tileFlameTime += dt;
+        var pad = _cfg().boardPadding || 2;
+        for (var k2 in burning) {
+            var bt = burning[k2];
+            if (!bt) continue;
+            var entry = _tileFlames[k2];
+            if (!entry) {
+                entry = _buildTileFlame(bt);
+                scene.add(entry.group);
+                _tileFlames[k2] = entry;
+            }
+            var c = tilePx(bt.x, bt.y);
+            entry.group.position.set(c.x - pad, tileZ(bt.x, bt.y) + 1, c.y - pad);
+            entry.age += dt;
+            var grow = Math.min(1, entry.age * 2.5);          /* ignite grow-in */
+            var vig = Math.min(1, 0.62 + 0.19 * (bt.t || 1)); /* dying fires burn low */
+            entry.group.scale.y = (0.72 + 0.28 * vig) * (0.35 + 0.65 * grow);
+            for (var mi = 0; mi < entry.mats.length; mi++) {
+                entry.mats[mi].uniforms.uTime.value = _tileFlameTime;
+                entry.mats[mi].uniforms.uVig.value = vig * grow;
+            }
+        }
+    }
+
     function _tickBurningTiles(dt) {
         if (!_canSpawn()) return;
         if (typeof state === 'undefined' || !state.burningTiles) return;
@@ -603,38 +772,12 @@ const ThreeVFXEffects = (function () {
                 /* dying fires (t=1) burn a little lower and dimmer */
                 var vig = Math.min(1, 0.7 + 0.15 * (bt.t || 1));
 
-                /* main tongue — y-locked, tapered, rises as it fades */
-                _spawn({
-                    _zone: true,
-                    x: center.x + rn(-ts * 0.28, ts * 0.28),
-                    y: center.y + rn(-ts * 0.28, ts * 0.28),
-                    z: baseZ + 2,
-                    mode: 'y-locked',
-                    sprite: (Math.random() < 0.3) ? 'flame-hot' : 'flame',
-                    ml: 360 + rn(0, 260),
-                    w0: rn(14, 24), w1: rn(5, 10),
-                    h0: rn(24, 42), h1: rn(64, 118) * vig,
-                    opacity0: 0.9 * vig, opacity1: 0,
-                });
-
-                /* quick licking tip */
-                if (Math.random() < 0.5) {
-                    _spawn({
-                        _zone: true,
-                        x: center.x + rn(-ts * 0.3, ts * 0.3),
-                        y: center.y + rn(-ts * 0.3, ts * 0.3),
-                        z: baseZ + rn(4, 14),
-                        mode: 'y-locked', sprite: 'flame',
-                        ml: 160 + rn(0, 160),
-                        w0: rn(7, 12), w1: rn(3, 6),
-                        h0: rn(12, 22), h1: rn(36, 70) * vig,
-                        opacity0: 1, opacity1: 0,
-                        vz: rn(20, 60),
-                    });
-                }
+                /* the flame body itself is the per-tile shader mesh
+                   (_syncTileFlames) — particles here are just the dressing:
+                   embers, smoke, and the warm ground glow */
 
                 /* rising ember spark */
-                if (Math.random() < 0.6) {
+                if (Math.random() < 0.7) {
                     _spawn({
                         _zone: true,
                         x: center.x + rn(-ts * 0.35, ts * 0.35),
@@ -692,6 +835,7 @@ const ThreeVFXEffects = (function () {
         _tickProjectiles(dt);
         _tickBolts(dt);
         _tickPersistentZones(dt);
+        _syncTileFlames(dt);
         _tickBurningTiles(dt);
     }
 
@@ -700,6 +844,7 @@ const ThreeVFXEffects = (function () {
         _boltEffects.length = 0;
         _zoneSpawnAcc = 0;
         _burnAcc = 0;
+        _disposeAllTileFlames();
         stopTornado3D();
         stopSandstorm3D();
     }

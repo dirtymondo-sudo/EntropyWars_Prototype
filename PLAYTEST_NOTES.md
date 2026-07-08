@@ -4,6 +4,32 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## FIRE/WATER/LIGHTNING VFX PASS (2026-07-08) — three-vfx-effects.js, three-renderer.js, battle.js
+
+- **Burning tiles are now shader flames, not sprites.** `_syncTileFlames()` in
+  three-vfx-effects.js reconciles `state.burningTiles` every frame into per-tile
+  meshes: 3 crossed planes (shared unit PlaneGeometry, origin at base) running a
+  procedural ShaderMaterial — domain-warped 4-octave fbm scrolling upward erodes a
+  3-tongue envelope, black→red→orange→white heat ramp, crisp alpha cut, normal
+  blending. `uVig` dims/lowers dying fires (t rounds left) and drives a grow-in on
+  ignite. The old y-locked `flame`/`flame-hot` gradient sprites (they read as pale
+  blobs) were removed from `_tickBurningTiles`; it now only spawns embers/smoke/
+  ground glow. Scene comes from `ThreeVFX._getScene()`; meshes rebuilt if the scene
+  ref changes; disposed in `clear()`.
+- **Water tops use the iterative turbulence caustic.** In `_buildFluidTopMat`
+  (three-renderer.js) the old sin-interference caustics + fat glints (the "blobs on
+  the water") were replaced by the classic 4-iteration sin/cos filament caustic in
+  world space (`mod(ewP*PI, TAU) - 250` — the -250 offset is load-bearing, keeps the
+  1/length terms bounded). Glint threshold tightened to pixel-fine sparkles.
+- **Electrified water/metal draws real lightning, no ⚡ emoji.**
+  `_conductionArcVfx(ox, oy, tiles, victimTiles)` in battle.js BFS-walks the
+  connected pool/sheet from the strike tile and draws `ThreeLightning.boltVfx`
+  surface arcs hop-by-hop (55ms per BFS ring, capped at ~48 arcs); victim tiles get
+  an upward bolt through the unit + spark-elec burst. `_reactLightningWater` /
+  `_reactLightningMetal` collect victims first, then call it; the ⚡ floating text
+  only shows when 3D is inactive (2D fallback). The elemental tile-cast (⚡ at a
+  lake) uses `ThreeLightning.strikeFromSky` instead of the emoji, same fallback.
+
 ## 3D GEOMETRY/TEXTURE PASS (2026-07-08) — three-renderer.js, three-vfx-effects.js, sprites.js, data.js, battle.js
 Token `20260708h` → `20260708j`. Syntax-checked only (RULE #1c), not playtested.
 1. **Textures.** R2 terrain folder holds exactly THREE marbles: `marble.png`,

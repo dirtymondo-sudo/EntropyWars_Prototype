@@ -1533,9 +1533,9 @@ const ThreeRenderer = (function () {
         var isDeep = (terrainKey === 'deep_water');
         /* deep_water: dimmer caustics + darker saturated deep-blue tint so
            depth reads clearly against shallow water. */
-        var caustStr = isDeep ? '0.16' : '0.34';
-        var caustEmis = isDeep ? '0.10' : '0.22';
-        var glintStr = isDeep ? '0.6' : '0.95';
+        var caustStr = isDeep ? '0.22' : '0.48';
+        var caustEmis = isDeep ? '0.12' : '0.26';
+        var glintStr = isDeep ? '0.35' : '0.55';
 
         mat.onBeforeCompile = function(shader) {
             shader.uniforms.uWave1 = { value: waveTex1 };
@@ -1603,19 +1603,28 @@ const ThreeRenderer = (function () {
                     '{\n' +
                     '  float ewT = uFluidTime;\n' +
                     '  vec2 ewP = vEwWorldPos.xz / max(uFluidTile, 0.0001);\n' +
-                    /* Caustics: 3 drifting interference patterns; pow() of the
-                       constructive sum leaves bright ripple filaments. */
-                    '  float ewC1 = sin(ewP.x * 6.1 + ewT * 1.7) * cos(ewP.y * 5.3 - ewT * 1.3);\n' +
-                    '  float ewC2 = sin((ewP.x + ewP.y) * 4.7 - ewT * 2.3) * cos((ewP.x - ewP.y) * 3.9 + ewT * 1.6);\n' +
-                    '  float ewC3 = sin(ewP.x * 9.7 - ewP.y * 8.3 + ewT * 2.9);\n' +
-                    '  float ewSum = ewC1 + ewC2 + 0.6 * ewC3;\n' +
-                    '  float ewCaust = pow(clamp(ewSum * 0.385 + 0.5, 0.0, 1.0), 5.0);\n' +
-                    '  diffuseColor.rgb += vec3(0.35, 0.8, 0.9) * (ewCaust * ' + caustStr + ');\n' +
-                    '  totalEmissiveRadiance += vec3(0.2, 0.55, 0.6) * (ewCaust * ' + caustEmis + ');\n' +
-                    /* Sparkle glints: high-frequency triple product, hard
-                       thresholded so only occasional pixels flash. */
+                    /* Caustics: the classic iterative sin/cos turbulence — a
+                       flowing web of thin bright filaments (real refracted-
+                       sunlight look) instead of the old round sin-interference
+                       blobs. p tiles every 2 world-tiles; the -250 offset keeps
+                       the division terms bounded so the web stays thin. */
+                    '  vec2 ewQ = mod(ewP * 3.14159265, 6.2831853) - 250.0;\n' +
+                    '  vec2 ewI = ewQ;\n' +
+                    '  float ewCa = 1.0;\n' +
+                    '  for (int ewN = 0; ewN < 4; ewN++) {\n' +
+                    '    float ewTT = ewT * (1.0 - 3.5 / float(ewN + 1));\n' +
+                    '    ewI = ewQ + vec2(cos(ewTT - ewI.x) + sin(ewTT + ewI.y), sin(ewTT - ewI.y) + cos(ewTT + ewI.x));\n' +
+                    '    ewCa += 1.0 / length(vec2(ewQ.x / (sin(ewI.x + ewTT) / 0.005), ewQ.y / (cos(ewI.y + ewTT) / 0.005)));\n' +
+                    '  }\n' +
+                    '  ewCa /= 4.0;\n' +
+                    '  ewCa = 1.17 - pow(ewCa, 1.4);\n' +
+                    '  float ewCaust = pow(clamp(abs(ewCa), 0.0, 1.0), 8.0);\n' +
+                    '  diffuseColor.rgb += vec3(0.42, 0.72, 0.68) * (ewCaust * ' + caustStr + ');\n' +
+                    '  totalEmissiveRadiance += vec3(0.25, 0.55, 0.55) * (ewCaust * ' + caustEmis + ');\n' +
+                    /* Sparkle glints: much rarer + pixel-fine (the old wide
+                       threshold read as floating blobs). */
                     '  float ewG = sin(ewP.x * 23.0 + ewT * 3.1) * sin(ewP.y * 19.0 - ewT * 2.7) * sin((ewP.x + ewP.y) * 31.0 + ewT * 4.3);\n' +
-                    '  float ewGlint = smoothstep(0.97, 0.995, ewG);\n' +
+                    '  float ewGlint = smoothstep(0.992, 0.999, ewG);\n' +
                     '  totalEmissiveRadiance += vec3(0.85, 0.95, 1.0) * (ewGlint * ' + glintStr + ');\n' +
                     /* Gentle living brightness/hue swell across the sheet. */
                     '  float ewSwell = 0.5 + 0.5 * sin(ewT * 0.7 + (ewP.x + ewP.y) * 0.4);\n' +

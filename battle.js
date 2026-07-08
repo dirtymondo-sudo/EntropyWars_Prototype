@@ -1597,7 +1597,15 @@
                     addLog(`${unitDisplayName(unit)} casts ${spell.name} at ${coordLabel(x, y)} — it ${_etc.hint}!`);
                     window.setTimeout(() => {
                         if (state.phase !== 'battle') return;
-                        showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                        // lightning gets a real sky bolt at the tile instead of
+                        // the ⚡ emoji (emoji stays as the 2D-renderer fallback)
+                        if (_etc.el === 'lightning' && typeof ThreeLightning !== 'undefined' &&
+                            ThreeLightning.strikeFromSky && window.ThreeVFX &&
+                            ThreeVFX.isActive && ThreeVFX.isActive()) {
+                            ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
+                        } else {
+                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                        }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
                         renderIfDirty();
@@ -1939,19 +1947,111 @@
             return true;
         }
 
+        // ⚡ 3D conduction visual: the charge visibly races outward from the
+        // strike point across the connected pool/sheet — real ThreeLightning
+        // arcs hop tile-to-tile along BFS paths with distance-staggered
+        // delays, and slam upward into each victim with a bigger bolt +
+        // spark burst. Returns true when the 3D bolts were drawn; callers
+        // keep the old ⚡ floating-text only as the 2D fallback.
+        function _conductionArcVfx(ox, oy, tiles, victimTiles) {
+            if (typeof ThreeLightning === 'undefined' || !ThreeLightning.boltVfx) return false;
+            if (!window.ThreeVFX || !ThreeVFX.isActive || !ThreeVFX.isActive()) return false;
+            const cfg = (typeof CONFIG !== 'undefined') ? CONFIG : { tileSize: 128, tileGap: 0, boardPadding: 2 };
+            const ts = cfg.tileSize || 128, gap = cfg.tileGap || 0, pad = cfg.boardPadding || 2;
+            const cpx = (tx, ty) => ({ x: pad + tx * (ts + gap) + ts / 2, y: pad + ty * (ts + gap) + ts / 2 });
+            const surfZ = (tx, ty) => {
+                if (typeof window._getElevationPx !== 'function' || typeof getHeightAt !== 'function') return 0;
+                const h = getHeightAt(tx, ty) || 0;
+                return h !== 0 ? window._getElevationPx(h) : 0;
+            };
+            const key = (tx, ty) => `${tx},${ty}`;
+            const inPool = new Set(tiles.map(t => key(t.x, t.y)));
+            const victims = new Set((victimTiles || []).map(t => key(t.x, t.y)));
+            // BFS from the strike point so every arc traces a real hop path
+            const parent = new Map([[key(ox, oy), null]]);
+            const dist = new Map([[key(ox, oy), 0]]);
+            const queue = [{ x: ox, y: oy }];
+            while (queue.length) {
+                const c = queue.shift();
+                const d = dist.get(key(c.x, c.y));
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nk = key(c.x + dx, c.y + dy);
+                    if (!inPool.has(nk) || dist.has(nk)) continue;
+                    parent.set(nk, c);
+                    dist.set(nk, d + 1);
+                    queue.push({ x: c.x + dx, y: c.y + dy });
+                }
+            }
+            const HOP_MS = 55;
+            let drawn = 0;
+            for (const t of tiles) {
+                const k = key(t.x, t.y);
+                const p = parent.get(k);
+                if (!p) continue;                       // origin / disconnected
+                if (drawn++ > 48) break;                // huge-lake safety cap
+                const isVictim = victims.has(k);
+                const delay = dist.get(k) * HOP_MS + Math.random() * 40;
+                window.setTimeout(() => {
+                    if (typeof ThreeLightning === 'undefined' || !window.ThreeVFX ||
+                        !ThreeVFX.isActive || !ThreeVFX.isActive()) return;
+                    const a = cpx(p.x, p.y), b = cpx(t.x, t.y);
+                    // low arc skimming the surface into this tile
+                    ThreeLightning.boltVfx(
+                        { x: a.x, y: a.y, z: surfZ(p.x, p.y) + ts * 0.10 },
+                        { x: b.x, y: b.y, z: surfZ(t.x, t.y) + ts * 0.10 },
+                        { segments: 7, jitter: 0.3, branchChance: 0.15,
+                          coreWidth: 3, glowWidth: 9,
+                          durationMs: 190 + Math.random() * 110,
+                          impactFlash: isVictim || Math.random() < 0.3,
+                          impactFlashSize: ts * 0.18 });
+                    if (isVictim) {
+                        // the charge leaps up through whoever is standing here
+                        ThreeLightning.boltVfx(
+                            { x: b.x, y: b.y, z: surfZ(t.x, t.y) + 4 },
+                            { x: b.x + (Math.random() * 10 - 5), y: b.y + (Math.random() * 10 - 5), z: surfZ(t.x, t.y) + ts * 0.85 },
+                            { segments: 9, jitter: 0.4, branchChance: 0.5, branchDepth: 1,
+                              coreWidth: 5, glowWidth: 16,
+                              durationMs: 300, impactFlashSize: ts * 0.4 });
+                        for (let s = 0; s < 8; s++) {
+                            ThreeVFX.spawn({
+                                x: b.x + (Math.random() * ts - ts / 2) * 0.4,
+                                y: b.y + (Math.random() * ts - ts / 2) * 0.4,
+                                z: surfZ(t.x, t.y) + Math.random() * ts * 0.5,
+                                vx: Math.random() * 160 - 80, vy: Math.random() * 160 - 80,
+                                vz: 40 + Math.random() * 160,
+                                mode: 'billboard', sprite: 'spark-elec',
+                                ml: 250 + Math.random() * 250,
+                                size0: 8 + Math.random() * 8, size1: 2,
+                                opacity0: 1, opacity1: 0,
+                                gravity: 300, drag: 1.3,
+                            });
+                        }
+                    }
+                }, delay);
+            }
+            return true;
+        }
+
         // ⚡ Water conducts the charge: every unit standing in the connected pool
         // (friend or foe) takes a conduction tick. Airborne units and the caster
         // are spared, as is the unit on the origin tile (already hit by the spell).
         function _reactLightningWater(caster, spell, ox, oy, body) {
             if (!body || !body.length) return;
             const tick = Math.max(40, Math.round((spell.dmg || 90) * 0.5));
-            let zapped = 0;
+            // collect victims first so the arc visuals know where the charge
+            // has to slam home
+            const victims = [];
             for (const t of body) {
                 const u = unitAt(t.x, t.y);
                 if (!u || u.dead || u._dying) continue;
                 if (u.id === caster.id) continue;
                 if (t.x === ox && t.y === oy) continue;
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                victims.push({ t, u });
+            }
+            const arcs3D = _conductionArcVfx(ox, oy, body, victims.map(v => v.t));
+            let zapped = 0;
+            for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The water conducts ${spell.name}: `, {
                     sourceUnit: caster,
                     allowMarkBonus: false,
@@ -1959,7 +2059,7 @@
                     spellType: spell.spellType || null,
                     flashColor: 'shock'
                 });
-                showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
+                if (!arcs3D) showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
                 zapped++;
             }
             if (body.length > 1 || zapped > 0) {
@@ -2032,13 +2132,18 @@
         function _reactLightningMetal(caster, spell, ox, oy, sheet) {
             if (!sheet || !sheet.length) return;
             const tick = Math.max(36, Math.round((spell.dmg || 90) * 0.5));
-            let zapped = 0;
+            const victims = [];
             for (const t of sheet) {
                 const u = unitAt(t.x, t.y);
                 if (!u || u.dead || u._dying) continue;
                 if (u.id === caster.id) continue;
                 if (t.x === ox && t.y === oy) continue;
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                victims.push({ t, u });
+            }
+            const arcs3D = _conductionArcVfx(ox, oy, sheet, victims.map(v => v.t));
+            let zapped = 0;
+            for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The metal conducts ${spell.name}: `, {
                     sourceUnit: caster,
                     allowMarkBonus: false,
@@ -2046,7 +2151,7 @@
                     spellType: spell.spellType || null,
                     flashColor: 'shock'
                 });
-                showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
+                if (!arcs3D) showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
                 zapped++;
             }
             if (sheet.length > 1 || zapped > 0) {
