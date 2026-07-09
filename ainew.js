@@ -471,6 +471,29 @@
         }
         return t;
     }
+    // Hazard ground (2026-07-09, mirrors ai.js aiHazardPenaltyAt): pending
+    // delayed-spell blast tiles (Crystal Ball marks are announced), lava, deep
+    // water, poison/scorched and actively burning tiles. The overlay's move
+    // pickers previously scored tiles on enemy threat only, so focus-fire units
+    // would happily stand on a telegraphed detonation.
+    function hazardAt(g, unit, x, y) {
+        let pen = 0;
+        const delayed = (g.state && g.state._delayedSpells) || [];
+        for (const ds of delayed) {
+            if (!ds || ds.markedUnitId || ds.x == null) continue;
+            const r = ds.aoeRadius != null ? ds.aoeRadius : 1;
+            if (Math.abs(x - ds.x) <= r && Math.abs(y - ds.y) <= r) {
+                pen += Math.max(60, Math.min(140, ds.dmg || 100));
+            }
+        }
+        let terr = null;
+        try { terr = g.getTerrainAt ? g.getTerrainAt(x, y) : null; } catch (e) {}
+        if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
+        else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
+        else if (terr === 'poison' || terr === 'scorched') pen += 30;
+        try { if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45; } catch (e) {}
+        return pen;
+    }
     // Best effective reach this unit could fire with from a new tile (basic attack
     // plus any affordable damage spell) — what "in range" means for engaging.
     function reachOf(g, unit) {
@@ -526,6 +549,7 @@
                 if (arc === 'back') s += 180;                       // ×1.25, undodgeable
                 else if (arc !== 'front') s += 60;
                 s -= tThreat * 0.35;                                // stay out of the pocket
+                s -= hazardAt(g, unit, t.x, t.y) * 6;               // never snipe from a mine
                 if (recent.has(g.posKey(t.x, t.y))) s -= 80;        // anti-oscillation
                 if (!best || s > best.score) best = { x: t.x, y: t.y, z: t.z, score: s };
             }
@@ -547,6 +571,7 @@
             let s = (curD - d) * 100;
             s += tileH(g, t) * 5;                                   // take the high road
             s -= threatAt(g, t.x, t.y, t.z, enemies) * 0.2;         // don't march into 3 guns
+            s -= hazardAt(g, unit, t.x, t.y) * 2;                   // don't march THROUGH fire either
             if (recent.has(g.posKey(t.x, t.y))) s -= 60;
             if (!approach || s > approach.score) approach = { x: t.x, y: t.y, z: t.z, score: s };
         }
@@ -569,6 +594,7 @@
             const nd = Math.min.apply(null, enemies.map(e => combatDist(g, x, y, z, e)));
             s += Math.min(nd, 6) * 15;                              // open the gap
             s += h * 25;                                             // high ground defends
+            s -= hazardAt(g, unit, x, y) * 2;                       // hazard ground is not "safety"
             return s;
         };
         const cur = scoreTile(unit.x, unit.y, unit.z, standH(g, unit));
