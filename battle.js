@@ -5314,6 +5314,14 @@
             }
             return tileElevationZ(unit.x, unit.y);
         }
+        /* Camera-facing ground height (px) for a tile — terrain PLUS walkable
+           roofs, i.e. the surface units actually stand on. ThreeCamera's
+           collision/pivot maths uses this instead of the bare terrain height
+           so a shot on a unit standing on a structure doesn't anchor at the
+           dirt underneath the building. */
+        window._camGroundPx = function (tx, ty) {
+            try { return Math.max(0, tileElevationZ(tx, ty)); } catch (e) { return 0; }
+        };
 
         function dioramaUnitZBoost() {
             const tiltDeg = state.dioramaTiltDeg ?? 50;
@@ -7879,10 +7887,14 @@
             _apply() {
                 if (!boardStageEl) return;
                 /* The contextual TPS HOLD (turn-start / enemy-targeting shots)
-                   drops the moment the player hand-pans or the battle state
-                   moves on — a hand-held camera is the player saying "let me
-                   look at the board myself". */
-                if (this._tpsHold && (state._userPanning || state.phase !== 'battle'
+                   drops when the player hand-PANS away or the battle state
+                   moves on. An ORBIT (middle-drag / right stick / 3-finger,
+                   state._userOrbiting) deliberately KEEPS the hold: the
+                   player is looking around FROM their character — dropping
+                   the rig mid-orbit swapped pivot and aim in one frame and
+                   read as a random zoom jump on every middle-click. */
+                if (this._tpsHold && ((state._userPanning && !state._userOrbiting)
+                    || state.phase !== 'battle'
                     || state.winner || state._fullMapOverview)) {
                     this._tpsHold = false;
                 }
@@ -10248,22 +10260,17 @@
             } catch (e) { return false; }
             camera._cineTps = true;
             camera._tpsSubject = { x: pos.x, y: pos.y };
-            /* Shoulder lift = the model's real shoulder height PLUS, for an
-               AIRBORNE subject, the gap between its flight altitude and the
-               terrain under it. The rig anchors its pivot at the GROUND of
-               the subject's tile (ThreeCamera._groundYWorld), so without this
-               a flyer's shot framed the empty ground beneath it — the camera
-               sat at ground level while the character hovered above frame. */
+            /* Shoulder lift = the model's real shoulder height PLUS the gap
+               between where the subject ACTUALLY is (airborne altitude, or
+               standing on a walkable roof) and the ground surface the rig
+               anchors to. Without this a flyer's shot framed the empty
+               ground beneath it — the camera sat at ground level while the
+               character hovered above frame. */
             let _lift = _tpsShoulderLift(unit);
-            if (unit && typeof canFly === 'function' && canFly(unit)
-                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
-                && typeof window._getElevationPx === 'function') {
-                const _ts = CONFIG.tileSize || BASE_TILE;
-                const _airPx = (unit.z || 0) > 0 ? window._getElevationPx(unit.z) : 0;
-                const _gh = (typeof getHeightAt === 'function')
-                    ? Math.max(0, getHeightAt(Math.round(pos.x), Math.round(pos.y))) : 0;
-                _lift += Math.max(0, _airPx - _gh * _ts);
-            }
+            const _gpx = (typeof window._camGroundPx === 'function')
+                ? window._camGroundPx(Math.round(pos.x), Math.round(pos.y)) : 0;
+            const _upx = unit ? unitElevationZ(unit) : _gpx;
+            _lift += Math.max(0, _upx - _gpx);
             camera._tpsHeadLift = _lift;
             return true;
         }

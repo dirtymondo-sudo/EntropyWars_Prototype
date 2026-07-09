@@ -4745,6 +4745,10 @@
                 // defers its pan (selectUnit → _deferredTurnPanUnitId) instead
                 // of fighting the drag — consumed on mouseup below.
                 state._userPanning = true;
+                // An ORBIT (not a pan): the third-person turn shot keeps its
+                // rig so the player orbits around their character — only a
+                // real reposition (right-drag pan) detaches it.
+                state._userOrbiting = true;
                 _tiltStartX = e.clientX;
                 _tiltStartY = e.clientY;
                 _tiltStartDeg = state.dioramaTiltDeg ?? 50;
@@ -4760,8 +4764,8 @@
                 // straight down, 90° is dead-level at the horizon, and past 90°
                 // the gaze pitches UP at the sky dome (the camera rides the
                 // ground floor instead of dipping below the map — see
-                // ThreeCamera.sync). 135° = ~45° above the horizon.
-                const newTilt = Math.round(Math.max(0, Math.min(135, _tiltStartDeg + dy * 0.3)) * 10) / 10;
+                // ThreeCamera.sync). 170° = nearly straight up at the zenith.
+                const newTilt = Math.round(Math.max(0, Math.min(170, _tiltStartDeg + dy * 0.3)) * 10) / 10;
                 const newYaw = Math.round((_yawStartDeg + dx * 0.4) * 10) / 10;
                 const tiltChanged = Math.abs(newTilt - (state.dioramaTiltDeg ?? 50)) >= 0.1;
                 const yawChanged = Math.abs(newYaw - (state.dioramaYawDeg ?? 0)) >= 0.1;
@@ -4776,6 +4780,7 @@
                 if (!_tiltActive) return;
                 _tiltActive = false;
                 state._userPanning = false;
+                state._userOrbiting = false;
 
                 // A unit's turn started while the camera was held — pan to it
                 // now so the player isn't left staring at the wrong place.
@@ -4851,6 +4856,11 @@
                 if (typeof camera === 'undefined' || !camera) return _edgePanStop();
                 // scripted moves / action shots own the camera — never fight them
                 if (camera._cineShotId != null || camera._rafId || camera.isBusy()) return _edgePanStop();
+                // A unit's turn just started while we were drifting: the
+                // activation pan wins — a mouse parked against the edge must
+                // never leave the player staring at the previous action's
+                // framing instead of their active unit.
+                if (state._deferredTurnPanUnitId) return _edgePanStop();
                 const W = window.innerWidth, H = window.innerHeight;
                 let ex = 0, ey = 0;
                 if (_edgeMX <= EDGE_PAN_MARGIN) ex = -1;
@@ -4961,6 +4971,7 @@
                     _touch1Active = false;
                     _touchPanId = null;
                     _touch3Active = true;
+                    state._userOrbiting = true;   // orbit, not pan — TPS hold survives
                     const midY = (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3;
                     const midX = (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3;
                     _touch3StartY = midY;
@@ -5019,7 +5030,7 @@
                     // Clamp pitch so craning up cranes the gaze into the sky
                     // (past 90° the camera rides the ground floor and looks up
                     // at the sky dome rather than dipping below the map).
-                    const newTilt = Math.round(Math.max(0, Math.min(135, _touch3StartTilt + dy * 0.3)) * 10) / 10;
+                    const newTilt = Math.round(Math.max(0, Math.min(170, _touch3StartTilt + dy * 0.3)) * 10) / 10;
                     const newYaw = Math.round((_touch3StartYaw + dx * 0.4) * 10) / 10;
                     if (typeof camera !== 'undefined') {
                         camera.snap({ _force: true, tilt: newTilt, yaw: newYaw });
@@ -5153,9 +5164,11 @@
 
                     if (e.touches.length === 2) {
                         _touch3Active = false;
+                        state._userOrbiting = false;
                         _init2Finger(e);
                     } else if (e.touches.length < 2) {
                         _touch3Active = false;
+                        state._userOrbiting = false;
                     }
                 }
 
@@ -5688,15 +5701,17 @@
                     if (!stickPanning) {
                         stickPanning = true;
                         state._userPanning = true;
+                        state._userOrbiting = true;   // orbit, not pan — TPS hold survives
                         camera._stop();
                     }
                     const yaw = (state.dioramaYawDeg ?? camera.yaw ?? 0) + rx * 170 * opts.sensitivity * dt;
-                    const tilt = Math.max(0, Math.min(135,
+                    const tilt = Math.max(0, Math.min(170,
                         (state.dioramaTiltDeg ?? camera.tilt ?? 50) + ry * 100 * opts.sensitivity * dt));
                     camera.snap({ _force: true, tilt: Math.round(tilt * 10) / 10, yaw: Math.round(yaw * 10) / 10 });
                 } else if (stickPanning) {
                     stickPanning = false;
                     state._userPanning = false;
+                    state._userOrbiting = false;
                     _consumeDeferredTurnPan();
                 }
 

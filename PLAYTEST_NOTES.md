@@ -4,6 +4,37 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CAMERA OVERHAUL round 4 — boom crane-over + orbit continuity (2026-07-09, same session)
+Token `20260709x` → `20260709y`. three-camera.js, battle.js, state.js.
+- **Boom collision CRANES OVER obstacles** (three-camera.js): when terrain
+  blocks the pivot→eye boom of a TPS/keep-subject shot, the eye now keeps
+  the full boom length and RAISES just enough to clear the height field
+  (exact LOS: needY = max over samples of pivY + (g+clear−pivY)/t), falling
+  back to the old dolly-in only past a crane cap (pivY + dist×1.15). The old
+  dolly-only response jammed the lens to 0.14×boom whenever a unit stood
+  against a cliff — the "turn shot is a zoomed-in wall, my unit isn't even
+  on screen" bug and the "action cam way too zoomed in" bug.
+- **Roof-aware ground**: new `window._camGroundPx(tx,ty)` (battle.js, =
+  tileElevationZ: terrain + walkable-roof px). ThreeCamera `_groundYWorld`
+  prefers it, and `_cineTpsAnchor`'s subject lift now uses
+  `unitElevationZ(unit) − _camGroundPx(tile)` (covers airborne AND standing
+  on structures).
+- **Orbit keeps the TPS rig**: middle-drag / right-stick / 3-finger orbits
+  set `state._userOrbiting`; `camera._apply` drops `_tpsHold` only on a real
+  PAN (`_userPanning && !_userOrbiting`). Middle-clicking during the turn
+  shot used to release the rig instantly (pivot+aim swap = perceived random
+  zoom-out); now you orbit around your character, and only RMB-pan / edge
+  pan detaches.
+- **Tilt cap 135° → 170°** everywhere (MMB drag, 3-finger touch, right
+  stick): can look nearly straight up at the zenith.
+- **Edge pan yields to turn activations**: `_deferredTurnPanUnitId` set →
+  edge pan stops and delivers the pan, so a mouse parked at the screen edge
+  can never leave the camera on the previous action's framing when a new
+  unit's turn starts.
+NOT playtested (RULE #1c). Watch: crane cap feel on tall walls (falls back
+to dolly ≥5-ish levels), shoulder offset side flip when orbiting 180° under
+a hold (cosmetic).
+
 ## CAMERA OVERHAUL round 3 — elevation + edge pan (2026-07-09, same session)
 Token `20260709w` → `20260709x`. battle.js, state.js. User feedback fixes:
 - **Airborne TPS pivot** (`_cineTpsAnchor`): the rig anchors its pivot at the
