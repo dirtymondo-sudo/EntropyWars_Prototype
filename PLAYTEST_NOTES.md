@@ -4,6 +4,43 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CAMERA OVERHAUL round 2 (2026-07-09, later session)
+Token `20260709v` → `20260709w`. three-camera.js, battle.js, ui.js.
+- **Unified collision rig (three-camera.js `sync`)**: the three aim branches
+  (TPS / cine keep-subject / free-look) collapsed into ONE rig. Every mode now
+  ray-marches the pivot→eye boom against the height field and floors the eye
+  above the ground — the camera can NEVER go below the map. Board free-look
+  craned past 90° aims ALONG the view dir from just above the ground (sky
+  visible, unit rides the lower frame); level/down and `_cineKeepSubject`
+  keep the classic look-at-focal orbit. The zodiac/celestial sky cinematic
+  (state.js `playSkyCinematic`) no longer dives under the board.
+- **Move/jump = one CANONICAL tactical view** (`setActionMode`): always
+  moveTo(tilt = active preset's tactical tilt, zoom fit to the unit's move
+  range `computeZoomForVisibleTiles(2*mv+4)`, centred on the unit). No more
+  "relative nudge only if >8° off". Spell tile-aim uses the same
+  `getTacticalTilt()`.
+- **Turn TPS shot is over-the-shoulder**: `_tpsUnitShot` pushes the focal
+  0.55 tiles screen-right (`TPS_SHOULDER_TILES`, same as Strike Mode's
+  `SHOULDER_TILES`) so the character rides left-of-centre, not dead-centre.
+- **View presets (C key / pad camera button)**: `CAMERA_PRESETS`
+  standard(50°, 1.0×, FOV45) / close(58°, 1.45×, FOV50) / far(38°, 0.72×,
+  FOV42), persisted in `ew_cameraPreset`. Preset tilt drives `_restTilt` +
+  `getTacticalTilt()`; preset zoomMult scales `getDefaultZoom()` (so it
+  sticks); FOV via new `ThreeCamera.setFOV/getFOV` (applied lazily in
+  `getCameraMode`). `cycleCameraMode` → `cycleCameraPreset`.
+  `_setCameraMode_RETIRED` + CAMERA_MODE_LABELS/ICONS deleted.
+- **Hidden-info leaks fixed**: `_shouldCameraFollowUnit` +
+  `playOffensiveActionCamera` + `playCinematicAttack` now also refuse to
+  follow CONCEALED (invisible/smoke) actors with fog OFF; floating combat
+  text (`_realShowFloatingTextAtTile_impl`) drops pops on units/tiles the
+  viewer can't see (fog + concealment; `_fogRevealTiles` window still shows).
+- **Attack target cycling**: Tab cycles basic-attack targets too
+  (`cycleAttackTarget`, `state._attackCycleTargets`), swinging the TPS shot
+  per target. Item target picks also fire `_tpsTargetShot` now.
+NOT playtested (RULE #1c). Watch: preset far zoom vs `clampAutoZoom` floor
+(12-tile cap can re-clamp wide framings on non-bypass moves), the tilt-90°
+aim handoff during the sky cinematic tween (damped, should be invisible).
+
 ## CONTEXTUAL CAMERA — modes retired (2026-07-09, same session)
 Token `20260709u` → `20260709v`. battle.js, ui.js, hud.js. The Tactical/
 Follow/Cinematic camera-mode buttons are GONE; the camera is contextual:

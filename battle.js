@@ -4900,9 +4900,13 @@
         }
 
         function _shouldCameraFollowUnit(unit) {
+            const viewer = getViewerPlayer();
+            /* Concealment (Invisible / smoke) hides an enemy even with fog
+               OFF — the camera must never trace a unit the viewer can't see
+               (that pan IS the information leak). */
+            if (unit && unit.player !== viewer && isUnitConcealedFrom(unit, viewer)) return false;
             if (!state.fogOfWar) return true;
             if (!unit) return false;
-            const viewer = getViewerPlayer();
             if (unit.player === viewer) return true;
             return _isUnitVisibleToViewer(unit, viewer);
         }
@@ -5329,6 +5333,22 @@
 
             if (_skipVisuals()) return;
             if (!isInside(x, y)) return;
+
+            /* ── Hidden-unit information leak gate ──
+               Combat pops over a unit the viewer cannot see (an enemy healing
+               / regen ticks / buffs behind fog, an Invisible unit's status
+               numbers) hand the player intel the rules say they don't have —
+               drop them. Tiles inside an active fog-reveal window (the brief
+               "you were hit from the dark" flash) still show. */
+            if (!state.devAutoSim && typeof getViewerPlayer === 'function') {
+                const _viewer = getViewerPlayer();
+                const _revealed = state._fogRevealTiles && state._fogRevealTiles.has(posKey(x, y));
+                if (!_revealed) {
+                    const _u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+                    if (_u && _u.player !== _viewer && !_isUnitVisibleToViewer(_u, _viewer)) return;
+                    if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
+                }
+            }
 
             const durationMs = Math.max(400, Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900)));
             const jitterX = Number.isFinite(opts.jitterX) ? opts.jitterX : (Math.random() * 18 - 9);
@@ -7374,6 +7394,12 @@
             if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
                 return null;
             }
+            /* A concealed (invisible / smoke-hidden) attacker must not star in
+               a full-screen duel cinematic — that reveals who and where it is. */
+            if (typeof isUnitConcealedFrom === 'function'
+                && isUnitConcealedFrom(attacker, getViewerPlayer())) {
+                return null;
+            }
 
             const defUnit = defender.cls ? defender : unitAt(defender.x, defender.y);
             if (!defUnit) return null;
@@ -8872,7 +8898,13 @@
             const targetTiles = Math.max(rows, cols) + 4;
             return clampAutoZoom(computeZoomForVisibleTiles(targetTiles));
         }
-        function getDefaultZoom()    { return _getBattleZoom(); }
+        function getDefaultZoom() {
+            // The active view preset scales EVERY automatic framing (turn
+            // pans, resets, EOR beats), so CLOSE/FAR genuinely stick instead
+            // of only applying for the one move that cycled the preset.
+            const _pm = (typeof getCameraPreset === 'function') ? getCameraPreset().zoomMult : 1;
+            return Math.max(0.15, Math.min(10.0, _getBattleZoom() * _pm));
+        }
         // Framing for the local player's OWN unit when its turn begins: closer
         // than the whole-board overview (getDefaultZoom, ≈1.0×) so the active
         // unit reads clearly, while a ring of surrounding tiles stays visible.
@@ -8941,36 +8973,24 @@
             });
         }
 
-        /* ── Camera modes (gamepad/camera overhaul) ──────────────────────
-           'tactical'  — the classic overhead board view (resting tilt ~50°),
-                         free pan/orbit, best for reading the whole map.
-           'follow'    — third-person: the camera opens every turn parked
-                         behind the active unit at a close zoom, orbits stay
-                         centred on it. Panning the board detaches back to
-                         tactical (a follow camera has no free pan).
-           'cinematic' — follow + the automatic action shots (the old
-                         cinematicActionCam toggle, folded into the mode).
-           Persisted in ew_cameraMode; state.cinematicActionCam is DERIVED
-           from the mode so every existing cine-shot gate keeps working. */
-        const CAMERA_MODES = ['tactical', 'follow', 'cinematic'];
-        const CAMERA_MODE_LABELS = { tactical: 'TACTICAL', follow: 'FOLLOW', cinematic: 'CINEMATIC' };
-        const CAMERA_MODE_ICONS  = { tactical: '🗺', follow: '🎥', cinematic: '🎬' };
-        const FOLLOW_CAM_TILT = 68;          // deg — behind-the-unit pitch (90 = horizon)
-        const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
-        const CINE_FOLLOW_TILT = 72;
-        const CINE_FOLLOW_ZOOM_MULT = 2.2;
         /* ⚠ CAMERA MODES ARE RETIRED — the camera is CONTEXTUAL now:
-           - your unit's turn starts   → third-person behind the unit (TPS rig)
+           - your unit's turn starts   → third-person over the unit's shoulder
            - Move / tile-pick actions  → automatic tactical overhead
            - enemy target select/cycle → TPS from the caster looking at THAT enemy
            - action execution          → the TPS action shots
            - end-of-round sequence     → tactical overview
            getCameraMode is pinned to 'tactical' (so the legacy follow-mode
            branches stay dormant) while state.cinematicActionCam is FORCED on
-           (so every action-shot gate fires). setCameraMode/cycleCameraMode are
-           inert stubs — the HUD buttons are gone; the 'C' key just explains. */
+           (so every action-shot gate fires). setCameraMode is an inert stub;
+           the 'C' key / pad camera button cycles the VIEW PRESETS below. */
+        const FOLLOW_CAM_TILT = 68;          // deg — legacy follow pitch (dormant helpers below)
+        const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
+        const CINE_FOLLOW_TILT = 72;
+        const CINE_FOLLOW_ZOOM_MULT = 2.2;
         function getCameraMode() {
             state.cinematicActionCam = true;   // action shots always on (re-asserted: matches rebuild on new matches)
+            // keep the 3D lens on the active preset's FOV (no-op when unchanged)
+            if (typeof _applyCameraPresetFov === 'function') _applyCameraPresetFov();
             return 'tactical';
         }
         function isFollowCamMode() {
@@ -8996,65 +9016,75 @@
                like the pan-detach in state.js still invoke this — swallow it. */
             return getCameraMode();
         }
+
+        /* ── Camera VIEW PRESETS (cycled with C) ─────────────────────────
+           Three canned tactical framings — pitch + zoom + lens — like every
+           AAA tactics game's zoom stops. Cycling re-frames on the acting unit
+           immediately and the preset's pitch becomes the tilt every tactical
+           return (turn start, Move/tile-pick, post-action settle) lands on,
+           so the whole camera system follows the player's chosen view. The
+           FOV only applies in 3D (ThreeCamera); the CSS fallback ignores it.
+           Persisted in ew_cameraPreset. */
+        const CAMERA_PRESETS = [
+            { key: 'standard', icon: '🎥', label: 'STANDARD VIEW', tilt: 50, zoomMult: 1.0,  fov: 45 },
+            { key: 'close',    icon: '🎬', label: 'CLOSE VIEW',    tilt: 58, zoomMult: 1.45, fov: 50 },
+            { key: 'far',      icon: '🗺', label: 'FAR VIEW',      tilt: 38, zoomMult: 0.72, fov: 42 }
+        ];
+        let _cameraPresetIdx = 0;
+        try {
+            const _savedPreset = localStorage.getItem('ew_cameraPreset');
+            const _pi = CAMERA_PRESETS.findIndex(p => p.key === _savedPreset);
+            if (_pi >= 0) _cameraPresetIdx = _pi;
+        } catch (e) {}
+        function getCameraPreset() { return CAMERA_PRESETS[_cameraPresetIdx]; }
+        /* The pitch every tactical framing (Move/tile-pick, resets, settles)
+           returns to — the current preset's tilt. */
+        function getTacticalTilt() { return getCameraPreset().tilt; }
+        function getPresetZoom() {
+            // getDefaultZoom already folds the preset's zoom multiplier in.
+            return getDefaultZoom();
+        }
+        function _applyCameraPresetFov() {
+            const p = getCameraPreset();
+            if (typeof ThreeCamera !== 'undefined' && ThreeCamera.setFOV) ThreeCamera.setFOV(p.fov);
+        }
+        function cycleCameraPreset() {
+            _cameraPresetIdx = (_cameraPresetIdx + 1) % CAMERA_PRESETS.length;
+            const p = getCameraPreset();
+            try { localStorage.setItem('ew_cameraPreset', p.key); } catch (e) {}
+            if (typeof window._ewToast === 'function') window._ewToast(p.icon + ' ' + p.label, 1200);
+            _applyCameraPresetFov();
+            if (typeof camera === 'undefined' || !camera) return p.key;
+            // The preset's pitch becomes the resting orientation every
+            // tactical return lands on; zoom re-engages at the preset stop.
+            camera._restTilt = Math.min(p.tilt, REST_TILT_MAX);
+            state.userZoomScale = getPresetZoom();
+            if (state.phase === 'battle' && !state.cameraDisabled) {
+                const unit = (typeof getSelectedUnit === 'function' && getSelectedUnit())
+                    || state.units?.find(u => u.id === state._blitzActiveUnitId && !u.dead);
+                camera._tpsHold = false;
+                camera._preCineView = null;
+                camera._cineShotId = null;
+                camera._releaseCineSubject(420);
+                camera.moveTo({
+                    ...(unit ? { x: unit.x, y: unit.y } : {}),
+                    zoom: getPresetZoom(),
+                    tilt: p.tilt,
+                    duration: 460, easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+            }
+            return p.key;
+        }
         function cycleCameraMode() {
-            if (typeof window._ewToast === 'function') window._ewToast('🎥 CAMERA IS AUTOMATIC', 1200);
-            return getCameraMode();
+            /* the C key: cycle the view presets */
+            return cycleCameraPreset();
         }
-        function _setCameraMode_RETIRED(mode, opts) {
-            if (!CAMERA_MODES.includes(mode)) return getCameraMode();
-            state.cameraMode = mode;
-            state.cinematicActionCam = (mode === 'cinematic');
-            try {
-                localStorage.setItem('ew_cameraMode', mode);
-                localStorage.setItem('ew_cinematicActionCam', state.cinematicActionCam ? '1' : '0');
-            } catch (e) {}
-            const silent = opts && opts.silent;
-            // The remembered resting pitch IS the mode: follow rides a
-            // third-person shot, tactical returns to the readable overhead.
-            if (typeof camera !== 'undefined' && camera) {
-                if (isFollowCamMode()) camera._restTilt = getFollowCamTilt();
-                else camera._restTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
-            }
-            if (!silent) {
-                if (typeof window._ewToast === 'function') {
-                    window._ewToast(CAMERA_MODE_ICONS[mode] + ' ' + CAMERA_MODE_LABELS[mode] + ' CAMERA');
-                }
-                // Re-frame on the acting unit so the switch is felt immediately.
-                if (state.phase === 'battle' && !state.cameraDisabled
-                    && typeof camera !== 'undefined' && camera && !camera.isBusy()) {
-                    const unit = (typeof getSelectedUnit === 'function' && getSelectedUnit())
-                        || state.units?.find(u => u.id === state._blitzActiveUnitId && !u.dead);
-                    if (unit) {
-                        camera._preCineView = null;
-                        camera._cineShotId = null;
-                        camera._releaseCineSubject(420);
-                        if (isFollowCamMode()) {
-                            camera.moveTo({
-                                x: unit.x, y: unit.y,
-                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getFollowCamZoom(),
-                                tilt: getFollowCamTilt(),
-                                yaw: getFollowCamYaw(unit, camera.yaw),
-                                duration: 520, easing: 'easeInOut',
-                                _allowZoomChange: true, _bypassCap: true
-                            });
-                        } else {
-                            camera.moveTo({
-                                x: unit.x, y: unit.y,
-                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getTurnFramingZoom(),
-                                tilt: camera._restTilt,
-                                duration: 520, easing: 'easeInOut',
-                                _allowZoomChange: true, _bypassCap: true
-                            });
-                        }
-                    }
-                }
-            }
-            const _acDevCb = document.getElementById('actionCamToggleBattle');
-            if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
-            try { window.dispatchEvent(new CustomEvent('ew-camera-mode', { detail: mode })); } catch (e) {}
-            if (typeof markDirty === 'function') { markDirty('hud'); renderIfDirty(); }
-            return mode;
-        }
+        window.getCameraPreset = getCameraPreset;
+        window.cycleCameraPreset = cycleCameraPreset;
+        // Boot: the saved preset shapes the initial resting pitch (the lens
+        // FOV is applied lazily by getCameraMode once the 3D camera exists).
+        camera._restTilt = Math.min(getCameraPreset().tilt, REST_TILT_MAX);
         window.getCameraMode = getCameraMode;
         window.isFollowCamMode = isFollowCamMode;
         window.setCameraMode = setCameraMode;
@@ -9062,9 +9092,6 @@
         window.getFollowCamTilt = getFollowCamTilt;
         window.getFollowCamZoom = getFollowCamZoom;
         window.getFollowCamYaw = getFollowCamYaw;
-        window.CAMERA_MODES = CAMERA_MODES;
-        window.CAMERA_MODE_LABELS = CAMERA_MODE_LABELS;
-        window.CAMERA_MODE_ICONS = CAMERA_MODE_ICONS;
 
         /* ═══════════════════════════════════════════════════════════════════
            SHOOTER CONTROLS — experimental third-person control layer
@@ -10231,16 +10258,27 @@
            engaged with no cinematic shot id; the hold drops on hand-pan, on
            tile-pick actions (tactical), at end-of-round and on AI turns. */
         const TPS_TURN_TILT = 78;   // resting over-the-shoulder pitch (12° below horizon)
+        /* Over-the-shoulder offset for the turn shot, in tiles: the orbit
+           focal is pushed to screen-RIGHT so the character rides left-of-
+           centre instead of dead-centre — the same offset Strike Mode's rig
+           uses (its SHOULDER_TILES), i.e. the standard modern-TPS frame. */
+        const TPS_SHOULDER_TILES = 0.55;
         function _tpsUnitShot(unit, opts = {}) {
             if (!unit || state.cameraDisabled || state.phase !== 'battle') return false;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
             if (!_cineTpsAnchor(unit, unit)) return false;
             camera._tpsHold = true;
+            const yaw = opts.yaw ?? getFollowCamYaw(unit, camera.yaw);
+            // screen-right on the board for this yaw (matches ShooterControls'
+            // _shoulderFocal): the pivot height still rides the SUBJECT's own
+            // tile via _tpsSubject, so the shoulder push is purely lateral.
+            const _psi = yaw * Math.PI / 180;
             camera.moveTo({
-                x: unit.x, y: unit.y,
+                x: unit.x + Math.cos(_psi) * TPS_SHOULDER_TILES,
+                y: unit.y - Math.sin(_psi) * TPS_SHOULDER_TILES,
                 zoom: _tpsBoomZoom(opts.len || 0),
                 tilt: opts.tilt ?? TPS_TURN_TILT,
-                yaw: opts.yaw ?? getFollowCamYaw(unit, camera.yaw),
+                yaw,
                 duration: opts.duration ?? 480, easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
@@ -10689,7 +10727,13 @@
                     resetBuffer: 0, totalMs: actionMs(100), zoom: 1 };
             }
 
-            const isAiFogTurn = state.fogOfWar && state.activePlayer !== getViewerPlayer();
+            /* Hidden-actor gate. Applies on any turn that is not the viewer's
+               own: with fog of war, AND with fog off when the actor is
+               concealed (Invisible / smoke) — _isUnitVisibleToViewer covers
+               both. A shot that swings behind a hidden attacker would hand
+               the player its exact position for free; instead frame only what
+               the viewer is allowed to see (the visible victim), or nothing. */
+            const isAiFogTurn = state.activePlayer !== getViewerPlayer();
             if (isAiFogTurn) {
                 const viewer = getViewerPlayer();
                 const srcVisible = _isUnitVisibleToViewer(sourceUnit, viewer);
@@ -10698,8 +10742,10 @@
                 if (!srcVisible && tgtVisible) {
 
                     state._fogAnchorUnitId = target.id;
-                    if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
-                    state._fogRevealTiles.add(posKey(target.x, target.y));
+                    if (state.fogOfWar) {
+                        if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
+                        state._fogRevealTiles.add(posKey(target.x, target.y));
+                    }
                     scheduleBoardRender();
                     const sequenceId = ++boardCameraSequenceId;
                     const holdMs = actionMs(1600);
@@ -21743,7 +21789,7 @@
                         const zoom = Math.max(getUserZoomScale(), rangeZoom);
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
-                            tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                            tilt: getTacticalTilt(),
                             duration: 380, easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                         });
@@ -22343,8 +22389,10 @@
             playSfx('uiCursorFocus');
             updateAoePreview(x, y);
             // picking a target from the submenu swings the caster's TPS view
-            // onto that enemy (unit-targeting modes only — tile aim stays tactical)
-            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
+            // onto that unit — attacks, spells AND item targets (tile aim
+            // stays tactical); switching targets re-aims the shot each time
+            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets'
+                || state.actionMenuView === 'items') {
                 const _mu = getSelectedUnit();
                 if (_mu) _tpsTargetShot(_mu, (typeof unitAt === 'function' && unitAt(x, y)) || { x, y });
             }
@@ -22369,6 +22417,26 @@
             }
         }
         window.cycleSpellTarget = cycleSpellTarget;
+
+        /* Tab-cycling for BASIC ATTACK targets — same pattern as spells: step
+           through the valid-target list, swing the caster's over-the-shoulder
+           view onto each one, and let the confirm click/Enter fire. */
+        function cycleAttackTarget(direction) {
+            if (state.actionMode !== 'attack' || !state._attackCycleTargets?.length) return;
+            const len = state._attackCycleTargets.length;
+            state._attackCycleIndex = ((state._attackCycleIndex || 0) + direction + len) % len;
+            const t = state._attackCycleTargets[state._attackCycleIndex];
+            if (t) {
+                state.pendingTarget = { x: t.x, y: t.y, z: t.unit ? t.unit.z : undefined,
+                    mode: 'attack', tool: null, viaHover: false };
+                updateAoePreview(t.x, t.y);
+                const _cu = getSelectedUnit();
+                if (_cu) _tpsTargetShot(_cu, t.unit || t);
+                renderBattleSelectionUI({ includeBoard: false });
+                scheduleBoardRender();
+            }
+        }
+        window.cycleAttackTarget = cycleAttackTarget;
 
         function setActionMode(mode) {
             if (state.activePlayer === state.aiPlayer) return;
@@ -22400,36 +22468,44 @@
             clearAttackRangePreview();
             _clearMoveHoverPreview();
 
-            /* Tile-pick framing: entering move/jump must land the camera on a
-               board-readable tactical pitch EVERY time. The live tilt legally
-               roams 0–135 (straight down → sky gaze) in free look, and nothing
-               used to correct it here — picking tiles while craned at the sky
-               (or dead-vertical) left the reachable overlay unreadable. Settle
-               pitch to the remembered resting angle and centre on the unit;
-               yaw is left alone (re-orienting the board mid-click is worse
-               than any pitch problem). */
+            /* Tile-pick framing: entering Move/Jump lands the camera on ONE
+               CANONICAL over-the-board tactical view EVERY time — absolute
+               pitch (the active preset's tactical tilt) and a zoom that fits
+               the unit's whole move range, regardless of whatever pose the
+               camera was in (third-person turn shot, sky gaze, hand-cranked
+               orbit). The old code only nudged toward the remembered resting
+               angle when it was >8° off, so the "tactical view" was a small
+               relative tweak and looked different every time. Yaw is left
+               alone (re-orienting the board mid-click is worse than any pitch
+               problem), and the player can still orbit freely afterwards —
+               the collision rig in ThreeCamera keeps the eye above the map
+               even craned up at the sky. */
             if ((mode === 'move' || mode === 'jump') && !state.cameraDisabled
                 && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
                 // Tile picking is a BOARD read → always the tactical overhead,
                 // dropping any third-person hold (turn-start / targeting shot).
                 camera._tpsHold = false;
-                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
-                if (Math.abs((camera.tilt ?? _pickTilt) - _pickTilt) > 8 || camera._cineShotId != null) {
-                    camera._preCineView = null;
-                    camera._cineShotId = null;
-                    camera._releaseCineSubject(420);
-                    camera.moveTo({
-                        x: unit.x, y: unit.y,
-                        tilt: _pickTilt,
-                        duration: 380, easing: 'easeInOut', _fogAllowed: true
-                    });
-                }
+                camera._preCineView = null;
+                camera._cineShotId = null;
+                camera._releaseCineSubject(420);
+                const _mvRange = Math.max(2, (typeof getEffectiveMove === 'function'
+                    ? (getEffectiveMove(unit) || 0) : 0) || 4);
+                const _mvZoom = clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4));
+                camera.moveTo({
+                    x: unit.x, y: unit.y,
+                    tilt: getTacticalTilt(),
+                    zoom: _mvZoom,
+                    duration: 420, easing: 'easeInOut', _fogAllowed: true,
+                    _allowZoomChange: true, _bypassCap: true
+                });
             }
 
             if (mode === 'attack') {
                 state.actionMenuView = 'attackTargets';
 
                 const targets = _getAttackValidTargets(unit);
+                state._attackCycleTargets = targets;
+                state._attackCycleIndex = 0;
                 if (targets.length > 0) {
                     state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
                     // enemy targeting → third person: caster looking at the target

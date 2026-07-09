@@ -42,6 +42,18 @@ const ThreeCamera = (function () {
     function setBaseDist(d) { baseDist = d; }
     function getBaseDist() { return baseDist; }
 
+    /* Runtime FOV (deg). Camera view presets use this: a slightly wider FOV
+       for the pulled-back tactical preset, a tighter one for the close view.
+       Clamped to a sane game range; no-ops when unchanged. */
+    function setFOV(deg) {
+        const f = Math.max(25, Math.min(90, Number(deg) || FOV));
+        if (threeCamera && Math.abs(threeCamera.fov - f) > 0.01) {
+            threeCamera.fov = f;
+            threeCamera.updateProjectionMatrix();
+        }
+    }
+    function getFOV() { return threeCamera ? threeCamera.fov : FOV; }
+
     function markUserInput() {
         _smoothOverride = 10;
     }
@@ -130,60 +142,57 @@ const ThreeCamera = (function () {
         let targetPosZ = focalZ - dist * dirZ;
         let targetLookX, targetLookY, targetLookZ;
 
-        const groundClearance = ts * 0.35;
+        /* ══ UNIFIED COLLISION ORBIT RIG ══
+           ONE behaviour for every camera mode — the eye can NEVER pass below
+           the terrain surface, in any mode, at any pitch. (The old free-look
+           branch deliberately let the eye dive under the board when the
+           player or a sky cinematic craned past the horizon, which meant
+           "looking at the sky" showed the dirt underside of the map. That
+           trade-off is gone.)
 
-        /* True ground height under the focal tile — used by the 3rd-person floor
-           response below. (The focal HEIGHT itself can be lifted well above the
-           board by a cinematic shot, so it is not a valid ground reference.) */
-        let groundY = 0;
-        if (typeof getHeightAt === 'function') {
-            const gh = getHeightAt(Math.round(cam.x), Math.round(cam.y));
-            if (gh > 0) groundY = gh * elevStep;
-        }
-        const camFloorY = groundY + groundClearance;
+           • Third-person (Strike Mode free-roam via cam._tpsCollide, and the
+             cinematic/turn shots via cam._cineTps): pivot at the SUBJECT's
+             shoulder — ground under the character (cam._tpsSubject) plus the
+             model's real rendered shoulder lift (cam._tpsHeadLift) — so a
+             fairy and a bigfoot get the same frame. Gaze rides ALONG the view
+             direction, so craning past 90° genuinely shows the sky with the
+             character in the lower frame, like every modern TPS.
+           • Board / tactical free look: pivot at the focal point. Looking
+             down or level keeps the classic look-at-the-focal orbit; craning
+             PAST the horizon switches the aim to ride the view direction from
+             just above the ground, so the player sees their unit against the
+             SKY instead of the camera sinking under the map.
+           • Cinematic keep-subject shots (cam._cineKeepSubject) keep looking
+             straight AT the (possibly lifted) focal while the ground clamp
+             dollies the eye in along the ray — the subject stays framed while
+             the camera cranes up at a sky target.
 
-        if (cam._tpsCollide || cam._cineTps) {
-            /* ══ TRUE THIRD-PERSON CAMERA ══
-               Two owners share this rig: Strike Mode / hub free-roam
-               (cam._tpsCollide, per-frame) and the main game's cinematic
-               action shots (cam._cineTps, engaged per shot in battle.js and
-               auto-released by camera._apply the moment no shot owns the
-               camera).
-               A real over-the-shoulder rig: orbit a PIVOT at the character's
-               head, and — the whole point — never let the eye or the line
-               between eye and pivot pass through the terrain. The engine's
-               default board camera has no such collision, which is why
-               mouse-look used to sink the eye straight through the map.
-
-               Pivot = focal lifted to head height. March from the pivot out
-               to the ideal orbit eye; the moment the ray dips below the ground
-               height-field, stop and place the eye there (dolly in toward the
-               character), then hard-floor the eye above ground. This is the
-               standard "camera pulls in when a wall/hill is behind you" TPS
-               behaviour, done against the height field so it is cheap and
-               cannot fall through.
-
-               The pivot height is anchored to the SUBJECT's own ground tile
-               (cam._tpsSubject, the walker's float position), not the focal:
-               the focal is the over-the-shoulder point — often a NEIGHBOURING
-               tile at a different terrain height — and the stock focal-height
-               machinery also adds a unit-lift only when a unit happens to
-               stand on the rounded focal. Both made the shot ride at a
-               different height depending on where the shoulder offset landed.
-               Ground under the character + a per-model shoulder lift
-               (cam._tpsHeadLift, set from the model's real rendered height)
-               = one consistent frame for every character, short or tall. */
+           Collision is a cheap march against the tile height-field: walk from
+           the pivot out to the ideal orbit eye; the moment the boom dips
+           below ground+clearance, stop there (dolly in), then hard-floor the
+           eye above the ground actually under it. */
+        const isTps = !!(cam._tpsCollide || cam._cineTps);
+        let pivX = focalX, pivY = focalY, pivZ = focalZ;
+        if (isTps) {
             const headLift = cam._tpsHeadLift || (ts * 0.9);
             const subj = cam._tpsSubject;
             const pivGroundY = subj
                 ? _groundYWorld(subj.x * ts + ts / 2, subj.y * ts + ts / 2)
                 : _groundYWorld(focalX, focalZ);
-            const pivX = focalX, pivY = pivGroundY + headLift, pivZ = focalZ;
-            let eyeX = pivX - dist * dirX;
-            let eyeY = pivY - dist * dirY;
-            let eyeZ = pivZ - dist * dirZ;
-            const clear = ts * 0.45;
+            pivY = pivGroundY + headLift;
+        }
+        let eyeX = pivX - dist * dirX;
+        let eyeY = pivY - dist * dirY;
+        let eyeZ = pivZ - dist * dirZ;
+        const clear = isTps ? ts * 0.45 : ts * 0.35;
 
+        /* Boom march (dolly-in) — only for the modes that FRAME A SUBJECT
+           up close (TPS shots, keep-subject cine shots). The wide tactical
+           view deliberately skips it: a ridge clipping the low start of a
+           long boom would otherwise yank the whole board view in close.
+           Tactical still gets the hard eye floor below, which is all it
+           needs to never dive under the map. */
+        if (isTps || cam._cineKeepSubject) {
             const STEPS = 12;
             let f = 1;
             for (let i = 1; i <= STEPS; i++) {
@@ -193,57 +202,40 @@ const ThreeCamera = (function () {
                 const pz = pivZ + (eyeZ - pivZ) * tt;
                 if (py < _groundYWorld(px, pz) + clear) { f = (i - 1) / STEPS; break; }
             }
-            if (f < 0.14) f = 0.14;   // never jam the lens into the character
+            if (f < 0.14) f = 0.14;   // never jam the lens into the subject
             eyeX = pivX + (eyeX - pivX) * f;
             eyeY = pivY + (eyeY - pivY) * f;
             eyeZ = pivZ + (eyeZ - pivZ) * f;
-            const eg = _groundYWorld(eyeX, eyeZ) + clear;
-            if (eyeY < eg) eyeY = eg;
+        }
+        /* Hard floor: the eye must ride above the terrain actually under it —
+           in EVERY mode. This is what keeps a sky gaze (zodiac cinematic,
+           orbit craned past the horizon) above the map surface instead of
+           staring up at the dirt underside of the board. */
+        const eg = _groundYWorld(eyeX, eyeZ) + clear;
+        if (eyeY < eg) eyeY = eg;
 
-            /* Aim ALONG the view direction, not AT the pivot. The old
-               lookAt(pivot) capped the gaze at eye level: once the eye is
-               floored on the ground, staring back at the character's head can
-               never pitch into the sky no matter how far the player cranes
-               up. Aiming at a point AHEAD of the pivot along the view ray is
+        targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
+
+        if (isTps || (dirY > 1e-4 && !cam._cineKeepSubject)) {
+            /* Aim ALONG the view direction, not AT the pivot. lookAt(pivot)
+               caps the gaze at eye level: once the eye is floored on the
+               ground, staring back at the subject can never pitch into the
+               sky. Aiming at a point AHEAD of the pivot along the view ray is
                identical while the eye sits unobstructed on the orbit ray
                (eye, pivot and the ahead-point are colinear), but lets
-               tilt > 90° genuinely look up — the character simply rides the
-               lower part of the frame, exactly like every modern TPS. It also
-               keeps the aim direction constant when terrain collision pulls
-               the eye in, so the reticle never jumps. */
+               tilt > 90° genuinely look up — the subject simply rides the
+               lower part of the frame. It also keeps the aim direction
+               constant when terrain collision pulls the eye in, so the
+               reticle/framing never jumps. */
             const ahead = ts * 2.5;
-            targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
             targetLookX = pivX + dirX * ahead;
             targetLookY = pivY + dirY * ahead;
             targetLookZ = pivZ + dirZ * ahead;
-        } else if (cam._cineKeepSubject && dirY > 1e-4 && focalY > camFloorY && targetPosY < camFloorY) {
-            /* ── 3RD-PERSON floor collision (cinematic shots only) ──
-               A ground-standing subject has NO eye position below it, so craning
-               the gaze straight up at a sky target would put the eye underground.
-               The default response (raise the eye, keep the up-pitched gaze) flings
-               the look-point past the subject into the sky and drops the subject
-               off the bottom of frame — the classic "my character vanished when I
-               looked up" bug. Instead we PULL THE EYE IN along the view ray until
-               it rides just above the ground, and keep looking straight AT the
-               focal. The subject stays screen-centred while the camera genuinely
-               cranes up — exactly how a real 3rd-person camera handles looking up
-               (it dollies in toward the player rather than losing them). */
-            const dPull = (focalY - camFloorY) / dirY;   // eye.Y == camFloorY along -dir
-            targetPosX = focalX - dPull * dirX;
-            targetPosY = camFloorY;
-            targetPosZ = focalZ - dPull * dirZ;
-            targetLookX = focalX;
-            targetLookY = focalY;
-            targetLookZ = focalZ;
         } else {
-            /* ── default free-look (board view): pure orbit, no floor clamp ──
-               The eye is allowed to ride BELOW the floor / the focal unit when
-               the player cranes past the horizon (tilt > 90°). The old clamp
-               pinned the eye to the ground and re-aimed the gaze up the view
-               ray, which slid the camera away from the focal point — "looking
-               up made the camera drift off my character". Orbiting freely
-               keeps the focal (the player's unit) dead-centred; briefly seeing
-               the board's underside is the intended trade-off. */
+            /* Level/downward gaze (and keep-subject cine shots): classic
+               orbit — the focal stays dead-centred. When the ground clamp
+               pulled the eye in, looking AT the focal reproduces the old
+               keep-subject dolly-in response exactly. */
             targetLookX = focalX;
             targetLookY = focalY;
             targetLookZ = focalZ;
@@ -466,6 +458,8 @@ const ThreeCamera = (function () {
         setTileSize,
         setBaseDist,
         getBaseDist,
+        setFOV,
+        getFOV,
         getCamera,
         getFocalWorld,
         markUserInput,
