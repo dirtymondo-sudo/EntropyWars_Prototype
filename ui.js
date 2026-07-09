@@ -8979,8 +8979,12 @@
         window._getWasdOrigin = () => _wasdOrigin;
         /* ShooterControls (battle.js) drives the same provisional-move
            machinery from its continuous free-roam walker: it inits the rings,
-           fences the walk to them, and lets the stock commit paths bill AP. */
-        window._initWasdState = (unit) => _initWasdState(unit);
+           fences the walk to them, and lets the stock commit paths bill AP.
+           NOTE: plain reference, NEVER a wrapper that calls the bare name —
+           _initWasdState is a top-level (global) declaration, so a wrapper
+           assigned onto window._initWasdState replaces that very binding and
+           calls itself forever ("too much recursion", 2026-07-09). */
+        window._initWasdState = _initWasdState;
         window._wasdRingSets = () => ({ r1: _wasdMoveTiles1, r2: _wasdMoveTiles2 });
 
         function _initWasdState(unit) {
