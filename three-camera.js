@@ -194,53 +194,51 @@ const ThreeCamera = (function () {
         /* Boom collision — only for the modes that FRAME A SUBJECT up close
            (TPS shots, keep-subject cine shots). The wide tactical view
            deliberately skips it: a ridge clipping the low start of a long
-           boom would otherwise yank the whole board view in close. Tactical
-           still gets the hard eye floor below, which is all it needs to
-           never dive under the map.
+           boom would otherwise yank the whole board view in close.
 
-           Response order when terrain blocks the boom:
-           1. CRANE OVER IT — keep the full boom length and raise the eye
-              just enough that the pivot→eye line clears the height field.
-              This is what real TPS cameras do behind a wall/cliff: the shot
-              rides up and looks down over the obstacle, framing stays a
-              proper third-person distance. (The old response only dollied
-              IN, so a unit standing against a cliff got a jammed-lens
-              extreme close-up of the wall — the "why is it zoomed in so
-              much" bug.)
-           2. If the wall is so tall/close that craning would launch the
-              camera absurdly high, THEN dolly in along the ray as before. */
+           Response = DOLLY IN, exactly like every standard third-person
+           game (Skyrim / Fortnite / GTA / Minecraft): pull the camera in
+           along the boom so it sits IN FRONT of the first blocker, in clear
+           air, still looking at the character. A wall right at the
+           character's back gives a tight over-the-shoulder shot of the
+           CHARACTER — never a close-up of the wall, never a camera perched
+           on top of the cliff, never a crane over it. Partial blockers the
+           spread rays catch are additionally made see-through by
+           three-renderer's occlusion fade, which keeps the active unit
+           visible every frame. The character is framed in third person
+           every single time. */
         if (isTps || cam._cineKeepSubject) {
             const STEPS = 12;
             let f = 1;
-            let needY = -Infinity;   // eye height that clears every sample
             for (let i = 1; i <= STEPS; i++) {
                 const tt = i / STEPS;
                 const px = pivX + (eyeX - pivX) * tt;
                 const py = pivY + (eyeY - pivY) * tt;
                 const pz = pivZ + (eyeZ - pivZ) * tt;
-                const g = _groundYWorld(px, pz) + clear;
-                if (py < g && f === 1) f = (i - 1) / STEPS;
-                // linear ray from pivY: rayY(tt) = pivY + (eyeY'-pivY)*tt ≥ g
-                needY = Math.max(needY, pivY + (g - pivY) / tt);
+                if (py < _groundYWorld(px, pz) + clear) { f = (i - 1) / STEPS; break; }
             }
+            // never inside the character model itself (~⅓ tile), otherwise
+            // hug whatever clear air exists in front of the wall
+            const fMin = Math.min(1, (ts * 0.35) / Math.max(dist, 1));
+            if (f < fMin) f = fMin;
             if (f < 1) {
-                const craneCap = pivY + dist * 1.15;   // don't rocket over mega-walls
-                if (needY <= craneCap) {
-                    eyeY = Math.max(eyeY, needY);
-                } else {
-                    if (f < 0.2) f = 0.2;   // never jam the lens into the subject
-                    eyeX = pivX + (eyeX - pivX) * f;
-                    eyeY = pivY + (eyeY - pivY) * f;
-                    eyeZ = pivZ + (eyeZ - pivZ) * f;
-                }
+                eyeX = pivX + (eyeX - pivX) * f;
+                eyeY = pivY + (eyeY - pivY) * f;
+                eyeZ = pivZ + (eyeZ - pivZ) * f;
             }
         }
-        /* Hard floor: the eye must ride above the terrain actually under it —
-           in EVERY mode. This is what keeps a sky gaze (zodiac cinematic,
-           orbit craned past the horizon) above the map surface instead of
-           staring up at the dirt underside of the board. */
-        const eg = _groundYWorld(eyeX, eyeZ) + clear;
-        if (eyeY < eg) eyeY = eg;
+        /* Hard floor — the eye must not sink BELOW the map:
+           • board/tactical view: always (it has no boom collision).
+           • subject-framing modes: only while the gaze is pitched UP past
+             the horizon (sky look) — that is the genuine below-the-map
+             case. For level/down gazes the dolly already handled terrain,
+             and force-lifting a wall-adjacent eye onto the top of that wall
+             was the "camera standing on the clifftop staring at dirt
+             instead of my unit" bug. */
+        if (dirY > 1e-4 || !(isTps || cam._cineKeepSubject)) {
+            const eg = _groundYWorld(eyeX, eyeZ) + clear;
+            if (eyeY < eg) eyeY = eg;
+        }
 
         targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
 
