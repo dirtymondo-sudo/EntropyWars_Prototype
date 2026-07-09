@@ -56,6 +56,18 @@ const ThreeCamera = (function () {
         return current + (target - current) * factor;
     }
 
+    /* World-space ground height under a world (X,Z) point — the height field
+       the third-person collision camera slides against so it can never drop
+       through the map. */
+    function _groundYWorld(wx, wz) {
+        if (typeof getHeightAt !== 'function') return 0;
+        const tx = Math.floor(wx / tileSize);
+        const tz = Math.floor(wz / tileSize);
+        let h = 0;
+        try { h = getHeightAt(tx, tz); } catch (e) { h = 0; }
+        return (h > 0 ? h : 0) * tileSize * ELEV_STEP_RATIO;
+    }
+
     function sync(cam) {
         if (!threeCamera) return;
 
@@ -130,7 +142,47 @@ const ThreeCamera = (function () {
         }
         const camFloorY = groundY + groundClearance;
 
-        if (cam._cineKeepSubject && dirY > 1e-4 && focalY > camFloorY && targetPosY < camFloorY) {
+        if (cam._tpsCollide) {
+            /* ══ TRUE THIRD-PERSON CAMERA (Strike Mode / hub free-roam) ══
+               A real over-the-shoulder rig: orbit a PIVOT at the character's
+               head, and — the whole point — never let the eye or the line
+               between eye and pivot pass through the terrain. The engine's
+               default board camera has no such collision, which is why
+               mouse-look used to sink the eye straight through the map.
+
+               Pivot = focal lifted to head height. March from the pivot out
+               to the ideal orbit eye; the moment the ray dips below the ground
+               height-field, stop and place the eye there (dolly in toward the
+               character), then hard-floor the eye above ground. This is the
+               standard "camera pulls in when a wall/hill is behind you" TPS
+               behaviour, done against the height field so it is cheap and
+               cannot fall through. */
+            const headLift = cam._tpsHeadLift || (ts * 0.9);
+            const pivX = focalX, pivY = focalY + headLift, pivZ = focalZ;
+            let eyeX = pivX - dist * dirX;
+            let eyeY = pivY - dist * dirY;
+            let eyeZ = pivZ - dist * dirZ;
+            const clear = ts * 0.45;
+
+            const STEPS = 12;
+            let f = 1;
+            for (let i = 1; i <= STEPS; i++) {
+                const tt = i / STEPS;
+                const px = pivX + (eyeX - pivX) * tt;
+                const py = pivY + (eyeY - pivY) * tt;
+                const pz = pivZ + (eyeZ - pivZ) * tt;
+                if (py < _groundYWorld(px, pz) + clear) { f = (i - 1) / STEPS; break; }
+            }
+            if (f < 0.14) f = 0.14;   // never jam the lens into the character
+            eyeX = pivX + (eyeX - pivX) * f;
+            eyeY = pivY + (eyeY - pivY) * f;
+            eyeZ = pivZ + (eyeZ - pivZ) * f;
+            const eg = _groundYWorld(eyeX, eyeZ) + clear;
+            if (eyeY < eg) eyeY = eg;
+
+            targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
+            targetLookX = pivX; targetLookY = pivY; targetLookZ = pivZ;
+        } else if (cam._cineKeepSubject && dirY > 1e-4 && focalY > camFloorY && targetPosY < camFloorY) {
             /* ── 3RD-PERSON floor collision (cinematic shots only) ──
                A ground-standing subject has NO eye position below it, so craning
                the gaze straight up at a sky target would put the eye underground.

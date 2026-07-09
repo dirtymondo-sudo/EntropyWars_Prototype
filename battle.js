@@ -9055,7 +9055,7 @@
                staring across the ground. ~50° looks down at the play area like
                Fortnite/Gears; never let it flatten past ~70 (floor) or tip past
                ~30 (top-down). */
-            const TILT_MIN = 34, TILT_MAX = 70, TILT_DEFAULT = 50;
+            const TILT_MIN = 28, TILT_MAX = 82, TILT_DEFAULT = 48;
             const AIM_Y_FRAC = 0.50;           // reticle at screen centre — the downward gaze aims it at the ground ahead
             const ZOOM_STEP = 1.08, ZMULT_MIN = 0.7, ZMULT_MAX = 1.7;
             /* Distance the camera sits BACK from its focal point, as a multiple
@@ -9069,8 +9069,8 @@
                unit (so it rides the lower third of frame) and to screen-right
                (so it sits off to one side and the crosshair has a clear lane),
                like every modern third-person shooter. */
-            const SHOULDER_TILES = 0.65;       // lateral focal offset, in tiles
-            const SHOULDER_FWD = 1.1;          // forward push — drops the unit toward the bottom of frame
+            const SHOULDER_TILES = 0.5;        // lateral pivot offset, in tiles (over-the-shoulder)
+            const SHOULDER_FWD = 0.55;         // forward pivot push — drops the unit toward the bottom of frame
 
             let yaw = 0, tilt = TILT_DEFAULT, zoomMult = 1.0;
             let locked = false;
@@ -9193,10 +9193,16 @@
                     /* an interrupted right-stick orbit can leave the hand-pan
                        flag set — it would freeze the focal height under us */
                     state._userPanning = false;
+                    if (typeof camera !== 'undefined' && camera) {
+                        camera._tpsCollide = true;
+                        camera._tpsHeadLift = (CONFIG.tileSize || BASE_TILE) * 0.9;
+                    }
                     _enterShot(_localUnit());
                 } else {
                     heldDirs = {}; padVec = null; runHeld = false;
                     if (!_hubActive()) _stopRoam();
+                    /* hand the stock camera back exactly as we found it */
+                    if (typeof camera !== 'undefined' && camera) camera._tpsCollide = false;
                     try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) ThreeRenderer.setUnderfootTile(-1, -1); } catch (e) {}
                 }
             }
