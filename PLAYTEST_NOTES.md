@@ -14,19 +14,38 @@ game. Nothing about turns/AP/spells changed — only how the player drives them.
 
 Architecture (all inside `ShooterControls`, battle.js, right after the
 camera-mode block; `window.ShooterControls`, `window._shooterCamOwns()`):
-- **Camera**: per-frame `camera.snap({x,y,tilt,yaw,zoom})` parked on the active
-  unit while a LOCAL unit is active (releases during AI turns so stock framing
-  shows the enemy acting). Mouse look via Pointer Lock — click the board to
-  grab, ESC releases; right stick on a pad. Tilt clamped 32–106°, wheel/
-  triggers zoom. Every competing camera writer either checks
-  `window._shooterCamOwns()` (ui.js WASD focus pans, EWPad `_cameraFrame`,
-  `_mdFreeRoamCam`) or is cancelled by the per-frame snap.
-- **Movement**: WASD/left stick swallow the raw keydowns (capture phase) and
-  re-emit synthetic steps (`_ewShooterSynth` flag) on a 160 ms cadence through
-  the EXISTING ui.js provisional-WASD pipeline — ring validation, commit rules,
-  camera-relative rotation via `state.dioramaYawDeg` all reused. Held W+D
-  alternates keys → staircase diagonals. Pressing a move key while aiming
-  cancels the aim first (fast aim→move transition).
+- **Camera**: per-frame `camera.snap({x,y,tilt,yaw,zoom})` following the
+  walker's float position while a LOCAL unit is active (releases during AI
+  turns so stock framing shows the enemy acting). OVER-THE-SHOULDER framing:
+  the orbit focal is `_shoulderFocal()` — pushed ~0.95 tiles toward
+  screen-right + 0.35 ahead (scaled by 1/zoomMult), so the character rides
+  lower-LEFT of centre and the reticle (50%, 46%) has a clear line. Mouse look
+  via Pointer Lock — click the board to grab, ESC releases; right stick on a
+  pad. Tilt clamped 32–106°, wheel/triggers zoom. Every competing camera
+  writer either checks `window._shooterCamOwns()` (ui.js WASD focus pans,
+  EWPad `_cameraFrame`, `_mdFreeRoamCam`) or is cancelled by the per-frame
+  snap. NOTE `_hubActive()` in ShooterControls means the GUILD HUB roam
+  specifically (dungeon mode + `_mdPhase==='hub'`) — the battle roam also runs
+  through `hubFreeRoam`, so the gate must distinguish them.
+- **Movement**: CONTINUOUS free-roam, exactly like the Guild Hub — the
+  renderer's `_freeRoam` walker (generalized with opts: `noKeys`, `noJump`,
+  `parkAtUnit`, `tileAllowed`, `onTile`) drives the model in float coords with
+  real walk/run clips, camera-relative to the live 3D camera. Turn economy is
+  preserved by FENCING: `_startRoam` runs ui.js `_initWasdState(u)` (exposed as
+  `window._initWasdState` + `window._wasdRingSets`) and passes ring1∪ring2∪
+  origin as `tileAllowed`; every tile crossing is a PROVISIONAL move (unit.x/y
+  mutated, same contract as the old tile-stepper), and the stock
+  `_commitWasdMove` bills 1 or 2 AP for wherever the player stands when they
+  cast / attack / end turn / step on a trap (onTile force-commits on enemy
+  bombs + warp runes). After each action resolves the walker restarts with
+  fresh rings (`_roamFrame`) — that's the seamless move→cast→move loop.
+  ShooterControls owns the keyboard (capture-phase WASD/Shift → held set →
+  `hubFreeRoam.setPadInput` vector each frame); pad left stick feeds the same
+  channel as an analog vector. Movement input while aiming drops the aim
+  (throttled `handleBackAction`), and the walk resumes next frame.
+  `parkAtUnit` matters: a battle-roam stop must never write `unit.x/y` (the
+  commit/rollback machinery owns it) — it only parks the model on the unit's
+  logical tile.
 - **Aiming**: fixed reticle at (50%, 40%) of the canvas. Per frame it runs
   `ThreeRenderer.hoverAtScreen(aim)` (real hover pipeline → range/AoE previews
   track the reticle; it also sets the renderer's `_lastMouseClientX/Y` so the

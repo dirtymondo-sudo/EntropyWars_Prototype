@@ -12959,34 +12959,47 @@ const ThreeRenderer = (function () {
         return null;
     }
 
-    function _freeRoamStart(uid) {
+    /* opts (all optional — the hub passes none):
+       - noKeys:      don't install kb listeners; input arrives via setPadInput
+                      (battle roam: ShooterControls owns the keyboard)
+       - noJump:      disable the cosmetic space-hop
+       - tileAllowed: (tx,ty)=>bool extra collision gate — battle roam fences
+                      the walk to the unit's reachable move tiles
+       - onTile:      per-tile-crossing callback (default: _mdFreeRoamTile)
+       - parkAtUnit:  on stop, park the model at the unit's LOGICAL tile and
+                      leave unit.x/y untouched (battle: the commit machinery
+                      owns the position; a stop must never write it) */
+    function _freeRoamStart(uid, opts) {
         if (!uid) return;
         var unit = null;
         try { unit = (state.units || []).find(function (u) { return u.id === uid; }); } catch (e) {}
         _freeRoam = {
             uid: uid,
+            opts: opts || {},
             fx: unit ? unit.x : 0, fy: unit ? unit.y : 0,
             heading: Math.PI,        // face the camera-ish on arrival
             keys: {}, jumpT: -1, lastMs: 0, moving: false, running: false, want: 'idle',
         };
-        _frKeyDown = function (e) {
-            if (!_freeRoam) return;
-            var t = e.target;
-            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-            var k = _frNormKey(e);
-            if (!k) return;
-            _freeRoam.keys[k] = true;
-            if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
-        };
-        _frKeyUp = function (e) {
-            if (!_freeRoam) return;
-            var k = _frNormKey(e);
-            if (k) _freeRoam.keys[k] = false;
-        };
-        _frBlur = function () { if (_freeRoam) _freeRoam.keys = {}; };
-        window.addEventListener('keydown', _frKeyDown, true);
-        window.addEventListener('keyup', _frKeyUp, true);
-        window.addEventListener('blur', _frBlur);
+        if (!_freeRoam.opts.noKeys) {
+            _frKeyDown = function (e) {
+                if (!_freeRoam) return;
+                var t = e.target;
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                var k = _frNormKey(e);
+                if (!k) return;
+                _freeRoam.keys[k] = true;
+                if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
+            };
+            _frKeyUp = function (e) {
+                if (!_freeRoam) return;
+                var k = _frNormKey(e);
+                if (k) _freeRoam.keys[k] = false;
+            };
+            _frBlur = function () { if (_freeRoam) _freeRoam.keys = {}; };
+            window.addEventListener('keydown', _frKeyDown, true);
+            window.addEventListener('keyup', _frKeyUp, true);
+            window.addEventListener('blur', _frBlur);
+        }
     }
 
     function _freeRoamStop() {
@@ -13003,7 +13016,13 @@ const ThreeRenderer = (function () {
                 var e = _getUnitEntry(fr.uid);
                 if (unit && e && e.group) {
                     var ts = CONFIG.tileSize || BASE_TILE;
-                    unit.x = Math.round(fr.fx); unit.y = Math.round(fr.fy);
+                    /* battle roam (parkAtUnit): the WASD-commit machinery owns
+                       unit.x/y — writing it here could resurrect a provisional
+                       position the engine just rolled back. Park the model on
+                       whatever tile the unit LOGICALLY stands on instead. */
+                    if (!(fr.opts && fr.opts.parkAtUnit)) {
+                        unit.x = Math.round(fr.fx); unit.y = Math.round(fr.fy);
+                    }
                     e.group.position.set(unit.x * ts + ts / 2, _tileSurfaceY(unit.x, unit.y, null), unit.y * ts + ts / 2);
                     _playUnitModelAnim(e, 'idle');
                 }
@@ -13014,6 +13033,8 @@ const ThreeRenderer = (function () {
     function _frTileOpen(unit, tx, ty) {
         try {
             if (typeof isInside === 'function' && !isInside(tx, ty)) return false;
+            var fr = _freeRoam;
+            if (fr && fr.opts && fr.opts.tileAllowed && !fr.opts.tileAllowed(tx, ty)) return false;
             if (typeof unitCanTraverse === 'function') {
                 var z = (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
                 return !!unitCanTraverse(unit, tx, ty, z);
@@ -13081,12 +13102,15 @@ const ThreeRenderer = (function () {
         if (unit.x !== tX || unit.y !== tY) {
             unit.x = tX; unit.y = tY;
             try { unit.z = (state.boardHeights && state.boardHeights[tY]) ? (state.boardHeights[tY][tX] || 0) : unit.z; } catch (e) {}
-            try { if (typeof window._mdFreeRoamTile === 'function') window._mdFreeRoamTile(unit); } catch (e) {}
+            try {
+                if (fr.opts && fr.opts.onTile) fr.opts.onTile(unit);
+                else if (typeof window._mdFreeRoamTile === 'function') window._mdFreeRoamTile(unit);
+            } catch (e) {}
             if (!_freeRoam) return;   // the tile change may have started the dungeon (controller stopped)
         }
 
         /* cosmetic hop */
-        if (k.space && fr.jumpT < 0) fr.jumpT = 0;
+        if (k.space && fr.jumpT < 0 && !(fr.opts && fr.opts.noJump)) fr.jumpT = 0;
         var yJump = 0;
         if (fr.jumpT >= 0) {
             fr.jumpT += dt;

@@ -9027,10 +9027,13 @@
            - Camera: behind-the-unit orbit rig driven per-frame through
              camera.snap() (fast-smoothing path). Mouse look via Pointer Lock
              (click the board to grab, ESC releases). Right stick on a pad.
-           - Movement: WASD/left-stick step the active unit tile-by-tile
-             through the SAME ui.js pipeline the keyboard already uses —
-             synthetic keydowns on a held-key cadence (no OS auto-repeat lag),
-             camera-relative because ui.js already rotates by the live yaw.
+           - Movement: CONTINUOUS, like the Guild Hub — the renderer's
+             free-roam walker drives the model in float coordinates with real
+             walk/run clips, camera-relative to the mouse-look yaw. The
+             turn-based economy is preserved by FENCING the walk to the unit's
+             reachable move tiles (ui.js _initWasdState rings) and letting the
+             stock provisional-move commit bill 1 or 2 AP for wherever the
+             player actually stopped when they cast / attack / end the turn.
            - Aiming: a fixed reticle above screen centre; every frame it runs
              the renderer's real hover pipeline (range/AoE previews track it),
              and LMB runs the real click pipeline at the reticle. 1-9 arm
@@ -9046,15 +9049,23 @@
             const LOOK_SENS = 0.16;            // deg of yaw per px of mouse travel
             const PAD_LOOK_DEG = 175;          // deg/sec at full right-stick
             const TILT_MIN = 32, TILT_MAX = 106, TILT_DEFAULT = 74;
-            const AIM_Y_FRAC = 0.40;           // reticle above centre → pick ray lands ahead of the unit
-            const STEP_MS = 160;               // held-key walk cadence (one provisional tile per beat)
+            const AIM_Y_FRAC = 0.46;           // reticle just above true centre
             const ZOOM_STEP = 1.09, ZMULT_MIN = 0.55, ZMULT_MAX = 2.6;
+            /* Over-the-shoulder framing: the ORBIT FOCAL is pushed toward
+               screen-right (and slightly ahead), so the character rides
+               lower-LEFT of centre — the crosshair gets a clear view, like
+               every modern third-person shooter. Offsets shrink as the player
+               zooms in so the shoulder feel stays constant on screen. */
+            const SHOULDER_TILES = 0.95;       // lateral focal offset, in tiles at default zoom
+            const SHOULDER_FWD = 0.35;         // forward push — bias the frame toward what's ahead
 
             let yaw = 0, tilt = TILT_DEFAULT, zoomMult = 1.0;
             let locked = false;
-            let heldOrder = [];                // kb dir keys in press order (w/a/s/d)
-            let padDir = null;                 // left-stick direction, merged with heldOrder
-            let stepIdx = 0, lastStepT = 0;
+            let heldDirs = {};                 // kb w/a/s/d currently held
+            let runHeld = false;               // shift
+            let padVec = null;                 // left stick {x, y}
+            let roamOn = false;                // battle free-roam walker running
+            let aimDropT = 0;                  // throttle for move-cancels-aim
             let holdUntil = 0;                 // entry tween grace — skip per-frame snaps
             let lastOwn = false, lastUnitId = null;
             let lastPickT = 0, lastPick = null;
@@ -9068,8 +9079,13 @@
                     && typeof window._isShooterMode === 'function' && window._isShooterMode();
             }
             function _hubActive() {
+                /* the GUILD HUB roam specifically — the battle roam also runs
+                   through hubFreeRoam, so gate on the dungeon-hub state or the
+                   ownership/stop logic can never tell the two apart */
                 try {
-                    return typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam
+                    return typeof window._isDungeonMode === 'function' && window._isDungeonMode()
+                        && state._mdPhase === 'hub'
+                        && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam
                         && ThreeRenderer.hubFreeRoam.active();
                 } catch (e) { return false; }
             }
@@ -9116,10 +9132,28 @@
                 const base = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
                 return _clamp(base * 2.4 * zoomMult, 0.15, 10.0);
             }
+            /* board-space over-the-shoulder focal for a subject at t {x,y} */
+            function _shoulderFocal(t) {
+                const psi = yaw * Math.PI / 180;
+                const fX = -Math.sin(psi), fY = -Math.cos(psi);   // ground-projected view dir (same mapping as getFollowCamYaw)
+                const rX = Math.cos(psi),  rY = -Math.sin(psi);   // screen-right on the board
+                const k = 1 / Math.max(0.4, zoomMult);
+                return {
+                    x: t.x + rX * SHOULDER_TILES * k + fX * SHOULDER_FWD * k,
+                    y: t.y + rY * SHOULDER_TILES * k + fY * SHOULDER_FWD * k
+                };
+            }
             function _camTarget() {
+                /* while ANY free-roam walker runs (hub or battle) the camera
+                   follows the smooth float position, not the tile snap */
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.active()) {
+                        const p = ThreeRenderer.hubFreeRoam.pos && ThreeRenderer.hubFreeRoam.pos();
+                        if (p) return { x: p.x, y: p.y };
+                    }
+                } catch (e) {}
                 if (_hubActive()) {
-                    const p = state._freeRoamPos
-                        || (ThreeRenderer.hubFreeRoam.pos && ThreeRenderer.hubFreeRoam.pos());
+                    const p = state._freeRoamPos;
                     return p ? { x: p.x, y: p.y } : null;
                 }
                 const u = _localUnit();
@@ -9133,8 +9167,9 @@
                 yaw = (unit && typeof getFollowCamYaw === 'function')
                     ? getFollowCamYaw(unit, camera.yaw) : camera.yaw;
                 tilt = _clamp(tilt || TILT_DEFAULT, TILT_MIN, TILT_MAX);
+                const f = _shoulderFocal(t);
                 camera.moveTo({
-                    x: t.x, y: t.y, zoom: _zoom(), tilt: tilt, yaw: yaw,
+                    x: f.x, y: f.y, zoom: _zoom(), tilt: tilt, yaw: yaw,
                     duration: 420, easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true
                 });
@@ -9147,7 +9182,8 @@
                     state._userPanning = false;
                     _enterShot(_localUnit());
                 } else {
-                    heldOrder = []; padDir = null;
+                    heldDirs = {}; padVec = null; runHeld = false;
+                    if (!_hubActive()) _stopRoam();
                     try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) ThreeRenderer.setUnderfootTile(-1, -1); } catch (e) {}
                 }
             }
@@ -9159,7 +9195,7 @@
             }
             document.addEventListener('pointerlockchange', () => {
                 locked = !!document.pointerLockElement && document.pointerLockElement === _canvas();
-                if (!locked) { heldOrder = []; }
+                if (!locked) { heldDirs = {}; runHeld = false; }
                 _refreshHud(true);
             });
 
@@ -9213,18 +9249,17 @@
                 return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target?.isContentEditable;
             }
             window.addEventListener('keydown', (e) => {
-                if (e._ewShooterSynth) return;
                 if (!_battleActive() || _typing(e) || state.uiDialog) return;
                 const k = (e.key || '').toLowerCase();
                 const dk = DIR_ALIAS[k];
                 if (dk) {
-                    /* swallow the raw event — the cadence loop below emits the
-                       synthetic steps, so walking speed is framerate-stable
-                       instead of riding the OS key auto-repeat */
+                    /* swallow the raw event so ui.js's tile-step handler never
+                       sees it — the held set feeds the continuous walker */
                     e.preventDefault(); e.stopImmediatePropagation();
-                    if (!heldOrder.includes(dk)) heldOrder.push(dk);
+                    heldDirs[dk] = true;
                     return;
                 }
+                if (k === 'shift') { runHeld = true; return; }   // no swallow — nothing else uses it in battle
                 if (/^[1-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault(); e.stopImmediatePropagation();
                     _hotkeySpell(parseInt(k, 10) - 1);
@@ -9233,10 +9268,12 @@
                 if (k === 'q') { _cancelAim(); }
             }, true);
             window.addEventListener('keyup', (e) => {
-                const dk = DIR_ALIAS[(e.key || '').toLowerCase()];
-                if (dk) heldOrder = heldOrder.filter(x => x !== dk);
+                const k = (e.key || '').toLowerCase();
+                const dk = DIR_ALIAS[k];
+                if (dk) heldDirs[dk] = false;
+                if (k === 'shift') runHeld = false;
             }, true);
-            window.addEventListener('blur', () => { heldOrder = []; padDir = null; });
+            window.addEventListener('blur', () => { heldDirs = {}; runHeld = false; padVec = null; });
 
             /* ── abilities ── */
             function _abilityList(u) {
@@ -9258,7 +9295,8 @@
                     if (typeof window._ewToast === 'function') window._ewToast('CANNOT CAST ' + String(sp.name || '').toUpperCase(), 1100);
                     return;
                 }
-                setTool('spell', sp.name);   // ui.js wrapper auto-commits any provisional walk
+                _stopRoam();                 // plant feet on the current tile
+                setTool('spell', sp.name);   // ui.js wrapper commits the walked distance (AP billed here)
                 _refreshHud(true);
             }
             function _cycleSpell(dir) {
@@ -9275,7 +9313,9 @@
             }
 
             function _cancelAim() {
-                if (state.actionMode) { handleBackAction(); _refreshHud(true); }
+                /* aim modes only — cancelling 'move' would roll the walk back
+                   to the turn-start tile (still reachable via ESC if wanted) */
+                if (state.actionMode && state.actionMode !== 'move') { handleBackAction(); _refreshHud(true); }
             }
 
             function _fire() {
@@ -9289,31 +9329,118 @@
                     return;
                 }
                 /* no tool armed → basic attack. Arming attack mode first both
-                   commits a provisional walk (ui.js wrapper) and paints the
-                   attack range; with no walk pending, fire in the same click. */
-                const hadWalk = typeof window._isWasdActive === 'function' && window._isWasdActive();
+                   commits the walked distance (ui.js wrapper → _commitWasdMove
+                   bills the AP) and paints the attack range. If the unit never
+                   left its tile the commit is a free no-op, so fire in the
+                   same click; after a real walk the AP spend resolves first
+                   and the next click fires. */
+                const org = (typeof window._getWasdOrigin === 'function') ? window._getWasdOrigin() : null;
+                const hadMoved = !!(org && (org.x !== u.x || org.y !== u.y));
+                _stopRoam();
                 setActionMode('attack');
-                if (!hadWalk && state.actionMode === 'attack' && ThreeRenderer.clickAtScreen) {
+                if (!hadMoved && state.actionMode === 'attack' && ThreeRenderer.clickAtScreen) {
                     ThreeRenderer.clickAtScreen(aim.x, aim.y);
                 }
             }
 
-            /* ── movement cadence: one provisional ui.js WASD step per beat ── */
-            function _stepFrame(now) {
+            /* ── continuous movement: the hub free-roam walker, fenced to the
+               unit's reachable move tiles. The unit walks in float coords with
+               real walk/run clips; every tile crossing updates unit.x/y as a
+               PROVISIONAL move (exactly what ui.js's tile-stepper did), and the
+               stock _commitWasdMove bills 1 or 2 AP for wherever the player
+               actually stands when they cast, attack or end the turn. ── */
+            function _roamActive() {
+                try {
+                    return roamOn && typeof ThreeRenderer !== 'undefined'
+                        && ThreeRenderer.hubFreeRoam.active();
+                } catch (e) { return false; }
+            }
+            function _inputVec() {
+                let ix = (heldDirs.d ? 1 : 0) - (heldDirs.a ? 1 : 0);
+                let iy = (heldDirs.s ? 1 : 0) - (heldDirs.w ? 1 : 0);
+                if (!ix && !iy && padVec) { ix = padVec.x; iy = padVec.y; }
+                return { ix: _clamp(ix, -1, 1), iy: _clamp(iy, -1, 1) };
+            }
+            function _startRoam(u) {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return;
+                if (typeof window._initWasdState !== 'function' || typeof posKey !== 'function') return;
+                if (!state.actionMode) {
+                    /* mirror ui.js's first-WASD-press setup so the move rings
+                       paint and the commit machinery is armed */
+                    state.actionMode = 'move';
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                }
+                if (state.actionMode !== 'move') return;
+                window._initWasdState(u);
+                const sets = (typeof window._wasdRingSets === 'function') ? window._wasdRingSets() : null;
+                const allowed = new Set([posKey(u.x, u.y)]);
+                if (sets && sets.r1) sets.r1.forEach(k => allowed.add(k));
+                if (sets && sets.r2) sets.r2.forEach(k => allowed.add(k));
+                ThreeRenderer.hubFreeRoam.start(u.id, {
+                    noKeys: true,               // ShooterControls owns the keyboard
+                    noJump: true,
+                    parkAtUnit: true,           // never let a stop write unit.x/y
+                    tileAllowed: (tx, ty) => allowed.has(posKey(tx, ty)),
+                    onTile: (u2) => {
+                        /* stock rule: stepping onto an enemy bomb or a warp
+                           rune commits the move on the spot (detonation/warp
+                           resolve inside _commitWasdMove) */
+                        try {
+                            const bomb = state.bombs && state.bombs.some(b => b.x === u2.x && b.y === u2.y && b.owner !== u2.player);
+                            const rune = state.warpRunes && state.warpRunes.some(r => r.x === u2.x && r.y === u2.y);
+                            if ((bomb || rune) && typeof window._commitWasdMove === 'function') window._commitWasdMove(u2);
+                        } catch (e) {}
+                        if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                    },
+                });
+                roamOn = true;
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+            function _stopRoam() {
+                if (!roamOn) return;
+                roamOn = false;
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.active()) {
+                        ThreeRenderer.hubFreeRoam.stop();
+                    }
+                } catch (e) {}
+            }
+            function _roamFrame(now) {
                 const u = _localUnit();
-                if (!u) return;
-                if (state._actionExecuting || state.uiDialog) return;
-                const dirs = heldOrder.length ? heldOrder : (padDir ? [padDir] : []);
-                if (!dirs.length) { stepIdx = 0; return; }
-                if (now - lastStepT < STEP_MS) return;
-                lastStepT = now;
-                /* aiming? one movement press drops the aim and walks — the
-                   fastest possible aim→move transition */
-                if (state.actionMode && state.actionMode !== 'move') handleBackAction();
-                const key = dirs[stepIdx++ % dirs.length];   // alternate held keys → diagonals
-                const ev = new KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true });
-                ev._ewShooterSynth = true;
-                document.dispatchEvent(ev);
+                const busy = !u || state._actionExecuting || state.uiDialog
+                    || state._walkAnimActive
+                    || (typeof isCinematicActive === 'function' && isCinematicActive());
+                const wasdLive = typeof window._isWasdActive === 'function' && window._isWasdActive();
+                const v = _inputVec();
+                const moving = Math.abs(v.ix) > 0.01 || Math.abs(v.iy) > 0.01;
+
+                /* movement input while aiming drops the aim — the walk resumes
+                   the next frame. Fastest possible aim→move transition. */
+                if (!busy && moving && state.actionMode && state.actionMode !== 'move'
+                    && now - aimDropT > 220) {
+                    aimDropT = now;
+                    handleBackAction();
+                }
+
+                if (_roamActive()) {
+                    /* the commit machinery fired (spell armed / attack / end
+                       turn) or the engine got busy — plant feet immediately */
+                    if (busy || !wasdLive || state.actionMode !== 'move') { _stopRoam(); return; }
+                    try {
+                        ThreeRenderer.hubFreeRoam.setPadInput(v.ix, v.iy,
+                            runHeld || (padVec && Math.hypot(padVec.x, padVec.y) > 0.92));
+                    } catch (e) {}
+                    return;
+                }
+                /* (re)start walking whenever the unit is free and has moves
+                   left — this is what makes cast→move seamless: the instant an
+                   action resolves the walker comes back */
+                if (!busy && !wasdLive && typeof canUnitMove === 'function' && canUnitMove(u)
+                    && (!state.actionMode || state.actionMode === 'move')) {
+                    _startRoam(u);
+                }
             }
 
             /* ── HUD: reticle, take-control hint, spell hotbar ── */
@@ -9384,7 +9511,7 @@
                 /* take-control hint (kb+mouse only — a pad needs no lock) */
                 if (_enabled() && !_aimActive() && own) {
                     const msg = inBattle
-                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD MOVE · MOUSE LOOK · 1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · SPACE END TURN · ESC RELEASES</span>'
+                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN AROUND · MOUSE LOOK · 1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · SPACE END TURN · ESC RELEASES</span>'
                         : '🎯 CLICK TO TAKE CONTROL — WASD WALK · MOUSE LOOK · SHIFT RUN · SPACE HOP';
                     if (hintEl._ewMsg !== msg) { hintEl._ewMsg = msg; hintEl.innerHTML = msg; }
                     hintEl.style.display = 'block';
@@ -9443,15 +9570,19 @@
                 if (uid != null || !own) lastUnitId = uid;
 
                 _refreshHud(false);
-                if (!own) return;
+                if (!own) {
+                    if (roamOn && !_hubActive()) _stopRoam();
+                    return;
+                }
 
-                if (_battleActive()) _stepFrame(now);
+                if (_battleActive()) _roamFrame(now);
 
-                /* camera */
+                /* camera — over-the-shoulder focal, per-frame */
                 if (now >= holdUntil) {
                     const t = _camTarget();
                     if (t && typeof camera !== 'undefined' && camera) {
-                        camera.snap({ x: t.x, y: t.y, tilt: tilt, yaw: yaw, zoom: _zoom() });
+                        const f = _shoulderFocal(t);
+                        camera.snap({ x: f.x, y: f.y, tilt: tilt, yaw: yaw, zoom: _zoom() });
                     }
                 }
 
@@ -9470,15 +9601,13 @@
                     }
                 }
 
-                /* underfoot tile marker */
+                /* underfoot tile marker — tracks the WALKER's live tile */
                 try {
                     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) {
-                        if (_hubActive()) {
-                            const p = state._freeRoamPos;
-                            if (p) ThreeRenderer.setUnderfootTile(Math.round(p.x), Math.round(p.y));
-                        } else if (u) {
-                            ThreeRenderer.setUnderfootTile(u.x, u.y);
-                        }
+                        const rp = ThreeRenderer.hubFreeRoam.active()
+                            ? ThreeRenderer.hubFreeRoam.pos() : null;
+                        if (rp) ThreeRenderer.setUnderfootTile(Math.round(rp.x), Math.round(rp.y));
+                        else if (u) ThreeRenderer.setUnderfootTile(u.x, u.y);
                     }
                 } catch (e) {}
             }
@@ -9513,8 +9642,8 @@
                         }
                     } catch (e) {}
                 } else {
-                    padDir = (Math.abs(lx) < 0.45 && Math.abs(ly) < 0.45) ? null
-                        : (Math.abs(lx) > Math.abs(ly) ? (lx > 0 ? 'd' : 'a') : (ly > 0 ? 's' : 'w'));
+                    /* analog vector straight into the battle walker */
+                    padVec = (lx || ly) ? { x: lx, y: ly } : null;
                 }
 
                 const bind = (id) => (window.EWPad && EWPad.getBinding) ? EWPad.getBinding(id) : -1;

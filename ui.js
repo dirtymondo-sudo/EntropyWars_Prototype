@@ -8977,6 +8977,11 @@
         function _isWasdActive() { return _wasdOrigin !== null; }
         window._isWasdActive = _isWasdActive;
         window._getWasdOrigin = () => _wasdOrigin;
+        /* ShooterControls (battle.js) drives the same provisional-move
+           machinery from its continuous free-roam walker: it inits the rings,
+           fences the walk to them, and lets the stock commit paths bill AP. */
+        window._initWasdState = (unit) => _initWasdState(unit);
+        window._wasdRingSets = () => ({ r1: _wasdMoveTiles1, r2: _wasdMoveTiles2 });
 
         function _initWasdState(unit) {
             _wasdOrigin = { x: unit.x, y: unit.y };
