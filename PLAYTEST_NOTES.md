@@ -4,6 +4,64 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## STRIKE MODE — third-person shooter controls (2026-07-09, EXPERIMENTAL)
+
+New mode card "Strike Mode" 🎯 (BETA) in the PvP picker. Rules = a straight TDM
+clone (`MULTIPLAYER_MODES.shooter`, state.js, `scoringType:'kills'`,
+`isShooter:true` is the control-scheme flag; `window._isShooterMode()`).
+Intent: prove out modern third-person controls, then graduate them to the whole
+game. Nothing about turns/AP/spells changed — only how the player drives them.
+
+Architecture (all inside `ShooterControls`, battle.js, right after the
+camera-mode block; `window.ShooterControls`, `window._shooterCamOwns()`):
+- **Camera**: per-frame `camera.snap({x,y,tilt,yaw,zoom})` parked on the active
+  unit while a LOCAL unit is active (releases during AI turns so stock framing
+  shows the enemy acting). Mouse look via Pointer Lock — click the board to
+  grab, ESC releases; right stick on a pad. Tilt clamped 32–106°, wheel/
+  triggers zoom. Every competing camera writer either checks
+  `window._shooterCamOwns()` (ui.js WASD focus pans, EWPad `_cameraFrame`,
+  `_mdFreeRoamCam`) or is cancelled by the per-frame snap.
+- **Movement**: WASD/left stick swallow the raw keydowns (capture phase) and
+  re-emit synthetic steps (`_ewShooterSynth` flag) on a 160 ms cadence through
+  the EXISTING ui.js provisional-WASD pipeline — ring validation, commit rules,
+  camera-relative rotation via `state.dioramaYawDeg` all reused. Held W+D
+  alternates keys → staircase diagonals. Pressing a move key while aiming
+  cancels the aim first (fast aim→move transition).
+- **Aiming**: fixed reticle at (50%, 40%) of the canvas. Per frame it runs
+  `ThreeRenderer.hoverAtScreen(aim)` (real hover pipeline → range/AoE previews
+  track the reticle; it also sets the renderer's `_lastMouseClientX/Y` so the
+  camera-move hover refresh follows the reticle). LMB = `clickAtScreen(aim)`
+  (the real click pipeline: unit-sprite z, stacked units, towers). 1-9 arm
+  spells (`setTool('spell', name)` — ui.js wrapper auto-commits a provisional
+  walk), same digit or RMB/Q cancels, LMB with nothing armed = basic attack
+  (arms 'attack' mode; if no walk was pending it fires the same click).
+- **HUD**: DIY DOM strip (`#shooterBar`, bottom 17%) listing abilities with
+  hotkey/AP/MP, `#shooterReticle` (tints red/green over enemy/ally),
+  `#shooterHint` "click to take control". Underfoot cyan decal via new
+  `ThreeRenderer.setUnderfootTile(x,y)` (excluded from rebuildHighlights sweep).
+- **Gamepad**: `window._shooterPadFrame(...)` — EWPad's `_frame` hands the whole
+  pad frame over while the layer owns the camera (gate in state.js). Left stick
+  walk, right stick look, A fire, B cancel, X(bound endTurn) end turn, L/R
+  cycle spells, triggers zoom, start pause, respects EWPad bindings/opts.
+- **Renderer API added** (three-renderer.js): `pickAtScreen`, `hoverAtScreen`,
+  `clickAtScreen` (extracted `_screenClick`), `setUnderfootTile`, `getCanvas`,
+  `hubFreeRoam.setPadInput(ix,iy,run)` + `hubFreeRoam.pos()`.
+
+**Guild-Hub camera-follow FIX**: `_mdFreeRoamCam` (battle.js) previously wrote
+`camera.x/y` bare, which left `_computedElevZ` (only refreshed inside
+`camera._apply()`) and the smoothing rig frozen at hub entry → the eye never
+followed the walker. It now calls `camera.snap({x,y})` per tick (and defers
+entirely to ShooterControls when that owns the camera — the hub free-roam now
+has the same pointer-lock mouse-look TPS camera; hub movement was already
+camera-relative so mouse-look steers naturally). Pads walk the hub through
+`hubFreeRoam.setPadInput`.
+
+Playtest watch-list for this mode: pointer-lock grab/release timing, reticle
+pick landing short (tilt too low → ray hits near the unit; crank tilt up to aim
+far), hotbar overlapping the Horologe drum, first-click-swallow when grabbing
+lock, WASD cadence vs `_wasdAnimating` (steps dropped while a hop tween runs),
+`_userPanning` leaks freezing the focal height.
+
 ## MYSTERY DUNGEON round 3 fixes (2026-07-08, same session) — feedback pass
 
 - **Own roster, start ALONE:** MD progression is separate from account unlocks —

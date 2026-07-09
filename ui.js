@@ -9233,7 +9233,7 @@
                         const cursorUnit = unitAt(nx, ny);
                         if (cursorUnit && !cursorUnit.dead) focusUnitPanel(cursorUnit.id, null, 'hover');
                         else focusUnitPanel(unit.id, null, 'hover');
-                        if (!state.cameraDisabled) {
+                        if (!state.cameraDisabled && !(window._shooterCamOwns && window._shooterCamOwns())) {
                             const userZoom = getUserZoomScale();
                             const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();
                             focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });
@@ -9282,7 +9282,9 @@
                     }
                 });
 
-                if (!state.cameraDisabled) {
+                // the third-person shooter camera follows the unit itself —
+                // a competing focus pan here would stutter the follow shot
+                if (!state.cameraDisabled && !(window._shooterCamOwns && window._shooterCamOwns())) {
                     const userZoom = getUserZoomScale();
                     const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();
                     focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });

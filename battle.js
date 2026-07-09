@@ -9014,6 +9014,536 @@
         window.CAMERA_MODE_LABELS = CAMERA_MODE_LABELS;
         window.CAMERA_MODE_ICONS = CAMERA_MODE_ICONS;
 
+        /* ═══════════════════════════════════════════════════════════════════
+           SHOOTER CONTROLS — experimental third-person control layer
+           ═══════════════════════════════════════════════════════════════════
+           Active in the 'shooter' game mode (MULTIPLAYER_MODES.shooter,
+           isShooter flag) and in the Mystery Dungeon hub free-roam. The design
+           goal: drive the EXISTING battle engine (WASD provisional stepping in
+           ui.js, setTool/clickTile targeting, blitz turns) through modern
+           third-person controls, so nothing about the rules changes — only how
+           the player physically plays:
+
+           - Camera: behind-the-unit orbit rig driven per-frame through
+             camera.snap() (fast-smoothing path). Mouse look via Pointer Lock
+             (click the board to grab, ESC releases). Right stick on a pad.
+           - Movement: WASD/left-stick step the active unit tile-by-tile
+             through the SAME ui.js pipeline the keyboard already uses —
+             synthetic keydowns on a held-key cadence (no OS auto-repeat lag),
+             camera-relative because ui.js already rotates by the live yaw.
+           - Aiming: a fixed reticle above screen centre; every frame it runs
+             the renderer's real hover pipeline (range/AoE previews track it),
+             and LMB runs the real click pipeline at the reticle. 1-9 arm
+             spells (auto-committing any provisional walk — ui.js wrappers),
+             LMB with no spell armed is basic attack, RMB/Q cancels aim.
+           - Turn flow: untouched. AP drains through the stock actions and the
+             engine auto-advances; during AI turns the layer releases the
+             camera so the stock framing shows the enemy acting.
+           While it owns the camera every competing writer must yield — they
+           check window._shooterCamOwns() (ui.js focus pans, EWPad camera,
+           _mdFreeRoamCam) or are cancelled by the per-frame snap (tweens). */
+        const ShooterControls = (function () {
+            const LOOK_SENS = 0.16;            // deg of yaw per px of mouse travel
+            const PAD_LOOK_DEG = 175;          // deg/sec at full right-stick
+            const TILT_MIN = 32, TILT_MAX = 106, TILT_DEFAULT = 74;
+            const AIM_Y_FRAC = 0.40;           // reticle above centre → pick ray lands ahead of the unit
+            const STEP_MS = 160;               // held-key walk cadence (one provisional tile per beat)
+            const ZOOM_STEP = 1.09, ZMULT_MIN = 0.55, ZMULT_MAX = 2.6;
+
+            let yaw = 0, tilt = TILT_DEFAULT, zoomMult = 1.0;
+            let locked = false;
+            let heldOrder = [];                // kb dir keys in press order (w/a/s/d)
+            let padDir = null;                 // left-stick direction, merged with heldOrder
+            let stepIdx = 0, lastStepT = 0;
+            let holdUntil = 0;                 // entry tween grace — skip per-frame snaps
+            let lastOwn = false, lastUnitId = null;
+            let lastPickT = 0, lastPick = null;
+            let suppressClickUntil = 0;        // swallow the click that grabbed pointer lock
+            let reticleEl = null, hintEl = null, barEl = null, barKey = '';
+
+            function _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+            function _battleActive() {
+                return state.phase === 'battle' && !state.winner
+                    && typeof window._isShooterMode === 'function' && window._isShooterMode();
+            }
+            function _hubActive() {
+                try {
+                    return typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam
+                        && ThreeRenderer.hubFreeRoam.active();
+                } catch (e) { return false; }
+            }
+            function _enabled() { return _battleActive() || _hubActive(); }
+
+            function _localUnit() {
+                if (!_battleActive()) return null;
+                const id = state._blitzActiveUnitId;
+                if (id == null) return null;
+                const u = state.units.find(un => un.id === id && !un.dead);
+                if (!u) return null;
+                if (state.controllers?.[u.player] !== CTRL.LOCAL) return null;
+                if (state.autoPlayers?.[u.player]) return null;
+                return u;
+            }
+
+            function _owns() {
+                if (state.cameraDisabled || state._fullMapOverview) return false;
+                if (_hubActive()) return true;
+                return !!_localUnit();
+            }
+            window._shooterCamOwns = _owns;
+
+            function _canvas() {
+                try {
+                    return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getCanvas)
+                        ? ThreeRenderer.getCanvas() : null;
+                } catch (e) { return null; }
+            }
+            function _aimClient() {
+                const c = _canvas();
+                if (!c) return null;
+                const r = c.getBoundingClientRect();
+                if (!r.width || !r.height) return null;
+                return { x: r.left + r.width / 2, y: r.top + r.height * AIM_Y_FRAC };
+            }
+            /* the reticle is live under pointer lock OR when a pad is driving
+               (pad players never lock the pointer) */
+            function _aimActive() {
+                return locked || (window.EWInput && window.EWInput.device === 'pad');
+            }
+
+            function _zoom() {
+                const base = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
+                return _clamp(base * 2.4 * zoomMult, 0.15, 10.0);
+            }
+            function _camTarget() {
+                if (_hubActive()) {
+                    const p = state._freeRoamPos
+                        || (ThreeRenderer.hubFreeRoam.pos && ThreeRenderer.hubFreeRoam.pos());
+                    return p ? { x: p.x, y: p.y } : null;
+                }
+                const u = _localUnit();
+                return u ? { x: u.x, y: u.y } : null;
+            }
+
+            /* ── ownership transitions ── */
+            function _enterShot(unit) {
+                const t = _camTarget();
+                if (!t) return;
+                yaw = (unit && typeof getFollowCamYaw === 'function')
+                    ? getFollowCamYaw(unit, camera.yaw) : camera.yaw;
+                tilt = _clamp(tilt || TILT_DEFAULT, TILT_MIN, TILT_MAX);
+                camera.moveTo({
+                    x: t.x, y: t.y, zoom: _zoom(), tilt: tilt, yaw: yaw,
+                    duration: 420, easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true
+                });
+                holdUntil = performance.now() + 440;
+            }
+            function _onOwnChange(own) {
+                if (own) {
+                    /* an interrupted right-stick orbit can leave the hand-pan
+                       flag set — it would freeze the focal height under us */
+                    state._userPanning = false;
+                    _enterShot(_localUnit());
+                } else {
+                    heldOrder = []; padDir = null;
+                    try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) ThreeRenderer.setUnderfootTile(-1, -1); } catch (e) {}
+                }
+            }
+
+            /* ── pointer lock ── */
+            function _requestLock() {
+                const c = _canvas();
+                if (c && c.requestPointerLock) { try { c.requestPointerLock(); } catch (e) {} }
+            }
+            document.addEventListener('pointerlockchange', () => {
+                locked = !!document.pointerLockElement && document.pointerLockElement === _canvas();
+                if (!locked) { heldOrder = []; }
+                _refreshHud(true);
+            });
+
+            /* While locked, the OS cursor is frozen — swallow the raw pointer
+               stream in the CAPTURE phase so the renderer's hover/click
+               handlers never act on stale coordinates. */
+            window.addEventListener('mousemove', (e) => {
+                if (!locked) return;
+                e.stopImmediatePropagation();
+                if (!_owns()) return;
+                yaw += e.movementX * LOOK_SENS;
+                tilt = _clamp(tilt - e.movementY * LOOK_SENS, TILT_MIN, TILT_MAX);
+            }, true);
+
+            window.addEventListener('mousedown', (e) => {
+                if (!_enabled()) return;
+                const c = _canvas();
+                if (!c) return;
+                if (!locked) {
+                    /* first click on the board = take control, nothing else */
+                    if (e.target === c && _owns()) {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        suppressClickUntil = performance.now() + 400;
+                        _requestLock();
+                    }
+                    return;
+                }
+                e.preventDefault(); e.stopImmediatePropagation();
+                if (e.button === 0) _fire();
+                else if (e.button === 2) _cancelAim();
+            }, true);
+            window.addEventListener('click', (e) => {
+                if (locked || performance.now() < suppressClickUntil) {
+                    if (_enabled()) { e.preventDefault(); e.stopImmediatePropagation(); }
+                }
+            }, true);
+            window.addEventListener('contextmenu', (e) => {
+                if (locked && _enabled()) { e.preventDefault(); e.stopImmediatePropagation(); }
+            }, true);
+            window.addEventListener('wheel', (e) => {
+                if (!locked || !_owns()) return;
+                e.preventDefault(); e.stopImmediatePropagation();
+                zoomMult = _clamp(zoomMult * (e.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP), ZMULT_MIN, ZMULT_MAX);
+            }, { capture: true, passive: false });
+
+            /* ── keyboard: held-dir tracking + spell hotkeys (battle only; the
+               hub free-roam has its own continuous key listeners) ── */
+            const DIR_ALIAS = { w: 'w', a: 'a', s: 's', d: 'd', arrowup: 'w', arrowleft: 'a', arrowdown: 's', arrowright: 'd' };
+            function _typing(e) {
+                const t = e.target?.tagName;
+                return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target?.isContentEditable;
+            }
+            window.addEventListener('keydown', (e) => {
+                if (e._ewShooterSynth) return;
+                if (!_battleActive() || _typing(e) || state.uiDialog) return;
+                const k = (e.key || '').toLowerCase();
+                const dk = DIR_ALIAS[k];
+                if (dk) {
+                    /* swallow the raw event — the cadence loop below emits the
+                       synthetic steps, so walking speed is framerate-stable
+                       instead of riding the OS key auto-repeat */
+                    e.preventDefault(); e.stopImmediatePropagation();
+                    if (!heldOrder.includes(dk)) heldOrder.push(dk);
+                    return;
+                }
+                if (/^[1-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault(); e.stopImmediatePropagation();
+                    _hotkeySpell(parseInt(k, 10) - 1);
+                    return;
+                }
+                if (k === 'q') { _cancelAim(); }
+            }, true);
+            window.addEventListener('keyup', (e) => {
+                const dk = DIR_ALIAS[(e.key || '').toLowerCase()];
+                if (dk) heldOrder = heldOrder.filter(x => x !== dk);
+            }, true);
+            window.addEventListener('blur', () => { heldOrder = []; padDir = null; });
+
+            /* ── abilities ── */
+            function _abilityList(u) {
+                return [...(u.spells || []), ...(u._raceAbilities || [])];
+            }
+            function _spellUsable(u, sp) {
+                if (typeof canAffordSpell === 'function' && !canAffordSpell(u, sp)) return false;
+                if ((sp.cost || 0) > (u.mp || 0)) return false;
+                return true;
+            }
+            function _hotkeySpell(idx) {
+                const u = _localUnit();
+                if (!u || state._actionExecuting) return;
+                const sp = _abilityList(u)[idx];
+                if (!sp) { if (typeof playErrorSfx === 'function') playErrorSfx(); return; }
+                if (state.actionMode === 'spell' && state.selectedTool === sp.name) { _cancelAim(); return; }
+                if (!_spellUsable(u, sp)) {
+                    if (typeof playErrorSfx === 'function') playErrorSfx();
+                    if (typeof window._ewToast === 'function') window._ewToast('CANNOT CAST ' + String(sp.name || '').toUpperCase(), 1100);
+                    return;
+                }
+                setTool('spell', sp.name);   // ui.js wrapper auto-commits any provisional walk
+                _refreshHud(true);
+            }
+            function _cycleSpell(dir) {
+                const u = _localUnit();
+                if (!u) return;
+                const list = _abilityList(u);
+                if (!list.length) return;
+                let cur = (state.actionMode === 'spell' && state.selectedTool)
+                    ? list.findIndex(s => s.name === state.selectedTool) : -1;
+                for (let i = 1; i <= list.length; i++) {
+                    const idx = ((cur + dir * i) % list.length + list.length) % list.length;
+                    if (_spellUsable(u, list[idx])) { _hotkeySpell(idx); return; }
+                }
+            }
+
+            function _cancelAim() {
+                if (state.actionMode) { handleBackAction(); _refreshHud(true); }
+            }
+
+            function _fire() {
+                const u = _localUnit();
+                if (!u || state._actionExecuting) return;
+                const aim = _aimClient();
+                if (!aim || typeof ThreeRenderer === 'undefined') return;
+                if (state.actionMode === 'spell' || state.actionMode === 'attack') {
+                    /* the reticle IS the mouse: run the exact click pipeline */
+                    if (ThreeRenderer.clickAtScreen) ThreeRenderer.clickAtScreen(aim.x, aim.y);
+                    return;
+                }
+                /* no tool armed → basic attack. Arming attack mode first both
+                   commits a provisional walk (ui.js wrapper) and paints the
+                   attack range; with no walk pending, fire in the same click. */
+                const hadWalk = typeof window._isWasdActive === 'function' && window._isWasdActive();
+                setActionMode('attack');
+                if (!hadWalk && state.actionMode === 'attack' && ThreeRenderer.clickAtScreen) {
+                    ThreeRenderer.clickAtScreen(aim.x, aim.y);
+                }
+            }
+
+            /* ── movement cadence: one provisional ui.js WASD step per beat ── */
+            function _stepFrame(now) {
+                const u = _localUnit();
+                if (!u) return;
+                if (state._actionExecuting || state.uiDialog) return;
+                const dirs = heldOrder.length ? heldOrder : (padDir ? [padDir] : []);
+                if (!dirs.length) { stepIdx = 0; return; }
+                if (now - lastStepT < STEP_MS) return;
+                lastStepT = now;
+                /* aiming? one movement press drops the aim and walks — the
+                   fastest possible aim→move transition */
+                if (state.actionMode && state.actionMode !== 'move') handleBackAction();
+                const key = dirs[stepIdx++ % dirs.length];   // alternate held keys → diagonals
+                const ev = new KeyboardEvent('keydown', { key: key, bubbles: true, cancelable: true });
+                ev._ewShooterSynth = true;
+                document.dispatchEvent(ev);
+            }
+
+            /* ── HUD: reticle, take-control hint, spell hotbar ── */
+            function _mkEl(id, css) {
+                let el = document.getElementById(id);
+                if (el) return el;
+                el = document.createElement('div');
+                el.id = id;
+                el.style.cssText = css;
+                document.body.appendChild(el);
+                return el;
+            }
+            function _ensureHud() {
+                if (!reticleEl) {
+                    reticleEl = _mkEl('shooterReticle',
+                        'position:fixed;width:26px;height:26px;margin:-13px 0 0 -13px;z-index:3600;' +
+                        'pointer-events:none;display:none;');
+                    reticleEl.innerHTML =
+                        '<svg viewBox="0 0 26 26" width="26" height="26">' +
+                        '<circle cx="13" cy="13" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.85"/>' +
+                        '<circle cx="13" cy="13" r="1.8" fill="currentColor"/>' +
+                        '<line x1="13" y1="0" x2="13" y2="6" stroke="currentColor" stroke-width="1.6"/>' +
+                        '<line x1="13" y1="20" x2="13" y2="26" stroke="currentColor" stroke-width="1.6"/>' +
+                        '<line x1="0" y1="13" x2="6" y2="13" stroke="currentColor" stroke-width="1.6"/>' +
+                        '<line x1="20" y1="13" x2="26" y2="13" stroke="currentColor" stroke-width="1.6"/></svg>';
+                    reticleEl.style.color = '#e8ecff';
+                    reticleEl.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))';
+                }
+                if (!hintEl) {
+                    hintEl = _mkEl('shooterHint',
+                        'position:fixed;left:50%;bottom:26%;transform:translateX(-50%);z-index:3600;' +
+                        'font-family:DotGothic16,monospace;font-size:14px;letter-spacing:0.16em;text-align:center;' +
+                        'color:#e8ecff;background:rgba(8,10,18,0.82);border:1px solid rgba(140,160,220,0.45);' +
+                        'padding:8px 16px;pointer-events:none;display:none;white-space:nowrap;' +
+                        'clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);' +
+                        'text-shadow:0 1px 3px rgba(0,0,0,0.9);');
+                }
+                if (!barEl) {
+                    barEl = _mkEl('shooterBar',
+                        'position:fixed;left:50%;bottom:17%;transform:translateX(-50%);z-index:3600;' +
+                        'display:none;gap:6px;font-family:DotGothic16,monospace;');
+                }
+            }
+            function _refreshHud(force) {
+                _ensureHud();
+                const own = _owns();
+                const inBattle = _battleActive();
+                const u = _localUnit();
+
+                /* reticle rides the aim point */
+                const aim = _aimActive() && own ? _aimClient() : null;
+                if (aim) {
+                    reticleEl.style.display = 'block';
+                    reticleEl.style.left = aim.x + 'px';
+                    reticleEl.style.top = aim.y + 'px';
+                    const aiming = inBattle && (state.actionMode === 'spell' || state.actionMode === 'attack');
+                    let tint = aiming ? '#7fd4ff' : '#e8ecff';
+                    const pk = lastPick;
+                    if (inBattle && u && pk && pk.unitId != null) {
+                        const t = state.units.find(x => x.id === pk.unitId && !x.dead);
+                        if (t) tint = t.player === u.player ? '#8effa9' : '#ff6a6a';
+                    }
+                    reticleEl.style.color = tint;
+                } else {
+                    reticleEl.style.display = 'none';
+                }
+
+                /* take-control hint (kb+mouse only — a pad needs no lock) */
+                if (_enabled() && !_aimActive() && own) {
+                    const msg = inBattle
+                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD MOVE · MOUSE LOOK · 1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · SPACE END TURN · ESC RELEASES</span>'
+                        : '🎯 CLICK TO TAKE CONTROL — WASD WALK · MOUSE LOOK · SHIFT RUN · SPACE HOP';
+                    if (hintEl._ewMsg !== msg) { hintEl._ewMsg = msg; hintEl.innerHTML = msg; }
+                    hintEl.style.display = 'block';
+                } else {
+                    hintEl.style.display = 'none';
+                }
+
+                /* spell hotbar (battle only) */
+                if (inBattle && u) {
+                    const list = _abilityList(u).slice(0, 9);
+                    const key = [u.id, u.ap, u.mp, state.actionMode, state.selectedTool,
+                        list.map(s => (s.name || '') + ':' + (s._cooldownLeft || s.cooldownLeft || 0)).join(',')].join('|');
+                    if (force || key !== barKey) {
+                        barKey = key;
+                        barEl.style.display = 'flex';
+                        barEl.innerHTML = '';
+                        list.forEach((sp, i) => {
+                            const usable = _spellUsable(u, sp);
+                            const sel = state.actionMode === 'spell' && state.selectedTool === sp.name;
+                            const slot = document.createElement('div');
+                            slot.style.cssText =
+                                'min-width:64px;padding:5px 8px;text-align:center;cursor:pointer;pointer-events:auto;' +
+                                'font-size:11px;letter-spacing:0.08em;color:' + (usable ? '#e8ecff' : 'rgba(160,168,196,0.5)') + ';' +
+                                'background:rgba(8,10,18,' + (sel ? '0.95' : '0.78') + ');' +
+                                'border:1px solid ' + (sel ? '#7fd4ff' : usable ? 'rgba(140,160,220,0.45)' : 'rgba(140,160,220,0.2)') + ';' +
+                                (sel ? 'box-shadow:0 0 10px rgba(127,212,255,0.4);' : '') +
+                                'clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);';
+                            const apCost = (typeof getSpellApCost === 'function') ? getSpellApCost(sp) : 1;
+                            slot.innerHTML =
+                                '<div style="font-size:14px">' + (sp.icon || '✦') + ' <span style="opacity:0.7">' + (i + 1) + '</span></div>' +
+                                '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:86px">' + (sp.name || '?') + '</div>' +
+                                '<div style="opacity:0.7;font-size:10px">' + apCost + 'AP' + (sp.cost ? ' ' + sp.cost + 'MP' : '') + '</div>';
+                            slot.addEventListener('mousedown', (ev) => { ev.stopPropagation(); ev.preventDefault(); _hotkeySpell(i); });
+                            barEl.appendChild(slot);
+                        });
+                    }
+                } else if (barEl.style.display !== 'none') {
+                    barEl.style.display = 'none';
+                    barKey = '';
+                }
+            }
+
+            /* ── per-frame driver ── */
+            function _frame() {
+                requestAnimationFrame(_frame);
+                const now = performance.now();
+                const own = _owns();
+                if (own !== lastOwn) { _onOwnChange(own); lastOwn = own; }
+
+                /* release a stale pointer lock when the mode ends */
+                if (locked && !_enabled()) { try { document.exitPointerLock(); } catch (e) {} }
+
+                const u = _localUnit();
+                const uid = u ? u.id : null;
+                if (own && uid != null && lastUnitId != null && uid !== lastUnitId) _enterShot(u);
+                if (uid != null || !own) lastUnitId = uid;
+
+                _refreshHud(false);
+                if (!own) return;
+
+                if (_battleActive()) _stepFrame(now);
+
+                /* camera */
+                if (now >= holdUntil) {
+                    const t = _camTarget();
+                    if (t && typeof camera !== 'undefined' && camera) {
+                        camera.snap({ x: t.x, y: t.y, tilt: tilt, yaw: yaw, zoom: _zoom() });
+                    }
+                }
+
+                /* reticle hover + pick (pointer locked, or pad driving) */
+                if (_aimActive() && typeof ThreeRenderer !== 'undefined') {
+                    const aim = _aimClient();
+                    if (aim) {
+                        if (ThreeRenderer.hoverAtScreen && _battleActive()
+                            && !state._actionExecuting && !state._walkAnimActive) {
+                            ThreeRenderer.hoverAtScreen(aim.x, aim.y);
+                        }
+                        if (now - lastPickT > 120) {
+                            lastPickT = now;
+                            lastPick = ThreeRenderer.pickAtScreen ? ThreeRenderer.pickAtScreen(aim.x, aim.y) : null;
+                        }
+                    }
+                }
+
+                /* underfoot tile marker */
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) {
+                        if (_hubActive()) {
+                            const p = state._freeRoamPos;
+                            if (p) ThreeRenderer.setUnderfootTile(Math.round(p.x), Math.round(p.y));
+                        } else if (u) {
+                            ThreeRenderer.setUnderfootTile(u.x, u.y);
+                        }
+                    }
+                } catch (e) {}
+            }
+            requestAnimationFrame(_frame);
+
+            /* ── gamepad: called by EWPad's loop INSTEAD of its stock battle
+               handling whenever this layer owns the camera. Natural TPS layout:
+               left stick walk, right stick look, A fire, B cancel, X end turn,
+               triggers zoom, L/R cycle spells, +/start pause. ── */
+            window._shooterPadFrame = function (gp, dt, now, pressed, prevPressed, ctx) {
+                if (!_owns()) return false;
+                const opts = (window.EWPad && EWPad.getOpts) ? EWPad.getOpts()
+                    : { deadzone: 0.18, sensitivity: 1, invertX: false, invertY: false };
+                const curve = (v) => {
+                    const a = Math.abs(v);
+                    if (a < opts.deadzone) return 0;
+                    return Math.sign(v) * Math.pow((a - opts.deadzone) / (1 - opts.deadzone), 1.5);
+                };
+                /* right stick look */
+                const rx = curve((opts.invertX ? -1 : 1) * (gp.axes[2] ?? 0));
+                const ry = curve((opts.invertY ? -1 : 1) * (gp.axes[3] ?? 0));
+                yaw += rx * PAD_LOOK_DEG * (opts.sensitivity || 1) * dt;
+                tilt = _clamp(tilt + ry * 110 * (opts.sensitivity || 1) * dt, TILT_MIN, TILT_MAX);
+
+                /* left stick move */
+                const lx = curve(gp.axes[0] ?? 0);
+                const ly = curve(gp.axes[1] ?? 0);
+                if (_hubActive()) {
+                    try {
+                        if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setPadInput) {
+                            ThreeRenderer.hubFreeRoam.setPadInput(lx, ly, Math.hypot(lx, ly) > 0.92);
+                        }
+                    } catch (e) {}
+                } else {
+                    padDir = (Math.abs(lx) < 0.45 && Math.abs(ly) < 0.45) ? null
+                        : (Math.abs(lx) > Math.abs(ly) ? (lx > 0 ? 'd' : 'a') : (ly > 0 ? 's' : 'w'));
+                }
+
+                const bind = (id) => (window.EWPad && EWPad.getBinding) ? EWPad.getBinding(id) : -1;
+                const just = (id) => { const i = bind(id); return i >= 0 && !!pressed[i] && !prevPressed[i]; };
+                const val = (id) => { const i = bind(id); const b = i >= 0 ? gp.buttons[i] : null; return b ? (b.value || (b.pressed ? 1 : 0)) : 0; };
+
+                if (just('confirm')) _fire();
+                if (just('cancel')) _cancelAim();
+                if (just('endTurn') && typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                if (just('pause') && typeof togglePauseMenu === 'function') togglePauseMenu();
+                if (just('overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
+                if (just('targetPrev')) _cycleSpell(-1);
+                if (just('targetNext')) _cycleSpell(1);
+
+                const zi = val('zoomIn'), zo = val('zoomOut');
+                if (zi > 0.05 || zo > 0.05) {
+                    zoomMult = _clamp(zoomMult * (1 + (zi - zo) * 1.4 * dt), ZMULT_MIN, ZMULT_MAX);
+                }
+                return true;
+            };
+
+            return {
+                owns: _owns,
+                isLocked() { return locked; },
+                setSensitivity(mult) { /* future settings hook */ },
+            };
+        })();
+        window.ShooterControls = ShooterControls;
+
         // Pull back to a high, near-top-down tactical view of the WHOLE
         // battlefield for the end-of-round resolution beats (status ticks,
         // weather, regen). The player reads the situation like a strategy map
@@ -15395,7 +15925,17 @@
         /* Free-roam callbacks from the renderer */
         window._mdFreeRoamCam = function (fx, fy) {
             try {
-                if (typeof camera !== 'undefined' && camera) { camera.x = fx; camera.y = fy; }
+                state._freeRoamPos = { x: fx, y: fy };
+                if (typeof camera === 'undefined' || !camera) return;
+                /* The ShooterControls layer follows with its own mouse-look rig. */
+                if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return;
+                /* snap(), NOT a bare x/y write: the bare write left the focal
+                   height (_computedElevZ, refreshed only inside _apply) and the
+                   smoothing rig frozen at their hub-entry values, so the 3D eye
+                   never tracked the walker — the "camera stays put" bug. snap()
+                   re-runs _apply every tick with fast smoothing, so the camera
+                   glides after the character and rides the terrain height. */
+                camera.snap({ x: fx, y: fy });
             } catch (e) {}
         };
         window._mdFreeRoamTile = function (unit) {

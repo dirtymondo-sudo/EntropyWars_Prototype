@@ -1199,6 +1199,7 @@
         const MS_GAME_MODES = [
             { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win. 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
+            { id: 'shooter', icon: '🎯', label: 'Strike Mode', desc: 'EXPERIMENTAL third-person controls: WASD walks your unit, mouse-look aims, 1-9 picks spells, click casts at the reticle. Controller supported. TDM rules — most kills in 12 rounds.', tag: 'BETA', locked: false },
             { id: 'ffa', icon: '👤', label: 'Free For All', desc: 'Every player for themselves. Most kills in 15 rounds. No teams.', tag: null, locked: false },
             { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
             { id: 'hotspot', icon: '🔥', label: 'Hotspot', desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15 rounds.', tag: null, locked: false },

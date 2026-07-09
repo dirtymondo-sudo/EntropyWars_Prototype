@@ -213,6 +213,30 @@
                 suddenDeath: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
+            /* EXPERIMENTAL third-person control scheme. Rules are a straight
+               TDM clone (scoringType 'kills' keeps every stock win/score branch
+               working) — the isShooter flag is what battle.js's ShooterControls
+               layer keys off to take over camera + input. Intended to graduate
+               into the default control scheme once it feels right. */
+            shooter: {
+                id: 'shooter',
+                label: 'Strike Mode',
+                icon: '🎯',
+                desc: 'EXPERIMENTAL — Team Deathmatch with direct third-person controls. WASD walks your active unit, the mouse looks and aims, 1-9 picks spells, click casts at the reticle. Most kills in 12 rounds wins.',
+                roundLimit: 12,
+                timeLimitSec: 0,
+                hasTowers: false,
+                hasNexus: false,
+                hasHourglasses: false,
+                hasFlags: false,
+                respawns: true,
+                winConditions: ['most_kills', 'wipeout'],
+                tiebreaker: 'sudden_death_kill',
+                scoringType: 'kills',
+                suddenDeath: true,
+                isShooter: true,
+                compatibleMaps: [],   // generated below from the MapForge roster
+            },
             ffa: {
                 id: 'ffa',
                 label: 'Free For All',
@@ -374,6 +398,15 @@
             return typeof activeMultiplayerMode !== 'undefined' && activeMultiplayerMode === 'dungeon';
         }
         window._isDungeonMode = _isDungeonMode;
+
+        /* Third-person "shooter controls" experiment — the flag on the
+           MULTIPLAYER_MODES entry drives battle.js's ShooterControls layer
+           (follow camera, pointer-lock mouse look, spell hotkeys, reticle). */
+        function _isShooterMode() {
+            return typeof activeMultiplayerMode !== 'undefined'
+                && !!(MULTIPLAYER_MODES[activeMultiplayerMode] && MULTIPLAYER_MODES[activeMultiplayerMode].isShooter);
+        }
+        window._isShooterMode = _isShooterMode;
 
         /* Mystery Dungeon persistent progress (independent of the campaign and
            account wallets — mirrors how the challenge saves keep to themselves). */
@@ -5653,6 +5686,19 @@
                 }
 
                 const ctx = _context();
+
+                /* Third-person shooter layer (battle.js ShooterControls): while
+                   it owns the camera it reads the pad itself — sticks steer the
+                   look/walk, buttons fire/cancel/end-turn. Everything below
+                   would double-drive the camera and board cursor, so hand the
+                   whole frame over. Dialogs/pause (domnav/dialog ctx) keep the
+                   stock focus-nav handling. */
+                if ((ctx === 'menu' || ctx === 'aim' || ctx === 'free')
+                    && typeof window._shooterPadFrame === 'function'
+                    && window._shooterPadFrame(gp, dt, now, pressed, prevPressed, ctx)) {
+                    prevPressed = pressed;
+                    return;
+                }
 
                 /* camera first — the sticks stay live in every battle context
                    except while the drum owns the left stick (menu nav). */

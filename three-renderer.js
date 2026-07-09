@@ -1304,6 +1304,8 @@ const ThreeRenderer = (function () {
     }
 
     var hoverMesh = null, _lastHoverX = -1, _lastHoverY = -1;
+    /* "you are standing here" decal for the third-person shooter controls */
+    var underfootMesh = null, _lastUnderfootX = -1, _lastUnderfootY = -1;
 
     var _hoveredUnitId = null;
     var _hoverGlowMesh = null;
@@ -8831,7 +8833,7 @@ const ThreeRenderer = (function () {
         var toRemove = [];
         for (var i = 0; i < highlightGroup.children.length; i++) {
             var ch = highlightGroup.children[i];
-            if (!ch._ew_overlay && ch !== hoverMesh) toRemove.push(ch);
+            if (!ch._ew_overlay && ch !== hoverMesh && ch !== underfootMesh) toRemove.push(ch);
         }
         for (var j = 0; j < toRemove.length; j++) {
             highlightGroup.remove(toRemove[j]);
@@ -9515,6 +9517,30 @@ const ThreeRenderer = (function () {
         hoverMesh.rotation.x = -Math.PI / 2;
         hoverMesh.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
         highlightGroup.add(hoverMesh);
+    }
+
+    /* Persistent "standing on this tile" decal for the third-person shooter
+       controls — same flat quad as the hover decal but cyan, kept alive until
+       explicitly moved or cleared (tx < 0 clears). Lives outside the tactical
+       range-highlight rebuild so walking never flickers it. */
+    function setUnderfootTile(tx, ty) {
+        /* a renderer re-init rebuilds highlightGroup — detect the orphaned
+           mesh and fall through to a rebuild instead of trusting the cache */
+        var stale = underfootMesh && underfootMesh.parent !== highlightGroup;
+        if (!stale && tx === _lastUnderfootX && ty === _lastUnderfootY) return;
+        _lastUnderfootX = tx; _lastUnderfootY = ty;
+        if (!highlightGroup) { underfootMesh = null; return; }
+        if (underfootMesh) {
+            if (underfootMesh.parent) underfootMesh.parent.remove(underfootMesh);
+            underfootMesh.geometry.dispose(); underfootMesh.material.dispose(); underfootMesh = null;
+        }
+        if (tx < 0 || ty < 0) return;
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.7;
+        var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0);
+        underfootMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), uMat);
+        underfootMesh.rotation.x = -Math.PI / 2;
+        underfootMesh.position.set(tx * ts + ts / 2, topY, ty * ts + ts / 2);
+        highlightGroup.add(underfootMesh);
     }
 
     function _updateUnitHover(unitId) {
@@ -12912,6 +12938,14 @@ const ThreeRenderer = (function () {
        tweens) so integer-tile updates never trigger a full rebuildUnits. */
     var _freeRoam = null;   // { uid, fx, fy, heading, keys, jumpT, lastMs, moving, running, want }
     var _frKeyDown = null, _frKeyUp = null, _frBlur = null;
+    /* virtual left-stick from the gamepad layer — merged into the key input
+       each tick so a controller can walk the hub like the keyboard does */
+    var _frPad = null;      // { ix, iy, run } or null
+
+    function _freeRoamSetPad(ix, iy, run) {
+        if (!_freeRoam) { _frPad = null; return; }
+        _frPad = (ix || iy) ? { ix: ix, iy: iy, run: !!run } : null;
+    }
 
     function _frNormKey(e) {
         var k = (e.key || '').toLowerCase();
@@ -12956,6 +12990,7 @@ const ThreeRenderer = (function () {
     }
 
     function _freeRoamStop() {
+        _frPad = null;
         if (_frKeyDown) { window.removeEventListener('keydown', _frKeyDown, true); _frKeyDown = null; }
         if (_frKeyUp) { window.removeEventListener('keyup', _frKeyUp, true); _frKeyUp = null; }
         if (_frBlur) { window.removeEventListener('blur', _frBlur); _frBlur = null; }
@@ -13002,6 +13037,8 @@ const ThreeRenderer = (function () {
         var k = fr.keys;
         var ix = (k.d ? 1 : 0) - (k.a ? 1 : 0);
         var iy = (k.s ? 1 : 0) - (k.w ? 1 : 0);
+        var padRun = false;
+        if (_frPad && !ix && !iy) { ix = _frPad.ix; iy = _frPad.iy; padRun = _frPad.run; }
 
         /* camera-relative: W walks away from the camera regardless of orbit */
         var mx = 0, my = 0;
@@ -13023,7 +13060,7 @@ const ThreeRenderer = (function () {
             if (ml > 0.001) { mx /= ml; my /= ml; }
         }
         var moving = !!(mx || my);
-        var running = !!k.shift;
+        var running = !!k.shift || padRun;
         var speed = running ? 5.6 : 2.8;   // tiles per second
 
         if (moving) {
@@ -18650,7 +18687,7 @@ const ThreeRenderer = (function () {
         if (hlKey === '' && _lastHlKey === '' && highlightGroup) {
             for (var _si = 0; _si < highlightGroup.children.length; _si++) {
                 var _sch = highlightGroup.children[_si];
-                if (!_sch._ew_overlay && _sch !== hoverMesh) { _hasStaleHl = true; break; }
+                if (!_sch._ew_overlay && _sch !== hoverMesh && _sch !== underfootMesh) { _hasStaleHl = true; break; }
             }
         }
         if (hlKey !== _lastHlKey || _hasStaleHl) { rebuildHighlights(); _lastHlKey = hlKey; }
@@ -18894,6 +18931,81 @@ const ThreeRenderer = (function () {
         _resolveHoverAt(_lastMouseClientX, _lastMouseClientY);
     }
 
+    /* The full click pipeline at a screen point — extracted from the canvas
+       click handler so the third-person shooter reticle (which fires while the
+       pointer is LOCKED and the event's clientX/Y are frozen) can run the
+       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
+    function _screenClick(clientX, clientY) {
+        if (!canvas) return;
+        var tx, ty;
+        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+        if (unitHit) {
+
+            var _clickUnit = _unitById.get(unitHit.unitId) || null;
+            if (_clickUnit) { tx = _clickUnit.x; ty = _clickUnit.y; }
+        }
+        /* Clicking the floating tower cube targets the tower on its own tile.
+           (screenToTile would otherwise return a parallax-shifted ground tile
+           because the cube hovers a tile above the board.) */
+        if (tx === undefined) {
+            var tcHit = _pickTowerCube(clientX, clientY);
+            if (tcHit) {
+                var _tw = state.towers ? state.towers[tcHit._ew_towerOwner] : null;
+                if (_tw) { tx = _tw.x; ty = _tw.y; }
+            }
+        }
+        if (tx === undefined) {
+            var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
+            if (!hit) return;
+            _stashPick(hit);
+            tx = hit.tileX; ty = hit.tileY;
+        }
+
+        /* Track whether the click directly hit a unit sprite (vs the tile beneath) */
+        if (typeof state !== 'undefined') state._clickedUnitId = unitHit ? unitHit.unitId : null;
+
+        var clickZ;
+        /* If the player clicked directly on a unit's sprite, target THAT unit's own
+           height. Otherwise the tile-based z below always resolves to the ground, so a
+           sky/airborne unit — or the upper unit of a stack — can never be hit. */
+        if (unitHit) {
+            var _hitU = _unitById.get(unitHit.unitId) || null;
+            if (_hitU && _hitU.z != null) clickZ = _hitU.z;
+        }
+        if (clickZ === undefined && typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
+            var _actU = _unitById.get(state.selectedUnitId) || null;
+            if (_actU) clickZ = nearestWalkableZ(tx, ty, _actU.z != null ? _actU.z : 0);
+        }
+        if (clickZ === undefined && typeof getHeightAt === 'function') clickZ = getHeightAt(tx, ty);
+        if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+    }
+
+    /* What is under a screen point — no side effects. Returns
+       { tileX, tileY, unitId|null, z } or null when nothing was hit. */
+    function pickAtScreen(clientX, clientY) {
+        if (!canvas) return null;
+        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+        if (unitHit) {
+            var u = _unitById.get(unitHit.unitId) || null;
+            if (u) return { tileX: u.x, tileY: u.y, unitId: unitHit.unitId, z: u.z };
+        }
+        var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
+        if (!hit) return null;
+        var z;
+        if (typeof getHeightAt === 'function') z = getHeightAt(hit.tileX, hit.tileY);
+        return { tileX: hit.tileX, tileY: hit.tileY, unitId: null, z: z };
+    }
+
+    /* Run the full hover pipeline (tile decal + spell/AoE previews + unit
+       panel focus) at a screen point AND remember it as the live pointer
+       position, so the camera-move hover refresh keeps tracking the shooter
+       reticle instead of the frozen OS cursor. */
+    function hoverAtScreen(clientX, clientY) {
+        if (!canvas) return;
+        _lastMouseClientX = clientX; _lastMouseClientY = clientY;
+        _resolveHoverAt(clientX, clientY);
+    }
+
     function _bindInput() {
         if (!canvas) return;
 
@@ -18904,47 +19016,7 @@ const ThreeRenderer = (function () {
 
         _onClick = function(e) {
             if (e.button !== 0) return;
-            var tx, ty;
-            var unitHit = ThreeCamera.screenToUnit(e.clientX, e.clientY, canvas, unitGroup);
-            if (unitHit) {
-
-                var _clickUnit = _unitById.get(unitHit.unitId) || null;
-                if (_clickUnit) { tx = _clickUnit.x; ty = _clickUnit.y; }
-            }
-            /* Clicking the floating tower cube targets the tower on its own tile.
-               (screenToTile would otherwise return a parallax-shifted ground tile
-               because the cube hovers a tile above the board.) */
-            if (tx === undefined) {
-                var tcHit = _pickTowerCube(e.clientX, e.clientY);
-                if (tcHit) {
-                    var _tw = state.towers ? state.towers[tcHit._ew_towerOwner] : null;
-                    if (_tw) { tx = _tw.x; ty = _tw.y; }
-                }
-            }
-            if (tx === undefined) {
-                var hit = ThreeCamera.screenToTile(e.clientX, e.clientY, canvas, terrainGroup, objectGroup);
-                if (!hit) return;
-                _stashPick(hit);
-                tx = hit.tileX; ty = hit.tileY;
-            }
-
-            /* Track whether the click directly hit a unit sprite (vs the tile beneath) */
-            if (typeof state !== 'undefined') state._clickedUnitId = unitHit ? unitHit.unitId : null;
-
-            var clickZ;
-            /* If the player clicked directly on a unit's sprite, target THAT unit's own
-               height. Otherwise the tile-based z below always resolves to the ground, so a
-               sky/airborne unit — or the upper unit of a stack — can never be hit. */
-            if (unitHit) {
-                var _hitU = _unitById.get(unitHit.unitId) || null;
-                if (_hitU && _hitU.z != null) clickZ = _hitU.z;
-            }
-            if (clickZ === undefined && typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
-                var _actU = _unitById.get(state.selectedUnitId) || null;
-                if (_actU) clickZ = nearestWalkableZ(tx, ty, _actU.z != null ? _actU.z : 0);
-            }
-            if (clickZ === undefined && typeof getHeightAt === 'function') clickZ = getHeightAt(tx, ty);
-            if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+            _screenClick(e.clientX, e.clientY);
         };
 
         _onMouseDown = function(e) {
@@ -19159,7 +19231,16 @@ const ThreeRenderer = (function () {
             start: _freeRoamStart,
             stop: _freeRoamStop,
             active: function () { return !!_freeRoam; },
+            setPadInput: _freeRoamSetPad,
+            pos: function () { return _freeRoam ? { x: _freeRoam.fx, y: _freeRoam.fy } : null; },
         },
+
+        /* Third-person shooter controls (battle.js ShooterControls layer) */
+        pickAtScreen,
+        hoverAtScreen,
+        clickAtScreen: _screenClick,
+        setUnderfootTile,
+        getCanvas: function () { return canvas; },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */
         markShadowsDirty,
