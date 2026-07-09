@@ -4796,6 +4796,96 @@
                 }
             });
 
+            /* ── EDGE PAN (League-style) ─────────────────────────────────
+               Riding the mouse against the viewport edge pans the map in
+               that direction. Screen-space step converted through the same
+               yaw/tilt math as the right-drag pan, so it always moves the
+               way the cursor points regardless of orbit. Only a FREE camera
+               edge-pans: hand drags, pointer lock (Strike Mode), cinematic
+               shots and camera tweens all take priority, and the cursor has
+               to be over the battlefield itself — hugging the edge of a HUD
+               panel must not drift the camera underneath it. While active it
+               counts as a hand pan (state._userPanning), so the focal height
+               freezes and any third-person hold releases, exactly like a
+               right-drag. */
+            const EDGE_PAN_MARGIN = 20;      // px from the viewport edge
+            const EDGE_PAN_SPEED = 1000;     // screen px/sec of pan at the edge
+            let _edgeMX = -1, _edgeMY = -1, _edgeOverBoard = false;
+            let _edgeLastT = 0, _edgeActive = false;
+            document.addEventListener('mousemove', (e) => {
+                _edgeMX = e.clientX; _edgeMY = e.clientY;
+                const t = e.target;
+                _edgeOverBoard = !!(t && ((t.tagName === 'CANVAS')
+                    || (t.closest && t.closest('#boardStage, #board, .map-center'))));
+            }, true);
+            document.addEventListener('mouseleave', () => { _edgeMX = _edgeMY = -1; });
+            function _edgePanStop() {
+                if (!_edgeActive) return;
+                _edgeActive = false;
+                state._userPanning = false;
+                // Same duty as the drag-release handlers: a unit whose turn
+                // began mid-pan deferred its activation pan — deliver it now.
+                if (state._deferredTurnPanUnitId) {
+                    const defId = state._deferredTurnPanUnitId;
+                    state._deferredTurnPanUnitId = null;
+                    const u = state.units?.find(un => un.id === defId && !un.dead);
+                    if (u && typeof focusBoardCameraOnTiles === 'function') {
+                        const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
+                        const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
+                            ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                        focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
+                            zoom, holdMs: 99999, persist: true, transitionMs: 500
+                        });
+                    }
+                }
+            }
+            function _edgePanTick(now) {
+                requestAnimationFrame(_edgePanTick);
+                const dt = _edgeLastT > 0 ? Math.min((now - _edgeLastT) / 1000, 0.05) : 0.016;
+                _edgeLastT = now;
+                if (_edgeMX < 0 || !_edgeOverBoard) return _edgePanStop();
+                if (state.phase !== 'battle' && state.phase !== 'editor') return _edgePanStop();
+                if (state.cameraDisabled || state.thirdPersonCamera || state._fullMapOverview) return _edgePanStop();
+                if (state.uiDialog || document.pointerLockElement) return _edgePanStop();
+                if (_panActive || _tiltActive || _touchPanId) return _edgePanStop();
+                if (typeof camera === 'undefined' || !camera) return _edgePanStop();
+                // scripted moves / action shots own the camera — never fight them
+                if (camera._cineShotId != null || camera._rafId || camera.isBusy()) return _edgePanStop();
+                const W = window.innerWidth, H = window.innerHeight;
+                let ex = 0, ey = 0;
+                if (_edgeMX <= EDGE_PAN_MARGIN) ex = -1;
+                else if (_edgeMX >= W - EDGE_PAN_MARGIN) ex = 1;
+                if (_edgeMY <= EDGE_PAN_MARGIN) ey = -1;
+                else if (_edgeMY >= H - EDGE_PAN_MARGIN) ey = 1;
+                if (!ex && !ey) return _edgePanStop();
+
+                const stepPx = EDGE_PAN_SPEED * dt;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                let dTileX = 0, dTileY = 0;
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
+                    && typeof ThreeCamera !== 'undefined' && ThreeCamera.screenDeltaToWorldXZ) {
+                    const d = ThreeCamera.screenDeltaToWorldXZ(ex * stepPx, ey * stepPx);
+                    if (d) { dTileX = d.wx / ts; dTileY = d.wz / ts; }
+                }
+                if (!dTileX && !dTileY) {
+                    // CSS diorama fallback — same math as the right-drag pan
+                    const zoom = camera.zoom || 1;
+                    const gap = CONFIG.tileGap ?? 0;
+                    const tiltCos = Math.max(0.15, Math.cos((state.dioramaTiltDeg ?? 50) * Math.PI / 180));
+                    const yawRad = -(state.dioramaYawDeg ?? 0) * Math.PI / 180;
+                    const cosY = Math.cos(yawRad), sinY = Math.sin(yawRad);
+                    const bdx = (ex * stepPx * cosY + ey * stepPx * sinY) / zoom;
+                    const bdy = (-ex * stepPx * sinY + ey * stepPx * cosY) / (zoom * tiltCos);
+                    dTileX = bdx / (ts + gap);
+                    dTileY = bdy / (ts + gap);
+                }
+                if (!dTileX && !dTileY) return _edgePanStop();
+                _edgeActive = true;
+                state._userPanning = true;
+                camera.snap({ _force: true, x: camera.x + dTileX, y: camera.y + dTileY, zoom: camera.zoom });
+            }
+            requestAnimationFrame(_edgePanTick);
+
             let _touchPanId = null;
             let _pinchStartDist = 0;
             let _pinchStartZoom = 1;

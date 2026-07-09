@@ -4,6 +4,35 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CAMERA OVERHAUL round 3 — elevation + edge pan (2026-07-09, same session)
+Token `20260709w` → `20260709x`. battle.js, state.js. User feedback fixes:
+- **Airborne TPS pivot** (`_cineTpsAnchor`): the rig anchors its pivot at the
+  GROUND under the subject, so every shot for/at a FLYER framed the empty
+  ground beneath it. The shoulder lift now adds `_getElevationPx(unit.z) −
+  groundH×ts` for airborne subjects. Fixes flyer turn shots, flyer action
+  shots (attacking up AND down), dash cams with a flying caster.
+- **Airborne target resolution** (`selectTargetFromMenu`): `unitAt(x,y)`
+  prefers the GROUND unit of a stack, so picking an airborne target from the
+  menu aimed the TPS shot at whoever stood beneath it — never looked up. Now
+  resolves `unitAt(x,y,z)` first (menu passes the target's z).
+- **Vertical gap in the boom**: `_tpsTargetShot` and `_playCineActionShot`
+  size the boom from `hypot(horizontalTiles, elevGapTiles)` so steep up/down
+  shots get the same breathing room as long flat ones.
+- **Tactical distance**: `MAX_AUTO_ZOOM_OUT_TILES` 12 → 20 (the 12-row clamp
+  was why tactical hugged the board); close preset 1.45 → 1.35; Move/spell
+  tile-aim zoom = the WIDER of range-fit and `getDefaultZoom()`. TPS shots
+  keep their fixed world boom, so third-person stays closer than tactical.
+- **Edge pan (League-style)** in state.js next to the drag handlers: cursor
+  within 20 px of the viewport edge pans that way (1000 px/sec screen-space,
+  converted via `ThreeCamera.screenDeltaToWorldXZ`, CSS-fallback math too).
+  Gated: battle/editor phase, cursor over the battlefield (canvas /
+  #boardStage / #board / .map-center), no pointer lock, no hand drag, no
+  dialog, camera not busy / no cine shot / no tween. Sets `_userPanning`
+  while active (height latch + TPS-hold release like a real drag), and
+  delivers a deferred turn pan on stop.
+NOT playtested (RULE #1c). Watch: edge pan speed feel; `_edgeOverBoard`
+selector coverage if the battlefield wrapper classes change.
+
 ## CAMERA OVERHAUL round 2 (2026-07-09, later session)
 Token `20260709v` → `20260709w`. three-camera.js, battle.js, ui.js.
 - **Unified collision rig (three-camera.js `sync`)**: the three aim branches

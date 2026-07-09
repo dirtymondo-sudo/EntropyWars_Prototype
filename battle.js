@@ -8833,9 +8833,11 @@
 
         // Hard floor on every AUTOMATIC zoom: no auto move may pull back
         // further than this many tile-rows visible, regardless of map size.
-        // Map-sized framings (default zoom, EOR overview) clamp to this, so
-        // big maps get the same readable mid-distance camera as small ones.
-        const MAX_AUTO_ZOOM_OUT_TILES = 12;
+        // Raised 12 → 20: the 12-row clamp is what made the "tactical" view
+        // hug the board like a close-up — a proper tactical camera reads a
+        // real chunk of the map (the third-person shots keep their own fixed
+        // world boom, so they stay closer than tactical by construction).
+        const MAX_AUTO_ZOOM_OUT_TILES = 20;
         const _zoomMemo = new Map();
         let _zoomMemoKey = '';
 
@@ -9027,7 +9029,7 @@
            Persisted in ew_cameraPreset. */
         const CAMERA_PRESETS = [
             { key: 'standard', icon: '🎥', label: 'STANDARD VIEW', tilt: 50, zoomMult: 1.0,  fov: 45 },
-            { key: 'close',    icon: '🎬', label: 'CLOSE VIEW',    tilt: 58, zoomMult: 1.45, fov: 50 },
+            { key: 'close',    icon: '🎬', label: 'CLOSE VIEW',    tilt: 58, zoomMult: 1.35, fov: 50 },
             { key: 'far',      icon: '🗺', label: 'FAR VIEW',      tilt: 38, zoomMult: 0.72, fov: 42 }
         ];
         let _cameraPresetIdx = 0;
@@ -10246,7 +10248,23 @@
             } catch (e) { return false; }
             camera._cineTps = true;
             camera._tpsSubject = { x: pos.x, y: pos.y };
-            camera._tpsHeadLift = _tpsShoulderLift(unit);
+            /* Shoulder lift = the model's real shoulder height PLUS, for an
+               AIRBORNE subject, the gap between its flight altitude and the
+               terrain under it. The rig anchors its pivot at the GROUND of
+               the subject's tile (ThreeCamera._groundYWorld), so without this
+               a flyer's shot framed the empty ground beneath it — the camera
+               sat at ground level while the character hovered above frame. */
+            let _lift = _tpsShoulderLift(unit);
+            if (unit && typeof canFly === 'function' && canFly(unit)
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
+                && typeof window._getElevationPx === 'function') {
+                const _ts = CONFIG.tileSize || BASE_TILE;
+                const _airPx = (unit.z || 0) > 0 ? window._getElevationPx(unit.z) : 0;
+                const _gh = (typeof getHeightAt === 'function')
+                    ? Math.max(0, getHeightAt(Math.round(pos.x), Math.round(pos.y))) : 0;
+                _lift += Math.max(0, _airPx - _gh * _ts);
+            }
+            camera._tpsHeadLift = _lift;
             return true;
         }
 
@@ -10307,10 +10325,14 @@
             const tilt = Math.max(CINE_TILT_GUARD_MIN,
                 Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
             const yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
+            // Boom length must include the VERTICAL gap: an airborne target one
+            // tile away but four levels up needs the same breathing room as one
+            // four tiles away, or the up-craned shot jams into the caster.
+            const len3 = Math.hypot(len, Math.abs(tgtPx - casterPx) / ts);
             camera.moveTo({
                 x: unit.x + dirx * CINE_FOCAL_LEAD_TILES,
                 y: unit.y + diry * CINE_FOCAL_LEAD_TILES,
-                zoom: _tpsBoomZoom(len), tilt, yaw,
+                zoom: _tpsBoomZoom(len3), tilt, yaw,
                 duration: 420, easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
@@ -10431,7 +10453,10 @@
             // handled by the slope tilt above.
             let zoom;
             if (_cineTpsAnchor(sourceUnit, sourceUnit)) {
-                zoom = _tpsBoomZoom(len);
+                // include the vertical gap in the boom length so a steep
+                // up/down shot (flyer vs ground, cliff fights) gets the same
+                // breathing room as a long flat one
+                zoom = _tpsBoomZoom(Math.hypot(len, Math.abs(tgtPx - casterPx) / ts));
             } else {
                 // 2D fallback: the legacy framing maths.
                 zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
@@ -21785,8 +21810,11 @@
                         camera._releaseCineSubject(420);
                         const range = spell?.range || 3;
                         const rangeRows = range * 2 + 1;
-                        const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
-                        const zoom = Math.max(getUserZoomScale(), rangeZoom);
+                        // wider of "fits the range rings" and the preset's
+                        // tactical distance — same rule as the Move framing
+                        const zoom = Math.min(
+                            clampAutoZoom(computeZoomForVisibleTiles(rangeRows + 2)),
+                            getDefaultZoom());
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
                             tilt: getTacticalTilt(),
@@ -22390,11 +22418,18 @@
             updateAoePreview(x, y);
             // picking a target from the submenu swings the caster's TPS view
             // onto that unit — attacks, spells AND item targets (tile aim
-            // stays tactical); switching targets re-aims the shot each time
+            // stays tactical); switching targets re-aims the shot each time.
+            // Resolve by z FIRST: unitAt(x,y) prefers the GROUND unit of a
+            // stack, so an airborne target picked from the menu used to
+            // resolve to whoever stood beneath it and the camera never
+            // looked up.
             if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets'
                 || state.actionMenuView === 'items') {
                 const _mu = getSelectedUnit();
-                if (_mu) _tpsTargetShot(_mu, (typeof unitAt === 'function' && unitAt(x, y)) || { x, y });
+                const _mtgt = (typeof unitAt === 'function')
+                    ? (((z !== undefined && z !== null) && unitAt(x, y, z)) || unitAt(x, y))
+                    : null;
+                if (_mu) _tpsTargetShot(_mu, _mtgt || { x, y });
             }
             renderBattleSelectionUI({ includeBoard: false });
             scheduleBoardRender();
@@ -22490,7 +22525,12 @@
                 camera._releaseCineSubject(420);
                 const _mvRange = Math.max(2, (typeof getEffectiveMove === 'function'
                     ? (getEffectiveMove(unit) || 0) : 0) || 4);
-                const _mvZoom = clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4));
+                // The WIDER of "fits the whole move range" and the preset's
+                // tactical distance — the tactical view is always a genuine
+                // pulled-back board read, never a close-up.
+                const _mvZoom = Math.min(
+                    clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4)),
+                    getDefaultZoom());
                 camera.moveTo({
                     x: unit.x, y: unit.y,
                     tilt: getTacticalTilt(),
