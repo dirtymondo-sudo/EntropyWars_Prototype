@@ -5938,6 +5938,11 @@ const RACE_ABILITIES = {
           selfHealPct: 0.50, cleanse: 99,
           statStageBoost: { atk: 1, def: 1, mdef: 1 },
           desc: 'Enter a deep trance. Heal 50% max HP, cleanse ALL debuffs, and gain +1 ATK/DEF/MDEF. Costs 2 AP.' },
+        { id: 'raceBadTrip', spellType: 'alien', element: 'psychic', name: 'Bad Trip',
+          type: 'damage', cost: 30, dmg: 90, range: 3,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'glare', duration: 2 }, { id: 'drowsy', duration: 2 }, { id: 'slow', duration: 1 }],
+          desc: 'Send the target on a bad trip through the spirit world. Damage, DEF shredded 2 turns, mind dulled (-1 INT) 2 turns, slowed 1 turn. Not every vision is a gift.' },
     ],
     'mad scientist': [
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
@@ -6208,6 +6213,11 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           chargeToTarget: true,
           desc: 'Lightning-fast lunge up to 3 tiles. You never see the mantis strike.' },
+        { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
+          type: 'damage', cost: 35, dmg: 130, range: 4,
+          kind: 'splitBeam', damageType: 'magic',
+          splitCount: 2, splitDmg: 84, splitRadius: 2,
+          desc: 'A needle of impossible geometry pierces the target, then blossoms into 2 smaller needles seeking nearby enemies. It was never one needle.' },
         SHARED_POISON_SWAMP,
     ],
     'djinn': [
@@ -6228,31 +6238,37 @@ const RACE_ABILITIES = {
         SHARED_SUMMON_SANDSTORM,
         SHARED_CALL_LIGHTNING,
     ],
-    /* Machine Elves = the self-transforming entities of the DMT hyperspace.
-       Kit theme: fractal geometry, folded space, gifts you should not have
-       accepted. Playstyle: Engineer-adjacent trickster-support that bends the
-       board instead of out-damaging it. */
+    /* Machine Elves = the clockwork "machine elves" of DMT hyperspace, who
+       refract reality through a lattice of laser-reflecting prism mirrors.
+       Kit theme: place prism mirrors that auto-connect with light beams, tune
+       the beams' frequency, then discharge the whole lattice. A zoning/combo
+       engineer that shapes space with light rather than out-nuking. (Inspired
+       by the "DMT laser" experiment and mirror-and-laser science kits.)
+       His old kit was rehomed so nothing is wasted: Fractal Needle → mantid,
+       Dimensional Fold → voidweaver, Bad Trip → shaman, Sacred Geometry →
+       occulus. */
     'machine elves': [
-        { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
-          type: 'damage', cost: 35, dmg: 130, range: 4,
-          kind: 'splitBeam', damageType: 'magic',
-          splitCount: 2, splitDmg: 84, splitRadius: 2,
-          desc: 'A needle of impossible geometry pierces the target, then blossoms into 2 smaller needles seeking nearby enemies. It was never one needle.' },
-        { id: 'raceBadTrip', spellType: 'alien', element: 'psychic', name: 'Bad Trip',
-          type: 'damage', cost: 30, dmg: 90, range: 3,
-          kind: 'damage', damageType: 'magic',
-          statusEffects: [{ id: 'glare', duration: 2 }, { id: 'drowsy', duration: 2 }, { id: 'slow', duration: 1 }],
-          desc: 'Peel back the target\'s reality and let them see the machinery. Damage, DEF shredded 2 turns, mind dulled (-1 INT) 2 turns, slowed 1 turn. Not every trip is a gift.' },
-        { id: 'raceDimensionalFold', spellType: 'alien', element: 'arcane', name: 'Dimensional Fold',
-          type: 'utility', cost: 25, range: 5, apCost: 1,
-          kind: 'swap', requiresLineOfSight: false,
-          desc: 'Fold spacetime to swap positions with any unit within 5 tiles. Ignores line of sight.' },
-        { id: 'raceSacredGeometry', spellType: 'alien', element: 'arcane', name: 'Sacred Geometry',
-          type: 'utility', cost: 20, range: 3, apCost: 1,
-          kind: 'terrainCreate', terrainType: 'crystal', tileCount: 3, orientable: true,
-          dmg: 0, damageType: 'magic',
-          desc: 'Sing 3 crystal tiles into being in a line. Crystal terrain boosts DEF and blocks ranged. The pattern is the message.' },
-        SHARED_CALL_LIGHTNING
+        { id: 'racePrismMirror', spellType: 'tech', element: 'arcane', name: 'Prism Mirror',
+          type: 'utility', cost: 16, range: 4, apCost: 1,
+          kind: 'placeMirror', maxActivePerCaster: 8, mirrorHp: 1,
+          desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) for just 1 AP. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is fragile: one hit shatters it.' },
+        { id: 'raceTuneFrequency', spellType: 'tech', element: 'arcane', name: 'Tune Frequency',
+          type: 'utility', cost: 8, range: 0, apCost: 1, cooldownRounds: 1,
+          kind: 'tuneFrequency',
+          desc: 'Shift your whole lattice to the next light frequency — Infrared (fire, burns), Ultraviolet (arcane, shreds DEF), or Gamma (charged, slows) — changing what every one of your beams does. Only once per round.' },
+        { id: 'racePulseLattice', spellType: 'tech', element: 'arcane', name: 'Pulse Lattice',
+          type: 'damage', cost: 30, range: 0, apCost: 2, cooldownRounds: 2,
+          kind: 'pulseLattice',
+          desc: 'Discharge the lattice (needs 3+ prisms): every enemy caught on a beam takes a burst in the current frequency. 4+ prisms across 2+ elevations enclose a 3-D volume — everyone inside is hit and the burst is amplified. 8 prisms in a perfect rectangular prism unleash a massive detonation through the whole volume.' },
+        { id: 'raceRefractBeam', spellType: 'tech', element: 'fire', name: 'Refract Beam',
+          type: 'damage', cost: 26, dmg: 118, range: 5,
+          kind: 'line', damageType: 'magic', lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 1 }],
+          desc: 'Fire a focused laser in a straight line, scorching everything it passes through. The elves\' reliable hand while the lattice is still coming together.' },
+        { id: 'raceMirrorBlink', spellType: 'alien', element: 'arcane', name: 'Mirror Blink',
+          type: 'utility', cost: 16, range: 4, apCost: 1,
+          kind: 'teleport',
+          desc: 'Fold through the light and blink to any tile within 4 — reposition inside your own lattice, or slip out of a collapsing trap.' },
     ],
     'cyclops': [
         { id: 'raceBalefulGaze', spellType: 'alien', name: 'Baleful Gaze',
@@ -6526,6 +6542,10 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Weave a web between dimensions over 3×3 for 2 turns. Enemies inside are heavily slowed.' },
+        { id: 'raceDimensionalFold', spellType: 'alien', element: 'arcane', name: 'Dimensional Fold',
+          type: 'utility', cost: 25, range: 5, apCost: 1,
+          kind: 'swap', requiresLineOfSight: false,
+          desc: 'Fold spacetime to swap positions with any unit within 5 tiles. Ignores line of sight. The weaver simply pulls a different thread.' },
         SHARED_POISON_SWAMP,
     ],
     'cosmic wraith': [
@@ -7263,6 +7283,11 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 130,
           desc: 'Project a protective lens over an ally. 130 HP damage shield.' },
+        { id: 'raceSacredGeometry', spellType: 'divine', element: 'arcane', name: 'Sacred Geometry',
+          type: 'utility', cost: 20, range: 3, apCost: 1,
+          kind: 'terrainCreate', terrainType: 'crystal', tileCount: 3, orientable: true,
+          dmg: 0, damageType: 'magic',
+          desc: 'Sing 3 crystal tiles into being in a line. Crystal terrain boosts DEF and blocks ranged. The all-seeing eye draws the pattern.' },
     ],
 
     'quarterback': [

@@ -4881,6 +4881,16 @@ const ThreeRenderer = (function () {
                 h = _hashInt(h, 2); h = _hashInt(h, b.x); h = _hashInt(h, b.y); h = _hashVal(h, b.owner);
             }
         }
+        if (state.mirrors) {
+            for (var mmi = 0; mmi < state.mirrors.length; mmi++) {
+                var mm = state.mirrors[mmi];
+                h = _hashInt(h, 11); h = _hashInt(h, mm.x); h = _hashInt(h, mm.y);
+                h = _hashVal(h, mm.owner); h = _hashInt(h, mm.hp);
+            }
+            // Frequency changes recolour every beam/prism → fold it into the serial.
+            h = _hashInt(h, (state._mirrorFreq && state._mirrorFreq[1]) | 0);
+            h = _hashInt(h, (state._mirrorFreq && state._mirrorFreq[2]) | 0);
+        }
         if (state.wards) {
             for (var wi = 0; wi < state.wards.length; wi++) {
                 var w = state.wards[wi];
@@ -5437,6 +5447,77 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.25);
     }
 
+    // ── Machine Elves — prism mirrors & laser beams ──
+    // Frequency colours mirror MIRROR_FREQS in battle.js (infrared / uv / gamma).
+    var MIRROR_COLORS = [0xff4455, 0xb060ff, 0x66ffcc];
+    function _mirrorBeamColorFor(owner) {
+        var i = (state._mirrorFreq && state._mirrorFreq[owner]) | 0;
+        if (i < 0 || i >= MIRROR_COLORS.length) i = 0;
+        return MIRROR_COLORS[i];
+    }
+    // A right-triangular prism standing upright (laser reflects off the
+    // hypotenuse face). Built as a custom BufferGeometry.
+    function _buildMirrorPrism(mirror) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var topY = tileTopY(mirror.x, mirror.y);
+        var s = ts * 0.34, h = ts * 0.66;
+        var x0 = -s * 0.5, z0 = -s * 0.5;
+        var verts = [
+            x0, 0, z0,   x0 + s, 0, z0,   x0, 0, z0 + s,      // 0,1,2 bottom
+            x0, h, z0,   x0 + s, h, z0,   x0, h, z0 + s       // 3,4,5 top
+        ];
+        var indices = [
+            0, 2, 1,            // bottom
+            3, 4, 5,            // top
+            0, 1, 4, 0, 4, 3,   // leg AB
+            0, 3, 5, 0, 5, 2,   // leg AC
+            1, 2, 5, 1, 5, 4    // hypotenuse BC (mirror face)
+        ];
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        geo.setIndex(indices);
+        geo.computeVertexNormals();
+        var freqColor = _mirrorBeamColorFor(mirror.owner);
+        var body = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+            color: freqColor, transparent: true, opacity: 0.42,
+            side: THREE.DoubleSide, depthWrite: false
+        }));
+        // Darken as the prism is chipped toward shattering.
+        if (mirror.maxHp > 0 && mirror.hp < mirror.maxHp) {
+            body.material.color.multiplyScalar(0.5 + 0.5 * (mirror.hp / mirror.maxHp));
+        }
+        var g = new THREE.Group();
+        g.add(body);
+        g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),
+            new THREE.LineBasicMaterial({ color: freqColor, transparent: true, opacity: 0.9 })));
+        g.position.set(mirror.x * ts + ts / 2, topY, mirror.y * ts + ts / 2);
+        g._ew_deployable = true;
+        g._ew_depX = mirror.x; g._ew_depY = mirror.y;
+        return g;
+    }
+    // A glowing beam cylinder between two prism tiles (respecting elevation).
+    function _buildMirrorBeam(seg) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var ay = tileTopY(seg.ax, seg.ay) + ts * 0.33;
+        var by = tileTopY(seg.bx, seg.by) + ts * 0.33;
+        var a = new THREE.Vector3(seg.ax * ts + ts / 2, ay, seg.ay * ts + ts / 2);
+        var b = new THREE.Vector3(seg.bx * ts + ts / 2, by, seg.by * ts + ts / 2);
+        var dir = new THREE.Vector3().subVectors(b, a);
+        var len = dir.length();
+        if (len < 1e-3) return null;
+        var m = new THREE.Mesh(
+            new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, len, 6, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: seg.color, transparent: true, opacity: 0.6,
+                blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+            })
+        );
+        m.position.copy(a).add(b).multiplyScalar(0.5);
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+        m._ew_deployable = true;
+        return m;
+    }
+
     function rebuildDeployables() {
         if (!objectGroup) return;
 
@@ -5478,6 +5559,31 @@ const ThreeRenderer = (function () {
                     m._ew_depX = b.x; m._ew_depY = b.y;
                     objectGroup.add(m);
                     deployableMeshes.set(key, m);
+                }
+            }
+        }
+
+        // Machine Elves prism mirrors + their auto-linked laser beams.
+        if (state.mirrors && state.mirrors.length) {
+            for (var mi = 0; mi < state.mirrors.length; mi++) {
+                var mir = state.mirrors[mi];
+                if (mir.hp <= 0) continue;
+                var pm = _buildMirrorPrism(mir);
+                if (pm) {
+                    var pmKey = 'dep_' + (idx++);
+                    objectGroup.add(pm);
+                    deployableMeshes.set(pmKey, pm);
+                }
+            }
+            if (typeof window !== 'undefined' && typeof window.getMirrorBeamSegments === 'function') {
+                var segs = window.getMirrorBeamSegments();
+                for (var bi2 = 0; bi2 < segs.length; bi2++) {
+                    var beamMesh = _buildMirrorBeam(segs[bi2]);
+                    if (beamMesh) {
+                        var bKey = 'dep_' + (idx++);
+                        objectGroup.add(beamMesh);
+                        deployableMeshes.set(bKey, beamMesh);
+                    }
                 }
             }
         }

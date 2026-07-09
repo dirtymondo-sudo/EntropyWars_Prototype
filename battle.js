@@ -298,6 +298,11 @@
             placeBlock:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             buildStructure:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             placeTrap:    { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            // Machine Elves prism lattice: place a prism on a tile; tune / pulse
+            // are self-cast (no target).
+            placeMirror:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            tuneFrequency: { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
+            pulseLattice:  { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
 
             // ── Zone effects ──
             zoneDebuff:   { minRange: 0, offensive: false, tileTargeted: true },
@@ -3107,6 +3112,9 @@
                 // Turret damage
                 damageTurretAt(tile.x, tile.y, spell.dmg || 80, unit);
 
+                // Prism mirror damage (Machine Elves lattice) — one hit per blast
+                if (typeof damageMirrorAt === 'function') damageMirrorAt(tile.x, tile.y, unit);
+
                 // Deployed object damage
                 if (state._deployedObjects) {
                     const _aoeDObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && !o._detonated);
@@ -3272,6 +3280,7 @@
                     hitTargets.push(hit);
                 }
                 damageTurretAt(cx, cy, spell.dmg || 80, unit);
+                if (typeof damageMirrorAt === 'function') damageMirrorAt(cx, cy, unit);
                 // 🏢 Beams chip 1 structure hit per building crossed (once per cast).
                 if (typeof getBuildingAt === 'function') {
                     const _lnB = getBuildingAt(cx, cy);
@@ -10269,6 +10278,254 @@
             return true;
         }
 
+        // ═══════════════ MACHINE ELVES — PRISM MIRROR LATTICE ═══════════════
+        // Placeable laser-reflecting prisms (state.mirrors). Beams auto-connect
+        // any of a player's prisms that share a row or column. Enemies that path
+        // through a beam are seared (resolveMovePath), enemies standing in one at
+        // end of round burn (processMirrorBurn), and Pulse Lattice discharges the
+        // whole network (doPulseLattice). A prism is fragile — one hit shatters
+        // it (damageMirrorAt, modelled on damageTurretAt above; mirrorHp drives
+        // the hit count, currently 1).
+        const MIRROR_FREQS = [
+            { key: 'infrared',    label: 'Infrared',    glyph: '🔴', color: 0xff4455,
+              spellType: 'tech',    status: { id: 'burn',  duration: 2 }, dmgMult: 1.15, verb: 'burns' },
+            { key: 'ultraviolet', label: 'Ultraviolet', glyph: '🟣', color: 0xb060ff,
+              spellType: 'alien',   status: { id: 'glare', duration: 2 }, dmgMult: 1.0,  verb: 'shreds DEF' },
+            { key: 'gamma',       label: 'Gamma',       glyph: '🟢', color: 0x66ffcc,
+              spellType: 'anomaly', status: { id: 'slow',  duration: 1 }, dmgMult: 0.9,  verb: 'slows' },
+        ];
+
+        function _mirrorFreqIndexFor(player) {
+            return (state._mirrorFreq && state._mirrorFreq[player]) | 0;
+        }
+        function _mirrorFreqFor(player) {
+            let i = _mirrorFreqIndexFor(player);
+            if (i < 0 || i >= MIRROR_FREQS.length) i = 0;
+            return MIRROR_FREQS[i];
+        }
+        function _mirrorPowerOf(unit) {
+            if (!unit) return 0;
+            return (unit.spellPower || 0) + (typeof getHourglassPower === 'function' ? getHourglassPower(unit) : 0);
+        }
+        function _mirrorTileHeight(x, y) {
+            if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) || 0;
+            if (typeof getHeightAt === 'function') return getHeightAt(x, y) || 0;
+            return 0;
+        }
+        function _networkPower(player) {
+            const ms = (state.mirrors || []).filter(m => m.owner === player && m.hp > 0);
+            let mx = 0;
+            for (const m of ms) if ((m.power || 0) > mx) mx = m.power;
+            return mx;
+        }
+        // Distinct players who currently own a live prism (any mode, any count).
+        function _mirrorOwners() {
+            const set = new Set();
+            for (const m of (state.mirrors || [])) if (m.hp > 0) set.add(m.owner);
+            return [...set];
+        }
+
+        // Build the beam network for one player's live prisms.
+        function computeMirrorNetwork(player) {
+            const mirrors = (state.mirrors || []).filter(m => m.owner === player && m.hp > 0);
+            const beamTiles = new Set();
+            const segments = [];
+            if (mirrors.length >= 2) {
+                const byRow = {}, byCol = {};
+                for (const m of mirrors) {
+                    (byRow[m.y] = byRow[m.y] || []).push(m);
+                    (byCol[m.x] = byCol[m.x] || []).push(m);
+                }
+                for (const k in byRow) {
+                    const row = byRow[k].slice().sort((a, b) => a.x - b.x);
+                    for (let i = 0; i + 1 < row.length; i++) {
+                        const a = row[i], b = row[i + 1];
+                        segments.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
+                        for (let x = a.x + 1; x < b.x; x++) beamTiles.add(x + ',' + a.y);
+                    }
+                }
+                for (const k in byCol) {
+                    const col = byCol[k].slice().sort((a, b) => a.y - b.y);
+                    for (let i = 0; i + 1 < col.length; i++) {
+                        const a = col[i], b = col[i + 1];
+                        segments.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
+                        for (let y = a.y + 1; y < b.y; y++) beamTiles.add(a.x + ',' + y);
+                    }
+                }
+            }
+            // Enclosed volume: bounding box once the prisms span a 2-D area.
+            const volumeTiles = new Set();
+            let is3DVolume = false, isPrism = false, layers = 0;
+            if (mirrors.length >= 4) {
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                const heights = new Set();
+                for (const m of mirrors) {
+                    if (m.x < minX) minX = m.x;
+                    if (m.x > maxX) maxX = m.x;
+                    if (m.y < minY) minY = m.y;
+                    if (m.y > maxY) maxY = m.y;
+                    heights.add(_mirrorTileHeight(m.x, m.y));
+                }
+                layers = heights.size;
+                if (maxX > minX && maxY > minY) {
+                    is3DVolume = layers >= 2;   // a true volume needs 2+ elevations
+                    // Only a 3-D volume floods its interior; a flat ring of prisms
+                    // still only bites along its beam lines.
+                    if (is3DVolume) {
+                        for (let y = minY; y <= maxY; y++)
+                            for (let x = minX; x <= maxX; x++) volumeTiles.add(x + ',' + y);
+                    }
+                    // A "perfect rectangular prism": 8+ prisms across 2+ elevation
+                    // layers whose bounding box has all four corners occupied.
+                    const corners = [[minX, minY], [maxX, minY], [minX, maxY], [maxX, maxY]];
+                    const allCorners = corners.every(c => mirrors.some(m => m.x === c[0] && m.y === c[1]));
+                    isPrism = mirrors.length >= 8 && layers >= 2 && allCorners;
+                }
+            }
+            return { mirrors, beamTiles, volumeTiles, segments, count: mirrors.length, is3DVolume, isPrism, layers };
+        }
+
+        // Segments (with frequency colour) for the 3-D renderer to draw beams.
+        function getMirrorBeamSegments() {
+            const out = [];
+            for (const p of _mirrorOwners()) {
+                const net = computeMirrorNetwork(p);
+                if (!net.segments.length) continue;
+                const color = _mirrorFreqFor(p).color;
+                for (const s of net.segments) out.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, color: color });
+            }
+            return out;
+        }
+
+        // A prism takes 3 hits to shatter — one hit per attack/blast (like a
+        // hitsToKill turret). Returns true if a prism was on the tile.
+        function damageMirrorAt(x, y, attackerUnit) {
+            if (!state.mirrors) return false;
+            const m = state.mirrors.find(mm => mm.x === x && mm.y === y && mm.hp > 0);
+            if (!m) return false;
+            m.hp = Math.max(0, m.hp - 1);
+            if (m.hp <= 0) {
+                addLog(`🔺 Prism at ${coordLabel(x, y)} shatters into light!`);
+                showFloatingTextAtTile(x, y, 'SHATTERED', 'damage', { durationMs: 800 });
+                state.mirrors = state.mirrors.filter(mm => mm !== m);
+            } else {
+                addLog(`🔺 Prism at ${coordLabel(x, y)} takes a hit! (${m.hp}/${m.maxHp} left)`);
+                showFloatingTextAtTile(x, y, '-1 HIT', 'damage', { durationMs: 700 });
+            }
+            scheduleBoardRender();
+            return true;
+        }
+
+        function laserOwnerUnitId(player) {
+            const m = (state.mirrors || []).find(mm => mm.owner === player && mm.hp > 0);
+            return m ? m.ownerUnitId : null;
+        }
+        // Beam tiles a moving unit could cross, mapped tile → owning player, for
+        // every prism owner that is an enemy of this unit (null / airborne skips).
+        function _enemyBeamTilesFor(unit) {
+            if (!state.mirrors || !state.mirrors.length) return null;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
+            const tileOwner = new Map();
+            for (const owner of _mirrorOwners()) {
+                if (owner === unit.player) continue;   // your own lattice never sears you
+                const net = computeMirrorNetwork(owner);
+                for (const t of net.beamTiles) if (!tileOwner.has(t)) tileOwner.set(t, owner);
+            }
+            if (!tileOwner.size) return null;
+            return { tileOwner: tileOwner };
+        }
+        // Chip a unit for crossing an enemy beam mid-move (once per move).
+        function _applyLaserWalkHit(unit, x, y, owner) {
+            const f = _mirrorFreqFor(owner);
+            const pw = _networkPower(owner);
+            const dmg = Math.max(20, Math.floor((30 + pw * 0.35) * f.dmgMult));
+            const ownerId = laserOwnerUnitId(owner);
+            addLog(`${f.glyph} ${unitDisplayName(unit)} crosses a laser beam at ${coordLabel(x, y)}!`);
+            showFloatingTextAtTile(x, y, f.glyph, 'damage', { durationMs: 650 });
+            applyDamageToUnit(unit, dmg, `${f.glyph} Laser beam: `, {
+                damageType: 'magic', spellType: f.spellType,
+                statusEffects: [f.status], allowMarkBonus: false,
+                sourceUnit: ownerId != null ? unitFromId(ownerId) : undefined
+            });
+        }
+
+        // End-of-round: everyone still standing in an enemy beam burns.
+        function processMirrorBurn(onDone) {
+            if (!state.mirrors || !state.mirrors.length) { if (onDone) onDone(); return; }
+            const burns = [];
+            for (const p of _mirrorOwners()) {
+                const net = computeMirrorNetwork(p);
+                if (!net.beamTiles.size) continue;
+                const f = _mirrorFreqFor(p);
+                const pw = _networkPower(p);
+                const dmg = Math.max(16, Math.floor((26 + pw * 0.3) * f.dmgMult));
+                const ownerId = laserOwnerUnitId(p);
+                for (const e of state.units) {
+                    if (e.dead || e._dying || e.player === p) continue;   // foes only
+                    if (net.beamTiles.has(e.x + ',' + e.y)) burns.push({ unit: e, dmg: dmg, f: f, ownerId: ownerId });
+                }
+            }
+            if (!burns.length) { if (onDone) onDone(); return; }
+            _eorPhaseLabel('End of Round — Laser Burn');
+            for (const b of burns) {
+                if (b.unit.dead || b.unit._dying) continue;
+                showFloatingTextAtTile(b.unit.x, b.unit.y, b.f.glyph, 'damage', { durationMs: 700 });
+                applyDamageToUnit(b.unit, b.dmg, `${b.f.glyph} Caught in the lattice: `, {
+                    damageType: 'magic', spellType: b.f.spellType,
+                    statusEffects: [b.f.status], allowMarkBonus: false,
+                    sourceUnit: b.ownerId != null ? unitFromId(b.ownerId) : undefined
+                });
+            }
+            checkWin();
+            scheduleBoardRender();
+            if (onDone) onDone();
+        }
+
+        // Pulse Lattice — discharge every linked beam (and any enclosed volume).
+        function doPulseLattice(unit, net, spellPower) {
+            const f = _mirrorFreqFor(unit.player);
+            const base = Math.max(40, Math.floor((60 + (spellPower || 0) * 0.8) * f.dmgMult));
+            const mult = net.isPrism ? 3.0 : net.is3DVolume ? 1.6 : 1.0;
+            const dmg = Math.floor(base * mult);
+            const tiles = new Set(net.beamTiles);
+            for (const t of net.volumeTiles) tiles.add(t);
+            // Flash each beam segment.
+            if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                && typeof window.ThreeVFXEffects.hasMapping === 'function'
+                && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')
+                && state.phase === 'battle' && typeof _skipVisuals === 'function' && !_skipVisuals()) {
+                for (const s of net.segments) {
+                    const dx = Math.sign(s.bx - s.ax), dy = Math.sign(s.by - s.ay);
+                    const range = Math.max(Math.abs(s.bx - s.ax), Math.abs(s.by - s.ay));
+                    window.ThreeVFXEffects.fire('beam', '_turretBlast', {
+                        fromX: s.ax, fromY: s.ay, dx: dx, dy: dy, range: range,
+                        hitTiles: [{ x: s.bx, y: s.by }]
+                    });
+                }
+            }
+            let hit = 0;
+            for (const e of state.units) {
+                if (e.dead || e._dying || e.player === unit.player) continue;
+                if (tiles.has(e.x + ',' + e.y)) {
+                    applyDamageToUnit(e, dmg, `${f.glyph} Pulse Lattice: `, {
+                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
+                        statusEffects: [f.status], allowMarkBonus: false
+                    });
+                    hit++;
+                }
+            }
+            const shape = net.isPrism ? 'a perfect prism detonates' : net.is3DVolume ? 'the 3-D volume flares' : 'the beams flare';
+            addLog(`⚡ ${unitDisplayName(unit)} pulses the lattice — ${shape}! ${hit} enem${hit === 1 ? 'y' : 'ies'} caught.`, unit.player);
+            playSfx('physicalAbility');
+            checkWin();
+            scheduleBoardRender();
+        }
+
+        if (typeof window !== 'undefined') {
+            window.getMirrorBeamSegments = getMirrorBeamSegments;
+            window.computeMirrorNetwork = computeMirrorNetwork;
+        }
+
         // ═══════════════ BUILDINGS — structure HP / demolition / interiors ═══════════════
 
         /* Lazily scan the board for roofWalkable building anchors and give each a
@@ -11478,6 +11735,8 @@
             state._balMatch = null;
             state.wards = [];
             state.turrets = [];
+            state.mirrors = [];
+            state._mirrorFreq = { 1: 0, 2: 0 };
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -12045,6 +12304,7 @@
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
                 case 'placeTrap':     return nm + ': select an empty tile to hide the trap on.';
+                case 'placeMirror':   return nm + ': select an empty tile to fold a prism onto — beams link prisms sharing a row or column.';
             }
             const meta = _kindMeta(spell);
             if (meta.allyOnly)     return 'Select an ally for ' + nm + '.';
@@ -16088,6 +16348,8 @@
             state._balMatch = null;
             state.wards = [];
             state.turrets = [];
+            state.mirrors = [];
+            state._mirrorFreq = { 1: 0, 2: 0 };
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -16511,6 +16773,8 @@
             state._balMatch = null;
             state.wards = [];
             state.turrets = [];
+            state.mirrors = [];
+            state._mirrorFreq = { 1: 0, 2: 0 };
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -16725,6 +16989,8 @@
             state._balMatch = null;
             state.wards = [];
             state.turrets = [];
+            state.mirrors = [];
+            state._mirrorFreq = { 1: 0, 2: 0 };
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -17933,6 +18199,10 @@
                     if (state.winner) return;
 
                     processTurretVolleys(function _afterTurretVolleyPhase() {
+                    if (state.winner) return;
+
+                    // Machine Elves — everyone still standing in a laser beam burns.
+                    processMirrorBurn(function () {});
                     if (state.winner) return;
 
                     processHomingWeather(function _afterHomingWeatherPhase() {
@@ -22350,8 +22620,21 @@
         }
 
         function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0) {
+            // Machine Elves' laser beams sear anything that walks across them
+            // (once per move; airborne units pass over untouched).
+            const _laserNet = _enemyBeamTilesFor(unit);
+            let _laserHit = false;
             for (let i = startIndex; i < path.length; i++) {
                 const step = path[i];
+                if (_laserNet && !_laserHit && _laserNet.tileOwner.has(step.x + ',' + step.y)) {
+                    _laserHit = true;
+                    _applyLaserWalkHit(unit, step.x, step.y, _laserNet.tileOwner.get(step.x + ',' + step.y));
+                    if (unit.dead || unit._dying) {
+                        // Died crossing the beam — finalize the move on that tile.
+                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY);
+                        return;
+                    }
+                }
                 const event = getPathPickupEvent(unit, step.x, step.y);
                 if (!event) continue;
 
@@ -23590,6 +23873,7 @@
 
                 let hasObj0 = false;
                 if (state.turrets) hasObj0 = hasObj0 || state.turrets.some(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
+                if (state.mirrors) hasObj0 = hasObj0 || state.mirrors.some(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
                 if (state._deployedObjects) hasObj0 = hasObj0 || state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
                 if (state.plantedSeeds) hasObj0 = hasObj0 || state.plantedSeeds.some(s => s.x === x && s.y === y && s.owner !== unit.player);
                 if (!hasObj0) {
@@ -23732,6 +24016,26 @@
                 }, settleMs);
 
                 return damage;
+            }
+
+            if ((!target || target.id === unit.id) && state.mirrors) {
+                const enemyMirror = state.mirrors.find(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
+                if (enemyMirror) {
+                    pushUndoSnapshot(true);
+                    animateStrikeLeap(unit, x, y);
+                    damageMirrorAt(x, y, unit);
+                    playSfx('damage');
+                    spendAP(unit, AP_COST_ACTION);
+                    state.actionMode = null;
+                    state._actionExecuting = false;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    checkWin();
+                    endUnitIfDone(unit);
+                    renderAfterCombat();
+                    return 1;
+                }
             }
 
             if ((!target || target.id === unit.id) && state.turrets) {
@@ -26281,6 +26585,79 @@
                     radius: spell.blastRadius || 1
                 });
                 addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+            } else if (spell.kind === 'placeMirror') {
+                if (unitAt(x, y, z) || unitAt(x, y)) {
+                    addLog('Cannot fold a prism onto an occupied tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (typeof isInside === 'function' && !isInside(x, y)) {
+                    addLog('Cannot place a prism there.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (typeof isTerrainPassable === 'function' && !isTerrainPassable(x, y)) {
+                    addLog('Cannot place a prism on impassable terrain.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.mirrors) state.mirrors = [];
+                if (!state._mirrorFreq) state._mirrorFreq = { 1: 0, 2: 0 };
+                if (state.mirrors.some(m => m.x === x && m.y === y)) {
+                    addLog('There is already a prism on that tile.');
+                    playErrorSfx();
+                    return 0;
+                }
+                const _ownedMirrors = state.mirrors.filter(m => m.ownerUnitId === unit.id);
+                const _maxMirrors = spell.maxActivePerCaster || 8;
+                if (_ownedMirrors.length >= _maxMirrors) {
+                    const _oldest = _ownedMirrors[0];
+                    state.mirrors = state.mirrors.filter(m => m !== _oldest);
+                    addLog(`Oldest prism at ${coordLabel(_oldest.x, _oldest.y)} folds away to make room.`);
+                }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const _mHp = spell.mirrorHp || 3;
+                state.mirrors.push({
+                    x, y, z: (z != null ? z : _mirrorTileHeight(x, y)),
+                    owner: unit.player, ownerUnitId: unit.id,
+                    hp: _mHp, maxHp: _mHp,
+                    power: _mirrorPowerOf(unit),
+                    id: `mirror_${state.round || 0}_${unit.id}_${randInt(99999)}`
+                });
+                const _mNet = computeMirrorNetwork(unit.player);
+                showFloatingTextAtTile(x, y, '🔺', 'buff', { durationMs: 900 });
+                addLog(`${unitDisplayName(unit)} folds a prism into being at ${coordLabel(x, y)} — ${_mNet.count} prism${_mNet.count !== 1 ? 's' : ''} linked.`, unit.player);
+                scheduleBoardRender();
+            } else if (spell.kind === 'tuneFrequency') {
+                if (!state._mirrorFreq) state._mirrorFreq = { 1: 0, 2: 0 };
+                unit.mp -= effectiveSpellCost;
+                const _cur = state._mirrorFreq[unit.player] | 0;
+                const _next = (_cur + 1) % MIRROR_FREQS.length;
+                state._mirrorFreq[unit.player] = _next;
+                const _f = MIRROR_FREQS[_next];
+                playSfx('uiConfirm');
+                showFloatingTextAtTile(unit.x, unit.y, `${_f.glyph} ${_f.label}`, 'buff', { durationMs: 1100 });
+                addLog(`${unitDisplayName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
+                scheduleBoardRender();
+            } else if (spell.kind === 'pulseLattice') {
+                const _pNet = computeMirrorNetwork(unit.player);
+                if (_pNet.count < 3) {
+                    addLog('The lattice needs at least 3 linked prisms to pulse.');
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!_pNet.beamTiles.size && !_pNet.volumeTiles.size) {
+                    addLog('No prism is linked to another — align them on a row or column first.');
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
+                _spellFocusCamera(unit, unit.x, unit.y);
+                unit.mp -= effectiveSpellCost;
+                doPulseLattice(unit, _pNet, spellPower);
+                completionDelay = (typeof actionMs === 'function') ? actionMs(650) : 650;
             } else if (spell.kind === 'placeTrap') {
                 // ── Trap arsenal (2026-07-07): snare / frost / tremor / magnet.
                 // Hidden charge on an empty passable tile; first enemy to land
@@ -30250,6 +30627,7 @@
                     }
 
                     if (!hasTarget0 && state.turrets) hasTarget0 = state.turrets.some(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player && t.hp > 0);
+                    if (!hasTarget0 && state.mirrors) hasTarget0 = state.mirrors.some(m => m.x === unit.x && m.y === unit.y && m.owner !== unit.player && m.hp > 0);
 
                     if (!hasTarget0 && state._deployedObjects) hasTarget0 = state._deployedObjects.some(o => o.x === unit.x && o.y === unit.y && o.hp > 0 && (o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)));
 

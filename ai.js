@@ -206,7 +206,7 @@
             if (c.spell?.kind) {
                 const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
                     'deployPair', 'warpRune', 'remoteView', 'scan', 'encore',
-                    'placeTrap', 'placeBlock', 'buildStructure'];
+                    'placeTrap', 'placeBlock', 'buildStructure', 'tuneFrequency', 'pulseLattice'];
                 if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
                     c.score *= 0.1;
                 }
@@ -237,7 +237,7 @@
                 const isPositionUtility = ['swap', 'teleport', 'remoteView', 'warpRune'].includes(kind);
                 const isTerrainUtility = ['terrainCreate', 'summonWeather'].includes(kind);
                 const isBuffUtility = ['buff', 'warCry', 'shield', 'encore'].includes(kind);
-                const isDeployUtility = ['deployObject', 'deployPair', 'deployTurret'].includes(kind);
+                const isDeployUtility = ['deployObject', 'deployPair', 'deployTurret', 'placeMirror'].includes(kind);
 
                 if (isPositionUtility) {
 
@@ -1234,7 +1234,7 @@
 
             const target = findSpellTarget(unit, spell, v);
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
-                'escape', 'selfHeal'];
+                'escape', 'selfHeal', 'tuneFrequency', 'pulseLattice'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
 
             let score = scoreSpell(unit, spell, target, v);
@@ -1534,6 +1534,41 @@
             const active = (g.state.bombs || []).filter(b => b.ownerUnitId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 3)) return 0;
             return s;
+        }
+
+        // ── Machine Elves prism lattice ──
+        if (kind === 'placeMirror' && target) {
+            const owned = (g.state.mirrors || []).filter(m => m.ownerUnitId === unit.id && m.hp > 0);
+            if (owned.length >= (spell.maxActivePerCaster || 8)) return 0;
+            let s = 9;
+            const aligns = owned.some(m => m.x === target.x || m.y === target.y);
+            if (aligns) s += 14;                                   // forms/extends a beam
+            const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 3).length;
+            s += nearE * 6;
+            if (aligns && nearE > 0) s += 10;
+            if (owned.length < 3) s += 6;                          // ramp toward a pulsable lattice
+            return s;
+        }
+        if (kind === 'pulseLattice') {
+            const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
+            if (owned.length < 3) return 0;
+            let net = null;
+            if (typeof window !== 'undefined' && typeof window.computeMirrorNetwork === 'function') {
+                net = window.computeMirrorNetwork(unit.player);
+            }
+            if (!net) return 0;
+            const tiles = new Set(net.beamTiles);
+            for (const t of net.volumeTiles) tiles.add(t);
+            const caught = v.visibleEnemies.filter(e => tiles.has(e.x + ',' + e.y)).length;
+            if (caught === 0) return 0;
+            let s = 20 + caught * 22;
+            if (net.isPrism) s += 60; else if (net.is3DVolume) s += 25;
+            return s;
+        }
+        if (kind === 'tuneFrequency') {
+            const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
+            if (owned.length < 2) return 0;
+            return 4;                                              // low-priority flavour toggle
         }
 
         if (kind === 'scan') {
@@ -3691,6 +3726,35 @@
                         const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
                         if (eDist <= 1) score += 12;
                         else if (eDist <= 3) score += 4;
+                    }
+                    if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
+        if (kind === 'placeMirror') {
+            // Prefer an empty in-range tile that lines up (same row/col) with an
+            // existing prism and sits near enemies — that forms a live beam.
+            const R = _effRange(unit, spell) || 4;
+            const owned = (g.state.mirrors || []).filter(m => m.ownerUnitId === unit.id && m.hp > 0);
+            let bestTile = null, bestScore = -1;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    if (g.unitAt(tx, ty)) continue;
+                    if ((g.state.mirrors || []).some(m => m.x === tx && m.y === ty)) continue;
+                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
+                    let score = 1;
+                    const aligns = owned.some(m => m.x === tx || m.y === ty);
+                    if (aligns) score += 14;
+                    for (const e of v.visibleEnemies) {
+                        const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                        if (eDist <= 2) score += 8; else if (eDist <= 4) score += 3;
+                        if (aligns && (e.x === tx || e.y === ty)) score += 6;
                     }
                     if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
                 }

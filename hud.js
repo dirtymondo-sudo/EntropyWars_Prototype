@@ -2996,7 +2996,9 @@ function spellTargetMode(sp) {
   if (k === 'barrage') return 'Barrage';
   if (['zoneHeal', 'zoneDebuff', 'terrainCreate', 'deployObject', 'deployPair',
        'deployTurret', 'warpRune', 'summonWeather', 'leechSeed', 'seedHeal', 'seedPoison',
-       'placeBlock', 'buildStructure', 'placeTrap'].includes(k)) return 'Tile Target';
+       'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror'].includes(k)) return 'Tile Target';
+  if (k === 'pulseLattice') return 'Self · AOE';
+  if (k === 'tuneFrequency') return 'Self Target';
   if (['dash', 'leapStrike'].includes(k)) return 'Dash Line';
   if (['teleport', 'swap', 'pull', 'displacement'].includes(k)) return k === 'swap' ? 'Swap' : 'Reposition';
   if (['scan', 'remoteView'].includes(k)) return 'Vision';
@@ -3310,6 +3312,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     'deployObject', 'deployPair', 'deployTurret', 'remoteView',
     // traps need an EMPTY tile — casting one AT an enemy always fails
     'placeTrap',
+    // Machine Elves: prisms need an empty tile; tune/pulse are self-cast
+    'placeMirror', 'tuneFrequency', 'pulseLattice',
   ]);
   for (const sp of allSpells) {
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
@@ -4354,7 +4358,7 @@ function _computeTileActions(actingUnit, tx, ty) {
     'displacement', 'line', 'linePush', 'terrainCreate',
     'zoneDebuff', 'zoneHeal', 'seedHeal', 'seedPoison', 'leechSeed',
     'remoteView', 'summonWeather',
-    'placeBlock', 'buildStructure', 'placeTrap',
+    'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror',
   ]);
 
   // 🗺️ Elemental tile casts (HM-style): a damage spell whose element reacts
@@ -4387,6 +4391,9 @@ function _computeTileActions(actingUnit, tx, ty) {
       placeReason = _placeBlockProblem(actingUnit, sp, tx, ty) || '';
     } else if (sp.kind === 'buildStructure' && typeof _structurePlanFor === 'function') {
       if (!_structurePlanFor(actingUnit, sp, tx, ty)) placeReason = sp.structure === 'bridgeSpan' ? 'Needs a gap to span' : 'No room here';
+    } else if (sp.kind === 'placeMirror') {
+      if (typeof G.unitAt === 'function' && G.unitAt(tx, ty)) placeReason = 'Needs an empty tile';
+      else if ((G.state && G.state.mirrors ? G.state.mirrors : []).some(m => m.x === tx && m.y === ty)) placeReason = 'Prism already here';
     }
 
     const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(actingUnit, sp) : 0;
