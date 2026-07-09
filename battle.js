@@ -9048,31 +9048,27 @@
         const ShooterControls = (function () {
             const LOOK_SENS = 0.16;            // deg of yaw per px of mouse travel
             const PAD_LOOK_DEG = 175;          // deg/sec at full right-stick
-            /* TILT convention (three-camera.js): 0 = straight down, 90 = dead
-               level at the horizon, >90 = craning up. A behind-and-ABOVE TPS
-               shot wants a clearly DOWNWARD gaze — small-ish tilt. The old 74°
-               was almost horizontal, which parked the eye at floor level
-               staring across the ground. ~50° looks down at the play area like
-               Fortnite/Gears; never let it flatten past ~70 (floor) or tip past
-               ~30 (top-down). */
-            const TILT_MIN = 28, TILT_MAX = 90, TILT_DEFAULT = 48;
-            const AIM_Y_FRAC = 0.50;           // reticle at screen centre — the downward gaze aims it at the ground ahead
-            const ZOOM_STEP = 1.08, ZMULT_MIN = 0.7, ZMULT_MAX = 1.7;
-            /* Distance the camera sits BACK from its focal point, as a multiple
-               of the whole-board default view. >1 = pulled in closer than the
-               tactical overview; the eye's height then comes from the tilt.
-               The killer bug in the floor-cam screenshot was multiplying to
-               2.4× (→ 4× on screen): that shrank the orbit distance to almost
-               zero, dropping the eye onto the character's own tile. */
-            const ZOOM_MULT_BASE = 1.25;
-            /* Over-the-shoulder framing: the ORBIT FOCAL is pushed AHEAD of the
-               unit (so it rides the lower third of frame) and to screen-right
-               (so it sits off to one side and the crosshair has a clear lane),
-               like every modern third-person shooter. */
-            const SHOULDER_TILES = 0.5;        // lateral pivot offset, in tiles (over-the-shoulder)
-            const SHOULDER_FWD = 0.55;         // forward pivot push — drops the unit toward the bottom of frame
+            /* PITCH is stored relative to the horizon: 0 = dead level,
+               negative = aiming down at the ground, positive = craning up at
+               the sky. The engine's tilt convention (three-camera.js: 0 =
+               straight down, 90 = level, >90 = up) is derived as
+               tilt = 90 + pitch at the single point the camera is driven, so
+               a sign error has exactly one place to hide. Standard mapping:
+               mouse up = look up (window.EW_INVERT_LOOK_Y = true flips it). */
+            const PITCH_MIN = -62, PITCH_MAX = 55, PITCH_DEFAULT = -14;
+            const AIM_Y_FRAC = 0.50;           // reticle: dead centre, exactly on the aim ray
+            const ZOOM_STEP = 1.08, ZMULT_MIN = 0.6, ZMULT_MAX = 1.9;
+            /* Camera boom length in TILES — a FIXED world distance, so the
+               shot frames a character identically on every map. (The old
+               getDefaultZoom()-derived distance scaled with board size: big
+               map = far camera, small map = close camera.) */
+            const DIST_TILES = 4.2;
+            /* Over-the-shoulder: the orbit focal is pushed to screen-right so
+               the character rides left-of-centre and the reticle has a clear
+               lane, like every modern third-person shooter. */
+            const SHOULDER_TILES = 0.55;
 
-            let yaw = 0, tilt = TILT_DEFAULT, zoomMult = 1.0;
+            let yaw = 0, pitch = PITCH_DEFAULT, zoomMult = 1.0;
             let locked = false;
             let heldDirs = {};                 // kb w/a/s/d currently held
             let runHeld = false;               // shift
@@ -9083,13 +9079,20 @@
             let lastOwn = false, lastUnitId = null;
             let lastPickT = 0, lastPick = null;
             let suppressClickUntil = 0;        // swallow the click that grabbed pointer lock
-            let reticleEl = null, hintEl = null, barEl = null, barKey = '';
+            let selSlot = 0;                   // hotbar cursor: 0 = basic attack, 1..n = abilities
+            let reticleEl = null, hintEl = null, barEl = null, previewEl = null, barKey = '';
 
             function _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
             function _battleActive() {
-                return state.phase === 'battle' && !state.winner
-                    && typeof window._isShooterMode === 'function' && window._isShooterMode();
+                if (state.phase !== 'battle' || state.winner) return false;
+                if (typeof window._isShooterMode !== 'function' || !window._isShooterMode()) return false;
+                /* the TPS rig is meaningless without the 3D renderer — hand
+                   the stock camera back rather than snapping a diorama board
+                   around a walker that can't exist */
+                try {
+                    return typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive();
+                } catch (e) { return false; }
             }
             function _hubActive() {
                 /* the GUILD HUB roam specifically — the battle roam also runs
@@ -9142,19 +9145,50 @@
             }
 
             function _zoom() {
-                const base = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
-                return _clamp(base * ZOOM_MULT_BASE * zoomMult, 0.15, 10.0);
+                /* ThreeCamera's orbit distance is baseDist/zoom — invert that
+                   so the boom is always DIST_TILES of world, map-independent */
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const base = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
+                    ? ThreeCamera.getBaseDist() : 800;
+                return _clamp(base * zoomMult / (ts * DIST_TILES), 0.15, 10.0);
             }
             /* board-space over-the-shoulder focal for a subject at t {x,y} */
             function _shoulderFocal(t) {
                 const psi = yaw * Math.PI / 180;
-                const fX = -Math.sin(psi), fY = -Math.cos(psi);   // ground-projected view dir (same mapping as getFollowCamYaw)
-                const rX = Math.cos(psi),  rY = -Math.sin(psi);   // screen-right on the board
-                const k = 1 / Math.max(0.4, zoomMult);
-                return {
-                    x: t.x + rX * SHOULDER_TILES * k + fX * SHOULDER_FWD * k,
-                    y: t.y + rY * SHOULDER_TILES * k + fY * SHOULDER_FWD * k
-                };
+                const rX = Math.cos(psi), rY = -Math.sin(psi);   // screen-right on the board
+                const k = SHOULDER_TILES / Math.max(0.5, zoomMult);
+                return { x: t.x + rX * k, y: t.y + rY * k };
+            }
+            /* Shoulder height of the CURRENT model, in world units — measured
+               from the renderer's real rendered height so a fairy and a
+               bigfoot get the exact same over-the-shoulder framing (short
+               model = lower pivot = lower camera, same angle + distance). */
+            let _liftUnitId = null, _liftVal = 0;
+            function _headLift(u) {
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const id = u ? u.id : null;
+                if (id !== _liftUnitId || !_liftVal) {
+                    _liftUnitId = id;
+                    let h = ts * 0.95;
+                    try {
+                        if (id != null && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight) {
+                            h = ThreeRenderer.getUnitVisualHeight(id) || h;
+                        }
+                    } catch (e) {}
+                    _liftVal = h * 0.8;
+                }
+                return _liftVal;
+            }
+            /* the unit under the camera — the battle walker's unit, or the
+               hub roamer */
+            function _camUnit() {
+                const u = _localUnit();
+                if (u) return u;
+                try {
+                    const uid = ThreeRenderer.hubFreeRoam.uid && ThreeRenderer.hubFreeRoam.uid();
+                    if (uid != null) return (state.units || []).find(x => x.id === uid) || null;
+                } catch (e) {}
+                return null;
             }
             function _camTarget() {
                 /* while ANY free-roam walker runs (hub or battle) the camera
@@ -9179,10 +9213,12 @@
                 if (!t) return;
                 yaw = (unit && typeof getFollowCamYaw === 'function')
                     ? getFollowCamYaw(unit, camera.yaw) : camera.yaw;
-                tilt = _clamp(tilt || TILT_DEFAULT, TILT_MIN, TILT_MAX);
+                pitch = _clamp(pitch || PITCH_DEFAULT, PITCH_MIN, PITCH_MAX);
+                camera._tpsSubject = { x: t.x, y: t.y };
+                camera._tpsHeadLift = _headLift(unit || _camUnit());
                 const f = _shoulderFocal(t);
                 camera.moveTo({
-                    x: f.x, y: f.y, zoom: _zoom(), tilt: tilt, yaw: yaw,
+                    x: f.x, y: f.y, zoom: _zoom(), tilt: 90 + pitch, yaw: yaw,
                     duration: 420, easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true
                 });
@@ -9193,16 +9229,21 @@
                     /* an interrupted right-stick orbit can leave the hand-pan
                        flag set — it would freeze the focal height under us */
                     state._userPanning = false;
-                    if (typeof camera !== 'undefined' && camera) {
-                        camera._tpsCollide = true;
-                        camera._tpsHeadLift = (CONFIG.tileSize || BASE_TILE) * 0.9;
-                    }
+                    /* stand down the legacy board camera: right-drag pan and
+                       middle-drag orbit (state.js) gate on this flag */
+                    state.thirdPersonCamera = true;
+                    if (typeof camera !== 'undefined' && camera) camera._tpsCollide = true;
+                    selSlot = 0;
                     _enterShot(_localUnit());
                 } else {
                     heldDirs = {}; padVec = null; runHeld = false;
+                    state.thirdPersonCamera = false;
                     if (!_hubActive()) _stopRoam();
                     /* hand the stock camera back exactly as we found it */
-                    if (typeof camera !== 'undefined' && camera) camera._tpsCollide = false;
+                    if (typeof camera !== 'undefined' && camera) {
+                        camera._tpsCollide = false;
+                        camera._tpsSubject = null;
+                    }
                     try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) ThreeRenderer.setUnderfootTile(-1, -1); } catch (e) {}
                 }
             }
@@ -9229,9 +9270,11 @@
                    yaw rotates the gaze counter-clockwise (left), so mouse-right
                    DECREASES yaw — the old `+=` was the inverted feel. */
                 yaw -= e.movementX * LOOK_SENS;
-                /* mouse-up looks up. tilt: 0=down, 90=level. movementY<0 when
-                   the mouse moves up, so `- movementY` raises tilt = looks up. */
-                tilt = _clamp(tilt - e.movementY * LOOK_SENS, TILT_MIN, TILT_MAX);
+                /* standard vertical: mouse up = look up (movementY is negative
+                   moving up, so subtracting raises pitch). EW_INVERT_LOOK_Y
+                   flips it for flight-style players. */
+                const inv = window.EW_INVERT_LOOK_Y ? -1 : 1;
+                pitch = _clamp(pitch - inv * e.movementY * LOOK_SENS, PITCH_MIN, PITCH_MAX);
             }, true);
 
             window.addEventListener('mousedown', (e) => {
@@ -9262,7 +9305,14 @@
             window.addEventListener('wheel', (e) => {
                 if (!locked || !_owns()) return;
                 e.preventDefault(); e.stopImmediatePropagation();
-                zoomMult = _clamp(zoomMult * (e.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP), ZMULT_MIN, ZMULT_MAX);
+                /* Minecraft rules: the wheel scrolls the hotbar. Zoom (a
+                   much rarer need at a fixed TPS boom) moved to Ctrl+wheel
+                   and the pad triggers. */
+                if (e.ctrlKey || e.metaKey) {
+                    zoomMult = _clamp(zoomMult * (e.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP), ZMULT_MIN, ZMULT_MAX);
+                    return;
+                }
+                if (_battleActive()) _scrollSelect(e.deltaY > 0 ? 1 : -1);
             }, { capture: true, passive: false });
 
             /* ── keyboard: held-dir tracking + spell hotkeys (battle only; the
@@ -9284,6 +9334,25 @@
                     return;
                 }
                 if (k === 'shift') { runHeld = true; return; }   // no swallow — nothing else uses it in battle
+                if (k === ' ' || k === 'spacebar') {
+                    /* SPACE = JUMP. Swallow it hard — ui.js binds bare SPACE
+                       to end-turn, which is the last thing a jump should do. */
+                    e.preventDefault(); e.stopImmediatePropagation();
+                    try {
+                        if (roamOn && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setJump) {
+                            ThreeRenderer.hubFreeRoam.setJump(true);
+                        }
+                    } catch (er) {}
+                    return;
+                }
+                if (k === 'enter') {
+                    /* end turn moved here from SPACE (double-press confirm
+                       still handled by _ewRequestEndTurn) */
+                    e.preventDefault(); e.stopImmediatePropagation();
+                    _stopRoam();
+                    if (typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                    return;
+                }
                 if (/^[1-9]$/.test(k) && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault(); e.stopImmediatePropagation();
                     _hotkeySpell(parseInt(k, 10) - 1);
@@ -9296,6 +9365,13 @@
                 const dk = DIR_ALIAS[k];
                 if (dk) heldDirs[dk] = false;
                 if (k === 'shift') runHeld = false;
+                if (k === ' ' || k === 'spacebar') {
+                    try {
+                        if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setJump) {
+                            ThreeRenderer.hubFreeRoam.setJump(false);
+                        }
+                    } catch (er) {}
+                }
             }, true);
             window.addEventListener('blur', () => { heldDirs = {}; runHeld = false; padVec = null; });
 
@@ -9308,32 +9384,84 @@
                 if ((sp.cost || 0) > (u.mp || 0)) return false;
                 return true;
             }
+            /* Can this spell actually FIRE from the tile the player stands on
+               right now? (AP/MP/cooldown are _spellUsable's job — this is the
+               range/target half of "grey it out if it can't be cast from
+               here".) unit.x/y is the provisional walk position, so the
+               answer tracks the player as they run around. */
+            function _castableFromHere(u, sp) {
+                try {
+                    if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp)) return true;
+                    if (typeof isSpellTileTargeted === 'function' && isSpellTileTargeted(sp)) {
+                        return typeof getSpellRangeTiles !== 'function'
+                            || getSpellRangeTiles(u, sp).length > 0;
+                    }
+                    if (typeof _getSpellValidTargets === 'function') {
+                        return _getSpellValidTargets(u, sp).length > 0;
+                    }
+                } catch (e) {}
+                return true;
+            }
+            /* ── Minecraft-style hotbar cursor ──
+               Slot 0 is the basic attack ("bare hands"); slots 1..n are the
+               abilities. The wheel / pad shoulders scroll the cursor across
+               EVERY slot (greyed ones included, so the preview can say WHY
+               they're dead); landing on a castable spell arms it, landing on
+               a dead one just previews it and drops any armed aim. */
+            function _curSlot(u) {
+                if (state.actionMode === 'spell' && state.selectedTool) {
+                    const i = _abilityList(u).findIndex(s => s.name === state.selectedTool);
+                    if (i >= 0) return i + 1;
+                }
+                return selSlot;
+            }
+            function _selectSlot(u, slot) {
+                selSlot = slot;
+                if (slot > 0) {
+                    const sp = _abilityList(u)[slot - 1];
+                    if (sp && _spellUsable(u, sp) && _castableFromHere(u, sp)) {
+                        if (!(state.actionMode === 'spell' && state.selectedTool === sp.name)) {
+                            _stopRoam();                 // plant feet on the current tile
+                            setTool('spell', sp.name);   // ui.js wrapper commits the walked distance (AP billed here)
+                        }
+                        _refreshHud(true);
+                        return;
+                    }
+                }
+                _cancelAim();                            // fists, or a dead slot: nothing armed
+                _refreshHud(true);
+            }
+            function _scrollSelect(dir) {
+                const u = _localUnit();
+                if (!u || state._actionExecuting) return;
+                const n = _abilityList(u).length + 1;
+                _selectSlot(u, ((_curSlot(u) + dir) % n + n) % n);
+            }
             function _hotkeySpell(idx) {
                 const u = _localUnit();
                 if (!u || state._actionExecuting) return;
                 const sp = _abilityList(u)[idx];
                 if (!sp) { if (typeof playErrorSfx === 'function') playErrorSfx(); return; }
-                if (state.actionMode === 'spell' && state.selectedTool === sp.name) { _cancelAim(); return; }
+                if (state.actionMode === 'spell' && state.selectedTool === sp.name) {
+                    _cancelAim(); _refreshHud(true); return;   // same key toggles off
+                }
+                selSlot = idx + 1;
                 if (!_spellUsable(u, sp)) {
                     if (typeof playErrorSfx === 'function') playErrorSfx();
                     if (typeof window._ewToast === 'function') window._ewToast('CANNOT CAST ' + String(sp.name || '').toUpperCase(), 1100);
+                    _refreshHud(true);
+                    return;
+                }
+                if (!_castableFromHere(u, sp)) {
+                    if (typeof playErrorSfx === 'function') playErrorSfx();
+                    if (typeof window._ewToast === 'function') window._ewToast('NO TARGET IN RANGE — MOVE CLOSER', 1300);
+                    _cancelAim();
+                    _refreshHud(true);
                     return;
                 }
                 _stopRoam();                 // plant feet on the current tile
                 setTool('spell', sp.name);   // ui.js wrapper commits the walked distance (AP billed here)
                 _refreshHud(true);
-            }
-            function _cycleSpell(dir) {
-                const u = _localUnit();
-                if (!u) return;
-                const list = _abilityList(u);
-                if (!list.length) return;
-                let cur = (state.actionMode === 'spell' && state.selectedTool)
-                    ? list.findIndex(s => s.name === state.selectedTool) : -1;
-                for (let i = 1; i <= list.length; i++) {
-                    const idx = ((cur + dir * i) % list.length + list.length) % list.length;
-                    if (_spellUsable(u, list[idx])) { _hotkeySpell(idx); return; }
-                }
             }
 
             function _cancelAim() {
@@ -9350,6 +9478,27 @@
                 if (state.actionMode === 'spell' || state.actionMode === 'attack') {
                     /* the reticle IS the mouse: run the exact click pipeline */
                     if (ThreeRenderer.clickAtScreen) ThreeRenderer.clickAtScreen(aim.x, aim.y);
+                    return;
+                }
+                /* the HELD hotbar slot is a spell (walking dropped its aim) —
+                   Minecraft rules: LMB uses the held item. Re-arm it; if the
+                   unit never left its tile the commit is a free no-op so the
+                   same click casts, otherwise the AP spend resolves first and
+                   the next click fires. */
+                if (selSlot > 0) {
+                    const spSel = _abilityList(u)[selSlot - 1];
+                    if (spSel && _spellUsable(u, spSel) && _castableFromHere(u, spSel)) {
+                        const orgS = (typeof window._getWasdOrigin === 'function') ? window._getWasdOrigin() : null;
+                        const movedS = !!(orgS && (orgS.x !== u.x || orgS.y !== u.y));
+                        _stopRoam();
+                        setTool('spell', spSel.name);
+                        if (!movedS && state.actionMode === 'spell' && ThreeRenderer.clickAtScreen) {
+                            ThreeRenderer.clickAtScreen(aim.x, aim.y);
+                        }
+                    } else {
+                        if (typeof playErrorSfx === 'function') playErrorSfx();
+                        _refreshHud(true);   // preview explains why the slot is dead
+                    }
                     return;
                 }
                 /* no tool armed → basic attack. Arming attack mode first both
@@ -9403,8 +9552,7 @@
                 if (sets && sets.r1) sets.r1.forEach(k => allowed.add(k));
                 if (sets && sets.r2) sets.r2.forEach(k => allowed.add(k));
                 ThreeRenderer.hubFreeRoam.start(u.id, {
-                    noKeys: true,               // ShooterControls owns the keyboard
-                    noJump: true,
+                    noKeys: true,               // ShooterControls owns the keyboard (SPACE → setJump)
                     parkAtUnit: true,           // never let a stop write unit.x/y
                     tileAllowed: (tx, ty) => allowed.has(posKey(tx, ty)),
                     onTile: (u2) => {
@@ -9507,6 +9655,15 @@
                         'position:fixed;left:50%;bottom:17%;transform:translateX(-50%);z-index:3600;' +
                         'display:none;gap:6px;font-family:DotGothic16,monospace;');
                 }
+                if (!previewEl) {
+                    previewEl = _mkEl('shooterPreview',
+                        'position:fixed;left:50%;bottom:calc(17% + 76px);transform:translateX(-50%);z-index:3600;' +
+                        'font-family:DotGothic16,monospace;font-size:12px;letter-spacing:0.1em;text-align:center;' +
+                        'color:#e8ecff;background:rgba(8,10,18,0.85);border:1px solid rgba(140,160,220,0.45);' +
+                        'padding:6px 14px;pointer-events:none;display:none;white-space:nowrap;' +
+                        'clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);' +
+                        'text-shadow:0 1px 3px rgba(0,0,0,0.9);');
+                }
             }
             function _refreshHud(force) {
                 _ensureHud();
@@ -9535,7 +9692,7 @@
                 /* take-control hint (kb+mouse only — a pad needs no lock) */
                 if (_enabled() && !_aimActive() && own) {
                     const msg = inBattle
-                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN AROUND · MOUSE LOOK · 1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · SPACE END TURN · ESC RELEASES</span>'
+                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · MOUSE LOOK · SPACE JUMP · SCROLL/1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · ENTER END TURN · ESC RELEASES</span>'
                         : '🎯 CLICK TO TAKE CONTROL — WASD WALK · MOUSE LOOK · SHIFT RUN · SPACE HOP';
                     if (hintEl._ewMsg !== msg) { hintEl._ewMsg = msg; hintEl.innerHTML = msg; }
                     hintEl.style.display = 'block';
@@ -9543,38 +9700,75 @@
                     hintEl.style.display = 'none';
                 }
 
-                /* spell hotbar (battle only) */
+                /* spell hotbar (battle only) — slot 0 = basic attack, then the
+                   abilities. Greyed = unaffordable OR nothing in range from the
+                   tile the player is standing on right now. */
                 if (inBattle && u) {
-                    const list = _abilityList(u).slice(0, 9);
-                    const key = [u.id, u.ap, u.mp, state.actionMode, state.selectedTool,
+                    const list = _abilityList(u);
+                    const cur = _curSlot(u);
+                    const key = [u.id, u.ap, u.mp, u.x, u.y, cur, state.actionMode, state.selectedTool,
+                        _aimActive() ? 1 : 0,
                         list.map(s => (s.name || '') + ':' + (s._cooldownLeft || s.cooldownLeft || 0)).join(',')].join('|');
                     if (force || key !== barKey) {
                         barKey = key;
                         barEl.style.display = 'flex';
                         barEl.innerHTML = '';
-                        list.forEach((sp, i) => {
-                            const usable = _spellUsable(u, sp);
-                            const sel = state.actionMode === 'spell' && state.selectedTool === sp.name;
+                        let previewHtml = '';
+                        const mkSlot = (i, sel, usable, inner, onPick) => {
                             const slot = document.createElement('div');
                             slot.style.cssText =
                                 'min-width:64px;padding:5px 8px;text-align:center;cursor:pointer;pointer-events:auto;' +
-                                'font-size:11px;letter-spacing:0.08em;color:' + (usable ? '#e8ecff' : 'rgba(160,168,196,0.5)') + ';' +
+                                'font-size:11px;letter-spacing:0.08em;color:' + (usable ? '#e8ecff' : 'rgba(160,168,196,0.45)') + ';' +
                                 'background:rgba(8,10,18,' + (sel ? '0.95' : '0.78') + ');' +
-                                'border:1px solid ' + (sel ? '#7fd4ff' : usable ? 'rgba(140,160,220,0.45)' : 'rgba(140,160,220,0.2)') + ';' +
-                                (sel ? 'box-shadow:0 0 10px rgba(127,212,255,0.4);' : '') +
+                                'border:1px solid ' + (sel ? '#7fd4ff' : usable ? 'rgba(140,160,220,0.45)' : 'rgba(140,160,220,0.18)') + ';' +
+                                (sel ? 'box-shadow:0 0 10px rgba(127,212,255,0.4);transform:translateY(-4px);' : '') +
+                                (usable ? '' : 'filter:grayscale(1);opacity:0.68;') +
                                 'clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);';
-                            const apCost = (typeof getSpellApCost === 'function') ? getSpellApCost(sp) : 1;
-                            slot.innerHTML =
-                                '<div style="font-size:14px">' + (sp.icon || '✦') + ' <span style="opacity:0.7">' + (i + 1) + '</span></div>' +
-                                '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:86px">' + (sp.name || '?') + '</div>' +
-                                '<div style="opacity:0.7;font-size:10px">' + apCost + 'AP' + (sp.cost ? ' ' + sp.cost + 'MP' : '') + '</div>';
-                            slot.addEventListener('mousedown', (ev) => { ev.stopPropagation(); ev.preventDefault(); _hotkeySpell(i); });
+                            slot.innerHTML = inner;
+                            slot.addEventListener('mousedown', (ev) => { ev.stopPropagation(); ev.preventDefault(); onPick(); });
                             barEl.appendChild(slot);
+                        };
+                        /* slot 0 — basic attack */
+                        {
+                            const sel = cur === 0;
+                            mkSlot(0, sel, true,
+                                '<div style="font-size:14px">⚔</div>' +
+                                '<div style="white-space:nowrap;max-width:86px">ATTACK</div>' +
+                                '<div style="opacity:0.7;font-size:10px">LMB</div>',
+                                () => _selectSlot(u, 0));
+                            if (sel) previewHtml = '⚔ BASIC ATTACK — aim with the reticle, LMB to strike';
+                        }
+                        list.forEach((sp, i) => {
+                            const affordable = _spellUsable(u, sp);
+                            const inRange = affordable && _castableFromHere(u, sp);
+                            const usable = affordable && inRange;
+                            const sel = cur === i + 1;
+                            const apCost = (typeof getSpellApCost === 'function') ? getSpellApCost(sp) : 1;
+                            mkSlot(i + 1, sel, usable,
+                                '<div style="font-size:14px">' + (sp.icon || '✦') + ' <span style="opacity:0.7">' + (i < 9 ? (i + 1) : '') + '</span></div>' +
+                                '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:86px">' + (sp.name || '?') + '</div>' +
+                                '<div style="opacity:0.7;font-size:10px">' + apCost + 'AP' + (sp.cost ? ' ' + sp.cost + 'MP' : '') + '</div>',
+                                () => _hotkeySpell(i));
+                            if (sel) {
+                                const bits = [(sp.icon || '✦') + ' ' + String(sp.name || '?').toUpperCase(),
+                                    apCost + ' AP' + (sp.cost ? ' · ' + sp.cost + ' MP' : ''),
+                                    sp.range ? 'RANGE ' + sp.range : ''].filter(Boolean);
+                                let status = '';
+                                if (!affordable) status = '<span style="color:#ff8a8a"> — CANNOT CAST (AP/MP/COOLDOWN)</span>';
+                                else if (!inRange) status = '<span style="color:#ffb36a"> — NOTHING IN RANGE FROM HERE, MOVE CLOSER</span>';
+                                previewHtml = bits.join(' · ') + status;
+                            }
                         });
+                        if (previewHtml && _aimActive()) {
+                            previewEl.innerHTML = previewHtml;
+                            previewEl.style.display = 'block';
+                        } else {
+                            previewEl.style.display = 'none';
+                        }
                     }
-                } else if (barEl.style.display !== 'none') {
-                    barEl.style.display = 'none';
-                    barKey = '';
+                } else {
+                    if (barEl.style.display !== 'none') { barEl.style.display = 'none'; barKey = ''; }
+                    previewEl.style.display = 'none';
                 }
             }
 
@@ -9601,12 +9795,17 @@
 
                 if (_battleActive()) _roamFrame(now);
 
-                /* camera — over-the-shoulder focal, per-frame */
+                /* camera — over-the-shoulder focal, per-frame. The pivot is
+                   anchored to the walker's own ground + THIS model's shoulder
+                   height (see ThreeCamera's _tpsCollide rig), so every
+                   character gets the same shot regardless of size/terrain. */
                 if (now >= holdUntil) {
                     const t = _camTarget();
                     if (t && typeof camera !== 'undefined' && camera) {
+                        camera._tpsSubject = { x: t.x, y: t.y };
+                        camera._tpsHeadLift = _headLift(_camUnit());
                         const f = _shoulderFocal(t);
-                        camera.snap({ x: f.x, y: f.y, tilt: tilt, yaw: yaw, zoom: _zoom() });
+                        camera.snap({ x: f.x, y: f.y, tilt: 90 + pitch, yaw: yaw, zoom: _zoom() });
                     }
                 }
 
@@ -9654,9 +9853,9 @@
                 const rx = curve((opts.invertX ? -1 : 1) * (gp.axes[2] ?? 0));
                 const ry = curve((opts.invertY ? -1 : 1) * (gp.axes[3] ?? 0));
                 /* match the mouse: stick-right turns the view right (yaw down),
-                   stick-down looks down (tilt down) */
+                   stick-down looks down (pitch down; EWPad invertY flips it) */
                 yaw -= rx * PAD_LOOK_DEG * (opts.sensitivity || 1) * dt;
-                tilt = _clamp(tilt - ry * 110 * (opts.sensitivity || 1) * dt, TILT_MIN, TILT_MAX);
+                pitch = _clamp(pitch - ry * 110 * (opts.sensitivity || 1) * dt, PITCH_MIN, PITCH_MAX);
 
                 /* left stick move */
                 const lx = curve(gp.axes[0] ?? 0);
@@ -9681,8 +9880,8 @@
                 if (just('endTurn') && typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
                 if (just('pause') && typeof togglePauseMenu === 'function') togglePauseMenu();
                 if (just('overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
-                if (just('targetPrev')) _cycleSpell(-1);
-                if (just('targetNext')) _cycleSpell(1);
+                if (just('targetPrev')) _scrollSelect(-1);
+                if (just('targetNext')) _scrollSelect(1);
 
                 const zi = val('zoomIn'), zo = val('zoomOut');
                 if (zi > 0.05 || zo > 0.05) {
@@ -21324,23 +21523,29 @@
             state.pendingTarget = null;
             clearAoePreview();
 
+            /* Strike Mode's TPS rig owns the camera per-frame — a competing
+               range-framing pan here would just fight it for one stuttery
+               frame every time a spell is armed. */
+            const _scOwns = typeof window._shooterCamOwns === 'function' && window._shooterCamOwns();
             if (mode === 'spell' && unit) {
-                const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
-                const range = spell?.range || 3;
+                if (!_scOwns) {
+                    const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
+                    const range = spell?.range || 3;
 
-                const rangeRows = range * 2 + 1;
+                    const rangeRows = range * 2 + 1;
 
-                const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
-                const userZoom = getUserZoomScale();
+                    const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
+                    const userZoom = getUserZoomScale();
 
-                const zoom = Math.max(userZoom, rangeZoom);
-                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                    zoom,
-                    holdMs: 99999,
-                    persist: true,
-                    transitionMs: 350
-                });
-            } else {
+                    const zoom = Math.max(userZoom, rangeZoom);
+                    focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                        zoom,
+                        holdMs: 99999,
+                        persist: true,
+                        transitionMs: 350
+                    });
+                }
+            } else if (!_scOwns) {
                 _softResetCameraToUnit(unit);
             }
 

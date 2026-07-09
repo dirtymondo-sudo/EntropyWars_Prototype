@@ -4,6 +4,62 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## STRIKE MODE round 2 — camera rebuilt + Minecraft hotbar (2026-07-09, later session)
+Token `20260709s` → `20260709t`. battle.js (ShooterControls + setTool guard),
+three-camera.js (TPS rig), three-renderer.js (walker facing + APIs). Fixes for:
+flipped/clamped vertical look, can't look up past eye level, inconsistent
+camera height per character, units walking BACKWARDS, space=end-turn.
+
+- **WALKING BACKWARDS root cause**: `_freeRoamTick` rotated `entry.group`
+  toward the heading, but the GLB sits inside a wrapper (`_ew_facingSprite`)
+  whose rotation.y the per-frame gameplay-facing pass (`_updateUnitFacing`)
+  overwrites from `unit.facing` — the two yaws COMPOSED (stale facing ≈ π →
+  moonwalk). Fix: the walker now writes `unit.facing = {dx:mx, dy:my}` and
+  keeps the outer group at 0. One writer only. (Applies to hub roam too.)
+- **Camera rig (three-camera.js `_tpsCollide` branch)**:
+  1. Pivot is anchored to the SUBJECT's ground tile (`cam._tpsSubject`, walker
+     float pos) + `cam._tpsHeadLift` = 0.8 × the model's real rendered height
+     (`ThreeRenderer.getUnitVisualHeight(uid)` = ts·RATIO·heightRatio) — short
+     and tall characters now get the identical over-the-shoulder frame. The
+     old focal-height machinery added a unit-lift only when a unit stood on
+     the ROUNDED focal (the shoulder offset often lands on a neighbour tile)
+     → shot height wandered.
+  2. Gaze aims ALONG the view direction (`look = pivot + dir·2.5ts`), not
+     `lookAt(pivot)` — lookAt capped the gaze at eye level once the eye
+     floored on the ground (THE "can't look up" bug). Colinear when
+     unobstructed, so nothing changes in the normal case; craning past 90°
+     now genuinely shows sky with the character riding the lower frame.
+- **Pitch, one convention**: ShooterControls stores `pitch` (deg vs horizon,
+  −62…+55, default −14); engine tilt derived once as `90 + pitch`. Mouse
+  up = look up (standard); `window.EW_INVERT_LOOK_Y = true` flips.
+- **Fixed boom length**: camera distance is a constant 4.2 tiles of world
+  (`zoom = baseDist·zoomMult / (ts·4.2)`) instead of getDefaultZoom()-derived
+  (which scaled with board size). Zoom = Ctrl+wheel or pad triggers,
+  zoomMult 0.6–1.9. Shoulder offset = 0.55 tiles screen-right (fwd push
+  removed — the aim-ray framing makes it redundant).
+- **SPACE = JUMP** (cosmetic hop; walker `noJump` removed, new
+  `hubFreeRoam.setJump(on)` channel since battle roam runs `noKeys`). SPACE
+  swallowed in capture so ui.js's end-turn binding can't fire; **ENTER = end
+  turn** (same double-press confirm via `_ewRequestEndTurn`).
+- **Minecraft hotbar**: slot 0 = ⚔ basic attack, 1..n = abilities. WHEEL
+  scrolls the cursor (pad L/R too), selected slot lifts + preview strip above
+  the bar (name/AP/MP/range + why-dead reason). A slot is GREYED when
+  unaffordable (AP/MP/cooldown) OR nothing is in range **from the tile the
+  player is standing on** (`_castableFromHere`: selfCast → ok; tileTargeted →
+  getSpellRangeTiles>0; else _getSpellValidTargets>0 — provisional unit.x/y so
+  it live-updates as you walk; barKey includes x/y). Selecting a dead slot
+  never arms and drops any aim; hotkey on a dead slot beeps + toast. LMB with
+  a spell-slot held re-arms it (movement drops aim) and casts in the same
+  click if no walk was pending.
+- `state.thirdPersonCamera` (a read-only gate in state.js's right-drag pan /
+  middle-drag orbit handlers that was never set anywhere) is now set while
+  ShooterControls owns the camera — legacy drags stand down.
+- setTool's range-framing `focusBoardCameraOnTiles` / `_softResetCameraToUnit`
+  now skip when `_shooterCamOwns()` (they fought the per-frame snap).
+- ShooterControls `_battleActive()` additionally requires
+  `ThreeRenderer.isActive()` — no TPS ownership over the 2D fallback.
+- Syntax-checked only (RULE #1c), not playtested.
+
 ## STRIKE MODE — third-person shooter controls (2026-07-09, EXPERIMENTAL)
 
 New mode card "Strike Mode" 🎯 (BETA) in the PvP picker. Rules = a straight TDM

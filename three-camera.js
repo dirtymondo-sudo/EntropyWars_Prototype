@@ -156,9 +156,24 @@ const ThreeCamera = (function () {
                character), then hard-floor the eye above ground. This is the
                standard "camera pulls in when a wall/hill is behind you" TPS
                behaviour, done against the height field so it is cheap and
-               cannot fall through. */
+               cannot fall through.
+
+               The pivot height is anchored to the SUBJECT's own ground tile
+               (cam._tpsSubject, the walker's float position), not the focal:
+               the focal is the over-the-shoulder point — often a NEIGHBOURING
+               tile at a different terrain height — and the stock focal-height
+               machinery also adds a unit-lift only when a unit happens to
+               stand on the rounded focal. Both made the shot ride at a
+               different height depending on where the shoulder offset landed.
+               Ground under the character + a per-model shoulder lift
+               (cam._tpsHeadLift, set from the model's real rendered height)
+               = one consistent frame for every character, short or tall. */
             const headLift = cam._tpsHeadLift || (ts * 0.9);
-            const pivX = focalX, pivY = focalY + headLift, pivZ = focalZ;
+            const subj = cam._tpsSubject;
+            const pivGroundY = subj
+                ? _groundYWorld(subj.x * ts + ts / 2, subj.y * ts + ts / 2)
+                : _groundYWorld(focalX, focalZ);
+            const pivX = focalX, pivY = pivGroundY + headLift, pivZ = focalZ;
             let eyeX = pivX - dist * dirX;
             let eyeY = pivY - dist * dirY;
             let eyeZ = pivZ - dist * dirZ;
@@ -180,8 +195,22 @@ const ThreeCamera = (function () {
             const eg = _groundYWorld(eyeX, eyeZ) + clear;
             if (eyeY < eg) eyeY = eg;
 
+            /* Aim ALONG the view direction, not AT the pivot. The old
+               lookAt(pivot) capped the gaze at eye level: once the eye is
+               floored on the ground, staring back at the character's head can
+               never pitch into the sky no matter how far the player cranes
+               up. Aiming at a point AHEAD of the pivot along the view ray is
+               identical while the eye sits unobstructed on the orbit ray
+               (eye, pivot and the ahead-point are colinear), but lets
+               tilt > 90° genuinely look up — the character simply rides the
+               lower part of the frame, exactly like every modern TPS. It also
+               keeps the aim direction constant when terrain collision pulls
+               the eye in, so the reticle never jumps. */
+            const ahead = ts * 2.5;
             targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
-            targetLookX = pivX; targetLookY = pivY; targetLookZ = pivZ;
+            targetLookX = pivX + dirX * ahead;
+            targetLookY = pivY + dirY * ahead;
+            targetLookZ = pivZ + dirZ * ahead;
         } else if (cam._cineKeepSubject && dirY > 1e-4 && focalY > camFloorY && targetPosY < camFloorY) {
             /* ── 3RD-PERSON floor collision (cinematic shots only) ──
                A ground-standing subject has NO eye position below it, so craning

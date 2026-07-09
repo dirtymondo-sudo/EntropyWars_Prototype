@@ -13024,6 +13024,7 @@ const ThreeRenderer = (function () {
                         unit.x = Math.round(fr.fx); unit.y = Math.round(fr.fy);
                     }
                     e.group.position.set(unit.x * ts + ts / 2, _tileSurfaceY(unit.x, unit.y, null), unit.y * ts + ts / 2);
+                    e.group.rotation.y = 0;   // facing lives on the wrapper (unit.facing), never here
                     _playUnitModelAnim(e, 'idle');
                 }
             } catch (err) {}
@@ -13126,12 +13127,15 @@ const ThreeRenderer = (function () {
         entry.group.position.set(fr.fx * ts + ts / 2, sy - sink + yJump, fr.fy * ts + ts / 2);
         entry.group._ew_spriteTopY = sy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
 
-        /* smooth shortest-arc turn toward the heading */
-        var cur = entry.group.rotation.y || 0;
-        var diff = fr.heading - cur;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        entry.group.rotation.y = cur + diff * Math.min(1, dt * 12);
+        /* Facing: route the heading through unit.facing and let the stock
+           gameplay-facing pass (_updateUnitFacing) turn the model. The old
+           code rotated entry.group directly — but the GLB lives inside a
+           wrapper child (_ew_facingSprite) whose rotation.y that pass
+           OVERWRITES from unit.facing every frame, so the two yaws composed
+           and any stale facing of ~π made the character WALK BACKWARDS.
+           One writer only: the outer group stays at 0. */
+        if (entry.group.rotation.y) entry.group.rotation.y = 0;
+        if (moving) unit.facing = { dx: mx, dy: my };   // mx/my already normalized
 
         /* clip request — consumed by _updateUnitModels */
         fr.moving = moving;
@@ -19256,7 +19260,11 @@ const ThreeRenderer = (function () {
             stop: _freeRoamStop,
             active: function () { return !!_freeRoam; },
             setPadInput: _freeRoamSetPad,
+            /* external jump channel (Strike Mode runs the walker with noKeys,
+               so battle.js forwards its own SPACE handling through this) */
+            setJump: function (on) { if (_freeRoam) _freeRoam.keys.space = !!on; },
             pos: function () { return _freeRoam ? { x: _freeRoam.fx, y: _freeRoam.fy } : null; },
+            uid: function () { return _freeRoam ? _freeRoam.uid : null; },
         },
 
         /* Third-person shooter controls (battle.js ShooterControls layer) */
@@ -19265,6 +19273,15 @@ const ThreeRenderer = (function () {
         clickAtScreen: _screenClick,
         setUnderfootTile,
         getCanvas: function () { return canvas; },
+        /* World-space rendered height of a unit's model (same target height
+           the GLB is scaled to) — Strike Mode anchors its shoulder camera to
+           this so short and tall characters get identical framing. */
+        getUnitVisualHeight: function (uid) {
+            var ts = CONFIG.tileSize || BASE_TILE;
+            var e = _getUnitEntry(uid);
+            var hr = (e && e.modelDef && e.modelDef.heightRatio) || 1;
+            return ts * UNIT_SPRITE_SIZE_RATIO * hr;
+        },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */
         markShadowsDirty,
