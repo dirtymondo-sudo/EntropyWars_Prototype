@@ -7852,6 +7852,15 @@
 
             _apply() {
                 if (!boardStageEl) return;
+                /* Auto-release the cine TPS rig the moment no cinematic shot
+                   owns the camera — every restore/reset/interrupt path clears
+                   _cineShotId, so none of them needs to know the rig exists.
+                   (_tpsSubject is left alone when Strike Mode's per-frame
+                   controller owns it via _tpsCollide.) */
+                if (this._cineTps && this._cineShotId == null) {
+                    this._cineTps = false;
+                    if (!this._tpsCollide) this._tpsSubject = null;
+                }
                 const ts = CONFIG.tileSize || BASE_TILE;
                 const gap = CONFIG.tileGap ?? 0;
                 const pad = CONFIG.boardPadding ?? 2;
@@ -10122,6 +10131,51 @@
             };
         }
 
+        /* ── TPS cine rig: the Strike Mode camera, reused for action shots ──
+           Engaging camera._cineTps routes ThreeCamera.sync through the true
+           third-person rig Strike Mode proved out: pivot at the subject's
+           REAL shoulder height (per-model), a fixed terrain-colliding boom,
+           and a gaze aimed ALONG the view direction — so a shot that cranes
+           past the horizon genuinely shows the sky instead of freezing at eye
+           level. The flag auto-releases in camera._apply() when no cinematic
+           shot owns the camera, so every existing restore path keeps working
+           untouched. Falls back to the legacy shot maths when the 3D renderer
+           is inactive (the rig lives in ThreeCamera). */
+        const CINE_TPS_DIST_TILES = 4.6;   // boom at melee range, in tiles of world
+        const CINE_TPS_DIST_GROW  = 0.22;  // extra boom per tile of caster→target gap
+        const CINE_TPS_DIST_MAX   = 7.0;   // never further than this — keeps it a character shot
+        function _tpsBoomZoom(lenTiles) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const base = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
+                ? ThreeCamera.getBaseDist() : 800;
+            const distTiles = Math.min(CINE_TPS_DIST_MAX,
+                CINE_TPS_DIST_TILES + Math.max(0, (lenTiles || 0) - 1) * CINE_TPS_DIST_GROW);
+            return Math.max(0.15, Math.min(10.0, base / (ts * distTiles)));
+        }
+        function _tpsShoulderLift(unit) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let h = ts * 0.95;
+            try {
+                if (unit && unit.id != null && typeof ThreeRenderer !== 'undefined'
+                    && ThreeRenderer.getUnitVisualHeight) {
+                    h = ThreeRenderer.getUnitVisualHeight(unit.id) || h;
+                }
+            } catch (e) {}
+            return h * 0.8;
+        }
+        /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
+           `unit` (generic humanoid height for bare tile targets). Returns
+           false — leaving the caller on the legacy maths — when 3D is off. */
+        function _cineTpsAnchor(pos, unit) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return false;
+            } catch (e) { return false; }
+            camera._cineTps = true;
+            camera._tpsSubject = { x: pos.x, y: pos.y };
+            camera._tpsHeadLift = _tpsShoulderLift(unit);
+            return true;
+        }
+
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
             // Remember the player's framing to return to — but ONLY capture it
             // from a genuine gameplay state (no shot currently owns the camera).
@@ -10217,15 +10271,22 @@
             // it is right at any altitude. (When the up-tilt is steep enough that the
             // rig dollies the eye in, that closer distance wins; this just keeps a
             // sane bound for the in-between angles.)
-            let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
-            if (upGapPx > 0) {
-                const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
-                // Never let the vertical fit widen past the action cam's own
-                // minimum framing: the focal-height bias + the rig's
-                // keep-subject response already hold both subjects in frame,
-                // and dropping below CINE_MIN_ZOOM reads as a random
-                // full-board zoom-out in the middle of a spell.
-                zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
+            // THE ACTION CAMERA IS THE STRIKE MODE CAMERA: anchor the TPS rig
+            // on the caster (real shoulder height, colliding boom, gaze along
+            // the caster→target line). Zoom then just encodes a fixed world
+            // boom that eases back slightly with the gap — the target sits on
+            // the aim ray, so no vertical-fit maths is needed; elevation is
+            // handled by the slope tilt above.
+            let zoom;
+            if (_cineTpsAnchor(sourceUnit, sourceUnit)) {
+                zoom = _tpsBoomZoom(len);
+            } else {
+                // 2D fallback: the legacy framing maths.
+                zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+                if (upGapPx > 0) {
+                    const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
+                    zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
+                }
             }
 
             // Tell the rig to keep the caster framed (dolly-in floor response) while
@@ -10314,12 +10375,21 @@
             // SUBJECT SIZE: signature framing, easing back for a long charge so
             // the whole path fits; widen further for a climb so the high end
             // (plus its HP bar) clears the top. Same fit as the attack cam.
-            let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
-            if (upGapPx > 0) {
-                const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
-                // Floor at CINE_MIN_ZOOM — same reasoning as the attack shot:
-                // the fit may ease back, never blow out to a full-board view.
-                zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
+            // Same TPS rig as the attack cam, anchored on the launch spot
+            // (shoulder height of the dashing caster when known).
+            const _dashCaster = (opts.casterId != null)
+                ? (state.units || []).find(un => un.id === opts.casterId) : null;
+            let zoom;
+            if (_cineTpsAnchor(fromPoint, _dashCaster)) {
+                zoom = _tpsBoomZoom(len);
+            } else {
+                zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+                if (upGapPx > 0) {
+                    const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
+                    // Floor at CINE_MIN_ZOOM — same reasoning as the attack shot:
+                    // the fit may ease back, never blow out to a full-board view.
+                    zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
+                }
             }
 
             // Take ownership as a cinematic shot so: (a) the renderer's occlusion
@@ -10388,7 +10458,9 @@
             // cam was doing. Reuse the action cam's own signature framing so the
             // sky-strike shot opens at the exact same third-person distance and
             // simply cranes up and back down from there.
-            const fixedZoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+            const _tps = _cineTpsAnchor(sourceUnit, sourceUnit);
+            const fixedZoom = _tps ? _tpsBoomZoom(2)
+                : Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
 
             // Caster + impact-tile elevations (px). The shot is anchored on the
             // CASTER (a 3rd-person of them looking up at the falling body), then
@@ -10412,12 +10484,15 @@
                 yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
             }
 
-            // tilt: LOW = looking down, HIGH = near-horizontal / looking up.
-            // (The sky-strike cam keeps its own tuned beat tilts, independent of
-            // the action-cam baseline, so meteors behave exactly as before.)
-            const ESTAB_TILT  = 60;  // over-the-shoulder on the caster
-            const SKY_TILT    = 84;  // tilt up to watch the body fall in
-            const GROUND_TILT = 54;  // tilt back down onto the impact
+            // tilt: LOW = looking down, 90 = horizon, HIGH = looking up.
+            // On the TPS rig the gaze aims ALONG the view direction, so beat 2
+            // can genuinely crane PAST the horizon: the caster holds the lower
+            // frame while the meteor/saucer hangs in full view overhead — the
+            // shot this camera was always supposed to be. (The old rig topped
+            // out at 84° because looking further up just froze at eye level.)
+            const ESTAB_TILT  = _tps ? 78  : 60;  // over the caster's shoulder, toward the impact zone
+            const SKY_TILT    = _tps ? 122 : 84;  // crane UP — body in full view above the caster
+            const GROUND_TILT = _tps ? 64  : 54;  // back down onto the victim taking the hit
 
             // Establishing beat anchors on the CASTER (same map-size-independent
             // third-person framing as the action cam), nudged toward the impact.
@@ -10462,11 +10537,14 @@
             }, sourceHold);
 
             // 3) Follow the body DOWN onto the impact tile — tilt back down,
-            //    zoom in, accelerating like its fall.
+            //    accelerating like its fall, landing framed on the VICTIM
+            //    taking the damage (the rig's pivot re-anchors to the target's
+            //    own shoulder height and ground).
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
+                if (_tps) _cineTpsAnchor(target, (target && target.id != null) ? target : null);
                 camera.moveTo({
                     x: tx, y: ty, zoom: fixedZoom, tilt: GROUND_TILT, yaw,
                     elevZ: groundPx + ts * 0.4,

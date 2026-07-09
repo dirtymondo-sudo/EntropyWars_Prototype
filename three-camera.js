@@ -142,8 +142,13 @@ const ThreeCamera = (function () {
         }
         const camFloorY = groundY + groundClearance;
 
-        if (cam._tpsCollide) {
-            /* ══ TRUE THIRD-PERSON CAMERA (Strike Mode / hub free-roam) ══
+        if (cam._tpsCollide || cam._cineTps) {
+            /* ══ TRUE THIRD-PERSON CAMERA ══
+               Two owners share this rig: Strike Mode / hub free-roam
+               (cam._tpsCollide, per-frame) and the main game's cinematic
+               action shots (cam._cineTps, engaged per shot in battle.js and
+               auto-released by camera._apply the moment no shot owns the
+               camera).
                A real over-the-shoulder rig: orbit a PIVOT at the character's
                head, and — the whole point — never let the eye or the line
                between eye and pivot pass through the terrain. The engine's

@@ -4,6 +4,37 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## ACTION CAMERA = the Strike Mode TPS rig (2026-07-09, same session)
+Token `20260709t` → `20260709u`. battle.js + three-camera.js. The main game's
+cinematic action shots now run on the Strike Mode third-person rig.
+
+- **Mechanism**: new `camera._cineTps` flag. `ThreeCamera.sync` takes the TPS
+  branch when `_tpsCollide || _cineTps`. The flag AUTO-RELEASES in
+  `camera._apply()` whenever `_cineShotId == null` — so all ~12 existing
+  restore/reset/interrupt paths work untouched, none of them know the rig
+  exists. (`_tpsSubject` is preserved if Strike Mode owns it via _tpsCollide.)
+- **Helpers (battle.js, above _playCineActionShot)**: `_tpsBoomZoom(len)`
+  (fixed world boom: 4.6 tiles + 0.22/tile of gap, cap 7 — encodes as zoom =
+  baseDist/(ts·dist)), `_tpsShoulderLift(unit)` (0.8 × getUnitVisualHeight),
+  `_cineTpsAnchor(pos, unit)` (sets _cineTps/_tpsSubject/_tpsHeadLift;
+  returns false when 3D inactive → callers keep the LEGACY zoom maths as the
+  2D fallback — don't delete those branches).
+- **_playCineActionShot / animateDashActionCamera**: anchored on the caster /
+  launch spot; slope-following tilt + off-axis yaw kept; vertical-fit zoom
+  maths only used in the 2D fallback (the aim-ray handles elevation).
+- **_playDescentCam (meteor/nuke/saucer)** beat tilts are now rig-dependent:
+  establish 78 / SKY **122** / ground 64 when TPS (60/84/54 legacy). 122° is a
+  REAL past-horizon crane — the old rig froze at eye level so 84 was its max.
+  Beat 3 re-anchors `_cineTpsAnchor(target, target-if-unit)` so the landing
+  frames the victim at its own shoulder height ("caster looks up at the
+  meteor, then the target takes the hit").
+- Engage order matters: `_cineShotId` must be set before/synchronously with
+  `_cineTpsAnchor` (the auto-release keys off it); all three shots do this in
+  one JS tick, no _apply can interleave.
+- Not playtested (RULE #1c) — syntax-checked only. Watch: mid-shot manual pan
+  keeps _cineTps until something clears _cineShotId (pre-existing interrupt
+  paths do); smoothing eats the ~120ms eye jump when the rig engages.
+
 ## STRIKE MODE round 2 — camera rebuilt + Minecraft hotbar (2026-07-09, later session)
 Token `20260709s` → `20260709t`. battle.js (ShooterControls + setTool guard),
 three-camera.js (TPS rig), three-renderer.js (walker facing + APIs). Fixes for:
