@@ -3358,10 +3358,32 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     let inSpellRange = false;
     const isBarrage = sp.kind === 'barrage';
     const isAoeOriginSelf = sp.aoeOriginSelf;
-    const isLine = sp.kind === 'line' || sp.kind === 'linePush' || sp.kind === 'splitBeam';
+    // splitBeam is a unit-target spell in the engine (generic range+LOS rules),
+    // NOT a direction beam — it goes through the generic branch below.
+    const isLine = sp.kind === 'line' || sp.kind === 'linePush';
     const isCross = sp.kind === 'cross';
     const isDash = sp.kind === 'dash';
     const isLeap = sp.kind === 'leapStrike';
+
+    // Engine beams (line/linePush) are DIRECTION casts: the click only picks a
+    // heading — orthogonal OR diagonal — and the ray walks the whole board,
+    // stopping only at impassable terrain (doSpell skips the range/LOS gates
+    // entirely; see _applyLineDamage). So "castable on this enemy from (sx,sy)"
+    // = enemy sits on one of the 8 ray headings and the ray reaches them.
+    const beamRayHits = (sxx, syy) => {
+      const ddx = Math.sign(tx - sxx), ddy = Math.sign(ty - syy);
+      if (ddx === 0 && ddy === 0) return false;
+      const adx = Math.abs(tx - sxx), ady = Math.abs(ty - syy);
+      if (!(ddx === 0 || ddy === 0 || adx === ady)) return false;
+      let cx2 = sxx + ddx, cy2 = syy + ddy;
+      const maxSteps = Math.max(adx, ady);
+      for (let i = 0; i < maxSteps; i++) {
+        if (typeof isTerrainPassable === 'function' && !isTerrainPassable(cx2, cy2) && !sp.destroysObstacles) return false;
+        if (cx2 === tx && cy2 === ty) return true;
+        cx2 += ddx; cy2 += ddy;
+      }
+      return false;
+    };
 
     if (isBarrage) {
       // Barrage novae (Meow, Quake, Requiem…) center on the CASTER and auto-hit
@@ -3377,8 +3399,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       inSpellRange = dist <= selfRadius;
     } else if (isLine) {
 
-      const onAxis = (actingUnit.x === tx || actingUnit.y === ty) && dist >= 1;
-      inSpellRange = onAxis && dist <= spRange && !spLos;
+      inSpellRange = dist >= 1 && beamRayHits(actingUnit.x, actingUnit.y);
     } else if (isDash) {
 
       const onAxis = (actingUnit.x === tx || actingUnit.y === ty) && dist >= 1;
@@ -3416,7 +3437,29 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
         const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
         spMoveTile = findMoveIntoRange(selfRadius, spellApCost);
-      } else if (isLine || isDash) {
+      } else if (isLine) {
+        // Beam move-then-cast: step (or jump) to any reachable tile that puts
+        // the enemy on one of the 8 ray headings with the ray unobstructed —
+        // beams were previously never offered as MOVE→CAST at all.
+        spMoveTile = null;
+        if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+            && canUnitMove(actingUnit) && (unitAP - 1) >= spellApCost) {
+          const cand = [];
+          try { cand.push(...getMoveTiles(actingUnit)); } catch (e) {}
+          if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+            try { cand.push(...getJumpTiles(actingUnit)); } catch (e) {}
+          }
+          let best = null, bestD = Infinity;
+          for (const t of cand) {
+            if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+            if (t.x === tx && t.y === ty) continue;
+            if (!beamRayHits(t.x, t.y)) continue;
+            const d = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
+            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z }; }
+          }
+          spMoveTile = best;
+        }
+      } else if (isDash) {
 
         spMoveTile = null;
       } else if (isLeap) {
@@ -4381,8 +4424,15 @@ function _computeTileActions(actingUnit, tx, ty) {
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     const spRange = sp.range || 3;
     const spDist = _spellTileDist(sp);
-    const inRange = spDist <= spRange;
-    const losBlocked = typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    // Direction beams (line/linePush) have NO range or LOS gate in the engine —
+    // the clicked tile only picks a heading (orthogonal or diagonal) and the ray
+    // walks the whole board. Offer them on any aligned tile.
+    const _isDirBeam = sp.kind === 'line' || sp.kind === 'linePush';
+    const _beamAligned = _isDirBeam && spDist > 0
+      && (actingUnit.x === tx || actingUnit.y === ty
+          || Math.abs(actingUnit.x - tx) === Math.abs(actingUnit.y - ty));
+    const inRange = _isDirBeam ? _beamAligned : spDist <= spRange;
+    const losBlocked = !_isDirBeam && typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
     // Placement kinds: validate THIS tile so the row is greyed with the real
     // reason ("Needs an empty tile", "Max height", "No room here"…).
     let placeReason = '';
@@ -4406,7 +4456,7 @@ function _computeTileActions(actingUnit, tx, ty) {
     else if (actingUnit.mp < mpCost) reason = 'No MP';
     else if (unitAP < spellApCost) reason = 'No AP';
     else if (needMats) reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
-    else if (!inRange) reason = 'Out of range';
+    else if (!inRange) reason = _isDirBeam ? 'Not in line with caster' : 'Out of range';
     else if (losBlocked) reason = 'No line of sight';
     else if (placeReason) reason = placeReason;
 

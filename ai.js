@@ -595,6 +595,15 @@
                 }
             }
 
+            // Hazard ground: standing pat on (or stepping onto) a pending blast
+            // tile / burning ground / deep water is punished hard enough that a
+            // plain step to safety beats any attack cast from the danger tile.
+            const hazardPen = aiHazardPenaltyAt(unit, endX, endY);
+            if (hazardPen > 0) {
+                cand.score -= hazardPen;
+                cand._hazardPenalty = hazardPen;
+            }
+
             const hpAfterAction = unit.hp;
             if (incomingDmg >= hpAfterAction && threatCount >= 1) {
 
@@ -638,6 +647,30 @@
     function getThreatAt(threatMap, x, y) {
         const g = G();
         return threatMap.get(g.posKey(x, y)) || { count: 0, totalDmg: 0 };
+    }
+
+    // ── Hazard awareness (2026-07-09 AI pass) ─────────────────────────────
+    // The AI used to stand on telegraphed Crystal Ball marks, burning ground,
+    // poison and deep water until it died there (4 of 9 deaths in the reference
+    // match were avoidable ground damage). Returns a score penalty for ENDING
+    // a turn at (x,y): pending delayed blasts count as near-lethal ground.
+    function aiHazardPenaltyAt(unit, x, y) {
+        const g = G();
+        let pen = 0;
+        const delayed = g.state._delayedSpells || [];
+        for (const ds of delayed) {
+            if (!ds || ds.markedUnitId || ds.x == null) continue;  // unit-tracking shots follow the unit, not the tile
+            const r = ds.aoeRadius != null ? ds.aoeRadius : 1;
+            if (Math.abs(x - ds.x) <= r && Math.abs(y - ds.y) <= r) {
+                pen += Math.max(60, Math.min(140, ds.dmg || 100));
+            }
+        }
+        const terr = typeof g.getTerrainAt === 'function' ? g.getTerrainAt(x, y) : null;
+        if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
+        else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
+        else if (terr === 'poison' || terr === 'scorched') pen += 30;
+        if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45;
+        return pen;
     }
 
     function getTypeMultiplier(attacker, defender, spellType) {
@@ -750,11 +783,15 @@
 
         if ((target.hourglasses || 0) > 0) priority += g.getAIWeight('hourglassTargetBonus_v1') + (target.hourglasses * 10);
 
+        // Focus fire: damage the TEAM already invested in a target this round is
+        // worthless unless someone finishes the job — weight wounded-by-us
+        // targets up hard so pokes convert into kills instead of smearing damage
+        // across four different enemies.
         const dmgLog = getTeamDamageLog();
         const priorDmg = dmgLog[target.id] || 0;
         if (priorDmg > 0) {
-            priority += 20;
-            if (target.hp <= priorDmg + 20) priority += 30;
+            priority += 30;
+            if (target.hp <= priorDmg + 20) priority += 45;
         }
 
         const hpPct = target.hp / target.maxHp;
@@ -1168,6 +1205,26 @@
 
             out.push({ type: 'attack', target: tgt, score });
         }
+
+        // Enemy deployed objects (heal beacons, pylons, turret-like deploys) die
+        // to ONE basic attack yet pay value every round they stand — the AI once
+        // let a pair of 35 HP/round heal beacons run a whole match untouched.
+        // Offer them as attack candidates whenever they're in reach.
+        const _dObjs = g.state._deployedObjects || [];
+        if (_dObjs.length) {
+            const _oRange = g.getEffectiveRange(unit);
+            for (const o of _dObjs) {
+                if (!o || o.hp <= 0 || o._detonated || o.ownerPlayer === unit.player) continue;
+                const d = Math.abs(unit.x - o.x) + Math.abs(unit.y - o.y);
+                if (d < 1 || d > _oRange) continue;
+                if (g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(unit.x, unit.y, o.x, o.y)) continue;
+                if (g.unitAt && g.unitAt(o.x, o.y)) continue;   // a unit there takes the hit instead
+                let s = 55 + (o.auraHeal ? 45 : 0) + (o.turretDmg ? 40 : 0);
+                if (o.detonateOnAttack && o.blastRadius > 0 && d <= (o.blastRadius || 1)) s = 0; // don't blow it up in our own face
+                if (unit.cls === 'White Mage') s *= 0.25;
+                if (s > 0) out.push({ type: 'attack', target: { x: o.x, y: o.y }, score: s, _objectAttack: true });
+            }
+        }
     }
 
     function scoreTowerAttack(unit, v, out) {
@@ -1259,6 +1316,18 @@
             // no whiff penalty here.
             if (target && _PRESS_SPELL_KINDS_AI.has(spell.kind)) {
                 score += _pressScoreAdj(unit, target, { spellType: spell.spellType || null }).add;
+            }
+
+            // MP-dump escalation: a caster hoarding a fat mana pool late in the
+            // match is wasted value (a Psychic once finished 399/399 MP after 13
+            // rounds). Scale spell candidates up as unspent MP grows, harder as
+            // the round cap approaches.
+            const _mpPct = unit.maxMp ? unit.mp / unit.maxMp : 0;
+            if (_mpPct > 0.6 && score > 0) {
+                const _mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+                const _rLim = (_mode && _mode.roundLimit) || g.state.roundLimit || 0;
+                const _late = _rLim > 0 && (g.state.round || 0) >= _rLim - 4;
+                score *= 1 + (_mpPct - 0.6) * (_late ? 0.9 : 0.45);
             }
 
             out.push({ type: 'spell', spell, target, score, apCost });
@@ -2299,6 +2368,23 @@
             }
         }
 
+        // Standing on hazard ground (a telegraphed Crystal Ball tile, fire,
+        // poison, deep water)? Always offer an explicit escape step — scored by
+        // the danger being fled — so "get off the mine" can beat every attack.
+        const _standingHazard = aiHazardPenaltyAt(unit, unit.x, unit.y);
+        if (_standingHazard > 0 && moveTiles.length > 0) {
+            let esc = null, escPen = Infinity, escD = Infinity;
+            for (const t of moveTiles) {
+                const p = aiHazardPenaltyAt(unit, t.x, t.y);
+                const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
+                if (p < escPen || (p === escPen && d < escD)) { escPen = p; escD = d; esc = t; }
+            }
+            if (esc && escPen < _standingHazard) {
+                out.push({ type: 'move', x: esc.x, y: esc.y, z: esc.z,
+                           score: 40 + (_standingHazard - escPen), _fleeHazard: true });
+            }
+        }
+
         const goal = pickMoveGoal(unit, v);
         if (!goal) return;
 
@@ -2966,6 +3052,7 @@
 
                 const threat = getThreatAt(v.threatMap, tile.x, tile.y);
                 score -= threat.count * 24;
+                score -= aiHazardPenaltyAt(unit, tile.x, tile.y) * 2;
                 if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += g.getAIWeight('antiOscillationPen_v1');
                 if (score > bestScore) { bestScore = score; best = tile; }
             }
@@ -2996,9 +3083,17 @@
             const threat = getThreatAt(v.threatMap, tile.x, tile.y);
             score -= threat.count * 2;
 
+            // Never path INTO hazard ground (pending blasts, fire, deep water).
+            score -= aiHazardPenaltyAt(unit, tile.x, tile.y);
+
+            let adjAllies = 0;
             for (const a of v.allies) {
                 if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 3) score += 2;
+                if (Math.abs(tile.x - a.x) <= 1 && Math.abs(tile.y - a.y) <= 1) adjAllies++;
             }
+            // Anti-cluster: a 2×2 pocket of three units is an AoE/mine magnet —
+            // a single Crystal Ball cluster once triple-killed a camped back line.
+            if (adjAllies >= 2) score -= 30;
 
             if (typeof g.getHeightAt === 'function') {
                 const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);

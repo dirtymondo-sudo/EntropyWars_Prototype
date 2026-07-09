@@ -4827,6 +4827,35 @@
             return false;
         }
 
+        /* ── Can any unit on `teamPlayer`'s side currently see `unit`? Same true
+           vision as isUnitSeenByAnyEnemy (isInVision: LOS + height blocking +
+           team vision + concealment), but restricted to ONE team. This is the
+           gate for vision-tracked delayed shots (Assassinate): if the target's
+           nameplate eye is closed for that team, the shot MUST fail — the flat
+           awareness-radius check (_isUnitVisibleToViewer) sees through terrain
+           and disagreed with the eye icon, letting lasers hit "hidden" units. */
+        function isUnitSeenByTeam(unit, teamPlayer) {
+            if (!unit || unit.dead) return false;
+            if (unit.player === teamPlayer) return true;
+            if (isUnitConcealedFrom(unit, teamPlayer)) return false;
+            for (const f of state.units) {
+                if (f.dead || f.player !== teamPlayer) continue;
+                if (typeof isInVision === 'function') {
+                    if (isInVision(f, unit.x, unit.y)) return true;
+                } else if (!state.fogOfWar) {
+                    return true;
+                }
+            }
+            /* Vision wards grant sight even with no unit in range. */
+            if (state._visionWards?.length) {
+                for (const w of state._visionWards) {
+                    if (w.player !== teamPlayer) continue;
+                    if (Math.abs(w.x - unit.x) + Math.abs(w.y - unit.y) <= (w.radius || 3)) return true;
+                }
+            }
+            return false;
+        }
+
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
            unit (someone "walked into" them), break the cloak for good and fire a
            big on-screen banner once. Smoke concealment is NOT consumed here — it
@@ -11661,6 +11690,18 @@
 
             const allItemKeys = Object.keys(ITEM_RULES);
             let remainingItems = CONFIG.unitItemSlots;
+
+            // Survival staples first: every random loadout carries a heal potion
+            // and a panacea. Pure-random rolls gave CPU teams all-banes loadouts —
+            // they died carrying 4 uncleansed debuffs with no self-heal.
+            for (const staple of ['healPotion', 'panacea']) {
+                if (remainingItems <= 0) break;
+                const stapleCap = getItemCapForClass(cls, staple);
+                if ((loadout.items[staple] || 0) < stapleCap) {
+                    loadout.items[staple] = (loadout.items[staple] || 0) + 1;
+                    remainingItems--;
+                }
+            }
 
             while (remainingItems > 0) {
                 const pick = allItemKeys[Math.floor(Math.random() * allItemKeys.length)];
@@ -20092,7 +20133,7 @@
             getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
-            isUnitConcealedFrom, isUnitSeenByAnyEnemy, checkStealthReveals,
+            isUnitConcealedFrom, isUnitSeenByAnyEnemy, isUnitSeenByTeam, checkStealthReveals,
             unitHasTelescope, getTelescopeSkyTargets,
 
             getTerrainAt, getTerrainRule, getEntranceAt, getHeightAt, getBaseHeightAt, getUnitStandingHeight,
@@ -28107,7 +28148,46 @@
 
                     const convertedTiles = [];
                     const affectedTiles = [];
-                    if (spell.orientable) {
+                    if (spell.elevationFlood) {
+                        // 🌊 Elevation-aware flood (Atlantean Flood): water pours
+                        // into the target tile and spreads through CONNECTED ground
+                        // at or below the pour point's level — trenches, craters and
+                        // low basins fill first; higher ground stays dry. Ground 2+
+                        // below the pour point (and chasms — the holes this spell
+                        // exists to fill) becomes DEEP water; the rest shallow.
+                        const startH = getBaseHeightAt(x, y);
+                        const visited = new Set();
+                        const queue = [{ x, y }];
+                        while (queue.length > 0 && affectedTiles.length < count) {
+                            const tile = queue.shift();
+                            const pk = posKey(tile.x, tile.y);
+                            if (visited.has(pk)) continue;
+                            visited.add(pk);
+                            if (!isInside(tile.x, tile.y)) continue;
+                            const current = getTerrainAt(tile.x, tile.y);
+                            const alreadyWet = current === 'water' || current === 'deep_water';
+                            const isHole = current === 'chasm';
+                            if (!alreadyWet && !isHole && !_tileCanFlood(tile.x, tile.y)) continue;
+                            const h = getBaseHeightAt(tile.x, tile.y);
+                            if (h > startH) continue;               // water doesn't climb
+                            affectedTiles.push({ x: tile.x, y: tile.y });
+                            if (!alreadyWet) {
+                                const wet = (isHole || startH - h >= 2) ? 'deep_water' : 'water';
+                                if (current !== wet) {
+                                    setTerrainAt(tile.x, tile.y, wet);
+                                    convertedTiles.push({ x: tile.x, y: tile.y });
+                                }
+                            }
+                            queue.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y },
+                                       { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+                        }
+                        // Fresh water claims its victims: drowning/hazard check for
+                        // anyone standing where the water just rose.
+                        for (const ct of convertedTiles) {
+                            const _flU = unitAt(ct.x, ct.y);
+                            if (_flU && !_flU.dead) _applyKnockbackHazard(_flU);
+                        }
+                    } else if (spell.orientable) {
                         const candidates = getOrientedLineTiles(x, y, count, _castOrientation);
                         for (const tile of candidates) {
                             if (!isInside(tile.x, tile.y)) continue;

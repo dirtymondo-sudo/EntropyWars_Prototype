@@ -755,9 +755,14 @@
                     addLog(`🔴 ${ds.spellName}: the target is already down — the shot is wasted.`);
                     return;
                 }
+                /* True team vision (isUnitSeenByTeam = same LOS/height/concealment
+                   check as the nameplate eye icon). If the target's eye is closed
+                   for the caster's team, the shot fails — the old flat awareness
+                   check saw through terrain and hit "hidden" units. */
                 const stillSeen = !ds.requireVision
-                    || (typeof _isUnitVisibleToViewer !== 'function')
-                    || _isUnitVisibleToViewer(mark, ds.sourcePlayer);
+                    || (typeof isUnitSeenByTeam === 'function'
+                        ? isUnitSeenByTeam(mark, ds.sourcePlayer)
+                        : (typeof _isUnitVisibleToViewer !== 'function' || _isUnitVisibleToViewer(mark, ds.sourcePlayer)));
                 if (!stillSeen) {
                     addLog(`🔴 ${ds.spellName} loses its lock — ${unitDisplayName(mark)} slipped out of sight!`, ds.sourcePlayer);
                     if (typeof showFloatingTextForUnit === 'function') {
@@ -3243,7 +3248,12 @@
                 const isCrossClass = !hasClassRestriction && !isMainNative && !isSecNative;
                 const freelancerAccess = isFreelancer && !isMainNative;
                 if (isMainNative) { mainPool.push(spell); continue; }
-                if (isSecNative) { secPool.push(spell); continue; }
+                /* Tier III = a job's signature ultimate: PRIMARY job only. It never
+                   leaks into the secondary-job pool (or cross-class, below). */
+                if (isSecNative) {
+                    if (spell.tier !== 'III') secPool.push(spell);
+                    continue;
+                }
                 if (isCrossClass || freelancerAccess) {
                     if (spell.tier === 'I' || spell.tier === 'II') crossPool.push(spell);
                 }

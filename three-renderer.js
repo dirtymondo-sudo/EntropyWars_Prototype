@@ -10922,9 +10922,14 @@ const ThreeRenderer = (function () {
                 var tgt = _findUnit(ds.markedUnitId);
                 if (!src || src.dead || !tgt || tgt.dead) continue;
                 /* Same rule as the delayed shot itself: no eyes on the target →
-                   the laser is off (and the shot fizzles if it stays off). */
-                if (ds.requireVision !== false && typeof _isUnitVisibleToViewer === 'function'
-                    && !_isUnitVisibleToViewer(tgt, ds.sourcePlayer)) continue;
+                   the laser is off (and the shot fizzles if it stays off).
+                   isUnitSeenByTeam = the true-LOS check the nameplate eye uses. */
+                if (ds.requireVision !== false) {
+                    if (typeof isUnitSeenByTeam === 'function') {
+                        if (!isUnitSeenByTeam(tgt, ds.sourcePlayer)) continue;
+                    } else if (typeof _isUnitVisibleToViewer === 'function'
+                        && !_isUnitVisibleToViewer(tgt, ds.sourcePlayer)) continue;
+                }
                 var se = unitEntries.get(src.id), te = unitEntries.get(tgt.id);
                 if (!se || !se.group || !te || !te.group) continue;
                 /* Fog/concealment: if either end is hidden from the LOCAL viewer,
