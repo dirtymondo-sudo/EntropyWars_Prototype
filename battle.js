@@ -9048,16 +9048,29 @@
         const ShooterControls = (function () {
             const LOOK_SENS = 0.16;            // deg of yaw per px of mouse travel
             const PAD_LOOK_DEG = 175;          // deg/sec at full right-stick
-            const TILT_MIN = 32, TILT_MAX = 106, TILT_DEFAULT = 74;
-            const AIM_Y_FRAC = 0.46;           // reticle just above true centre
-            const ZOOM_STEP = 1.09, ZMULT_MIN = 0.55, ZMULT_MAX = 2.6;
-            /* Over-the-shoulder framing: the ORBIT FOCAL is pushed toward
-               screen-right (and slightly ahead), so the character rides
-               lower-LEFT of centre — the crosshair gets a clear view, like
-               every modern third-person shooter. Offsets shrink as the player
-               zooms in so the shoulder feel stays constant on screen. */
-            const SHOULDER_TILES = 0.95;       // lateral focal offset, in tiles at default zoom
-            const SHOULDER_FWD = 0.35;         // forward push — bias the frame toward what's ahead
+            /* TILT convention (three-camera.js): 0 = straight down, 90 = dead
+               level at the horizon, >90 = craning up. A behind-and-ABOVE TPS
+               shot wants a clearly DOWNWARD gaze — small-ish tilt. The old 74°
+               was almost horizontal, which parked the eye at floor level
+               staring across the ground. ~50° looks down at the play area like
+               Fortnite/Gears; never let it flatten past ~70 (floor) or tip past
+               ~30 (top-down). */
+            const TILT_MIN = 34, TILT_MAX = 70, TILT_DEFAULT = 50;
+            const AIM_Y_FRAC = 0.50;           // reticle at screen centre — the downward gaze aims it at the ground ahead
+            const ZOOM_STEP = 1.08, ZMULT_MIN = 0.7, ZMULT_MAX = 1.7;
+            /* Distance the camera sits BACK from its focal point, as a multiple
+               of the whole-board default view. >1 = pulled in closer than the
+               tactical overview; the eye's height then comes from the tilt.
+               The killer bug in the floor-cam screenshot was multiplying to
+               2.4× (→ 4× on screen): that shrank the orbit distance to almost
+               zero, dropping the eye onto the character's own tile. */
+            const ZOOM_MULT_BASE = 1.25;
+            /* Over-the-shoulder framing: the ORBIT FOCAL is pushed AHEAD of the
+               unit (so it rides the lower third of frame) and to screen-right
+               (so it sits off to one side and the crosshair has a clear lane),
+               like every modern third-person shooter. */
+            const SHOULDER_TILES = 0.65;       // lateral focal offset, in tiles
+            const SHOULDER_FWD = 1.1;          // forward push — drops the unit toward the bottom of frame
 
             let yaw = 0, tilt = TILT_DEFAULT, zoomMult = 1.0;
             let locked = false;
@@ -9130,7 +9143,7 @@
 
             function _zoom() {
                 const base = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
-                return _clamp(base * 2.4 * zoomMult, 0.15, 10.0);
+                return _clamp(base * ZOOM_MULT_BASE * zoomMult, 0.15, 10.0);
             }
             /* board-space over-the-shoulder focal for a subject at t {x,y} */
             function _shoulderFocal(t) {
