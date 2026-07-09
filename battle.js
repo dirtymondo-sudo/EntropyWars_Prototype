@@ -9055,7 +9055,7 @@
                staring across the ground. ~50° looks down at the play area like
                Fortnite/Gears; never let it flatten past ~70 (floor) or tip past
                ~30 (top-down). */
-            const TILT_MIN = 28, TILT_MAX = 82, TILT_DEFAULT = 48;
+            const TILT_MIN = 28, TILT_MAX = 90, TILT_DEFAULT = 48;
             const AIM_Y_FRAC = 0.50;           // reticle at screen centre — the downward gaze aims it at the ground ahead
             const ZOOM_STEP = 1.08, ZMULT_MIN = 0.7, ZMULT_MAX = 1.7;
             /* Distance the camera sits BACK from its focal point, as a multiple
@@ -9225,7 +9225,12 @@
                 if (!locked) return;
                 e.stopImmediatePropagation();
                 if (!_owns()) return;
-                yaw += e.movementX * LOOK_SENS;
+                /* mouse-right must turn the view RIGHT. In this engine a larger
+                   yaw rotates the gaze counter-clockwise (left), so mouse-right
+                   DECREASES yaw — the old `+=` was the inverted feel. */
+                yaw -= e.movementX * LOOK_SENS;
+                /* mouse-up looks up. tilt: 0=down, 90=level. movementY<0 when
+                   the mouse moves up, so `- movementY` raises tilt = looks up. */
                 tilt = _clamp(tilt - e.movementY * LOOK_SENS, TILT_MIN, TILT_MAX);
             }, true);
 
@@ -9648,8 +9653,10 @@
                 /* right stick look */
                 const rx = curve((opts.invertX ? -1 : 1) * (gp.axes[2] ?? 0));
                 const ry = curve((opts.invertY ? -1 : 1) * (gp.axes[3] ?? 0));
-                yaw += rx * PAD_LOOK_DEG * (opts.sensitivity || 1) * dt;
-                tilt = _clamp(tilt + ry * 110 * (opts.sensitivity || 1) * dt, TILT_MIN, TILT_MAX);
+                /* match the mouse: stick-right turns the view right (yaw down),
+                   stick-down looks down (tilt down) */
+                yaw -= rx * PAD_LOOK_DEG * (opts.sensitivity || 1) * dt;
+                tilt = _clamp(tilt - ry * 110 * (opts.sensitivity || 1) * dt, TILT_MIN, TILT_MAX);
 
                 /* left stick move */
                 const lx = curve(gp.axes[0] ?? 0);
