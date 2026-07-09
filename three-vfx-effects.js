@@ -284,34 +284,40 @@ const ThreeVFXEffects = (function () {
         var len3D = Math.sqrt(lenXY * lenXY + dz * dz) || 1;
 
         var theme = _resolveTheme(spellType, spellId, spellName);
+        var bc = _beamColorFor(spellType, null);
 
-        var yawDeg = Math.atan2(dy, dx) * 180 / Math.PI;
-        var pitchDeg = -Math.atan2(dz, lenXY) * 180 / Math.PI;
-        var midX = (from.x + to.x) / 2;
-        var midY = (from.y + to.y) / 2;
-        var midZ = (fz + tz) / 2;
-
-        _spawn({
-            x: midX, y: midY, z: midZ,
-            mode: 'beam', sprite: theme.core,
-            ml: 350,
-            w0: len3D, w1: len3D,
-            h0: ts * 0.12, h1: ts * 0.04,
-            opacity0: 1, opacity1: 0,
-            beamYawDeg: yawDeg, beamPitchDeg: pitchDeg,
-        });
-        _spawn({
-            x: midX, y: midY, z: midZ,
-            mode: 'beam', sprite: theme.trail,
-            ml: 400,
-            w0: len3D, w1: len3D,
-            h0: ts * 0.22, h1: ts * 0.08,
-            opacity0: 0.5, opacity1: 0,
-            beamYawDeg: yawDeg, beamPitchDeg: pitchDeg,
+        /* Impressive volumetric laser blast (real 3D cylinders). Falls back
+           to the flat sprite beam only if the 3D scene isn't available. */
+        var laserOk = _spawnLaserBeam3D(fromTx, fromTy, toTx, toTy, {
+            core: bc.core, glow: bc.glow, beamMs: 440, thickness: 1, shake: 5,
         });
 
-        var nx = dx / len3D, ny = dy / len3D, nz = dz / len3D;
+        if (!laserOk) {
+            var yawDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+            var pitchDeg = -Math.atan2(dz, lenXY) * 180 / Math.PI;
+            var midX = (from.x + to.x) / 2;
+            var midY = (from.y + to.y) / 2;
+            var midZ = (fz + tz) / 2;
+            _spawn({
+                x: midX, y: midY, z: midZ,
+                mode: 'beam', sprite: theme.core,
+                ml: 350, w0: len3D, w1: len3D,
+                h0: ts * 0.12, h1: ts * 0.04,
+                opacity0: 1, opacity1: 0,
+                beamYawDeg: yawDeg, beamPitchDeg: pitchDeg,
+            });
+            _spawn({
+                x: midX, y: midY, z: midZ,
+                mode: 'beam', sprite: theme.trail,
+                ml: 400, w0: len3D, w1: len3D,
+                h0: ts * 0.22, h1: ts * 0.08,
+                opacity0: 0.5, opacity1: 0,
+                beamYawDeg: yawDeg, beamPitchDeg: pitchDeg,
+            });
+        }
 
+        /* Energy motes bleeding off the beam line (adds shimmer over the 3D core) */
+        var nx = dx / len3D, ny = dy / len3D;
         var px = -ny, py = nx;
         var steps = Math.max(6, Math.floor(len3D / 15));
         for (var s = 0; s < steps; s++) {
@@ -319,7 +325,7 @@ const ThreeVFXEffects = (function () {
             var bx = from.x + dx * t;
             var by = from.y + dy * t;
             var bz = fz + dz * t;
-            for (var j = 0; j < 3; j++) {
+            for (var j = 0; j < 2; j++) {
                 var side = (Math.random() > 0.5 ? 1 : -1);
                 _spawn({
                     x: bx + px * side * rn(3, 12) + rn(-3, 3),
@@ -332,27 +338,11 @@ const ThreeVFXEffects = (function () {
                     ml: 150 + rn(0, 250),
                     size0: ts * 0.03 + rn(0, ts * 0.03),
                     size1: 0,
-                    opacity0: 0.65, opacity1: 0,
+                    opacity0: 0.6, opacity1: 0,
                     drag: 2.5,
                 });
             }
         }
-
-        _spawn({
-            x: to.x, y: to.y, z: tz,
-            mode: 'billboard', sprite: 'flash',
-            ml: 200,
-            size0: ts * 0.2, size1: ts * 0.05,
-            opacity0: 1, opacity1: 0,
-        });
-
-        _spawn({
-            x: from.x, y: from.y, z: fz,
-            mode: 'billboard', sprite: 'flash',
-            ml: 120,
-            size0: ts * 0.12, size1: ts * 0.03,
-            opacity0: 0.9, opacity1: 0,
-        });
     }
 
     function aoe(centerTx, centerTy, spellType, spellId, spellName, centerZ) {
@@ -1385,12 +1375,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _bolt_fire:     { boltCore: 'flame-hot',     boltTrail: 'ember',        boltBurst: 'explosion-orange', boltRing: 'target-ring',       boltCoreSize: 0.30, boltTrailSize: 0.10, boltBurstCount: 40 },
         _bolt_ice:      { boltCore: 'frost-crystal',  boltTrail: 'ice-shard',   boltBurst: 'frost-mist',       boltRing: 'target-ring-blue',  boltCoreSize: 0.26, boltTrailSize: 0.09, boltBurstCount: 34 },
         _bolt_elec:     { boltCore: 'spark-elec',     boltTrail: 'lightning',    boltBurst: 'spark-blue',       boltRing: 'stun-ring',         boltCoreSize: 0.24, boltTrailSize: 0.08, boltBurstCount: 30 },
-        _bolt_divine:   { boltCore: 'divine-sparkle', boltTrail: 'holy-light',  boltBurst: 'divine-sparkle',   boltRing: 'halo-ring',         boltCoreSize: 0.28, boltTrailSize: 0.10, boltBurstCount: 36 },
+        _bolt_divine:   { boltCore: 'divine-sparkle', boltTrail: 'holy-light',  boltBurst: 'divine-sparkle',   boltRing: 'halo-ring',         boltCoreSize: 0.40, boltTrailSize: 0.14, boltTrailRate: 5, boltBurstCount: 44, boltHeadGlow: true, radiant: true, shake: 6 },
         _bolt_unholy:   { boltCore: 'dark-flame',     boltTrail: 'void-mist',   boltBurst: 'blood-fleck',      boltRing: 'target-ring',       boltCoreSize: 0.26, boltTrailSize: 0.09, boltBurstCount: 34 },
         _bolt_psi:      { boltCore: 'psi-pulse',      boltTrail: 'void-mist',   boltBurst: 'psi-pulse',        boltRing: 'target-ring',       boltCoreSize: 0.26, boltTrailSize: 0.09, boltBurstCount: 30 },
         _bolt_tech:     { boltCore: 'plasma',         boltTrail: 'spark-elec',  boltBurst: 'emp-arc',          boltRing: 'target-ring-blue',  boltCoreSize: 0.24, boltTrailSize: 0.08, boltBurstCount: 30 },
         _bolt_alien:    { boltCore: 'ufo-glow',       boltTrail: 'acid-green',  boltBurst: 'psi-pulse',        boltRing: 'target-ring-green', boltCoreSize: 0.26, boltTrailSize: 0.09, boltBurstCount: 30 },
-        _bolt_holy:     { boltCore: 'holy-pillar',    boltTrail: 'divine-sparkle', boltBurst: 'holy-light',    boltRing: 'halo-ring',         boltCoreSize: 0.30, boltTrailSize: 0.10, boltBurstCount: 38 },
+        _bolt_holy:     { boltCore: 'holy-pillar',    boltTrail: 'divine-sparkle', boltBurst: 'holy-light',    boltRing: 'halo-ring',         boltCoreSize: 0.42, boltTrailSize: 0.14, boltTrailRate: 5, boltBurstCount: 44, boltHeadGlow: true, radiant: true, shake: 6 },
         _bolt_plasma:   { boltCore: 'laser-pink',     boltTrail: 'spark-pink',  boltBurst: 'laser-pink',       boltRing: 'target-ring',       boltCoreSize: 0.24, boltTrailSize: 0.08, boltBurstCount: 30 },
         _bolt_ki:       { boltCore: 'holy-light',     boltTrail: 'ember',       boltBurst: 'holy-light',       boltRing: 'halo-ring',         boltCoreSize: 0.45, boltTrailSize: 0.14, boltTrailRate: 5, boltBurstCount: 45 },
         _bolt_poison:   { boltCore: 'poison-bubble',  boltTrail: 'acid-green',  boltBurst: 'poison-bubble',    boltRing: 'target-ring-green', boltCoreSize: 0.22, boltTrailSize: 0.08, boltBurstCount: 28 },
@@ -2190,36 +2180,48 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _terminalPx = tilePx(_lastTile.x, _lastTile.y);
             var _terminalZTorso = unitSurfaceZ(_lastTile.x, _lastTile.y) + unitZBoost();
 
-            var _bdx = _terminalPx.x - _casterPx.x;
-            var _bdy = _terminalPx.y - _casterPx.y;
-            var _bdz = _terminalZTorso - _casterZTorso;
-            var _lenXY = Math.sqrt(_bdx * _bdx + _bdy * _bdy);
-            var _len3D = Math.sqrt(_lenXY * _lenXY + _bdz * _bdz);
-            var _beamYawDeg = Math.atan2(_bdy, _bdx) * 180 / Math.PI;
-            var _beamPitchDeg = -Math.atan2(_bdz, _lenXY) * 180 / Math.PI;
-            var _midX = (_casterPx.x + _terminalPx.x) / 2;
-            var _midY = (_casterPx.y + _terminalPx.y) / 2;
-            var _midZ = (_casterZTorso + _terminalZTorso) / 2;
-
-            _spawn({
-                x: _midX, y: _midY, z: _midZ,
-                mode: 'beam', sprite: beamSprite,
-                ml: beamMs,
-                w0: _len3D, w1: _len3D,
-                h0: beamThickness * 1.8, h1: beamThickness * 1.2,
-                opacity0: 0.55, opacity1: 0,
-                beamYawDeg: _beamYawDeg, beamPitchDeg: _beamPitchDeg,
+            var _bc = _beamColorFor(beamDef.beamType || null, beamDef.beamElement || null);
+            /* Volumetric laser (real 3D cylinders). Thickness derives from the
+               beam def's configured pixel thickness so wide "wave" beams stay
+               chunky. Falls back to flat sprite quads only without a 3D scene. */
+            var _laserThick = Math.max(0.6, (beamThickness / 14));
+            var _laserOk = _spawnLaserBeam3D(fromX, fromY, _lastTile.x, _lastTile.y, {
+                core: _bc.core, glow: _bc.glow, beamMs: beamMs, thickness: _laserThick,
+                shake: shake || false,
             });
 
-            _spawn({
-                x: _midX, y: _midY, z: _midZ,
-                mode: 'beam', sprite: beamSprite,
-                ml: beamMs,
-                w0: _len3D, w1: _len3D,
-                h0: beamThickness, h1: beamThickness * 0.5,
-                opacity0: 1, opacity1: 0,
-                beamYawDeg: _beamYawDeg, beamPitchDeg: _beamPitchDeg,
-            });
+            if (!_laserOk) {
+                var _bdx = _terminalPx.x - _casterPx.x;
+                var _bdy = _terminalPx.y - _casterPx.y;
+                var _bdz = _terminalZTorso - _casterZTorso;
+                var _lenXY = Math.sqrt(_bdx * _bdx + _bdy * _bdy);
+                var _len3D = Math.sqrt(_lenXY * _lenXY + _bdz * _bdz);
+                var _beamYawDeg = Math.atan2(_bdy, _bdx) * 180 / Math.PI;
+                var _beamPitchDeg = -Math.atan2(_bdz, _lenXY) * 180 / Math.PI;
+                var _midX = (_casterPx.x + _terminalPx.x) / 2;
+                var _midY = (_casterPx.y + _terminalPx.y) / 2;
+                var _midZ = (_casterZTorso + _terminalZTorso) / 2;
+
+                _spawn({
+                    x: _midX, y: _midY, z: _midZ,
+                    mode: 'beam', sprite: beamSprite,
+                    ml: beamMs,
+                    w0: _len3D, w1: _len3D,
+                    h0: beamThickness * 1.8, h1: beamThickness * 1.2,
+                    opacity0: 0.55, opacity1: 0,
+                    beamYawDeg: _beamYawDeg, beamPitchDeg: _beamPitchDeg,
+                });
+
+                _spawn({
+                    x: _midX, y: _midY, z: _midZ,
+                    mode: 'beam', sprite: beamSprite,
+                    ml: beamMs,
+                    w0: _len3D, w1: _len3D,
+                    h0: beamThickness, h1: beamThickness * 0.5,
+                    opacity0: 1, opacity1: 0,
+                    beamYawDeg: _beamYawDeg, beamPitchDeg: _beamPitchDeg,
+                });
+            }
 
             for (var i = 0; i < hitTiles.length; i++) {
                 var t = hitTiles[i];
@@ -2331,15 +2333,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            (used by sprite-based projectiles so the PNG stays the visible head). */
         var headGlow     = (params.headGlow != null) ? !!params.headGlow : (boltDef.boltHeadGlow !== false);
         var shake        = boltDef.shake || null;
+        var radiant      = !!boltDef.radiant;
 
-        /* Muzzle flash at caster */
+        /* Muzzle flash at caster — radiant bolts (Exorcism / Radiant Bolt)
+           charge up with a bigger holy flare and a puff of gold sparkles. */
         _spawn({
             x: from.x, y: from.y, z: fz,
             mode: 'billboard', sprite: 'flash',
-            ml: 160,
-            size0: ts * 0.30, size1: ts * 0.06,
+            ml: radiant ? 220 : 160,
+            size0: ts * (radiant ? 0.5 : 0.30), size1: ts * 0.06,
             opacity0: 0.95, opacity1: 0,
         });
+        if (radiant) {
+            for (var rm = 0; rm < 10; rm++) {
+                var rma = rn(0, 6.28), rms = rn(30, 120);
+                _spawn({
+                    x: from.x, y: from.y, z: fz,
+                    vx: Math.cos(rma) * rms, vy: Math.sin(rma) * rms, vz: rn(20, 90),
+                    mode: 'billboard', sprite: 'divine-sparkle',
+                    ml: 200 + rn(0, 200), size0: ts * 0.06, size1: 0,
+                    opacity0: 0.9, opacity1: 0, drag: 2, gravity: 60,
+                });
+            }
+        }
 
         _boltEffects.push({
             from: { x: from.x, y: from.y, z: fz },
@@ -2359,6 +2375,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             burstCount: burstCount,
             headGlow: headGlow,
             shake: shake,
+            radiant: radiant,
             spawnAcc: 0,
             ts: ts,
             toTx: toTx,
@@ -2402,13 +2419,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var trailRate    = boltDef.boltTrailRate || 7;
         var burstCount   = boltDef.boltBurstCount || 30;
         var headGlow     = (params.headGlow != null) ? !!params.headGlow : (boltDef.boltHeadGlow !== false);
+        var radiant      = !!boltDef.radiant;
 
         /* Muzzle flash at caster */
         _spawn({
             x: from.x, y: from.y, z: fz,
             mode: 'billboard', sprite: 'flash',
-            ml: 160,
-            size0: ts * 0.30, size1: ts * 0.06,
+            ml: radiant ? 220 : 160,
+            size0: ts * (radiant ? 0.5 : 0.30), size1: ts * 0.06,
             opacity0: 0.95, opacity1: 0,
         });
 
@@ -2430,6 +2448,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             burstCount: burstCount,
             headGlow: headGlow,
             shake: null,
+            radiant: radiant,
             spawnAcc: 0,
             ts: ts,
             toTx: toTx,
@@ -2501,6 +2520,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (p >= 1 && !e.hit) {
                 e.hit = true;
                 var tx = e.to.x, ty = e.to.y, tz2 = e.to.z;
+
+                /* Radiant detonation — the holy column + halo rings that
+                   Exorcism / Radiant Bolt erupt with on contact. */
+                if (e.radiant) {
+                    try { _spawnRadiantBurst3D(e.toTx, e.toTy); } catch (rbErr) {}
+                }
 
                 /* Bright flash */
                 for (var j = 0; j < 4; j++) {
@@ -2927,6 +2952,288 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mesh.renderOrder = renderOrder || 150;
         scene.add(mesh);
         return mesh;
+    }
+
+    /* ─── LASER / BEAM 3D ────────────────────────────────────────────────
+       A proper volumetric laser blast for line/beam spells: a bright
+       white-hot core, a colored inner beam and a soft outer glow shell,
+       all real cylinders oriented from caster torso → terminal tile. The
+       beam SNAPS out from the muzzle (lance-out), holds with a flicker,
+       then blooms and fades. Muzzle flash, impact starburst, a ground
+       shock ring and screen shake sell the hit. Colored by spell type.
+       ──────────────────────────────────────────────────────────────── */
+    var _BEAM_COLORS = {
+        fire:      { core: 0xffe6b0, glow: 0xff5a1e },
+        ice:       { core: 0xdcf6ff, glow: 0x3ba6ff },
+        water:     { core: 0xd0efff, glow: 0x2f8fe0 },
+        lightning: { core: 0xeaf6ff, glow: 0x66b8ff },
+        divine:    { core: 0xfff6d2, glow: 0xffc84a },
+        light:     { core: 0xfff6d2, glow: 0xffc84a },
+        unholy:    { core: 0xf2d6ff, glow: 0xa63cff },
+        shadow:    { core: 0xe6c8ff, glow: 0x8a2cff },
+        tech:      { core: 0xd6fff4, glow: 0x2fe6c0 },
+        metal:     { core: 0xe4faff, glow: 0x49c6e0 },
+        alien:     { core: 0xe2ffe8, glow: 0x46e06a },
+        anomaly:   { core: 0xffd8ea, glow: 0xff3e8f },
+        psychic:   { core: 0xffd8ea, glow: 0xff3e8f },
+        arcane:    { core: 0xf0e0ff, glow: 0xb060ff },
+        human:     { core: 0xffffff, glow: 0xbcd0ff },
+        poison:    { core: 0xe8ffcc, glow: 0x88dd33 },
+        nature:    { core: 0xe8ffcc, glow: 0x88dd33 },
+    };
+
+    function _beamColorFor(spellType, element) {
+        if (spellType && _BEAM_COLORS[spellType]) return _BEAM_COLORS[spellType];
+        if (element) {
+            if (_BEAM_COLORS[element]) return _BEAM_COLORS[element];
+            var mapped = _ELEMENT_THEME[element];
+            if (mapped && _BEAM_COLORS[mapped]) return _BEAM_COLORS[mapped];
+        }
+        return _BEAM_COLORS.human;
+    }
+
+    function _worldTorso(tx, ty) {
+        var wp = _worldPos(tx, ty);
+        wp.y += unitZBoost();
+        return wp;
+    }
+
+    function _spawnLaserBeam3D(fromTx, fromTy, toTx, toTy, opts) {
+        var scene = _getVFXScene();
+        if (!scene) return false;
+        opts = opts || {};
+
+        var a = _worldTorso(fromTx, fromTy);
+        var b = _worldTorso(toTx, toTy);
+        var ts = a.ts;
+
+        var start = new THREE.Vector3(a.x, a.y, a.z);
+        var end   = new THREE.Vector3(b.x, b.y, b.z);
+        var dir   = new THREE.Vector3().subVectors(end, start);
+        var length = dir.length() || 1;
+        dir.normalize();
+        var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+        var coreColor = opts.core != null ? opts.core : 0xffffff;
+        var glowColor = opts.glow != null ? opts.glow : 0x88bbff;
+        var thick     = opts.thickness != null ? opts.thickness : 1;
+        var beamMs    = opts.beamMs != null ? opts.beamMs : 440;
+
+        function mkCyl(radius, color, opacity, renderOrder) {
+            var geo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
+            var mat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(color),
+                transparent: true, opacity: 0,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            var m = new THREE.Mesh(geo, mat);
+            m.position.copy(start);
+            m.quaternion.copy(quat);
+            m.scale.set(0.01, 0.01, 0.01);
+            m.renderOrder = renderOrder;
+            scene.add(m);
+            return { mesh: m, mat: mat, baseR: radius, baseOp: opacity };
+        }
+
+        var glow = mkCyl(ts * 0.17 * thick, glowColor, 0.24, 210);
+        var mid  = mkCyl(ts * 0.085 * thick, glowColor, 0.55, 211);
+        var core = mkCyl(ts * 0.034 * thick, coreColor, 0.98, 212);
+        var layers = [glow, mid, core];
+
+        var lanceMs = Math.min(80, beamMs * 0.18);
+        var fadeMs  = Math.max(120, beamMs * 0.34);
+        var holdEnd = beamMs - fadeMs;
+
+        var entry = { meshes: [glow.mesh, mid.mesh, core.mesh], done: false };
+
+        _animate3D(entry, beamMs, function (elapsed) {
+            /* extension 0..1 — the beam lances out from the muzzle */
+            var ext = elapsed < lanceMs ? (1 - Math.pow(1 - elapsed / lanceMs, 3)) : 1;
+            var curLen = length * ext;
+            var mid3 = start.clone().add(dir.clone().multiplyScalar(curLen * 0.5));
+
+            var op, bloom, flicker;
+            if (elapsed < holdEnd) {
+                op = 1;
+                flicker = 1 + 0.14 * Math.sin(elapsed * 0.05);
+                bloom = 1;
+            } else {
+                var ft = (elapsed - holdEnd) / fadeMs;
+                op = 1 - ft;
+                flicker = 1;
+                bloom = 1 + ft * 0.9;   // radius blooms as it dies
+            }
+
+            for (var i = 0; i < layers.length; i++) {
+                var L = layers[i];
+                var r = L.baseR * bloom * (i === 2 ? 1 : flicker);
+                L.mesh.position.copy(mid3);
+                L.mesh.scale.set(r, curLen, r);
+                L.mat.opacity = L.baseOp * op;
+            }
+        });
+
+        /* Muzzle flash + charge sparks at the caster */
+        var mp = tilePx(fromTx, fromTy);
+        var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+        _spawn({
+            x: mp.x, y: mp.y, z: mz,
+            mode: 'billboard', sprite: 'flash',
+            ml: 200, size0: ts * 0.5 * thick, size1: ts * 0.08,
+            opacity0: 1, opacity1: 0,
+        });
+        for (var m2 = 0; m2 < 8; m2++) {
+            var ma = rn(0, 6.28), ms2 = rn(40, 140);
+            _spawn({
+                x: mp.x, y: mp.y, z: mz,
+                vx: Math.cos(ma) * ms2, vy: Math.sin(ma) * ms2, vz: rn(20, 90),
+                mode: 'billboard', sprite: 'spark-blue',
+                ml: 160 + rn(0, 160), size0: ts * 0.05, size1: 0,
+                opacity0: 0.9, opacity1: 0, drag: 2.4, gravity: 60,
+            });
+        }
+
+        /* Impact starburst + ground shock ring at the terminus */
+        var ip = tilePx(toTx, toTy);
+        var iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
+        var izFloor = tileZ(toTx, toTy) + 1;
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            for (var f = 0; f < 5; f++) {
+                _spawn({
+                    x: ip.x + rn(-4, 4), y: ip.y + rn(-4, 4), z: iz + rn(-4, 4),
+                    mode: 'billboard', sprite: 'flash',
+                    ml: 160 + rn(0, 80), size0: ts * 0.4 + rn(0, ts * 0.2), size1: ts * 0.04,
+                    opacity0: 1, opacity1: 0,
+                });
+            }
+            for (var k = 0; k < 26; k++) {
+                var ang = rn(0, 6.28), elev = rn(-0.2, 1.0), spd = rn(80, 300);
+                _spawn({
+                    x: ip.x + rn(-4, 4), y: ip.y + rn(-4, 4), z: iz + rn(-3, 3),
+                    vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, vz: elev * spd * 0.6,
+                    mode: 'billboard', sprite: 'spark-blue',
+                    ml: 200 + rn(0, 320), size0: ts * 0.05 + rn(0, ts * 0.04), size1: 0,
+                    opacity0: 0.9, opacity1: 0, drag: 2.2, gravity: -20,
+                });
+            }
+            _spawn({
+                x: ip.x, y: ip.y, z: izFloor,
+                mode: 'world', sprite: 'target-ring',
+                ml: 520, size0: ts * 0.3, size1: ts * 1.5,
+                opacity0: 0.9, opacity1: 0,
+            });
+        }, lanceMs);
+
+        if (opts.shake !== false && typeof window.shakeBoard === 'function') {
+            window.shakeBoard(opts.shake || 5);
+        }
+        return true;
+    }
+
+    /* ─── RADIANT BURST 3D ───────────────────────────────────────────────
+       The holy-detonation used by divine bolts (Exorcism / Radiant Bolt).
+       A column of light erupts from the target, wrapped by an inner white
+       core and crowned with expanding halo rings and rising gold sparkles.
+       ──────────────────────────────────────────────────────────────── */
+    function _spawnRadiantBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var coreColor = opts.core != null ? opts.core : 0xfff4cc;
+        var glowColor = opts.glow != null ? opts.glow : 0xffc94a;
+
+        var scene = _getVFXScene();
+        if (scene) {
+            var wp = _worldPos(tx, ty);
+            var pillarH = ts * 2.8;
+
+            function mkPillar(radius, color, opacity, renderOrder) {
+                var geo = new THREE.CylinderGeometry(1, 0.7, 1, 18, 1, true);
+                var mat = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(color),
+                    transparent: true, opacity: 0,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                });
+                var m = new THREE.Mesh(geo, mat);
+                m.position.set(wp.x, wp.y + pillarH * 0.5, wp.z);
+                m.scale.set(0.01, 0.01, 0.01);
+                m.renderOrder = renderOrder;
+                scene.add(m);
+                return { mesh: m, mat: mat, baseR: radius, baseOp: opacity };
+            }
+
+            var outer = mkPillar(ts * 0.42, glowColor, 0.32, 156);
+            var inner = mkPillar(ts * 0.16, coreColor, 0.85, 157);
+            var pillars = [outer, inner];
+            var riseMs = 160, holdMs = 260, pfadeMs = 380;
+            var pTotal = riseMs + holdMs + pfadeMs;
+            var pEntry = { meshes: [outer.mesh, inner.mesh], done: false };
+
+            _animate3D(pEntry, pTotal, function (elapsed) {
+                var grow, op, hgt;
+                if (elapsed < riseMs) {
+                    var t = elapsed / riseMs;
+                    grow = 1 - Math.pow(1 - t, 3);
+                    hgt = grow; op = grow;
+                } else if (elapsed < riseMs + holdMs) {
+                    grow = 1 + 0.05 * Math.sin(elapsed * 0.03);
+                    hgt = 1; op = 1;
+                } else {
+                    var ft = (elapsed - riseMs - holdMs) / pfadeMs;
+                    grow = 1 + ft * 0.5; hgt = 1; op = 1 - ft;
+                }
+                for (var i = 0; i < pillars.length; i++) {
+                    var P = pillars[i];
+                    P.mesh.scale.set(P.baseR * grow, pillarH * hgt, P.baseR * grow);
+                    P.mesh.position.set(wp.x, wp.y + pillarH * hgt * 0.5, wp.z);
+                    P.mesh.rotation.y = elapsed * (i === 0 ? 0.004 : -0.006);
+                    P.mat.opacity = P.baseOp * op;
+                }
+            });
+        }
+
+        /* Sprite crown — flash core, expanding halo rings, rising sparkles */
+        var c = tilePx(tx, ty);
+        var zt = unitSurfaceZ(tx, ty) + unitZBoost();
+        var zf = tileZ(tx, ty) + 1;
+        for (var f = 0; f < 6; f++) {
+            _spawn({
+                x: c.x + rn(-4, 4), y: c.y + rn(-4, 4), z: zt + rn(-4, 8),
+                mode: 'billboard', sprite: 'flash',
+                ml: 200 + rn(0, 120), size0: ts * 0.45 + rn(0, ts * 0.2), size1: ts * 0.05,
+                opacity0: 1, opacity1: 0,
+            });
+        }
+        _spawn({
+            x: c.x, y: c.y, z: zf,
+            mode: 'world', sprite: 'halo-ring',
+            ml: 620, size0: ts * 0.3, size1: ts * 1.8,
+            opacity0: 0.95, opacity1: 0,
+        });
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _spawn({
+                x: c.x, y: c.y, z: zf,
+                mode: 'world', sprite: 'halo-ring',
+                ml: 560, size0: ts * 0.2, size1: ts * 1.3,
+                opacity0: 0.8, opacity1: 0,
+            });
+        }, 120);
+        for (var k = 0; k < 28; k++) {
+            var ang = rn(0, 6.28), rad = rn(0, ts * 0.35);
+            _spawn({
+                x: c.x + Math.cos(ang) * rad, y: c.y + Math.sin(ang) * rad, z: zt + rn(-6, 6),
+                vx: Math.cos(ang) * rn(10, 40), vy: Math.sin(ang) * rn(10, 40), vz: rn(80, 220),
+                mode: 'billboard', sprite: 'divine-sparkle',
+                ml: 400 + rn(0, 400), size0: ts * 0.07 + rn(0, ts * 0.05), size1: 0,
+                opacity0: 0.95, opacity1: 0, drag: 1.4, gravity: 90,
+            });
+        }
+        if (typeof window.shakeBoard === 'function') window.shakeBoard(6);
     }
 
     function _spawnDome3D(tx, ty, aoeRadius, opts) {
@@ -9127,6 +9434,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fire: fire,
         fireBoltDirect: fireBoltDirect,
         hasMapping: hasMapping,
+
+        laserBeam3D: _spawnLaserBeam3D,
+        radiantBurst3D: _spawnRadiantBurst3D,
 
         fireHeal: fireHeal,
         fireMana: fireMana,
