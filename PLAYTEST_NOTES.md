@@ -4,6 +4,37 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CONTEXTUAL CAMERA — modes retired (2026-07-09, same session)
+Token `20260709u` → `20260709v`. battle.js, ui.js, hud.js. The Tactical/
+Follow/Cinematic camera-mode buttons are GONE; the camera is contextual:
+- **Your unit's turn starts** → TPS behind the unit (`_tpsUnitShot`, tilt 78,
+  boom via `_tpsBoomZoom`, yaw = behind facing).
+- **Move/jump or a tile-targeted/orientable spell armed** → automatic
+  tactical overhead (rest tilt clamped ≤ REST_TILT_MAX; spells add the
+  range-fitting zoom). Drops the hold.
+- **Enemy target select/cycle** (attack arm, unit-target spell arm,
+  `cycleSpellTarget`, `selectTargetFromMenu`) → `_tpsTargetShot(caster, tgt)`
+  — caster-anchored TPS looking at THAT enemy, same slope-tilt/off-axis-yaw
+  math as the action shot so the preview == the cast framing.
+- **Back to root menu** (cancelActionSelection, ui.js) → `window._tpsTurnShot()`.
+- **End of round** → tactical overview (hold dropped, tilt clamped).
+- **Action execution** → the TPS action shots (previous entry).
+Mechanism: `camera._tpsHold` keeps `_cineTps` engaged with no shot id; it
+drops in `camera._apply` on hand-pan / phase change / winner / full-map
+overview, and explicitly at move-arm, tile-spell-arm, AI turn activation and
+EOR. `softResetToUnit` lands post-action returns back on the TPS turn shot
+while the hold is live (except `focusTarget` pans); `_armLevelSettle` settles
+to TPS_TURN_TILT (not the overhead) under the hold.
+Retirement details: `getCameraMode()` pinned to 'tactical' AND force-sets
+`state.cinematicActionCam = true`; `isFollowCamMode()` → false (this keeps
+the state.js pan-detach toast + follow branches dormant); `setCameraMode` is
+an inert stub (old body kept as `_setCameraMode_RETIRED`); `cycleCameraMode`
+just toasts "CAMERA IS AUTOMATIC" ('C' key / pad button). ui.js boot no
+longer reads `ew_cameraMode`; the pause-menu Camera Mode selector row was
+replaced with an explanatory note; hud.js hints-bar cam buttons removed.
+NOT playtested (RULE #1c). Watch: hotseat second-seat framing (non-viewer
+local turns fall back to tactical), _tpsHold leaking TPS pitch into a pan.
+
 ## ACTION CAMERA = the Strike Mode TPS rig (2026-07-09, same session)
 Token `20260709t` → `20260709u`. battle.js + three-camera.js. The main game's
 cinematic action shots now run on the Strike Mode third-person rig.

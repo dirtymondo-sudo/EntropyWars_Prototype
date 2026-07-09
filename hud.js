@@ -4808,9 +4808,7 @@ function ControlHints({ st }) {
   const myTurn = humanTurn
     && (typeof getViewerPlayer !== 'function' || st.activePlayer === getViewerPlayer());
   const aiming = !!(st.actionMode || st.selectedTool);
-  const camMode = typeof window.getCameraMode === 'function' ? window.getCameraMode() : 'tactical';
-  const camLbl = ((window.CAMERA_MODE_ICONS && window.CAMERA_MODE_ICONS[camMode]) || '')
-    + ' ' + ((window.CAMERA_MODE_LABELS && window.CAMERA_MODE_LABELS[camMode]) || camMode).toUpperCase();
+  // (camera mode buttons removed — the camera is contextual now, battle.js)
 
   const hints = [];
   const add = (chip, label, cls, onClick) => hints.push(
@@ -4829,8 +4827,6 @@ function ControlHints({ st }) {
       add(h(PadBtn, { action: 'endTurn' }), 'END TURN');
     }
     add(h(PadBtn, { text: 'RS', kind: 'stick' }), 'CAMERA');
-    add(h(PadBtn, { action: 'cameraMode' }), camLbl, 'cam',
-      () => { if (typeof window.cycleCameraMode === 'function') window.cycleCameraMode(); });
     add(h(PadBtn, { action: 'pause' }), 'PAUSE');
   } else {
     if (myTurn && aiming) {
@@ -4844,8 +4840,6 @@ function ControlHints({ st }) {
     }
     add(h(KeyCap, { k: 'MMB' }), 'ORBIT');
     add(h(KeyCap, { k: 'RMB' }), 'PAN');
-    add(h(KeyCap, { k: 'C' }), camLbl, 'cam',
-      () => { if (typeof window.cycleCameraMode === 'function') window.cycleCameraMode(); });
   }
 
   return h('div', { className: 'ew-hints-bar' }, hints);

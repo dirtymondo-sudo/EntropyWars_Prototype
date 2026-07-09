@@ -7852,12 +7852,21 @@
 
             _apply() {
                 if (!boardStageEl) return;
+                /* The contextual TPS HOLD (turn-start / enemy-targeting shots)
+                   drops the moment the player hand-pans or the battle state
+                   moves on — a hand-held camera is the player saying "let me
+                   look at the board myself". */
+                if (this._tpsHold && (state._userPanning || state.phase !== 'battle'
+                    || state.winner || state._fullMapOverview)) {
+                    this._tpsHold = false;
+                }
                 /* Auto-release the cine TPS rig the moment no cinematic shot
-                   owns the camera — every restore/reset/interrupt path clears
-                   _cineShotId, so none of them needs to know the rig exists.
-                   (_tpsSubject is left alone when Strike Mode's per-frame
-                   controller owns it via _tpsCollide.) */
-                if (this._cineTps && this._cineShotId == null) {
+                   owns the camera AND no contextual hold wants it — every
+                   restore/reset/interrupt path clears _cineShotId, so none of
+                   them needs to know the rig exists. (_tpsSubject is left
+                   alone when Strike Mode's per-frame controller owns it via
+                   _tpsCollide.) */
+                if (this._cineTps && this._cineShotId == null && !this._tpsHold) {
                     this._cineTps = false;
                     if (!this._tpsCollide) this._tpsSubject = null;
                 }
@@ -8144,9 +8153,14 @@
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
                     if (state._userPanning || state._fullMapOverview) return;
-                    if (this.tilt <= this._restTilt + 3) return;
+                    // Under a contextual TPS hold, "level" means the resting
+                    // over-the-shoulder pitch, keeping the current heading —
+                    // not the tactical overhead.
+                    const _setTilt = this._tpsHold ? TPS_TURN_TILT : this._restTilt;
+                    const _setYaw  = this._tpsHold ? this.yaw : this._restYaw;
+                    if (this.tilt <= _setTilt + 3) return;
                     this.moveTo({
-                        tilt: this._restTilt, yaw: this._restYaw,
+                        tilt: _setTilt, yaw: _setYaw,
                         duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
                     });
                     // The un-tilt drops the pitch back below the horizon —
@@ -8517,6 +8531,20 @@
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                 const focusUnit = targetUnit && !targetUnit.dead ? targetUnit : getSelectedUnit();
+                // Contextual TPS hold: a post-action return during the local
+                // player's own turn lands back on the third-person turn shot
+                // instead of the legacy tactical restore. (focusTarget pans —
+                // status ticks on OTHER units — keep the tactical path.)
+                if (this._tpsHold && !opts.focusTarget && focusUnit
+                    && typeof _tpsUnitShot === 'function') {
+                    this._savedState = null;
+                    this._preCineView = null;
+                    this._cineShotId = null;
+                    this._releaseCineSubject(actionMs(700));
+                    this._busy = false;
+                    if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
+                    if (_tpsUnitShot(focusUnit, { duration: actionMs(650) })) return;
+                }
                 const saved = this._savedState;
                 this._savedState = null;
                 // Capture BEFORE clearing the shot id so the no-saved branch below
@@ -8931,12 +8959,22 @@
         const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
         const CINE_FOLLOW_TILT = 72;
         const CINE_FOLLOW_ZOOM_MULT = 2.2;
+        /* ⚠ CAMERA MODES ARE RETIRED — the camera is CONTEXTUAL now:
+           - your unit's turn starts   → third-person behind the unit (TPS rig)
+           - Move / tile-pick actions  → automatic tactical overhead
+           - enemy target select/cycle → TPS from the caster looking at THAT enemy
+           - action execution          → the TPS action shots
+           - end-of-round sequence     → tactical overview
+           getCameraMode is pinned to 'tactical' (so the legacy follow-mode
+           branches stay dormant) while state.cinematicActionCam is FORCED on
+           (so every action-shot gate fires). setCameraMode/cycleCameraMode are
+           inert stubs — the HUD buttons are gone; the 'C' key just explains. */
         function getCameraMode() {
-            return CAMERA_MODES.includes(state.cameraMode) ? state.cameraMode : 'tactical';
+            state.cinematicActionCam = true;   // action shots always on (re-asserted: matches rebuild on new matches)
+            return 'tactical';
         }
         function isFollowCamMode() {
-            const m = getCameraMode();
-            return m === 'follow' || m === 'cinematic';
+            return false;
         }
         function getFollowCamTilt() {
             return getCameraMode() === 'cinematic' ? CINE_FOLLOW_TILT : FOLLOW_CAM_TILT;
@@ -8954,6 +8992,15 @@
             return Math.atan2(-f.dx, -f.dy) * (180 / Math.PI);
         }
         function setCameraMode(mode, opts) {
+            /* inert: camera behavior is contextual (see note above). Callers
+               like the pan-detach in state.js still invoke this — swallow it. */
+            return getCameraMode();
+        }
+        function cycleCameraMode() {
+            if (typeof window._ewToast === 'function') window._ewToast('🎥 CAMERA IS AUTOMATIC', 1200);
+            return getCameraMode();
+        }
+        function _setCameraMode_RETIRED(mode, opts) {
             if (!CAMERA_MODES.includes(mode)) return getCameraMode();
             state.cameraMode = mode;
             state.cinematicActionCam = (mode === 'cinematic');
@@ -9007,10 +9054,6 @@
             try { window.dispatchEvent(new CustomEvent('ew-camera-mode', { detail: mode })); } catch (e) {}
             if (typeof markDirty === 'function') { markDirty('hud'); renderIfDirty(); }
             return mode;
-        }
-        function cycleCameraMode() {
-            const idx = CAMERA_MODES.indexOf(getCameraMode());
-            return setCameraMode(CAMERA_MODES[(idx + 1) % CAMERA_MODES.length]);
         }
         window.getCameraMode = getCameraMode;
         window.isFollowCamMode = isFollowCamMode;
@@ -9931,12 +9974,16 @@
             // "watching the match from 3 miles away" complaint. If the player
             // has a hand zoom engaged, keep it: the overview becomes a plain
             // pan to center.
+            // End of round is a BOARD read → always tactical: drop any
+            // third-person hold and clamp the pitch to the overhead ceiling.
+            camera._tpsHold = false;
             const _uz = getUserZoomScale();
             const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN, getMaxAutoZoomOut());
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
                 zoom: isUserZoomEngaged() ? _uz : _fitZoom,
-                tilt: camera._restTilt, yaw: camera._restYaw,
+                tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                yaw: camera._restYaw,
                 duration: 520, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
@@ -10175,6 +10222,73 @@
             camera._tpsHeadLift = _tpsShoulderLift(unit);
             return true;
         }
+
+        /* ── CONTEXTUAL camera shots (no camera modes) ──
+           These two are the whole vocabulary of the between-action camera:
+           a TPS shot behind the unit (turn start, back-to-menu), and a TPS
+           shot from the caster LOOKING AT a specific enemy (target select /
+           target cycling). Both set camera._tpsHold, which keeps the TPS rig
+           engaged with no cinematic shot id; the hold drops on hand-pan, on
+           tile-pick actions (tactical), at end-of-round and on AI turns. */
+        const TPS_TURN_TILT = 78;   // resting over-the-shoulder pitch (12° below horizon)
+        function _tpsUnitShot(unit, opts = {}) {
+            if (!unit || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
+            if (!_cineTpsAnchor(unit, unit)) return false;
+            camera._tpsHold = true;
+            camera.moveTo({
+                x: unit.x, y: unit.y,
+                zoom: _tpsBoomZoom(opts.len || 0),
+                tilt: opts.tilt ?? TPS_TURN_TILT,
+                yaw: opts.yaw ?? getFollowCamYaw(unit, camera.yaw),
+                duration: opts.duration ?? 480, easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            return true;
+        }
+        function _tpsTargetShot(unit, tgt) {
+            if (!unit || !tgt || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
+            const dx = tgt.x - unit.x, dy = tgt.y - unit.y;
+            if (!dx && !dy) return _tpsUnitShot(unit);
+            if (!_cineTpsAnchor(unit, unit)) return false;
+            camera._tpsHold = true;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const len = Math.max(1, Math.hypot(dx, dy));
+            const dirx = dx / len, diry = dy / len;
+            // Same slope-following pitch + off-axis yaw as the action shot, so
+            // browsing targets previews EXACTLY the framing the cast will use.
+            let casterPx = 0, tgtPx = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const cz = _unitElevZ(unit), tz = _unitElevZ(tgt);
+                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
+                tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
+            }
+            const horiz = Math.max(ts * 0.5, len * ts);
+            const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
+            const tilt = Math.max(CINE_TILT_GUARD_MIN,
+                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
+            const yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
+            camera.moveTo({
+                x: unit.x + dirx * CINE_FOCAL_LEAD_TILES,
+                y: unit.y + diry * CINE_FOCAL_LEAD_TILES,
+                zoom: _tpsBoomZoom(len), tilt, yaw,
+                duration: 420, easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            return true;
+        }
+        /* ui.js (cancelActionSelection) calls this when the player backs out
+           to the root menu: return to the third-person turn shot. */
+        window._tpsTurnShot = function () {
+            const uid = state._blitzActiveUnitId;
+            if (uid == null || state.actionMode) return;
+            const u = state.units.find(un => un.id === uid && !un.dead);
+            if (!u) return;
+            if (state.controllers?.[u.player] !== CTRL.LOCAL || state.autoPlayers?.[u.player]) return;
+            if (typeof getViewerPlayer === 'function' && u.player !== getViewerPlayer()) return;
+            _tpsUnitShot(u);
+        };
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
             // Remember the player's framing to return to — but ONLY capture it
@@ -21503,6 +21617,7 @@
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._releaseCineSubject(550);
+                        camera._tpsHold = false;   // AI/auto turns: stock tactical follow
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
                             _applyZoom: _localActiveTurn,
@@ -21523,18 +21638,23 @@
                         // be stranded craned-up from a spell shot or flattened/
                         // pulled-way-out from the end-of-round overview, and the
                         // unit whose turn it is is always centred.
-                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = getTurnStartCamYaw(unit,
-                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         camera._preCineView = null;
                         camera._savedState = null;
                         camera._releaseCineSubject(750);
-                        camera.moveTo({
-                            x: unit.x, y: unit.y, zoom,
-                            tilt: _retTilt, yaw: _retYaw,
-                            duration: 600, easing: 'easeInOut',
-                            _allowZoomChange: true, _bypassCap: true
-                        });
+                        // YOUR unit's turn opens in third person, parked behind
+                        // it — the same rig as the action shots. Everything
+                        // else (another human seat's unit in hotseat, 2D
+                        // fallback) keeps the tactical framing.
+                        if (!(_localActiveTurn && _tpsUnitShot(unit, { duration: 600 }))) {
+                            camera._tpsHold = false;
+                            camera.moveTo({
+                                x: unit.x, y: unit.y, zoom,
+                                tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                                yaw: getTurnStartCamYaw(unit, camera._restYaw),
+                                duration: 600, easing: 'easeInOut',
+                                _allowZoomChange: true, _bypassCap: true
+                            });
+                        }
                     }
                 }
             }
@@ -21608,20 +21728,28 @@
             if (mode === 'spell' && unit) {
                 if (!_scOwns) {
                     const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
-                    const range = spell?.range || 3;
-
-                    const rangeRows = range * 2 + 1;
-
-                    const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
-                    const userZoom = getUserZoomScale();
-
-                    const zoom = Math.max(userZoom, rangeZoom);
-                    focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                        zoom,
-                        holdMs: 99999,
-                        persist: true,
-                        transitionMs: 350
-                    });
+                    const _tileAim = spell && !isSpellSelfCast(spell)
+                        && (isSpellTileTargeted(spell) || spell.orientable);
+                    if (_tileAim) {
+                        // Free-aim tile picking is a BOARD read → tactical
+                        // overhead, zoomed to fit the spell's range rings.
+                        camera._tpsHold = false;
+                        camera._preCineView = null;
+                        camera._cineShotId = null;
+                        camera._releaseCineSubject(420);
+                        const range = spell?.range || 3;
+                        const rangeRows = range * 2 + 1;
+                        const rangeZoom = computeZoomForVisibleTiles(rangeRows + 2);
+                        const zoom = Math.max(getUserZoomScale(), rangeZoom);
+                        camera.moveTo({
+                            x: unit.x, y: unit.y, zoom,
+                            tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                            duration: 380, easing: 'easeInOut',
+                            _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                        });
+                    }
+                    /* unit-target spells: the caster→target TPS shot fires
+                       below, once the first valid target is known */
                 }
             } else if (!_scOwns) {
                 _softResetCameraToUnit(unit);
@@ -21656,6 +21784,8 @@
                         if (targets.length > 0) {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, mode: 'spell', tool: toolName, viaHover: false };
                             updateAoePreview(targets[0].x, targets[0].y);
+                            // enemy targeting → third person from the caster
+                            _tpsTargetShot(unit, targets[0].unit || targets[0]);
                         }
                     }
                 } else if (spell && isSpellSelfCast(spell)) {
@@ -22212,6 +22342,12 @@
             state.pendingTarget = { x, y, z, mode: state.actionMode, tool: state.selectedTool, viaHover: false };
             playSfx('uiCursorFocus');
             updateAoePreview(x, y);
+            // picking a target from the submenu swings the caster's TPS view
+            // onto that enemy (unit-targeting modes only — tile aim stays tactical)
+            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
+                const _mu = getSelectedUnit();
+                if (_mu) _tpsTargetShot(_mu, (typeof unitAt === 'function' && unitAt(x, y)) || { x, y });
+            }
             renderBattleSelectionUI({ includeBoard: false });
             scheduleBoardRender();
         }
@@ -22225,6 +22361,10 @@
             if (t) {
                 state.pendingTarget = { x: t.x, y: t.y };
                 updateAoePreview(t.x, t.y);
+                // the camera swings with each cycled target — still the
+                // caster's over-the-shoulder view, now looking at THIS enemy
+                const _cu = getSelectedUnit();
+                if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 scheduleBoardRender();
             }
         }
@@ -22270,11 +22410,10 @@
                than any pitch problem). */
             if ((mode === 'move' || mode === 'jump') && !state.cameraDisabled
                 && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
-                // Follow/cinematic modes keep their third-person pitch while
-                // picking tiles — only the tactical mode forces the overhead.
-                const _pickTiltMax = (typeof isFollowCamMode === 'function' && isFollowCamMode())
-                    ? FOLLOW_REST_TILT_MAX : REST_TILT_MAX;
-                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, _pickTiltMax);
+                // Tile picking is a BOARD read → always the tactical overhead,
+                // dropping any third-person hold (turn-start / targeting shot).
+                camera._tpsHold = false;
+                const _pickTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
                 if (Math.abs((camera.tilt ?? _pickTilt) - _pickTilt) > 8 || camera._cineShotId != null) {
                     camera._preCineView = null;
                     camera._cineShotId = null;
@@ -22293,6 +22432,8 @@
                 const targets = _getAttackValidTargets(unit);
                 if (targets.length > 0) {
                     state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined, mode: 'attack', tool: null, viaHover: false };
+                    // enemy targeting → third person: caster looking at the target
+                    _tpsTargetShot(unit, targets[0].unit || targets[0]);
                 }
             } else {
                 state.actionMenuView = 'root';

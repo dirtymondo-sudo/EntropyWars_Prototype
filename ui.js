@@ -4326,6 +4326,9 @@
             state.hoverUnitId = null;
             state._spellOrientation = null;
             state.focusedUnitId = state.selectedUnitId || null;
+            // back at the root menu → return to the third-person turn shot
+            // (battle.js contextual camera; no-op off-turn / in 2D mode)
+            if (typeof window._tpsTurnShot === 'function') window._tpsTurnShot();
             renderBattleSelectionUI();
         }
 
@@ -6758,8 +6761,6 @@
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
         window._buildControlsSettingsHTML = function() {
-            const camMode = typeof window.getCameraMode === 'function' ? window.getCameraMode() : 'tactical';
-            const camBtn = (mode, label) => `<button class="pm-set-btn${camMode === mode ? ' active' : ''}" onclick="window.setCameraMode&&window.setCameraMode('${mode}');window._ewControlsRerender();">${label}</button>`;
             const pad = window.EWPad;
             const padOn = !!(pad && pad.isConnected());
             const padId = padOn ? _escCtl(pad.getPadId()).slice(0, 52) : '';
@@ -6776,13 +6777,8 @@
             const opts = pad ? pad.getOpts() : { invertY: false, sensitivity: 1, vibration: true };
             return `
                 <div class="pm-set-group">
-                    <div class="pm-set-group-title">Camera Mode</div>
-                    <div class="pm-set-row">
-                        ${camBtn('tactical', '🗺 Tactical')}
-                        ${camBtn('follow', '🎥 Follow')}
-                        ${camBtn('cinematic', '🎬 Cinematic')}
-                    </div>
-                    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">Tactical = free overhead board view. Follow = third-person, attached to your active unit (panning detaches back to tactical). Cinematic = follow + automatic action-camera shots. Cycle in battle with <b>C</b> or the pad's Camera Mode button.</div>
+                    <div class="pm-set-group-title">Camera</div>
+                    <div style="font-size:10px;color:var(--muted);line-height:1.5">The camera is automatic: your turn opens in third person behind your unit, picking Move/tiles switches to an overhead tactical view, choosing an enemy target looks at them from your unit's shoulder, and actions play out with the third-person action camera. Pan (RMB) or orbit (MMB) any time to look around yourself.</div>
                 </div>
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Gamepad</div>
@@ -9446,16 +9442,13 @@
             } catch(e) {}
 
             try {
-                // camera mode (tactical / follow / cinematic). The legacy
-                // ew_cinematicActionCam flag migrates to the cinematic mode.
-                var _cmRaw = localStorage.getItem('ew_cameraMode');
-                var _acRaw = localStorage.getItem('ew_cinematicActionCam');
-                var _cmMode = (_cmRaw === 'tactical' || _cmRaw === 'follow' || _cmRaw === 'cinematic') ? _cmRaw
-                    : ((_acRaw === '1' || _acRaw === 'true') ? 'cinematic' : 'tactical');
-                state.cameraMode = _cmMode;
-                state.cinematicActionCam = (_cmMode === 'cinematic');
+                // Camera modes are retired — the camera is contextual
+                // (battle.js). Action shots are always on; the stored
+                // ew_cameraMode preference is ignored.
+                state.cameraMode = 'tactical';
+                state.cinematicActionCam = true;
                 var _acDevCb = document.getElementById('actionCamToggleBattle');
-                if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
+                if (_acDevCb) _acDevCb.checked = true;
             } catch(e) {}
         }, {
             once: true
