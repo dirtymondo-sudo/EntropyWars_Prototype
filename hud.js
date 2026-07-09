@@ -2159,6 +2159,7 @@ function _hrlgSpellBlades(unit, st) {
       else if (sp.materialCost && typeof canAffordMaterials === 'function' && !canAffordMaterials(unit.player, sp.materialCost)) {
         reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
       }
+      else if (typeof _mirrorSpellBlockReason === 'function' && _mirrorSpellBlockReason(unit, sp)) reason = _mirrorSpellBlockReason(unit, sp);
       else if (!hasTarget) reason = 'No target';
     }
 

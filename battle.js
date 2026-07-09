@@ -10324,6 +10324,17 @@
             for (const m of (state.mirrors || [])) if (m.hp > 0) set.add(m.owner);
             return [...set];
         }
+        // Why a lattice-dependent spell can't resolve yet ('' = fine). Drives the
+        // canAffordSpell gate AND the HUD grey-out reason, so they never disagree:
+        // Pulse needs 3 linked prisms, Tune needs at least one prism to retune.
+        function _mirrorSpellBlockReason(unit, spell) {
+            if (!unit || !spell) return '';
+            const k = spell.kind;
+            if (k !== 'pulseLattice' && k !== 'tuneFrequency') return '';
+            const owned = (state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0).length;
+            if (k === 'pulseLattice') return owned >= 3 ? '' : (owned === 0 ? 'No prisms' : 'Need 3 prisms');
+            return owned >= 1 ? '' : 'No prisms';   // tuneFrequency
+        }
 
         // Build the beam network for one player's live prisms.
         function computeMirrorNetwork(player) {
@@ -10524,6 +10535,7 @@
         if (typeof window !== 'undefined') {
             window.getMirrorBeamSegments = getMirrorBeamSegments;
             window.computeMirrorNetwork = computeMirrorNetwork;
+            window._mirrorSpellBlockReason = _mirrorSpellBlockReason;
         }
 
         // ═══════════════ BUILDINGS — structure HP / demolition / interiors ═══════════════
@@ -12916,6 +12928,8 @@
             // Build spells consume banked materials (salvage economy) — the HUD
             // graying, both AIs and doSpell all inherit this gate.
             if (spell && spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) return false;
+            // Machine Elves: Pulse/Tune need prisms already on the board.
+            if (spell && _mirrorSpellBlockReason(unit, spell)) return false;
             return true;
         }
 
