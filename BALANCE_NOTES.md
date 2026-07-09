@@ -189,3 +189,133 @@ Meteor 192 · divine: Judgment 210 / Exorcism 160 · tech: Dead Eye 200 / Nuke 1
 Re-run the balance lab. Targets: vampire/knight/QB ≤58%, nordic/atlantean/
 fortune teller ≥42%, Harbinger ≥45%, alien typing ≥45%. Watch: Judgment (210
 3×3 stun may over-correct Warrior), Flood (new), Railgun (Engineer late game).
+
+---
+
+# Balance Pass — 2026-07-09b (162-match ewbalancestats7 + batch20101)
+
+Data: `ewbalancestats7.json` (162 arena matches), `entropywarsbatch20101.json`
+(20 match logs). Method upgrade this pass: race WR was decomposed into
+**job expectation** (weighted WR of the job the race is locked to) and a
+**race residual** (what the race's own kit/stats add). This separates the two
+levers cleanly — fix jobs with JOB_MODIFIERS/job spells, fix residuals with
+race stats/kits.
+
+## The dataset
+Jobs: White Mage 57.1 / Agent 57.1 / Black Mage 56.2 high; Warrior 43.6 /
+Engineer 45.2 / Sniper 45.3 / Harvester 46.3 / Psychic 47.1 low.
+Biggest race residuals: catgirl +13.1, bigfoot +9.0, fairy +7.9, halfdemon
++7.9, werewolf +7.0, knight +6.4 — martian −13.8, atlantean −9.5, shaman −6.3,
+nordic −6.1, ki fighter −4.7.
+White Mage's 45→57 jump came from last pass's Heal All 128→160 (Heal All WR
+65.9%) — spell numbers move job WR MORE than chassis numbers do.
+
+## Root cause found: stat-scaling mismatches
+Spell damage = dmg + 0.35×ATK (physical) or 0.35×INT (magic). Three "buffed
+twice, still losing" kits were magic kits on low-INT chassis:
+- **martian** (Gunslinger, INT 38): Heat Ray 32% WR even at 155 dmg.
+- **ki fighter** (Raider, INT 19): Ki Wave 38% at 165, Ki Volley 32%.
+- **nordic** (Warrior, INT 30 after -10): entire 6-spell support kit 33-42%.
+Number buffs can't fix a scaling mismatch — retype or rehome instead.
+
+## Structural changes
+- **nordic: default job Warrior → Harbinger** (RACE_DEFAULT_JOBS). Its kit
+  (Resonance Pulse, Pleiadian Shield, Nordic Accord, Stasis Beam, Aurora Ray,
+  Federation Beacon) is a support-caster kit; as Harbinger it gets INT 70 /
+  MP 182 and every spell starts working. Thematically clean (resonance /
+  accord / harmony = Harbinger's motif). Stats retuned for the role:
+  atk 56→48, int 40→44. Also frees Warrior of its worst race.
+- **Heat Ray & Ki Wave → damageType 'physical'** (they're a tripod weapon and
+  a fighting-spirit beam): they now scale with the owner's real stat.
+  Ki Wave 165→150, Heat Ray 155→150 (the retype is the buff). Ki Volley
+  retyped physical too (multiHit takes no stat bonus — retype only shifts it
+  onto enemy DEF, which casters lack).
+
+## Jobs (JOB_MODIFIERS)
+- Agent (57.1): hp −20→−40, int 10→6. Third consecutive Agent nerf — spd/spell
+  trims didn't stick, so this one hits survivability.
+- Warrior (43.6): mdef 8→12, spd −1→0 (dies to caster burst, loses ties).
+- Engineer (45.2): atk 8→14, def 14→16.
+- Sniper (45.3): hp −20→−5, def −15→−8 (Assassinate-vs-hidden fix last pass
+  overshot the job; also Assassinate 180→200, Kneecap Shot 96→108).
+- Harvester (46.3): hp 95→105. Psychic (47.1): int 24→26, Bubble shield
+  200→260 (38.6% WR at 44 games — most-picked losing spell).
+
+## Job spells
+- White Mage: Heal All 160→140 (walk back half of last pass's +32), Protect
+  cooldown 2→3 (65% WR).
+- Black Mage: Thunderbolt 120→110 (chain 110/72/44), Wall of Fire 112→100.
+- Agent: Shadow Lunge 80→72, marked bonus 40→25 (61.7%).
+
+## Race nerfs (positive residuals)
+- **catgirl** (64.7%, #1 three passes running): hp 508→496, atk 62→57;
+  Love Bite 90→76, Ninefold Scratch 110→95 total.
+- **halfdemon** (64.9%): atk 64→61; Inner Demon +cd2 (78.6% WR!), Shadow Step
+  +cd2 (81.2% WR!). Compounds with the Agent chassis nerf.
+- **fairy** (65.0%): spd 9→8; Glitterburst 80→64 (68.1%). Compounds with the
+  White Mage trims.
+- **werewolf** (57.8%): Pounce 144→128, Bite 128→116, Feral Dive 80→70,
+  Blood Frenzy 130→118 (whole kit sat 61-63%).
+- **bigfoot** (+9.0 resid): atk 68→64 (pre-compensates the Harvester buff).
+- **knight** (+6.4): hp 585→575 (pre-compensates the Warrior buff).
+- **wizard** (59.2): Arcane Blast 100→90, Spellsteal explicit cd3.
+- **vampire**: Predator Drop 50→40 (68%).
+
+## Race buffs (negative residuals)
+- **martian** (37.7%, worst residual): Heat Ray retype (above); War of the
+  Worlds turret 95dmg/100hp → 120/140.
+- **atlantean**: Riptide 135→150, Flood 110→130.
+- **shaman**: Totem Drop 50hp/45heal → 90/55, Bad Trip 90→110, Herbal
+  Remedy 140→160.
+- **ki fighter**: Ki Wave/Volley retype (above).
+
+## Machine elves (new kit, 42.3%) — deep pass
+Numbers (battle.js): beam walk-through 30+0.35pw → 42+0.5pw; end-of-round
+burn 26+0.3pw → 34+0.45pw; Pulse Lattice 60+0.8pw → 95+1.0pw, 3-D volume
+mult 1.6→1.8 (Pulse was 27.3% WR — the payoff spell didn't pay off);
+Prism Mirror mirrorHp 1→2 (a 1-HP piece made the whole engine free to answer);
+Refract Beam 140→150. Plus the Engineer chassis buff (+6 atk / +2 def).
+**Visual pass** (user request): every kit spell now has bespoke VFX
+(three-vfx-effects.js) — Prism Mirror crystalline fold-in burst, Tune
+Frequency per-prism colour pulse in the new frequency (fired per prism from
+battle.js), Refract Beam charged laser with scorching impacts, Pulse Lattice
+frequency-coloured lasers per segment (infrared/ultraviolet/gamma variants
+replace the generic turret-blast flash), Mirror Blink shatter-and-reassemble
+bursts. Persistent lattice beams re-rendered as core+glow double cylinders
+and prisms made more present (three-renderer.js).
+
+## Left alone deliberately
+- Gunslinger 51.6 / Raider 50.7 / Harbinger 47.2 chassis.
+- cowboy Lasso (32%) — one weak spell in a 51.9% race; not worth ripple risk.
+- demon 55.1 / men in black 52.8 / vampire 53.6 — the Agent/Black Mage trims
+  pull all three toward 50 without race changes.
+- grey/telepath/fortune teller/giant/quarterback/annunaki/mad scientist —
+  all within ±5 of expectation once their job fix lands; don't double-dip.
+
+## Watchlist for next dataset
+- nordic on Harbinger (structural change — could land anywhere; kit numbers
+  were NOT buffed alongside, tune those next if still <45%).
+- Sniper +Assassinate (two buffs at once: check QB/annunaki don't pop >55%).
+- White Mage after Heal All walk-back; fairy specifically.
+- Machine elves lattice numbers (walk-hit 42 base + 2-HP prisms may make the
+  zoning oppressive on small maps — watch Pulse Lattice WR vs 27.3% baseline).
+- Ki Volley/Ki Wave/Heat Ray retype vs armored comps (physical wall).
+
+## Addendum — 2026-07-09c: hybrid stat splits (user direction)
+Design call: pure-attacker vs pure-caster for every race is boring — races
+whose lore/kit straddles both should have real hybrid statlines. Ki blasts
+are MAGIC (the retype to physical is reverted); the fix is giving the fighter
+real INT instead.
+- **ki fighter**: atk 68→64, int 24→50, mp 120→130. Ki Wave & Ki Volley back
+  to damageType magic (descs restored). Dragon Fist / Flurry stay physical —
+  fists scale with ATK, spirit scales with INT. The archetype hybrid.
+- **grey**: Abduction Beam physical→magic — it was a physical spell on an
+  ATK-8 psychic (reverse mismatch, 42.4% WR); it's a telekinetic tractor
+  beam, now scales with INT 65.
+- **annunaki**: int 32→44. Sniper rifle arm + an all-magic kit (Star Decree,
+  Gravity Well, Summon Storm) = god-engineer hybrid.
+- **shaman**: int 48→54 (Harvester bruiser-priest, spirit half nudged).
+- Heat Ray stays PHYSICAL — it's the tripod's weapon, not martian sorcery;
+  that retype was lore-correct.
+Watch: ki fighter got both the hybrid INT and this pass's earlier kit
+attention — if it lands >55% pull int 50→42 first.

@@ -1278,6 +1278,130 @@ SPELL_MAP['discordance']      = { impact: '_dark_debuff_impact' };
 SPELL_MAP['spotter']          = { impact: '_dark_mark_impact' };
 SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
 
+/* ─── MACHINE ELVES — prism lattice visual pass (2026-07-09) ─────────────
+   The whole kit previously fell through to bare element-tint defaults. Every
+   piece of the lattice loop now has a bespoke look:
+     • Prism Mirror   — a crystalline "fold-in": bright refraction flash, a
+                        spray of prismatic sparkles, and a settling ring.
+     • Tune Frequency — every prism pulses in the NEW frequency's colour
+                        (fired per-prism from battle.js with the freq key).
+     • Refract Beam   — a proper charged laser with scorched impact tiles.
+     • Pulse Lattice  — each beam segment fires a thick frequency-coloured
+                        laser (infrared / ultraviolet / gamma variants).
+     • Mirror Blink   — glassy shatter-and-reassemble teleport bursts. */
+EFFECTS['prismMirror_place'] = {
+    layers: [
+        /* refraction flash as the prism folds out of hyperspace */
+        { sprite: 'flash', ml: 260, z: 14, size0: 30, size1: 96, opacity0: 0.95, opacity1: 0 },
+        /* prismatic sparkle spray — three tints via three sprites */
+        { count: 7, anchor: 'floor', sprite: 'divine-sparkle', ml: [420, 720], z: 12, offsetXY: 12,
+          vxRange: 70, vyRange: 70, vzRange: [50, 140], gravity: 120, drag: 0.9,
+          size0: [8, 13], size1: 2, opacity0: 0.95, opacity1: 0 },
+        { count: 5, delayMs: 60, anchor: 'floor', sprite: 'psi-pulse', ml: [380, 640], z: 10, offsetXY: 14,
+          vxRange: 60, vyRange: 60, vzRange: [40, 110], gravity: 100, drag: 0.8,
+          size0: [6, 10], size1: 1, opacity0: 0.9, opacity1: 0 },
+        { count: 4, delayMs: 120, anchor: 'floor', sprite: 'ember', ml: [320, 560], z: 10, offsetXY: 12,
+          vxRange: 55, vyRange: 55, vzRange: [35, 95], gravity: 110, drag: 0.9,
+          size0: [5, 9], size1: 1, opacity0: 0.85, opacity1: 0 },
+        /* settling ground ring */
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 600, z: 2,
+          size0: 96, size1: 34, opacity0: 0.7, opacity1: 0 },
+    ]
+};
+SPELL_MAP['racePrismMirror'] = { impact: 'prismMirror_place' };
+
+/* Per-frequency retune pulse — fired at every live prism. Sprite choice
+   carries the colour: embers/glow = infrared, void/psi = ultraviolet,
+   green ring = gamma. */
+EFFECTS['tuneFrequency_infrared'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 520, z: 3, size0: 30, size1: 110, opacity0: 0.75, opacity1: 0 },
+        { count: 5, anchor: 'floor', sprite: 'ember', ml: [300, 520], z: 12, offsetXY: 10,
+          vxRange: 45, vyRange: 45, vzRange: [40, 100], gravity: 140, drag: 1.0, size0: [5, 9], size1: 1 },
+    ]
+};
+EFFECTS['tuneFrequency_ultraviolet'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 520, z: 3, size0: 30, size1: 110, opacity0: 0.7, opacity1: 0 },
+        { count: 5, anchor: 'floor', sprite: 'void-mist', ml: [300, 520], z: 12, offsetXY: 10,
+          vxRange: 45, vyRange: 45, vzRange: [40, 100], gravity: 90, drag: 0.8, size0: [6, 10], size1: 2, opacity0: 0.85 },
+        { count: 4, delayMs: 60, anchor: 'floor', sprite: 'psi-pulse', ml: [280, 480], z: 10, offsetXY: 10,
+          vxRange: 40, vyRange: 40, vzRange: [30, 80], gravity: 80, drag: 0.8, size0: [5, 8], size1: 1 },
+    ]
+};
+EFFECTS['tuneFrequency_gamma'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 520, z: 3, size0: 30, size1: 110, opacity0: 0.75, opacity1: 0 },
+        { count: 5, anchor: 'floor', sprite: 'divine-sparkle', ml: [300, 520], z: 12, offsetXY: 10,
+          vxRange: 45, vyRange: 45, vzRange: [40, 100], gravity: 110, drag: 0.9, size0: [5, 9], size1: 1 },
+    ]
+};
+SPELL_MAP['raceTuneFrequency_infrared']    = { impact: 'tuneFrequency_infrared' };
+SPELL_MAP['raceTuneFrequency_ultraviolet'] = { impact: 'tuneFrequency_ultraviolet' };
+SPELL_MAP['raceTuneFrequency_gamma']       = { impact: 'tuneFrequency_gamma' };
+
+/* Refract Beam — the elves' hand-fired laser. Charged, thick, scorching. */
+EFFECTS['refractBeam_impact_tile'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1400, z: 1, size0: 70, size1: 86, opacity0: 0.7, opacity1: 0 },
+        { count: 4, anchor: 'floor', sprite: 'steel-spark', ml: [220, 380], z: 6, offsetXY: 12,
+          vxRange: 90, vyRange: 90, vzRange: [40, 120], gravity: 200, drag: 0.8, size0: [5, 10], size1: 1 },
+        { count: 2, anchor: 'floor', sprite: 'fire-glow', ml: [300, 480], z: 4, offsetXY: 8,
+          size0: [22, 32], size1: [40, 56], opacity0: 0.5, opacity1: 0 },
+    ]
+};
+EFFECTS['refractBeam_beam'] = {
+    chargeMs: 160, beamMs: 360, beamThickness: 18,
+    beamElement: 'fire', leaveScorch: true, shake: 'soft',
+    impactTileEffect: 'refractBeam_impact_tile',
+    layers: []
+};
+SPELL_MAP['raceRefractBeam'] = { beam: 'refractBeam_beam' };
+
+/* Pulse Lattice — one thick coloured laser per beam segment, chosen by the
+   lattice's current frequency (battle.js appends the freq key to the id). */
+EFFECTS['pulseLattice_impact_tile'] = {
+    layers: [
+        { sprite: 'flash', ml: 200, z: 10, size0: 70, size1: 20, opacity0: 0.85, opacity1: 0 },
+        { count: 4, anchor: 'floor', sprite: 'steel-spark', ml: [200, 360], z: 6, offsetXY: 12,
+          vxRange: 100, vyRange: 100, vzRange: [40, 130], gravity: 220, drag: 0.9, size0: [5, 10], size1: 1 },
+    ]
+};
+EFFECTS['pulseLattice_infrared_beam'] = {
+    chargeMs: 60, beamMs: 460, beamThickness: 24, beamElement: 'fire',
+    shake: 'soft', impactTileEffect: 'pulseLattice_impact_tile', layers: []
+};
+EFFECTS['pulseLattice_ultraviolet_beam'] = {
+    chargeMs: 60, beamMs: 460, beamThickness: 24, beamElement: 'arcane',
+    shake: 'soft', impactTileEffect: 'pulseLattice_impact_tile', layers: []
+};
+EFFECTS['pulseLattice_gamma_beam'] = {
+    chargeMs: 60, beamMs: 460, beamThickness: 24, beamElement: 'alien',
+    shake: 'soft', impactTileEffect: 'pulseLattice_impact_tile', layers: []
+};
+SPELL_MAP['racePulseLattice_infrared']    = { beam: 'pulseLattice_infrared_beam' };
+SPELL_MAP['racePulseLattice_ultraviolet'] = { beam: 'pulseLattice_ultraviolet_beam' };
+SPELL_MAP['racePulseLattice_gamma']       = { beam: 'pulseLattice_gamma_beam' };
+
+/* Mirror Blink — the elf shatters into light and reassembles. */
+EFFECTS['mirrorBlink_burst'] = {
+    layers: [
+        { sprite: 'flash', ml: 220, z: 14, size0: 26, size1: 84, opacity0: 0.9, opacity1: 0 },
+        { count: 8, anchor: 'floor', sprite: 'divine-sparkle', ml: [320, 560], z: 14, offsetXY: 10,
+          vxRange: 110, vyRange: 110, vzRange: [30, 120], gravity: 160, drag: 1.0,
+          size0: [7, 12], size1: 1, opacity0: 0.95, opacity1: 0 },
+        { count: 4, delayMs: 50, anchor: 'floor', sprite: 'psi-pulse', ml: [280, 460], z: 10, offsetXY: 12,
+          vxRange: 60, vyRange: 60, vzRange: [20, 70], gravity: 70, drag: 0.8,
+          size0: [5, 9], size1: 1, opacity0: 0.85, opacity1: 0 },
+    ]
+};
+EFFECTS['mirrorBlink_tele'] = {
+    arrivalDelayMs: 160,
+    dispersalEffect: 'mirrorBlink_burst',
+    arrivalEffect: 'mirrorBlink_burst',
+};
+SPELL_MAP['raceMirrorBlink'] = { teleport: 'mirrorBlink_tele' };
+
 /* ─── WATER PASS — hand-authored overrides on the procedural wave art ────
    The wave-1..6 frames are now procedural glowing splash/ripple sprites
    (three-vfx.js), so the bespoke water effects get rebuilt to lean on them:

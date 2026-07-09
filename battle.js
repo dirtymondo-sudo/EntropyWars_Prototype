@@ -10312,9 +10312,9 @@
         // any of a player's prisms that share a row or column. Enemies that path
         // through a beam are seared (resolveMovePath), enemies standing in one at
         // end of round burn (processMirrorBurn), and Pulse Lattice discharges the
-        // whole network (doPulseLattice). A prism is fragile — one hit shatters
-        // it (damageMirrorAt, modelled on damageTurretAt above; mirrorHp drives
-        // the hit count, currently 1).
+        // whole network (doPulseLattice). A prism shatters after mirrorHp hits
+        // (damageMirrorAt, modelled on damageTurretAt above; currently 2 — one
+        // stray attack chips it, a second breaks it).
         const MIRROR_FREQS = [
             { key: 'infrared',    label: 'Infrared',    glyph: '🔴', color: 0xff4455,
               spellType: 'tech',    status: { id: 'burn',  duration: 2 }, dmgMult: 1.15, verb: 'burns' },
@@ -10478,7 +10478,7 @@
         function _applyLaserWalkHit(unit, x, y, owner) {
             const f = _mirrorFreqFor(owner);
             const pw = _networkPower(owner);
-            const dmg = Math.max(20, Math.floor((30 + pw * 0.35) * f.dmgMult));
+            const dmg = Math.max(28, Math.floor((42 + pw * 0.5) * f.dmgMult));
             const ownerId = laserOwnerUnitId(owner);
             addLog(`${f.glyph} ${unitDisplayName(unit)} crosses a laser beam at ${coordLabel(x, y)}!`);
             showFloatingTextAtTile(x, y, f.glyph, 'damage', { durationMs: 650 });
@@ -10498,7 +10498,7 @@
                 if (!net.beamTiles.size) continue;
                 const f = _mirrorFreqFor(p);
                 const pw = _networkPower(p);
-                const dmg = Math.max(16, Math.floor((26 + pw * 0.3) * f.dmgMult));
+                const dmg = Math.max(22, Math.floor((34 + pw * 0.45) * f.dmgMult));
                 const ownerId = laserOwnerUnitId(p);
                 for (const e of state.units) {
                     if (e.dead || e._dying || e.player === p) continue;   // foes only
@@ -10524,20 +10524,22 @@
         // Pulse Lattice — discharge every linked beam (and any enclosed volume).
         function doPulseLattice(unit, net, spellPower) {
             const f = _mirrorFreqFor(unit.player);
-            const base = Math.max(40, Math.floor((60 + (spellPower || 0) * 0.8) * f.dmgMult));
-            const mult = net.isPrism ? 3.0 : net.is3DVolume ? 1.6 : 1.0;
+            const base = Math.max(60, Math.floor((95 + (spellPower || 0) * 1.0) * f.dmgMult));
+            const mult = net.isPrism ? 3.0 : net.is3DVolume ? 1.8 : 1.0;
             const dmg = Math.floor(base * mult);
             const tiles = new Set(net.beamTiles);
             for (const t of net.volumeTiles) tiles.add(t);
             // Flash each beam segment.
             if (typeof window !== 'undefined' && window.ThreeVFXEffects
                 && typeof window.ThreeVFXEffects.hasMapping === 'function'
-                && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')
                 && state.phase === 'battle' && typeof _skipVisuals === 'function' && !_skipVisuals()) {
-                for (const s of net.segments) {
+                const _pulseFxId = 'racePulseLattice_' + f.key;
+                const _beamId = window.ThreeVFXEffects.hasMapping(_pulseFxId, 'beam') ? _pulseFxId
+                    : (window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam') ? '_turretBlast' : null);
+                if (_beamId) for (const s of net.segments) {
                     const dx = Math.sign(s.bx - s.ax), dy = Math.sign(s.by - s.ay);
                     const range = Math.max(Math.abs(s.bx - s.ax), Math.abs(s.by - s.ay));
-                    window.ThreeVFXEffects.fire('beam', '_turretBlast', {
+                    window.ThreeVFXEffects.fire('beam', _beamId, {
                         fromX: s.ax, fromY: s.ay, dx: dx, dy: dy, range: range,
                         hitTiles: [{ x: s.bx, y: s.by }]
                     });
@@ -26682,6 +26684,10 @@
                     id: `mirror_${state.round || 0}_${unit.id}_${randInt(99999)}`
                 });
                 const _mNet = computeMirrorNetwork(unit.player);
+                if (window.ThreeVFXEffects && state.phase === 'battle'
+                    && typeof _skipVisuals === 'function' && !_skipVisuals()) {
+                    window.ThreeVFXEffects.fire('impact', 'racePrismMirror', { tx: x, ty: y });
+                }
                 showFloatingTextAtTile(x, y, '🔺', 'buff', { durationMs: 900 });
                 addLog(`${unitDisplayName(unit)} folds a prism into being at ${coordLabel(x, y)} — ${_mNet.count} prism${_mNet.count !== 1 ? 's' : ''} linked.`, unit.player);
                 scheduleBoardRender();
@@ -26694,6 +26700,13 @@
                 const _f = MIRROR_FREQS[_next];
                 playSfx('uiConfirm');
                 showFloatingTextAtTile(unit.x, unit.y, `${_f.glyph} ${_f.label}`, 'buff', { durationMs: 1100 });
+                if (window.ThreeVFXEffects && state.phase === 'battle'
+                    && typeof _skipVisuals === 'function' && !_skipVisuals()) {
+                    const _tuneFx = 'raceTuneFrequency_' + _f.key;
+                    for (const _tm of (state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0)) {
+                        window.ThreeVFXEffects.fire('impact', _tuneFx, { tx: _tm.x, ty: _tm.y });
+                    }
+                }
                 addLog(`${unitDisplayName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
                 scheduleBoardRender();
             } else if (spell.kind === 'pulseLattice') {

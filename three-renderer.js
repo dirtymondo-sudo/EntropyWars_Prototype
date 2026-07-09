@@ -5479,7 +5479,7 @@ const ThreeRenderer = (function () {
         geo.computeVertexNormals();
         var freqColor = _mirrorBeamColorFor(mirror.owner);
         var body = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-            color: freqColor, transparent: true, opacity: 0.42,
+            color: freqColor, transparent: true, opacity: 0.55,
             side: THREE.DoubleSide, depthWrite: false
         }));
         // Darken as the prism is chipped toward shattering.
@@ -5505,17 +5505,31 @@ const ThreeRenderer = (function () {
         var dir = new THREE.Vector3().subVectors(b, a);
         var len = dir.length();
         if (len < 1e-3) return null;
-        var m = new THREE.Mesh(
-            new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, len, 6, 1, true),
+        /* Two-layer laser: a hot near-white core inside a wide coloured glow
+           sheath — reads as a real beam instead of a thin wire. */
+        var g = new THREE.Group();
+        var mid = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5);
+        var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+        var coreCol = new THREE.Color(seg.color).lerp(new THREE.Color(0xffffff), 0.65);
+        var core = new THREE.Mesh(
+            new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, len, 6, 1, true),
             new THREE.MeshBasicMaterial({
-                color: seg.color, transparent: true, opacity: 0.6,
+                color: coreCol, transparent: true, opacity: 0.9,
                 blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
             })
         );
-        m.position.copy(a).add(b).multiplyScalar(0.5);
-        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-        m._ew_deployable = true;
-        return m;
+        var glow = new THREE.Mesh(
+            new THREE.CylinderGeometry(ts * 0.065, ts * 0.065, len, 8, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: seg.color, transparent: true, opacity: 0.32,
+                blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+            })
+        );
+        core.position.copy(mid); core.quaternion.copy(quat);
+        glow.position.copy(mid); glow.quaternion.copy(quat);
+        g.add(glow); g.add(core);
+        g._ew_deployable = true;
+        return g;
     }
 
     function rebuildDeployables() {
