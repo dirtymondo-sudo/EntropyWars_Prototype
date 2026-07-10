@@ -31,6 +31,32 @@ const TERRAIN_RESHAPE_CONFIG = {
     maxHeight: 12,
 };
 
+/* ── BUILD action (universal Minecraft-style place/dig verb) ─────────────
+   Every grounded unit can enter Build mode: 1 AP places one block of a
+   banked material (or digs the top block off a column, salvaging its
+   material) on any tile within `reach` (chebyshev, own tile included).
+   `vReach` caps how far above the unit's feet the affected surface may
+   be — you can't work a ledge 4 stories overhead. Digging is the
+   anti-softlock valve: dug earth banks as stone, so a unit stuck in a
+   pit can always quarry the walls and stack its way out. */
+const BUILD_ACTION_CONFIG = {
+    apCost: 1,
+    reach: 1,
+    vReach: 3,
+    minHeight: 0,
+    maxHeight: 12,
+    eruptDamage: 22,   // crash damage when a block erupts under an enemy
+};
+
+// Placeable block types — keyed by the material they spend. Terrain
+// identity matters downstream: timber burns/shatters, stone holds,
+// steel conducts lightning across connected metal.
+const BUILD_MATERIALS = {
+    wood:  { terrain: 'wood_planks', icon: '🪵', label: 'Timber' },
+    stone: { terrain: 'cobblestone', icon: '🪨', label: 'Stone' },
+    metal: { terrain: 'metal',       icon: '⚙️', label: 'Steel' },
+};
+
 const FLYING_ALTITUDE_CONFIG = {
     apCost: 1,
     maxPerTurn: 3,
@@ -60,6 +86,7 @@ const EQUIP_DEFS = {
     'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
+    'masons_gauntlets': { slot: 'accessory1', label: "Mason's Gauntlets", desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
     'dowsing_rod': { slot: 'accessory1', label: 'Dowsing Rod', desc: 'Twitches over buried danger: at the end of each round, enemy traps within 3 tiles of the bearer are revealed to your team.' },
 };
 
@@ -4944,67 +4971,11 @@ const SPELL_LIBRARY = [
     },
 
     /* ── Terraforming pass (2026-07-07): block building ──────────────────
-       kind 'placeBlock' stacks ONE voxel of the spell's material on the
-       target column (+1 height, lifting any occupant), or fills a water
-       surface into a stepping stone. Costs banked materials (salvage
-       economy: chop trees → wood, smash rock/demolish → stone, wreck
-       machines → metal). Material identity matters: timber burns and
-       shatters when units crash through it, stone holds, steel conducts
-       lightning across connected metal. */
-    {
-        id: 'timberBlock',
-        spellType: 'human',
-        element: 'earth',
-        name: 'Timber Block',
-        type: 'utility',
-        cost: 12,
-        equipCost: 10,
-        apCost: 1,
-        range: 3,
-        kind: 'placeBlock',
-        terrainType: 'wood_planks',
-        materialCost: { wood: 1 },
-        tier: 'I',
-        school: 'Harvester',
-        classRestrictions: ['Harvester', 'Engineer'],
-        desc: 'Target any tile in range: stack a wooden block (+1 height) for 1 🪵. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away (into your pit, trap or moat). Dropped into water it becomes a stepping stone. Timber burns, and bodies knocked into it smash straight through.'
-    },
-    {
-        id: 'stoneBlock',
-        spellType: 'human',
-        element: 'earth',
-        name: 'Stone Block',
-        type: 'utility',
-        cost: 14,
-        equipCost: 10,
-        apCost: 1,
-        range: 3,
-        kind: 'placeBlock',
-        terrainType: 'cobblestone',
-        materialCost: { stone: 1 },
-        tier: 'I',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Target any tile in range: stack a stone block (+1 height) for 1 🪨. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away. Fills water into a stepping stone. Fireproof, and only the heaviest brutes crash through it.'
-    },
-    {
-        id: 'steelBlock',
-        spellType: 'tech',
-        element: 'metal',
-        name: 'Steel Block',
-        type: 'utility',
-        cost: 16,
-        equipCost: 12,
-        apCost: 1,
-        range: 3,
-        kind: 'placeBlock',
-        terrainType: 'metal',
-        materialCost: { metal: 1 },
-        tier: 'II',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Target any tile in range: stack a steel block (+1 height) for 1 ⚙️. An ally standing there rides it up; under an ENEMY it erupts — crash damage and a shove one tile away. Fills water into a platform. Steel CONDUCTS: lightning striking any connected metal arcs into every unit standing on it.'
-    },
+       The single-block spells (Timber/Stone/Steel Block) were RETIRED on
+       2026-07-10: placing or digging one voxel is now the universal BUILD
+       action every grounded unit gets on the Horologe (1 AP + 1 banked
+       material per block — see BUILD_ACTION_CONFIG / doBuildAction).
+       Only multi-block prefab structures remain spells. */
 
     /* ── Terraforming pass: prebuilt voxel structures ─────────────────────
        kind 'buildStructure' stamps a STRUCTURE_TEMPLATES prefab oriented by
@@ -11081,8 +11052,8 @@ const CLASS_SPELL_LEARN_ORDER = {
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
     'Agent':       ['knifeThrow', 'placeBomb', 'snareTrap', 'sneakSlash', 'shadowLunge', 'magnetMine', 'empBurst'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
-    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'timberBlock', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'stoneBlock', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'steelBlock', 'fiveGTower', 'bulwarkRing', 'overclock'],
+    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],

@@ -896,7 +896,9 @@
         scoreGuard(unit, v, candidates);
         scoreNexusChannel(unit, v, candidates);
         scoreRecall(unit, v, candidates);
-        scoreReshape(unit, v, candidates);
+        // Build (place/dig) superseded the Raise/Lower reshape verb — it
+        // covers the same self-tile plays plus eruption shoves + pit escapes.
+        scoreBuild(unit, v, candidates);
 
         scoreKiteRetreat(unit, v, candidates);
 
@@ -3272,6 +3274,114 @@
         }
     }
 
+    /* ── BUILD action scoring (2026-07-10) ────────────────────────────────
+       The universal place/dig verb replaced the More-menu Raise/Lower rows
+       and the single-block spells, so their tactics live here now:
+       (a) pillar under self — ranged units buy high ground (1 block)
+       (b) dig own tile — duck out of elevated ranged fire
+       (c) erupt-shove — place under an adjacent enemy: crash + 1-tile shove,
+           best when they land in a hazard or one of our traps
+       (d) SOFTLOCK ESCAPE — stuck in a pit with no moves and no targets?
+           Stack a block underfoot, or quarry an adjacent wall for the
+           material to do it with. The AI can always dig itself out. */
+    function scoreBuild(unit, v, out) {
+        const g = G();
+        const ap = unit.ap || 0;
+
+        if (g.canFly(unit)) {
+            scoreAltitude(unit, v, out);
+            return;
+        }
+
+        const cfg = g.BUILD_ACTION_CONFIG;
+        if (!cfg || typeof g.doBuildAction !== 'function') return;
+        if ((unit._buildCharges || 0) <= 0 && ap < cfg.apCost) return;
+        if (typeof g._buildActionProblem === 'function' && g._buildActionProblem(unit)) return;
+
+        const myHeight = g.getUnitStandingHeight(unit);
+        const effRange = g.getEffectiveRange(unit);
+        const isRanged = effRange >= 2;
+
+        // Cheapest material we can place right now (bank is per-team).
+        let placeTool = null;
+        for (const k of Object.keys(g.BUILD_MATERIALS || {})) {
+            if (g.canAffordMaterials(unit.player, { [k]: 1 })) { placeTool = k; break; }
+        }
+
+        const wRangedRaise = g.getAIWeight('reshapeRangedRaise_v1');
+        const wPerEnemy = g.getAIWeight('reshapePerEnemy_v1');
+        const wDefensive = g.getAIWeight('reshapeDefensive_v1');
+
+        // (a) pillar under self — the old reshape-raise play, now 1 block
+        if (placeTool && !g._buildProblem(unit, placeTool, unit.x, unit.y)) {
+            let raiseScore = 0;
+            if (isRanged && v.visibleEnemies.length > 0) {
+                let advantageGain = 0;
+                for (const e of v.visibleEnemies) {
+                    if (myHeight - g.getUnitStandingHeight(e) < 3) advantageGain++;
+                }
+                if (advantageGain > 0) raiseScore += wRangedRaise + advantageGain * wPerEnemy;
+                if ((unit.actionsThisTurn || 0) > 0) raiseScore *= 0.6;
+            }
+            if (v.closestEnemyDist <= 3 && v.attackTargets.length === 0) {
+                raiseScore = Math.max(raiseScore, wDefensive);
+            }
+            const ws = v.winState;
+            if (ws.phase === 'tower_push' || ws.roundUrgency >= 2) raiseScore *= 0.2;
+            if (raiseScore > 0) out.push({ type: 'build', tool: placeTool, x: unit.x, y: unit.y, score: raiseScore });
+        }
+
+        // (b) dig own tile — drop out of an elevated sniper's line
+        if (!g._buildProblem(unit, 'dig', unit.x, unit.y)) {
+            let elevatedRangedThreats = 0;
+            for (const e of v.visibleEnemies) {
+                if (g.getEffectiveRange(e) >= 2 && g.getUnitStandingHeight(e) > myHeight) elevatedRangedThreats++;
+            }
+            if (elevatedRangedThreats > 0) {
+                out.push({ type: 'build', tool: 'dig', x: unit.x, y: unit.y, score: 3 + elevatedRangedThreats * 2 });
+            }
+        }
+
+        // (c) erupt-shove an adjacent enemy (crash + shove; hazard landings pay)
+        if (placeTool) {
+            for (const e of v.visibleEnemies) {
+                if (Math.max(Math.abs(e.x - unit.x), Math.abs(e.y - unit.y)) > (cfg.reach || 1)) continue;
+                const info = {};
+                if (g._buildProblem(unit, placeTool, e.x, e.y, info)) continue;
+                if (!info.shoveTo) continue;
+                let sc = 10;
+                const destT = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
+                if (destT === 'lava' || destT === 'deep_water' || destT === 'chasm' || destT === 'void') sc += 25;
+                else if (destT === 'water' || String(destT || '').indexOf('poison') === 0) sc += 8;
+                if ((g.state.traps || []).some(t => t.x === info.shoveTo.x && t.y === info.shoveTo.y && t.owner === unit.player)) sc += 20;
+                out.push({ type: 'build', tool: placeTool, x: e.x, y: e.y, score: sc });
+            }
+        }
+
+        // (d) softlock escape — no moves, nothing to hit: build/dig out
+        const stuck = v.attackTargets.length === 0
+            && typeof g.getMoveTiles === 'function' && g.getMoveTiles(unit).length === 0;
+        if (stuck) {
+            if (placeTool && !g._buildProblem(unit, placeTool, unit.x, unit.y)) {
+                out.push({ type: 'build', tool: placeTool, x: unit.x, y: unit.y, score: 40 });
+            } else {
+                for (let dy = -1; dy <= 1 && stuck; dy++) {
+                    let pushed = false;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (!dx && !dy) continue;
+                        const nx = unit.x + dx, ny = unit.y + dy;
+                        if (!g._buildProblem(unit, 'dig', nx, ny)) {
+                            out.push({ type: 'build', tool: 'dig', x: nx, y: ny, score: 38 });
+                            pushed = true;
+                            break;
+                        }
+                    }
+                    if (pushed) break;
+                }
+            }
+        }
+    }
+
     function scoreAltitude(unit, v, out) {
         const g = G();
         const ap = unit.ap || 0;
@@ -4645,6 +4755,28 @@
                 const delay = g.doReshape(unit, action.mode) || 0;
                 const apAfter = unit.ap || 0;
                 if (apAfter >= apBefore) {
+
+                    unit.ap = 0;
+                    unit._aiLoopCount = 0;
+                    g.finishComputerAction();
+                } else if (delay > 0) {
+                    window.setTimeout(() => g.finishComputerAction(), delay);
+                } else {
+                    g.finishComputerAction();
+                }
+                break;
+            }
+
+            case 'build': {
+                // Universal place/dig verb. A Mason's Gauntlets charge makes a
+                // successful op FREE (no AP drop), so gauge success on the
+                // charge counter too — never the reshape-style AP check alone,
+                // or the loop-breaker would zero the builder's turn.
+                const apBefore = unit.ap || 0;
+                const chBefore = unit._buildCharges || 0;
+                const delay = g.doBuildAction(unit, action.x, action.y, action.tool) || 0;
+                const spent = (unit.ap || 0) < apBefore || (unit._buildCharges || 0) !== chBefore;
+                if (!spent && delay <= 0) {
 
                     unit.ap = 0;
                     unit._aiLoopCount = 0;

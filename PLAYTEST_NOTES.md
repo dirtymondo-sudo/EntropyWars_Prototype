@@ -4,6 +4,71 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## UNIVERSAL BUILD ACTION (2026-07-10) — data.js, battle.js, hud.js, ui.js, online.js, ai.js, party-builder.js
+Token `20260710s` → `20260710t`. Minecraft-style place/dig became a first-class
+VERB every grounded unit has (goal: creativity + a guaranteed way out of any
+pit — you can always quarry a wall and stack your way out). NOT playtested
+this session (RULE #1c) — syntax-checked only; first live run should check:
+enter/exit build mode (root ⚒ blade / B key / More row), a place, a dig, the
+hotbar swap, and one AI build.
+- **Retired**: `timberBlock`/`stoneBlock`/`steelBlock` spell defs + their
+  Harvester/Engineer class-list entries (data.js) — one-block placement is no
+  longer a spell. The `placeBlock` kind plumbing (SPELL_KIND_META, handler,
+  preview) stays for compat. The More-menu 🔺Raise/🔻Lower reshape rows are
+  gone too (superseded); `doReshape`/`canReshapeTile` still exist for the
+  move-then-cast height-approach probe. Bigfoot's Rampart et al. KEPT — those
+  are multi-tile damage walls, not "simply place 1 block".
+- **Engine (battle.js, after doReshape)**: `BUILD_ACTION_CONFIG` (data.js:
+  1 AP, reach 1 chebyshev incl. own tile, vReach 3, eruptDamage 22) +
+  `BUILD_MATERIALS` (wood→wood_planks 🪵, stone→cobblestone 🪨, metal→metal ⚙️).
+  `doBuildAction(unit,x,y,tool)` tool∈dig|wood|stone|metal; validity via
+  `_buildProblem` (single source for handler/highlights/ghost/AI; place path
+  reuses `_placeBlockProblem` so erupt-shove/water-stepping-stone/occupant
+  rules match the old spell, dig blocks walls/objectives/buildings/objects/
+  liquids/bedrock). Dig salvages `digSalvageMaterial(t)` = family or STONE
+  fallback (plain earth pays — that's the anti-softlock loop) + entropy;
+  tree tile = fell (`_fellTreeAt`, +1 🪵); water settles into fresh pits;
+  occupants drop/ride (`unit.z` fixups). Place under enemy erupts (flat 22 +
+  1-tile shove + `_applyKnockbackHazard`/trap trigger). SINGLE-CLICK (no
+  confirm) and the mode STAYS armed while AP lasts (human turns only).
+  `predictBuildChanges` + `_updateBuildHoverPreview` drive the hover ghost
+  (`showTerrainGhost`). Exported on GAME: doBuildAction/_buildProblem/
+  _buildActionProblem/predictBuildChanges/unitBuildOpsPerAP/digSalvageMaterial/
+  defaultBuildTool/BUILD_ACTION_CONFIG/BUILD_MATERIALS.
+- **UI (hud.js/ui.js)**: root Horologe blade ⚒ Build (toggles like Move;
+  greyed with reason from `_buildActionProblem`), ⚒ Build row in More, B key
+  toggles (ui.js battle keydown), right-click/ESC/crown backs out
+  (`cancelActionSelection` clears the ghost). Build aim view = hotbar blades
+  `_hrlgBuildBlades` (⛏ Dig + per-material with ×count, `state._buildTool`
+  arms). Reach highlights in the ui.js `_hlCache` chain: 'placeable' blue for
+  place, 'combo-target' orange for dig; `_hlKeyParts` gained
+  `_buildTool`+matBank so tool swaps repaint. Tile quick menu gained one-tap
+  "⛏ Dig Block"/"🧱 Place Block" rows (`_computeTileActions`). NEW `.hrlg-mats`
+  strip (team 🪵🪨⚙️ bank, always visible under the item slots; 🧤+N shows a
+  banked free op) — mats/buildCharge props on HorologeMenu; CSS next to
+  .hrlg-pip block.
+- **Mason's Gauntlets accessory** (`masons_gauntlets`, EQUIP_DEFS + ACC_ICONS
+  🧤): 2 build ops per AP via `unit._buildCharges` (spend AP → bank 1 free op;
+  reset at the 4 `_reshapeThisTurn` turn-reset sites). KNOWN EDGE: a charge
+  banked by the unit's LAST AP is lost (blitz ends the turn at ap 0 —
+  deliberately not made charge-aware, too many unitFinished/canUnitAct gates).
+  AI equip prefs: Harvester/Engineer prefer it (optimizeCurrentTeams).
+- **Online (online.js)**: doBuildAction engine-relay wrapper + host dispatcher
+  case; guest clickTile relays `_ctx.buildTool` (restored in
+  _executeRemoteAction, host UI snapshot keeps its own); guest build clicks
+  are single-click/stay-in-mode (new branch before the pendingTarget arm);
+  `_buildTool` added to the state-sync SKIP list (per-client UI).
+- **AI (ai.js)**: `scoreBuild` replaced scoreReshape in gatherCandidates
+  (flyers still route to scoreAltitude): (a) pillar-under-self high ground
+  (reshape-raise weights, now costs a block), (b) dig own tile vs elevated
+  ranged threats, (c) erupt-shove adjacent enemy (hazard/own-trap landing
+  bonus), (d) SOFTLOCK ESCAPE score 40/38 — no moves + no targets → stack
+  underfoot or quarry an adjacent wall. `executeAction case 'build'` gauges
+  success on AP OR `_buildCharges` drop (never the reshape-style AP check
+  alone — gauntlet ops are AP-free).
+- **Materials economy**: `MAT_START_STOCK` 2/2/1 → 3/3/1. Dig now the
+  universal faucet (earth→stone). Spend: build action + structure spells.
+
 ## WATER REWORK (2026-07-10) — battle.js, map.js, data.js, three-renderer.js
 Token `20260710n` → `20260710o`. Water made liquid-like (the Meteor→Flood→
 lightning "electrocute the crater" combo now works):

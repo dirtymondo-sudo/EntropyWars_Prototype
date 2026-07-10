@@ -168,11 +168,25 @@
                             actionMode: state.actionMode,
                             selectedTool: state.selectedTool,
                             pendingTarget: state.pendingTarget,
-                            comboPartner: state.comboPartner ? state.comboPartner.id : null
+                            comboPartner: state.comboPartner ? state.comboPartner.id : null,
+                            buildTool: state._buildTool || null
                         }
                     });
 
-                    if (sentActionMode && sentActionMode !== 'move') {
+                    if (sentActionMode === 'build') {
+
+                        /* Build is single-click (no confirm step) and the mode
+                           STAYS armed for the next block — mirror that locally:
+                           instant work-swing feedback, no pendingTarget, keep
+                           Build mode so the guest can keep clicking. The
+                           authoritative terrain edit arrives with the sync. */
+                        if (actingUnit) _guestActionFeedback('attack', actingUnit, x, y);
+                        state.pendingTarget = null;
+                        renderBattleSelectionUI({
+                            includeBoard: false
+                        });
+                        scheduleBoardRender();
+                    } else if (sentActionMode && sentActionMode !== 'move') {
 
                         if (sentPendingTarget && sentPendingTarget.x === x && sentPendingTarget.y === y) {
 
@@ -457,6 +471,18 @@
             _guestActionFeedback('attack', initiator, targetX, targetY);
             _emit('game-action', { type: 'engine', fn: 'doComboAttack', unitId: initiator.id, partnerId: partner ? partner.id : null, x: targetX, y: targetY });
         };
+
+        const _origDoBuildAction = (typeof doBuildAction === 'function') ? doBuildAction : null;
+        if (_origDoBuildAction) {
+            doBuildAction = function(unit, x, y, tool) {
+                if (!_isOnline() || state._remoteAction) return _origDoBuildAction(unit, x, y, tool);
+                if (_isHost()) return _hostRunAndSync(_origDoBuildAction, [unit, x, y, tool]);
+                if (!_guestOwnsAction(unit)) return 0;
+                _guestActionFeedback('attack', unit, x, y);   // work swing + thunk
+                _emit('game-action', { type: 'engine', fn: 'doBuildAction', unitId: unit.id, x: x, y: y, tool: tool || state._buildTool || 'dig' });
+                return 600;
+            };
+        }
 
         const _origDoEnterBuilding = (typeof doEnterBuilding === 'function') ? doEnterBuilding : null;
         if (_origDoEnterBuilding) {
@@ -912,6 +938,7 @@
                 selectedTool: state.selectedTool,
                 pendingTarget: state.pendingTarget,
                 comboPartner: state.comboPartner,
+                buildTool: state._buildTool,
                 _prevBlitzActiveId: state._blitzActiveUnitId
             };
             try {
@@ -928,6 +955,7 @@
                             state.actionMode = data._ctx.actionMode;
                             state.selectedTool = data._ctx.selectedTool;
                             state.pendingTarget = data._ctx.pendingTarget;
+                            if (data._ctx.buildTool) state._buildTool = data._ctx.buildTool;
                             if (data._ctx.comboPartner) {
                                 state.comboPartner = state.units.find(function(u) {
                                     return u.id === data._ctx.comboPartner;
@@ -998,6 +1026,9 @@
                                 if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y);
                                 break;
                             }
+                            case 'doBuildAction':
+                                if (typeof doBuildAction === 'function') doBuildAction(engUnit, data.x, data.y, data.tool || 'dig');
+                                break;
                             case 'doEnterBuilding':
                                 if (typeof doEnterBuilding === 'function') doEnterBuilding(engUnit);
                                 break;
@@ -1025,6 +1056,7 @@
                 state.selectedTool = _hostUI.selectedTool;
                 state.pendingTarget = _hostUI.pendingTarget;
                 state.comboPartner = _hostUI.comboPartner;
+                state._buildTool = _hostUI.buildTool;
             } else {
 
                 if (state.activePlayer !== remoteP) {
@@ -2529,6 +2561,7 @@
                     selectedTool: 1,
                     pendingTarget: 1,
                     comboPartner: 1,
+                    _buildTool: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,

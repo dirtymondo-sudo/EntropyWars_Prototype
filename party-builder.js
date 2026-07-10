@@ -364,6 +364,7 @@ const ACC_ICONS = {
   chrono_locket: '\u{231B}', martyrs_talisman: '\u{2728}', purity_censer: '\u{26B1}\uFE0F',
   berserkers_brand: '\u{2694}\uFE0F', archons_focus: '\u{1F9FF}', grapnel_gauntlet: '\u{1FA9D}',
   echo_band: '\u{1F4A2}', hagstone: '\u{1FAA8}', dowsing_rod: '\u{1FAA4}',
+  masons_gauntlets: '\u{1F9E4}',
 };
 
 const CODEX_LORE = {

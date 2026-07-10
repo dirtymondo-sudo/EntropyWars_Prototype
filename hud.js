@@ -1692,7 +1692,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
@@ -2022,6 +2022,17 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
       h('span', { className: 'hrlg-ap-num' }, ap + '/'),
       h('span', { className: 'hrlg-ap-num' + (maxAP > baseAP ? ' bonus' : '') }, maxAP),
     ),
+    /* Team building-material bank — always in view so "can I afford to
+       build?" never needs a menu dive. 🧤 marks a banked free build op
+       (Mason's Gauntlets second block of the current AP). */
+    mats && h('div', {
+      className: 'hrlg-mats',
+      title: 'Team building materials — dig terrain, chop trees and wreck structures to bank more. Spent by the Build action and construction spells.',
+    },
+      h('span', { className: 'hrlg-mats-lbl' }, 'MAT'),
+      mats.map(m => h('span', { key: m.k, className: 'hrlg-mat' + (m.n > 0 ? '' : ' none') }, m.icon + ' ' + m.n)),
+      buildCharge > 0 ? h('span', { className: 'hrlg-mat free' }, '🧤 +' + buildCharge) : null,
+    ),
     /* HP/MP vitals under the watch — the acting unit's pools at a glance,
        right where the player's eyes already are while picking an action. */
     maxHp > 0 && h('div', { className: 'hrlg-vitals' },
@@ -2281,6 +2292,41 @@ function _hrlgItemBlades(unit, st) {
   });
   if (!blades.length) blades.push({ id: 'none', icon: '❖', label: 'No items', available: false });
   return { title: { icon: '❖', text: 'Items', count: heldKeys.length + '' }, blades };
+}
+
+/* ── Build-mode hotbar (2026-07-10): ⛏ Dig + one blade per placeable
+   material — a Minecraft hotbar rendered as Horologe blades. Clicking a
+   blade arms that tool; board clicks then dig/place instantly (no confirm
+   step — the hover ghost IS the preview). Counts read the TEAM bank. */
+function _hrlgBuildBlades(unit, st) {
+  const tool = st._buildTool || 'dig';
+  const mats = (typeof getMaterials === 'function') ? getMaterials(unit.player) : {};
+  const armTool = (t) => {
+    st._buildTool = t;
+    if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+    // Tool swap changes which tiles are valid → repaint reach highlights.
+    if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+    if (typeof markDirty === 'function') { markDirty('hud', 'board'); renderIfDirty(); }
+    if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  };
+  const blades = [{
+    id: 'bld:dig', icon: '⛏', label: 'Dig',
+    available: true, selected: tool === 'dig',
+    hint: '+salvage',
+    fire: () => armTool('dig'),
+  }];
+  const defs = (typeof BUILD_MATERIALS !== 'undefined') ? BUILD_MATERIALS : {};
+  for (const k of Object.keys(defs)) {
+    const n = mats[k] || 0;
+    blades.push({
+      id: 'bld:' + k, icon: defs[k].icon, label: defs[k].label,
+      count: n > 0 ? '×' + n : null,
+      available: n > 0, selected: tool === k,
+      sub: n > 0 ? null : 'None banked',
+      fire: () => { if (n > 0) armTool(k); },
+    });
+  }
+  return blades;
 }
 
 // The More list items keep their existing "emoji label" convention —
@@ -2586,11 +2632,20 @@ function _hrlgMoreBlades(unit, st) {
         if (canAsc.ok) moreItems.push({ label: '⬆ Take Off', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'ascend'); } });
       }
     }
-  } else if (typeof canReshapeTile === 'function') {
-    const canRaise = canReshapeTile(unit, 'raise');
-    if (canRaise.ok) moreItems.push({ label: '🔺 Raise', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'raise'); } });
-    const canLower = canReshapeTile(unit, 'lower');
-    if (canLower.ok) moreItems.push({ label: '🔻 Lower', sub: '1 AP', onClick: () => { if (typeof doReshape === 'function' && typeof getSelectedUnit === 'function') doReshape(getSelectedUnit(), 'lower'); } });
+  }
+
+  /* ⚒ Build — the universal place/dig verb (also a root blade; listed here
+     too so the More menu stays a complete verb index). Replaces the old
+     Raise/Lower self-tile reshape rows, which it supersedes. */
+  if (typeof _buildActionProblem === 'function') {
+    const _bp = _buildActionProblem(unit);
+    moreItems.push({
+      label: '⚒ Build',
+      sub: _bp || '1 AP/block',
+      dim: !!_bp,
+      active: am === 'build',
+      onClick: () => { if (!_bp && typeof setActionMode === 'function') setActionMode('build'); },
+    });
   }
 
   if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
@@ -2787,6 +2842,17 @@ function ActionMenu({ st, hidden }) {
     sub: apc.hasAnyItem ? null : 'Empty',
   };
 
+  // 🧱 Build — the universal place/dig block verb (1 AP per block; Mason's
+  // Gauntlets = 2 per AP). Greyed with the exact reason when it can't run.
+  const buildProblem = typeof _buildActionProblem === 'function' ? _buildActionProblem(unit) : 'Unavailable';
+  const buildAction = {
+    id: 'build', label: 'Build', icon: '⚒', cost: 1,
+    available: !buildProblem,
+    selected: am === 'build',
+    sub: buildProblem,
+    hint: !buildProblem ? _hintKey('build', 'B') : null,
+  };
+
   const moreAction = {
     id: 'more', label: 'More', icon: '…', cost: null,
     available: true,
@@ -2794,8 +2860,8 @@ function ActionMenu({ st, hidden }) {
   };
 
   // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
-  // Items › More (END TURN docks at the very bottom of the ladder).
-  const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, moreAction];
+  // Items › Build › More (END TURN docks at the very bottom of the ladder).
+  const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, buildAction, moreAction];
 
   // ── special-action pushers: situational one-shots surfaced as extra
   // stopwatch buttons on the bezel (they also stay listed under More).
@@ -2840,7 +2906,7 @@ function ActionMenu({ st, hidden }) {
   // full verb ladder used to stay up and cover the reachable tiles on the left
   // half of the board. Aim view = lone CANCEL blade + "MOVING — CLICK A TILE".
   // (WASD walking keeps the ladder — the keyboard IS the picker there.)
-  const tileTargetModes = ['move', 'jump', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone'];
+  const tileTargetModes = ['move', 'jump', 'combo', 'inspect', 'ward', 'flair', 'trade', 'warpStone', 'build'];
   const isWasdWalking = am === 'move' && typeof _wasdOrigin !== 'undefined' && _wasdOrigin && !_wasdCommitted;
   const inTileTarget = am && tileTargetModes.includes(am) && menuView === 'root' && !isWasdWalking;
 
@@ -2860,6 +2926,11 @@ function ActionMenu({ st, hidden }) {
       case 'abil': if (typeof chooseActionMenu === 'function') chooseActionMenu('spells'); break;
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
+      case 'build':
+        // Toggle like Move: hitting BUILD while already building backs out.
+        if (am === 'build') { if (typeof handleBackAction === 'function') handleBackAction(); }
+        else if (typeof setActionMode === 'function') setActionMode('build');
+        break;
       case 'more': if (typeof chooseActionMenu === 'function') chooseActionMenu('more'); break;
     }
   }
@@ -2876,7 +2947,7 @@ function ActionMenu({ st, hidden }) {
     move: 'MOVING — CLICK A TILE', jump: 'JUMPING — CLICK A TILE', combo: 'COMBO — CLICK A PARTNER',
     inspect: 'INSPECT — CLICK A TILE', ward: 'WARD — CLICK A TILE', flair: 'FLAIR — CLICK A TILE',
     trade: 'TRADE — CLICK AN ALLY', warpStone: 'WARP — CLICK A TILE',
-    attack: 'ATTACK — CLICK A TARGET',
+    attack: 'ATTACK — CLICK A TARGET', build: 'BUILD — CLICK A TILE',
   };
 
   // Which face the Horologe shows. EVERYTHING is the same drum — root
@@ -2895,7 +2966,20 @@ function ActionMenu({ st, hidden }) {
     // Move/jump picking shows NO blade at all — the fan sat right over the
     // reachable tiles on the left half of the board, and the crown (◀ BACK)
     // already cancels. Other tile modes keep the lone CANCEL blade.
-    blades = (am === 'move' || am === 'jump') ? [] : [cancelBlade];
+    if (am === 'build') {
+      // Build mode: the drum becomes a Minecraft hotbar — ⛏ Dig + one blade
+      // per banked material. Click a blade to swap tools, click the board to
+      // work, right-click/ESC/B to put the tools away.
+      const _bt = st._buildTool || 'dig';
+      viewKey = 'aim|build|' + _bt;
+      title = { icon: '⚒', text: 'Build' };
+      blades = [..._hrlgBuildBlades(unit, st), cancelBlade];
+      modeLabel = _bt === 'dig'
+        ? 'DIG — CLICK A BLOCK IN REACH'
+        : 'PLACE ' + ((typeof BUILD_MATERIALS !== 'undefined' && BUILD_MATERIALS[_bt]) ? BUILD_MATERIALS[_bt].label.toUpperCase() : 'BLOCK') + ' — CLICK A TILE';
+    } else {
+      blades = (am === 'move' || am === 'jump') ? [] : [cancelBlade];
+    }
   } else if (menuView === 'spells' && am === 'spell' && st.selectedTool) {
     // tile-targeted / free-aim spell armed from the abilities drum. The view
     // tab names the ACTUAL spell being aimed (it used to just say
@@ -3038,6 +3122,10 @@ function ActionMenu({ st, hidden }) {
     burning: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'burn'),
     poisoned: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'poison'),
     ap: unit.ap || 0, maxAP: maxAP,
+    mats: (typeof getMaterials === 'function' && typeof BUILD_MATERIALS !== 'undefined')
+      ? (() => { const _m = getMaterials(unit.player); return Object.keys(BUILD_MATERIALS).map(k => ({ k, icon: BUILD_MATERIALS[k].icon, n: _m[k] || 0 })); })()
+      : null,
+    buildCharge: unit._buildCharges || 0,
     hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
     modeLabel: modeLabel, am: am, pushers: pushers,
     items: hudItems, onItem: onItem, confirm: confirmObj,
@@ -4833,6 +4921,39 @@ function _computeTileActions(actingUnit, tx, ty) {
     }
   }
 
+  // ⚒ Build here: one-tap dig/place straight from the tile quick menu —
+  // the Minecraft "click the block you're looking at" path. Rows appear
+  // only when the op would actually land (same _buildProblem the engine
+  // uses). Executes via doBuildAction (online-relayed) and re-enters
+  // nothing — the quick menu closes and the block changes.
+  if (typeof _buildProblem === 'function' && typeof doBuildAction === 'function'
+      && typeof _buildActionProblem === 'function' && !_buildActionProblem(actingUnit)) {
+    if (!_buildProblem(actingUnit, 'dig', tx, ty)) {
+      actions.push({
+        id: 'build:dig', label: onSelf ? 'Dig Underfoot' : 'Dig Block', icon: '⛏', category: 'actions',
+        apCost: 1, available: true, reason: '',
+        handler: () => {
+          state._tileActionTarget = null;
+          doBuildAction(actingUnit, tx, ty, 'dig');
+        },
+      });
+    }
+    if (typeof defaultBuildTool === 'function' && typeof BUILD_MATERIALS !== 'undefined') {
+      const _qbTool = defaultBuildTool(actingUnit);
+      if (_qbTool !== 'dig' && BUILD_MATERIALS[_qbTool] && !_buildProblem(actingUnit, _qbTool, tx, ty)) {
+        actions.push({
+          id: 'build:place', label: (onSelf ? 'Block Underfoot ' : 'Place Block ') + BUILD_MATERIALS[_qbTool].icon,
+          icon: '🧱', category: 'actions',
+          apCost: 1, available: true, reason: '',
+          handler: () => {
+            state._tileActionTarget = null;
+            doBuildAction(actingUnit, tx, ty, _qbTool);
+          },
+        });
+      }
+    }
+  }
+
   if (onSelf && typeof getNexusAtUnit === 'function' && typeof channelNexus === 'function') {
     const nex = getNexusAtUnit(actingUnit);
     if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
@@ -5820,6 +5941,17 @@ function _injectHudHideStyles() {
     .hrlg-pip.bonus.on { background: #6ee2a8; border-color: #6ee2a8; box-shadow: 0 0 8px #6ee2a8; }
     .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
     @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    /* Team material bank strip (🪵🪨⚙️) — docked under the item slots so
+       build affordability is always one glance away. */
+    .hrlg-mats {
+      position: absolute; left: 8px; bottom: 0; width: 190px; height: 11px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 9px; letter-spacing: 0.06em; color: #b8c0d4;
+      pointer-events: auto; z-index: 9; white-space: nowrap;
+    }
+    .hrlg-mats-lbl { font-size: 7px; letter-spacing: 0.24em; color: #555c70; }
+    .hrlg-mat.none { color: #4a5063; opacity: 0.75; }
+    .hrlg-mat.free { color: #6ee2a8; text-shadow: 0 0 7px rgba(110,226,168,0.55); animation: hrlgSpend 1.4s ease-in-out infinite; }
     /* HP/MP vitals under the watch — mirrors the top-left panel */
     .hrlg-vitals {
       position: absolute; left: 22px; bottom: 70px; width: 162px;

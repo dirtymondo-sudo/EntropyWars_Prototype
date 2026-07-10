@@ -2773,7 +2773,7 @@
         // Strike).
         const MAT_KINDS = ['wood', 'stone', 'metal'];
         const MAT_ICONS = { wood: '🪵', stone: '🪨', metal: '⚙️' };
-        const MAT_START_STOCK = { wood: 2, stone: 2, metal: 1 };
+        const MAT_START_STOCK = { wood: 3, stone: 3, metal: 1 };
 
         function _matFor(player) {
             if (!state.matBank) state.matBank = {};
@@ -13199,7 +13199,8 @@
                         'White Mage': ['walkie_talkie', 'ward'],
                         'Warrior': ['ward', 'flair'],
                         'Psychic': ['walkie_talkie', 'ward'],
-                        'Harvester': ['ward', 'walkie_talkie']
+                        'Harvester': ['masons_gauntlets', 'ward'],
+                        'Engineer': ['masons_gauntlets', 'binoculars']
                     } [cls] || ['ward', 'binoculars'];
                     for (const accSlot of ['accessory1', 'accessory2']) {
                         if (!loadout.equipment[accSlot]) {
@@ -14597,6 +14598,7 @@
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
             u._reshapeThisTurn = 0;
+            u._buildCharges = 0;
             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
             u._turnKills = 0;
             u._aiFailedSpells = null;
@@ -17982,6 +17984,7 @@
                 u._encoreThisRound = false;
                 u.movesThisTurn = 0;
                 u._reshapeThisTurn = 0;
+                u._buildCharges = 0;
                 u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
@@ -18091,6 +18094,7 @@
                     u.ap = getUnitMaxAP(u);
                     u.movesThisTurn = 0;
                     u._reshapeThisTurn = 0;
+                    u._buildCharges = 0;
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
                     u._skippedTurn = false;
@@ -19766,6 +19770,7 @@
                             u.ap = getUnitMaxAP(u);
                             u.movesThisTurn = 0;
                             u._reshapeThisTurn = 0;
+                            u._buildCharges = 0;
                             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
@@ -21643,6 +21648,11 @@
             materialCostLabel, getTerrainMaterial,
             // placement validity (shared by menus / previews / AI)
             _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
+            // 🧱 BUILD action (universal place/dig verb, 2026-07-10)
+            doBuildAction, _buildProblem, _buildActionProblem, predictBuildChanges,
+            unitBuildOpsPerAP, digSalvageMaterial, defaultBuildTool,
+            get BUILD_ACTION_CONFIG() { return BUILD_ACTION_CONFIG; },
+            get BUILD_MATERIALS() { return BUILD_MATERIALS; },
             // 🔥 burning tiles + 🗺️ elemental tile casts (shared by HUD / AI)
             _elementalTileCastInfo, classifySpellElement,
             igniteTile, extinguishTile, tickBurningTiles,
@@ -22822,6 +22832,15 @@
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
+            if (mode === 'build') {
+                const _bProblem = _buildActionProblem(unit);
+                if (_bProblem) {
+                    addLog(`Build: ${_bProblem}.`);
+                    playErrorSfx();
+                    return;
+                }
+                state._buildTool = defaultBuildTool(unit);
+            }
             state.actionMode = mode;
             state._actionExecuting = false;
             state.hoverUnitId = null;
@@ -22847,7 +22866,7 @@
                problem), and the player can still orbit freely afterwards —
                the collision rig in ThreeCamera keeps the eye above the map
                even craned up at the sky. */
-            if ((mode === 'move' || mode === 'jump') && !state.cameraDisabled
+            if ((mode === 'move' || mode === 'jump' || mode === 'build') && !state.cameraDisabled
                 && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
                 // Tile picking is a BOARD read → always the tactical overhead,
                 // dropping any third-person hold (turn-start / targeting shot).
@@ -22855,7 +22874,7 @@
                 camera._preCineView = null;
                 camera._cineShotId = null;
                 camera._releaseCineSubject(420);
-                const _mvRange = Math.max(2, (typeof getEffectiveMove === 'function'
+                const _mvRange = mode === 'build' ? 2 : Math.max(2, (typeof getEffectiveMove === 'function'
                     ? (getEffectiveMove(unit) || 0) : 0) || 4);
                 // The WIDER of "fits the whole move range" and the preset's
                 // tactical distance — the tactical view is always a genuine
@@ -23066,6 +23085,7 @@
                 if (ThreeRenderer.clearArrows3D) ThreeRenderer.clearArrows3D();
                 if (ThreeRenderer.clearTerrainGhost) ThreeRenderer.clearTerrainGhost();
             }
+            _buildGhostKey = null;   // build hover ghost re-resolves fresh next time
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
             // Camera glides during the cast re-resolve hover every frame — hold
             // hover-driven previews off until the action settles (checked in
@@ -23123,6 +23143,13 @@
             // (path arrow + destination hologram) instead of a confirm target.
             if (state.actionMode === 'move' || state.actionMode === 'jump') {
                 _updateMoveHoverPreview(x, y);
+                return false;
+            }
+            // Build mode: hovering a reach tile shows the exact block ghost
+            // (cyan stack = place, red carve = dig) — same footprint the click
+            // will execute, no confirm step.
+            if (state.actionMode === 'build') {
+                _updateBuildHoverPreview(x, y);
                 return false;
             }
             if (!actionModeNeedsTargetConfirm()) return false;
@@ -23216,6 +23243,7 @@
 
         function clearHoveredTarget(x = null, y = null) {
             if (state._moveHoverKey || state._moveHoverActive) _clearMoveHoverPreview();
+            if (state.actionMode === 'build' && _buildGhostKey) _clearBuildHoverPreview();
             const current = state.pendingTarget;
             if (!current?.viaHover) return false;
             if (x != null && y != null && (current.x !== x || current.y !== y)) return false;
@@ -23930,6 +23958,10 @@
                     return;
                 }
                 return _execAction(() => doJump(actingUnit, x, y, state._clickedZ));
+            }
+            if (state.actionMode === 'build') {
+                const _bTool = state._buildTool || 'dig';
+                return _execAction(() => doBuildAction(actingUnit, x, y, _bTool));
             }
             if (state.actionMode === 'inspect') return _execAction(() => doInspect(actingUnit, x, y));
             if (state.actionMode === 'ping') return _execAction(() => doPing(actingUnit, x, y));
@@ -26711,6 +26743,270 @@
                 renderBattleUpdate();
             }, _reshapeDelay);
             return _reshapeDelay;
+        }
+
+        /* ── BUILD action (2026-07-10): universal Minecraft-style place/dig ──
+           Every grounded unit gets the Build verb (Horologe root + More menu,
+           hotkey B): 1 AP per block — dig the top block off any column in
+           reach (salvaging its material, plain earth quarries as stone), or
+           stack one block of a banked material (timber burns, stone holds,
+           steel conducts). Placing under an ally lifts them; under an enemy
+           it ERUPTS (crash + 1-tile shove, trap/hazard chains apply); on
+           water it forms a stepping stone. Digging under anyone drops them.
+           This retired the Timber/Stone/Steel Block spells and the More-menu
+           Raise/Lower reshape rows. Mason's Gauntlets accessory = 2 ops/AP
+           (tracked per-turn on unit._buildCharges). Anti-softlock: a unit in
+           a pit can always quarry a wall block and stack its way out. */
+
+        function unitBuildOpsPerAP(unit) {
+            return (typeof unitHasAccessory === 'function' && unitHasAccessory(unit, 'masons_gauntlets')) ? 2 : 1;
+        }
+
+        // Family salvage for a deliberately dug block. Plain earth (grass /
+        // dirt / sand / snow...) quarries as stone so the dig→stack escape
+        // loop is always material-neutral — that's the anti-softlock valve.
+        function digSalvageMaterial(t) {
+            return getTerrainMaterial(t) || 'stone';
+        }
+
+        // Coarse "can this unit build at all right now" — drives the Horologe
+        // blade greying. Per-tile validity lives in _buildProblem.
+        function _buildActionProblem(unit) {
+            if (!unit || unit.dead || unit._dying) return 'No unit';
+            if (typeof isUnitAirborne === 'function' && typeof canFly === 'function'
+                && canFly(unit) && isUnitAirborne(unit)) return 'Land first';
+            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
+                return 'Stunned';
+            }
+            if ((unit._buildCharges || 0) <= 0 && (unit.ap || 0) < BUILD_ACTION_CONFIG.apCost) return 'No AP';
+            return null;
+        }
+
+        // The tool the drum arms when Build mode opens: keep the current pick
+        // while it still works, else the first material in stock, else dig.
+        function defaultBuildTool(unit) {
+            const cur = state._buildTool;
+            if (cur === 'dig') return 'dig';
+            if (cur && BUILD_MATERIALS[cur] && canAffordMaterials(unit.player, { [cur]: 1 })) return cur;
+            for (const k of Object.keys(BUILD_MATERIALS)) {
+                if (canAffordMaterials(unit.player, { [k]: 1 })) return k;
+            }
+            return 'dig';
+        }
+
+        // Single source of truth for "can this build op land on (x,y)" — the
+        // handler, the reach highlights, the ghost preview and the AI all ask
+        // here, so the UI can never light up an op the engine would reject.
+        // Returns null when valid (details in `out`), else a short reason.
+        function _buildProblem(unit, tool, x, y, out = {}) {
+            const cfg = BUILD_ACTION_CONFIG;
+            if (!unit) return 'No unit';
+            if (!isInside(x, y)) return 'Out of bounds';
+            if (Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y)) > cfg.reach) return 'Out of reach';
+            const uz = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+
+            if (tool === 'dig') {
+                if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) {
+                    if (getBaseHeightAt(x, y) - uz > cfg.vReach) return 'Too high to reach';
+                    out.isTree = true;
+                    return null;
+                }
+                const terr = getTerrainAt(x, y);
+                if (terr === 'wall') return 'Indestructible';
+                if (_isWaterTile(x, y) || terr === 'lava' || terr === 'chasm' || terr === 'void') return 'Nothing solid to dig';
+                if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return 'Objective tile';
+                const obj = getObjectAt(x, y);
+                if (obj) {
+                    const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
+                    if (rule && !rule.walkable && !rule.cosmetic) return 'Blocked by an object';
+                }
+                if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return 'Part of a structure';
+                const h = getBaseHeightAt(x, y);
+                if (h <= cfg.minHeight) return 'Already at bedrock';
+                if (h - uz > cfg.vReach) return 'Too high to reach';
+                out.oldH = h;
+                out.mat = digSalvageMaterial(terr);
+                return null;
+            }
+
+            const matDef = BUILD_MATERIALS[tool];
+            if (!matDef) return 'Pick a material';
+            if (!canAffordMaterials(unit.player, { [tool]: 1 })) return `Need 1 ${matDef.icon}`;
+            const problem = _placeBlockProblem(unit, { terrainType: matDef.terrain }, x, y, out);
+            if (problem) return problem;
+            const newTop = out.isWater ? (out.oldH ?? 0) : ((out.oldH ?? 0) + 1);
+            if (newTop - uz > cfg.vReach) return 'Too high to reach';
+            return null;
+        }
+
+        // Pure ghost-preview mirror of doBuildAction — same validity, same
+        // footprint. Invalid tile = NO ghost ("no hologram = won't work").
+        function predictBuildChanges(unit, tool, x, y) {
+            const changes = [];
+            const info = {};
+            if (_buildProblem(unit, tool, x, y, info)) return changes;
+            if (tool === 'dig') {
+                changes.push({ x, y, mode: info.isTree ? 'paint' : 'lower', dz: info.isTree ? 0 : 1, color: 0xff7a5c });
+            } else {
+                const c = _terrainPreviewColor(BUILD_MATERIALS[tool].terrain);
+                if (info.isWater) {
+                    changes.push({ x, y, mode: 'paint', dz: 0, color: c });
+                } else {
+                    changes.push({ x, y, mode: 'raise', dz: 1, color: c });
+                    if (info.shoveTo) changes.push({ x: info.shoveTo.x, y: info.shoveTo.y, mode: 'paint', dz: 0, color: 0xff8a3c });
+                }
+            }
+            return changes;
+        }
+
+        // Hover ghost while Build mode is armed (driven from updateHoveredTarget).
+        let _buildGhostKey = null;
+        function _updateBuildHoverPreview(x, y) {
+            const unit = getSelectedUnit();
+            const tool = state._buildTool || 'dig';
+            const key = unit ? (unit.id + '|' + tool + '|' + x + ',' + y + '|' + (state._terrainVersion || 0)) : null;
+            if (key === _buildGhostKey) return;
+            _buildGhostKey = key;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return;
+            const changes = unit ? predictBuildChanges(unit, tool, x, y) : [];
+            if (changes.length && ThreeRenderer.showTerrainGhost) ThreeRenderer.showTerrainGhost(changes);
+            else if (ThreeRenderer.clearTerrainGhost) ThreeRenderer.clearTerrainGhost();
+        }
+        function _clearBuildHoverPreview() {
+            _buildGhostKey = null;
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearTerrainGhost) ThreeRenderer.clearTerrainGhost();
+        }
+
+        // The Build verb itself: one dig or one placement at (x,y). Returns a
+        // completion delay (ms) on success, 0 on rejection (nothing spent).
+        function doBuildAction(unit, x, y, tool) {
+            tool = tool || state._buildTool || 'dig';
+            const coarse = _buildActionProblem(unit);
+            if (coarse) {
+                addLog(`Build: ${coarse}.`);
+                playErrorSfx();
+                return 0;
+            }
+            const info = {};
+            const problem = _buildProblem(unit, tool, x, y, info);
+            if (problem) {
+                addLog(`Build: ${problem}.`);
+                playErrorSfx();
+                return 0;
+            }
+
+            pushUndoSnapshot(true);
+            _clearBuildHoverPreview();
+
+            // AP bookkeeping — Mason's Gauntlets banks a free second op per AP.
+            if ((unit._buildCharges || 0) > 0) {
+                unit._buildCharges--;
+            } else {
+                spendAP(unit, BUILD_ACTION_CONFIG.apCost);
+                const perAP = unitBuildOpsPerAP(unit);
+                if (perAP > 1) {
+                    unit._buildCharges = perAP - 1;
+                    showFloatingTextForUnit(unit, '🧤 +1 FREE BLOCK', 'buff', { durationMs: 900 });
+                }
+            }
+
+            if (tool === 'dig') {
+                if (info.isTree) {
+                    _fellTreeAt(x, y, unit);   // credits +1 🪵 (+ lumber + entropy)
+                    playSfx('physicalAbility');
+                    showFloatingTextForUnit(unit, '⛏ CHOP', 'neutral', { durationMs: 800 });
+                    addLog(`${unitDisplayName(unit)} chops down the tree at ${coordLabel(x, y)}.`);
+                } else {
+                    const oldH = info.oldH;
+                    removeBlockAt(x, y, oldH);
+                    if (info.mat) gainMaterial(unit.player, info.mat, 1);
+                    addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
+                    // Digging below a neighboring waterline floods the fresh pit.
+                    if (typeof settleWaterAround === 'function') settleWaterAround([{ x, y }]);
+                    const occ = unitAt(x, y);
+                    if (occ && !occ.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ))) {
+                        occ.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, occ.z) : Math.max(0, oldH - 1);
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: occ, fromX: x, fromY: y });
+                        if (occ.id !== unit.id) addLog(`${unitDisplayName(occ)} drops as the ground is dug out underfoot!`);
+                    }
+                    playSfx('physicalAbility');
+                    showFloatingTextForUnit(unit, '⛏ DIG', 'neutral', { durationMs: 800 });
+                    addLog(`${unitDisplayName(unit)} digs out ${coordLabel(x, y)} (height ${oldH} → ${oldH - 1}).`);
+                }
+            } else {
+                const matDef = BUILD_MATERIALS[tool];
+                spendMaterials(unit.player, { [tool]: 1 });
+                if (info.isWater) {
+                    setTerrainAt(x, y, matDef.terrain);
+                    addLog(`${unitDisplayName(unit)} sinks a ${matDef.label} block into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                } else {
+                    if (info.enemyOcc && info.shoveTo) {
+                        // Erupting block: shove first, then raise the column.
+                        const _fromX = info.enemyOcc.x, _fromY = info.enemyOcc.y;
+                        info.enemyOcc.x = info.shoveTo.x; info.enemyOcc.y = info.shoveTo.y;
+                        if (typeof nearestWalkableZ === 'function') info.enemyOcc.z = nearestWalkableZ(info.shoveTo.x, info.shoveTo.y, info.enemyOcc.z);
+                        animateDisplacement(info.enemyOcc, _fromX, _fromY, info.shoveTo.x, info.shoveTo.y, 180);
+                        applyDamageToUnit(info.enemyOcc, BUILD_ACTION_CONFIG.eruptDamage, 'The block erupts underfoot: ', {
+                            sourceUnit: unit, damageType: 'physical'
+                        });
+                        showFloatingTextForUnit(info.enemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
+                        addLog(`${unitDisplayName(unit)}'s block erupts under ${unitDisplayName(info.enemyOcc)}, hurling them aside!`);
+                        if (!info.enemyOcc.dead) _applyKnockbackHazard(info.enemyOcc);
+                        if (!info.enemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(info.enemyOcc);
+                    }
+                    setBlockAt(x, y, info.oldH + 1, matDef.terrain);
+                    const rider = unitAt(x, y);
+                    if (rider && !rider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(rider)) && !isEnemyUnit(rider, unit)) {
+                        rider.z = info.oldH + 1;
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: rider, fromX: x, fromY: y });
+                        if (rider.id !== unit.id) addLog(`${unitDisplayName(rider)} rides the new block up!`);
+                    }
+                    addLog(`${unitDisplayName(unit)} stacks a ${matDef.label} block at ${coordLabel(x, y)} (1 ${matDef.icon} spent).`);
+                }
+                playSfx('physicalAbility');
+                showFloatingTextForUnit(unit, `🧱 ${matDef.icon} BUILD`, 'buff', { durationMs: 800 });
+                // Pocket ran dry mid-spree → hop to the next material (or the
+                // pick) so the very next click keeps building, not erroring.
+                if (state._buildTool === tool && !canAffordMaterials(unit.player, { [tool]: 1 })) {
+                    state._buildTool = defaultBuildTool(unit);
+                    if (state._buildTool !== tool) addLog(`Out of ${matDef.icon} — switched to ${state._buildTool === 'dig' ? '⛏ dig' : BUILD_MATERIALS[state._buildTool].icon}.`);
+                }
+            }
+
+            _invalidateBoardGrid();
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
+
+            state._actionExecuting = false;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            state.pendingTarget = null;
+            if (!unitFinished(unit) && !unit.dead
+                && !state.autoPlayers?.[unit.player] && !state._remoteAction) {
+                // Stay in Build mode — the Minecraft flow: click, click, click,
+                // back out with right-click/ESC/B whenever you're done. (AI and
+                // remote replays never linger in a UI mode.)
+                state.actionMode = 'build';
+                state.actionMenuView = 'root';
+            } else {
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+            }
+            state.selectedTool = null;
+
+            checkWin();
+            renderBattleUpdate();
+            scheduleBoardRender();
+
+            const _buildDelay = 420;
+            const _buildUnit = unit;
+            window.setTimeout(() => {
+                endUnitIfDone(_buildUnit);
+                renderBattleUpdate();
+            }, _buildDelay);
+            return _buildDelay;
         }
 
         function applyTerrainDeform(cx, cy, radius, deform) {

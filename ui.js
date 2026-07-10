@@ -2415,7 +2415,7 @@
         }
       }
       const _hlKeyParts = _selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting
-        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnit?.id || '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + _unitPosFingerprint
+        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnit?.id || '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
         : '';
       let _hlCache;
       let _hlZCache;
@@ -2750,6 +2750,22 @@
               }
               _hlCache.set(pk, 'move-jump');
               if (t.z !== undefined) _hlZCache.set(pk, t.z);
+            }
+          }
+        } else if (state.actionMode === 'build' && canUnitAct(_selectedForHl)) {
+          // Build reach ring: light exactly the tiles the armed tool can work
+          // (same _buildProblem the click uses). Blue 'placeable' for stacking,
+          // orange for diggable blocks — invalid tiles stay dark.
+          const _bTool = state._buildTool || 'dig';
+          const _bReach = (typeof BUILD_ACTION_CONFIG !== 'undefined' && BUILD_ACTION_CONFIG.reach) || 1;
+          if (typeof _buildProblem === 'function') {
+            for (let cy = _selectedForHl.y - _bReach; cy <= _selectedForHl.y + _bReach; cy++) {
+              for (let cx = _selectedForHl.x - _bReach; cx <= _selectedForHl.x + _bReach; cx++) {
+                if (!isInside(cx, cy)) continue;
+                if (!_buildProblem(_selectedForHl, _bTool, cx, cy)) {
+                  _hlCache.set(posKey(cx, cy), _bTool === 'dig' ? 'combo-target' : 'placeable');
+                }
+              }
             }
           }
         } else if (state.actionMode === 'inspect' && canUnitAct(_selectedForHl)) {
@@ -4392,6 +4408,7 @@
             state.comboPartner = null;
             state.hoverUnitId = null;
             state._spellOrientation = null;
+            if (typeof _clearBuildHoverPreview === 'function') _clearBuildHoverPreview();
             state.focusedUnitId = state.selectedUnitId || null;
             // back at the root menu → return to the third-person turn shot
             // (battle.js contextual camera; no-op off-turn / in 2D mode)
@@ -9402,6 +9419,15 @@
             if (key === 'c' && !event.ctrlKey && !event.metaKey && !event.altKey) {
                 event.preventDefault();
                 if (typeof cycleCameraMode === 'function') cycleCameraMode();
+                return;
+            }
+            // B toggles Build mode — in and out, Minecraft-style.
+            if (key === 'b' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                const _bu = getSelectedUnit();
+                if (!_bu || !canUnitAct(_bu)) return;
+                event.preventDefault();
+                if (state.actionMode === 'build') handleBackAction();
+                else if (typeof setActionMode === 'function') setActionMode('build');
                 return;
             }
 
