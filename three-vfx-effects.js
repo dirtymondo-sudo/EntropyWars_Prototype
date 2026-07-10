@@ -1067,6 +1067,26 @@ EFFECTS['_debuff_burst'] = {
     ]
 };
 
+/* ─── DISCORD STATUS — jarring magenta "off-key" pop the moment the status
+   lands. discord had NO _statusEffectMap entry (and battle.js's
+   vfxStatusMap gate skipped it), so the game's most common debuff was
+   nearly invisible. Bright clashing flash, pink sparks thrown hard, rising
+   psi haze, and a contracting ring — the target's rhythm being clamped.
+   The 3D cracked-note flourish rides on top (see fireStatus). ─────────── */
+EFFECTS['_status_discord'] = {
+    layers: [
+        { sprite: 'flash', ml: 200, size0: 85, size1: 22, opacity0: 0.8 },
+        { count: 14, sprite: 'spark-pink', ml: [350, 620], offsetXY: 14,
+          vxRange: 150, vyRange: 150, vzRange: [40, 170], gravity: 320, drag: 1.3,
+          size0: [6, 11], size1: 2, opacity0: 0.95 },
+        { count: 10, delayMs: 60, sprite: 'psi-pulse', ml: [400, 750], offsetXY: 18,
+          vxRange: 60, vyRange: 60, vzRange: [20, 90], gravity: -15, drag: 0.5,
+          size0: [7, 12], size1: [16, 26], opacity0: 0.7 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 420, z: 2,
+          size0: 120, size1: 30, opacity0: 0.7 },
+    ]
+};
+
 /* ─── WALL OF FIRE — hand-authored "real fire" override ──────────────────
    The auto-generated wallOfFire_tile read as a couple of flat flame quads.
    This rebuilds it as a dense, layered, flickering sheet of flame: a warm
@@ -1651,6 +1671,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceCannonball'].bolt = '_bolt_rock';
     if (!SPELL_MAP['raceFeralDive']) SPELL_MAP['raceFeralDive'] = { impact: 'racePounce_impact' };
     if (!SPELL_MAP['raceLoveBite']) SPELL_MAP['raceLoveBite'] = { impact: 'raceInfectiousBite_impact' };
+    if (!SPELL_MAP['raceApexPounce']) SPELL_MAP['raceApexPounce'] = { impact: 'racePounce_impact' };
+    /* Blood Frenzy shipped with only a cast aura; the kill needs an impact
+       mapping so the claw+jaws combo fires at the victim — and the aura
+       would fire the same geometry a second time at the caster, so the
+       mapping goes impact-only. */
+    SPELL_MAP['raceBloodFrenzy'] = { impact: 'racePounce_impact' };
+    /* barrage-kind self-novas fire the 'aura' intent — Labyrinth Roar had
+       no aura mapping at all, so nothing (3D geometry included) played */
+    if (!SPELL_MAP['raceLabyrinthRoar']) SPELL_MAP['raceLabyrinthRoar'] = {};
+    SPELL_MAP['raceLabyrinthRoar'].aura = 'raceDemonicRoar_aoe';
 
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
@@ -1853,10 +1883,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         slow:    '_status_slow',
         bleed:   '_status_bleed',
         silence: '_status_silence',
+        discord: '_status_discord',
     };
 
     function fireStatus(statusId, tx, ty) {
         if (_suppressed() || _catOff('status')) return;
+        /* discord gets a 3D flourish on top of its particle burst — big
+           cracked spectral notes popping off-key over the victim. It's the
+           most common debuff in the game and used to be nearly invisible. */
+        if (statusId === 'discord') {
+            _sigMusicNotes3D(tx, ty, {
+                count: 2, broken: true, color: 0xdd66ff,
+                scale: 0.9, sparkSprite: 'spark-pink',
+            });
+        }
         var effectId = _statusEffectMap[statusId];
         if (!effectId) return;
         _fireUtility(effectId, { tx: tx, ty: ty });
@@ -8998,6 +9038,213 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── music-note texture — a bold beamed eighth-note pair (♫). The broken
+       variant is the same glyph ripped apart by a jagged crack: the sound of
+       a melody going WRONG. Drawn white, tinted by the material color. ──── */
+    function _sigNoteTex(broken) {
+        return _sigTex(broken ? 'sig-note-broken' : 'sig-note', 256, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineCap = 'round';
+            function head(cx, cy) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(-0.35);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 30, 21, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            head(78, 196);
+            head(178, 182);
+            ctx.lineWidth = 13;
+            ctx.beginPath(); ctx.moveTo(104, 190); ctx.lineTo(104, 64); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(204, 176); ctx.lineTo(204, 50); ctx.stroke();
+            /* beam connecting the stems */
+            ctx.beginPath();
+            ctx.moveTo(98, 74); ctx.lineTo(210, 40); ctx.lineTo(210, 74); ctx.lineTo(98, 108);
+            ctx.closePath(); ctx.fill();
+            if (broken) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = 16;
+                ctx.lineJoin = 'miter';
+                ctx.beginPath();
+                ctx.moveTo(150, 4);
+                ctx.lineTo(128, 78); ctx.lineTo(168, 110);
+                ctx.lineTo(132, 168); ctx.lineTo(162, 210); ctx.lineTo(146, 252);
+                ctx.stroke();
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        });
+    }
+
+    /* ── jagged concussion ring — a zigzag circle, the cartoon shorthand for
+       LOUD. (The smooth _sigRingTex stays for physical shockwaves.) ─────── */
+    function _sigSonicRingTex() {
+        return _sigTex('sig-sonic-ring', 256, function (ctx, S) {
+            var c = S / 2;
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineJoin = 'miter';
+            function zig(r, amp, w, alpha, teeth, phase) {
+                ctx.globalAlpha = alpha; ctx.lineWidth = w;
+                ctx.beginPath();
+                for (var i = 0; i <= teeth; i++) {
+                    var a = phase + i * Math.PI * 2 / teeth;
+                    var rr = r + (i % 2 ? amp : -amp);
+                    var x = c + Math.cos(a) * rr, y = c + Math.sin(a) * rr;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.closePath(); ctx.stroke();
+            }
+            zig(104, 12, 9, 0.95, 36, 0);
+            zig(82, 9, 5, 0.55, 28, 0.11);
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ── MUSIC NOTES — oversized spectral notes popping out of the target
+       and drifting up. broken:true plays them as DISCORD: cracked glyphs
+       whose off-key vibrato gets worse and worse until they SHATTER in a
+       spark pop. gentle:true is the lullaby read — slow, serene, swaying
+       like a metronome. ──────────────────────────────────────────────── */
+    function _sigMusicNotes3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var n = opts.count != null ? opts.count : 3;
+        var color = opts.color != null ? opts.color : 0xff66dd;
+        var broken = !!opts.broken;
+        var gentle = !!opts.gentle;
+        var scale = opts.scale != null ? opts.scale : 1;
+        var noteMs = opts.ms != null ? opts.ms : (gentle ? 1600 : 1050);
+        var tex = _sigNoteTex(broken);
+        for (var i = 0; i < n; i++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var group = new THREE.Group();
+                    var a = (idx / n) * Math.PI * 2 + 0.7;
+                    var rad = ts * (0.30 + 0.18 * ((idx * 2.39) % 1));
+                    var x0 = wp.x + Math.cos(a) * rad;
+                    var z0 = wp.z + Math.sin(a) * rad;
+                    var y0 = wp.y + ts * 0.45;
+                    group.position.set(x0, y0, z0);
+                    var mat = _sigMat(color, { map: tex });
+                    var sz = ts * 0.6 * scale * (0.8 + 0.4 * ((idx * 1.61) % 1));
+                    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+                    mesh.scale.set(sz, sz, 1);
+                    mesh.rotation.x = -0.55;    /* tip toward the diorama camera */
+                    mesh.renderOrder = 165;
+                    group.add(mesh);
+                    var flip = idx % 2 ? 1 : -1;
+                    var shattered = false;
+                    _sigRun(group, noteMs, function (el) {
+                        var t = _sigClamp01(el / noteMs);
+                        group.position.y = y0 + ts * (gentle ? 0.9 : 0.65) * _sigEaseOutCubic(t);
+                        if (gentle) {
+                            group.position.x = x0 + Math.sin(el * 0.0022 + idx) * ts * 0.12;
+                            mesh.rotation.z = 0.18 * Math.sin(el * 0.0025 + idx * 2);
+                            mat.opacity = 0.9 * Math.min(1, t * 4) * (1 - _sigEaseInCubic(t));
+                        } else {
+                            /* off-key vibrato that gets WORSE over time */
+                            var vib = broken ? (0.4 + 1.6 * t) : 0.6;
+                            group.position.x = x0 + Math.sin(el * (broken ? 0.055 : 0.02)) * ts * 0.045 * vib;
+                            group.position.z = z0 + Math.cos(el * (broken ? 0.047 : 0.017)) * ts * 0.035 * vib;
+                            mesh.rotation.z = flip * (broken ? 0.32 : 0.14) * Math.sin(el * (broken ? 0.03 : 0.008));
+                            mat.opacity = 0.95 * Math.min(1, t * 5) * (t > 0.82 ? (1 - t) / 0.18 : 1);
+                            if (broken && !shattered && t > 0.82) {
+                                shattered = true;
+                                _sigSparks(tx, ty, opts.sparkSprite || 'spark-pink', 6,
+                                    { vxy: 120, vz0: 30, vz1: 120, gravity: 260, z: ts * 1.0 });
+                            }
+                        }
+                    });
+                }, idx * (gentle ? 200 : 110));
+            })(i);
+        }
+    }
+
+    /* ── HERO: SONIC BOOM — the roar/scream/song staple: jagged concussion
+       rings ripping outward from mouth height in echo waves, an upright
+       ring thrown at the camera on the first crack, plus optional music
+       notes riding on top for the sung variants. r-scaling comes from the
+       aoe/aura pipeline (radiusTiles). gentle:true = lullaby mode: smooth
+       slow rings, no shake/flash. ────────────────────────────────────── */
+    function _sigSonicBoom3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0xffcc66;
+        var rings = opts.rings != null ? opts.rings : 3;
+        var gapMs = opts.ringGapMs != null ? opts.ringGapMs : 150;
+        var rTiles = opts.radiusTiles != null ? opts.radiusTiles : 1.8;
+        var gentle = !!opts.gentle;
+        var ringMs = gentle ? 640 : 430;
+        var mouthY = ts * (opts.height != null ? opts.height : 0.55);
+        var tex = gentle ? _sigRingTex() : _sigSonicRingTex();
+
+        for (var i = 0; i < rings; i++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var group = new THREE.Group();
+                    group.position.set(wp.x, wp.y + mouthY, wp.z);
+                    var mat = _sigMat(color, { map: tex });
+                    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+                    mesh.rotation.x = -Math.PI / 2;
+                    mesh.renderOrder = 161;
+                    group.add(mesh);
+                    /* the first crack also throws a ring UPRIGHT at the camera —
+                       flat rings alone vanish at the diorama's low angle */
+                    var upMesh = null, upMat = null;
+                    if (idx === 0 && !gentle) {
+                        upMat = _sigMat(color, { map: tex });
+                        upMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), upMat);
+                        upMesh.rotation.x = -0.6;
+                        upMesh.renderOrder = 161;
+                        group.add(upMesh);
+                    }
+                    var echoFade = 1 - idx * (0.55 / Math.max(1, rings));
+                    var r0 = ts * 0.22, r1 = ts * rTiles * (1 - idx * 0.08);
+                    _sigRun(group, ringMs, function (el) {
+                        var t = _sigClamp01(el / ringMs);
+                        var e = _sigEaseOutCubic(t);
+                        var r = r0 + (r1 - r0) * e;
+                        mesh.scale.set(r, r, r);
+                        mesh.rotation.z = (idx % 2 ? -1 : 1) * el * 0.0012;
+                        mat.opacity = (gentle ? 0.55 : 0.9) * echoFade * (1 - t);
+                        group.position.y = wp.y + mouthY + ts * 0.22 * e;  /* waves climb as they spread */
+                        if (upMesh) {
+                            var ur = r * 0.8;
+                            upMesh.scale.set(ur, ur, ur);
+                            upMat.opacity = 0.7 * (1 - t);
+                        }
+                    });
+                    if (idx === 0 && !gentle) {
+                        _sigShake(opts.shake || 'normal');
+                        _sigScreenFlash(_sigCss(color), 120, opts.flashPeak != null ? opts.flashPeak : 0.13);
+                        _sigSpeedBurst3D(tx, ty, { color: 0xffffff, ms: 210, height: mouthY });
+                        _sigSparks(tx, ty, opts.sparkSprite || 'steel-spark', 10,
+                            { vxy: 200, vz0: 40, vz1: 170, gravity: 300 });
+                    }
+                }, idx * gapMs);
+            })(i);
+        }
+
+        if (opts.notes) {
+            _sigMusicNotes3D(tx, ty, {
+                count: opts.notes,
+                color: opts.noteColor != null ? opts.noteColor : color,
+                broken: opts.broken, gentle: gentle,
+                scale: opts.noteScale, sparkSprite: opts.sparkSprite,
+            });
+        }
+    }
+
     var _spell3DGeometry = {
 
         bubble:              function(tx, ty, r) { _spawnBubbleDome(tx, ty, r); },
@@ -9189,6 +9436,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* WEREWOLF — spectral jaws + rending claws */
         racePounce: function(tx, ty) { _sigJawsBite3D(tx, ty, { scale: 1.05, glowColor: 0xff3333 }); },
         raceFeralDive: function(tx, ty) { _sigJawsBite3D(tx, ty, { scale: 1.1, glowColor: 0xff5522, shake: 'hard', flashPeak: 0.2 }); },
+        raceBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            /* the wolf FEEDS — long clench while the drain hops home */
+            scale: 1.0, glowColor: 0xdd2222, gumTint: 0x7a1d1d, clenchMs: 420,
+            circleColor: 0x991111, sparkSprite: 'blood-fleck', flashPeak: 0.15,
+        }); },
+        raceBloodFrenzy: function(tx, ty) {
+            /* smell blood → two frantic rakes, then the jaws slam shut */
+            _sigClawCombo3D(tx, ty, {
+                swipes: 2, glowColor: 0xff2222, clawTint: 0xe8d8c8,
+                sparkSprite: 'blood-fleck', swipeMs: 52, markMs: 450,
+            });
+            window.setTimeout(function () {
+                if (_suppressed()) return;
+                _sigJawsBite3D(tx, ty, {
+                    scale: 1.05, glowColor: 0xff2222, clenchMs: 240,
+                    shake: 'hard', flashPeak: 0.2,
+                });
+            }, 260);
+        },
+        raceHowl: function(tx, ty) {
+            /* moonlit howl — icy echo rings rolling off across the board */
+            _sigSonicBoom3D(tx, ty, {
+                color: 0xbbddff, rings: 4, ringGapMs: 170, radiusTiles: 2.3,
+                shake: 'normal', flashPeak: 0.12, sparkSprite: 'spark-blue',
+            });
+        },
         raceSavageRend: function(tx, ty) {
             /* claw, claw, BITE — mirrors the 3-hit combo in the spell desc */
             _sigClawCombo3D(tx, ty, {
@@ -9227,6 +9500,81 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             clawTex: 'obsidian.png', sparkSprite: 'blood-fleck',
             swipeMs: 95, markMs: 950, heavyFinish: true, flashPeak: 0.2,
         }); },
+        raceDemonicRoar: function(tx, ty, r) { _sigSonicBoom3D(tx, ty, {
+            color: 0xff3322, rings: 3, radiusTiles: (r || 2) + 0.6,
+            shake: 'hard', flashPeak: 0.2, sparkSprite: 'ember',
+        }); },
+
+        /* REPTILIAN — venom-dripping fangs */
+        raceVenomFang: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 1.2, glowColor: 0x99ee33, gumTint: 0x3d5a1e, toothTint: 0xeaffd8,
+            hideTint: 0x24401a, circleColor: 0x559911, sparkSprite: 'acid-green',
+            clenchMs: 320, flashPeak: 0.16,
+        }); },
+
+        /* DINO — the tyrant-king chomp; armor is a suggestion */
+        raceJurassicJaw: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 1.55, glowColor: 0xff6622, gumTint: 0x7a3018, toothTint: 0xf5ecd0,
+            circleColor: 0xaa4411, clenchMs: 380, shake: 'hard', flashPeak: 0.24,
+        }); },
+        raceApexPounce: function(tx, ty) { _sigJawsBite3D(tx, ty, {
+            scale: 1.25, glowColor: 0xff8822, gumTint: 0x6b2a14, toothTint: 0xf5ecd0,
+            circleColor: 0x993311, shake: 'hard', flashPeak: 0.2,
+        }); },
+        racePrimalRoar: function(tx, ty, r) { _sigSonicBoom3D(tx, ty, {
+            color: 0xffaa33, rings: 3, radiusTiles: (r || 1) + 1.0,
+            shake: 'hard', flashPeak: 0.16,
+        }); },
+
+        /* SKINWALKER — a claw that isn't yours, wreathed in stolen arcana */
+        raceBorrowedClaw: function(tx, ty) { _sigClawCombo3D(tx, ty, {
+            swipes: 2, glowColor: 0xbb66ff, clawTint: 0xded0f0,
+            sparkSprite: 'psi-pulse', heavyFinish: true, markMs: 800,
+        }); },
+
+        /* MINOTAUR / SIREN — more SONIC BOOM roars & screams */
+        raceLabyrinthRoar: function(tx, ty, r) { _sigSonicBoom3D(tx, ty, {
+            color: 0xcc8844, rings: 3, radiusTiles: (r || 2) + 0.6,
+            shake: 'hard', flashPeak: 0.18,
+        }); },
+        raceDeafeningWail: function(tx, ty, r) { _sigSonicBoom3D(tx, ty, {
+            /* the siren's scream — the melody itself breaks */
+            color: 0x66ddff, rings: 4, ringGapMs: 130, radiusTiles: (r || 2) + 0.6,
+            notes: 3, broken: true, noteColor: 0x99eeff,
+            shake: 'hard', flashPeak: 0.2, sparkSprite: 'spark-blue',
+        }); },
+
+        /* HARBINGER — the bard's kit sings in giant spectral notes */
+        discordance: function(tx, ty) {
+            /* two rune circles grinding against each other + shattering
+               broken notes: harmony torn apart. THE debuff showpiece —
+               reads at any zoom (the old effect was a 55px flash). */
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xcc55ff, radiusPx: ts0 * 1.3, holdMs: 850,
+                spin: 0.010, rise: 26, opacity: 0.8,
+            });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xff44aa, radiusPx: ts0 * 0.85, holdMs: 850,
+                spin: -0.014, height: 26, opacity: 0.7,
+            });
+            _sigSonicBoom3D(tx, ty, {
+                color: 0xcc55ff, rings: 4, ringGapMs: 140, radiusTiles: 2.1,
+                notes: 4, broken: true, noteColor: 0xff66dd, noteScale: 1.1,
+                shake: 'normal', flashPeak: 0.17, sparkSprite: 'spark-pink',
+            });
+        },
+        lullaby: function(tx, ty) {
+            /* soft serene notes swaying the target to sleep */
+            _sigSonicBoom3D(tx, ty, {
+                gentle: true, color: 0xbb99ff, rings: 2, ringGapMs: 260,
+                radiusTiles: 1.4, notes: 4, noteColor: 0xddbbff,
+            });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0x9977ee, radiusPx: (_cfg().tileSize || 128) * 0.95,
+                holdMs: 1000, spin: 0.0012, opacity: 0.5, rise: 30,
+            });
+        },
 
         /* golden blade of judgment falling out of heaven + light pillar */
         judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
@@ -9587,6 +9935,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigShieldRing3D: _sigShieldRing3D,
         sigJawsBite3D: _sigJawsBite3D,
         sigClawCombo3D: _sigClawCombo3D,
+        sigSonicBoom3D: _sigSonicBoom3D,
+        sigMusicNotes3D: _sigMusicNotes3D,
         sigCannonShot3D: _sigCannonShot3D,
         sigGunRig3D: _sigGunRig3D,
         sigTeslaCoil3D: _sigTeslaCoil3D,

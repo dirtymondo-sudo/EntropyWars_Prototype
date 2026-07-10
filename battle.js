@@ -3890,7 +3890,7 @@
             addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
 
             if (!_skipVisuals()) {
-                const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1 };
+                const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1, discord:1 };
                 if (vfxStatusMap[payload.id]) _vfxStatus(payload.id, target.x, target.y);
                 // Paralysis (stun) flashes the unit yellow the moment it lands.
                 if (payload.id === 'stun') flashUnit(target.id, 'paralysis');

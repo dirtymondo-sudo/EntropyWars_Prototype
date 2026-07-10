@@ -3528,6 +3528,35 @@ raceFeralDive.impact (reuses racePounce_impact), raceLoveBite.impact (reuses
 raceInfectiousBite_impact) — without an impact mapping `_spell3DGeometry`
 never fires.
 
+## Signature Arsenal round 2 (2026-07-10) — jaws/claws everywhere + SONIC BOOM
+Audit pass: every bite/claw/roar spell now uses the arsenal rigs.
+- **Jaws newly wired**: raceBite (werewolf feed, long 420ms clench),
+  raceVenomFang (green venom palette), raceJurassicJaw (1.55× dino chomp),
+  raceApexPounce (needed a SPELL_MAP impact → reuses racePounce_impact).
+- **Claws newly wired**: raceBloodFrenzy (2 fast rakes → jaws finisher;
+  its SPELL_MAP was aura-only and is now IMPACT-ONLY on purpose — the aura
+  intent also calls `_spell3DGeometry`, so keeping both would double-fire
+  the combo at caster AND victim), raceBorrowedClaw (arcane purple).
+- **`_sigSonicBoom3D`** (new staple, exported): jagged zigzag concussion
+  rings (`_sigSonicRingTex`) echoing out from mouth height + an upright
+  camera-facing ring on the first crack; `gentle:true` = smooth slow rings,
+  no shake. Optional `notes:` count spawns **`_sigMusicNotes3D`** — big
+  spectral beamed-eighth-note billboards (`_sigNoteTex`, canvas-drawn);
+  `broken:true` = cracked glyphs with worsening off-key vibrato that
+  SHATTER in sparks (discord). Wired: raceHowl (moon-blue echoes),
+  raceDemonicRoar, racePrimalRoar, raceLabyrinthRoar (barrage-kind fires
+  the *aura* intent → had to add an aura mapping reusing raceDemonicRoar_aoe
+  or nothing plays), raceDeafeningWail (broken notes), discordance,
+  lullaby (gentle notes + slow circle).
+- **Discordance is now the debuff showpiece**: two counter-spinning rune
+  circles (magenta/pink) grinding + 4-ring sonic boom + 4 big shattering
+  broken notes. Old effect was a 55px flash ("really small" — user report).
+- **discord STATUS now visible everywhere**: added `_status_discord`
+  hand-authored EFFECTS def + `_statusEffectMap.discord` +
+  `fireStatus('discord')` spawns 2 broken 3D notes over the victim. NOTE:
+  battle.js gates status VFX via its local `vfxStatusMap` (~line 3893) —
+  discord had to be added THERE too, else fireStatus is never called.
+
 Dedicated sprites (added to the R2 terrain folder 2026-07-05, wired in):
 `enamel.png` (fangs + talons), `gunmetal.png` (all three guns; also the cannon
 barrel tinted dark 0x9299a4 as cast iron), `copper.png` (tesla primary +
