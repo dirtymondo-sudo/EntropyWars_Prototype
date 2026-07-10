@@ -1883,6 +1883,16 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* Multi-floor: a unit standing on a surface BELOW the column top (the
+           ocean floor under a cloud platform, the ground under a bridge) sits
+           at its OWN z — boardHeights only knows the roof, which used to pop
+           the unit on top of the platform it had just walked under. */
+        if (unit.z !== undefined && unit.z !== null && state.boardColumns && state.boardColumns.length) {
+            var _mfTopH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
+                      : (state.boardHeights && state.boardHeights[uy]) ? (state.boardHeights[uy][ux] || 0) : 0;
+            if (unit.z < _mfTopH) return unit.z * ts * ELEV_STEP_RATIO;
+        }
+
         if (_isNaturalRenderTile(ux, uy)) return _naturalSurfaceY(ux, uy);
 
         var baseH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ux, uy)
@@ -8816,8 +8826,46 @@ const ThreeRenderer = (function () {
         geo.setIndex(idx);
         return geo;
     }
-    function _makeHlTile(hx, hy, mat, frac, yOff) {
+    function _makeHlTile(hx, hy, mat, frac, yOff, z) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        /* Multi-floor columns: a highlight for a walkable surface BELOW the
+           column top (the ocean floor under a cloud platform, the ground under
+           a bridge) must sit at ITS OWN floor — draping it over the roof above
+           made every under-platform move tile render on the platform instead.
+           Drawn depth-free (XCOM-style x-ray) and slightly dimmer so it stays
+           readable through the platform from a top-down camera while still
+           reading as "beneath". */
+        if (z !== undefined && z !== null) {
+            var _subTopZ = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(hx, hy)
+                     : (state.boardHeights && state.boardHeights[hy]) ? (state.boardHeights[hy][hx] || 0) : 0;
+            if (z < _subTopZ) {
+                var subMat = mat;
+                if (mat._ew_shared) {
+                    if (!mat._ew_subFloorVariant) {
+                        var v = mat.clone();
+                        /* clone() deep-copies uniforms — re-share the global
+                           clock or the shader animation freezes on the clone */
+                        if (v.uniforms) v.uniforms.uTime = _hlGlobalTime;
+                        v.depthTest = false;
+                        v.depthWrite = false;
+                        if (v.uniforms && v.uniforms.uOpacity) v.uniforms.uOpacity.value *= 0.85;
+                        v._ew_shared = true;
+                        v._ew_baseOpacity = (mat._ew_baseOpacity !== undefined) ? mat._ew_baseOpacity * 0.85 : undefined;
+                        mat._ew_subFloorVariant = v;
+                    }
+                    subMat = mat._ew_subFloorVariant;
+                } else {
+                    mat.depthTest = false;
+                    mat.depthWrite = false;
+                }
+                var subGeo = (frac === 0.92) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * frac, ts * frac);
+                var sub = new THREE.Mesh(subGeo, subMat);
+                sub.rotation.x = -Math.PI / 2;
+                sub.renderOrder = 2;
+                sub.position.set(hx * ts + ts / 2, z * ts * ELEV_STEP_RATIO + yOff, hy * ts + ts / 2);
+                return sub;
+            }
+        }
         var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
         /* On a walkable roof, tileTopY is the roof-standing height but the roof
            mesh itself is drawn a hair above it, so lift the highlight clear of
@@ -8918,7 +8966,10 @@ const ThreeRenderer = (function () {
                 var comma = pk.indexOf(',');
                 var hx = parseInt(pk.substring(0, comma), 10);
                 var hy = parseInt(pk.substring(comma + 1), 10);
-                highlightGroup.add(_makeHlTile(hx, hy, _getSharedHlMat(hlType), 0.92, 0.3));
+                /* zMap carries the surface z the click executor would use —
+                   lets under-platform floors draw at their own level. */
+                var hz = (cache.zMap && cache.zMap.has(pk)) ? cache.zMap.get(pk) : undefined;
+                highlightGroup.add(_makeHlTile(hx, hy, _getSharedHlMat(hlType), 0.92, 0.3, hz));
             });
             return;
         }
@@ -8928,30 +8979,43 @@ const ThreeRenderer = (function () {
         var sel = (function(){ var _u = _unitById.get(state.selectedUnitId); return (_u && !_u.dead) ? _u : null; })();
         if (!sel) { _lastHlKey = ''; return; }
 
+        /* Multi-floor columns can offer several surfaces at one (x,y); draw the
+           ONE the click executor (doMove/doJump) would pick — the surface
+           nearest the unit's own z — so the highlight never promises a
+           different floor than the move delivers. */
+        var _selZRef = (sel.z !== undefined && sel.z !== null) ? sel.z : 0;
+        function _dedupeNearestZ(list) {
+            var best = new Map();
+            for (var di = 0; di < list.length; di++) {
+                var dt = list[di];
+                var dpk = dt.x + ',' + dt.y;
+                var prev = best.get(dpk);
+                if (!prev || Math.abs((dt.z ?? 0) - _selZRef) < Math.abs((prev.z ?? 0) - _selZRef)) best.set(dpk, dt);
+            }
+            return best;
+        }
         var tiles = null;
         if (state.actionMode === 'move' && typeof G.getMoveTiles === 'function') {
             tiles = G.getMoveTiles(sel);
             if (tiles) {
-                for (var mi = 0; mi < tiles.length; mi++) {
-                    var mt = tiles[mi];
+                _dedupeNearestZ(tiles).forEach(function(mt) {
                     var mType = mt._jump ? 'move-jump' : mt._takeoff ? 'move-takeoff' : 'move';
-                    highlightGroup.add(_makeHlTile(mt.x, mt.y, _getSharedHlMat(mType), 0.92, 0.3));
-                }
+                    highlightGroup.add(_makeHlTile(mt.x, mt.y, _getSharedHlMat(mType), 0.92, 0.3, mt.z));
+                });
             }
         } else if (state.actionMode === 'jump' && typeof G.getJumpTiles === 'function') {
             tiles = G.getJumpTiles(sel);
             if (tiles) {
-                for (var ji = 0; ji < tiles.length; ji++) {
-                    var jt = tiles[ji];
-                    highlightGroup.add(_makeHlTile(jt.x, jt.y, _getSharedHlMat('move-jump'), 0.92, 0.3));
-                }
+                _dedupeNearestZ(tiles).forEach(function(jt) {
+                    highlightGroup.add(_makeHlTile(jt.x, jt.y, _getSharedHlMat('move-jump'), 0.92, 0.3, jt.z));
+                });
             }
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
             if (tiles) {
                 for (var ai = 0; ai < tiles.length; ai++) {
                     var at = tiles[ai];
-                    highlightGroup.add(_makeHlTile(at.x, at.y, _getSharedHlMat('attack'), 0.92, 0.3));
+                    highlightGroup.add(_makeHlTile(at.x, at.y, _getSharedHlMat('attack'), 0.92, 0.3, at.z));
                 }
             }
         } else if (state.actionMode === 'inspect' && typeof G.getInspectTiles === 'function') {
@@ -8959,7 +9023,7 @@ const ThreeRenderer = (function () {
             if (tiles) {
                 for (var ii = 0; ii < tiles.length; ii++) {
                     var it = tiles[ii];
-                    highlightGroup.add(_makeHlTile(it.x, it.y, _getSharedHlMat('inspect'), 0.92, 0.3));
+                    highlightGroup.add(_makeHlTile(it.x, it.y, _getSharedHlMat('inspect'), 0.92, 0.3, it.z));
                 }
             }
         }
@@ -9018,12 +9082,12 @@ const ThreeRenderer = (function () {
             var tileColor = (t.color !== undefined) ? t.color : color;
             var tileOpacity = (t.opacity !== undefined) ? t.opacity : opacity;
             var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, 0, style);
-            var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2));
+            var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2), t.z);
             plane._ew_overlay = name;
             highlightGroup.add(plane);
             meshes.push(plane);
             if (t.cursor) {
-                var cur = _makeHlTile(t.x, t.y, _getCursorBracketMat(), 0.98, (name === 'aoe' ? 0.9 : 0.5));
+                var cur = _makeHlTile(t.x, t.y, _getCursorBracketMat(), 0.98, (name === 'aoe' ? 0.9 : 0.5), t.z);
                 cur._ew_overlay = name;
                 highlightGroup.add(cur);
                 meshes.push(cur);
@@ -9633,12 +9697,22 @@ const ThreeRenderer = (function () {
         if (hoverMesh) { highlightGroup.remove(hoverMesh); hoverMesh.geometry.dispose(); hoverMesh.material.dispose(); hoverMesh = null; }
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
+        /* Multi-floor: if the highlighted surface on this column is BELOW the
+           roof (walking under a cloud platform / bridge), park the cursor at
+           that floor — x-ray so it stays visible through the platform. */
+        var _hvZ = (window._ewHlCache && window._ewHlCache.zMap) ? window._ewHlCache.zMap.get(tx + ',' + ty) : undefined;
+        var _hvTop = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty)
+                   : (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
+        var _hvSub = (_hvZ !== undefined && _hvZ !== null && _hvZ < _hvTop);
+        if (_hvSub) topY = _hvZ * ts * ELEV_STEP_RATIO + 0.5;
         /* The cursor: yellow corner brackets + a whisper of fill. The ONLY
            tile on the board that wears brackets (plus the AoE impact tile),
            so "where am I pointing" is always a one-glance read. */
         var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
+        if (_hvSub) hMat.depthTest = false;
         hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
         hoverMesh.rotation.x = -Math.PI / 2;
+        if (_hvSub) hoverMesh.renderOrder = 2;
         hoverMesh.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
         highlightGroup.add(hoverMesh);
     }

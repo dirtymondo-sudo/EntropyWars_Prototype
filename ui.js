@@ -2502,10 +2502,22 @@
             _selectedForHl.y = _wasdSavedY;
           }
           const _moveSet = new Set();
+          /* Multi-floor columns can offer SEVERAL surfaces at one (x,y) (the
+             ocean floor under a cloud platform AND the platform top). Keep the
+             surface the click executor (doMove) would actually pick — the one
+             nearest the unit's own z — so the drawn highlight and the executed
+             move always agree. Only store real z values: legacy 2D tiles carry
+             no z and must not default to 0 (that would sink the highlight). */
+          const _selZForHl = _selectedForHl.z ?? 0;
           for (const t of _cachedMoveTiles) {
             const pk = posKey(t.x, t.y);
+            const _tHasZ = (t.z !== undefined && t.z !== null);
+            if (_moveSet.has(pk)) {
+              const _prevZ = _hlZCache.get(pk);
+              if (_tHasZ && _prevZ !== undefined && Math.abs(t.z - _selZForHl) >= Math.abs(_prevZ - _selZForHl)) continue;
+            }
             _hlCache.set(pk, t._jump ? 'move-jump' : t._takeoff ? 'move-takeoff' : 'move');
-            _hlZCache.set(pk, t.z ?? 0);
+            if (_tHasZ) _hlZCache.set(pk, t.z);
             _moveSet.add(pk);
           }
 
