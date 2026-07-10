@@ -2357,8 +2357,18 @@ const ThreeRenderer = (function () {
                             m.add(gMesh);
                         }
 
+                        /* Canopy detection: any run that sits ABOVE an air gap in its
+                           column (a void band, a missing-z gap, or a column that
+                           starts off the floor) is overhead architecture — a cloud
+                           platform, bridge, ceiling or upper storey — never solid
+                           ground. Tagged so the canopy cutaway can vanish it when
+                           the active unit is underneath (solid hills/cliffs are
+                           never tagged, so they always stay visible). */
+                        var _sawGapBelow = false;
                         for (var ri = 0; ri < runs.length; ri++) {
                             var run = runs[ri];
+                            if (ri === 0 && run.fromZ > 0) _sawGapBelow = true;
+                            if (ri > 0 && run.fromZ > runs[ri - 1].toZ + 1) _sawGapBelow = true;
                             var rBottomY = run.fromZ * elevStep;
                             var rTopY = (run.toZ + 1) * elevStep;
                             var rH = rTopY - rBottomY;
@@ -2367,7 +2377,7 @@ const ThreeRenderer = (function () {
                             /* 'void' bands are empty space (the editor fills the gap
                                between authored voxels with void) — render nothing so the
                                gap is actually open. */
-                            if (run.terrain && run.terrain.indexOf('void') === 0) continue;
+                            if (run.terrain && run.terrain.indexOf('void') === 0) { _sawGapBelow = true; continue; }
 
                             /* Every band renders as a solid cube of its OWN terrain on
                                every face (top AND sides). A genuine stacked-terrain
@@ -2395,6 +2405,15 @@ const ThreeRenderer = (function () {
                             var rGeo = _getBoxGeo(ts, rH);
                             var rMesh = new THREE.Mesh(rGeo, rMats);
                             rMesh.position.set(0, rBottomY + rH / 2, 0);
+                            if (_sawGapBelow) {
+                                rMesh._ew_canopy = true;
+                                /* bottom of the run in GAME z units (accounts for the
+                                   -elevStep column shift on non-hollow maps) */
+                                rMesh._ew_canopyBottomZ = run.fromZ - (state._hollowVoxels ? 0 : 1);
+                                rMesh._ew_cTileX = x;
+                                rMesh._ew_cTileY = y;
+                                m._ew_hasCanopy = true;
+                            }
                             m.add(rMesh);
                             if (rIsLava) m._ew_hasLava = true;
                         }
@@ -2433,6 +2452,7 @@ const ThreeRenderer = (function () {
         _lastVoxelVersion = state._voxelVersion || 0;
         _objectsDirty = true;
         _lavaMeshCache = null;   // tile meshes changed — re-collect the lava list lazily
+        _canopyMeshCache = null; // canopy list rebuilt lazily too (cutaway)
 
         if (ThreePost && ThreePost.rebuildLavaLights) {
             ThreePost.rebuildLavaLights(lavaTiles, tileTopY, ts);
@@ -2511,6 +2531,8 @@ const ThreeRenderer = (function () {
     var _MERGE_NEIGHBORS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
     function _tileMergeable(root) {
         if (root._ew_isLava || root._ew_hasLava) return false;
+        /* canopy blocks are hidden per-tile by the cutaway — never bake them */
+        if (root._ew_hasCanopy) return false;
         if (_FLUID_TERRAIN_SET[root._ew_terrain]) return false;
         /* Occluder heuristic: keep a tile individual (so the action-cam
            occlusion fade can still fade it) only when it RISES over adjacent
@@ -10511,7 +10533,9 @@ const ThreeRenderer = (function () {
     }
     function _occCollect(root) {
         var arr = [];
-        root.traverse(function (o) { if (o.isMesh && o.material) arr.push(o); });
+        /* canopy blocks belong to the canopy cutaway (fully hidden, not
+           ghosted) — the column's BASE still hologram-fades as before */
+        root.traverse(function (o) { if (o.isMesh && o.material && !o._ew_canopy) arr.push(o); });
         return arr;
     }
 
@@ -10654,6 +10678,159 @@ const ThreeRenderer = (function () {
             }
         });
         for (var d = 0; d < done.length; d++) _occFaded.delete(done[d]);
+    }
+
+    /* ── Canopy cutaway ────────────────────────────────────────────────────
+       Multi-floor readability: blocks that FLOAT above an air gap (cloud
+       platforms, bridges, ceilings, upper storeys — tagged _ew_canopy at
+       terrain build) fade out completely in a circle around the active unit
+       whenever they hang above its head, so fighting under a platform reads
+       normally instead of through a translucent roof.
+       - Solid columns (hills, cliffs, gradual height changes, one-floor
+         open-sky maps) are never canopy → always visible.
+       - Canopy beyond the cut radius stays visible → distant sky
+         architecture still reads on the map.
+       - A unit standing ON a platform never cuts its own floor (only blocks
+         starting above its feet are candidates).
+       Props riding a hidden canopy tile (trees etc. anchor to the column
+       top) vanish with their floor. Units standing on a hidden floor stay
+       visible and simply float, XCOM-style.
+       Tunables (console): window.EW_CANOPY_CUT_RADIUS (tiles, default 2.9);
+       window.EW_DISABLE_CANOPY_CUTAWAY = true reverts to the old ghosting. */
+    var _canopyMeshCache = null;
+    var _canopyFaded = new Map();       // canopy mesh → {op}
+    var _canopyHiddenObjs = new Map();  // 'x,y' → object mesh hidden with its floor
+    var _canopyWant = null;
+    var _canopyWantTime = 0;
+    var _canopyLastTime = 0;
+    var CANOPY_FADE_RATE = 10.0;
+    var CANOPY_RECOMPUTE_DT = 0.08;
+
+    function _canopyMeshes() {
+        if (_canopyMeshCache === null) {
+            _canopyMeshCache = [];
+            tileMeshes.forEach(function (root) {
+                if (!root._ew_hasCanopy) return;
+                root.traverse(function (o) { if (o.isMesh && o._ew_canopy) _canopyMeshCache.push(o); });
+            });
+        }
+        return _canopyMeshCache;
+    }
+
+    function _canopyRestoreAll() {
+        _canopyFaded.forEach(function (rec, m) {
+            _occRestore(m);
+            m.visible = true;
+        });
+        if (_canopyFaded.size) _shadowsDirty = true;
+        _canopyFaded.clear();
+        _canopyHiddenObjs.forEach(function (om) { if (om) om.visible = true; });
+        _canopyHiddenObjs.clear();
+        _canopyWant = null;
+    }
+
+    function _updateCanopyCutaway() {
+        if (typeof window !== 'undefined' && window.EW_DISABLE_CANOPY_CUTAWAY) {
+            if (_canopyFaded.size || _canopyHiddenObjs.size) _canopyRestoreAll();
+            return;
+        }
+        var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        var subject = null;
+        if (inBattle) {
+            var cineActive = (typeof camera !== 'undefined' && camera
+                && camera._cineShotId != null && state.cinematicActionCam);
+            var sid = cineActive ? camera._cineShotUnitId
+                    : (state.selectedUnitId || state._blitzActiveUnitId);
+            if (sid != null) {
+                var su = _unitById.get(sid);
+                if (su && !su.dead) subject = su;
+            }
+        }
+        if (!subject && _canopyFaded.size === 0 && _canopyHiddenObjs.size === 0) return;
+
+        var now = performance.now() / 1000;
+        var dt = _canopyLastTime > 0 ? Math.min(now - _canopyLastTime, 0.05) : 0.016;
+        _canopyLastTime = now;
+
+        // throttled wanted-set recompute (the opacity lerp below runs every frame)
+        var want;
+        if (subject) {
+            if (_canopyWant === null || (now - _canopyWantTime) >= CANOPY_RECOMPUTE_DT) {
+                want = new Set();
+                var subZ = (subject.z !== undefined && subject.z !== null) ? subject.z
+                         : ((typeof getHeightAt === 'function') ? getHeightAt(subject.x, subject.y) : 0);
+                var R = (typeof window !== 'undefined' && window.EW_CANOPY_CUT_RADIUS) || 2.9;
+                var list = _canopyMeshes();
+                for (var i = 0; i < list.length; i++) {
+                    var cm = list[i];
+                    if (cm._ew_canopyBottomZ < subZ + 1) continue;   // at/below the unit — its own floor, a lower deck
+                    var ddx = cm._ew_cTileX - subject.x, ddy = cm._ew_cTileY - subject.y;
+                    if (ddx * ddx + ddy * ddy > R * R) continue;      // beyond the cut circle
+                    want.add(cm);
+                }
+                _canopyWant = want;
+                _canopyWantTime = now;
+            } else {
+                want = _canopyWant;
+            }
+        } else {
+            want = null;
+            _canopyWant = null;
+        }
+
+        _occInit();
+        if (want) {
+            want.forEach(function (m) {
+                if (_canopyFaded.has(m)) return;
+                _occApplyFade(m);
+                _canopyFaded.set(m, { op: 1.0 });
+            });
+        }
+
+        var k = Math.min(1, CANOPY_FADE_RATE * dt);
+        var done = [];
+        var hiddenTiles = null;
+        _canopyFaded.forEach(function (rec, m) {
+            if (!m.parent) { _occRestore(m); done.push(m); return; }   // terrain rebuilt under us
+            var hide = want && want.has(m);
+            var tgt = hide ? 0.0 : 1.0;
+            rec.op += (tgt - rec.op) * k;
+            if (Math.abs(rec.op - tgt) < 0.015) rec.op = tgt;
+            _occSetOpacity(m, rec.op);
+            var vis = rec.op > 0.02;
+            if (m.visible !== vis) { m.visible = vis; _shadowsDirty = true; }
+            if (!vis) {
+                if (!hiddenTiles) hiddenTiles = new Set();
+                hiddenTiles.add(m._ew_cTileX + ',' + m._ew_cTileY);
+            }
+            if (!hide && rec.op >= 0.999) { _occRestore(m); m.visible = true; done.push(m); }
+        });
+        for (var d = 0; d < done.length; d++) _canopyFaded.delete(done[d]);
+
+        /* Props anchor to the column TOP — when that top is a hidden canopy
+           tile, hide the prop with its floor (and bring it back after). */
+        if (hiddenTiles) {
+            hiddenTiles.forEach(function (pk) {
+                if (_canopyHiddenObjs.has(pk)) return;
+                var om = objectMeshes.get(pk);
+                if (om && om.visible) { om.visible = false; _canopyHiddenObjs.set(pk, om); }
+            });
+        }
+        var objDone = [];
+        _canopyHiddenObjs.forEach(function (om, pk) {
+            if (hiddenTiles && hiddenTiles.has(pk)) {
+                /* objectGroup may have been rebuilt — re-hide the fresh mesh */
+                var cur = objectMeshes.get(pk);
+                if (cur && cur !== om) { cur.visible = false; _canopyHiddenObjs.set(pk, cur); }
+                else if (cur) cur.visible = false;
+                return;
+            }
+            var back = objectMeshes.get(pk);
+            /* under fog the fog pass owns visibility — only restore what it allows */
+            if (back && (!state.fogOfWar || !_fogVisibleSet || _fogVisibleSet.has(pk))) back.visible = true;
+            objDone.push(pk);
+        });
+        for (var od = 0; od < objDone.length; od++) _canopyHiddenObjs.delete(objDone[od]);
     }
 
     function _applyFogVisibility(visible) {
@@ -18905,6 +19082,7 @@ const ThreeRenderer = (function () {
 
         _updateEnemyConcealment();
         _updateActionCamOcclusion();
+        _updateCanopyCutaway();
 
         if (typeof renderIfDirty === 'function') renderIfDirty();
         var hlKey = _computeHlKey();
