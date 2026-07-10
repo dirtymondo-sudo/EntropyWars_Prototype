@@ -1681,6 +1681,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        no aura mapping at all, so nothing (3D geometry included) played */
     if (!SPELL_MAP['raceLabyrinthRoar']) SPELL_MAP['raceLabyrinthRoar'] = {};
     SPELL_MAP['raceLabyrinthRoar'].aura = 'raceDemonicRoar_aoe';
+    /* Toxic Nova is barrage-kind too — reuse its own aoe def as the aura
+       mapping so the self-nova path fires (and with it the 3D gas cloud) */
+    if (SPELL_MAP['raceToxicNova'] && !SPELL_MAP['raceToxicNova'].aura)
+        SPELL_MAP['raceToxicNova'].aura = 'raceToxicNova_aoe';
 
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
@@ -7192,6 +7196,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         _sigScreenFlash('#ffffff', 120, opts.flashPeak != null ? opts.flashPeak : 0.26);
                         _sigShockRing3D(tx, ty, { color: color, r1: ts * (opts.ringTiles != null ? opts.ringTiles : 1.7) });
                         _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
+                        _sigSpeedLinesFx({ color: _sigCss(color), ms: 340, peak: 0.3 });
                         _sigCrescentSlash3D(tx, ty, {
                             color: 0xffffff, yaw: hYaw + 1.1, dir: -p.dir, ms: 300, size: ts * 1.3,
                         });
@@ -7553,6 +7558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (!snapped) {
                     snapped = true;
                     _sigShake(opts.shake || 'normal');
+                    if (opts.shake === 'hard') _sigSpeedLinesFx({ color: _sigCss(color), ms: 320, peak: 0.28 });
                     _sigScreenFlash(_sigCss(color), 110, opts.flashPeak != null ? opts.flashPeak : 0.16);
                     _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.3 * scale, ms: 360 });
                     _sigSpeedBurst3D(tx, ty, { color: 0xffffff, ms: 200 });
@@ -7743,6 +7749,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             if (opts.heavyFinish) {
                                 _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.5 * scale });
                                 _sigShake('normal');
+                                _sigSpeedLinesFx({ color: _sigCss(color), ms: 300, peak: 0.26 });
                             }
                         }
                     }
@@ -9245,6 +9252,377 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
+    /* ── full-viewport anime RUSH LINES (DOM canvas overlay) — the JRPG
+       "the rest of the world stops existing" backdrop behind finishers.
+       Radial streaks flicker and converge on the screen centre. ────────── */
+    var _sigLinesEl = null;
+    function _sigSpeedLinesFx(opts) {
+        try {
+            if (typeof document === 'undefined') return;
+            if (_catOff('spells')) return;
+            opts = opts || {};
+            if (!_sigLinesEl) {
+                _sigLinesEl = document.createElement('canvas');
+                var st = _sigLinesEl.style;
+                st.position = 'fixed';
+                st.left = '0'; st.top = '0'; st.width = '100%'; st.height = '100%';
+                st.pointerEvents = 'none';
+                st.zIndex = '8999';
+                st.mixBlendMode = 'screen';
+                st.opacity = '0';
+                document.body.appendChild(_sigLinesEl);
+            }
+            var cvs = _sigLinesEl;
+            var W = cvs.width = Math.min(window.innerWidth || 1280, 1280);
+            var H = cvs.height = Math.min(window.innerHeight || 720, 720);
+            var ctx = cvs.getContext('2d');
+            var n = opts.count != null ? opts.count : 38;
+            var color = opts.color || '#ffffff';
+            var total = opts.ms != null ? opts.ms : 380;
+            var peak = opts.peak != null ? opts.peak : 0.5;
+            var cx = W / 2, cy = H / 2;
+            var lines = [];
+            for (var i = 0; i < n; i++) {
+                lines.push({
+                    a: Math.random() * Math.PI * 2,
+                    w: 1 + Math.random() * 3.5,
+                    inR: Math.min(W, H) * (0.16 + Math.random() * 0.14),
+                    sp: 0.6 + Math.random() * 0.8,
+                    ph: Math.random() * Math.PI * 2,
+                });
+            }
+            var t0 = performance.now();
+            function step() {
+                var t = performance.now() - t0;
+                if (t >= total) { cvs.style.opacity = '0'; ctx.clearRect(0, 0, W, H); return false; }
+                var life = t / total;
+                var o = peak * (life < 0.15 ? life / 0.15 : 1 - (life - 0.15) / 0.85);
+                cvs.style.opacity = String(Math.max(0, o));
+                ctx.clearRect(0, 0, W, H);
+                ctx.strokeStyle = color;
+                ctx.lineCap = 'round';
+                var maxR = Math.hypot(W, H) * 0.62;
+                for (var k = 0; k < lines.length; k++) {
+                    var L = lines[k];
+                    ctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.02 * L.sp + L.ph));
+                    ctx.lineWidth = L.w;
+                    var r0 = L.inR * (1 + 0.25 * Math.sin(t * 0.013 * L.sp + L.ph));
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(L.a) * r0, cy + Math.sin(L.a) * r0);
+                    ctx.lineTo(cx + Math.cos(L.a) * maxR, cy + Math.sin(L.a) * maxR);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+                return true;
+            }
+            _fxSchedule(step);
+        } catch (e) { /* cosmetic only */ }
+    }
+
+    /* ── WHITEOUT — the JRPG mega-flash finisher: the whole screen blows
+       out white, a giant radial streak burst + stacked shock rings + rush
+       lines. Cap any big cinematic with this. ─────────────────────────── */
+    function _sigWhiteout3D(tx, ty, opts) {
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var color = opts.color != null ? opts.color : 0xffffff;
+        _sigScreenFlash(_sigCss(color), opts.ms != null ? opts.ms : 480, opts.peak != null ? opts.peak : 0.55);
+        _sigSpeedLinesFx({ color: _sigCss(color), ms: 420, peak: 0.45 });
+        _sigSpeedBurst3D(tx, ty, {
+            color: color, ms: 380,
+            size: ts * (opts.sizeTiles != null ? opts.sizeTiles : 3.4),
+            height: ts * 0.5,
+        });
+        _sigShockRing3D(tx, ty, { color: color, r1: ts * 2.4, ms: 460 });
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigShockRing3D(tx, ty, { color: color, r1: ts * 1.7, ms: 380, height: ts * 0.5 });
+        }, 90);
+        _sigShake(opts.shake || 'hard');
+        _sigSparks(tx, ty, opts.sparkSprite || 'divine-sparkle', 18,
+            { vxy: 260, vz0: 60, vz1: 260, gravity: 240 });
+    }
+
+    /* ── horizontal scripture band — a ring of abstract glyphs, drawn to
+       wrap once around an open cylinder (the rotating rune ring that
+       orbits a sealed target). ───────────────────────────────────────── */
+    function _sigGlyphBandTex() {
+        return _sigTex('sig-glyph-band', 256, function (ctx, S) {
+            var rnd = _sigRand(0xBA9D);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineCap = 'round';
+            /* guide rails above/below the script */
+            ctx.globalAlpha = 0.75; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, 92); ctx.lineTo(S, 92); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 164); ctx.lineTo(S, 164); ctx.stroke();
+            /* 16 glyph cells of random strokes */
+            for (var g = 0; g < 16; g++) {
+                var gx = g * 16 + 8;
+                ctx.globalAlpha = 0.6 + rnd() * 0.4;
+                ctx.lineWidth = 2 + rnd() * 1.5;
+                for (var st = 0; st < 4; st++) {
+                    ctx.beginPath();
+                    ctx.moveTo(gx + (rnd() - 0.5) * 12, 128 + (rnd() - 0.5) * 52);
+                    ctx.lineTo(gx + (rnd() - 0.5) * 12, 128 + (rnd() - 0.5) * 52);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    /* ── RUNE SPHERE — translucent seal-sphere around the target with two
+       counter-rotating scripture bands (the PS2 "holy containment" look).
+       Standalone for prison/seal debuffs; the spear prison wraps it. ───── */
+    function _sigRuneSphere3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = ts * (opts.radiusTiles != null ? opts.radiusTiles : 0.85);
+        var color = opts.color != null ? opts.color : 0x66aaff;
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + ts * 0.55, wp.z);
+
+        var shellMat = _sigMat(color);
+        var shell = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), shellMat);
+        shell.renderOrder = 156;
+        group.add(shell);
+
+        var bandTex = _sigGlyphBandTex();
+        var bands = [];
+        for (var b = 0; b < 2; b++) {
+            var bandMat = _sigMat(opts.runeColor != null ? opts.runeColor : color, { map: bandTex });
+            var band = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32, 1, true), bandMat);
+            band.rotation.z = b ? 0.45 : -0.3;
+            band.renderOrder = 157 + b;
+            group.add(band);
+            bands.push({ m: band, mat: bandMat, dir: b ? -1 : 1, tilt: band.rotation.z });
+        }
+
+        var inMs = 200, holdMs = opts.holdMs != null ? opts.holdMs : 900, fadeMs = 320;
+        var total = inMs + holdMs + fadeMs;
+        var spin = opts.spin != null ? opts.spin : 0.0016;
+        return _sigRun(group, total, function (el) {
+            var o;
+            if (el < inMs) o = _sigEaseOutCubic(el / inMs);
+            else if (el < inMs + holdMs) o = 1;
+            else o = 1 - (el - inMs - holdMs) / fadeMs;
+            var breathe = 1 + 0.03 * Math.sin(el * 0.006);
+            shell.scale.setScalar(Math.max(0.01, R * o * breathe));
+            shellMat.opacity = 0.14 * o;
+            for (var i = 0; i < bands.length; i++) {
+                var bd = bands[i];
+                var br = R * (1.06 + i * 0.16) * o;
+                bd.m.scale.set(br, R * (0.34 - i * 0.08) * o, br);
+                bd.m.rotation.y = bd.dir * el * spin * (1 + i * 0.5);
+                bd.mat.opacity = (0.75 - i * 0.2) * o;
+            }
+        });
+    }
+
+    /* ── spectral polearm builder — origin at the TIP, shaft grows +Y.
+       Plain compared to the greatsword on purpose: prisons summon these
+       six at a time. Returns {group, setFade, len}. ───────────────────── */
+    function _sigBuildSpear(ts, opts) {
+        opts = opts || {};
+        var len = ts * (opts.lenTiles != null ? opts.lenTiles : 2.6);
+        var r = len * 0.016;
+        var group = new THREE.Group();
+        var shaftMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.shaftTex || 'metal.png', 1, 3),
+            color: new THREE.Color(opts.shaftTint != null ? opts.shaftTint : 0xcfd6e4),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.25, len * 0.84, 8), shaftMat);
+        shaft.position.y = len * 0.5;
+        group.add(shaft);
+        /* collar + long tapering tip */
+        var collar = new THREE.Mesh(new THREE.CylinderGeometry(r * 2.1, r * 2.1, len * 0.05, 8), shaftMat);
+        collar.position.y = len * 0.15;
+        group.add(collar);
+        var tipMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex(opts.tipTex || 'marble.png', 1, 1),
+            color: new THREE.Color(opts.tipTint != null ? opts.tipTint : 0xffffff),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var tip = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, len * 0.16, 8), tipMat);
+        tip.rotation.x = Math.PI;
+        tip.position.y = len * 0.075;
+        group.add(tip);
+        var sheenMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0xffffff);
+        var sheen = new THREE.Mesh(new THREE.ConeGeometry(r * 3.4, len * 0.2, 8), sheenMat);
+        sheen.rotation.x = Math.PI;
+        sheen.position.y = len * 0.08;
+        sheen.renderOrder = 159;
+        group.add(sheen);
+        group.traverse(function (o) { if (o.isMesh && o.renderOrder === 0) o.renderOrder = 160; });
+        function setFade(f, boost) {
+            shaftMat.opacity = f;
+            tipMat.opacity = f;
+            sheenMat.opacity = (0.28 + 0.5 * (boost || 0)) * f;
+        }
+        setFade(0);
+        return { group: group, setFade: setFade, len: len };
+    }
+
+    /* ── HERO: SPEAR PRISON — the full PS2 holy-prison cinematic: a rune
+       sphere seals the target, N spectral polearms materialize in a ring
+       around it and THRUST home one after another until they sit crossed
+       through the sphere, then (finisher:true) the whole thing detonates
+       in a whiteout. opts: count/color/runeColor/shaftTint/tipTint/
+       holdMs/finisher/lenTiles/pitch. ─────────────────────────────────── */
+    function _sigSpearPrison3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0x99ccff;
+        var n = opts.count != null ? opts.count : 5;
+        var pitch = opts.pitch != null ? opts.pitch : 0.85;   /* rad down from horizontal */
+        var summonMs = 240, thrustMs = 110, stagger = 90;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 620;
+        var fadeMs = 300;
+        var lastThrust = summonMs + (n - 1) * stagger + thrustMs;
+        var total = lastThrust + holdMs + fadeMs;
+
+        _sigRuneSphere3D(tx, ty, {
+            color: color, runeColor: opts.runeColor != null ? opts.runeColor : color,
+            radiusTiles: opts.sphereTiles != null ? opts.sphereTiles : 0.95,
+            holdMs: total - 500, spin: 0.0022,
+        });
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: ts * 1.35, holdMs: total - 520,
+            spin: 0.004, opacity: 0.75,
+        });
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + ts * 0.55, wp.z);
+        var spears = [];
+        for (var i = 0; i < n; i++) {
+            var sp = _sigBuildSpear(ts, opts);
+            var yaw = (i / n) * Math.PI * 2 + (opts.yaw0 != null ? opts.yaw0 : 0.35);
+            var holder = new THREE.Group();      /* aims the spear at the centre */
+            /* YXZ order: yaw first, THEN tilt — with the default XYZ the
+               yaw spins about the tilt result and every spear comes from
+               the same side */
+            holder.rotation.order = 'YXZ';
+            holder.rotation.y = yaw;
+            holder.rotation.x = -(Math.PI / 2 - pitch * (0.8 + 0.4 * ((i * 1.7) % 1)));
+            holder.add(sp.group);
+            group.add(holder);
+            spears.push({
+                sp: sp, holder: holder,
+                dFar: ts * 2.3, dNear: ts * (0.22 + 0.1 * ((i * 2.3) % 1)),
+                t0: summonMs + i * stagger, hit: false,
+            });
+        }
+
+        _sigRun(group, total, function (el) {
+            for (var k = 0; k < spears.length; k++) {
+                var s = spears[k];
+                var fade = 1;
+                if (el >= lastThrust + holdMs) fade = 1 - (el - lastThrust - holdMs) / fadeMs;
+                if (el < summonMs) {
+                    /* spears condense out of light, floating at the ring */
+                    var tS = el / summonMs;
+                    s.sp.setFade(tS * 0.9, 1 - tS);
+                    s.sp.group.position.y = s.dFar + ts * 0.25 * (1 - tS);
+                } else if (el < s.t0) {
+                    s.sp.setFade(0.9, 0.15);
+                    s.sp.group.position.y = s.dFar + ts * 0.04 * Math.sin(el * 0.01 + k);
+                } else if (el < s.t0 + thrustMs) {
+                    var tT = _sigEaseInCubic((el - s.t0) / thrustMs);
+                    s.sp.setFade(1, tT);
+                    s.sp.group.position.y = s.dFar + (s.dNear - s.dFar) * tT;
+                } else {
+                    if (!s.hit) {
+                        s.hit = true;
+                        _sigShake('soft');
+                        _sigSparks(tx, ty, opts.sparkSprite || 'divine-sparkle', 6,
+                            { vxy: 150, vz0: 40, vz1: 160, gravity: 300, z: ts * 0.55 });
+                        _sigScreenFlash(_sigCss(color), 70, 0.06);
+                    }
+                    /* planted — quiver from the impact, then hold crossed */
+                    var q = Math.max(0, 1 - (el - s.t0 - thrustMs) / 220);
+                    s.sp.group.position.y = s.dNear + ts * 0.03 * q * Math.sin(el * 0.09 + k * 2);
+                    s.sp.setFade(fade, 0.25 * fade);
+                }
+            }
+        });
+
+        if (opts.finisher !== false) {
+            window.setTimeout(function () {
+                if (_suppressed()) return;
+                _sigWhiteout3D(tx, ty, {
+                    color: opts.finisherColor != null ? opts.finisherColor : 0xffffff,
+                    peak: opts.finisherPeak != null ? opts.finisherPeak : 0.5,
+                    sparkSprite: opts.sparkSprite,
+                });
+            }, lastThrust + holdMs * 0.55);
+        }
+    }
+
+    /* ── GAS CLOUD — a churning volumetric billow boiling up over the
+       area (poison nova / ink / exhaust). Soft glow puffs spawn across
+       the radius, swell while drifting up, and thin out. ──────────────── */
+    function _sigGasCloud3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0x55dd44;
+        var rT = opts.radiusTiles != null ? opts.radiusTiles : 1.4;
+        var nPuff = opts.count != null ? opts.count : 12;
+        var ms = opts.ms != null ? opts.ms : 1500;
+        var tex = _sigGlowTex();
+
+        /* sickly light pool on the ground under the cloud */
+        _sigMagicCircle3D(tx, ty, {
+            color: color, radiusPx: ts * rT * 0.9, holdMs: ms - 500,
+            spin: 0.001, opacity: 0.35,
+        });
+
+        for (var i = 0; i < nPuff; i++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var group = new THREE.Group();
+                    var a = ((idx * 2.399) % (Math.PI * 2));
+                    var rr = ts * rT * (0.15 + 0.8 * ((idx * 1.618) % 1));
+                    var x0 = wp.x + Math.cos(a) * rr;
+                    var z0 = wp.z + Math.sin(a) * rr;
+                    var y0 = wp.y + ts * (0.1 + 0.35 * ((idx * 0.83) % 1));
+                    group.position.set(x0, y0, z0);
+                    var mat = _sigMat(idx % 3 === 0 ? (opts.coreColor != null ? opts.coreColor : color) : color, { map: tex });
+                    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+                    mesh.rotation.x = -0.6;      /* soft puff facing the camera */
+                    mesh.renderOrder = 155;
+                    group.add(mesh);
+                    var s0 = ts * (0.5 + 0.5 * ((idx * 3.7) % 1));
+                    var s1 = s0 * 2.1;
+                    var puffMs = ms * (0.55 + 0.4 * ((idx * 1.3) % 1));
+                    var churnPh = idx * 2.1;
+                    _sigRun(group, puffMs, function (el) {
+                        var t = _sigClamp01(el / puffMs);
+                        var s = s0 + (s1 - s0) * _sigEaseOutCubic(t);
+                        mesh.scale.set(s, s, s);
+                        mesh.rotation.z = churnPh + (idx % 2 ? -1 : 1) * el * 0.0011;
+                        group.position.y = y0 + ts * 0.5 * t;
+                        group.position.x = x0 + Math.sin(el * 0.0016 + churnPh) * ts * 0.1;
+                        var oIn = Math.min(1, t * 4);
+                        mat.opacity = 0.34 * oIn * (1 - _sigEaseInCubic(t));
+                    });
+                }, (idx % 5) * 80);
+            })(i);
+        }
+        if (!opts.gentle) {
+            _sigSparks(tx, ty, opts.sparkSprite || 'acid-green', 12,
+                { vxy: 120, vz0: 40, vz1: 160, gravity: -30 });
+        }
+    }
+
     var _spell3DGeometry = {
 
         bubble:              function(tx, ty, r) { _spawnBubbleDome(tx, ty, r); },
@@ -9576,6 +9954,66 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         },
 
+        /* ── PS2-CINEMATIC TIER (SPEAR PRISON / RUNE SPHERE / WHITEOUT /
+           GAS CLOUD staples — the "innocent PS2 game" look) ───────────── */
+
+        /* VALKYRIE — five divine polearms seal the target and detonate */
+        raceValkyrieSpear: function(tx, ty) { _sigSpearPrison3D(tx, ty, {
+            count: 5, color: 0x99ccff, runeColor: 0x77bbff,
+            shaftTint: 0xe8ecf6, tipTint: 0xffffff, glowColor: 0xcfe4ff,
+            sparkSprite: 'divine-sparkle', finisherPeak: 0.5,
+        }); },
+
+        /* SHADOW ENTITY — dark stakes pin the shadow; no detonation, the
+           horror is that they STAY */
+        raceShadowBind: function(tx, ty) { _sigSpearPrison3D(tx, ty, {
+            count: 4, color: 0x8844cc, runeColor: 0xaa66ee,
+            shaftTex: 'obsidian.png', shaftTint: 0x554466, tipTint: 0x776688,
+            glowColor: 0xbb77ff, sparkSprite: 'void-mist',
+            holdMs: 950, finisher: false,
+        }); },
+
+        /* MACHINE ELVES — sealed in a sandglass outside of time */
+        raceSandglassPrison: function(tx, ty) {
+            _sigRuneSphere3D(tx, ty, {
+                color: 0xf0c060, runeColor: 0xffdd88,
+                radiusTiles: 0.9, holdMs: 1100, spin: 0.0034,
+            });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xf0c060, radiusPx: (_cfg().tileSize || 128) * 1.1,
+                holdMs: 1000, spin: -0.005, opacity: 0.7,
+            });
+        },
+
+        /* YUKI-ONNA — one huge crystalline spear plunges from the sky */
+        raceIceSpear: function(tx, ty) {
+            _sigSpearPrison3D(tx, ty, {
+                count: 1, pitch: 1.4, lenTiles: 3.1,
+                color: 0x99e6ff, runeColor: 0xbbeeff, sphereTiles: 0.7,
+                shaftTex: 'marble.png', shaftTint: 0xcfeeff, tipTint: 0xffffff,
+                glowColor: 0xbbf0ff, sparkSprite: 'spark-blue',
+                holdMs: 500, finisher: false,
+            });
+            window.setTimeout(function () {
+                if (_suppressed()) return;
+                _sigShockRing3D(tx, ty, { color: 0x99e6ff, r1: (_cfg().tileSize || 128) * 1.6 });
+            }, 380);
+        },
+
+        /* POISON / GAS — churning volumetric billows */
+        raceToxicNova: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
+            color: 0x55dd44, coreColor: 0xaaff66,
+            radiusTiles: (r || 2) + 0.4, count: 16, ms: 1700,
+        }); },
+        raceInkCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
+            color: 0x3355aa, coreColor: 0x223377, gentle: true,
+            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500,
+        }); },
+        raceExhaustCloud: function(tx, ty, r) { _sigGasCloud3D(tx, ty, {
+            color: 0x99aa77, coreColor: 0x778855, gentle: true,
+            radiusTiles: (r || 1) + 0.6, count: 12, ms: 1500,
+        }); },
+
         /* golden blade of judgment falling out of heaven + light pillar */
         judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
             glowColor: 0xffcc55, circleColor: 0xffdd88,
@@ -9616,9 +10054,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigMagicCircle3D(tx, ty, { color: 0xffee99, radiusPx: ts0 * 1.1, holdMs: 500, spin: 0.005 });
             _sigLightPillar3D(tx, ty, { color: 0xfff2bb, ms: 700, height: 520, radius: ts0 * 0.3 });
             /* the rite itself: a wooden cross rammed into the tile, the
-               scripture held open over it */
+               scripture held open over it, the spirit SEALED inside a
+               scripture-ring sphere while the words do their work */
             _sigWoodCross3D(tx, ty, { holdMs: 900 });
             _sigTome3D(tx, ty, { holy: true, hover: 2.1, holdMs: 800 });
+            _sigRuneSphere3D(tx, ty, {
+                color: 0xffdd88, runeColor: 0xffe9a8,
+                radiusTiles: 0.8, holdMs: 850, spin: 0.0028,
+            });
         },
         mindShatter: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
@@ -9679,6 +10122,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* ── FLESH — the necromancer / zombie ground kits raise living meat ── */
         racePlaguefield: function(tx, ty, r) {
             _sigFleshMound3D(tx, ty, { scale: 1 + (r || 1) * 0.4, tint: 0x9aa06a, holdMs: 1300 });
+            /* sickly miasma boiling off the meat */
+            _sigGasCloud3D(tx, ty, {
+                color: 0x88aa33, coreColor: 0xbbcc55, gentle: true,
+                radiusTiles: (r || 1) + 0.5, count: 10, ms: 1600,
+            });
         },
         raceDarkResurrection: function(tx, ty) {
             _sigFleshMound3D(tx, ty, { scale: 1.1, holdMs: 1100 });
@@ -9937,6 +10385,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigClawCombo3D: _sigClawCombo3D,
         sigSonicBoom3D: _sigSonicBoom3D,
         sigMusicNotes3D: _sigMusicNotes3D,
+        sigSpearPrison3D: _sigSpearPrison3D,
+        sigRuneSphere3D: _sigRuneSphere3D,
+        sigWhiteout3D: _sigWhiteout3D,
+        sigGasCloud3D: _sigGasCloud3D,
+        sigSpeedLinesFx: _sigSpeedLinesFx,
         sigCannonShot3D: _sigCannonShot3D,
         sigGunRig3D: _sigGunRig3D,
         sigTeslaCoil3D: _sigTeslaCoil3D,

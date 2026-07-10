@@ -3557,6 +3557,33 @@ Audit pass: every bite/claw/roar spell now uses the arsenal rigs.
   battle.js gates status VFX via its local `vfxStatusMap` (~line 3893) —
   discord had to be added THERE too, else fireStatus is never called.
 
+## Signature Arsenal round 3 (2026-07-10) — PS2-cinematic tier
+User supplied PS2 JRPG reference shots (crossed-staves holy prison inside a
+rune sphere → whiteout; green poison cloud; anime rush-line backdrop). New
+staples in three-vfx-effects.js (all exported on ThreeVFXEffects):
+- **`_sigSpeedLinesFx`** — DOM canvas overlay (like `_sigScreenFlash`),
+  radial anime rush lines converging on screen centre, `mix-blend: screen`.
+  Auto-fires on: slash-combo heavy hit, jaws snap when `shake:'hard'`,
+  claw `heavyFinish`, and inside the whiteout.
+- **`_sigWhiteout3D`** — mega-flash finisher: big screen flash + giant
+  starburst + stacked shock rings + rush lines + sparks.
+- **`_sigRuneSphere3D`** — translucent seal sphere + 2 counter-rotating
+  scripture bands (`_sigGlyphBandTex`, glyphs wrapped on open cylinders).
+- **`_sigSpearPrison3D`** — THE reference cinematic: rune sphere + magic
+  circle, N spectral polearms (`_sigBuildSpear`: metal shaft/marble tip,
+  origin at tip, grows +Y) materialize on a ring and thrust home staggered,
+  quiver, hold crossed, then optional `finisher` whiteout. GOTCHA: the
+  aiming holder needs `rotation.order='YXZ'` — with default XYZ the yaw
+  never moves the +Y thrust axis and all spears stack on one side.
+- **`_sigGasCloud3D`** — churning billow: staggered soft glow puffs swell/
+  drift up over radiusTiles + sickly ground circle.
+Wired: raceValkyrieSpear (5 divine spears + whiteout), raceShadowBind
+(4 obsidian stakes, no finisher — they STAY), raceSandglassPrison (gold
+rune sphere), raceIceSpear (count:1 pitch:1.4 = single sky-plunge ice
+spear), exorcism (+gold containment sphere), raceToxicNova (green cloud;
+barrage-kind → needed aura mapping reusing raceToxicNova_aoe),
+raceInkCloud, raceExhaustCloud, racePlaguefield (+miasma over the mound).
+
 Dedicated sprites (added to the R2 terrain folder 2026-07-05, wired in):
 `enamel.png` (fangs + talons), `gunmetal.png` (all three guns; also the cannon
 barrel tinted dark 0x9299a4 as cast iron), `copper.png` (tesla primary +
