@@ -3106,7 +3106,27 @@
 .acam-chrome.active .acam-vignette { opacity: 1; }
 .acam-chrome.light .acam-vignette { display: none; }
 
-/* ── White impact frame on the cast→hit camera cut ── */
+/* ── Anime speed lines: radial burst on the killing-blow finisher ── */
+.acam-speedlines {
+    position: absolute;
+    inset: -20%;
+    background: repeating-conic-gradient(
+        rgba(255, 255, 255, 0) 0deg 4deg,
+        rgba(255, 255, 255, .55) 5deg 6.5deg,
+        rgba(255, 255, 255, 0) 7.5deg 12deg);
+    -webkit-mask: radial-gradient(ellipse at center, transparent 32%, #000 78%);
+            mask: radial-gradient(ellipse at center, transparent 32%, #000 78%);
+    opacity: 0;
+}
+.acam-speedlines.burst { animation: acamSpeedBurst .55s ease-out forwards; }
+@keyframes acamSpeedBurst {
+    0%   { opacity: 0;  transform: scale(1.15) rotate(0deg); }
+    12%  { opacity: .8; }
+    100% { opacity: 0;  transform: scale(1) rotate(6deg); }
+}
+
+/* ── Frame punctuation: `.cut` = subtle dark blink on the camera cut;
+      `.pop` = full white flash, reserved for the killing-blow finisher ── */
 .acam-flash {
     position: absolute;
     inset: 0;
@@ -3118,6 +3138,21 @@
     0% { opacity: .85; }
     100% { opacity: 0; }
 }
+.acam-flash.cut {
+    background: #000;
+    animation: acamCutDip .14s ease-out forwards;
+}
+@keyframes acamCutDip {
+    0% { opacity: .35; }
+    100% { opacity: 0; }
+}
+
+/* ── Finisher (kill during the shot): the frame darkens HARD around the
+      actors — screen-centre, where the camera holds the victim, stays
+      clear while everything else falls toward black ── */
+.acam-chrome.finisher .acam-vignette {
+    background: radial-gradient(ellipse 62% 55% at 50% 50%, transparent 38%, rgba(0, 0, 0, 0.85) 100%);
+}
 
 /* ── Top-left title block: spell name + total damage ── */
 .acam-title {
@@ -3128,6 +3163,8 @@
     flex-direction: column;
     gap: 4px;
     font-family: 'Cinzel', serif;
+    opacity: 1;
+    transition: opacity .35s ease;
 }
 .acam-chrome.light .acam-title { top: 8%; }
 
@@ -3194,16 +3231,17 @@
     100% { transform: scale(1); filter: brightness(1); }
 }
 
-/* text fades as the bars slide back out */
-.acam-chrome.hiding .acam-spell-name,
-.acam-chrome.hiding .acam-dmg-row {
-    transition: opacity .3s ease;
-    opacity: 0;
-}
+/* Title block fades as the bars slide back out. Fade the CONTAINER, not
+   the name itself — the name's slam-in animation holds it at opacity 1
+   with fill-mode:forwards, which out-prioritizes any transition on the
+   same element (that was the "spell name stays in the corner after the
+   attack" bug). */
+.acam-chrome.hiding .acam-title { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
     .acam-bar { transition: none; }
     .acam-spell-name.in { animation: none; opacity: 1; }
     .acam-dmg-num.tick { animation: none; }
-    .acam-flash.pop { animation: none; opacity: 0; }
+    .acam-flash.pop, .acam-flash.cut { animation: none; opacity: 0; }
+    .acam-speedlines.burst { animation: none; opacity: 0; }
 }

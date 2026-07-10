@@ -207,7 +207,17 @@ const ThreeCamera = (function () {
            three-renderer's occlusion fade, which keeps the active unit
            visible every frame. The character is framed in third person
            every single time. */
-        if (isTps || cam._cineKeepSubject) {
+        /* CINEMATIC shots (cam._cineTps without Strike Mode's per-frame
+           controller) deliberately SKIP boom collision: the renderer's
+           occlusion fade already makes any terrain/prop between the camera
+           and the two shot subjects see-through, so a wall right behind a
+           subject should be clipped THROUGH (and faded), not dodged — the
+           dolly-in response here slammed those shots into a super-closeup
+           whenever the caster or victim stood against a wall/cliff. Strike
+           Mode free-roam keeps real collision (the player drives that
+           camera and expects it to behave physically). */
+        const skipBoomCollide = !!(cam._cineTps && !cam._tpsCollide);
+        if ((isTps || cam._cineKeepSubject) && !skipBoomCollide) {
             const STEPS = 12;
             let f = 1;
             for (let i = 1; i <= STEPS; i++) {

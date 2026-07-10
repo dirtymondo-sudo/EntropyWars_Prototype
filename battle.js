@@ -7810,6 +7810,7 @@
         <div class="acam-bar acam-bar-top"></div>
         <div class="acam-bar acam-bar-bot"></div>
         <div class="acam-vignette"></div>
+        <div class="acam-speedlines"></div>
         <div class="acam-flash"></div>
         <div class="acam-title">
           <div class="acam-spell-name"></div>
@@ -7827,7 +7828,7 @@
             const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
             _acChromeState = { heavy: !!opts.heavy, total: 0,
                 until: performance.now() + totalMs + 400, hideTimer: null };
-            el.classList.remove('light', 'hiding');
+            el.classList.remove('light', 'hiding', 'finisher');
             if (!opts.heavy) el.classList.add('light');
             const nameEl = el.querySelector('.acam-spell-name');
             if (nameEl) {
@@ -7854,14 +7855,40 @@
             _acChromeEl.classList.add('hiding');
         }
 
-        /* White impact frame on the cast→hit camera cut. */
-        function _acChromeFlash() {
+        /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
+           cut (a blink, not a strobe); 'kill' = the full white flash, reserved
+           for the killing-blow finisher below. */
+        function _acChromeFlash(kind) {
             if (!_acChromeEl || !_acChromeState) return;
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
-            f.classList.remove('pop');
+            f.classList.remove('pop', 'cut');
             void f.offsetWidth;
-            f.classList.add('pop');
+            f.classList.add(kind === 'kill' ? 'pop' : 'cut');
+        }
+
+        /* FINISHER — a killing blow landing during an action shot gets the
+           full JRPG treatment: the frame darkens hard around the actors
+           (screen-centre stays clear — the camera is on the victim), anime
+           speed lines burst, and the world white-flashes with a shock ring
+           (the same sig VFX the Entropy Strike presentation uses). */
+        function _actionCamKillFlare(target) {
+            if (!_acChromeState || !_acChromeState.heavy) return false;
+            if (!_acChromeEl || !_acChromeEl.classList.contains('active')) return false;
+            if (performance.now() > _acChromeState.until) return false;
+            _acChromeEl.classList.add('finisher');
+            const sl = _acChromeEl.querySelector('.acam-speedlines');
+            if (sl) { sl.classList.remove('burst'); void sl.offsetWidth; sl.classList.add('burst'); }
+            _acChromeFlash('kill');
+            try {
+                const VFX = window.ThreeVFXEffects;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                if (VFX && VFX.sigShockRing3D && target) {
+                    VFX.sigShockRing3D(target.x, target.y, { r0: ts * 0.2, r1: ts * 1.6, ms: 480 });
+                }
+                if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#ffffff', 360, 0.5);
+            } catch (e) {}
+            return true;
         }
 
         /* Feed a damage number into the corner TOTAL readout. Returns true when
@@ -10627,10 +10654,15 @@
                     _fogAllowed: fogAllowed || undefined
                 });
 
-                // ── BEAT 2 — THE HIT: hard cut to the victim at launch. The
-                // TPS pivot re-anchors on the target's own shoulder/ground; a
-                // ¾ angle (OTS offset + extra swing) keeps the caster in the
-                // deep background and the victim front-and-centre for the hit.
+                // ── BEAT 2 — THE HIT: hard cut to the victim. The cut lands
+                // a beat AFTER launch (projectile mid-flight) so the caster's
+                // release frame plays out fully in beat 1 — cutting exactly at
+                // sourceHold clipped the cast pose short. The TPS pivot
+                // re-anchors on the target's own shoulder/ground; a ¾ angle
+                // (OTS offset + extra swing) keeps the caster in the deep
+                // background and the victim front-and-centre for the hit.
+                const cutMs = timings.sourceHold
+                    + Math.min(actionMs(300), Math.round(timings.travelMs * 0.5));
                 window.setTimeout(() => {
                     if (camera._cineShotId !== sequenceId) return;
                     if (sequenceId !== boardCameraSequenceId) return;
@@ -10643,16 +10675,17 @@
                         yaw: yawFwd + CINE_CAM_YAW_OFFSET + CINE_HIT_SWING,
                         elevZ: tgtPx + ts * CINE_FOCAL_RISE
                     });
-                    _acChromeFlash();
+                    _acChromeFlash('cut');
                     // Slow push-in through the arrival and the impact.
                     _cineBeatMove({
                         zoom: zoomHit * 1.07,
-                        duration: Math.max(actionMs(300), timings.travelMs + timings.targetHold),
+                        duration: Math.max(actionMs(300),
+                            Math.round(timings.travelMs * 0.5) + timings.targetHold),
                         easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
-                }, timings.sourceHold);
+                }, cutMs);
             } else {
                 // ── 2D fallback: the legacy single over-the-shoulder shot ──
                 // (focal a fixed lead in front of the caster, slope-following
@@ -11124,6 +11157,12 @@
                 // plain hits stay red.
                 const _floatKind = opts.floatKind || (opts.isCrit ? 'critdmg' : 'damage');
                 const _lethalHit = target.hp <= 0;
+
+                // Killing blow during a cinematic action shot → finisher
+                // dressing (hard dark frame, speed lines, white flash).
+                if (_lethalHit && damageType !== 'dot' && !_skipVisuals()) {
+                    _actionCamKillFlare(target);
+                }
 
                 // Impact frame: heavy hits freeze the action on contact, then
                 // the number and the damage SFX land together as time resumes —
@@ -26877,17 +26916,36 @@
             initiator._lastComboRound = state.round;
             partner._lastComboRound = state.round;
 
-            playSfx('fireball');
+            // Camera: combos are team damage spells — they get the full
+            // two-beat action shot + chrome (combo name in the corner, TOTAL
+            // DMG readout). Leaps/VFX launch as beat 1 ends and the damage
+            // itself lands after the cut to the victim, so the strikes read
+            // inside the shot instead of resolving before the camera arrives.
+            // Support combos (healAll/shield/buff) stay understated: the
+            // self-cast hero shot with name-only chrome.
+            let cam = null;
+            if (isOffensive && target) {
+                cam = playOffensiveActionCamera(initiator, target, {
+                    sourceHold: 750, targetHold: 1050, attackName: combo.name
+                });
+            } else if (typeof _playSelfCastHeroShot === 'function') {
+                _playSelfCastHeroShot(initiator, { spellName: combo.name });
+            }
+            const _launchAt = cam ? Math.max(0, cam.sourceHold - actionMs(150)) : 0;
+            const _hitAt = cam ? cam.sourceHold + cam.travelMs : actionMs(200);
 
-            if (target) {
-                const comboTypeA = (initiator.types || [])[0] || 'human';
-                const comboTypeB = (partner.types || [])[0] || 'human';
-                _vfxCombo(initiator.x, initiator.y, partner.x, partner.y, target.x, target.y, comboTypeA, comboTypeB);
-            }
-            if (target) {
-                animateStrikeLeap(initiator, target.x, target.y);
-                animateStrikeLeap(partner, target.x, target.y);
-            }
+            const _comboLaunchFx = () => {
+                playSfx('fireball');
+                if (target) {
+                    const comboTypeA = (initiator.types || [])[0] || 'human';
+                    const comboTypeB = (partner.types || [])[0] || 'human';
+                    _vfxCombo(initiator.x, initiator.y, partner.x, partner.y, target.x, target.y, comboTypeA, comboTypeB);
+                    animateStrikeLeap(initiator, target.x, target.y);
+                    animateStrikeLeap(partner, target.x, target.y);
+                }
+            };
+            if (_launchAt > 0) window.setTimeout(_comboLaunchFx, _launchAt);
+            else _comboLaunchFx();
             addLog(`${unitDisplayName(initiator)} & ${unitDisplayName(partner)} perform ${combo.name}!${synergyLabel}`);
 
             initiator._matchCombos = (initiator._matchCombos || 0) + 1;
@@ -26897,24 +26955,33 @@
             grantXP(partner, XP_COMBO, 'combo');
             const playerCombos = state.units.filter(u => u.player === initiator.player).reduce((s, u) => s + (u._matchCombos || 0), 0);
             if (playerCombos >= 3) checkAchievement('comboKing', initiator);
-            shakeBoard('normal');
+            window.setTimeout(() => shakeBoard('normal'), _hitAt);
 
             let completionDelay = actionMs(800);
+            if (cam) completionDelay = Math.max(completionDelay, cam.totalMs);
 
             if (combo.kind === 'damage' && target) {
                 const baseDmg = (combo.dmg || 160) + combinedPower;
                 const totalDmg = Math.max(1, Math.round(baseDmg * synergyMult));
-                applyDamageToUnit(target, totalDmg, `${combo.name}: `, {
-                    sourceUnit: initiator,
-                    damageType: combo.damageType,
-                    spellType: combo.spellType || null
-                });
+                window.setTimeout(() => {
+                    if (target.dead) return;
+                    applyDamageToUnit(target, totalDmg, `${combo.name}: `, {
+                        sourceUnit: initiator,
+                        damageType: combo.damageType,
+                        spellType: combo.spellType || null
+                    });
 
-                for (const eff of (combo.statusEffects || [])) {
-                    if (rollStatusApply(initiator, target, 0.85)) {
-                        applyStatusPayload(target, eff, `${combo.name}: `, initiator);
+                    for (const eff of (combo.statusEffects || [])) {
+                        if (rollStatusApply(initiator, target, 0.85)) {
+                            applyStatusPayload(target, eff, `${combo.name}: `, initiator);
+                        }
                     }
-                }
+                    // Delayed resolution: re-check the win condition — the
+                    // synchronous checkWin at the end of doComboAttack ran
+                    // before this hit landed.
+                    checkWin();
+                }, _hitAt);
+                completionDelay = Math.max(completionDelay, _hitAt + actionMs(700));
             }
 
             else if (combo.kind === 'multiHit' && target) {
@@ -26934,9 +27001,10 @@
                             damageType: combo.damageType,
                             spellType: combo.spellType || null
                         });
-                    }, idx * comboHitGap);
+                        checkWin();
+                    }, _hitAt + idx * comboHitGap);
                 });
-                completionDelay = Math.max(completionDelay, (hits.length - 1) * comboHitGap + actionMs(500));
+                completionDelay = Math.max(completionDelay, _hitAt + (hits.length - 1) * comboHitGap + actionMs(500));
 
                 window.setTimeout(() => {
                     for (const eff of (combo.statusEffects || [])) {
@@ -26944,28 +27012,32 @@
                             applyStatusPayload(target, eff, `${combo.name}: `, initiator);
                         }
                     }
-                }, (hits.length - 1) * comboHitGap + actionMs(100));
+                }, _hitAt + (hits.length - 1) * comboHitGap + actionMs(100));
             }
 
             else if (combo.kind === 'aoe') {
-                const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
-                const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
-                for (const tile of area) {
-                    const hit = enemies.find(e => e.x === tile.x && e.y === tile.y);
-                    if (hit && !hit.dead) {
-                        const aoeDmg = Math.max(1, Math.round(((combo.dmg || 16) + combinedPower) * synergyMult));
-                        applyDamageToUnit(hit, aoeDmg, `${combo.name}: `, {
-                            sourceUnit: initiator,
-                            damageType: combo.damageType,
-                            spellType: combo.spellType || null
-                        });
-                        for (const eff of (combo.statusEffects || [])) {
-                            if (!hit.dead && rollStatusApply(initiator, hit, 0.7)) {
-                                applyStatusPayload(hit, eff, `${combo.name}: `, initiator);
+                window.setTimeout(() => {
+                    const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
+                    const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
+                    for (const tile of area) {
+                        const hit = enemies.find(e => e.x === tile.x && e.y === tile.y);
+                        if (hit && !hit.dead) {
+                            const aoeDmg = Math.max(1, Math.round(((combo.dmg || 16) + combinedPower) * synergyMult));
+                            applyDamageToUnit(hit, aoeDmg, `${combo.name}: `, {
+                                sourceUnit: initiator,
+                                damageType: combo.damageType,
+                                spellType: combo.spellType || null
+                            });
+                            for (const eff of (combo.statusEffects || [])) {
+                                if (!hit.dead && rollStatusApply(initiator, hit, 0.7)) {
+                                    applyStatusPayload(hit, eff, `${combo.name}: `, initiator);
+                                }
                             }
                         }
                     }
-                }
+                    checkWin();
+                }, _hitAt);
+                completionDelay = Math.max(completionDelay, _hitAt + actionMs(700));
             }
 
             else if (combo.kind === 'healAll') {
