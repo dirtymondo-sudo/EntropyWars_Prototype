@@ -4,6 +4,67 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## AI BALANCE PASS: LINE-BEAM WHIFFS + JOB TENDENCIES (2026-07-10) — ai.js, ainew.js, battle.js
+Token `20260710u` → `20260710x`. **DESIGN RULE (from the user): towers/Cubes
+are damageable by BASIC ATTACKS ONLY. Spells must NEVER damage towers — the
+spell-vs-tower code paths were never supposed to exist.** Removed this pass
+(battle.js): `_resolveOffensiveTarget` tower branch (damage/ricochet),
+`_resolveMultiHitTower` damage body (both now reject with "The Cube shrugs
+off <spell>" at no MP/AP cost), the AoE-tile Cube chip in `_applyAoeDamage`,
+and the tower clause in the spell-usability check. ai.js: `scoreSpellsOnTower`
++ the `spell_tower` executor case deleted outright. Basic-attack tower
+targeting (`_getAttackValidTargets`, attack_tower AI path) is untouched. Driven by balance-lab export (168 matches) +
+20-match batch export. Headline: the 3 weakest races (ki fighter 31.6%,
+martian 32.7%, atlantean 39.6% WR) and worst spells (Instant Transmission
+15.4%, Ki Wave 24.1%, Heat Ray 25%) were AI bugs, not stat problems.
+- **Line/beam whiff bug (user-visible: "AI beams hit no one")**: 33/108 line
+  casts in the batch hit 0 targets (Ki Wave 46%, Hellmouth 50%, Railgun 44%).
+  THREE causes, all fixed: (1) ainew.js findFocusAction scored line spells
+  over `getSpellRangeTiles` (a Manhattan blob) but the engine fires beams in
+  `sign(target-caster)` direction along the 8 rays only — misaligned targets
+  are unhittable. Now walks the real rays. (2) queueComputerAction's ~370ms
+  telegraph lets the target move between decision and cast → stale tile →
+  misaligned beam. Both AIs now re-aim at cast time via shared
+  `window._aiReaimLineSpell` (ai.js) and abort if every ray whiffs. (3)
+  ai.js scoreSpellsOnTower let line spells shoot the Cube with a 200-pt score
+  floor, but the beam path has no tower-hit code (towers are basic-attack-only
+  by design) → guaranteed no-op AP/MP burn every turn near a tower. Fixed by
+  deleting scoreSpellsOnTower (spells never target towers, period).
+  Also scoreSpell's line branch scored `Math.max(hits,1)` — a guaranteed whiff
+  scored as a full hit (+ kill bonus). Now real hits only, 0 = don't cast.
+- **Teleport was double-dead**: scoreTeleport returned 0 for any non-Psychic,
+  AND findSpellTarget returned an ENEMY unit whose occupied tile doSpell
+  always rejected. Instant Transmission (ki fighter) was a dead spell slot →
+  15.4% WR. Now: all classes, picks an EMPTY tile, escape (<35% HP + melee
+  adjacent) or blink-to-engage scenarios.
+- **Anti-focus-fire skew (early code)**: per-activation repeat penalties were
+  spell ×0.15 after ONE cast (crippled one-spell kits: Ki Wave, Fireball) and
+  target ×0.6/×0.3 on re-target (spread damage instead of finishing kills).
+  Now: damage spells decay ×0.65/use (hard cap at 3), re-target penalty only
+  applies when the target is above 45% HP.
+- **Control undervalued**: scoreStatusEffect scored stun at ~20, and
+  root/sleep/freeze/charm fell through to the default 4(!); the `debuff`
+  scorer ignored statusEffects entirely (Discordance/Stasis Beam ~never cast).
+  Hard CC now scores 40-90 vs full-AP targets; debuff kind sums its riders.
+- **Job tendencies layer (ai.js JOB_TENDENCIES)**: small multipliers so units
+  play their role — White Mage heals first (damage ×0.45 while an ally <60%
+  HP and a heal is affordable) and stays backline; Black Mage backline,
+  spell-damage ×1.35, basic attack ×0.6 when a damage spell is affordable;
+  Psychic/Harbinger value control/support; backline jobs prefer standoff
+  tiles (penalty for walking into melee, higher threat aversion). Buffs are
+  now stat-aware: INT buffs (Harmonize) go to casters, ATK buffs to hitters,
+  not lowest-HP. Harbinger added to ainew.js PURE_SUPPORT so the bard kit
+  runs the stock support path (Harbinger was 40.3% WR played as a bruiser).
+- **Still watch after next lab run**: structure spells (5G Tower 21%,
+  Watchtower 23%, Federation Beacon 24%, War of the Worlds 22% WR) — maybe
+  genuinely weak, re-measure post-AI-fix before buffing. Atlantean's low
+  output (0.68 kills/game) may persist. catgirl 68.5% / werewolf 61.9% /
+  halfdemon 61.4% are the over-performers to check next.
+- NOT playtested (RULE #1c) — syntax-checked + node-stub test of
+  `_aiReaimLineSpell` only. First live check: a ki fighter VS-CPU match —
+  Ki Wave should visibly hit, teleport should fire, White Mage should heal
+  before attacking.
+
 ## UNIVERSAL BUILD ACTION (2026-07-10) — data.js, battle.js, hud.js, ui.js, online.js, ai.js, party-builder.js
 Token `20260710s` → `20260710t`. Minecraft-style place/dig became a first-class
 VERB every grounded unit has (goal: creativity + a guaranteed way out of any

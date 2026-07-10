@@ -20,6 +20,31 @@
             : (spell.range || 0);
     }
 
+    // ── Job tendencies (2026-07-10) ──────────────────────────────────────
+    // A light, general behavior bias per job so units "play their role":
+    // White Mages put healing first, Black Mages hang back and cast instead
+    // of poking with a stick, Psychics/Harbingers actually use their control
+    // and support kits, front-liners brawl. These are multipliers layered on
+    // top of normal scoring — they nudge, they don't script.
+    const JOB_TENDENCIES = {
+        'White Mage': { support: 1.6, control: 1.1, spellDmg: 0.6, backline: true, healFirst: true },
+        'Black Mage': { support: 0.8, control: 1.1, spellDmg: 1.35, backline: true, preferSpells: true },
+        'Psychic':    { support: 1.25, control: 1.5, spellDmg: 1.0, backline: true },
+        'Harbinger':  { support: 1.5, control: 1.4, spellDmg: 0.9, backline: true },
+        'Sniper':     { spellDmg: 1.1, backline: true },
+        'Harvester':  { support: 1.25 },
+        'Engineer':   { support: 1.1 },
+        'Gunslinger': { spellDmg: 1.15 },
+        'Warrior':    { frontline: true },
+        'Raider':     { frontline: true },
+        'Agent':      { frontline: true },
+    };
+    const SUPPORT_KINDS_T = ['heal', 'healAll', 'selfHeal', 'revive', 'cleanse', 'buff', 'shield', 'warCry', 'encore', 'manaRestoreAll'];
+    const CONTROL_KINDS_T = ['debuff', 'zoneDebuff'];
+    const DMG_KINDS_T = ['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'lifeDrain',
+        'line', 'linePush', 'cross', 'aoePull', 'splitBeam', 'dash',
+        'skyDrop', 'skyThrow', 'skySlam', 'leapStrike', 'displacement', 'pull', 'bomb', 'delayed'];
+
     let _turnActionLog = [];
 
     function logAction(action) {
@@ -193,14 +218,34 @@
 
             if (c.type === 'spell' && c.spell) {
                 const priorUses = countPriorUses('spell', c.spell.id);
-                if (priorUses >= 2) { c.score = -999; continue; }
-                if (priorUses >= 1) c.score *= 0.15;
+                // Damage spells may repeat within an activation (a Black Mage
+                // WITH the mana and AP for two Fireballs should throw two) —
+                // the old flat ×0.15 after one cast crippled one-spell kits
+                // (Ki Wave, Heat Ray). Utility/buff kinds keep the hard clamp
+                // so the AI doesn't loop self-buffs all turn.
+                const _isDmgKind = ['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'lifeDrain',
+                    'line', 'linePush', 'cross', 'aoePull', 'splitBeam', 'dash',
+                    'skyDrop', 'skyThrow', 'skySlam', 'leapStrike'].includes(c.spell.kind);
+                if (_isDmgKind) {
+                    if (priorUses >= 3) { c.score = -999; continue; }
+                    if (priorUses >= 1) c.score *= Math.pow(0.65, priorUses);
+                } else {
+                    if (priorUses >= 2) { c.score = -999; continue; }
+                    if (priorUses >= 1) c.score *= 0.15;
+                }
             }
 
             if (c.target?.id) {
                 const priorTargets = countPriorTargeting(c.target.id);
-                if (priorTargets >= 2) c.score *= 0.3;
-                else if (priorTargets >= 1) c.score *= 0.6;
+                // Don't spread damage away from a nearly-dead enemy — finishing
+                // the kill is the whole point of focusing it. Only penalize
+                // re-targeting healthy targets (anti-tunnel-vision).
+                const _finishing = typeof c.target.hp === 'number' && typeof c.target.maxHp === 'number'
+                    && c.target.hp / c.target.maxHp <= 0.45;
+                if (!_finishing) {
+                    if (priorTargets >= 2) c.score *= 0.45;
+                    else if (priorTargets >= 1) c.score *= 0.75;
+                }
             }
 
             if (c.spell?.kind) {
@@ -1164,6 +1209,14 @@
             if (unit.cls === 'Harbinger') score *= 0.5;
             if (unit.atk <= 5 && unit.cls !== 'White Mage') score *= 0.6;
 
+            // Casters poke as a last resort: when a Black Mage can still afford
+            // a real damage spell, the basic attack shouldn't outbid it.
+            if (JOB_TENDENCIES[unit.cls]?.preferSpells &&
+                (unit.spells || []).some(sp => sp && DMG_KINDS_T.includes(sp.kind)
+                    && g.canAffordSpell(unit, sp) && unit.mp >= sp.cost)) {
+                score *= 0.6;
+            }
+
             if (v.ownTower && v.ownTower.hp > 0) {
                 const dToTower = Math.abs(tgt.x - v.ownTower.x) + Math.abs(tgt.y - v.ownTower.y);
                 if (dToTower <= 4) score += 200;
@@ -1284,6 +1337,17 @@
 
         const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
 
+        // Healer discipline: while an ally is genuinely hurt AND this unit can
+        // afford a heal, a healFirst job discounts its damage options so the
+        // heal wins the sort (White Mage stops sniping while the tank bleeds).
+        const _tend = JOB_TENDENCIES[unit.cls];
+        let _healDuty = false;
+        if (_tend && _tend.healFirst) {
+            const _canHeal = (unit.spells || []).some(sp => sp && ['heal', 'healAll'].includes(sp.kind)
+                && g.canAffordSpell(unit, sp) && unit.mp >= sp.cost && ap >= g.getSpellApCost(sp));
+            _healDuty = _canHeal && [unit, ...v.allies].some(a => !a.dead && a.hp < a.maxHp * 0.6);
+        }
+
         const _allSpells = (unit.spells || []);
         for (const spell of _allSpells) {
             if (!spell) continue;
@@ -1298,6 +1362,15 @@
 
             let score = scoreSpell(unit, spell, target, v);
             if (score <= 0) continue;
+
+            if (_tend) {
+                if (SUPPORT_KINDS_T.includes(spell.kind) && _tend.support) score *= _tend.support;
+                else if (CONTROL_KINDS_T.includes(spell.kind) && _tend.control) score *= _tend.control;
+                else if (DMG_KINDS_T.includes(spell.kind)) {
+                    if (_tend.spellDmg) score *= _tend.spellDmg;
+                    if (_healDuty) score *= 0.45;
+                }
+            }
 
             if (apCost === 2 && ['damage', 'ricochet', 'multiHit', 'aoe', 'barrage', 'line', 'linePush', 'cross', 'aoePull', 'splitBeam', 'dash'].includes(spell.kind)) {
                 const twoBasicVal = v.attackTargets.length > 0 ? estDmg * 1.85 : estDmg * 0.5;
@@ -1335,7 +1408,6 @@
             out.push({ type: 'spell', spell, target, score, apCost });
         }
 
-        scoreSpellsOnTower(unit, v, out);
     }
 
     function scoreSpell(unit, spell, target, v) {
@@ -1583,6 +1655,16 @@
         if (kind === 'debuff' && target) {
             if (g.unitHasStatus(target, 'marked')) return 0;
             let s = 10;
+            // Value the actual status payload (stun/silence/root/…) — this
+            // scorer previously ignored statusEffects entirely, so control
+            // spells like Discordance and Stasis Beam were almost never cast.
+            for (const eff of (spell.statusEffects || [])) {
+                if (eff && eff.id && !g.unitHasStatus(target, eff.id)) s += scoreStatusEffect(eff, target, v);
+            }
+            if (spell.statStageBoost) {
+                const stages = Object.values(spell.statStageBoost).reduce((n, st) => n + Math.abs(st || 0), 0);
+                s += stages * 10;
+            }
             const nearAllies = v.allies.filter(a => Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 3).length;
             s += nearAllies * 5;
             // Damage-carrying debuffs (Star Crossed, Glare…) are worth their
@@ -1742,16 +1824,27 @@
             if (!target) return 0;
             const dmg = spell.dmg || 112;
 
-            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            // Beams fire in the sign(target-caster) direction and stop at
+            // impassable terrain (battle.js _applyLineDamage). A target that
+            // isn't exactly on a row/column/45° ray can NEVER be hit — score
+            // only the enemies the beam actually reaches, and score 0 on a
+            // guaranteed whiff instead of pretending it's a full hit.
+            const adx = Math.abs(target.x - unit.x), ady = Math.abs(target.y - unit.y);
+            const aligned = (adx === 0 || ady === 0 || adx === ady) && (adx + ady > 0);
+            if (!aligned) return 0;
             const dx = Math.sign(target.x - unit.x);
             const dy = Math.sign(target.y - unit.y);
-            let hits = 0;
+            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            let hits = 0, reachedTarget = false;
             for (let i = 1; i <= _lineBoardLen; i++) {
                 const tx = unit.x + dx * i, ty = unit.y + dy * i;
                 if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
+                if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
                 if (v.visibleEnemies.some(e => e.x === tx && e.y === ty)) hits++;
+                if (tx === target.x && ty === target.y) reachedTarget = true;
             }
-            hits = Math.max(hits, 1);
+            if (hits === 0) return 0;
+            if (!reachedTarget) return dmg * hits * 0.5;
             let s = dmg * hits;
 
             for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
@@ -2183,7 +2276,10 @@
 
         if (id === 'stun') {
             const hasActed = (target.ap || 0) === 0;
-            return hasActed ? 6 : 20 + dur * 8;
+            // Denying a full-AP unit its entire activation is worth as much as
+            // a solid damage spell — the old 20-ish scores meant the AI almost
+            // never cast control at all.
+            return hasActed ? 10 : 60 + dur * 20;
         }
 
         if (id === 'stagger') {
@@ -2193,8 +2289,22 @@
 
         if (id === 'silence') {
             const isCaster = ['Black Mage', 'White Mage', 'Psychic', 'Harbinger', 'Harvester'].includes(target.cls);
-            return isCaster ? 18 + dur * 4 : 6;
+            return isCaster ? 70 + dur * 10 : 8;
         }
+
+        if (id === 'sleep' || id === 'freeze' || id === 'charm' || id === 'sirenSong') {
+            const hasActed = (target.ap || 0) === 0;
+            return hasActed ? 12 : 55 + dur * 15;
+        }
+
+        if (id === 'root') {
+            // rooting a melee unit takes it out of the fight; rooting a ranged
+            // sniper barely matters
+            const melee = (G().getEffectiveRange ? G().getEffectiveRange(target) : (target.range || 1)) <= 1;
+            return melee ? 40 + dur * 8 : 10;
+        }
+
+        if (id === 'confuse') return 35 + dur * 8;
 
         if (id === 'slow') return 8 + dur * 3;
 
@@ -2213,8 +2323,11 @@
 
     function scoreTeleport(unit, spell, target, v) {
         const g = G();
-        if (unit.cls !== 'Psychic') return 0;
+        // (2026-07-10) was gated to Psychic only — which made every race
+        // teleport (Instant Transmission, Shadow Step variants…) a dead spell
+        // slot for the AI. Any class can value a teleport now.
         if (!v.visibleEnemies.length && !v.allies.length) return 0;
+        if (!target) return 0;
 
         let bestScore = 0;
 
@@ -2225,8 +2338,16 @@
             }
         }
 
-        if (unit.hp < unit.maxHp * 0.3 && v.closestEnemyDist <= 2) {
-            bestScore = Math.max(bestScore, 20);
+        // Escape: badly hurt with melee breathing down our neck — blink out.
+        if (unit.hp < unit.maxHp * 0.35 && v.closestEnemyDist <= 2) {
+            bestScore = Math.max(bestScore, 70);
+        }
+
+        // Engage: a fighter that can't reach anything this turn can blink into
+        // strike range instead of walking (move+attack in one activation).
+        if (v.closestEnemyDist > g.getEffectiveRange(unit) + (g.getEffectiveMove ? (g.getEffectiveMove(unit) || unit.move || 2) : (unit.move || 2))
+            && unit.hp > unit.maxHp * 0.5 && (unit.ap || 0) >= 2) {
+            bestScore = Math.max(bestScore, 40);
         }
 
         for (const hg of v.visibleHourglasses) {
@@ -2262,47 +2383,8 @@
         return bestScore;
     }
 
-    function scoreSpellsOnTower(unit, v, out) {
-        const g = G();
-        const tower = v.enemyTower;
-        if (!tower || tower.hp <= 0) return;
-
-        const tDist = Math.abs(unit.x - tower.x) + Math.abs(unit.y - tower.y);
-        const silenced = g.unitHasStatus(unit, 'silence');
-        if (silenced) return;
-
-        const _allSpells = (unit.spells || []);
-        for (const spell of _allSpells) {
-            if (!spell) continue;
-            if (!['damage', 'multiHit', 'ricochet', 'line', 'linePush'].includes(spell.kind)) continue;
-            if (tDist < 1 || tDist > _effRange(unit, spell)) continue;
-            if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y)) continue;
-            const apCost = g.getSpellApCost(spell);
-            if ((unit.ap || 0) < apCost || !g.canAffordSpell(unit, spell) || unit.mp < spell.cost) continue;
-
-            let score = (spell.dmg || 0) + 200;
-            if (spell.hitDamages) score = spell.hitDamages.reduce((a, b) => a + b, 0) + 200;
-
-            if (tower.hp <= (spell.dmg || 0) * 2) score += 480;
-            else if (tower.hp <= tower.maxHp * 0.5) score += 200;
-
-            const nearEnemies = v.visibleEnemies.filter(e =>
-                Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
-            );
-            if (nearEnemies.length === 0) score += 360;
-
-            const ws = v.winState;
-            if (ws.enemyDeadCount >= 1) score += 200 + ws.enemyDeadCount * 80;
-            if (ws.phase === 'tower_push') score += 320;
-            if (ws.phase === 'numbers_advantage') score += 160;
-            score += ws.roundUrgency * 80;
-
-            if (unit.cls === 'White Mage') score *= 0.4;
-
-            score = Math.max(score, 200);
-            out.push({ type: 'spell_tower', spell, towerX: tower.x, towerY: tower.y, score, apCost });
-        }
-    }
+    // scoreSpellsOnTower removed 2026-07-10: towers/Cubes are damageable by
+    // BASIC ATTACKS ONLY (design rule) — spells never target them.
 
     function scoreCombos(unit, v, out) {
         const g = G();
@@ -2427,6 +2509,14 @@
                 attackVal += getTargetPriority(e, unit, v) * 0.5;
                 if (e.hp <= estDmg + 32) attackVal += 240;
 
+                // Backline jobs keep their distance: shoot from max range, and
+                // never walk INTO melee when the kit works from 3+ tiles away.
+                const _tendM = JOB_TENDENCIES[unit.cls];
+                if (_tendM && _tendM.backline && effRange > 1) {
+                    attackVal += (d - 1) * 8;
+                    if (d <= 1) attackVal *= 0.55;
+                }
+
                 if (typeof g.getUnitStandingHeight === 'function' && typeof g.getHeightAt === 'function') {
                     const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
                     const eH = g.getUnitStandingHeight(e);
@@ -2472,7 +2562,7 @@
             if (tileScore <= 0) continue;
 
             const threat = getThreatAt(v.threatMap, tile.x, tile.y);
-            tileScore -= threat.count * 24;
+            tileScore -= threat.count * (JOB_TENDENCIES[unit.cls]?.backline ? 44 : 24);
 
             if (unit.hp < unit.maxHp * 0.4) tileScore -= threat.count * 40;
 
@@ -3731,6 +3821,43 @@
         return best;
     }
 
+    // Re-aim a line/linePush spell at CAST time (the AI decides ~400ms before
+    // doSpell runs; in blitz the intended target can move in that window, and
+    // the engine fires the beam in sign(target-caster) direction — a stale
+    // tile means a misaligned beam that hits nobody). Walks the 8 rays from
+    // the caster's CURRENT position over CURRENT enemy positions and returns
+    // the best aim tile, or null when every ray whiffs (don't waste the AP).
+    // Exposed on window so ainew.js's focus-fire path can share it.
+    function _reaimLineSpell(unit, spell, preferredTargetId) {
+        const g = G();
+        if (!g) return null;
+        const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+                      { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
+        const len = Math.max(g.bw(), g.bh());
+        const enemies = g.getHostileUnits(unit.player).filter(e => !e.dead &&
+            !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')));
+        let best = null;
+        for (const dir of dirs) {
+            let hits = 0, first = null, hasPreferred = false;
+            for (let i = 1; i <= len; i++) {
+                const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
+                if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
+                if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                const e = enemies.find(en => en.x === tx && en.y === ty);
+                if (e) {
+                    hits++;
+                    if (!first) first = { x: tx, y: ty };
+                    if (preferredTargetId && e.id === preferredTargetId) hasPreferred = true;
+                }
+            }
+            if (!hits) continue;
+            const score = hits * 10 + (hasPreferred ? 5 : 0);
+            if (!best || score > best.score) best = { x: first.x, y: first.y, hits, score };
+        }
+        return best;
+    }
+    window._aiReaimLineSpell = _reaimLineSpell;
+
     function findSpellTarget(unit, spell, v) {
         const g = G();
         const kind = spell.kind;
@@ -3904,12 +4031,21 @@
             if (kind === 'buff') {
                 const unbuffed = targets.filter(a => !g.unitHasStatus(a, 'protect'));
 
-                return unbuffed.sort((a, b) => {
-                    const aHG = (a.hourglasses || 0) > 0 ? 1 : 0;
-                    const bHG = (b.hourglasses || 0) > 0 ? 1 : 0;
-                    if (aHG !== bHG) return bHG - aHG;
-                    return (a.hp / a.maxHp) - (b.hp / b.maxHp);
-                })[0] || null;
+                // Stat-aware buffing: an INT buff (Harmonize, Ki attunements…)
+                // belongs on a caster, an ATK buff on the biggest hitter —
+                // not on whoever happens to have the lowest HP bar.
+                const boost = spell.statStageBoost || {};
+                const casterClasses = ['Black Mage', 'White Mage', 'Psychic', 'Harbinger', 'Harvester'];
+                const fit = a => {
+                    let sc = 0;
+                    if (boost.int) sc += (a.intStat || 0) * 2 + (casterClasses.includes(a.cls) ? 80 : 0);
+                    if (boost.atk) sc += (a.atk || 0) * 1.5 + (g.getEffectiveRange(a) <= 1 ? 20 : 0);
+                    if (!boost.int && !boost.atk) sc += (1 - a.hp / a.maxHp) * 100;
+                    if ((a.hourglasses || 0) > 0) sc += 40;
+                    if (a.id === unit.id) sc -= 10; // mildly prefer teammates
+                    return sc;
+                };
+                return unbuffed.sort((a, b) => fit(b) - fit(a))[0] || null;
             }
             return targets.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0] || null;
         }
@@ -4062,14 +4198,45 @@
         }
 
         if (kind === 'teleport') {
-
-            if (v.ownTower && v.ownTower.hp > 0) {
-                const nearTower = v.visibleEnemies
-                    .filter(e => Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 3)
-                    .filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= _effRange(unit, spell));
-                if (nearTower.length > 0) return nearTower[0];
+            // doSpell teleports the CASTER to the clicked tile, which must be
+            // an EMPTY passable tile in range. (Previously this returned an
+            // enemy UNIT near our tower — doSpell rejected the occupied tile
+            // every time, so AI teleports never fired.)
+            if (spell.teleportAnyUnit) return null; // two-phase mass teleports stay manual
+            const R = _effRange(unit, spell) || spell.teleportDistance || 4;
+            const hurt = unit.hp < unit.maxHp * 0.35 && v.closestEnemyDist <= 2;
+            const wantEngage = !hurt && v.visibleEnemies.length > 0
+                && v.closestEnemyDist > g.getEffectiveRange(unit) + ((g.getEffectiveMove ? g.getEffectiveMove(unit) : unit.move) || 2);
+            if (!hurt && !wantEngage) return null;
+            let bestTile = null, bestVal = -Infinity;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    if (g.unitAt(tx, ty)) continue;
+                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
+                    let val = 0;
+                    if (hurt) {
+                        // escape: maximize distance to the closest enemy
+                        let nd = Infinity;
+                        for (const e of v.visibleEnemies) nd = Math.min(nd, Math.abs(e.x - tx) + Math.abs(e.y - ty));
+                        val = nd * 10;
+                        for (const a of v.allies) if (Math.abs(a.x - tx) + Math.abs(a.y - ty) <= 3) val += 6;
+                    } else {
+                        // engage: land in strike range of the juiciest reachable enemy
+                        const er = g.getEffectiveRange(unit);
+                        for (const e of v.visibleEnemies) {
+                            const ed = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                            if (ed >= 1 && ed <= er) val = Math.max(val, 20 + getTargetPriority(e, unit, v) * 0.3);
+                        }
+                        if (val === 0) continue;
+                    }
+                    if (val > bestVal) { bestVal = val; bestTile = { x: tx, y: ty }; }
+                }
             }
-            return null;
+            return bestTile;
         }
 
         if (kind === 'healAll' || kind === 'manaRestoreAll' || kind === 'barrage') return { x: unit.x, y: unit.y };
@@ -4613,7 +4780,24 @@
                         g.maybeTriggerComputerTurn();
                         return;
                     }
-                    const delay = g.doSpell(unit, action.target.x, action.target.y, action.target.z) || 0;
+                    // Line beams: re-aim from the caster's CURRENT position at
+                    // cast time — the target may have moved during the telegraph
+                    // delay, and a misaligned beam hits nobody.
+                    let _castX = action.target.x, _castY = action.target.y, _castZ = action.target.z;
+                    if (action.spell.kind === 'line' || action.spell.kind === 'linePush') {
+                        const aim = _reaimLineSpell(unit, action.spell, action.target?.id);
+                        if (!aim) {
+                            // every ray whiffs now — abort instead of burning AP+MP
+                            _failedSpells.add(action.spell.name);
+                            g.state.actionMode = null;
+                            g.state.selectedTool = null;
+                            g.state.aiThinking = false;
+                            g.maybeTriggerComputerTurn();
+                            return;
+                        }
+                        _castX = aim.x; _castY = aim.y; _castZ = undefined;
+                    }
+                    const delay = g.doSpell(unit, _castX, _castY, _castZ) || 0;
                     if (delay > 0) {
                         window.setTimeout(() => g.finishComputerAction(), delay);
                     } else {
@@ -4624,23 +4808,6 @@
                         g.maybeTriggerComputerTurn();
                     }
                 }, action.target);
-                break;
-
-            case 'spell_tower':
-                g.state.actionMode = 'spell';
-                g.state.selectedTool = action.spell.name;
-                g.queueComputerAction(() => {
-                    const delay = g.doSpell(unit, action.towerX, action.towerY) || 0;
-                    if (delay > 0) {
-                        window.setTimeout(() => g.finishComputerAction(), delay);
-                    } else {
-                        _failedSpells.add(action.spell.name);
-                        g.state.actionMode = null;
-                        g.state.selectedTool = null;
-                        g.state.aiThinking = false;
-                        g.maybeTriggerComputerTurn();
-                    }
-                });
                 break;
 
             case 'combo': {

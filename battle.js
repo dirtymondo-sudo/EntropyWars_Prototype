@@ -1508,26 +1508,14 @@
                 }
             }
 
-            // Tower targeting
+            // Tower targeting: Cubes are immune to ALL spells by design — only
+            // basic attacks damage them. Reject the cast cleanly (no MP/AP
+            // spent) so the AI marks the spell failed and humans get feedback.
             const tower = !target ? towerAt(x, y) : null;
             if (tower && tower.owner !== unit.player) {
-                pushUndoSnapshot(true);
-                playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y);
-                unit.mp -= effectiveSpellCost;
-                let tDmg = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16);
-                tDmg = Math.max(1, tDmg - (tower.def || 0));
-                tDmg = Math.max(1, Math.round(tDmg * getTowerDamageMultiplier(tower.owner)));
-                tower.hp = Math.max(0, tower.hp - tDmg);
-                const shieldLayers = getTowerShieldLayers(tower.owner);
-                const sMsg = shieldLayers > 0 ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
-                addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${tDmg} damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
-                grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
-                addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
-                showFloatingTextAtTile(x, y, `-${tDmg}`, 'damage');
-                playSfx('spellDamage');
-                window.setTimeout(() => { finishAction(); }, actionMs(400));
-                return { handled: true, returnVal: 1 };
+                addLog(`⬡ The Cube shrugs off ${spell.name} — only physical strikes damage it.`);
+                playErrorSfx();
+                return { handled: true, returnVal: 0 };
             }
 
             // Turret targeting
@@ -3063,27 +3051,11 @@
             const tower = !target ? towerAt(x, y) : null;
             if (!tower || tower.owner === unit.player) return { handled: false };
 
-            pushUndoSnapshot(true);
-            playSfx(spellLaunchSfx(spell));
-            _spellFocusCamera(unit, x, y);
-            unit.mp -= effectiveSpellCost;
-            const hits = spell.hitDamages || [8, 8];
-            let totalDmg = 0;
-            const shieldMult = getTowerDamageMultiplier(tower.owner);
-            for (const base of hits) {
-                let tDmg = Math.max(16, base + spellPower);
-                tDmg = Math.max(1, tDmg - (tower.def || 0));
-                tDmg = Math.max(1, Math.round(tDmg * shieldMult));
-                tower.hp = Math.max(0, tower.hp - tDmg);
-                totalDmg += tDmg;
-            }
-            const sMsg = getTowerShieldLayers(tower.owner) > 0
-                ? ` [${getTowerShieldLabel(tower.owner)}]` : '';
-            addLog(`⬡ ${unitDisplayName(unit)} casts ${spell.name} on Player ${tower.owner}'s Cube for ${totalDmg} total damage!${sMsg} (Cube HP: ${tower.hp}/${tower.maxHp})`);
-            showFloatingTextAtTile(x, y, `-${totalDmg}`, 'damage');
-            addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
-            window.setTimeout(() => { finishAction(); }, actionMs(400));
-            return { handled: true, returnVal: 1 };
+            // Cubes are immune to ALL spells by design — only basic attacks
+            // damage them. Reject cleanly (no MP/AP spent).
+            addLog(`⬡ The Cube shrugs off ${spell.name} — only physical strikes damage it.`);
+            playErrorSfx();
+            return { handled: true, returnVal: 0 };
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -3204,19 +3176,8 @@
                     hitCount++;
                 }
 
-                // Tower damage
-                const _aoeTw = towerAt(tile.x, tile.y);
-                if (_aoeTw && _aoeTw.owner !== unit.player) {
-                    let tDmg = Math.max(32, baseDmg + Math.floor(Math.random() * 40) - 16);
-                    tDmg = Math.max(1, tDmg - (_aoeTw.def || 0));
-                    tDmg = Math.max(1, Math.round(tDmg * getTowerDamageMultiplier(_aoeTw.owner)));
-                    _aoeTw.hp = Math.max(0, _aoeTw.hp - tDmg);
-                    const _aoeSMsg = getTowerShieldLayers(_aoeTw.owner) > 0 ? ` [${getTowerShieldLabel(_aoeTw.owner)}]` : '';
-                    addLog(`⬡ ${spell.name} blasts Player ${_aoeTw.owner}'s Cube for ${tDmg}!${_aoeSMsg} (Cube HP: ${_aoeTw.hp}/${_aoeTw.maxHp})`);
-                    showFloatingTextAtTile(tile.x, tile.y, `-${tDmg}`, 'damage');
-                    playSfx('spellDamage');
-                    hitCount++;
-                }
+                // (Towers are immune to spells by design — AoE blasts pass
+                // over the Cube without damaging it.)
 
                 // Turret damage
                 damageTurretAt(tile.x, tile.y, spell.dmg || 80, unit);
@@ -14849,15 +14810,8 @@
                     // Pure-status spells need an enemy NOT already carrying the status.
                     return spellTargetUsableOn(unit, spell, e);
                 });
-                if (hasEnemy) return true;
-                if (['damage', 'multiHit', 'ricochet'].includes(kind) && state.towers) {
-                    const tw = state.towers[enemyOf(unit.player)];
-                    if (tw && tw.hp > 0) {
-                        const d = combatReach(unit.x, unit.y, unit.z ?? 0, tw.x, tw.y, tw.z ?? 0, _longRange);
-                        if (d >= 1 && d <= range && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unit.z))) return true;
-                    }
-                }
-                return false;
+                // (Towers don't count — Cubes are immune to spells by design.)
+                return hasEnemy;
             }
 
             // heal/cleanse route through spellTargetUsableOn (the universal

@@ -91,7 +91,11 @@
     // NOTE: Harvester is intentionally NOT here — it's a 145-ATK bruiser with big
     // damage spells; treating it as a healer made it camp and barely act. It only
     // drops into the stock heal path when an ally is actually dying (below).
-    const PURE_SUPPORT = new Set(['White Mage', 'Psychic']);
+    // Harbinger added 2026-07-10: it's a support bard (Harmonize/Encore/
+    // Discordance) — the focus-fire overlay played it like a bruiser and its
+    // whole kit sat at the bottom of the win-rate table. The stock AI now has
+    // job tendencies (stat-aware buffs, real CC scoring) that use the kit.
+    const PURE_SUPPORT = new Set(['White Mage', 'Psychic', 'Harbinger']);
     const HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive']);
 
     // A unit the AI must NOT target: invisible/cloaked, or hidden by an enemy
@@ -343,6 +347,45 @@
                 if (!isDmg && !isCC) continue;
                 if (!g.canAffordSpell(unit, sp)) continue;
                 if ((unit.mp || 0) < (sp.cost || 0)) continue;
+
+                // Line beams fire along the 8 rays from the caster and hit ONLY
+                // enemies exactly on the ray (engine walks sign(target-caster)
+                // and stops at impassable terrain). getSpellRangeTiles returns
+                // a Manhattan blob, so scoring it like a normal ranged spell
+                // made the AI constantly beam at unhittable targets — ~50% of
+                // Ki Wave / Heat Ray / Hellmouth casts hit zero units. Walk the
+                // real rays instead and value every enemy the beam crosses.
+                if (sp.kind === 'line' || sp.kind === 'linePush') {
+                    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+                    const len = Math.max(g.bw ? g.bw() : 20, g.bh ? g.bh() : 20);
+                    for (const [ddx, ddy] of dirs) {
+                        let rayTargets = [], first = null;
+                        for (let i = 1; i <= len; i++) {
+                            const tx = unit.x + ddx * i, ty = unit.y + ddy * i;
+                            let passable = true;
+                            try { passable = !g.isTerrainPassable || g.isTerrainPassable(tx, ty); } catch (e) {}
+                            if (tx < 0 || ty < 0 || (g.bw && tx >= g.bw()) || (g.bh && ty >= g.bh())) break;
+                            if (!passable && !sp.destroysObstacles) break;
+                            const tg = g.unitAt(tx, ty);
+                            if (isEnemyTgt(tg) && spellPreconditionOk(g, unit, sp, tg)) {
+                                rayTargets.push(tg);
+                                if (!first) first = { x: tx, y: ty, z: tg.z, tg };
+                            }
+                        }
+                        if (!first) continue;
+                        const prim = rayTargets[0];
+                        const est = estDamage(g, unit, prim, sp);
+                        let sc = scoreDmg(prim, est, { spellType: sp.spellType || null, canMiss: false, press: PRESS_KINDS.has(sp.kind) });
+                        for (let ri = 1; ri < rayTargets.length; ri++) {
+                            const oe = estDamage(g, unit, rayTargets[ri], sp);
+                            sc += oe * 0.9 + (oe >= effHp(rayTargets[ri]) ? 3000 : 0);
+                        }
+                        sc += ccValue(g, unit, sp, prim) * 0.6;
+                        if (!best || sc > best.score) best = { kind: 'spell', spell: sp, target: prim, x: first.x, y: first.y, z: first.z, est, score: sc };
+                    }
+                    continue;
+                }
+
                 let tiles; try { tiles = g.getSpellRangeTiles(unit, sp) || []; } catch (e) { continue; }
                 for (const t of tiles) {
                     const tg = g.unitAt(t.x, t.y, t.z);
@@ -403,7 +446,25 @@
             st.selectedTool = act.spell.name;
             g.queueComputerAction(() => {
                 let delay = 0;
-                try { delay = g.doSpell(unit, act.x, act.y, act.z) || 0; } catch (e) { delay = 0; }
+                // Line beams: re-aim from the caster's CURRENT position at cast
+                // time — the target can move during the telegraph delay, and a
+                // stale tile means a sign-direction beam that hits nobody.
+                let cx = act.x, cy = act.y, cz = act.z;
+                if ((act.spell.kind === 'line' || act.spell.kind === 'linePush')
+                    && typeof window._aiReaimLineSpell === 'function') {
+                    const aim = window._aiReaimLineSpell(unit, act.spell, act.target && act.target.id);
+                    if (!aim) {
+                        // every ray whiffs now — don't burn the AP, delegate
+                        st._claudeDelegateOnce = unit.id;
+                        st.selectedTool = null;
+                        st.actionMode = null;
+                        st.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                        return;
+                    }
+                    cx = aim.x; cy = aim.y; cz = undefined;
+                }
+                try { delay = g.doSpell(unit, cx, cy, cz) || 0; } catch (e) { delay = 0; }
                 st.selectedTool = null;
                 if (delay > 0) {
                     window.setTimeout(() => g.finishComputerAction(), delay);
