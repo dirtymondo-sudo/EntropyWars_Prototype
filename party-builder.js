@@ -633,7 +633,7 @@ function spellCategoryLabel(cat) { return {damage:'DAMAGE',heal:'HEAL',buff:'BUF
 // Human-readable area-of-effect footprint from whatever shape fields a spell uses.
 function pbAoeLabel(sp) {
   if (!sp) return null;
-  if (sp.crossRadius) return 'Cross r' + sp.crossRadius;
+  if (sp.crossRadius) return (sp.diamond ? 'Diamond r' : 'Cross r') + sp.crossRadius;
   if (sp.lineWidth || sp.kind === 'line') return 'Line' + (sp.lineLength ? ' ' + sp.lineLength : '');
   if (sp.blastRadius) return (sp.blastRadius * 2 + 1) + '×' + (sp.blastRadius * 2 + 1);
   if (sp.aoeRadius != null && sp.aoeRadius > 0) return (sp.aoeRadius * 2 + 1) + '×' + (sp.aoeRadius * 2 + 1);

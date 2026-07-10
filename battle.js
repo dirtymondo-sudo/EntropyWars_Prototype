@@ -4193,10 +4193,13 @@
                 }
             }
 
-            /* ── Totem aura healing: deployed objects with auraHeal ── */
+            /* ── Totem aura healing: deployed objects with auraHeal ──
+               (healOnTurnStart objects — Federation Beacon — pulse at the start
+               of each ally's turn instead; see _continueBlitzWithUnit_impl.) */
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
-                    if (obj.hp <= 0 || !obj.auraHeal || !obj.auraRadius) continue;
+                    if (obj.hp <= 0 || !obj.auraHeal || !obj.auraRadius || obj.healOnTurnStart) continue;
+                    let _totemHealedAny = false;
                     const allies = state.units.filter(u => !u.dead && u.player === obj.ownerPlayer);
                     for (const ally of allies) {
                         const dist = Math.abs(ally.x - obj.x) + Math.abs(ally.y - obj.y);
@@ -4205,12 +4208,19 @@
                         applyHealingToUnit(ally, obj.auraHeal, null);
                         const healed = ally.hp - hpBefore;
                         if (healed > 0) {
+                            _totemHealedAny = true;
                             let evt = events.find(e => e.unit === ally);
                             if (!evt) { evt = { unit: ally, msgs: [], floats: [] }; events.push(evt); }
                             evt.msgs.push(`<span class="dlg-heal">✨ ${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP</span>`);
                             evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                             addLog(`${obj.spellName || 'Totem'} heals ${unitDisplayName(ally)} for ${healed} HP.`);
                         }
+                    }
+                    // The totem visibly exhales its healing wave (new regen-pulse VFX).
+                    if (_totemHealedAny && !_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                        && ThreeVFXEffects.sigRegenPulse3D) {
+                        const _tpTs = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
+                        ThreeVFXEffects.sigRegenPulse3D(obj.x, obj.y, { radiusPx: _tpTs * Math.min(obj.auraRadius, 3) });
                     }
                 }
             }
@@ -12082,6 +12092,22 @@
             return out;
         }
 
+        /* Full diamond (Manhattan distance ≤ radius) — used by `diamond: true`
+           cross-kind novae (Resonance Pulse) and anything else that wants the
+           classic JRPG plus-blast footprint instead of a square. */
+        function getDiamondArea(cx, cy, radius = 1) {
+            const out = [];
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (isInside(nx, ny)) out.push({ x: nx, y: ny });
+                }
+            }
+            return out;
+        }
+
         function getOrientedLineTiles(cx, cy, count, orientation) {
             const out = [];
             const half = Math.floor(count / 2);
@@ -19842,6 +19868,39 @@
                     }
                 }
 
+                /* ── Federation Beacon: turn-start regen pulse. Every friendly
+                   beacon with healOnTurnStart bathes the unit whose turn is
+                   beginning in Pleiadian light if it stands within the aura. ── */
+                if (state._deployedObjects?.length && !nextUnit.dead && !nextUnit._dying) {
+                    for (const _bcnObj of state._deployedObjects) {
+                        if (_bcnObj.hp <= 0 || !_bcnObj.healOnTurnStart || !_bcnObj.auraHeal || !_bcnObj.auraRadius) continue;
+                        if (_bcnObj.ownerPlayer !== nextUnit.player) continue;
+                        const _bcnDist = Math.abs(nextUnit.x - _bcnObj.x) + Math.abs(nextUnit.y - _bcnObj.y);
+                        if (_bcnDist > _bcnObj.auraRadius) continue;
+                        const _bcnHpBefore = nextUnit.hp;
+                        applyHealingToUnit(nextUnit, _bcnObj.auraHeal, null);
+                        const _bcnHealed = nextUnit.hp - _bcnHpBefore;
+                        if (_bcnHealed > 0) {
+                            addLog(`✨ ${_bcnObj.spellName || 'Beacon'} pulses ${_bcnHealed} HP of regeneration into ${unitDisplayName(nextUnit)}.`);
+                            if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined') {
+                                const _bcnTs = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
+                                if (ThreeVFXEffects.sigRegenPulse3D) {
+                                    ThreeVFXEffects.sigRegenPulse3D(_bcnObj.x, _bcnObj.y, {
+                                        radiusPx: _bcnTs * _bcnObj.auraRadius,
+                                        ms: 850,
+                                    });
+                                }
+                                const _bcnUnitId = nextUnit.id;
+                                window.setTimeout(() => {
+                                    const _u = state.units.find(u => u.id === _bcnUnitId && !u.dead);
+                                    if (_u && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(_u.x, _u.y);
+                                }, 320);
+                            }
+                            scheduleBoardRender();
+                        }
+                    }
+                }
+
                 const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : 650;
 
                 const _tookDmgRecently = !state.devAutoSim && !state.autoPlayers?.[nextUnit.player] && nextUnit._tookDamageThisRound;
@@ -22695,7 +22754,9 @@
             // wants to see on hover — draw that ring around the caster instead
             // of silently showing nothing.
             if (!spell.range) {
-                const auraR = spell.auraRadius || spell.aoeRadius || 0;
+                // Diamond novae (Resonance Pulse) have crossRadius but no
+                // aoeRadius — the Manhattan wash below is exactly their shape.
+                const auraR = spell.auraRadius || spell.aoeRadius || (spell.diamond ? (spell.crossRadius || 1) : 0) || 0;
                 if (!auraR) return;
                 const auraTiles = [];
                 for (let ty = 0; ty < bh(); ty++) {
@@ -22720,7 +22781,11 @@
             const isCross = spell.kind === 'cross';
             let rangeTiles;
 
-            if (isDirectional || isCross) {
+            if (isCross && spell.diamond) {
+                // Full-diamond nova preview (Resonance Pulse).
+                rangeTiles = getDiamondArea(unit.x, unit.y, spell.crossRadius || 1)
+                    .filter(t => t.x !== unit.x || t.y !== unit.y);
+            } else if (isDirectional || isCross) {
                 rangeTiles = [];
                 const effRange = getEffectiveSpellRange(unit, spell);
 
@@ -28035,6 +28100,33 @@
                         });
                     }, Math.max(0, projectileDelay - 340));
                 }
+
+                /* ── Spiral-beam debuffs — a helix-wrapped lance from caster to
+                   victim (ThreeVFXEffects.sigSpiralBeam3D). Stasis Beam caps it
+                   with the frozen-light stasis column on the target. ── */
+                const _spiralBeamSpells = {
+                    raceStasisBeam: { color: 0x9fe8ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
+                    glare:          { color: 0xcc88ff, coreColor: 0xffeeff },
+                };
+                const _spiralCfg = _spiralBeamSpells[spell.id];
+                if (_spiralCfg && !_skipVisuals()
+                    && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigSpiralBeam3D === 'function') {
+                    const _sbTs = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
+                    const _sbFromX = unit.x, _sbFromY = unit.y, _sbToX = target.x, _sbToY = target.y;
+                    window.setTimeout(() => {
+                        window.ThreeVFXEffects.sigSpiralBeam3D(_sbFromX, _sbFromY, _sbToX, _sbToY, {
+                            color: _spiralCfg.color, coreColor: _spiralCfg.coreColor, ms: actionMs(950),
+                        });
+                        if (_spiralCfg.stasisColumn && window.ThreeVFXEffects.sigLightPillar3D) {
+                            window.setTimeout(() => {
+                                window.ThreeVFXEffects.sigLightPillar3D(_sbToX, _sbToY, {
+                                    color: _spiralCfg.stasisColumn, coreColor: 0xffffff,
+                                    ms: actionMs(1100), height: _sbTs * 3.2, radius: _sbTs * 0.34,
+                                });
+                            }, actionMs(260));
+                        }
+                    }, Math.max(0, impactDelay - actionMs(480)));
+                }
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
                     // Star Crossed: read the target's zodiac — the affliction
@@ -28900,9 +28992,16 @@
                 const cx = spell.aoeOriginSelf ? unit.x : x;
                 const cy = spell.aoeOriginSelf ? unit.y : y;
                 const radius = spell.crossRadius || 1;
-                const crossTiles = [{ x: cx, y: cy }];
-                for (let i = 1; i <= radius; i++) {
-                    crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy }, { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                // `diamond: true` (Resonance Pulse) = every tile within Manhattan
+                // radius, not just the 4 cross arms.
+                let crossTiles;
+                if (spell.diamond) {
+                    crossTiles = getDiamondArea(cx, cy, radius);
+                } else {
+                    crossTiles = [{ x: cx, y: cy }];
+                    for (let i = 1; i <= radius; i++) {
+                        crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy }, { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                    }
                 }
 
                 const timing = _setupAoeCameraAndTiming(unit, spell, cx, cy, crossTiles);
@@ -28917,7 +29016,7 @@
                             pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null,
                             deformCenter: { x: cx, y: cy }
                         });
-                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a cross pattern.`);
+                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a ${spell.diamond ? 'resonant diamond' : 'cross pattern'}.`);
                     scheduleBoardRender();
                 }, timing.impactDelay);
             }
@@ -29398,6 +29497,7 @@
                     detonateOnStep: !!spell.detonateOnStep,
                     auraHeal: spell.auraHeal || 0,
                     auraRadius: spell.auraRadius || 0,
+                    healOnTurnStart: !!spell.healOnTurnStart,
                     spellId: spell.id,
                     statusEffects: spell.statusEffects || [],
                     spellName: spell.name

@@ -1266,11 +1266,95 @@ SPELL_MAP['ironGrip']   = { impact: '_heavyPunch_impact' };
 SPELL_MAP['skullCrack'] = { impact: 'skullCrack_impact' };
 SPELL_MAP['pistolWhip'] = { impact: '_heavyPunch_impact' };
 
-/* Nordic alien rework — light-tech Federation kit. Inherits the orphaned
-   nordic bespokes where they still fit (Thunderclap cross → Resonance
-   Pulse; Runic Ward aura → Pleiadian Shield). */
-SPELL_MAP['raceAuroraRay']        = { beam: 'sentaiBlueWave_beam' };
-SPELL_MAP['raceResonancePulse']   = { descent: 'raceThunderclap_descent', impact: 'thunder1_impact' };
+/* ─── NORDIC ALIEN REWORK (2026-07-10) — light-tech Federation kit ────────
+   Every offensive piece now has a bespoke cinematic:
+     • Aurora Ray      — ranged 3×3 sky-strike: telegraph, then a waving 3D
+                         aurora curtain (sigAuroraCurtain3D) descends over the
+                         area under a rain of prismatic light.
+     • Resonance Pulse — full-diamond harmonic nova: sonic boom rings + a
+                         diamond-staggered ripple across every hit tile.
+     • Stasis Beam     — spiraling helix beam (sigSpiralBeam3D, fired from
+                         battle.js's debuff branch) + frozen-light column.
+     • Federation Beacon — regen pulse ring (sigRegenPulse3D) at each ally's
+                         turn start, fired from _continueBlitzWithUnit_impl. */
+
+/* Aurora Ray — the descent telegraphs with blue rings, then shafts of polar
+   light + glitter-rain pour down while the 3D curtain (wired in
+   _spell3DGeometry below) dances over the area. */
+EFFECTS['raceAuroraRay_descent'] = {
+    telegraphMs: 620,
+    descentMs: 1000,
+    aoeRadius: 1,
+    telegraphSprite: 'target-ring-blue',
+    impactTileEffect: 'raceAuroraRay_impact_tile',
+    impactCenterEffect: 'raceAuroraRay_impact_center',
+    shape: 'square',
+    layers: [
+        /* the sky brightens high over the target */
+        { anchor: 'floor', mode: 'billboard', sprite: 'holy-light', ml: 1400, z: 320, size0: 130, size1: 230, opacity0: 0.5 },
+        /* shafts of polar light sweep down through the area */
+        { count: 5, delayMs: 120, anchor: 'floor', mode: 'y-locked', sprite: 'holy-light', ml: [700, 1000], offsetXY: 55, w0: [14, 26], w1: [8, 14], h0: 40, h1: [260, 340], opacity0: 0.65 },
+        /* dazzling light-rain falling out of the curtain */
+        { count: 14, delayMs: 200, anchor: 'floor', sprite: 'divine-sparkle', ml: [500, 900], z: [200, 300], offsetXY: 60, vzRange: [-260, -140], drag: 0.1, size0: [6, 11], size1: [2, 4], opacity0: 0.95 },
+        { count: 8, delayMs: 420, anchor: 'floor', sprite: 'spark-blue', ml: [400, 800], z: [160, 260], offsetXY: 60, vzRange: [-240, -120], drag: 0.1, size0: [5, 9], size1: 1, opacity0: 0.9 },
+        { count: 6, delayMs: 520, anchor: 'floor', sprite: 'psi-pulse', ml: [400, 750], z: [140, 240], offsetXY: 60, vzRange: [-220, -110], drag: 0.1, size0: [5, 9], size1: 1, opacity0: 0.85 },
+    ]
+};
+
+EFFECTS['raceAuroraRay_impact_tile'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 900, z: 2, size0: 40, size1: 120, opacity0: 0.75 },
+        { count: 6, anchor: 'floor', sprite: 'divine-sparkle', ml: [420, 760], z: 8, offsetXY: 26,
+          vxRange: 50, vyRange: 50, vzRange: [60, 150], gravity: 110, drag: 0.8,
+          size0: [7, 12], size1: 2, opacity0: 0.95 },
+        { count: 3, delayMs: 80, anchor: 'floor', sprite: 'frost-mist', ml: [600, 900], z: 6, offsetXY: 20,
+          vzRange: [20, 50], drag: 0.4, size0: [18, 26], size1: [44, 66], opacity0: 0.4 },
+    ]
+};
+
+EFFECTS['raceAuroraRay_impact_center'] = {
+    shake: 'soft',
+    layers: [
+        { sprite: 'flash', ml: 300, z: 10, size0: 150, size1: 40 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 800, z: 2, size0: 70, size1: 190, opacity0: 0.8 },
+    ]
+};
+
+/* Resonance Pulse — per-tile harmonic ripple, staggered outward by the
+   diamond shape so the shockwave visibly rolls away from the caster. */
+EFFECTS['resonancePulse_aoe'] = {
+    aoeRadius: 2,
+    shape: 'diamond',
+    impactTileEffect: 'resonancePulse_impact_tile',
+    impactCenterEffect: 'resonancePulse_impact_center',
+    layers: []
+};
+
+EFFECTS['resonancePulse_impact_tile'] = {
+    layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 480, z: 3, size0: 30, size1: 110, opacity0: 0.7 },
+        { count: 3, anchor: 'floor', sprite: 'psi-pulse', ml: [280, 480], z: 10, offsetXY: 14,
+          vxRange: 60, vyRange: 60, vzRange: [40, 110], gravity: 120, drag: 0.9,
+          size0: [6, 10], size1: 1, opacity0: 0.9 },
+        { count: 2, delayMs: 60, anchor: 'floor', sprite: 'dust-puff', ml: [300, 500], z: 2, offsetXY: 12,
+          vxRange: 40, vyRange: 40, vzRange: [10, 35], gravity: 90, drag: 0.9,
+          size0: [8, 13], size1: [18, 28], opacity0: 0.4 },
+    ]
+};
+
+EFFECTS['resonancePulse_impact_center'] = {
+    shake: 'normal',
+    layers: [
+        { sprite: 'flash', ml: 260, z: 10, size0: 130, size1: 36 },
+        { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 800, z: 3, size0: 50, size1: 300, opacity0: 0.85 },
+    ]
+};
+
+SPELL_MAP['raceAuroraRay']        = { descent: 'raceAuroraRay_descent' };
+SPELL_MAP['raceResonancePulse']   = { aoe: 'resonancePulse_aoe' };
+/* Stasis Beam's helix lance fires from battle.js (sigSpiralBeam3D — the
+   debuff branch knows both caster and victim); the mapping below only
+   covers the odd non-debuff reuse path. */
 SPELL_MAP['raceStasisBeam']       = { impact: '_ice_impact_center', bolt: '_bolt_ice' };
 SPELL_MAP['raceFederationBeacon'] = { aura: '_deployObject_aura' };
 SPELL_MAP['racePleiadianShield']  = { aura: 'raceRunicWard_aura' };
@@ -1999,6 +2083,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             out.push({ dx: 0, dy: 0 });
             for (var i = 1; i <= aoeRadius; i++) {
                 out.push({ dx: i, dy: 0 }, { dx: -i, dy: 0 }, { dx: 0, dy: i }, { dx: 0, dy: -i });
+            }
+        } else if (shape === 'diamond') {
+            /* full Manhattan diamond — matches battle.js getDiamondArea */
+            for (var ddy = -aoeRadius; ddy <= aoeRadius; ddy++) {
+                for (var ddx = -aoeRadius; ddx <= aoeRadius; ddx++) {
+                    if (Math.abs(ddx) + Math.abs(ddy) <= aoeRadius) out.push({ dx: ddx, dy: ddy });
+                }
             }
         } else {
             for (var dy = -aoeRadius; dy <= aoeRadius; dy++) {
@@ -9623,7 +9714,293 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
+    /* ── AURORA CURTAIN — waving ribbons of polar light (Nordic kit) ──────
+       Several arc-shaped vertical ribbons hang over the tile, their columns
+       swaying on independent sine waves while the colour drifts through
+       green → cyan → violet. The classic PS1 "sky sheet" aurora. Reused by
+       Aurora Ray (strike curtain) and Nordic Accord (gentle team shimmer). */
+    function _sigAuroraCurtainTex() {
+        return _sigTex('sig-aurora-curtain', 256, function (ctx, S) {
+            var rnd = _sigRand(0xA0207A);
+            /* bright skirt at the curtain's bottom edge, fading up */
+            var g = ctx.createLinearGradient(0, 0, 0, S);
+            g.addColorStop(0.0, 'rgba(255,255,255,0)');
+            g.addColorStop(0.45, 'rgba(255,255,255,0.22)');
+            g.addColorStop(0.86, 'rgba(255,255,255,0.9)');
+            g.addColorStop(1.0, 'rgba(255,255,255,0.28)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+            /* vertical striations — thin darker rays through the sheet */
+            ctx.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 44; i++) {
+                var x = rnd() * S, w = 1 + rnd() * 4;
+                ctx.globalAlpha = 0.12 + rnd() * 0.32;
+                ctx.fillRect(x, 0, w, S);
+            }
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function _sigAuroraCurtain3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.35;
+        var H = opts.height != null ? opts.height : ts * 2.6;
+        var baseY = opts.baseY != null ? opts.baseY : ts * 0.35;
+        var ms = opts.ms != null ? opts.ms : 2400;
+        var curtains = opts.curtains != null ? opts.curtains : 3;
+        var peakO = opts.opacity != null ? opts.opacity : 0.72;
+        var hues = opts.hues || [0.38, 0.52, 0.78];  /* green, cyan, violet */
+        var COLS = 26;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var tex = _sigAuroraCurtainTex();
+
+        var items = [];
+        for (var c = 0; c < curtains; c++) {
+            var geo = new THREE.BufferGeometry();
+            var pos = new Float32Array((COLS + 1) * 2 * 3);
+            var uv = new Float32Array((COLS + 1) * 2 * 2);
+            var idx = [];
+            for (var j = 0; j <= COLS; j++) {
+                /* vertex j*2 = bottom of column, j*2+1 = top */
+                uv[(j * 2) * 2] = j / COLS;     uv[(j * 2) * 2 + 1] = 0;
+                uv[(j * 2 + 1) * 2] = j / COLS; uv[(j * 2 + 1) * 2 + 1] = 1;
+                if (j < COLS) {
+                    var b0 = j * 2, t0 = j * 2 + 1, b1 = (j + 1) * 2, t1 = (j + 1) * 2 + 1;
+                    idx.push(b0, b1, t0, t0, b1, t1);
+                }
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            geo.setIndex(idx);
+            var mat = _sigMat(0xffffff, { map: tex });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.renderOrder = 170;
+            /* vertices are rewritten every frame — the initial all-zero
+               bounding sphere would get the ribbon frustum-culled */
+            mesh.frustumCulled = false;
+            group.add(mesh);
+            items.push({
+                geo: geo, mat: mat,
+                a0: (c / curtains) * Math.PI * 2 + c * 0.7,
+                span: 1.15 + (c % 2) * 0.55,
+                r: R * (0.72 + 0.2 * c),
+                hue: hues[c % hues.length],
+                phase: c * 1.9,
+            });
+        }
+
+        return _sigRun(group, ms, function (el) {
+            var t = el / ms;
+            var env = t < 0.14 ? t / 0.14 : (t > 0.72 ? Math.max(0, 1 - (t - 0.72) / 0.28) : 1);
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var posAttr = it.geo.getAttribute('position');
+                for (var j = 0; j <= COLS; j++) {
+                    var f = j / COLS;
+                    var ang = it.a0 + f * it.span + 0.13 * Math.sin(el * 0.0012 + it.phase + f * 3.0);
+                    var rr = it.r + ts * 0.16 * Math.sin(el * 0.0017 + it.phase * 2 + f * 5.2);
+                    var x = Math.cos(ang) * rr, z = Math.sin(ang) * rr;
+                    /* the top edge leans and breathes independently — the "dance" */
+                    var lean = ts * 0.22 * Math.sin(el * 0.0009 + it.phase + f * 2.2);
+                    var hTop = H * (0.82 + 0.18 * Math.sin(el * 0.0014 + f * 4.1 + it.phase));
+                    posAttr.setXYZ(j * 2, x, baseY, z);
+                    posAttr.setXYZ(j * 2 + 1,
+                        x + Math.cos(ang) * lean * 0.35, baseY + hTop, z + Math.sin(ang) * lean * 0.35);
+                }
+                posAttr.needsUpdate = true;
+                var hue = it.hue + 0.09 * Math.sin(el * 0.0006 + it.phase);
+                it.mat.color.setHSL(((hue % 1) + 1) % 1, 0.85, 0.62);
+                it.mat.opacity = peakO * env * (0.72 + 0.28 * Math.sin(el * 0.003 + it.phase));
+            }
+            group.rotation.y = el * 0.00035;
+        });
+    }
+
+    /* ── SPIRAL BEAM — a core lance wrapped in counter-rotating helix
+       strands with energy rings racing down its length. Stasis Beam's
+       signature; any caster→victim channel can reuse it (Glare does). ── */
+    function _sigSpiralBeam3D(fromTx, fromTy, toTx, toTy, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var a = _worldTorso(fromTx, fromTy);
+        var b = _worldTorso(toTx, toTy);
+        var ts = a.ts || (_cfg().tileSize || 128);
+
+        var start = new THREE.Vector3(a.x, a.y, a.z);
+        var end = new THREE.Vector3(b.x, b.y, b.z);
+        var dirV = end.clone().sub(start);
+        var length = dirV.length() || 1;
+        dirV.normalize();
+        var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirV);
+
+        var ms = opts.ms != null ? opts.ms : 900;
+        var color = opts.color != null ? opts.color : 0x9fe8ff;
+        var coreColor = opts.coreColor != null ? opts.coreColor : 0xffffff;
+        var helixR = opts.helixRadius != null ? opts.helixRadius : ts * 0.17;
+        var turns = opts.turns != null ? opts.turns : Math.max(3, (length / ts) * 1.25);
+        var spin = opts.spinSpeed != null ? opts.spinSpeed : 0.009;
+
+        var group = new THREE.Group();
+        group.position.copy(start);
+        group.quaternion.copy(quat);
+
+        /* core lance + soft sheath */
+        var cylGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true);
+        var coreMat = _sigMat(coreColor);
+        var core = new THREE.Mesh(cylGeo, coreMat);
+        core.renderOrder = 211; group.add(core);
+        var glowMat = _sigMat(color);
+        var glow = new THREE.Mesh(cylGeo.clone(), glowMat);
+        glow.renderOrder = 210; group.add(glow);
+
+        /* counter-phased helix strands */
+        var strands = [];
+        var STRANDS = opts.strands != null ? opts.strands : 2;
+        var SEG = 96;
+        for (var s = 0; s < STRANDS; s++) {
+            var pts = [];
+            for (var i = 0; i <= SEG; i++) {
+                var f = i / SEG;
+                var angH = f * turns * Math.PI * 2 + (s * Math.PI * 2 / STRANDS);
+                pts.push(new THREE.Vector3(Math.cos(angH) * helixR, f * length, Math.sin(angH) * helixR));
+            }
+            var curve = new THREE.CatmullRomCurve3(pts);
+            var tubeMat = _sigMat(color);
+            var tube = new THREE.Mesh(
+                new THREE.TubeGeometry(curve, 120, Math.max(1.6, ts * 0.03), 6, false), tubeMat);
+            tube.renderOrder = 212;
+            group.add(tube);
+            strands.push({ mesh: tube, mat: tubeMat });
+        }
+
+        /* energy rings racing along the lance */
+        var rings = [];
+        var RINGS = opts.rings != null ? opts.rings : 3;
+        for (var rI = 0; rI < RINGS; rI++) {
+            var rm = _sigMat(color);
+            var ring = new THREE.Mesh(
+                new THREE.TorusGeometry(helixR * 1.8, Math.max(1.2, ts * 0.02), 6, 24), rm);
+            ring.rotation.x = Math.PI / 2;   /* torus axis = beam axis */
+            ring.renderOrder = 213;
+            group.add(ring);
+            rings.push({ mesh: ring, mat: rm, off: rI / RINGS });
+        }
+
+        /* charge flare at the caster + glitter at the victim */
+        if (_canSpawn() && !_catOff('spells')) {
+            var mp = tilePx(fromTx, fromTy);
+            var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+            _spawn({ x: mp.x, y: mp.y, z: mz, mode: 'billboard', sprite: 'flash',
+                ml: 220, size0: ts * 0.45, size1: ts * 0.08, opacity0: 1, opacity1: 0 });
+            var ip = tilePx(toTx, toTy);
+            var iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
+            for (var k = 0; k < 12; k++) {
+                var ang2 = rn(0, 6.28), spd = rn(50, 170);
+                _spawn({
+                    x: ip.x, y: ip.y, z: iz,
+                    vx: Math.cos(ang2) * spd, vy: Math.sin(ang2) * spd, vz: rn(20, 110),
+                    mode: 'billboard', sprite: 'spark-blue',
+                    ml: 260 + rn(0, 300), size0: ts * 0.05, size1: 0,
+                    opacity0: 0.95, opacity1: 0, drag: 1.6, gravity: -10,
+                });
+            }
+        }
+
+        var lanceMs = Math.min(150, ms * 0.2);
+        return _sigRun(group, ms, function (el) {
+            var ext = el < lanceMs ? _sigEaseOutCubic(el / lanceMs) : 1;
+            var t = _sigClamp01(el / ms);
+            var fade = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+            var curLen = Math.max(0.01, length * ext);
+            var rCore = ts * 0.05, rGlow = ts * 0.14 * (1 + 0.1 * Math.sin(el * 0.03));
+            core.scale.set(rCore, curLen, rCore); core.position.y = curLen / 2;
+            glow.scale.set(rGlow, curLen, rGlow); glow.position.y = curLen / 2;
+            coreMat.opacity = 0.95 * fade;
+            glowMat.opacity = 0.3 * fade;
+            for (var si = 0; si < strands.length; si++) {
+                strands[si].mesh.rotation.y = el * spin * (si % 2 ? -1 : 1);
+                strands[si].mesh.scale.set(1, ext, 1);
+                strands[si].mat.opacity = 0.85 * fade;
+            }
+            for (var ri = 0; ri < rings.length; ri++) {
+                var rr = rings[ri];
+                var f = ((el * 0.0007) + rr.off) % 1;
+                rr.mesh.position.y = f * curLen;
+                rr.mat.opacity = 0.75 * fade * Math.sin(f * Math.PI);
+            }
+        });
+    }
+
+    /* ── REGEN PULSE — a soft healing wave breathing out of a source object
+       (Federation Beacon turn-start pulse, healing-totem end-of-round tick).
+       Ground ring + shimmer pillar + drifting heal motes. ─────────────── */
+    function _sigRegenPulse3D(tx, ty, opts) {
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var color = opts.color != null ? opts.color : 0x7dffc8;
+        var radiusPx = opts.radiusPx != null ? opts.radiusPx : ts * 2;
+        var ms = opts.ms != null ? opts.ms : 750;
+        _sigShockRing3D(tx, ty, {
+            color: color, r0: ts * 0.2, r1: radiusPx, ms: ms,
+            torus: false, opacity: 0.55, height: 5,
+        });
+        if (opts.pillar !== false) {
+            _sigLightPillar3D(tx, ty, {
+                color: color, coreColor: 0xffffff,
+                ms: Math.min(600, ms), height: ts * 1.3, radius: ts * 0.15,
+            });
+        }
+        if (_canSpawn() && !_catOff('healing')) {
+            var c = tilePx(tx, ty);
+            var z = unitSurfaceZ(tx, ty) + 8;
+            for (var i = 0; i < 6; i++) {
+                var ang = rn(0, 6.28), spd = rn(30, 90);
+                _spawn({
+                    x: c.x, y: c.y, z: z,
+                    vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, vz: rn(40, 110),
+                    mode: 'billboard', sprite: 'heal-cross',
+                    ml: 450 + rn(0, 350), size0: rn(8, 13), size1: 3,
+                    opacity0: 0.9, opacity1: 0, drag: 0.9, gravity: -30,
+                });
+            }
+        }
+    }
+
     var _spell3DGeometry = {
+
+        /* Nordic Federation kit (2026-07-10 rework) — see the SPELL_MAP
+           block near the top of the file for the sprite-layer halves. */
+        raceAuroraRay:       function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigAuroraCurtain3D(tx, ty, {
+                radiusPx: ts0 * 1.4, height: ts0 * 2.7, ms: 2300,
+            });
+            _sigScreenFlash('#aaffdd', 260, 0.14);
+        },
+        raceResonancePulse:  function(tx, ty, r) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigSonicBoom3D(tx, ty, {
+                color: 0x9fd8ff, rings: 3, radiusTiles: (r != null ? r : 2) * 0.95, height: 0.4,
+            });
+            _sigShockRing3D(tx, ty, { color: 0x9fd8ff, r1: ts0 * (r != null ? r : 2), ms: 520 });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0x88bbff, radiusPx: ts0 * 1.05,
+                growMs: 160, holdMs: 380, fadeMs: 260, spin: 0.004,
+            });
+        },
+        raceNordicAccord:    function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            /* the Accord broadcast — a gentle aurora settles over the team */
+            _sigAuroraCurtain3D(tx, ty, {
+                radiusPx: ts0 * 1.9, height: ts0 * 2.2, ms: 2000,
+                opacity: 0.45, hues: [0.5, 0.62, 0.78],
+            });
+        },
 
         bubble:              function(tx, ty, r) { _spawnBubbleDome(tx, ty, r); },
         raceHolyBulwark:     function(tx, ty, r) { _spawnDome3D(tx, ty, r, {
@@ -10396,6 +10773,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigUFO3D: _sigUFO3D,
         sigStormStrike3D: _sigStormStrike3D,
         sigScreenFlash: _sigScreenFlash,
+        sigAuroraCurtain3D: _sigAuroraCurtain3D,
+        sigSpiralBeam3D: _sigSpiralBeam3D,
+        sigRegenPulse3D: _sigRegenPulse3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentTelegraphMs: getDescentTelegraphMs,

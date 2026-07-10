@@ -1769,8 +1769,16 @@
             const cy = spell.aoeOriginSelf ? unit.y : (target ? target.y : unit.y);
             const r = spell.crossRadius || 1;
 
+            // diamond: true (Resonance Pulse) = full Manhattan diamond
             const crossTiles = [{ x: cx, y: cy }];
-            for (let i = 1; i <= r; i++) {
+            if (spell.diamond) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        if (Math.abs(dx) + Math.abs(dy) <= r) crossTiles.push({ x: cx + dx, y: cy + dy });
+                    }
+                }
+            } else for (let i = 1; i <= r; i++) {
                 crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
                                 { x: cx, y: cy + i }, { x: cx, y: cy - i });
             }
@@ -3979,13 +3987,25 @@
         }
 
         if (kind === 'cross') {
+            // diamond: true (Resonance Pulse) = full Manhattan diamond footprint
+            const _crossFootprint = (cx, cy, r) => {
+                const tiles = [{ x: cx, y: cy }];
+                if (spell.diamond) {
+                    for (let dy = -r; dy <= r; dy++) {
+                        for (let dx = -r; dx <= r; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            if (Math.abs(dx) + Math.abs(dy) <= r) tiles.push({ x: cx + dx, y: cy + dy });
+                        }
+                    }
+                } else for (let i = 1; i <= r; i++) {
+                    tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                }
+                return tiles;
+            };
             if (spell.aoeOriginSelf) {
                 const r = spell.crossRadius || 1;
-                const crossTiles = [{ x: unit.x, y: unit.y }];
-                for (let i = 1; i <= r; i++) {
-                    crossTiles.push({ x: unit.x + i, y: unit.y }, { x: unit.x - i, y: unit.y },
-                                    { x: unit.x, y: unit.y + i }, { x: unit.x, y: unit.y - i });
-                }
+                const crossTiles = _crossFootprint(unit.x, unit.y, r);
                 const hits = crossTiles.filter(t => v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)).length;
                 return hits > 0 ? { x: unit.x, y: unit.y } : null;
             }
@@ -3997,11 +4017,7 @@
                 if (d < 1 || d > _crossEffRange) continue;
                 if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
                 const r = spell.crossRadius || 1;
-                const crossTiles = [{ x: e.x, y: e.y }];
-                for (let i = 1; i <= r; i++) {
-                    crossTiles.push({ x: e.x + i, y: e.y }, { x: e.x - i, y: e.y },
-                                    { x: e.x, y: e.y + i }, { x: e.x, y: e.y - i });
-                }
+                const crossTiles = _crossFootprint(e.x, e.y, r);
                 const hits = crossTiles.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 const allyHits = crossTiles.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y)).length;
                 const score = hits * 10 - allyHits * 15;

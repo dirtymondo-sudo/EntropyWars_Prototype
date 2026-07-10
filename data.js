@@ -6187,19 +6187,21 @@ const RACE_ABILITIES = {
        precise light beams, hard single-target lockdown, and team serenity. */
     'nordic': [
         { id: 'raceAuroraRay', spellType: 'alien', element: 'light', name: 'Aurora Ray',
-          // Line pricing assumes ~2.4 targets hit, but in practice a 1-wide beam
-          // rarely catches more than one — at the formula's 65 MP this was
-          // Nordic's whole pool for one shot (20% win rate in the sim stats).
-          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 170, range: 5,
-          kind: 'line', damageType: 'magic', lineWidth: 1,
+          // 2026-07-10 rework: was a 1-wide line beam that rarely caught more
+          // than one target (20% win rate in the sim stats). Now a ranged
+          // 3×3 sky-strike — a curtain of aurora descends on the marked area.
+          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 160, range: 5,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'glare', duration: 1 }],
-          desc: 'Sweep a curtain of polar light down a line. Damages everything in the beam and dazzles survivors (DEF down 1 turn). Beautiful. Unsettling.' },
+          desc: 'Call a curtain of polar light down over a 3×3 area. Damages everything beneath the aurora and dazzles survivors (DEF down 1 turn). Beautiful. Unsettling.' },
         { id: 'raceResonancePulse', spellType: 'alien', element: 'sonic', name: 'Resonance Pulse',
+          // 2026-07-10 rework: full diamond nova (Manhattan radius 2, 12 tiles)
+          // instead of the old 4-tile cross — `diamond: true` flips the shape.
           type: 'damage', cost: 25, dmg: 150, range: 0,
-          kind: 'cross', damageType: 'magic', crossRadius: 1, aoeOriginSelf: true,
+          kind: 'cross', damageType: 'magic', crossRadius: 2, diamond: true, aoeOriginSelf: true,
           pushDistance: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Emit a harmonic shockwave in a cross around yourself. Damages, pushes enemies 1 tile, and slows them — the frequency of the Federation.' },
+          desc: 'Emit a harmonic shockwave in a full diamond around yourself (radius 2). Damages, pushes enemies 1 tile, and slows them — the frequency of the Federation.' },
         { id: 'raceStasisBeam', spellType: 'alien', element: 'light', name: 'Stasis Beam',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'debuff',
@@ -6207,11 +6209,14 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Suspend one enemy in a column of frozen light. Stunned for 1 turn — and flyers are calmly lowered out of the sky. Please remain still.' },
         { id: 'raceFederationBeacon', spellType: 'alien', element: 'light', name: 'Federation Beacon',
+          // 2026-07-10 rework: regen now pulses at the START of each ally's
+          // turn (healOnTurnStart, see _continueBlitzWithUnit_impl) instead of
+          // end-of-round, and the radius grew 2 → 4.
           type: 'utility', cost: 25, apCost: 1, range: 2,
           kind: 'deployObject',
           objectHp: 70, maxActivePerCaster: 1,
-          auraHeal: 40, auraRadius: 2,
-          desc: 'Plant a pylon of Pleiadian light. Allies within 2 tiles regenerate 40 HP per turn while it stands. The mothership is watching.' },
+          auraHeal: 40, auraRadius: 4, healOnTurnStart: true,
+          desc: 'Plant a pylon of Pleiadian light. At the start of each ally\'s turn within 4 tiles, the beacon pulses 40 HP of regeneration into them. The mothership is watching.' },
         { id: 'racePleiadianShield', spellType: 'alien', element: 'light', name: 'Pleiadian Shield',
           type: 'buff', cost: 25, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 220,
@@ -7746,7 +7751,7 @@ function _mfEffectiveTargets(s){
     if (s.splitCount)  E = Math.max(E, s.splitCount);
     if (s.kind === 'healAll' || s.healAll || s.manaRestoreAll || s.auraHeal) E = Math.max(E, 3.5);
     if (s.kind === 'summonWeather') E = Math.max(E, 2.6);
-    if (s.cross || s.kind === 'cross' || s.crossRadius) E = Math.max(E, 2.8);
+    if (s.cross || s.kind === 'cross' || s.crossRadius) E = Math.max(E, s.diamond ? 3.4 : 2.8);
     // Line and barrage kinds hit multiple units but carried no area fields, so
     // they were priced single-target — the biggest historical underpricing.
     if (s.kind === 'line' || s.kind === 'linePush' || s.lineWidth) E = Math.max(E, 2.4);

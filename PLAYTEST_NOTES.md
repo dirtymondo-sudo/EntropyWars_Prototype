@@ -4,6 +4,51 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## NORDIC SPELL/VFX REWORK (2026-07-10) — data.js, battle.js, ui.js, ai.js, party-builder.js, three-vfx-effects.js
+Token `20260710j` → `20260710k`. The Nordic alien kit got the dramatic
+PS1-era-JRPG treatment plus mechanical reworks:
+- **Aurora Ray**: `kind: 'line'` → ranged **3×3 AoE** (`kind:'aoe'`, range 5,
+  aoeRadius 1, dmg 160, still applies glare). VFX is a full descent cinematic
+  (`raceAuroraRay_descent`): blue telegraph rings → a **3D aurora curtain**
+  (`sigAuroraCurtain3D`) dances over the area while light-shafts + glitter-rain
+  pour down; per-tile prismatic bursts on impact.
+- **Resonance Pulse**: cross → **full diamond** (`diamond: true`,
+  crossRadius 2 = 12 tiles + center). New `getDiamondArea()` (battle.js, next
+  to getSquareArea) + `diamond` support in the cross handler, range preview,
+  ui.js footprint/highlight, ai.js scoring/targeting, party-builder label, and
+  a `'diamond'` shape in three-vfx-effects `_buildTileOffsets`. VFX =
+  `resonancePulse_aoe` (diamond-staggered stun-ring ripples) + sonic-boom rings
+  + a spinning magic circle under the caster. The mana formula prices diamond
+  crosses at E 3.4 (data.js `_mfEffectiveTargets`).
+- **Stasis Beam**: bespoke **spiraling beam** — `sigSpiralBeam3D` (core lance +
+  2 counter-rotating helix tubes + energy rings racing along it), fired from
+  battle.js's debuff branch (`_spiralBeamSpells` map, which also gives **Glare**
+  a violet spiral), capped by a frozen-light `sigLightPillar3D` stasis column
+  on the victim.
+- **Federation Beacon**: aura radius 2 → **4**, and regen now pulses at the
+  **start of each ally's turn** (`healOnTurnStart: true` on the spell → flag on
+  the deployed object → hook in `_continueBlitzWithUnit_impl`, battle.js
+  ~19845). End-of-round totem healing skips `healOnTurnStart` objects so it
+  can't double-dip. Pulse VFX = `sigRegenPulse3D` at the pylon + heal burst on
+  the unit.
+
+### New reusable VFX primitives (three-vfx-effects.js, exported on ThreeVFXEffects)
+Compose future spells from these the same way the sig toolkit is used:
+- `sigAuroraCurtain3D(tx, ty, {radiusPx, height, baseY, ms, curtains, opacity,
+  hues[]})` — waving vertical aurora ribbons with per-column sine dance and
+  green→cyan→violet HSL drift. Used by: Aurora Ray (strike curtain), Nordic
+  Accord (gentle team shimmer via `_spell3DGeometry.raceNordicAccord`).
+- `sigSpiralBeam3D(fromTx, fromTy, toTx, toTy, {color, coreColor, ms,
+  helixRadius, turns, strands, rings, spinSpeed})` — helix-wrapped lance
+  between two units. Used by: Stasis Beam, Glare. Good fit for any channeled
+  single-target ray.
+- `sigRegenPulse3D(tx, ty, {color, radiusPx, ms, pillar})` — soft healing wave:
+  ground ring + shimmer pillar + rising heal-cross motes. Used by: Federation
+  Beacon turn-start pulse AND all end-of-round healing totems (the old
+  invisible totem tick is now visible).
+- `_buildTileOffsets(shape, r)` now accepts `'diamond'` — any EFFECTS def with
+  `shape: 'diamond'` gets Manhattan-diamond tile bursts (staggered outward).
+
 ## TACTICAL-ONLY BETWEEN ACTIONS + EDGE-PAN CLAMP + FLYER FOCAL (2026-07-10) — battle.js, state.js
 Token `20260710d` → `20260710e`. User feedback fixes:
 - **Between-action TPS retired**: new `TPS_BETWEEN_ACTIONS = false` master

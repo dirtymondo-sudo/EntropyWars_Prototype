@@ -2925,20 +2925,32 @@
 
               const _crossR = spell.crossRadius || 1;
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'attack');
-              for (let i = 1; i <= _crossR; i++) {
-                const offsets = [{dx:i,dy:0},{dx:-i,dy:0},{dx:0,dy:i},{dx:0,dy:-i}];
-                for (const o of offsets) {
-                  const cx = _selectedForHl.x + o.dx, cy = _selectedForHl.y + o.dy;
-                  if (cx < 0 || cy < 0 || cx >= bw() || cy >= bh()) continue;
-                  const pk = posKey(cx, cy);
-                  const target = _liveUnitMap.get(pk);
-                  if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
-                    const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
-                    const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
-                    _hlCache.set(pk, 'attack enemy' + typeClass);
-                  } else {
-                    _hlCache.set(pk, 'attack');
+              // diamond novae highlight every tile within Manhattan radius,
+              // plain crosses just the 4 arms.
+              const _crossOffsets = [];
+              if (spell.diamond) {
+                for (let dy = -_crossR; dy <= _crossR; dy++) {
+                  for (let dx = -_crossR; dx <= _crossR; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (Math.abs(dx) + Math.abs(dy) <= _crossR) _crossOffsets.push({ dx, dy });
                   }
+                }
+              } else {
+                for (let i = 1; i <= _crossR; i++) {
+                  _crossOffsets.push({dx:i,dy:0},{dx:-i,dy:0},{dx:0,dy:i},{dx:0,dy:-i});
+                }
+              }
+              for (const o of _crossOffsets) {
+                const cx = _selectedForHl.x + o.dx, cy = _selectedForHl.y + o.dy;
+                if (cx < 0 || cy < 0 || cx >= bw() || cy >= bh()) continue;
+                const pk = posKey(cx, cy);
+                const target = _liveUnitMap.get(pk);
+                if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
+                  const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
+                  const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
+                  _hlCache.set(pk, 'attack enemy' + typeClass);
+                } else {
+                  _hlCache.set(pk, 'attack');
                 }
               }
             } else if (spell.kind === 'utility') {
@@ -8000,6 +8012,10 @@
                 const r = spell.crossRadius || 1;
                 const cx = spell.aoeOriginSelf ? casterUnit.x : tx;
                 const cy = spell.aoeOriginSelf ? casterUnit.y : ty;
+                // diamond: true = full Manhattan diamond (Resonance Pulse)
+                if (spell.diamond && typeof getDiamondArea === 'function') {
+                    return getDiamondArea(cx, cy, r);
+                }
                 const tiles = [{ x: cx, y: cy }];
                 for (let i = 1; i <= r; i++) {
                     tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
