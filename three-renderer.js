@@ -8988,10 +8988,18 @@ const ThreeRenderer = (function () {
                 var comma = pk.indexOf(',');
                 var hx = parseInt(pk.substring(0, comma), 10);
                 var hy = parseInt(pk.substring(comma + 1), 10);
-                /* zMap carries the surface z the click executor would use —
-                   lets under-platform floors draw at their own level. */
+                /* zMap carries each tile's primary surface z — lets
+                   under-platform floors draw at their own level. */
                 var hz = (cache.zMap && cache.zMap.has(pk)) ? cache.zMap.get(pk) : undefined;
                 highlightGroup.add(_makeHlTile(hx, hy, _getSharedHlMat(hlType), 0.92, 0.3, hz));
+                /* zExtra: the column's OTHER reachable surfaces (e.g. the
+                   cloud platform above a walkable floor) — draw them all. */
+                var _hzList = (cache.zExtra && cache.zExtra.get) ? cache.zExtra.get(pk) : null;
+                if (_hzList) {
+                    for (var _he = 0; _he < _hzList.length; _he++) {
+                        highlightGroup.add(_makeHlTile(hx, hy, _getSharedHlMat(_hzList[_he].cls || hlType), 0.92, 0.3, _hzList[_he].z));
+                    }
+                }
             });
             return;
         }
@@ -9001,36 +9009,26 @@ const ThreeRenderer = (function () {
         var sel = (function(){ var _u = _unitById.get(state.selectedUnitId); return (_u && !_u.dead) ? _u : null; })();
         if (!sel) { _lastHlKey = ''; return; }
 
-        /* Multi-floor columns can offer several surfaces at one (x,y); draw the
-           ONE the click executor (doMove/doJump) would pick — the surface
-           nearest the unit's own z — so the highlight never promises a
-           different floor than the move delivers. */
-        var _selZRef = (sel.z !== undefined && sel.z !== null) ? sel.z : 0;
-        function _dedupeNearestZ(list) {
-            var best = new Map();
-            for (var di = 0; di < list.length; di++) {
-                var dt = list[di];
-                var dpk = dt.x + ',' + dt.y;
-                var prev = best.get(dpk);
-                if (!prev || Math.abs((dt.z ?? 0) - _selZRef) < Math.abs((prev.z ?? 0) - _selZRef)) best.set(dpk, dt);
-            }
-            return best;
-        }
+        /* Multi-floor columns can offer several surfaces at one (x,y) — draw
+           EVERY reachable surface (ground floor AND the platform above it);
+           the click resolves which one was meant from the raycast hit. */
         var tiles = null;
         if (state.actionMode === 'move' && typeof G.getMoveTiles === 'function') {
             tiles = G.getMoveTiles(sel);
             if (tiles) {
-                _dedupeNearestZ(tiles).forEach(function(mt) {
+                for (var mi = 0; mi < tiles.length; mi++) {
+                    var mt = tiles[mi];
                     var mType = mt._jump ? 'move-jump' : mt._takeoff ? 'move-takeoff' : 'move';
                     highlightGroup.add(_makeHlTile(mt.x, mt.y, _getSharedHlMat(mType), 0.92, 0.3, mt.z));
-                });
+                }
             }
         } else if (state.actionMode === 'jump' && typeof G.getJumpTiles === 'function') {
             tiles = G.getJumpTiles(sel);
             if (tiles) {
-                _dedupeNearestZ(tiles).forEach(function(jt) {
+                for (var ji = 0; ji < tiles.length; ji++) {
+                    var jt = tiles[ji];
                     highlightGroup.add(_makeHlTile(jt.x, jt.y, _getSharedHlMat('move-jump'), 0.92, 0.3, jt.z));
-                });
+                }
             }
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
@@ -9712,17 +9710,20 @@ const ThreeRenderer = (function () {
         return state.selectedUnitId+'|'+state.actionMode+'|'+(state.selectedTool||'')+'|'+sel.x+','+sel.y+'|'+(sel.z||0)+'|'+state.activePlayer+'|'+state.round+'|'+(state.actionMenuView||'');
     }
 
-    function updateHoverHighlight(tx, ty) {
-        if (tx === _lastHoverX && ty === _lastHoverY) return;
-        _lastHoverX = tx; _lastHoverY = ty;
+    var _lastHoverZ = null;
+    function updateHoverHighlight(tx, ty, hz) {
+        if (tx === _lastHoverX && ty === _lastHoverY && hz === _lastHoverZ) return;
+        _lastHoverX = tx; _lastHoverY = ty; _lastHoverZ = hz;
         if (!highlightGroup) return;
         if (hoverMesh) { highlightGroup.remove(hoverMesh); hoverMesh.geometry.dispose(); hoverMesh.material.dispose(); hoverMesh = null; }
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
-        /* Multi-floor: if the highlighted surface on this column is BELOW the
-           roof (walking under a cloud platform / bridge), park the cursor at
-           that floor — x-ray so it stays visible through the platform. */
-        var _hvZ = (window._ewHlCache && window._ewHlCache.zMap) ? window._ewHlCache.zMap.get(tx + ',' + ty) : undefined;
+        /* Multi-floor: the cursor sits on the surface the POINTER is on (hz,
+           resolved from the raycast hit height) — falling back to the tile's
+           primary highlighted surface. Below-roof floors draw x-ray so the
+           cursor stays visible through the platform above. */
+        var _hvZ = (hz !== undefined && hz !== null) ? hz
+                 : ((window._ewHlCache && window._ewHlCache.zMap) ? window._ewHlCache.zMap.get(tx + ',' + ty) : undefined);
         var _hvTop = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty)
                    : (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
         var _hvSub = (_hvZ !== undefined && _hvZ !== null && _hvZ < _hvTop);
@@ -19260,6 +19261,24 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* Nearest walkable surface of column (tx,ty) to a raycast hit's world Y —
+       how multi-floor picks decide WHICH floor the pointer is on (the cloud
+       platform's top face vs the ground visible beneath it). */
+    function _surfaceZFromHitY(tx, ty, hitY) {
+        if (hitY === undefined || hitY === null || typeof getWalkableSurfaces !== 'function'
+            || !state.boardColumns || !state.boardColumns.length) return undefined;
+        var surf = getWalkableSurfaces(tx, ty);
+        if (!surf.length) return undefined;
+        if (surf.length === 1) return surf[0];
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var best = surf[0], bestD = Infinity;
+        for (var i = 0; i < surf.length; i++) {
+            var d = Math.abs(surf[i] * ts * ELEV_STEP_RATIO - hitY);
+            if (d < bestD) { bestD = d; best = surf[i]; }
+        }
+        return best;
+    }
+
     /* Resolve what the pointer at (clientX, clientY) is over and update all
        hover state (highlight, unit hover, pending target). Called from the
        canvas mousemove handler AND from renderFrame whenever the camera pose
@@ -19277,7 +19296,7 @@ const ThreeRenderer = (function () {
         }
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
-            updateHoverHighlight(tx, ty);
+            updateHoverHighlight(tx, ty, _surfaceZFromHitY(tx, ty, hit.hitY));
 
             if (tx !== _lastHitX || ty !== _lastHitY) {
                 _lastHitX = tx; _lastHitY = ty;
@@ -19375,6 +19394,12 @@ const ThreeRenderer = (function () {
         if (unitHit) {
             var _hitU = _unitById.get(unitHit.unitId) || null;
             if (_hitU && _hitU.z != null) clickZ = _hitU.z;
+        }
+        /* Multi-floor: resolve WHICH surface of the column was clicked from the
+           raycast hit's world height — the cloud-platform top face targets the
+           platform, the ground seen under/next to it targets the ground. */
+        if (clickZ === undefined && hit) {
+            clickZ = _surfaceZFromHitY(tx, ty, hit.hitY);
         }
         if (clickZ === undefined && typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
             var _actU = _unitById.get(state.selectedUnitId) || null;

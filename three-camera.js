@@ -341,7 +341,18 @@ const ThreeCamera = (function () {
            flooring so every face — top or side — resolves to the cube that was
            actually struck. The face normal is also reported so callers can do
            Minecraft-style placement against the clicked wall. */
-        const hit = hits[0];
+        /* Canopy blocks hidden by the cutaway (three-renderer fades them out
+           around the active unit) must not swallow the pick — skip them so the
+           ray lands on the floor visible through the hole. (Merged-terrain
+           pick proxies hide the ROOT, not the run mesh, so they still hit.) */
+        let hit = null;
+        for (let hi = 0; hi < hits.length; hi++) {
+            const ho = hits[hi].object;
+            if (ho && ho._ew_canopy && !ho.visible) continue;
+            hit = hits[hi];
+            break;
+        }
+        if (!hit) return null;
         const p = hit.point;
         const ts = tileSize;
         let nx = 0, ny = 1, nz = 0;
@@ -354,6 +365,9 @@ const ThreeCamera = (function () {
             tileX: Math.floor((p.x - nx * eps) / ts),
             tileY: Math.floor((p.z - nz * eps) / ts),
             faceNX: nx, faceNY: ny, faceNZ: nz,
+            /* world-space height of the hit point — lets multi-floor callers
+               resolve WHICH surface of the column was actually clicked */
+            hitY: p.y,
             /* true when the closest hit was terrain (a cube face), not a prop/object mesh */
             isTerrainHit: !hit._ew_objHit,
             /* for a cube-wall hit, the open tile IN FRONT of the struck wall */

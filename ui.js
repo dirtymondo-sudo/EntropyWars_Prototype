@@ -2411,12 +2411,15 @@
         : '';
       let _hlCache;
       let _hlZCache;
+      let _hlZExtra;
       if (_hlKeyParts && _hlKeyParts === _hlCacheStore.key) {
         _hlCache = _hlCacheStore.map;
         _hlZCache = _hlCacheStore.zMap || new Map();
+        _hlZExtra = _hlCacheStore.zExtra || new Map();
       } else {
         _hlCache = new Map();
         _hlZCache = new Map();
+        _hlZExtra = new Map();
         if (_selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting) {
           try {
         let _cachedMoveTiles, _cachedAttackTiles, _cachedInspectTiles;
@@ -2436,14 +2439,16 @@
           let _r1JumpTiles = [];
           if (_canJumpFromHere) {
             _r1JumpTiles = getJumpTiles(_selectedForHl);
-            // Add jump tiles that aren't already in getMoveTiles result
-            const _movePkSet = new Set();
-            for (const t of _cachedMoveTiles) _movePkSet.add(posKey(t.x, t.y));
+            // Add jump tiles that aren't already in getMoveTiles result.
+            // Keyed by (x,y,z), not (x,y): on multi-floor columns a jump onto
+            // the platform must coexist with a walk onto the floor beneath it.
+            const _movePk3Set = new Set();
+            for (const t of _cachedMoveTiles) _movePk3Set.add(t.x + ',' + t.y + ',' + (t.z ?? 0));
             for (const jt of _r1JumpTiles) {
-              const jpk = posKey(jt.x, jt.y);
-              if (!_movePkSet.has(jpk)) {
+              const jpk3 = jt.x + ',' + jt.y + ',' + (jt.z ?? 0);
+              if (!_movePk3Set.has(jpk3)) {
                 _cachedMoveTiles.push({ x: jt.x, y: jt.y, z: jt.z, cost: 0, _jump: true });
-                _movePkSet.add(jpk);
+                _movePk3Set.add(jpk3);
               }
             }
           }
@@ -2502,21 +2507,35 @@
             _selectedForHl.y = _wasdSavedY;
           }
           const _moveSet = new Set();
-          /* Multi-floor columns can offer SEVERAL surfaces at one (x,y) (the
-             ocean floor under a cloud platform AND the platform top). Keep the
-             surface the click executor (doMove) would actually pick — the one
-             nearest the unit's own z — so the drawn highlight and the executed
-             move always agree. Only store real z values: legacy 2D tiles carry
-             no z and must not default to 0 (that would sink the highlight). */
+          /* Multi-floor columns can offer SEVERAL surfaces at one (x,y) — the
+             ocean floor under a cloud platform AND the platform top. ALL of
+             them highlight: the surface nearest the unit's z is the primary
+             (map + zMap, what legacy consumers read), every other surface goes
+             into zExtra so the renderer draws it too. The click resolves which
+             one you meant from the raycast hit height. Only store real z
+             values: legacy 2D tiles carry no z and must not default to 0. */
           const _selZForHl = _selectedForHl.z ?? 0;
           for (const t of _cachedMoveTiles) {
             const pk = posKey(t.x, t.y);
+            const cls = t._jump ? 'move-jump' : t._takeoff ? 'move-takeoff' : 'move';
             const _tHasZ = (t.z !== undefined && t.z !== null);
-            if (_moveSet.has(pk)) {
+            if (_moveSet.has(pk) && _tHasZ) {
               const _prevZ = _hlZCache.get(pk);
-              if (_tHasZ && _prevZ !== undefined && Math.abs(t.z - _selZForHl) >= Math.abs(_prevZ - _selZForHl)) continue;
+              if (_prevZ !== undefined && t.z !== _prevZ) {
+                const list = _hlZExtra.get(pk) || [];
+                if (Math.abs(t.z - _selZForHl) < Math.abs(_prevZ - _selZForHl)) {
+                  // this surface becomes the primary; demote the old one
+                  list.push({ z: _prevZ, cls: _hlCache.get(pk) });
+                  _hlCache.set(pk, cls);
+                  _hlZCache.set(pk, t.z);
+                } else if (!list.some(e => e.z === t.z)) {
+                  list.push({ z: t.z, cls });
+                }
+                _hlZExtra.set(pk, list);
+              }
+              continue;
             }
-            _hlCache.set(pk, t._jump ? 'move-jump' : t._takeoff ? 'move-takeoff' : 'move');
+            _hlCache.set(pk, cls);
             if (_tHasZ) _hlZCache.set(pk, t.z);
             _moveSet.add(pk);
           }
@@ -2703,8 +2722,24 @@
         } else if (state.actionMode === 'jump' && canUnitAct(_selectedForHl)) {
           if (typeof getJumpTiles === 'function') {
             const _jumpTiles = getJumpTiles(_selectedForHl);
+            const _jSelZ = _selectedForHl.z ?? 0;
             for (const t of _jumpTiles) {
               const pk = posKey(t.x, t.y);
+              // multi-floor: keep every landing surface (primary + zExtra)
+              if (_hlCache.get(pk) === 'move-jump' && t.z !== undefined && _hlZCache.has(pk)) {
+                const _pz = _hlZCache.get(pk);
+                if (t.z !== _pz) {
+                  const list = _hlZExtra.get(pk) || [];
+                  if (Math.abs(t.z - _jSelZ) < Math.abs(_pz - _jSelZ)) {
+                    list.push({ z: _pz, cls: 'move-jump' });
+                    _hlZCache.set(pk, t.z);
+                  } else if (!list.some(e => e.z === t.z)) {
+                    list.push({ z: t.z, cls: 'move-jump' });
+                  }
+                  _hlZExtra.set(pk, list);
+                }
+                continue;
+              }
               _hlCache.set(pk, 'move-jump');
               if (t.z !== undefined) _hlZCache.set(pk, t.z);
             }
@@ -3059,7 +3094,7 @@
             }
         }
 
-        _hlCacheStore = { key: _hlKeyParts, map: _hlCache, zMap: _hlZCache };
+        _hlCacheStore = { key: _hlKeyParts, map: _hlCache, zMap: _hlZCache, zExtra: _hlZExtra };
 
         window._ewHlCache = _hlCacheStore;
 

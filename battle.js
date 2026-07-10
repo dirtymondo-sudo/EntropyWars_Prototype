@@ -23530,7 +23530,13 @@
                 };
 
                 const _r1Tiles = getMoveTiles(actingUnit);
-                const _r1Match = _r1Tiles.find(t => t.x === x && t.y === y);
+                /* Multi-floor: prefer the tile entry on the SURFACE the player
+                   clicked (cloud top vs the floor beneath) so takeoff flags and
+                   the z handed to doMove match the clicked highlight. */
+                const _r1Match = ((state._clickedZ !== undefined && state._clickedZ !== null)
+                        ? _r1Tiles.find(t => t.x === x && t.y === y && (t.z ?? 0) === state._clickedZ)
+                        : null)
+                    || _r1Tiles.find(t => t.x === x && t.y === y);
                 if (_r1Match) {
 
                     if (_r1Match._takeoff && canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
@@ -24934,9 +24940,20 @@
             {
                 const matches = moveTiles.filter(t => t.x === x && t.y === y);
                 if (matches.length > 0) {
-                    const unitZ = unit.z ?? 0;
-                    matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
-                    z = matches[0].z;
+                    /* Multi-floor: when the click resolved a SPECIFIC surface
+                       (cloud-platform top vs the ground beneath it) and that
+                       surface is a legal destination, honor it. Fall back to
+                       the closest-to-current-z tiebreak only when no z was
+                       given or the requested surface isn't reachable. */
+                    const _exact = (z !== undefined && z !== null)
+                        ? matches.find(t => (t.z ?? 0) === z) : null;
+                    if (_exact) {
+                        z = _exact.z;
+                    } else {
+                        const unitZ = unit.z ?? 0;
+                        matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
+                        z = matches[0].z;
+                    }
                 } else if (z === undefined || z === null) {
                     z = (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, unit.z) : 0);
                 }
