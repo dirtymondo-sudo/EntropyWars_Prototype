@@ -31,9 +31,9 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDeath) ThreeVFXEffects.fireDeath(tx, ty);
         }
-        function _vfxBlood(tx, ty, tier) {
+        function _vfxBlood(tx, ty, tier, opts) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBlood) ThreeVFXEffects.fireBlood(tx, ty, tier);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBlood) ThreeVFXEffects.fireBlood(tx, ty, tier, opts);
         }
         function _vfxDash(fromTx, fromTy, toTx, toTy) {
             if (_skipVisuals()) return;
@@ -11358,7 +11358,10 @@
                         : _bloodIsCrit ? 'critical'
                         : _bloodIsResist ? 'resist'
                         : 'normal';
-                    _vfxBlood(target.x, target.y, _bloodTier);
+                    _vfxBlood(target.x, target.y, _bloodTier, {
+                        damage: finalDamage,
+                        hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0
+                    });
                 }
                 addLog(`${sourceText}${unitDisplayName(target)} takes ${finalDamage} HP damage.${typeNote ? ` ${typeNote}` : ''}`);
 

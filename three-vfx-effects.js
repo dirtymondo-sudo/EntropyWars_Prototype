@@ -2008,10 +2008,144 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         resist:          '_blood_resist',
     };
 
-    function fireBlood(tx, ty, tier) {
+    /* Procedural blood. `tier` picks the flavour (normal/critical/super_
+       effective/killing_blow/resist); `opts.damage` + `opts.hpFrac` (0..1
+       remaining health) scale the VOLUME — bigger hits and more-wounded
+       targets bleed harder, and a kill erupts. Everything sprays from
+       chest/neck/head height instead of the feet. */
+    function fireBlood(tx, ty, tier, opts) {
         if (_suppressed()) return;
-        var effectId = _bloodEffectMap[tier] || _bloodEffectMap.normal;
-        _fireUtility(effectId, { tx: tx, ty: ty });
+        opts = opts || {};
+
+        var ts = (_cfg().tileSize) || 128;
+        /* the torso anchor already sits at floor + 0.45·ts; these lift the
+           wound the rest of the way up the body so blood reads as coming
+           from the chest / neck / head, not the ground. */
+        var Z_CHEST = ts * 0.14;
+        var Z_NECK  = ts * 0.26;
+        var Z_HEAD  = ts * 0.36;
+
+        var dmg    = +opts.damage || 0;
+        var hpFrac = (opts.hpFrac != null) ? Math.max(0, Math.min(1, opts.hpFrac)) : 1;
+
+        /* damage → volume: light tap ≈0.55, a 60-dmg hit ≈1.0, big blow caps ≈2.2 */
+        var dmgScale = dmg > 0 ? Math.max(0.55, Math.min(2.2, 0.45 + dmg / 55)) : 0.85;
+        /* the more wounded, the more they bleed (full hp ×1 → near-death ×1.75) */
+        var woundScale = 1 + (1 - hpFrac) * 0.75;
+        var intensity  = dmgScale * woundScale;
+
+        var isKill   = (tier === 'killing_blow');
+        var isSuper  = (tier === 'super_effective');
+        var isCrit   = (tier === 'critical');
+        var isResist = (tier === 'resist');
+        if (isKill)   intensity = Math.max(intensity, 2.4);
+        if (isResist) intensity *= 0.6;
+
+        var L = [];
+        var ci = function(base, min, max) {
+            return Math.max(min, Math.min(max, Math.round(base * intensity)));
+        };
+
+        /* ── core arterial spray: fast flecks bursting from the chest ─────── */
+        L.push({
+            count: ci(9, 5, 30), sprite: 'blood-fleck', anchor: 'torso', z: Z_CHEST,
+            ml: [280, 560], offsetXY: 6,
+            vxRange: 90 + 70 * intensity, vyRange: 90 + 70 * intensity,
+            vzRange: [30 + 40 * intensity, 90 + 110 * intensity],
+            gravity: 520, drag: 0.4,
+            size0: [4, 9], size1: 1.5, opacity0: 0.95
+        });
+
+        /* ── heavier droplets that arc out and rain down ─────────────────── */
+        L.push({
+            count: ci(5, 3, 20), sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
+            ml: [420, 780], offsetXY: 5,
+            vxRange: 70 + 55 * intensity, vyRange: 70 + 55 * intensity,
+            vzRange: [40 + 30 * intensity, 100 + 70 * intensity],
+            gravity: 720, drag: 0.15,
+            size0: [5, 11], size1: 3, opacity0: 0.95
+        });
+
+        /* ── fine mist haze (skip on weak / resisted hits) ───────────────── */
+        if (intensity > 0.9 && !isResist) {
+            L.push({
+                count: ci(2, 1, 6), sprite: 'blood-mist', anchor: 'torso', z: Z_NECK,
+                ml: [400, 760], offsetXY: 8,
+                vxRange: 24, vyRange: 24, vzRange: [8, 30], drag: 0.9,
+                size0: [18, 30], size1: [40, 56], opacity0: 0.5
+            });
+        }
+
+        /* ── directional spurt streaks for solid & better hits ───────────── */
+        if ((isCrit || isSuper || isKill || intensity > 1.35) && !isResist) {
+            var streakN = isKill ? 6 : Math.max(2, Math.round(3 * dmgScale));
+            for (var si = 0; si < streakN; si++) {
+                L.push({
+                    count: 1, sprite: 'blood-streak', anchor: 'torso',
+                    z: (isKill ? Z_NECK : Z_CHEST) + rn(0, ts * 0.12),
+                    ml: [220, 420], offsetXY: 4,
+                    vxRange: 55, vyRange: 55, vzRange: [120, 230], gravity: 560, drag: 0.2,
+                    w0: rn(4, 7), w1: 2, h0: rn(26, 44), h1: 10,
+                    spriteRot: rn(-38, 38), opacity0: 0.9
+                });
+            }
+        }
+
+        /* ── ground splatter for heavy / super / lethal hits ─────────────── */
+        if (isSuper || isKill || intensity > 1.4) {
+            var splatSize = isKill ? rn(58, 92) : isSuper ? rn(44, 66) : rn(34, 52);
+            L.push({
+                delayMs: 70, sprite: 'blood-splat', anchor: 'floor', mode: 'world',
+                z: 1, ml: isKill ? 2400 : 1500,
+                size0: splatSize, size1: splatSize * 1.3, opacity0: isKill ? 0.72 : 0.6
+            });
+            L.push({
+                count: ci(4, 3, 12), delayMs: 60, sprite: 'blood-splat', anchor: 'floor',
+                mode: 'world', z: 1, offsetXY: splatSize * 0.5, ml: 1400,
+                size0: [8, 18], size1: [12, 26], opacity0: 0.5
+            });
+        }
+
+        if (isKill) {
+            /* dark pool spreading under the body */
+            L.push({
+                delayMs: 260, sprite: 'blood-pool', anchor: 'floor', mode: 'world',
+                z: 1, ml: 3200, size0: 30, size1: rn(80, 120), opacity0: 0.8
+            });
+            /* GUSH: three upward waves erupting from the neck/head like a fountain */
+            for (var w = 0; w < 3; w++) {
+                var d = w * 130;
+                L.push({
+                    count: 12, delayMs: d, sprite: 'blood-fleck', anchor: 'torso', z: Z_HEAD,
+                    ml: [300, 620], offsetXY: 5,
+                    vxRange: 70, vyRange: 70, vzRange: [140, 300 - w * 30],
+                    gravity: 620, drag: 0.25, size0: [4, 10], size1: 1.5, opacity0: 0.95
+                });
+                L.push({
+                    count: 7, delayMs: d, sprite: 'blood-drop', anchor: 'torso', z: Z_NECK,
+                    ml: [500, 900], offsetXY: 6,
+                    vxRange: 55, vyRange: 55, vzRange: [90, 200 - w * 20],
+                    gravity: 760, drag: 0.12, size0: [6, 13], size1: 3.5, opacity0: 0.95
+                });
+            }
+            /* lingering drips that keep falling from the wound */
+            L.push({
+                count: 8, delayMs: 380, sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
+                ml: [600, 1100], offsetXY: 10,
+                vxRange: 20, vyRange: 20, vzRange: [-10, 20],
+                gravity: 620, drag: 0.1, size0: [4, 9], size1: 2.5, opacity0: 0.9
+            });
+        } else if (woundScale > 1.4 && !isResist) {
+            /* badly wounded but still standing → a few delayed drips */
+            L.push({
+                count: ci(3, 2, 8), delayMs: 300, sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
+                ml: [500, 950], offsetXY: 9,
+                vxRange: 18, vyRange: 18, vzRange: [-8, 18],
+                gravity: 620, drag: 0.12, size0: [4, 8], size1: 2.5, opacity0: 0.85
+            });
+        }
+
+        _spawnEffect({ layers: L }, { tx: tx, ty: ty });
     }
 
     function fireDash(fromTx, fromTy, toTx, toTy) {
