@@ -5581,10 +5581,13 @@
            uses for its caster→target line. Falls back to the supplied resting
            yaw when the toggle is off or the unit has no facing yet. */
         function getTurnStartCamYaw(unit, fallbackYaw) {
-            // The follow camera modes also open every turn parked behind the
-            // unit (over-the-shoulder), not just the cinematic action cam.
-            const _behindUnit = state.cinematicActionCam
-                || (typeof isFollowCamMode === 'function' && isFollowCamMode());
+            // Tactical-only between actions (TPS_BETWEEN_ACTIONS false, see the
+            // contextual-shots block): turns open at the RESTING board yaw so
+            // the map never spins to face each unit — the behind-the-unit
+            // heading only comes back if the between-action TPS is re-enabled.
+            const _behindUnit = (typeof TPS_BETWEEN_ACTIONS !== 'undefined' && TPS_BETWEEN_ACTIONS)
+                && (state.cinematicActionCam
+                    || (typeof isFollowCamMode === 'function' && isFollowCamMode()));
             if (!_behindUnit || !unit) return fallbackYaw;
             const f = getUnitFacing(unit);
             if (!f || (!f.dx && !f.dy)) return fallbackYaw;
@@ -7824,6 +7827,25 @@
            rest tilt ride much closer to the horizon there (90 = dead level). */
         const FOLLOW_REST_TILT_MAX = 85;
 
+        /* The unit whose ALTITUDE the camera's focal height should track at a
+           tile. unitAt() prefers the GROUND unit of a stack (correct for
+           picking/combat), but for the FOCAL that buried every flyer: framing
+           an airborne unit with someone standing beneath it kept the camera
+           at ground level while the flyer hovered off the top of the screen.
+           Here the airborne unit wins whenever it is the one being played
+           (active blitz unit / selection) or there is nobody underneath. */
+        function _camFocalUnitAt(x, y) {
+            if (typeof unitAt !== 'function') return null;
+            const g = unitAt(x, y);
+            if (typeof airborneUnitAt === 'function') {
+                const air = airborneUnitAt(x, y);
+                if (air && (!g || g === air
+                    || air.id === state._blitzActiveUnitId
+                    || air.id === state.selectedUnitId)) return air;
+            }
+            return g;
+        }
+
         const camera = {
 
             x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
@@ -8008,7 +8030,7 @@
                         const ceilX = Math.ceil(this.x),   ceilY = Math.ceil(this.y);
                         if (floorX === ceilX && floorY === ceilY) {
 
-                            const _camUnit = (typeof unitAt === 'function') ? unitAt(floorX, floorY) : null;
+                            const _camUnit = _camFocalUnitAt(floorX, floorY);
                             if (_camUnit && typeof canFly === 'function' && canFly(_camUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(_camUnit)) {
                                 const unitZ = _camUnit.z ?? 0;
                                 elevZ = unitZ > 0 ? window._getElevationPx(unitZ) : 0;
@@ -8029,6 +8051,21 @@
                             const hInterp = h00 * (1 - fx) * (1 - fy) + h10 * fx * (1 - fy)
                                            + h01 * (1 - fx) * fy + h11 * fx * fy;
                             if (hInterp > 0) elevZ = window._getElevationPx(hInterp);
+                            // FRACTIONAL camera positions used to interpolate
+                            // TERRAIN heights only, so any focal parked between
+                            // tile centers (mid-tween settle, shoulder offset,
+                            // post-pan) sat at GROUND level under an airborne
+                            // unit — the "flyer's camera isn't in the air until
+                            // after he moves" bug. Track the flyer at the tile
+                            // the focal rounds to, same as the integer branch.
+                            const _rfx = Math.round(this.x), _rfy = Math.round(this.y);
+                            const _airU = _camFocalUnitAt(_rfx, _rfy);
+                            if (_airU && !_airU.dead
+                                && typeof canFly === 'function' && canFly(_airU)
+                                && typeof isUnitAirborne === 'function' && isUnitAirborne(_airU)) {
+                                const _az = _airU.z ?? 0;
+                                if (_az > 0) elevZ = Math.max(elevZ, window._getElevationPx(_az) + ts * 0.55);
+                            }
                         }
                     }
 
@@ -8217,7 +8254,7 @@
                 let elevZ = 0;
                 if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
                     const rx = Math.round(x), ry = Math.round(y);
-                    const u = (typeof unitAt === 'function') ? unitAt(rx, ry) : null;
+                    const u = _camFocalUnitAt(rx, ry);
                     if (u && typeof canFly === 'function' && canFly(u)
                         && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
                         const uz = u.z ?? 0;
@@ -8695,7 +8732,7 @@
                     let hasUnit = false;
                     for (const p of points) {
                         const ix = Math.round(p.x), iy = Math.round(p.y);
-                        const u = (typeof unitAt === 'function') ? unitAt(ix, iy) : null;
+                        const u = _camFocalUnitAt(ix, iy);
                         if (u && !u.dead) hasUnit = true;
                         if (u && typeof canFly === 'function' && canFly(u)
                             && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
@@ -10282,6 +10319,12 @@
            target cycling). Both set camera._tpsHold, which keeps the TPS rig
            engaged with no cinematic shot id; the hold drops on hand-pan, on
            tile-pick actions (tactical), at end-of-round and on AI turns. */
+        /* Master switch for the BETWEEN-action TPS shots. false = the camera
+           stays in the tactical board view for the whole game (turn start,
+           target select/cycle, back-to-menu all keep the overhead framing);
+           the over-the-shoulder rig only engages for the spell/ability ACTION
+           shots themselves (_playCineActionShot / dash / descent cams). */
+        const TPS_BETWEEN_ACTIONS = false;
         const TPS_TURN_TILT = 78;   // resting over-the-shoulder pitch (12° below horizon)
         /* Over-the-shoulder offset for the turn shot, in tiles: the orbit
            focal is pushed to screen-RIGHT so the character rides left-of-
@@ -10291,6 +10334,9 @@
         function _tpsUnitShot(unit, opts = {}) {
             if (!unit || state.cameraDisabled || state.phase !== 'battle') return false;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
+            // Between-action TPS retired: returning false hands every caller
+            // to its tactical fallback (turn activation, soft-reset, …).
+            if (!TPS_BETWEEN_ACTIONS) return false;
             if (!_cineTpsAnchor(unit, unit)) return false;
             camera._tpsHold = true;
             const yaw = opts.yaw ?? getFollowCamYaw(unit, camera.yaw);
@@ -10312,6 +10358,16 @@
         function _tpsTargetShot(unit, tgt) {
             if (!unit || !tgt || state.cameraDisabled || state.phase !== 'battle') return false;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
+            // Between-action TPS retired: browsing/cycling targets keeps the
+            // TACTICAL view — just pan so both the caster and the candidate
+            // target sit in frame (zoom/tilt untouched, no over-the-shoulder).
+            if (!TPS_BETWEEN_ACTIONS) {
+                camera._tpsHold = false;
+                focusBoardCameraOnTiles(
+                    [{ x: unit.x, y: unit.y }, { x: tgt.x, y: tgt.y }],
+                    { persist: true, transitionMs: 420, _fogAllowed: true });
+                return true;
+            }
             const dx = tgt.x - unit.x, dy = tgt.y - unit.y;
             if (!dx && !dy) return _tpsUnitShot(unit);
             if (!_cineTpsAnchor(unit, unit)) return false;
@@ -10354,7 +10410,8 @@
             if (!u) return;
             if (state.controllers?.[u.player] !== CTRL.LOCAL || state.autoPlayers?.[u.player]) return;
             if (typeof getViewerPlayer === 'function' && u.player !== getViewerPlayer()) return;
-            _tpsUnitShot(u);
+            // TPS retired → tactical re-center on the active unit instead.
+            if (!_tpsUnitShot(u)) _softResetCameraToUnit(u);
         };
 
         function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
@@ -10821,7 +10878,9 @@
             camera._busy = true;
             const camSeq = ++camera._seqId;
 
-            const _cineEligible = state.cinematicActionCam && !_skipVisuals()
+            // opts.noActionCam: caller opts out of the over-the-shoulder shot
+            // (basic attacks) — the tactical midpoint pan below runs instead.
+            const _cineEligible = state.cinematicActionCam && !opts.noActionCam && !_skipVisuals()
                 && !(typeof isCinematicPresent === 'function' && isCinematicPresent())
                 && (Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y)) >= 1;
 
@@ -25640,7 +25699,10 @@
                 sourceHold: 1150,
                 targetHold: 1050,
                 attackName: 'Attack',
-                _noCinematic: true
+                _noCinematic: true,
+                // Basic attacks stay in the tactical board view — the
+                // over-the-shoulder action cam is for spells/abilities only.
+                noActionCam: true
             });
             markDirty('board', 'selectedUnit', 'hud');
             renderIfDirty();

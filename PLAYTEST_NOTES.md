@@ -4,6 +4,42 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## TACTICAL-ONLY BETWEEN ACTIONS + EDGE-PAN CLAMP + FLYER FOCAL (2026-07-10) — battle.js, state.js
+Token `20260710d` → `20260710e`. User feedback fixes:
+- **Between-action TPS retired**: new `TPS_BETWEEN_ACTIONS = false` master
+  switch (battle.js, contextual-shots block ~10290). The camera now stays in
+  the TACTICAL board view for the whole game; over-the-shoulder only engages
+  for the spell/ability ACTION shots (`_playCineActionShot` / dash / descent).
+  Gated: `_tpsUnitShot` (returns false → every caller's tactical fallback:
+  turn activation, soft-reset), `_tpsTargetShot` (target select/cycle now does
+  a tactical pan framing caster+target midpoint via focusBoardCameraOnTiles,
+  zoom/tilt untouched), `window._tpsTurnShot` (back-to-menu → tactical
+  soft-reset), `getTurnStartCamYaw` (turns open at the RESTING yaw, no
+  per-unit board spin). Flip the const to true to restore the old contextual
+  TPS everywhere.
+- **Basic attacks never action-cam**: `performAttack`'s
+  playOffensiveActionCamera call passes `noActionCam: true`; the new gate in
+  `_cineEligible` routes it to the tactical midpoint pan. Spells/abilities
+  keep their action shots.
+- **Edge pan clamped to the board** (state.js `_edgePanTick`): focal x/y capped
+  to [0, bw()-1]/[0, bh()-1] before `camera.snap`, so riding the screen edge
+  can no longer scroll the map off screen. Right-drag hand pan intentionally
+  NOT clamped.
+- **Flyer focal height** ("camera not in the air until the flyer moved"): the
+  camera's natural focal tracking only honored airborne altitude when the
+  camera sat at EXACT integer tile coords; any fractional focal (mid-tween
+  settle, TPS shoulder offset, post-pan) fell into the bilinear branch which
+  interpolates TERRAIN heights only → focal at ground under a hovering unit.
+  Also `unitAt()` prefers the GROUND unit of a stack, burying a flyer with
+  someone beneath it. Fixes: new `_camFocalUnitAt(x,y)` (airborne unit wins
+  when it's the active/selected unit or nothing is under it) used by
+  `camera._apply` (both branches — the fractional branch now lifts to the
+  flyer's altitude at the rounded tile), `_naturalElevAt`, and
+  `focusOnTiles`.
+NOT playtested (RULE #1c). Watch: target-cycling now pans the board midpoint
+instead of swinging a TPS shot — verify it reads OK with far targets; flyer
+focal pop when the camera crosses the 0.5-tile rounding boundary (cosmetic).
+
 ## PREDATOR DROP AIRBORNE + HOROLOGE UX OVERHAUL (2026-07-10) — battle.js, hud.js, ui.js
 Token `20260709z` → `20260710a`. All four files must ship together.
 - **Predator Drop from the air (battle.js doSpell)**: sky grabs (skyDrop /

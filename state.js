@@ -4890,9 +4890,19 @@
                     dTileY = bdy / (ts + gap);
                 }
                 if (!dTileX && !dTileY) return _edgePanStop();
+                // Cap the drift at the board's edge: the focal point can reach
+                // the outermost tiles but never leave the map, so an edge pan
+                // can't scroll the battlefield off the screen entirely (the
+                // right-drag pan is a deliberate hand move; only the automatic
+                // edge drift is clamped).
+                const _maxX = (typeof bw === 'function' ? bw() : (CONFIG.boardWidth || CONFIG.boardSize || 20)) - 1;
+                const _maxY = (typeof bh === 'function' ? bh() : (CONFIG.boardHeight || CONFIG.boardSize || 20)) - 1;
+                const _nx = Math.max(0, Math.min(_maxX, camera.x + dTileX));
+                const _ny = Math.max(0, Math.min(_maxY, camera.y + dTileY));
+                if (_nx === camera.x && _ny === camera.y) return _edgePanStop();
                 _edgeActive = true;
                 state._userPanning = true;
-                camera.snap({ _force: true, x: camera.x + dTileX, y: camera.y + dTileY, zoom: camera.zoom });
+                camera.snap({ _force: true, x: _nx, y: _ny, zoom: camera.zoom });
             }
             requestAnimationFrame(_edgePanTick);
 
