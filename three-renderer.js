@@ -551,10 +551,32 @@ const ThreeRenderer = (function () {
         'inspect':         0x22eebb,
         'move ally':       0xddaa22,
         'combo-target':    0xff8822,
-        'selected':        0xffffff,
+        'selected':        0xffd83d,   /* cursor yellow — brackets-only style */
         'placeable':       0x44aaff
     };
     const HL_OPACITY = 0.62;
+
+    /* Interior-fill strength per type — the VISUAL WEIGHT dial.
+       Tier 1 · context ("where I could act"): spell/attack range, inspect —
+                thin outline lattice + faint wash. Quietest thing on the board.
+       Tier 2 · options ("places I can go / things I can pick"): move tiles,
+                valid targets — readable solid color.
+       Tier 3 · consequences ("what WILL be hit"): enemy-target tiles and the
+                AoE footprint (overlay styles below) — loudest, with hatching.
+       Anything not listed falls back to 0.34 (the old uniform fill). */
+    const HL_FILL = {
+        'spell-range':     0.13,
+        'spell-range-bg':  0.08,
+        'attack':          0.13,
+        'inspect':         0.12,
+        'move-edge':       0.08,
+        'attack enemy':    0.50,
+        'heal':            0.42,
+        'move ally':       0.30,
+        'combo-target':    0.48,
+        'placeable':       0.28,
+        'selected':        0.05
+    };
 
     const HL_OPACITY_MAP = {
         'move-edge':       0.40,
@@ -573,22 +595,24 @@ const ThreeRenderer = (function () {
     };
 
     const HL_EDGE_GLOW = {
-        'move':         0.7,
-        'move-jump':    0.8,
-        'move-takeoff': 0.75,
-        'move-2ap':     0.65,
-        'move-3ap':     0.55,
+        'move':         0.75,
+        'move-jump':    0.85,
+        'move-takeoff': 0.8,
+        'move-2ap':     0.6,
+        'move-3ap':     0.5,
         'move-edge':    0.4,
-        'attack':       0.6,
-        'attack enemy': 0.9,
-        'spell-range':  0.8,
-        'spell-range-bg': 0.4,
-        'heal':         0.75,
-        'inspect':      0.5,
+        'attack':       0.8,
+        'attack enemy': 1.15,
+        /* Range = crisp thin outline, faint fill (HL_FILL) — the FFT-style
+           "lattice" read: reach stays obvious without shouting. */
+        'spell-range':  1.0,
+        'spell-range-bg': 0.5,
+        'heal':         1.0,
+        'inspect':      0.6,
         'move ally':    0.7,
-        'combo-target': 0.8,
-        'selected':     0.5,
-        'placeable':    0.5
+        'combo-target': 1.0,
+        'selected':     0.35,
+        'placeable':    0.6
     };
 
     var _hlGlobalTime = { value: 0.0 };
@@ -606,6 +630,9 @@ const ThreeRenderer = (function () {
         'uniform float uOpacity;',
         'uniform float uTime;',
         'uniform float uEdgeGlow;',
+        'uniform float uFill;',
+        'uniform float uBrackets;',
+        'uniform float uHatch;',
         'uniform int uDots;',
         'varying vec2 vUv;',
         '',
@@ -615,26 +642,42 @@ const ThreeRenderer = (function () {
         '  float edgeX = min(uv.x, 1.0 - uv.x);',
         '  float edgeY = min(uv.y, 1.0 - uv.y);',
         '  float edge = min(edgeX, edgeY);',
-        '  float borderHard = 1.0 - smoothstep(0.0, 0.05, edge);',
-        '  float borderSoft = 1.0 - smoothstep(0.0, 0.13, edge);',
-        '  float innerGlow = 1.0 - smoothstep(0.0, 0.45, edge);',
-        '',
-        '  float gridX = abs(fract(uv.x * 4.0) - 0.5);',
-        '  float gridY = abs(fract(uv.y * 4.0) - 0.5);',
-        '  float grid = smoothstep(0.45, 0.5, gridX) + smoothstep(0.45, 0.5, gridY);',
-        '  grid = min(grid, 1.0) * 0.18;',
+        /* Visual-weight pass (2026-07-10): a tile is now built from FOUR
+           independent dials instead of one everything-on recipe —
+             uEdgeGlow → crisp thin OUTLINE (every tile's base "drawn line")
+             uFill     → interior wash (how solid the tile body reads)
+             uHatch    → animated diagonal danger stripes (damage footprints ONLY)
+             uBrackets → corner brackets (the CURSOR / selected tile ONLY)
+           Quiet context (spell range) = outline + faint fill. Loud consequence
+           (AoE impact) = solid fill + stripes. The old shader stamped grid
+           lines + corner brackets + border + glow on EVERY tile, which is why
+           forty range tiles all screamed like cursors. */
+        '  float borderHard = 1.0 - smoothstep(0.02, 0.055, edge);',
+        '  float borderSoft = (1.0 - smoothstep(0.0, 0.16, edge)) * 0.30;',
         '',
         // Calmer highlights (2026-07-07 readability pass): tiny pulse — the
         // old ±12% throb made the whole board feel like it was shouting.
         '  float pulse = 0.94 + 0.06 * sin(uTime * 2.2);',
         '',
-        '  float bracketLen = 0.22;',
-        '  float bracketW = 0.045;',
-        '  float bTL = step(uv.x, bracketLen) * step(uv.y, bracketW) + step(uv.y, bracketLen) * step(uv.x, bracketW);',
-        '  float bTR = step(1.0 - bracketLen, uv.x) * step(uv.y, bracketW) + step(uv.y, bracketLen) * step(1.0 - bracketW, uv.x);',
-        '  float bBL = step(uv.x, bracketLen) * step(1.0 - bracketW, uv.y) + step(1.0 - bracketLen, uv.y) * step(uv.x, bracketW);',
-        '  float bBR = step(1.0 - bracketLen, uv.x) * step(1.0 - bracketW, uv.y) + step(1.0 - bracketLen, uv.y) * step(1.0 - bracketW, uv.x);',
-        '  float brackets = min(bTL + bTR + bBL + bBR, 1.0) * 0.95;',
+        '  float brackets = 0.0;',
+        '  if (uBrackets > 0.0) {',
+        '    float bracketLen = 0.26;',
+        '    float bracketW = 0.065;',
+        '    float bTL = step(uv.x, bracketLen) * step(uv.y, bracketW) + step(uv.y, bracketLen) * step(uv.x, bracketW);',
+        '    float bTR = step(1.0 - bracketLen, uv.x) * step(uv.y, bracketW) + step(uv.y, bracketLen) * step(1.0 - bracketW, uv.x);',
+        '    float bBL = step(uv.x, bracketLen) * step(1.0 - bracketW, uv.y) + step(1.0 - bracketLen, uv.y) * step(uv.x, bracketW);',
+        '    float bBR = step(1.0 - bracketLen, uv.x) * step(1.0 - bracketW, uv.y) + step(1.0 - bracketLen, uv.y) * step(1.0 - bracketW, uv.x);',
+        // The cursor breathes a touch harder than range tiles so it reads alive.
+        '    brackets = min(bTL + bTR + bBL + bBR, 1.0) * uBrackets * (0.85 + 0.15 * sin(uTime * 3.4));',
+        '  }',
+        '',
+        '  float hatch = 0.0;',
+        '  if (uHatch > 0.0) {',
+        // Slow-crawling 45° stripes — the universal "this area takes the hit"
+        // language (Into the Breach). Reserved for damage/effect footprints.
+        '    float sBand = fract((uv.x + uv.y) * 3.0 - uTime * 0.22);',
+        '    hatch = (smoothstep(0.28, 0.40, sBand) - smoothstep(0.60, 0.72, sBand)) * uHatch;',
+        '  }',
         '',
         '  float dots = 0.0;',
         '  if (uDots > 0) {',
@@ -666,31 +709,35 @@ const ThreeRenderer = (function () {
         '    }',
         '  }',
         '',
-        // Readability pass: quieter interior fill (tiles read as crisp borders
-        // + a soft wash instead of a solid glowing slab), and much less
-        // wash-toward-white so each highlight KEEPS ITS COLOR — color is how
+        // Interior fill strength is now per-style (uFill), and the wash-toward-
+        // white is kept low so each highlight KEEPS ITS COLOR — color is how
         // the player tells move/strike/hazard/terrain apart at a glance.
-        '  float fill = 0.34 * pulse;',
-        '  float border = (borderHard * 1.0 + borderSoft * 0.5) * uEdgeGlow * pulse;',
-        '  float glow = innerGlow * uEdgeGlow * 0.25;',
+        '  float fill = uFill * pulse;',
+        '  float border = (borderHard + borderSoft) * uEdgeGlow * pulse;',
         '',
-        '  float alpha = (fill + border + glow + grid + brackets + dots) * uOpacity;',
+        '  float alpha = (fill + border + brackets + hatch * 0.55 + dots) * uOpacity;',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
-        '  float bright = border * 0.5 + brackets * 0.65 + dots * 0.85;',
-        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.45));',
+        '  float bright = borderHard * uEdgeGlow * 0.28 + brackets * 0.30 + dots * 0.85;',
+        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.40));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
     ].join('\n');
 
-    function _makeHlMaterial(color, opacity, edgeGlow, dotCount) {
+    /* style (optional): { fill, brackets, hatch } — the visual-weight dials.
+       Defaults preserve the old look for callers that don't pass one. */
+    function _makeHlMaterial(color, opacity, edgeGlow, dotCount, style) {
         var c = new THREE.Color(color);
+        var st = style || {};
         return new THREE.ShaderMaterial({
             uniforms: {
                 uColor:    { value: c },
                 uOpacity:  { value: opacity },
                 uTime:     _hlGlobalTime,
                 uEdgeGlow: { value: edgeGlow },
+                uFill:     { value: (st.fill !== undefined) ? st.fill : 0.34 },
+                uBrackets: { value: st.brackets || 0.0 },
+                uHatch:    { value: st.hatch || 0.0 },
                 uDots:     { value: dotCount || 0 }
             },
             vertexShader: _hlVertexShader,
@@ -8794,7 +8841,7 @@ const ThreeRenderer = (function () {
         if (hlType.indexOf('attack enemy') === 0) matKey = 'attack enemy';
         if (_hlMatCache.has(matKey)) return _hlMatCache.get(matKey);
 
-        var color, opacity, edgeGlow, dotCount;
+        var color, opacity, edgeGlow, dotCount, style;
         var baseTok = hlType.split(' ')[0];
 
         /* Tactical move highlight: base token (move / move-2ap / move-jump …)
@@ -8804,14 +8851,15 @@ const ThreeRenderer = (function () {
            2-AP tiles recede below 1-AP tiles so cost also reads at a glance. */
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
             dotCount = HL_DOT_COUNT[baseTok] || 0;
-            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 0.95; }
-            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.85; }
-            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.80; }
+            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.0;  style = { fill: 0.36 }; }
+            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.9;  style = { fill: 0.30, hatch: 0.6 }; }
+            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.85; style = { fill: 0.32 }; }
             else {
                 color = HL_COLORS[baseTok] || HL_COLORS['move'];
                 var _far = (baseTok === 'move-2ap' || baseTok === 'move-3ap');
                 opacity = _far ? 0.34 : 0.5;
-                edgeGlow = _far ? 0.4 : 0.6;
+                edgeGlow = _far ? 0.45 : 0.7;
+                style = { fill: _far ? 0.22 : 0.28 };
             }
         } else {
             color = _getHlColor(matKey);
@@ -8819,10 +8867,22 @@ const ThreeRenderer = (function () {
             edgeGlow = HL_EDGE_GLOW[matKey] || 0.6;
             if (edgeGlow === 0.6 && matKey.indexOf('attack enemy') === 0) edgeGlow = HL_EDGE_GLOW['attack enemy'];
             dotCount = HL_DOT_COUNT[matKey] || 0;
+            var fillKey = (matKey.indexOf('attack enemy') === 0) ? 'attack enemy' : matKey;
+            style = { fill: (HL_FILL[fillKey] !== undefined) ? HL_FILL[fillKey] : 0.34 };
+            /* 'selected' (teleport origin etc.) = the cursor language:
+               yellow corner brackets, near-empty body. */
+            if (matKey === 'selected') style.brackets = 1.0;
         }
 
-        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount);
+        var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount, style);
         mat._ew_shared = true;
+        mat._ew_baseOpacity = opacity;
+        /* Context tiles yield when an AoE footprint is on screen (see
+           _updateHlFocusDim): ranges dim so the consequence pops. Valid-target
+           tiles (attack enemy / heal / combo) and the cursor stay full. */
+        mat._ew_dimmable = (matKey === 'spell-range' || matKey === 'spell-range-bg' ||
+                            matKey === 'attack' || matKey === 'inspect' ||
+                            baseTok.indexOf('move') === 0);
         _hlMatCache.set(matKey, mat);
         return mat;
     }
@@ -8911,6 +8971,40 @@ const ThreeRenderer = (function () {
 
     var _previewBaseOpacity = {};
 
+    /* Per-overlay visual-weight recipes (see the shader dials).
+       Consequence overlays (aoe / telegraph / plan targets) hatch + fill
+       heavily; context overlays (range previews) are outline lattices;
+       danger context (enemyRange) hatches faintly. Unlisted names keep the
+       old generic look. */
+    var _OVERLAY_STYLE = {
+        'aoe':                 { fill: 0.60, edgeGlow: 1.15, hatch: 0.9 },
+        'telegraph':           { fill: 0.55, edgeGlow: 1.1,  hatch: 0.9 },
+        'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9,  hatch: 0.9 },
+        'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1,  hatch: 0.5 },
+        'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1,  hatch: 0.5 },
+        'spellRange':          { fill: 0.13, edgeGlow: 1.0 },
+        'attackRange':         { fill: 0.13, edgeGlow: 1.0 },
+        'spellRangeElem':      { fill: 0.30, edgeGlow: 0.9 },
+        'enemyRange':          { fill: 0.14, edgeGlow: 0.55, hatch: 0.45 },
+        'weather':             { fill: 0.30, edgeGlow: 0.15 },
+        'movePreview':         { fill: 0.30, edgeGlow: 0.9 },
+        'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
+        'spellApproachMove':   { fill: 0.30, edgeGlow: 0.9 },
+        'spellApproachShove':  { fill: 0.38, edgeGlow: 0.9 },
+        'actionPlanShove':     { fill: 0.38, edgeGlow: 0.9 }
+    };
+
+    /* Shared yellow-corner cursor material — stamped on top of whichever tile
+       is the current aim point (tiles passed with cursor:true). */
+    var _cursorBracketMat = null;
+    function _getCursorBracketMat() {
+        if (!_cursorBracketMat) {
+            _cursorBracketMat = _makeHlMaterial(0xffd83d, 0.95, 0.0, 0, { fill: 0.0, brackets: 1.0 });
+            _cursorBracketMat._ew_shared = true;
+        }
+        return _cursorBracketMat;
+    }
+
     function setOverlay(name, tiles, color, opacity) {
         clearOverlay(name);
         if (!highlightGroup || !tiles || !tiles.length) return;
@@ -8918,21 +9012,47 @@ const ThreeRenderer = (function () {
         var meshes = [];
         var isPreview = !!_PREVIEW_OVERLAYS[name];
         if (isPreview) _previewBaseOpacity[name] = opacity;
+        var style = _OVERLAY_STYLE[name] || { fill: 0.34, edgeGlow: isPreview ? 0.85 : 0.65 };
         for (var i = 0; i < tiles.length; i++) {
             var t = tiles[i];
             var tileColor = (t.color !== undefined) ? t.color : color;
             var tileOpacity = (t.opacity !== undefined) ? t.opacity : opacity;
-            var oMat = _makeHlMaterial(tileColor, tileOpacity, isPreview ? 0.85 : 0.65, 0);
+            var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, 0, style);
             var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2));
             plane._ew_overlay = name;
             highlightGroup.add(plane);
             meshes.push(plane);
+            if (t.cursor) {
+                var cur = _makeHlTile(t.x, t.y, _getCursorBracketMat(), 0.98, (name === 'aoe' ? 0.9 : 0.5));
+                cur._ew_overlay = name;
+                highlightGroup.add(cur);
+                meshes.push(cur);
+            }
         }
         _overlayMeshes[name] = meshes;
     }
 
+    /* Focus dim: while an AoE footprint (or telegraph) is on screen, the
+       context layers — range lattices, move tiles — drop to ~40% so the
+       consequence owns the board. Eases in/out so it never pops. */
+    var _hlFocusDim = 1.0;
+    function _updateHlFocusDim() {
+        var aoeUp = (_overlayMeshes['aoe'] && _overlayMeshes['aoe'].length) ||
+                    (_overlayMeshes['telegraph'] && _overlayMeshes['telegraph'].length);
+        var target = aoeUp ? 0.4 : 1.0;
+        _hlFocusDim += (target - _hlFocusDim) * 0.18;
+        if (Math.abs(_hlFocusDim - target) < 0.01) _hlFocusDim = target;
+        _hlMatCache.forEach(function(mat) {
+            if (!mat._ew_dimmable || mat._ew_baseOpacity === undefined) return;
+            if (mat.uniforms && mat.uniforms.uOpacity) {
+                mat.uniforms.uOpacity.value = mat._ew_baseOpacity * _hlFocusDim;
+            }
+        });
+    }
+
     function _updatePreviewOverlayPulse() {
         var t = performance.now() / 1000.0;
+        _updateHlFocusDim();
         for (var name in _PREVIEW_OVERLAYS) {
             var meshes = _overlayMeshes[name];
             if (!meshes || !meshes.length) continue;
@@ -8942,7 +9062,8 @@ const ThreeRenderer = (function () {
             // 0.4..1.0 @5Hz strobe made range previews the loudest thing on
             // screen when they should just quietly mark reachable tiles.
             var pulse = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2.6));
-            var op = baseOp * pulse;
+            // Range previews are context too — they yield to an active AoE.
+            var op = baseOp * pulse * _hlFocusDim;
             for (var i = 0; i < meshes.length; i++) {
                 var mat = meshes[i].material;
                 if (mat && mat.uniforms && mat.uniforms.uOpacity) {
@@ -8957,8 +9078,8 @@ const ThreeRenderer = (function () {
         if (!meshes || !meshes.length) return;
         for (var i = 0; i < meshes.length; i++) {
             if (highlightGroup) highlightGroup.remove(meshes[i]);
-            if (meshes[i].geometry) meshes[i].geometry.dispose();
-            if (meshes[i].material) meshes[i].material.dispose();
+            if (meshes[i].geometry && !meshes[i].geometry._ew_shared) meshes[i].geometry.dispose();
+            if (meshes[i].material && !meshes[i].material._ew_shared) meshes[i].material.dispose();
         }
         delete _overlayMeshes[name];
     }
@@ -9512,7 +9633,10 @@ const ThreeRenderer = (function () {
         if (hoverMesh) { highlightGroup.remove(hoverMesh); hoverMesh.geometry.dispose(); hoverMesh.material.dispose(); hoverMesh = null; }
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
-        var hMat = _makeHlMaterial(0xffffff, 0.25, 0.3, 0);
+        /* The cursor: yellow corner brackets + a whisper of fill. The ONLY
+           tile on the board that wears brackets (plus the AoE impact tile),
+           so "where am I pointing" is always a one-glance read. */
+        var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
         hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
         hoverMesh.rotation.x = -Math.PI / 2;
         hoverMesh.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
@@ -9536,7 +9660,7 @@ const ThreeRenderer = (function () {
         }
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.7;
-        var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0);
+        var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0, { fill: 0.10 });
         underfootMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), uMat);
         underfootMesh.rotation.x = -Math.PI / 2;
         underfootMesh.position.set(tx * ts + ts / 2, topY, ty * ts + ts / 2);

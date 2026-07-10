@@ -8111,7 +8111,8 @@
                         return {
                             x: t.x, y: t.y,
                             color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : (isCenter ? 0xff3333 : 0xcc2222),
-                            opacity: isCenter ? 0.5 : 0.35
+                            opacity: isCenter ? 0.55 : 0.38,
+                            cursor: isCenter   // yellow corner brackets on the impact tile
                         };
                     });
                     ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
@@ -8125,7 +8126,7 @@
                     let singleColor = 0xff3333;
                     if (isHealKind) singleColor = 0x33ff33;
                     else if (isBuffKind) singleColor = 0x4488ff;
-                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: 0.45 }], singleColor, 0.45);
+                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: 0.45, cursor: true }], singleColor, 0.45);
                     _aoePreview3dActive = true;
                 }
             }
