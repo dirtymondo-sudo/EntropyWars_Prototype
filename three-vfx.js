@@ -4,6 +4,7 @@ const ThreeVFX = (function () {
     var MAX_PARTICLES = 512;
     var MAX_WORLD_QUADS = 256;
     var MAX_QUAD_BILLBOARDS = 256;
+    var MAX_BLOOD_GLOBS = 64;
 
     var _scene = null;
 
@@ -11,6 +12,7 @@ const ThreeVFX = (function () {
 
     var _worldMeshPool = [];
     var _quadMeshPool  = [];
+    var _globPool      = [];
 
     var _particles = [];
 
@@ -23,6 +25,7 @@ const ThreeVFX = (function () {
     var _tmpQuat2 = null;
     var _tmpEuler = null;
     var _tmpVec = null;
+    var _upVec = null;
 
     var _spriteMap = {
 
@@ -83,12 +86,12 @@ const ThreeVFX = (function () {
         'debris':            { r: 0.47, g: 0.39, b: 0.27, blend: 'nrm' },
         'rock-debris':       { r: 0.67, g: 0.55, b: 0.39, blend: 'nrm' },
         'sand-particle':     { r: 0.86, g: 0.75, b: 0.51, blend: 'nrm' },
-        'blood-fleck':       { r: 0.71, g: 0.08, b: 0.08, blend: 'nrm' },
-        'blood-splat':       { r: 0.55, g: 0.04, b: 0.04, blend: 'nrm' },
-        'blood-mist':        { r: 0.45, g: 0.06, b: 0.06, blend: 'nrm' },
-        'blood-drop':        { r: 0.62, g: 0.05, b: 0.05, blend: 'nrm' },
-        'blood-streak':      { r: 0.60, g: 0.05, b: 0.05, blend: 'nrm' },
-        'blood-pool':        { r: 0.34, g: 0.02, b: 0.02, blend: 'nrm' },
+        'blood-fleck':       { r: 0.88, g: 0.07, b: 0.07, blend: 'nrm' },
+        'blood-splat':       { r: 0.66, g: 0.04, b: 0.04, blend: 'nrm' },
+        'blood-mist':        { r: 0.55, g: 0.06, b: 0.06, blend: 'nrm' },
+        'blood-drop':        { r: 0.78, g: 0.05, b: 0.05, blend: 'nrm' },
+        'blood-streak':      { r: 0.78, g: 0.05, b: 0.05, blend: 'nrm' },
+        'blood-pool':        { r: 0.40, g: 0.02, b: 0.02, blend: 'nrm' },
         'bubble':            { r: 0.55, g: 0.78, b: 1.00, blend: 'nrm' },
         'shadow-wisp':       { r: 0.24, g: 0.16, b: 0.31, blend: 'nrm' },
         'snowflake':         { r: 0.90, g: 0.96, b: 1.00, blend: 'nrm' },
@@ -758,6 +761,52 @@ const ThreeVFX = (function () {
         return pool;
     }
 
+    /* ── 3D blood globs ──────────────────────────────────────────────────
+       Blood spurts use REAL lumpy meshes with a glossy lit material instead
+       of flat billboards, so they read as wet 3D liquid: they catch the
+       sun/hemisphere light, show specular glints, tumble as they fly, and
+       fast ones stretch along their velocity into whipping arterial jets.
+       Four shared lumpy icosahedron variants keep the pool cheap. */
+    var _globGeos = [];
+    var _GLOB_COLOR_DEFAULT = 0xb00d0d;
+
+    function _buildGlobGeos() {
+        for (var v = 0; v < 4; v++) {
+            var geo = new THREE.IcosahedronGeometry(0.5, 1);
+            var pos = geo.attributes.position;
+            for (var i = 0; i < pos.count; i++) {
+                var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+                /* continuous lump noise (same displacement for duplicated
+                   verts → the hull stays watertight) */
+                var n = 0.84 + 0.30 * Math.abs(
+                    Math.sin(x * 5.1 + v * 7.3) * Math.cos(y * 4.7 - v * 3.1) +
+                    Math.sin(z * 6.3 + v * 1.7) * 0.6);
+                pos.setXYZ(i, x * n, y * n, z * n);
+            }
+            geo.computeVertexNormals();
+            _globGeos.push(geo);
+        }
+    }
+
+    function _createGlobPool(count) {
+        var pool = [];
+        for (var i = 0; i < count; i++) {
+            var mat = new THREE.MeshStandardMaterial({
+                color: _GLOB_COLOR_DEFAULT,
+                roughness: 0.22, metalness: 0.0,
+                emissive: 0x300303,
+                transparent: true, opacity: 0,
+            });
+            var mesh = new THREE.Mesh(_globGeos[i % _globGeos.length], mat);
+            mesh.visible = false;
+            mesh.frustumCulled = false;
+            mesh.renderOrder = 99;
+            _scene.add(mesh);
+            pool.push({ mesh: mesh, material: mat, inUse: false });
+        }
+        return pool;
+    }
+
     function _claimFromPool(pool) {
         for (var i = 0; i < pool.length; i++) {
             if (!pool[i].inUse) return i;
@@ -787,6 +836,7 @@ const ThreeVFX = (function () {
         _tmpQuat2 = new THREE.Quaternion();
         _tmpEuler = new THREE.Euler();
         _tmpVec   = new THREE.Vector3();
+        _upVec    = new THREE.Vector3(0, 1, 0);
 
         _sharedPlaneGeo = new THREE.PlaneGeometry(1, 1);
 
@@ -795,6 +845,8 @@ const ThreeVFX = (function () {
         _spritePool = _createSpritePool(MAX_PARTICLES);
         _worldMeshPool = _createMeshPool(MAX_WORLD_QUADS, 101);
         _quadMeshPool  = _createMeshPool(MAX_QUAD_BILLBOARDS, 102);
+        _buildGlobGeos();
+        _globPool = _createGlobPool(MAX_BLOOD_GLOBS);
 
         for (var i = 0; i < MAX_PARTICLES; i++) {
             _particles.push({
@@ -817,6 +869,10 @@ const ThreeVFX = (function () {
                 _beamYawDeg: null, _beamPitchDeg: 0,
                 _spriteRot: 0,
                 _uvRect: null,
+                _gsx: 1, _gsy: 1, _gsz: 1,
+                _rot0x: 0, _rot0y: 0, _rot0z: 0,
+                _spinx: 0, _spiny: 0, _spinz: 0,
+                _stretch: false,
             });
         }
 
@@ -848,6 +904,8 @@ const ThreeVFX = (function () {
             _hideMesh(_worldMeshPool[p.slotIdx]);
         } else if (p.poolType === 'quad' && p.slotIdx >= 0 && p.slotIdx < _quadMeshPool.length) {
             _hideMesh(_quadMeshPool[p.slotIdx]);
+        } else if (p.poolType === 'glob' && p.slotIdx >= 0 && p.slotIdx < _globPool.length) {
+            _hideMesh(_globPool[p.slotIdx]);
         }
 
         p.alive = false;
@@ -867,10 +925,15 @@ const ThreeVFX = (function () {
         var sc     = _spriteColor(sprite);
         var isWorld = (sc.blend === 'world' || mode === 'world');
         var isNonSquare = (opts.w0 != null || opts.h0 != null);
+        var isGlob = (sprite === 'blood-glob');
 
         var poolType, slotIdx;
 
-        if (isWorld) {
+        if (isGlob) {
+            poolType = 'glob';
+            slotIdx = _claimFromPool(_globPool);
+            if (slotIdx < 0) return null;
+        } else if (isWorld) {
             poolType = 'world';
             slotIdx = _claimFromPool(_worldMeshPool);
             if (slotIdx < 0) return null;
@@ -891,6 +954,16 @@ const ThreeVFX = (function () {
         if (poolType === 'sprite') _spritePool[slotIdx].inUse = true;
         else if (poolType === 'world') _worldMeshPool[slotIdx].inUse = true;
         else if (poolType === 'quad') _quadMeshPool[slotIdx].inUse = true;
+        else if (poolType === 'glob') {
+            var gEntry = _globPool[slotIdx];
+            gEntry.inUse = true;
+            gEntry.mesh.geometry = _globGeos[Math.floor(Math.random() * _globGeos.length)];
+            gEntry.material.color.setHex(opts.globColor != null ? opts.globColor : _GLOB_COLOR_DEFAULT);
+            p._gsx = _rn(0.7, 1.35); p._gsy = _rn(0.7, 1.35); p._gsz = _rn(0.7, 1.35);
+            p._rot0x = _rn(0, Math.PI * 2); p._rot0y = _rn(0, Math.PI * 2); p._rot0z = _rn(0, Math.PI * 2);
+            p._spinx = _rn(-8, 8); p._spiny = _rn(-8, 8); p._spinz = _rn(-8, 8);
+            p._stretch = !!opts.stretch;
+        }
 
         p.x = opts.x || 0; p.y = opts.y || 0; p.z = opts.z || 0;
         p.vx = opts.vx || 0; p.vy = opts.vy || 0; p.vz = opts.vz || 0;
@@ -1009,6 +1082,9 @@ const ThreeVFX = (function () {
             qEntry.material.blending = blending;
             qEntry.material.needsUpdate = true;
             qEntry.mesh.visible = true;
+        } else if (p.poolType === 'glob') {
+            /* lit solid mesh — no sprite texture / blend table involved */
+            _globPool[p.slotIdx].mesh.visible = true;
         }
     }
 
@@ -1018,6 +1094,40 @@ const ThreeVFX = (function () {
         if (p.poolType === 'sprite') _writeSprite(p);
         else if (p.poolType === 'world') _writeWorldMesh(p);
         else if (p.poolType === 'quad') _writeQuadMesh(p);
+        else if (p.poolType === 'glob') _writeGlobMesh(p);
+    }
+
+    function _writeGlobMesh(p) {
+        var entry = _globPool[p.slotIdx];
+        if (!entry) return;
+        var t = Math.min(1, p.life / p.ml);
+        var w = _vfxToWorld(p.x, p.y, p.z);
+        var mesh = entry.mesh;
+        mesh.position.set(w.x, w.y, w.z);
+
+        var sz = _lerp(p.size0, p.size1, t);
+        var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+
+        if (p._stretch && speed > 50) {
+            /* fast glob → orient along velocity and stretch into a liquid
+               jet (volume-preserving squash on the other two axes) */
+            var st = Math.min(2.6, 1 + speed / 280);
+            _tmpVec.set(p.vx / speed, p.vz / speed, p.vy / speed);
+            mesh.quaternion.setFromUnitVectors(_upVec, _tmpVec);
+            var sq = 1 / Math.sqrt(st);
+            mesh.scale.set(sz * p._gsx * sq, sz * p._gsy * st, sz * p._gsz * sq);
+        } else {
+            var lt = p.life / 1000;
+            mesh.quaternion.setFromEuler(_tmpEuler.set(
+                p._rot0x + p._spinx * lt,
+                p._rot0y + p._spiny * lt,
+                p._rot0z + p._spinz * lt));
+            mesh.scale.set(sz * p._gsx, sz * p._gsy, sz * p._gsz);
+        }
+
+        var op = _lerp(p.opacity0, p.opacity1, t);
+        entry.material.opacity = op;
+        mesh.visible = (op > 0.001);
     }
 
     function _writeSprite(p) {

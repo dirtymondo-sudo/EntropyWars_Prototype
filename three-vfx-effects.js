@@ -1862,6 +1862,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             if (layer._descent) opts.descent = layer._descent;
             if (layer.spriteRot != null) opts.spriteRot = layer.spriteRot;
+            if (layer.stretch) opts.stretch = true;
+            if (layer.globColor != null) opts.globColor = layer.globColor;
 
             _spawn(opts);
         }
@@ -2046,24 +2048,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             return Math.max(min, Math.min(max, Math.round(base * intensity)));
         };
 
-        /* ── core arterial spray: fast flecks bursting from the chest ─────── */
+        /* Everything airborne is a 3D 'blood-glob' mesh (lit, glossy, lumpy,
+           tumbling — see three-vfx.js glob pool). `stretch: true` elongates
+           fast globs along their velocity into whipping arterial jets.
+           Sprites remain only for the volumetric mist haze and the flat
+           floor decals (splat / pool), which SHOULD be flat. */
+
+        /* ── arterial jets: fast stretched globs whipping out of the chest ── */
         L.push({
-            count: ci(9, 5, 30), sprite: 'blood-fleck', anchor: 'torso', z: Z_CHEST,
-            ml: [280, 560], offsetXY: 6,
-            vxRange: 90 + 70 * intensity, vyRange: 90 + 70 * intensity,
-            vzRange: [30 + 40 * intensity, 90 + 110 * intensity],
-            gravity: 520, drag: 0.4,
-            size0: [4, 9], size1: 1.5, opacity0: 0.95
+            count: ci(9, 6, 20), sprite: 'blood-glob', stretch: true,
+            anchor: 'torso', z: Z_CHEST,
+            ml: [340, 640], offsetXY: 5,
+            vxRange: 110 + 85 * intensity, vyRange: 110 + 85 * intensity,
+            vzRange: [50 + 50 * intensity, 130 + 140 * intensity],
+            gravity: 680, drag: 0.25,
+            size0: [3.5, 6.5], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
         });
 
-        /* ── heavier droplets that arc out and rain down ─────────────────── */
+        /* ── heavy tumbling gouts that arc out and rain down ─────────────── */
         L.push({
-            count: ci(5, 3, 20), sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
-            ml: [420, 780], offsetXY: 5,
-            vxRange: 70 + 55 * intensity, vyRange: 70 + 55 * intensity,
-            vzRange: [40 + 30 * intensity, 100 + 70 * intensity],
-            gravity: 720, drag: 0.15,
-            size0: [5, 11], size1: 3, opacity0: 0.95
+            count: ci(5, 3, 12), sprite: 'blood-glob',
+            anchor: 'torso', z: Z_CHEST,
+            ml: [420, 800], offsetXY: 5,
+            vxRange: 75 + 60 * intensity, vyRange: 75 + 60 * intensity,
+            vzRange: [40 + 35 * intensity, 100 + 80 * intensity],
+            gravity: 800, drag: 0.12,
+            size0: [5, 10], size1: [3, 6], opacity0: 1, opacity1: 0.9
         });
 
         /* ── fine mist haze (skip on weak / resisted hits) ───────────────── */
@@ -2073,6 +2083,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 ml: [400, 760], offsetXY: 8,
                 vxRange: 24, vyRange: 24, vzRange: [8, 30], drag: 0.9,
                 size0: [18, 30], size1: [40, 56], opacity0: 0.5
+            });
+        }
+
+        /* ── meaty chunks on crits / super-effective / kills ─────────────── */
+        if ((isCrit || isSuper || isKill) && !isResist) {
+            L.push({
+                count: isKill ? 8 : ci(3, 2, 6), sprite: 'blood-glob',
+                globColor: 0x7a0a0a, anchor: 'torso', z: Z_NECK,
+                ml: [500, 900], offsetXY: 6,
+                vxRange: 90, vyRange: 90, vzRange: [80, 210],
+                gravity: 880, drag: 0.08,
+                size0: [6, 11], size1: [5, 9], opacity0: 1, opacity1: 0.9
             });
         }
 
@@ -2091,17 +2113,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        /* ── ground splatter for heavy / super / lethal hits ─────────────── */
-        if (isSuper || isKill || intensity > 1.4) {
-            var splatSize = isKill ? rn(58, 92) : isSuper ? rn(44, 66) : rn(34, 52);
+        /* ── ground splatter — any solid hit leaves a mark now ───────────── */
+        if (isSuper || isKill || intensity > 1.0) {
+            var splatSize = isKill ? rn(70, 110) : isSuper ? rn(48, 72) : rn(34, 54);
             L.push({
                 delayMs: 70, sprite: 'blood-splat', anchor: 'floor', mode: 'world',
-                z: 1, ml: isKill ? 2400 : 1500,
-                size0: splatSize, size1: splatSize * 1.3, opacity0: isKill ? 0.72 : 0.6
+                z: 1, ml: isKill ? 2600 : 1500,
+                size0: splatSize, size1: splatSize * 1.3, opacity0: isKill ? 0.75 : 0.6
             });
             L.push({
                 count: ci(4, 3, 12), delayMs: 60, sprite: 'blood-splat', anchor: 'floor',
-                mode: 'world', z: 1, offsetXY: splatSize * 0.5, ml: 1400,
+                mode: 'world', z: 1, offsetXY: splatSize * 0.55, ml: 1400,
                 size0: [8, 18], size1: [12, 26], opacity0: 0.5
             });
         }
@@ -2110,42 +2132,52 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* dark pool spreading under the body */
             L.push({
                 delayMs: 260, sprite: 'blood-pool', anchor: 'floor', mode: 'world',
-                z: 1, ml: 3200, size0: 30, size1: rn(80, 120), opacity0: 0.8
+                z: 1, ml: 3600, size0: 30, size1: rn(100, 150), opacity0: 0.85
             });
-            /* GUSH: three upward waves erupting from the neck/head like a fountain */
+            /* GEYSER: three waves of stretched jets + gouts erupting from the
+               neck like a Mortal Kombat fountain */
             for (var w = 0; w < 3; w++) {
                 var d = w * 130;
                 L.push({
-                    count: 12, delayMs: d, sprite: 'blood-fleck', anchor: 'torso', z: Z_HEAD,
+                    count: 8, delayMs: d, sprite: 'blood-glob', stretch: true,
+                    anchor: 'torso', z: Z_HEAD,
                     ml: [300, 620], offsetXY: 5,
-                    vxRange: 70, vyRange: 70, vzRange: [140, 300 - w * 30],
-                    gravity: 620, drag: 0.25, size0: [4, 10], size1: 1.5, opacity0: 0.95
+                    vxRange: 75, vyRange: 75, vzRange: [170, 340 - w * 35],
+                    gravity: 700, drag: 0.2,
+                    size0: [3.5, 7], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
                 });
                 L.push({
-                    count: 7, delayMs: d, sprite: 'blood-drop', anchor: 'torso', z: Z_NECK,
+                    count: 5, delayMs: d, sprite: 'blood-glob',
+                    anchor: 'torso', z: Z_NECK,
                     ml: [500, 900], offsetXY: 6,
-                    vxRange: 55, vyRange: 55, vzRange: [90, 200 - w * 20],
-                    gravity: 760, drag: 0.12, size0: [6, 13], size1: 3.5, opacity0: 0.95
+                    vxRange: 60, vyRange: 60, vzRange: [100, 220 - w * 25],
+                    gravity: 820, drag: 0.1,
+                    size0: [6, 12], size1: [4, 7], opacity0: 1, opacity1: 0.9
                 });
             }
             /* lingering drips that keep falling from the wound */
             L.push({
-                count: 8, delayMs: 380, sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
+                count: 7, delayMs: 420, sprite: 'blood-glob',
+                anchor: 'torso', z: Z_CHEST,
                 ml: [600, 1100], offsetXY: 10,
-                vxRange: 20, vyRange: 20, vzRange: [-10, 20],
-                gravity: 620, drag: 0.1, size0: [4, 9], size1: 2.5, opacity0: 0.9
+                vxRange: 22, vyRange: 22, vzRange: [-10, 20],
+                gravity: 680, drag: 0.1,
+                size0: [3, 6], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
             });
         } else if (woundScale > 1.4 && !isResist) {
             /* badly wounded but still standing → a few delayed drips */
             L.push({
-                count: ci(3, 2, 8), delayMs: 300, sprite: 'blood-drop', anchor: 'torso', z: Z_CHEST,
+                count: ci(3, 2, 6), sprite: 'blood-glob', delayMs: 300,
+                anchor: 'torso', z: Z_CHEST,
                 ml: [500, 950], offsetXY: 9,
                 vxRange: 18, vyRange: 18, vzRange: [-8, 18],
-                gravity: 620, drag: 0.12, size0: [4, 8], size1: 2.5, opacity0: 0.85
+                gravity: 680, drag: 0.12,
+                size0: [3, 5.5], size1: [1.5, 3], opacity0: 1, opacity1: 0.85
             });
         }
 
-        _spawnEffect({ layers: L }, { tx: tx, ty: ty });
+        _spawnEffect({ layers: L, shake: isKill ? 'normal' : undefined },
+                      { tx: tx, ty: ty });
     }
 
     function fireDash(fromTx, fromTy, toTx, toTy) {
