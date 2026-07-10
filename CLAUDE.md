@@ -64,30 +64,30 @@ API (blitz turn model, move/attack/spell calls), and prior findings. That file i
 the anti-"start over" memory; keep it updated when you learn something new.
 
 ## Wiring up a 3D character (frequent request)
-Units can render as rigged Meshy GLB models instead of sprites. The pipeline is
-DONE (three-renderer.js) — wiring a new character is a pure `sprites.js`
-registry edit. Recipe:
-1. The user uploads to the race's R2 sprite folder (e.g.
-   `Assets/Sprites/Races/Homosapien/Female/psychic/`):
-   - the rigged model: `..._Character_output.glb` (or any `_withSkin` export).
-     The `_generate`/`_texture` stage GLBs are BONELESS — never use them.
-   - one `..._Animation_<Name>_withSkin.glb` per clip: idle, walk, cast, death.
-2. ⚠ Clips must be exported FROM THAT character in Meshy. Every Meshy rig has a
-   unique rest pose; a clip played on a different character warps the mesh
-   (same bone names ≠ compatible). No shared clip library — per character only.
-3. Add a `RACE_MODELS_3D['<race>'][<gender>]` entry in sprites.js: `model` URL,
-   `clips {idle,walk,cast,death}` URLs, `heightRatio: 1.0` (= sprite-unit
-   height; the renderer measures true SKINNED bounds, don't touch this),
-   `moveTimeScale` ≈ 2 (clips are slower than the fast board tweens; scale =
-   clipSeconds when it looks right), `castTimeScale`/`deathTimeScale`, optional
-   `idleTimeScale`. `cast` also plays for basic attacks.
-4. Optional 128×128 `portrait.png` in the same folder + a `RACE_PORTRAITS`
+Units can render as rigged Meshy GLB models instead of sprites. Since
+2026-07-10 animations come from a SHARED library (Quaternius UAL,
+`Assets/Models/UAL1_Standard.glb` on R2 — non-root-motion export) that
+three-renderer.js retargets onto every Meshy rig at load, so per-character
+animation exports are no longer needed. Recipe:
+1. The user uploads the rigged model `..._Character_output.glb` (or any
+   `_withSkin` export) to the race's R2 sprite folder. The
+   `_generate`/`_texture` stage GLBs are BONELESS — never use them.
+2. Add ONE line in sprites.js RACE_MODELS_3D:
+   `'<race>': { male: _mkUAL('<folder>', '<meshy file prefix>', { heightRatio: 1.0 }) }`
+   — done. Slot→clip map + timescales live in `UAL_SLOTS` (sprites.js);
+   heightRatio is relative to the male fortune teller (=1.0). The renderer
+   measures true SKINNED bounds for scaling — don't compensate manually.
+3. Optional 128×128 `portrait.png` in the same folder + a `RACE_PORTRAITS`
    entry → shows in HUD panels/turn clock instead of the map sprite.
-5. Verify a GLB before wiring (rigged? clip durations? same-rig?):
-   `node inspect script — parse the GLB's JSON chunk (see PLAYTEST_NOTES.md
-   "Rigged 3D unit models" for the details + prior verified facts).`
-6. Deliverable: hand the edited sprites.js back via chat (RULE #1).
-Kill-switch for A/B: `window.EW_DISABLE_3D_UNITS = true` (console).
+4. Verify a GLB before wiring (rigged? boneless?): parse its JSON chunk with a
+   node script (see PLAYTEST_NOTES.md "Rigged 3D unit models").
+5. Deliverable: hand the edited sprites.js back via chat (RULE #1).
+Legacy path: per-character Meshy `..._Animation_<Name>_withSkin.glb` clips
+(must be exported FROM that character — direct cross-character playback warps
+the mesh) still wire via `_mk3d(folder, prefix, {slot: Clip})` and are the
+automatic fallback when the library fails or a def sets `noAnimLib: true`.
+Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
+`window.EW_DISABLE_ANIM_LIB = true` (library → per-character Meshy clips).
 
 ## Key facts
 - Server: `npm start` → http://localhost:3000.

@@ -1417,6 +1417,43 @@ verify visually after upload) — syntax-checked only.
   wiggle / sfx play on-screen instead of mid-pan.
 
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
+- **SHARED ANIMATION LIBRARY (2026-07-10 — supersedes per-character clips)**:
+  the Quaternius Universal Animation Library (CC0, 43 clips, UE5-style rig,
+  `Assets/Models/UAL1_Standard.glb` on R2 — the NON-root-motion export) now
+  animates every RACE_MODELS_3D character. three-renderer.js `_libBakeClips`
+  RETARGETS clips onto each Meshy rig at load: (1) direction-calibrate the
+  Meshy rest pose onto the UAL T-pose top-down per `_ANIMLIB_MAP` (22 bone
+  pairs, UE names → Mixamo-ish Meshy names; note Meshy's spine order is
+  Spine02→Spine01→Spine bottom-up), (2) constant per-bone world offset
+  R = inv(srcRestWq)·tgtCalWq, (3) 30Hz mixer sampling → local quat keys +
+  scaled Hips position keys. Bake ≈ 100–170ms/character, cached on the model's
+  _unitGlbCache entry (`_libBaked`). Slot map + timescales: sprites.js
+  `UAL_SLOTS` (idle/walk/run/jump/dodge/hit/death/cast·Magic·Support·Ranged·
+  Melee·Throw). NEW slots: `run` (Sprint_Loop — multi-tile dashes via
+  `_ew_sprinting`, hub free-roam run) and `dodge` (Roll — dodge tweens).
+  - New character = upload `..._Character_output.glb` + one
+    `_mkUAL(folder, prefix, {heightRatio})` line in sprites.js. No animation
+    exports needed.
+  - Old per-character Meshy clip GLBs stay wired as AUTOMATIC fallback (lib
+    404 / bake exception / `window.EW_DISABLE_ANIM_LIB = true` /
+    per-character `noAnimLib: true`). The preload gate fetches ONE lib GLB
+    instead of every clip GLB when the lib is active (big bandwidth win).
+  - Trade-off: calibration forces the source's upright T-pose skeleton shape,
+    so hunched/bestial rigs (werewolf, bigfoot) get "humanized" posture on
+    library clips — verified OK-looking on werewolf stick-figure bakes, but
+    if a character loses too much personality, set `noAnimLib: true` on it.
+  - Sampling actions must be LoopOnce+clampWhenFinished during the bake:
+    setTime(duration) on LoopRepeat wraps to frame 0 (deaths stood back up).
+  - Math validated offline 2026-07-10 (scratchpad stick-figure renders of
+    fortune-teller + werewolf bakes vs UAL source; no NaNs, feet grounded,
+    T-vs-A rest difference cancelled by the calibration pass).
+  - UAL clip inventory (dur s): Idle_Loop 2.5, Walk_Loop 1.33, Jog_Fwd_Loop
+    0.93, Sprint_Loop 0.67, Jump_Start 1.33/Jump_Loop 2.5/Jump_Land 1.27,
+    Roll 1.47, Hit_Chest 0.33, Hit_Head 0.43, Death01 2.4, Punch_Jab 0.87,
+    Punch_Cross 1.0, Sword_Attack 1.53, Sword_Idle 1.67, Spell_Simple_
+    Enter/Shoot/Exit/Idle_Loop 0.53/0.5/0.43/2.1, Pistol_Shoot 0.63 (+aim/
+    reload/idle), Crouch/Swim/Sitting/Dance/Driving/Push/Interact/PickUp/
+    Fixing etc. — full list via animviewer at quaternius.com.
 - **Per-unit rig cache (2026-07-06 — post-animation hitch fix)**: rebuildUnits()
   used to SkeletonUtils.clone every model on every structural rebuild (every
   move/kill/selection — deferred until tweens end, so it hitched exactly when

@@ -445,10 +445,14 @@ function getRaceSpriteAnimations(race, gender) {
 // own unique skeleton rest pose (same bone NAMES, different bone positions/
 // orientations), and each clip bakes absolute bone transforms for the ONE
 // character it was exported with. A clip only animates correctly on the
-// character it was exported FROM — cross-character playback warps the mesh.
-// So every race folder carries its OWN clip GLBs: in Meshy, open the
-// character → apply each library animation → export "with skin" → upload
-// into that race's folder alongside its Character_output.
+// character it was exported FROM — DIRECT cross-character playback warps the
+// mesh. Two ways around it:
+//   1. (preferred, 2026-07-10) the shared UAL animation library below —
+//      three-renderer.js mathematically RETARGETS its clips onto each
+//      character's own skeleton at load time, so unique rest poses are fine.
+//   2. (legacy fallback) per-character Meshy exports: in Meshy, open the
+//      character → apply each library animation → export "with skin" →
+//      upload into that race's folder alongside its Character_output.
 //
 // Also: a `model` GLB must be the RIGGED export ("Character output" or any
 // "withSkin" — it has bones + skin weights). The generate/texture stage
@@ -461,6 +465,10 @@ function getRaceSpriteAnimations(race, gender) {
 //   idle        Idle_N (any numbered idle; ~5–8s loops)
 //   walk        Running (0.67s — preferred; board tweens are fast) or
 //               Walking (1.07s) at a higher moveTimeScale
+//   run         (animation-library only) multi-tile dash sprint + hub
+//               free-roam run; Meshy sets fall back to a boosted walk
+//   dodge       (animation-library only) evade roll during dodge tweens;
+//               falls back to idle
 //   jump        Regular_Jump (1.93s) — plays during jump arcs
 //   hit         Hit_Reaction / Hit_Reaction_1 (1.67s) — damage flinch
 //   death       Dead (3.0s, stays down — preferred) or Knock_Down (2.53s)
@@ -501,19 +509,75 @@ function classifySpellAnimKind(spell) {
   return 'magic';                            // damaging, untyped → magic burst
 }
 
+// ── SHARED ANIMATION LIBRARY (Quaternius Universal Animation Library) ──────
+// One 7.6MB GLB (CC0, https://quaternius.com) holds 43 clips on a UE5-style
+// rig. three-renderer.js RETARGETS these clips onto every Meshy biped at load
+// time (world-rotation transfer + rest-pose direction calibration — see
+// _libBakeClips there), so ONE library animates EVERY character:
+//   • Adding a new 3D character = upload its Meshy `..._Character_output.glb`
+//     and add a one-line `_mkUAL(folder, prefix, {heightRatio: …})` entry
+//     below. NO per-character animation exports needed anymore.
+//   • Existing characters keep their old Meshy clip URLs as an automatic
+//     FALLBACK: if the library GLB fails to load or the bake throws, the
+//     renderer silently loads the per-character clips exactly as before.
+//   • Kill-switches: window.EW_DISABLE_ANIM_LIB = true (console) forces the
+//     Meshy-clip fallback globally; per character pass { noAnimLib: true }.
+// The library file lives OUTSIDE the sprites folder — upload the NON-root-
+// motion UAL1_Standard.glb to R2 at Assets/Models/UAL1_Standard.glb.
+// (Board tweens move the unit group; root motion would double the travel.)
+const EW_ANIM_LIB_URL = 'https://cdn.entropywars.net/Assets/Models/UAL1_Standard.glb';
+
+// Game slot → UAL clip + timeScale. Durations are library constants, so the
+// scales live here once instead of per character (played ≈ dur / ts):
+//   idle Idle_Loop 2.5s · walk Jog_Fwd_Loop 0.93s (→0.52s ≈ 150ms/tile pace)
+//   run Sprint_Loop 0.67s (multi-tile dashes + hub free-roam sprint)
+//   jump Jump_Start 1.33s (→0.6s hop) · dodge Roll 1.47s (→0.49s evade roll)
+//   hit Hit_Chest 0.33s (→0.6s flinch) · death Death01 2.4s (→1.6s window)
+//   cast/castMagic Spell_Simple_Shoot 0.5s (→1.0s) · castSupport
+//   Spell_Simple_Idle_Loop 2.1s hand-weave (→1.2s) · castRanged Pistol_Shoot
+//   0.63s (→1.05s) · castMelee Sword_Attack 1.53s (→1.28s swing) · castThrow
+//   Punch_Cross 1.0s overhand (→1.1s — the library has no true throw clip).
+const UAL_SLOTS = {
+  idle:        { clip: 'Idle_Loop',              ts: 1.0  },
+  walk:        { clip: 'Jog_Fwd_Loop',           ts: 1.8  },
+  run:         { clip: 'Sprint_Loop',            ts: 1.3  },
+  jump:        { clip: 'Jump_Start',             ts: 2.2  },
+  dodge:       { clip: 'Roll',                   ts: 3.0  },
+  hit:         { clip: 'Hit_Chest',              ts: 0.55 },
+  death:       { clip: 'Death01',                ts: 1.5  },
+  cast:        { clip: 'Spell_Simple_Shoot',     ts: 0.5  },
+  castMagic:   { clip: 'Spell_Simple_Shoot',     ts: 0.5  },
+  castSupport: { clip: 'Spell_Simple_Idle_Loop', ts: 1.75 },
+  castRanged:  { clip: 'Pistol_Shoot',           ts: 0.6  },
+  castMelee:   { clip: 'Sword_Attack',           ts: 1.2  },
+  castThrow:   { clip: 'Punch_Cross',            ts: 0.9  },
+};
+// Shared per-def field objects (read-only in the renderer).
+const _UAL_CLIPS = {}, _UAL_TS = {};
+for (const _slot in UAL_SLOTS) {
+  _UAL_CLIPS[_slot] = UAL_SLOTS[_slot].clip;
+  _UAL_TS[_slot] = UAL_SLOTS[_slot].ts;
+}
+
 // Registry entry builder. `anims` maps slot → Meshy library clip name; URLs
 // become `<folder>/Meshy_AI_<prefix>_biped_Animation_<Clip>_withSkin.glb`.
 // Defaults tuned to the library durations above (board action windows:
 // move ~150ms/tile, cast ~1.2s, death 1.6s). Override per character via opts.
+// Every entry also carries the shared-animation-library fields (animLib /
+// libClips / libTimeScales) unless opts.noAnimLib — the renderer prefers the
+// retargeted library clips and keeps `anims` as the fallback set.
 function _mk3d(folder, prefix, anims, opts) {
   const F = `${_S}/Races/${folder}`;
   const clips = {};
   for (const slot in anims) {
     clips[slot] = `${F}/Meshy_AI_${prefix}_biped_Animation_${anims[slot]}_withSkin.glb`;
   }
-  return Object.assign({
+  const def = Object.assign({
     model: `${F}/Meshy_AI_${prefix}_biped_Character_output.glb`,
     clips,
+    animLib: EW_ANIM_LIB_URL,
+    libClips: _UAL_CLIPS,
+    libTimeScales: _UAL_TS,
     // Relative on-board size. The renderer NORMALIZES every model to the same
     // rendered height (ts * UNIT_SPRITE_SIZE_RATIO * heightRatio), so a raw
     // Meshy bigfoot and fairy come out identical unless heightRatio differs.
@@ -531,6 +595,16 @@ function _mk3d(folder, prefix, anims, opts) {
     hitTimeScale: 2.8,    // Hit_Reaction 1.67s → ~0.6s flinch
     jumpTimeScale: 3.2,   // Regular_Jump 1.93s → ~0.6s
   }, opts || {});
+  if (def.noAnimLib) { delete def.animLib; delete def.libClips; delete def.libTimeScales; }
+  return def;
+}
+
+// Minimal builder for library-animated characters: the character only needs
+// its rigged `..._Character_output.glb` on R2 — every animation comes from
+// the shared library. Adding a new 3D character is ONE line:
+//   'newrace': { male: _mkUAL('newrace/male', 'meshy_file_prefix', { heightRatio: 1.1 }) },
+function _mkUAL(folder, prefix, opts) {
+  return _mk3d(folder, prefix, {}, opts);
 }
 
 // Full uploaded-clip inventory per character lives in PLAYTEST_NOTES.md
@@ -576,6 +650,9 @@ const RACE_MODELS_3D = {
         cast:  `${_PSY_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,
         death: `${_PSY_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
+      animLib: EW_ANIM_LIB_URL,
+      libClips: _UAL_CLIPS,
+      libTimeScales: _UAL_TS,
       heightRatio: 0.95,    // female human, a touch shorter than the anchor
       yawOffset: 0,
       moveTimeScale: 1.3,   // Running 0.67s

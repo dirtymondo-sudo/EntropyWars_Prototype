@@ -7175,8 +7175,15 @@ const ThreeRenderer = (function () {
                 ? getRace3DModel(u.race, u.gender || 'male') : null;
             if (!def || !def.model) return;
             var list = [def.model];
-            var clips = def.clips || {};
-            for (var k in clips) { if (clips[k]) list.push(clips[k]); }
+            if (_animLibActive(def)) {
+                // Shared animation library: ONE GLB covers every character's
+                // clips — skip the per-character clip downloads entirely (they
+                // stay wired as a lazy fallback if the bake fails mid-match).
+                list.push(def.animLib);
+            } else {
+                var clips = def.clips || {};
+                for (var k in clips) { if (clips[k]) list.push(clips[k]); }
+            }
             for (var i = 0; i < list.length; i++) {
                 var url = list[i];
                 if (seen[url]) continue;
@@ -7210,6 +7217,305 @@ const ThreeRenderer = (function () {
     function _unitModelReady(def) {
         var e = _unitGlbCache[def.model];
         return !!(e && e.root);
+    }
+
+    /* ── Shared animation library retargeting (Quaternius UAL → Meshy rigs) ──
+       RACE_MODELS_3D defs that carry `animLib` + `libClips` (see sprites.js)
+       animate from ONE shared library GLB instead of per-character Meshy clip
+       exports. Meshy rest poses are unique per character, so foreign clips
+       can't be played directly (the sprites.js HARD RULE) — instead each clip
+       is BAKED onto the character's own skeleton the first time its model is
+       attached:
+         1. Calibrate: rotate each mapped Meshy bone (top-down) so its world
+            bone DIRECTION matches the UAL bone's rest direction — cancels the
+            rest-pose difference (Meshy A-poses vs the UAL T-pose).
+         2. Per-bone constant offset R = inv(srcRestWorldQ) * tgtCalWorldQ.
+         3. Sample the UAL clip at 30Hz through a real AnimationMixer and
+            write local-quaternion keys so each target bone's WORLD
+            orientation tracks srcWorldQ(t) * R. Hips also get position keys
+            (source pelvis world delta scaled by the rigs' hip-height ratio).
+       Bakes cache on the character model's _unitGlbCache entry, so N units of
+       one race pay the few-ms bake once. Any failure (library 404, missing
+       bones, exception) falls back to the def's own Meshy clip GLBs, exactly
+       the pre-library behavior. Kill-switch: window.EW_DISABLE_ANIM_LIB.
+       Math validated offline against the real GLBs (stick-figure renders of
+       baked frames vs source, 2026-07-10). */
+    var _ANIMLIB_SAMPLE_HZ = 30;
+    // [UAL bone, Meshy bone, UAL direction child, Meshy direction child].
+    // Parent-first order matters: the bake accumulates parent world rotations
+    // assuming every mapped ancestor was already processed. UAL finger/leaf
+    // bones and Meshy head_end/headfront have no counterpart and stay put.
+    var _ANIMLIB_MAP = [
+        ['pelvis',     'Hips',          'spine_01',   'Spine02'],
+        ['spine_01',   'Spine02',       'spine_02',   'Spine01'],
+        ['spine_02',   'Spine01',       'spine_03',   'Spine'],
+        ['spine_03',   'Spine',         'neck_01',    'neck'],
+        ['neck_01',    'neck',          'Head',       'Head'],
+        ['Head',       'Head',          null,         null],
+        ['clavicle_l', 'LeftShoulder',  'upperarm_l', 'LeftArm'],
+        ['upperarm_l', 'LeftArm',       'lowerarm_l', 'LeftForeArm'],
+        ['lowerarm_l', 'LeftForeArm',   'hand_l',     'LeftHand'],
+        ['hand_l',     'LeftHand',      null,         null],
+        ['clavicle_r', 'RightShoulder', 'upperarm_r', 'RightArm'],
+        ['upperarm_r', 'RightArm',      'lowerarm_r', 'RightForeArm'],
+        ['lowerarm_r', 'RightForeArm',  'hand_r',     'RightHand'],
+        ['hand_r',     'RightHand',     null,         null],
+        ['thigh_l',    'LeftUpLeg',     'calf_l',     'LeftLeg'],
+        ['calf_l',     'LeftLeg',       'foot_l',     'LeftFoot'],
+        ['foot_l',     'LeftFoot',      'ball_l',     'LeftToeBase'],
+        ['ball_l',     'LeftToeBase',   null,         null],
+        ['thigh_r',    'RightUpLeg',    'calf_r',     'RightLeg'],
+        ['calf_r',     'RightLeg',      'foot_r',     'RightFoot'],
+        ['foot_r',     'RightFoot',     'ball_r',     'RightToeBase'],
+        ['ball_r',     'RightToeBase',  null,         null]
+    ];
+
+    function _animLibActive(def) {
+        return !!(def && def.animLib && def.libClips
+                  && !(typeof window !== 'undefined' && window.EW_DISABLE_ANIM_LIB));
+    }
+
+    // Flat [x,y,z,w] quaternion / [x,y,z] vector helpers (bake-time only).
+    function _lqMul(a, b) {
+        return [
+            a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+            a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+            a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+            a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+    }
+    function _lqInv(q) { return [-q[0], -q[1], -q[2], q[3]]; }
+    function _lqNorm(q) {
+        var l = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]) || 1;
+        return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
+    }
+    function _lqRotV(q, v) {
+        var x = q[0], y = q[1], z = q[2], w = q[3], vx = v[0], vy = v[1], vz = v[2];
+        var ux = y * vz - z * vy, uy = z * vx - x * vz, uz = x * vy - y * vx;
+        var wx = y * uz - z * uy, wy = z * ux - x * uz, wz = x * uy - y * ux;
+        return [vx + 2 * (w * ux + wx), vy + 2 * (w * uy + wy), vz + 2 * (w * uz + wz)];
+    }
+    function _lvSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function _lvNorm(v) {
+        var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) || 1;
+        return [v[0] / l, v[1] / l, v[2] / l];
+    }
+    // Quaternion rotating unit vector a onto unit vector b.
+    function _lqFromUnitVectors(a, b) {
+        var d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        if (d < -0.999999) {   // 180° — any orthogonal axis works
+            var ax = Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+            var c0 = _lvNorm([a[1] * ax[2] - a[2] * ax[1], a[2] * ax[0] - a[0] * ax[2], a[0] * ax[1] - a[1] * ax[0]]);
+            return [c0[0], c0[1], c0[2], 0];
+        }
+        var c = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+        return _lqNorm([c[0], c[1], c[2], 1 + d]);
+    }
+
+    /* Lightweight mutable mirror of an Object3D hierarchy (locals + parent
+       links, parent-first order) — the calibration pass needs to pose the
+       target skeleton without touching the pristine cached GLB scene. */
+    function _libStructTree(root) {
+        var nodes = [], byName = {};
+        (function rec(o, parentIdx) {
+            var n = {
+                name: o.name,
+                t: [o.position.x, o.position.y, o.position.z],
+                q: [o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w],
+                s: [o.scale.x, o.scale.y, o.scale.z],
+                parent: parentIdx, idx: nodes.length
+            };
+            nodes.push(n);
+            if (!byName[n.name]) byName[n.name] = n;
+            for (var i = 0; i < o.children.length; i++) rec(o.children[i], n.idx);
+        })(root, -1);
+        function evalWorld() {   // parent-first array order ⇒ single pass
+            for (var i = 0; i < nodes.length; i++) {
+                var n = nodes[i], p = n.parent >= 0 ? nodes[n.parent] : null;
+                if (!p) { n.wp = n.t.slice(); n.wq = _lqNorm(n.q); n.ws = n.s.slice(); continue; }
+                var lt = _lqRotV(p.wq, [n.t[0] * p.ws[0], n.t[1] * p.ws[1], n.t[2] * p.ws[2]]);
+                n.wp = [p.wp[0] + lt[0], p.wp[1] + lt[1], p.wp[2] + lt[2]];
+                n.wq = _lqNorm(_lqMul(p.wq, n.q));
+                n.ws = [p.ws[0] * n.s[0], p.ws[1] * n.s[1], p.ws[2] * n.s[2]];
+            }
+        }
+        return { nodes: nodes, byName: byName, evalWorld: evalWorld };
+    }
+
+    /* One-time source-side prep, cached on the library's cache entry: rest
+       world transforms of every mapped UAL bone + a sampling mixer. */
+    function _libEnsureSrc(libEntry) {
+        if (libEntry._libSrc) return libEntry._libSrc;
+        var root = libEntry.root;
+        root.updateMatrixWorld(true);
+        var p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+        var bones = {}, rest = {};
+        for (var i = 0; i < _ANIMLIB_MAP.length; i++) {
+            var name = _ANIMLIB_MAP[i][0];
+            var node = root.getObjectByName(name);
+            if (!node) continue;
+            node.matrixWorld.decompose(p, q, s);
+            bones[name] = node;
+            rest[name] = { wq: [q.x, q.y, q.z, q.w], wp: [p.x, p.y, p.z] };
+        }
+        if (!bones.pelvis) throw new Error('animation library rig has no pelvis');
+        var clipsByName = {};
+        (libEntry.clips || []).forEach(function (c) { clipsByName[c.name] = c; });
+        libEntry._libSrc = {
+            root: root, bones: bones, rest: rest, clipsByName: clipsByName,
+            mixer: new THREE.AnimationMixer(root)
+        };
+        return libEntry._libSrc;
+    }
+
+    /* Calibration + constant offsets for one target character. */
+    function _libRetargetSetup(src, modelEntry) {
+        var tgt = _libStructTree(modelEntry.root);
+        tgt.evalWorld();
+        var pairs = [];
+        for (var i = 0; i < _ANIMLIB_MAP.length; i++) {
+            var row = _ANIMLIB_MAP[i];
+            if (!src.rest[row[0]] || !tgt.byName[row[1]]) continue;
+            pairs.push({ s: row[0], t: row[1], sc: row[2], tc: row[3], tn: tgt.byName[row[1]] });
+        }
+        var tgtHips = tgt.byName.Hips;
+        if (!tgtHips) throw new Error('target rig has no Hips bone');
+        // 1. pose the target into the source's rest shape (direction match)
+        pairs.forEach(function (pr) {
+            if (!pr.sc || !pr.tc) return;
+            var scr = src.rest[pr.sc], tcn = tgt.byName[pr.tc];
+            if (!scr || !tcn) return;
+            tgt.evalWorld();
+            var srcDir = _lvNorm(_lvSub(scr.wp, src.rest[pr.s].wp));
+            var tgtDir = _lvNorm(_lvSub(tcn.wp, pr.tn.wp));
+            var newWq = _lqMul(_lqFromUnitVectors(tgtDir, srcDir), pr.tn.wq);
+            var p = pr.tn.parent >= 0 ? tgt.nodes[pr.tn.parent] : null;
+            pr.tn.q = _lqNorm(p ? _lqMul(_lqInv(p.wq), newWq) : newWq);
+        });
+        tgt.evalWorld();
+        // 2. constant world-orientation offsets
+        pairs.forEach(function (pr) {
+            pr.roff = _lqMul(_lqInv(src.rest[pr.s].wq), pr.tn.wq);
+        });
+        var hipsParent = tgtHips.parent >= 0 ? tgt.nodes[tgtHips.parent] : null;
+        return {
+            pairs: pairs, tgt: tgt,
+            scaleRatio: tgtHips.wp[1] / (src.rest.pelvis.wp[1] || 1),
+            srcHipsRestWp: src.rest.pelvis.wp,
+            tgtHipsRestWp: tgtHips.wp.slice(),
+            hipsParent: hipsParent
+                ? { wp: hipsParent.wp.slice(), wq: hipsParent.wq.slice(), ws: hipsParent.ws.slice() }
+                : null
+        };
+    }
+
+    /* Bake every clip named by def.libClips onto the target skeleton.
+       Returns { slot: THREE.AnimationClip } (slots naming the same library
+       clip share one baked AnimationClip — the action wiring clones dupes). */
+    function _libBakeClips(libEntry, modelEntry, def) {
+        var src = _libEnsureSrc(libEntry);
+        var setup = _libRetargetSetup(src, modelEntry);
+        var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
+        var bakedByClip = {}, out = {}, missing = [];
+        Object.keys(def.libClips).forEach(function (slot) {
+            var clipName = def.libClips[slot];
+            if (bakedByClip[clipName]) { out[slot] = bakedByClip[clipName]; return; }
+            var srcClip = src.clipsByName[clipName];
+            if (!srcClip) { missing.push(clipName); return; }
+            var dur = srcClip.duration;
+            var nSamp = Math.max(2, Math.ceil(dur * _ANIMLIB_SAMPLE_HZ) + 1);
+            var times = new Float32Array(nSamp);
+            var quats = {}, hipsPos = new Float32Array(nSamp * 3);
+            setup.pairs.forEach(function (pr) { quats[pr.t] = new Float32Array(nSamp * 4); });
+            var action = src.mixer.clipAction(srcClip);
+            src.mixer.stopAllAction();
+            // Clamp, don't loop: setTime(duration) on a LoopRepeat action
+            // wraps back to frame 0, which would bake every clip's final key
+            // as its FIRST pose (a death that stands back up). LoopOnce +
+            // clamp evaluates the true end pose; for loop clips the end pose
+            // equals the start pose anyway.
+            action.setLoop(THREE.LoopOnce, 0);
+            action.clampWhenFinished = true;
+            action.play();
+            for (var i = 0; i < nSamp; i++) {
+                var t = Math.min(dur * i / (nSamp - 1), dur);
+                times[i] = t;
+                src.mixer.setTime(t);
+                src.root.updateMatrixWorld(true);
+                // desired world orientation per bone → local keys (top-down;
+                // ancestors' freshly-written locals accumulate into pwq)
+                for (var pi = 0; pi < setup.pairs.length; pi++) {
+                    var pr = setup.pairs[pi];
+                    src.bones[pr.s].matrixWorld.decompose(pv, qv, sv);
+                    var wq = _lqMul([qv.x, qv.y, qv.z, qv.w], pr.roff);
+                    var pwq = [0, 0, 0, 1];
+                    var a = pr.tn.parent >= 0 ? setup.tgt.nodes[pr.tn.parent] : null;
+                    var chain = [];
+                    while (a) { chain.unshift(a); a = a.parent >= 0 ? setup.tgt.nodes[a.parent] : null; }
+                    for (var ci = 0; ci < chain.length; ci++) pwq = _lqMul(pwq, chain[ci].q);
+                    var lq = _lqNorm(_lqMul(_lqInv(pwq), wq));
+                    pr.tn.q = lq;
+                    quats[pr.t][i * 4] = lq[0]; quats[pr.t][i * 4 + 1] = lq[1];
+                    quats[pr.t][i * 4 + 2] = lq[2]; quats[pr.t][i * 4 + 3] = lq[3];
+                }
+                // hips travel: source pelvis world delta, scaled, → hips local
+                src.bones.pelvis.matrixWorld.decompose(pv, qv, sv);
+                var hp = setup.hipsParent;
+                var wpt = [
+                    setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
+                    setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
+                    setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
+                var loc = hp
+                    ? _lqRotV(_lqInv(hp.wq), _lvSub(wpt, hp.wp))
+                    : wpt.slice();
+                if (hp) { loc = [loc[0] / (hp.ws[0] || 1), loc[1] / (hp.ws[1] || 1), loc[2] / (hp.ws[2] || 1)]; }
+                hipsPos[i * 3] = loc[0]; hipsPos[i * 3 + 1] = loc[1]; hipsPos[i * 3 + 2] = loc[2];
+            }
+            action.stop();
+            var tracks = [];
+            setup.pairs.forEach(function (pr) {
+                tracks.push(new THREE.QuaternionKeyframeTrack(pr.t + '.quaternion', times, quats[pr.t]));
+            });
+            tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
+            var baked = new THREE.AnimationClip('EWLib_' + clipName, dur, tracks);
+            bakedByClip[clipName] = baked;
+            out[slot] = baked;
+        });
+        if (missing.length) {
+            console.warn('[ThreeRenderer] animation library is missing clips:', missing.join(', '));
+        }
+        if (!Object.keys(out).length) throw new Error('no library clips baked');
+        return out;
+    }
+
+    /* Async wrapper: loads the library GLB (once, shared by every character),
+       bakes for this character model, caches the result on the model's cache
+       entry. cb(null) ⇒ caller falls back to the def's Meshy clip GLBs. */
+    function _animLibBakeForModel(def, modelEntry, cb) {
+        if (modelEntry._libBakedFrom === def.animLib) { cb(modelEntry._libBaked); return; }
+        if (modelEntry._libBakeCbs) { modelEntry._libBakeCbs.push(cb); return; }
+        modelEntry._libBakeCbs = [cb];
+        function settle(result) {
+            modelEntry._libBaked = result;
+            modelEntry._libBakedFrom = def.animLib;
+            var cbs = modelEntry._libBakeCbs;
+            modelEntry._libBakeCbs = null;
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](result); } catch (_e) {} }
+        }
+        function onLibSettled(le) {
+            if (!le.root) { settle(null); return; }
+            var baked = null;
+            try {
+                baked = _libBakeClips(le, modelEntry, def);
+            } catch (ex) {
+                console.warn('[ThreeRenderer] animation-library retarget failed — using per-character clips:', ex && ex.message);
+            }
+            settle(baked);
+        }
+        _loadUnitGLB(def.animLib, function () {});
+        var le = _unitGlbCache[def.animLib];
+        if (!le) { settle(null); return; }
+        if (le.root || le.failed) onLibSettled(le);
+        else (le.doneCbs = le.doneCbs || []).push(onLibSettled);
     }
 
     /* True rendered-space bounds of a (possibly skinned) model at rest pose.
@@ -7453,51 +7759,78 @@ const ThreeRenderer = (function () {
             entry.actions = {};
             _rigRec.mixer = mixer;
             _rigRec.actions = entry.actions;
-            var clips = def.clips || {};
-            Object.keys(clips).forEach(function (name) {
-                _loadUnitGLB(clips[name], function (cres) {
-                    if (!cres.clips || !cres.clips.length || entry.mixer !== mixer) return;
-                    // Two slots may share one GLB (e.g. idle = walk-in-slow-mo
-                    // until a real idle export exists). clipAction() returns the
-                    // SAME action for the same clip, and the slots need distinct
-                    // loop/timeScale settings — clone the clip in that case.
-                    var clip = cres.clips[0];
-                    for (var k in entry.actions) {
-                        if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
+            // Slot wiring shared by both animation sources (retargeted
+            // library bakes and per-character Meshy clip GLBs). Two slots may
+            // share one clip (e.g. cast + castMagic). clipAction() returns
+            // the SAME action for the same clip, and the slots need distinct
+            // loop/timeScale settings — clone the clip in that case.
+            function _wireSlot(name, clip, tScale) {
+                if (!clip || entry.mixer !== mixer) return;
+                for (var k in entry.actions) {
+                    if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
+                }
+                var act = mixer.clipAction(clip);
+                // One-shot slots: death, hit flinch, and every cast
+                // variant (cast / castMagic / castSupport / castRanged /
+                // castMelee / castThrow — see sprites.js role guide).
+                if (name === 'death' || name === 'hit' || name.indexOf('cast') === 0) {
+                    act.setLoop(THREE.LoopOnce, 0);
+                    act.clampWhenFinished = true;
+                } else {
+                    act.setLoop(THREE.LoopRepeat, Infinity);
+                }
+                if (tScale) act.timeScale = tScale;
+                entry.actions[name] = act;
+                if (name === 'idle' && !entry._ew_curAnim) {
+                    entry._ew_curAnim = 'idle';
+                    act.play();
+                    // Resume the loop where it was before the rebuild so
+                    // selection changes don't visibly restart the idle.
+                    var st = _modelAnimState.get(unit.id);
+                    if (st && st.name === 'idle' && clip.duration > 0) {
+                        act.time = st.time % clip.duration;
                     }
-                    var act = mixer.clipAction(clip);
-                    // One-shot slots: death, hit flinch, and every cast
-                    // variant (cast / castMagic / castSupport / castRanged /
-                    // castMelee / castThrow — see sprites.js role guide).
-                    if (name === 'death' || name === 'hit' || name.indexOf('cast') === 0) {
-                        act.setLoop(THREE.LoopOnce, 0);
-                        act.clampWhenFinished = true;
-                        act.timeScale = (name === 'death') ? (def.deathTimeScale || 1)
-                                      : (name === 'hit')   ? (def.hitTimeScale || 2.8)
-                                      // def.castTimeScales = {slot: scale} overrides
-                                      // per cast slot (e.g. quick-draw 5.0 + a punch 2.0
-                                      // in the same character); castTimeScale is the default.
-                                      : ((def.castTimeScales && def.castTimeScales[name])
-                                         || def.castTimeScale || 1);
-                    } else {
-                        act.setLoop(THREE.LoopRepeat, Infinity);
-                        if (name === 'walk') act.timeScale = def.moveTimeScale || 1;
-                        else if (name === 'jump') act.timeScale = def.jumpTimeScale || 3.2;
-                        else if (name === 'idle' && def.idleTimeScale) act.timeScale = def.idleTimeScale;
-                    }
-                    entry.actions[name] = act;
-                    if (name === 'idle' && !entry._ew_curAnim) {
-                        entry._ew_curAnim = 'idle';
-                        act.play();
-                        // Resume the loop where it was before the rebuild so
-                        // selection changes don't visibly restart the idle.
-                        var st = _modelAnimState.get(unit.id);
-                        if (st && st.name === 'idle' && cres.clips[0].duration > 0) {
-                            act.time = st.time % cres.clips[0].duration;
-                        }
-                    }
+                }
+            }
+            function _meshyTScale(name) {
+                if (name === 'death') return def.deathTimeScale || 1;
+                if (name === 'hit') return def.hitTimeScale || 2.8;
+                // def.castTimeScales = {slot: scale} overrides per cast slot
+                // (e.g. quick-draw 5.0 + a punch 2.0 in the same character);
+                // castTimeScale is the default.
+                if (name.indexOf('cast') === 0) {
+                    return (def.castTimeScales && def.castTimeScales[name])
+                        || def.castTimeScale || 1;
+                }
+                if (name === 'walk') return def.moveTimeScale || 1;
+                if (name === 'jump') return def.jumpTimeScale || 3.2;
+                if (name === 'idle') return def.idleTimeScale || 0;
+                return 0;
+            }
+            function _loadMeshyClips() {
+                var clips = def.clips || {};
+                Object.keys(clips).forEach(function (name) {
+                    _loadUnitGLB(clips[name], function (cres) {
+                        if (!cres.clips || !cres.clips.length) return;
+                        _wireSlot(name, cres.clips[0], _meshyTScale(name));
+                    });
                 });
-            });
+            }
+            if (_animLibActive(def)) {
+                // Shared animation library: bake (or fetch the cached bake of)
+                // every retargeted slot for this character; on any failure
+                // fall back to the def's own Meshy clip exports.
+                _animLibBakeForModel(def, res, function (baked) {
+                    if (entry.mixer !== mixer) return;
+                    if (!baked) { _loadMeshyClips(); return; }
+                    Object.keys(baked).forEach(function (name) {
+                        _wireSlot(name, baked[name],
+                            (def.libTimeScales && def.libTimeScales[name]) || 1);
+                    });
+                });
+            } else {
+                _loadMeshyClips();
+            }
 
             _removeUnitSpritePlaceholder(entry);
         });
@@ -7510,6 +7843,8 @@ const ThreeRenderer = (function () {
         var acts = entry.actions || {};
         var next = acts[name]
             || ((name === 'walk') ? acts.idle : null)
+            || ((name === 'run') ? (acts.walk || acts.idle) : null)     // library-only slot
+            || ((name === 'dodge') ? acts.idle : null)                  // library-only slot
             || ((name === 'jump') ? (acts.walk || acts.idle) : null);
         if (!next) return false;
         var prev = entry._ew_curAnim ? acts[entry._ew_curAnim] : null;
@@ -7620,8 +7955,14 @@ const ThreeRenderer = (function () {
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
+            else if (_dodgeTweens.has(uid)) want = 'dodge'; // evade roll (lib) → idle
             else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
-                     || _strikeTweens.has(uid)) want = 'walk';
+                     || _strikeTweens.has(uid))
+                // Multi-tile dashes sprint with the real run clip when the
+                // animation library provides one (falls back to the boosted
+                // walk timescale the Meshy clip sets keep using).
+                want = (entry._ew_sprinting && entry.actions && entry.actions.run)
+                    ? 'run' : 'walk';
             else want = 'idle';
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             entry.mixer.update(dt);
@@ -13555,7 +13896,8 @@ const ThreeRenderer = (function () {
         /* clip request — consumed by _updateUnitModels */
         fr.moving = moving;
         fr.running = running;
-        fr.want = (fr.jumpT >= 0) ? 'jump' : (moving ? 'walk' : 'idle');
+        fr.want = (fr.jumpT >= 0) ? 'jump'
+            : (moving ? (fr.running ? 'run' : 'walk') : 'idle');   // run falls back → walk
         if (moving && entry.actions && entry.actions.walk) {
             entry.actions.walk.timeScale = ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * (running ? 1.75 : 1);
         }
