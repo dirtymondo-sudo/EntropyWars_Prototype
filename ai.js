@@ -1718,8 +1718,10 @@
         if (kind === 'warCry') {
             const radius = spell.auraRadius || 3;
             const inRange = g.aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
-            const uninspired = inRange.filter(a => !g.unitHasStatus(a, 'inspired') && !g.unitHasStatus(a, 'inspiredWeak'));
-            return uninspired.length >= 2 ? 15 + uninspired.length * 6 : 0;
+            // War Cry grants ATK stages now (stackable to +5) — value allies
+            // who still have stage headroom instead of a defunct status check.
+            const unboosted = inRange.filter(a => !(a.statStages && (a.statStages.atk || 0) >= 5));
+            return unboosted.length >= 2 ? 15 + unboosted.length * 6 : 0;
         }
 
         if (kind === 'encore' && target) {

@@ -656,6 +656,15 @@ function pbSpellEffects(sp) {
     const isBuff = def.kind === 'buff';
     out.push({ txt: (def.glyph ? def.glyph + ' ' : '') + label + (extra.length ? ' (' + extra.join(', ') + ')' : ''), color: isBuff ? EW.good : EW.warn });
   });
+  // Stat changes speak in STAGES (stackable to ±5) — distinct from statuses.
+  if (sp.statStageBoost) {
+    const SL = { atk: 'ATK', def: 'DEF', mdef: 'MDEF', spd: 'SPD', int: 'INT' };
+    for (const k in SL) {
+      const n = sp.statStageBoost[k] || 0;
+      if (n) out.push({ txt: (n > 0 ? '+' : '') + n + ' ' + SL[k] + ' stage' + (Math.abs(n) > 1 ? 's' : ''), color: n > 0 ? EW.good : EW.warn });
+    }
+  }
+  if (sp.randomTeamBuff) out.push({ txt: '+' + (sp.randomTeamBuff.stages || 1) + ' random stat stage (team)', color: EW.good });
   const m = [];
   if (sp.damageType) m.push(sp.damageType === 'magic' ? 'Magic damage' : 'Physical damage');
   if (sp.ignoreArmor || sp.ignoresArmor || sp.bounceShieldIgnore) m.push('Ignores armor');

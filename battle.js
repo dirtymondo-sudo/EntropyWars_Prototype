@@ -3890,15 +3890,12 @@
                 .replace(/\bStun(?:ned)?\b/gi, m => iconBadge('stun', m))
                 .replace(/\bStagger(?:ed)?\b/gi, m => iconBadge('stagger', m))
                 .replace(/\bPoison(?:ed)?\b/gi, m => iconBadge('poison', m))
-                .replace(/\bGuard Break\b/gi, m => iconBadge('guardBreak', m))
                 .replace(/\bGuard(?:ing)\b/gi, m => iconBadge('guarding', m))
                 .replace(/\bOverclock(?:ed)?\b/gi, m => iconBadge('overclock', m))
-                .replace(/\bInspired\b/gi, m => iconBadge('inspired', m))
                 .replace(/\bDiscord(?:ant)?\b/gi, m => iconBadge('discord', m))
                 .replace(/\bJammed\b/gi, m => iconBadge('jammed', m))
                 .replace(/\bDrowning\b/gi, m => iconBadge('drowning', m))
                 .replace(/\bProtect(?:ed)?\b/gi, m => iconBadge('protect', m))
-                .replace(/\bGlare(?:d)?\b/gi, m => iconBadge('glare', m))
                 .replace(/\bshield\b/gi, m => iconBadge('shield', m))
                 .replace(/⏳(\d+)?/g, (_, n) => iconBadge('hourglass', n ? `Hourglass ×${n}` : 'Hourglass'))
                 .replace(/\bHP\b/g, m => iconBadge('heal', m))
@@ -3984,7 +3981,11 @@
                     return false;
                 }
             }
-            const nextValue = Math.max(1, Number(payload.duration ?? payload.value ?? 1));
+            let nextValue = Math.max(1, Number(payload.duration ?? payload.value ?? 1));
+            // Third Eye (Psychic passive): debuff statuses the Psychic applies
+            // last +1 turn. (Generalized from the old Glare-only bonus — the
+            // Glare spell is a stat-stage debuff now, not a status.)
+            if (isEnemyDebuff && sourceUnit.cls === 'Psychic') nextValue += 1;
             if (meta.stack === 'replace') {
                 status[payload.id] = nextValue;
             } else {
@@ -11626,7 +11627,7 @@
             { key: 'infrared',    label: 'Infrared',    glyph: '🔴', color: 0xff4455,
               spellType: 'tech',    status: { id: 'burn',  duration: 2 }, dmgMult: 1.15, verb: 'burns' },
             { key: 'ultraviolet', label: 'Ultraviolet', glyph: '🟣', color: 0xb060ff,
-              spellType: 'alien',   status: { id: 'glare', duration: 2 }, dmgMult: 1.0,  verb: 'shreds DEF' },
+              spellType: 'alien',   stageBoost: { def: -1 }, dmgMult: 1.0,  verb: 'shreds DEF' },
             { key: 'gamma',       label: 'Gamma',       glyph: '🟢', color: 0x66ffcc,
               spellType: 'anomaly', status: { id: 'slow',  duration: 1 }, dmgMult: 0.9,  verb: 'slows' },
         ];
@@ -11791,9 +11792,12 @@
             showFloatingTextAtTile(x, y, f.glyph, 'damage', { durationMs: 650 });
             applyDamageToUnit(unit, dmg, `${f.glyph} Laser beam: `, {
                 damageType: 'magic', spellType: f.spellType,
-                statusEffects: [f.status], allowMarkBonus: false,
+                statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
                 sourceUnit: ownerId != null ? unitFromId(ownerId) : undefined
             });
+            if (f.stageBoost && !unit.dead) {
+                applyStatStageBoost(unit, f.stageBoost, `${f.glyph} Laser beam: `, ownerId != null ? unitFromId(ownerId) : null);
+            }
         }
 
         // End-of-round: everyone still standing in an enemy beam burns.
@@ -11819,9 +11823,12 @@
                 showFloatingTextAtTile(b.unit.x, b.unit.y, b.f.glyph, 'damage', { durationMs: 700 });
                 applyDamageToUnit(b.unit, b.dmg, `${b.f.glyph} Caught in the lattice: `, {
                     damageType: 'magic', spellType: b.f.spellType,
-                    statusEffects: [b.f.status], allowMarkBonus: false,
+                    statusEffects: b.f.status ? [b.f.status] : null, allowMarkBonus: false,
                     sourceUnit: b.ownerId != null ? unitFromId(b.ownerId) : undefined
                 });
+                if (b.f.stageBoost && !b.unit.dead) {
+                    applyStatStageBoost(b.unit, b.f.stageBoost, `${b.f.glyph} Caught in the lattice: `, b.ownerId != null ? unitFromId(b.ownerId) : null);
+                }
             }
             checkWin();
             scheduleBoardRender();
@@ -11858,8 +11865,11 @@
                 if (tiles.has(e.x + ',' + e.y)) {
                     applyDamageToUnit(e, dmg, `${f.glyph} Pulse Lattice: `, {
                         sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
-                        statusEffects: [f.status], allowMarkBonus: false
+                        statusEffects: f.status ? [f.status] : null, allowMarkBonus: false
                     });
+                    if (f.stageBoost && !e.dead) {
+                        applyStatStageBoost(e, f.stageBoost, `${f.glyph} Pulse Lattice: `, unit);
+                    }
                     hit++;
                 }
             }
@@ -14333,6 +14343,25 @@
            units appear in the target drum AND whether the spell counts as
            "has a target": heal needs a DAMAGED ally, cleanse needs an ally
            actually carrying a debuff, revive needs a revivable corpse. */
+        /* A spell is "pure status" when applying its status effect(s) is ALL it
+           does — no damage, healing, shielding, stat stages, terrain or other
+           side effects. Statuses don't stack (stack 'max'/'replace' merely
+           refreshes), so such a cast is wasted on a target that already carries
+           every status it applies — menus grey it out, doSpell rejects it.
+           (Stat stages are different: they DO stack, up to ±5 — spells with
+           statStageBoost are never blocked here.) */
+        function spellIsPureStatus(spell) {
+            if (!spell || !Array.isArray(spell.statusEffects) || !spell.statusEffects.length) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return false;
+            if (spell.heal || spell.healAmt || spell.selfHealPct || spell.shield || spell.shieldHp) return false;
+            if (spell.statStageBoost || spell.randomTeamBuff || spell.cleanse) return false;
+            if (spell.drainPct || spell.mpRestore || spell.revivePct || spell.stealSpell) return false;
+            if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.zodiacReading) return false;
+            if (spell.teleportDistance || spell.pushDistance || spell.pullDistance) return false;
+            return true;
+        }
+        window.spellIsPureStatus = spellIsPureStatus;
+
         function spellTargetUsableOn(unit, spell, u) {
             if (!unit || !spell || !u) return false;
             const k = spell.kind;
@@ -14342,6 +14371,15 @@
             if (k === 'cleanse') {
                 return typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff');
+            }
+            // Status effects don't stack: a pure-status spell has nothing to
+            // give a target that already carries every status it applies.
+            if (spellIsPureStatus(spell)) {
+                // Grounding an airborne flyer is still worth the cast even if
+                // the status itself is already on them (Iron Grip, Anchor…).
+                if (spell.groundsFlyers && typeof isUnitAirborne === 'function'
+                    && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u)) return true;
+                if (!spell.statusEffects.some(fx => fx && fx.id && !unitHasStatus(u, fx.id))) return false;
             }
             return true;
         }
@@ -14802,7 +14840,9 @@
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
                 const hasEnemy = enemies.some(e => {
                     const d = spellReachToTarget(unit, spell, e);
-                    return d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z));
+                    if (!(d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)))) return false;
+                    // Pure-status spells need an enemy NOT already carrying the status.
+                    return spellTargetUsableOn(unit, spell, e);
                 });
                 if (hasEnemy) return true;
                 if (['damage', 'multiHit', 'ricochet'].includes(kind) && state.towers) {
@@ -14831,7 +14871,9 @@
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
                 return allies.some(a => {
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
-                    return d <= range;
+                    // Pure-status buffs (Protect, Camouflage…) need an ally who
+                    // doesn't already carry the status — statuses don't stack.
+                    return d <= range && spellTargetUsableOn(unit, spell, a);
                 });
             }
 
@@ -22223,9 +22265,10 @@
                 if (isOffensive && isAllyUnit(u, unit)) continue;
                 if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
                 // Universal per-target guard: a full-HP ally is not a heal
-                // target, a clean ally is not a cleanse target — they must
-                // not appear in the target drum at all.
-                if (!isOffensive && !spellTargetUsableOn(unit, spell, u)) continue;
+                // target, a clean ally is not a cleanse target, and NOBODY is
+                // a pure-status target when they already carry the status —
+                // they must not appear in the target drum at all.
+                if (!spellTargetUsableOn(unit, spell, u)) continue;
                 targets.push({ x: u.x, y: u.y, dist: d, unit: u });
             }
             targets.sort((a, b) => a.dist - b.dist);
@@ -27967,6 +28010,23 @@
                 playErrorSfx();
                 return 0;
             }
+            // Status effects don't stack — a single-target pure-status cast on a
+            // unit that already carries every status this spell applies would
+            // burn MP/AP for nothing. Menus grey these out; this guards direct
+            // map clicks and move-then-cast paths. (AoE/team kinds pass: some
+            // OTHER unit in the blast may still need the status.)
+            if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius
+                && spellIsPureStatus(spell)) {
+                const _psT = unitAt(x, y, z) || unitAt(x, y);
+                if (_psT && !_psT.dead && !spellTargetUsableOn(unit, spell, _psT)) {
+                    const _fx0 = spell.statusEffects[0] || {};
+                    const _lbl = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_fx0.id]?.label) || _fx0.id || 'that status';
+                    addLog(`${unitDisplayName(_psT)} already has ${_lbl} — ${spell.name} would do nothing.`);
+                    state._teleportingUnit = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
 
             // Every validation gate has passed — the cast WILL happen. Sweep away
             // all targeting visuals (previews, arrows, ghost blocks, range
@@ -28265,7 +28325,7 @@
                     // Star Crossed: read the target's zodiac — the affliction
                     // depends on their sign's element, and if their sign rules
                     // the sky right now, the reading strikes 50% harder.
-                    let _zodiacEffects = null, _zodiacMult = 1;
+                    let _zodiacEffects = null, _zodiacBoost = null, _zodiacMult = 1;
                     if (spell.zodiacReading) {
                         const _zElementOf = {
                             aries: 'fire', leo: 'fire', sagittarius: 'fire',
@@ -28276,10 +28336,13 @@
                         const _zEl = _zElementOf[target.zodiac] || 'air';
                         _zodiacEffects = ({
                             fire:  [{ id: 'burn', duration: 2 }],
-                            earth: [{ id: 'root', duration: 1 }, { id: 'glare', duration: 1 }],
+                            earth: [{ id: 'root', duration: 1 }],
                             air:   [{ id: 'silence', duration: 1 }],
-                            water: [{ id: 'drowsy', duration: 2 }],
+                            water: null,
                         })[_zEl];
+                        // Stat-change afflictions are stage debuffs, not statuses:
+                        // earth signs are exposed (-1 DEF), water signs dulled (-1 INT).
+                        _zodiacBoost = ({ earth: { def: -1 }, water: { int: -1 } })[_zEl] || null;
                         const _zIcon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[target.zodiac]) || '✦';
                         if (target.zodiac && state.activeZodiac === target.zodiac) {
                             _zodiacMult = 1.5;
@@ -28298,14 +28361,9 @@
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_debDmg}`, false);
                     }
 
-                    let effectsToApply = _zodiacEffects || spell.statusEffects;
-                    if (unit.cls === 'Psychic' && effectsToApply) {
-                        effectsToApply = effectsToApply.map(e => e.id === 'glare' ? {
-                            ...e,
-                            duration: (e.duration || 2) + 1
-                        } : e);
-                    }
-                    applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
+                    const effectsToApply = spell.zodiacReading ? _zodiacEffects : spell.statusEffects;
+                    if (effectsToApply) applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
+                    if (_zodiacBoost) applyStatStageBoost(target, _zodiacBoost, `${spell.name}: `, unit);
                     if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
 
                     // Anti-air debuffs (Anchor, Stasis Beam…) drag flyers down.
@@ -30966,7 +31024,9 @@
                     addLog(`${unitDisplayName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
                 } else {
                     for (const ally of allies) {
-                        applyStatusEffects(ally, [{ id: ally.id === unit.id ? 'inspiredWeak' : 'inspired', duration: 2 }], `${spell.name}: `, unit);
+                        // Inspiration is a stat change, not a status: full stages
+                        // for allies, a lighter self-boost for the crier.
+                        applyStatStageBoost(ally, ally.id === unit.id ? { atk: 1 } : { atk: 2, def: 1 }, `${spell.name}: `, unit);
                         if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
                         buffCount++;
                     }

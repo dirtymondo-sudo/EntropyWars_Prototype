@@ -1364,9 +1364,17 @@
         const atkD = typeof getStatusAtkDelta === 'function' ? getStatusAtkDelta(unit) : 0;
         const defD = typeof getStatusArmorDelta === 'function' ? getStatusArmorDelta(unit) : 0;
         const movD = typeof getStatusMoveDelta === 'function' ? getStatusMoveDelta(unit) : 0;
+        // Plates render INT/MDEF/SPD stage badges too — hash them or a
+        // stage change on those stats alone would never trigger a redraw.
+        const intD = typeof getStatusIntDelta === 'function' ? getStatusIntDelta(unit) : 0;
+        const mdefD = typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0;
+        const spdD = typeof getStatStageCount === 'function' ? getStatStageCount(unit, 'spd') : 0;
         fp = Math.imul(fp ^ ((atkD + 500) * 100 | 0), 16777619);
         fp = Math.imul(fp ^ ((defD + 500) * 100 | 0), 16777619);
         fp = Math.imul(fp ^ ((movD + 500) * 100 | 0), 16777619);
+        fp = Math.imul(fp ^ ((intD + 500) * 100 | 0), 16777619);
+        fp = Math.imul(fp ^ ((mdefD + 500) * 100 | 0), 16777619);
+        fp = Math.imul(fp ^ ((spdD + 50) * 100 | 0), 16777619);
         fp = Math.imul(fp ^ (unit.hourglassBuff || 0), 16777619);
         fp = Math.imul(fp ^ (unit._streakAtkBonus || 0), 16777619);
         fp = Math.imul(fp ^ (unit._lastStandAtkBonus || 0), 16777619);

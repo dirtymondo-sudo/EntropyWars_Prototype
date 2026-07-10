@@ -2,7 +2,11 @@
             return Math.floor(Math.random() * n);
         }
 
-        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','lava_burn','protect']);
+        /* Real status effects: gates the end-of-round onRoundEnd dispatcher and
+           the nameplate status badges. 'regen' was defined with a heal tick but
+           missing here, so it never actually ticked (dead code bug — fixed);
+           'charm' is hard CC (blockMove) and belongs on the nameplate. */
+        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','lava_burn','protect','regen','charm']);
 
         const GAME_MODES = {
             normal: {
@@ -2867,7 +2871,6 @@
                 burn: 0.84,
                 poison: 0.84,
                 marked: 0.88,
-                guardBreak: 0.9,
                 stun: 0.86,
                 jammed: 0.8,
                 silence: 0.82,
@@ -2877,8 +2880,6 @@
                 sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
-                drowsy: 0.9,
-                glare: 0.9,
                 discord: 0.9
             };
             const base = Number(payload.chance ?? baseByStatus[payload.id] ?? 1);

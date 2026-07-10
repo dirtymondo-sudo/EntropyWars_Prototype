@@ -8415,7 +8415,7 @@ const ThreeRenderer = (function () {
                 burn:'#c0392b',poison:'#27ae60',silence:'#7f8c8d',stun:'#f39c12',
                 stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
                 lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
-                invisible:'#1a7a4a'
+                invisible:'#1a7a4a',regen:'#2ecc71'
             };
             var badges = [];
             var activeKeys = getActiveStatusKeys(unit);
@@ -8431,23 +8431,24 @@ const ThreeRenderer = (function () {
                 badges.push('<span class="tp-sbadge" style="background:' + (_SB_COLORS[sk] || '#555') + '">' + (sDef.short || sk) + '</span>');
             }
 
-            var atkD = (typeof getStatusAtkDelta === 'function') ? getStatusAtkDelta(unit) : 0;
-            var defD = (typeof getStatusArmorDelta === 'function') ? getStatusArmorDelta(unit) : 0;
-            var intD = (typeof getStatusIntDelta === 'function') ? getStatusIntDelta(unit) : 0;
-            var mdefD = (typeof getStatusMdefDelta === 'function') ? getStatusMdefDelta(unit) : 0;
+            /* Stat modifiers read in STAGES (max ±5) — "+2 ATK" means two ATK
+               stages, exactly the unit the stage math stacks in. Raw point
+               totals ("ATK+24") lied about stacking and are gone. Point-based
+               extras from special sources (hourglass pickups, killstreak,
+               last-stand) are NOT folded in as fake stages — hourglass gets
+               its own badge here, the killstreak badge already exists below. */
+            if (typeof getStatStageCount === 'function') {
+                var _STG = [['atk', 'ATK'], ['def', 'DEF'], ['int', 'INT'], ['mdef', 'MDEF'], ['spd', 'SPD']];
+                for (var gi = 0; gi < _STG.length; gi++) {
+                    var _stgN = getStatStageCount(unit, _STG[gi][0]);
+                    if (_stgN > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN > 1 ? 's' : '') + ' (max 5)">+' + _stgN + ' ' + _STG[gi][1] + '</span>');
+                    else if (_stgN < 0) badges.push('<span class="tp-sbadge tp-stat-dn" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN < -1 ? 's' : '') + ' (max -5)">' + _stgN + ' ' + _STG[gi][1] + '</span>');
+                }
+            }
             var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
             var hgBuff = unit.hourglassBuff || 0;
-            var totalAtk = atkD + hgBuff + (unit._streakAtkBonus || 0) + (unit._lastStandAtkBonus || 0);
-            var totalDef = defD + hgBuff;
             var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
-            if (totalAtk > 0) badges.push('<span class="tp-sbadge tp-stat-up">ATK+' + totalAtk + '</span>');
-            else if (totalAtk < 0) badges.push('<span class="tp-sbadge tp-stat-dn">ATK' + totalAtk + '</span>');
-            if (totalDef > 0) badges.push('<span class="tp-sbadge tp-stat-up">DEF+' + totalDef + '</span>');
-            else if (totalDef < 0) badges.push('<span class="tp-sbadge tp-stat-dn">DEF' + totalDef + '</span>');
-            if (intD > 0) badges.push('<span class="tp-sbadge tp-stat-up">INT+' + intD + '</span>');
-            else if (intD < 0) badges.push('<span class="tp-sbadge tp-stat-dn">INT' + intD + '</span>');
-            if (mdefD > 0) badges.push('<span class="tp-sbadge tp-stat-up">MDEF+' + mdefD + '</span>');
-            else if (mdefD < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MDEF' + mdefD + '</span>');
+            if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Hourglass power: +' + hgBuff + ' ATK/DEF points">⏳+' + hgBuff + '</span>');
             if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
             else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
 
@@ -9725,7 +9726,31 @@ const ThreeRenderer = (function () {
     }
 
     var _lastHoverZ = null;
+    /* The yellow corner-bracket cursor is a "you can point here" affordance —
+       it must vanish whenever pointing is meaningless: while the enemy/AI has
+       the floor, while an action or walk animation plays out, and while the
+       ENGINE is flying the camera (moveTo tweens, cinematic shots). A user
+       hand-pan/orbit is not automatic — the cursor stays live during those.
+       Checked both here (kills fresh paints) and once per frame in
+       renderFrame (hides an already-visible cursor the moment a busy state
+       starts, restores it under the stationary mouse when it ends). */
+    function _hoverCursorSuppressed() {
+        if (typeof state === 'undefined' || !state) return false;
+        if (state._actionExecuting || state._walkAnimActive) return true;
+        if (state._suppressHoverPreviewUntil
+            && performance.now() < state._suppressHoverPreviewUntil) return true;
+        if (!state._userPanning && !state._userOrbiting
+            && typeof camera !== 'undefined' && camera
+            && (camera._rafId || camera._cineShotId != null || camera._cineTps)) return true;
+        if (state.phase === 'battle' && !state.winner) {
+            if (state.autoPlayers && state.autoPlayers[state.activePlayer]) return true;
+            if (window._NET && window._NET.online && window._NET.myPlayer
+                && state.activePlayer !== window._NET.myPlayer) return true;
+        }
+        return false;
+    }
     function updateHoverHighlight(tx, ty, hz) {
+        if ((tx >= 0 || ty >= 0) && _hoverCursorSuppressed()) { tx = -1; ty = -1; hz = undefined; }
         if (tx === _lastHoverX && ty === _lastHoverY && hz === _lastHoverZ) return;
         _lastHoverX = tx; _lastHoverY = ty; _lastHoverZ = hz;
         if (!highlightGroup) return;
@@ -19185,7 +19210,15 @@ const ThreeRenderer = (function () {
         if (cam) {
             /* Keep the hover pick glued to the cursor while the ENGINE moves the
                camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
-            if (_onMouseMove) _refreshHoverOnCameraMove(cam);
+            if (_onMouseMove) {
+                var _supNow = _hoverCursorSuppressed();
+                if (_supNow !== _hoverSupWas) {
+                    _hoverSupWas = _supNow;
+                    if (_supNow) updateHoverHighlight(-1, -1);
+                    else _lastHoverCamSig = '';   // force the refresh below to repaint the cursor
+                }
+                _refreshHoverOnCameraMove(cam);
+            }
 
             /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
                shadow caster could have moved this frame. Camera motion never
@@ -19226,6 +19259,8 @@ const ThreeRenderer = (function () {
        the hover from these whenever the camera pose changes so the highlight /
        pending target can never point at where the mouse ray hit BEFORE a pan. */
     var _lastMouseClientX = null, _lastMouseClientY = null, _lastHoverCamSig = '';
+    /* Last frame's cursor-suppression state — edge-detected in renderFrame. */
+    var _hoverSupWas = false;
 
     /* Raycast the floating tower cubes and return the hit cube group (carries
        _ew_towerOwner), or null. Used so a cube can be clicked to attack/target it. */

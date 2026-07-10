@@ -2213,7 +2213,9 @@ function _hrlgSpellBlades(unit, st) {
         reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
       }
       else if (typeof _mirrorSpellBlockReason === 'function' && _mirrorSpellBlockReason(unit, sp)) reason = _mirrorSpellBlockReason(unit, sp);
-      else if (!hasTarget) reason = 'No target';
+      // Pure-status spells also grey out when every target in range already
+      // carries the status (statuses don't stack) — say so.
+      else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
     }
 
     const cat = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
@@ -3176,12 +3178,44 @@ function spellRangeBadge(sp) {
 }
 
 // Primary power stat for the header (red PWR / green HP / cyan SHLD …).
+/* Effect readout for buff/debuff/status spells — the button-level answer to
+   "what does this DO?": stat stages ("+1 ATK", stackable to ±5) and status
+   applications ("🔥 Burn"), the same way damage spells wear their number. */
+const _FX_STAT_LBL = [['atk', 'ATK'], ['def', 'DEF'], ['mdef', 'MDEF'], ['spd', 'SPD'], ['int', 'INT']];
+function spellEffectLabel(sp) {
+  const parts = [];
+  let pos = false, neg = false;
+  if (sp.statStageBoost) {
+    for (const [k, lbl] of _FX_STAT_LBL) {
+      const n = sp.statStageBoost[k] || 0;
+      if (!n) continue;
+      if (n > 0) pos = true; else neg = true;
+      parts.push((n > 0 ? '+' : '') + n + ' ' + lbl);
+    }
+  }
+  if (sp.randomTeamBuff) { pos = true; parts.push('+' + (sp.randomTeamBuff.stages || 1) + ' RANDOM'); }
+  if (Array.isArray(sp.statusEffects)) {
+    for (const fx of sp.statusEffects) {
+      if (!fx || !fx.id) continue;
+      const def = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[fx.id] : null;
+      if (def && def.kind === 'debuff') neg = true; else pos = true;
+      parts.push((def && def.glyph ? def.glyph + ' ' : '') + ((def && def.label) || fx.id));
+    }
+  }
+  if (!parts.length) return null;
+  const color = neg && !pos ? '#ff9a66' : (pos && !neg ? '#55cc66' : '#c9b465');
+  return { text: parts.slice(0, 3).join(' · '), color };
+}
+
 function spellPowerStat(sp) {
   if (sp.dmg) return { value: sp.dmg, unit: 'PWR', color: '#ee6655' };
   if (sp.hitDamages && sp.hitDamages.length) return { value: sp.hitDamages.reduce((s, v) => s + v, 0), unit: 'PWR', color: '#ee6655' };
   if (sp.dotDamage) return { value: sp.dotDamage, unit: 'DOT', color: '#ee6655' };
   if (sp.heal) return { value: sp.heal, unit: 'HP', color: '#55cc66' };
   if (sp.shield) return { value: sp.shield, unit: 'SHLD', color: '#5fd6ff' };
+  // No number to show — say what the spell does instead ("+1 ATK", "🔥 Burn").
+  const fx = spellEffectLabel(sp);
+  if (fx) return { value: fx.text, unit: 'FX', color: fx.color };
   return null;
 }
 
@@ -4874,13 +4908,23 @@ function _renderSpellDescBar() {
   if (sp.tier) details.push('T·' + sp.tier);
 
   let statusLine = '';
+  const _fxParts = [];
+  // Stat changes speak in STAGES (stackable to ±5) — "+2 ATK stages".
+  if (sp.statStageBoost) {
+    for (const [k, lbl] of (typeof _FX_STAT_LBL !== 'undefined' ? _FX_STAT_LBL : [])) {
+      const n = sp.statStageBoost[k] || 0;
+      if (n) _fxParts.push((n > 0 ? '+' : '') + n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : ''));
+    }
+  }
+  if (sp.randomTeamBuff) _fxParts.push('+' + (sp.randomTeamBuff.stages || 1) + ' random stat stage (team)');
   if (sp.statusEffects && sp.statusEffects.length > 0) {
-    statusLine = sp.statusEffects.map(s => {
+    for (const s of sp.statusEffects) {
       const id = s.id || '';
       const label = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) ? STATUS_DEFS[id].label : id.replace(/_/g, ' ');
-      return label + (s.duration ? ' (' + s.duration + 't)' : '');
-    }).join(', ');
+      _fxParts.push('Applies ' + label + (s.duration ? ' (' + s.duration + 't)' : ''));
+    }
   }
+  statusLine = _fxParts.join(', ');
 
   const badge = sp.spellType
     ? '<span style="display:inline-flex;align-items:center;flex:none;' +
