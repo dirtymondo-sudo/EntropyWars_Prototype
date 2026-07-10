@@ -5085,10 +5085,8 @@ function ReactHUD() {
     h('div', { style: { pointerEvents: 'auto' }},
       h(MatchMeta, { st }),
     ),
-    h(CombatLog, { st }),
-    h('div', { style: { pointerEvents: 'auto' }},
-      h(ControlHints, { st }),
-    ),
+    // Combat log, control-hints strip, and minimap are hidden from the HUD
+    // (minimap suppressed via CSS on #battleMinimap in the injected styles).
     // ONE menu system: the Horologe drum renders the root verbs, every
     // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
@@ -6161,7 +6159,7 @@ function _injectHudHideStyles() {
     .ew-scoreboard { transform: translateX(-50%) scale(var(--ew-hud-scale, 1)) !important; transform-origin: 50% 0; }
     .ew-matchmeta  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
     .ew-combatlog  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
-    #battleMinimap { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 100%; }
+    #battleMinimap { display: none !important; }
     .battle-subtitle-text { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 50% 100%; }
 
     /* ══════════ SPELL DESCRIPTION BAR — SMT-style HELP strip ══════════
