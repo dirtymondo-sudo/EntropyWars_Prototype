@@ -3171,22 +3171,6 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // Sky-strike CAMERA gate. Many spells route through the "descent" VFX
-        // pipeline (telegraph ring → body → impact), and that mapping USED to
-        // also hand each one the dramatic tilt-up-and-follow-down camera. That
-        // was too broad — it fired on ground-level / horizontal AOE effects that
-        // have nothing plummeting from the sky. The camera is now reserved for
-        // spells where something CLEARLY falls / strikes from overhead (meteors,
-        // ordnance, divine light, lightning, UFO beams). The few descent-VFX
-        // spells listed here keep their falling/burst VFX unchanged but use the
-        // standard over-the-shoulder action cam instead of the sky-strike shot.
-        // To move a spell in/out of the sky cam, just edit this set.
-        const _NO_SKY_STRIKE_CAM = new Set(['empBurst', 'sharedGlacialTomb', 'shootout']);
-        function _skyStrikeCamAllowed(spellId) {
-            return !!spellId && !_NO_SKY_STRIKE_CAM.has(spellId);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
         // _setupAoeCameraAndTiming() — common offensive-camera + timing
         // setup for area spells (aoe, cross, aoePull, etc.).
         // Returns { cam, projectileDelay, impactDelay, completionDelay }.
@@ -3202,7 +3186,9 @@
                 sourceHold: 900, targetHold: 900,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 attackName: spell.name,
-                descentCam: (hasDescent && _skyStrikeCamAllowed(spell.id)) ? {
+                // Timing data only — descent spells keep the standard two-beat
+                // shot; this just syncs the impact kick to the real landing.
+                descentCam: hasDescent ? {
                     telegraphMs: VFX.getDescentTelegraphMs(spell.id),
                     descentMs: VFX.getDescentDescentMs(spell.id)
                 } : undefined
@@ -3362,7 +3348,7 @@
             const profile = _animProfile(spell);
             focusUnitPanel(target.id);
             playSfx(profile.sfx || spellLaunchSfx(spell));
-            _spellFocusCamera(unit, x, y);
+            _spellFocusCamera(unit, x, y, { spellName: spell.name });
 
             // VFX: aura (3D or canvas fallback)
             const VFX = window.ThreeVFXEffects;
@@ -3424,8 +3410,9 @@
             const camOpts = opts.cameraOpts || { sourceHold: 900, targetHold: 900 };
             if (profile.camera === 'offensive' && target) {
                 const _VFX = window.ThreeVFXEffects;
-                const _descentCam = (travel === 'descent' && _VFX && _VFX.hasMapping(spell.id, 'descent')
-                        && _skyStrikeCamAllowed(spell.id))
+                // Timing data only — descent spells keep the standard two-beat
+                // shot; this just syncs the impact kick to the real landing.
+                const _descentCam = (travel === 'descent' && _VFX && _VFX.hasMapping(spell.id, 'descent'))
                     ? { telegraphMs: _VFX.getDescentTelegraphMs(spell.id),
                         descentMs: _VFX.getDescentDescentMs(spell.id) }
                     : undefined;
@@ -3435,7 +3422,7 @@
                     descentCam: _descentCam
                 });
             } else if (profile.camera === 'focus') {
-                _spellFocusCamera(unit, tileXY.x, tileXY.y);
+                _spellFocusCamera(unit, tileXY.x, tileXY.y, { spellName: spell.name });
             }
 
             // Phase 1: SFX (after camera so cinematic can set up)
@@ -7800,6 +7787,104 @@
             return !!_cinematicEl;
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ACTION-CAM CHROME — the 2D dressing over the 3D cinematic action
+        // shot: letterbox bars sliding in from the top/bottom, the spell name
+        // in big type in the top-left corner, and a running TOTAL DMG readout
+        // under it. While the heavy chrome is live, applyDamageToUnit routes
+        // every damage number into the corner total via _actionCamTallyDamage
+        // instead of popping per-unit floating "-N" text.
+        // One persistent overlay element (pointer-events:none, never blocks),
+        // reused by every shot. `heavy` chrome (bars + vignette + damage) is
+        // for damaging casts only; the light variant (name only) dresses the
+        // self-buff hero shot so support spells stay understated.
+        // ═══════════════════════════════════════════════════════════════════
+        let _acChromeEl = null;
+        let _acChromeState = null;   // { heavy, total, until, hideTimer }
+
+        function _ensureActionCamChrome() {
+            if (_acChromeEl && _acChromeEl.isConnected) return _acChromeEl;
+            const el = document.createElement('div');
+            el.className = 'acam-chrome';
+            el.innerHTML = `
+        <div class="acam-bar acam-bar-top"></div>
+        <div class="acam-bar acam-bar-bot"></div>
+        <div class="acam-vignette"></div>
+        <div class="acam-flash"></div>
+        <div class="acam-title">
+          <div class="acam-spell-name"></div>
+          <div class="acam-dmg-row"><span class="acam-dmg-label">TOTAL DMG</span><span class="acam-dmg-num">0</span></div>
+        </div>`;
+            (document.getElementById('game-viewport') || document.body).appendChild(el);
+            _acChromeEl = el;
+            return el;
+        }
+
+        function showActionCamChrome(opts = {}) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            const el = _ensureActionCamChrome();
+            if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
+            const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
+            _acChromeState = { heavy: !!opts.heavy, total: 0,
+                until: performance.now() + totalMs + 400, hideTimer: null };
+            el.classList.remove('light', 'hiding');
+            if (!opts.heavy) el.classList.add('light');
+            const nameEl = el.querySelector('.acam-spell-name');
+            if (nameEl) {
+                nameEl.textContent = opts.name || '';
+                nameEl.classList.toggle('empty', !opts.name);
+                // restart the slam-in on back-to-back casts
+                nameEl.classList.remove('in');
+                void nameEl.offsetWidth;
+                nameEl.classList.add('in');
+            }
+            const dmgRow = el.querySelector('.acam-dmg-row');
+            const dmgNum = el.querySelector('.acam-dmg-num');
+            if (dmgRow) dmgRow.classList.remove('show');
+            if (dmgNum) { dmgNum.textContent = '0'; dmgNum.classList.remove('crit', 'tick'); }
+            requestAnimationFrame(() => el.classList.add('active'));
+            _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
+        }
+
+        function hideActionCamChrome() {
+            if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
+            _acChromeState = null;
+            if (!_acChromeEl) return;
+            _acChromeEl.classList.remove('active');
+            _acChromeEl.classList.add('hiding');
+        }
+
+        /* White impact frame on the cast→hit camera cut. */
+        function _acChromeFlash() {
+            if (!_acChromeEl || !_acChromeState) return;
+            const f = _acChromeEl.querySelector('.acam-flash');
+            if (!f) return;
+            f.classList.remove('pop');
+            void f.offsetWidth;
+            f.classList.add('pop');
+        }
+
+        /* Feed a damage number into the corner TOTAL readout. Returns true when
+           consumed — the caller then skips the floating "-N" text. Only heavy
+           (damaging-cast) chrome eats numbers; buffs/utility never do. */
+        function _actionCamTallyDamage(dmg, isCrit) {
+            if (!_acChromeState || !_acChromeState.heavy) return false;
+            if (!(dmg > 0)) return false;
+            if (performance.now() > _acChromeState.until) return false;
+            if (!_acChromeEl || !_acChromeEl.classList.contains('active')) return false;
+            const row = _acChromeEl.querySelector('.acam-dmg-row');
+            const num = _acChromeEl.querySelector('.acam-dmg-num');
+            if (!row || !num) return false;
+            _acChromeState.total += dmg;
+            row.classList.add('show');
+            num.textContent = _acChromeState.total.toLocaleString();
+            if (isCrit) num.classList.add('crit');
+            num.classList.remove('tick');
+            void num.offsetWidth;
+            num.classList.add('tick');
+            return true;
+        }
+
         let boardCameraResetTimer = null;
         let boardCameraSequenceId = 0;
 
@@ -10269,13 +10354,25 @@
         const CINE_TPS_DIST_TILES = 4.6;   // boom at melee range, in tiles of world
         const CINE_TPS_DIST_GROW  = 0.22;  // extra boom per tile of caster→target gap
         const CINE_TPS_DIST_MAX   = 7.0;   // never further than this — keeps it a character shot
-        function _tpsBoomZoom(lenTiles) {
+        // Two-beat JRPG action shot (see _playCineActionShot): boom lengths and
+        // angles for the CAST close-up (beat 1, facing the caster) and the HIT
+        // reverse cut (beat 2, framing the victim).
+        const CINE_FACE_DIST_TILES = 3.4;  // beat 1 — tight hero framing of the caster
+        const CINE_FACE_TILT       = 76;   // beat 1 pitch: a touch above eye line, looking down
+        const CINE_HIT_DIST_TILES  = 4.4;  // beat 2 — victim framing
+        const CINE_HIT_TILT        = 74;   // beat 2 pitch
+        const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
+        /* Zoom that encodes an explicit TPS boom length (world tiles). */
+        function _tpsZoomForBoomTiles(distTiles) {
             const ts = CONFIG.tileSize || BASE_TILE;
             const base = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
                 ? ThreeCamera.getBaseDist() : 800;
+            return Math.max(0.15, Math.min(10.0, base / (ts * Math.max(0.5, distTiles))));
+        }
+        function _tpsBoomZoom(lenTiles) {
             const distTiles = Math.min(CINE_TPS_DIST_MAX,
                 CINE_TPS_DIST_TILES + Math.max(0, (lenTiles || 0) - 1) * CINE_TPS_DIST_GROW);
-            return Math.max(0.15, Math.min(10.0, base / (ts * distTiles)));
+            return _tpsZoomForBoomTiles(distTiles);
         }
         function _tpsShoulderLift(unit) {
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -10323,7 +10420,7 @@
            stays in the tactical board view for the whole game (turn start,
            target select/cycle, back-to-menu all keep the overhead framing);
            the over-the-shoulder rig only engages for the spell/ability ACTION
-           shots themselves (_playCineActionShot / dash / descent cams). */
+           shots themselves (_playCineActionShot / self-cast hero shot). */
         const TPS_BETWEEN_ACTIONS = false;
         const TPS_TURN_TILT = 78;   // resting over-the-shoulder pitch (12° below horizon)
         /* Over-the-shoulder offset for the turn shot, in tiles: the orbit
@@ -10414,7 +10511,55 @@
             if (!_tpsUnitShot(u)) _softResetCameraToUnit(u);
         };
 
-        function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId) {
+        /* moveTo() for a MID-SHOT cinematic beat. Identical to camera.moveTo
+           but shields boardCameraResetTimer: moveTo unconditionally cancels
+           that shared timer — correct for user/gameplay pans, but a delayed
+           cinematic BEAT firing after playOffensiveActionCamera has armed its
+           end-of-shot timer was silently cancelling the turn-banner restore
+           (a long-standing descent-cam bug, fixed here for the new beats). */
+        function _cineBeatMove(opts) {
+            const _keep = boardCameraResetTimer;
+            boardCameraResetTimer = null;
+            camera.moveTo(opts);
+            boardCameraResetTimer = _keep;
+        }
+
+        /* HARD CUT to a new framing — one frame, no tween, no glide. snap()
+           can't be used mid-shot: it clears the shot id, wipes _preCineView
+           and records the cinematic angle as the player's resting orientation.
+           This applies the framing directly and tells both smoothing layers
+           (the 2D _apply smoother and ThreeCamera's damped follow) to jump. */
+        function _cineHardCut(opts) {
+            camera._stop();
+            camera.x = camera._tx = opts.x ?? camera._tx;
+            camera.y = camera._ty = opts.y ?? camera._ty;
+            if (opts.zoom !== undefined) camera.zoom = camera._tz = Math.max(0.15, Math.min(10.0, opts.zoom));
+            if (opts.tilt !== undefined) camera.tilt = camera._tt = opts.tilt;
+            if (opts.yaw  !== undefined) camera.yaw  = camera._tyaw = opts.yaw;
+            camera._elevOverride = camera._tElev = opts.elevZ ?? -1;
+            camera._elevRelease = false;
+            camera._smoothInited = false;
+            if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+            camera._apply();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _playCineActionShot() — THE standard spell shot. ONE rig for every
+        // damaging cast (meteors and sky-strikes included — the per-spell
+        // descent camera is gone): a classic two-beat JRPG sequence.
+        //   BEAT 1 — THE CAST: the camera swoops around IN FRONT of the caster
+        //     and faces them while the cast animation winds up. Holds for
+        //     timings.sourceHold — the exact moment the projectile/VFX
+        //     launches, so the beat ends on the release frame.
+        //   BEAT 2 — THE HIT: a hard CUT (white impact frame on the chrome)
+        //     to a ¾ shot of the victim as the effect arrives, with a slow
+        //     push-in riding through the impact. The board kicks at impactMs
+        //     (descent spells pass their telegraph+fall total via
+        //     shotOpts.impactMs so the kick lands WITH the falling body).
+        // Falls back to the legacy single over-the-shoulder shot when the 3D
+        // TPS rig is unavailable (2D renderer).
+        // ═══════════════════════════════════════════════════════════════════
+        function _playCineActionShot(sourceUnit, target, timings, fogAllowed, sequenceId, shotOpts = {}) {
             // Remember the player's framing to return to — but ONLY capture it
             // from a genuine gameplay state (no shot currently owns the camera).
             // Capturing while a previous cinematic shot is still live would record
@@ -10434,18 +10579,7 @@
             const dx = tx - sx;
             const dy = ty - sy;
             const len = Math.max(1, Math.hypot(dx, dy));
-
-            // Camera sits BEHIND the caster looking toward the target (matches
-            // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
-            // degrees off-axis so the caster reads as an over-the-shoulder
-            // foreground subject rather than dead-centered.
-            // NOTE: yaw is ABSOLUTE in the 3D world — do NOT add 180 for the P2
-            // viewer. The old `is-p2-viewer` +180 here dated from the 2D CSS
-            // board (which is rotated for P2); the WebGL canvas is never
-            // rotated, so the flip put the camera BEHIND THE TARGET looking
-            // back at the caster — the online "reverse angle action cam" bug.
-            let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-
+            const dirx = dx / len, diry = dy / len;
             const ts = CONFIG.tileSize || BASE_TILE;
 
             // Caster + target world elevations (px). A flyer reports its airborne
@@ -10460,108 +10594,106 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            // ── Everything below is RELATIVE to the caster→target geometry, so
-            // the SHOT looks identical every cast no matter where on the board the
-            // two units stand or which way they face. (Absolute tilt/yaw/focal
-            // numbers move with them; the relationship between camera, caster and
-            // target does not.)
+            // Absolute world yaw down the caster→target line (matches
+            // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)).
+            // NOTE: NO +180 for the P2 viewer — the WebGL canvas is never
+            // rotated; the old flip put the camera BEHIND THE TARGET looking
+            // back at the caster (the online "reverse angle action cam" bug).
+            const yawFwd = Math.atan2(-dx, -dy) * (180 / Math.PI);
 
-            // FOCAL (screen centre): a FIXED short distance IN FRONT of the caster
-            // down the line to the target — NOT a fraction of the gap. This is the
-            // fix for the caster flying off-screen: a fixed lead keeps the caster
-            // pinned to the same foreground spot no matter how far away the target
-            // is, so the camera can never sail past it. Its HEIGHT is blended the
-            // same fixed amount along the line, so a tall elevation gap never parks
-            // screen-centre up in the empty sky.
-            const dirx = dx / len, diry = dy / len;
-            const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
-            const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
+            // When the effect actually LANDS (board kick timing). Descent
+            // spells pass their real telegraph+fall total; everything else
+            // lands at launch + travel.
+            const impactMs = Math.max(0,
+                shotOpts.impactMs ?? (timings.sourceHold + timings.travelMs + actionMs(60)));
 
-            // How far the target sits ABOVE the caster (px; 0 if level or below).
-            // _getElevationPx == level × tileSize, so elevation and horizontal
-            // distance share one scale (1 tile = 1 level = `ts` px) and combine
-            // directly below.
-            const upGapPx = Math.max(0, tgtPx - casterPx);
+            // Keep the subject framed (dolly-in floor response) while a shot
+            // cranes at slopes/sky. Cleared when the shot ends (restore/snap/
+            // reset), so free-look keeps its sky-revealing floor pan.
+            camera._cineKeepSubject = true;
 
-            // FOCAL (orbit pivot / screen centre): the caster + a fixed rise, lifted
-            // toward an ABOVE-target so the caster and target straddle screen-centre.
-            // (For a level/below target upGapPx == 0, so this is just caster + rise.)
-            const elevZ = casterPx + ts * CINE_FOCAL_RISE + upGapPx * CINE_UP_FRAME_BIAS;
-
-            // PITCH: ride CINE_SHOULDER_ANGLE above the caster→target line and look
-            // along it AT FULL STRENGTH — a target below cranes the gaze DOWN, a
-            // target high in the sky cranes it UP, with no cap. Looking up at a sky
-            // target used to swing the ground-standing caster off the bottom of the
-            // frame, because the camera's eye can't drop below the board to look up
-            // FROM under the caster. That is fixed in the rig: ThreeCamera now does a
-            // real 3rd-person floor response for this shot (cam._cineKeepSubject) —
-            // when the eye would go underground it DOLLIES IN toward the caster along
-            // the view ray instead of flinging the gaze past it, so the caster stays
-            // framed while the camera genuinely tilts up. Guards block only a flip.
-            const horiz = Math.max(ts * 0.5, len * ts);
-            const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
-            const tilt = Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
-
-            // SUBJECT SIZE: tight signature framing for a level/below target; for an
-            // ABOVE target, ease back so the high target (plus its HP bar) clears the
-            // top while the caster holds the foreground — sized from the REAL gap so
-            // it is right at any altitude. (When the up-tilt is steep enough that the
-            // rig dollies the eye in, that closer distance wins; this just keeps a
-            // sane bound for the in-between angles.)
-            // THE ACTION CAMERA IS THE STRIKE MODE CAMERA: anchor the TPS rig
-            // on the caster (real shoulder height, colliding boom, gaze along
-            // the caster→target line). Zoom then just encodes a fixed world
-            // boom that eases back slightly with the gap — the target sits on
-            // the aim ray, so no vertical-fit maths is needed; elevation is
-            // handled by the slope tilt above.
-            let zoom;
             if (_cineTpsAnchor(sourceUnit, sourceUnit)) {
-                // include the vertical gap in the boom length so a steep
-                // up/down shot (flyer vs ground, cliff fights) gets the same
-                // breathing room as a long flat one
-                zoom = _tpsBoomZoom(Math.hypot(len, Math.abs(tgtPx - casterPx) / ts));
+                // ── BEAT 1 — THE CAST: swoop around and face the caster while
+                // they wind up. The camera eye sits toward the TARGET's side of
+                // the line looking back, so the cut to beat 2 reverses cleanly.
+                const yawFace = yawFwd + 180 - CINE_CAM_YAW_OFFSET;
+                _cineBeatMove({
+                    x: sx + dirx * 0.1, y: sy + diry * 0.1,
+                    zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
+                    tilt: CINE_FACE_TILT, yaw: yawFace,
+                    elevZ: casterPx + ts * CINE_FOCAL_RISE,
+                    duration: actionMs(420), easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: fogAllowed || undefined
+                });
+
+                // ── BEAT 2 — THE HIT: hard cut to the victim at launch. The
+                // TPS pivot re-anchors on the target's own shoulder/ground; a
+                // ¾ angle (OTS offset + extra swing) keeps the caster in the
+                // deep background and the victim front-and-centre for the hit.
+                window.setTimeout(() => {
+                    if (camera._cineShotId !== sequenceId) return;
+                    if (sequenceId !== boardCameraSequenceId) return;
+                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    _cineTpsAnchor(target, (target && target.id != null) ? target : null);
+                    const zoomHit = _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
+                    _cineHardCut({
+                        x: tx, y: ty,
+                        zoom: zoomHit, tilt: CINE_HIT_TILT,
+                        yaw: yawFwd + CINE_CAM_YAW_OFFSET + CINE_HIT_SWING,
+                        elevZ: tgtPx + ts * CINE_FOCAL_RISE
+                    });
+                    _acChromeFlash();
+                    // Slow push-in through the arrival and the impact.
+                    _cineBeatMove({
+                        zoom: zoomHit * 1.07,
+                        duration: Math.max(actionMs(300), timings.travelMs + timings.targetHold),
+                        easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true,
+                        _fogAllowed: fogAllowed || undefined
+                    });
+                }, timings.sourceHold);
             } else {
-                // 2D fallback: the legacy framing maths.
-                zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+                // ── 2D fallback: the legacy single over-the-shoulder shot ──
+                // (focal a fixed lead in front of the caster, slope-following
+                // pitch, vertical-fit zoom for above-targets).
+                const fx = sx + dirx * CINE_FOCAL_LEAD_TILES;
+                const fy = sy + diry * CINE_FOCAL_LEAD_TILES;
+                const upGapPx = Math.max(0, tgtPx - casterPx);
+                const elevZ = casterPx + ts * CINE_FOCAL_RISE + upGapPx * CINE_UP_FRAME_BIAS;
+                const horiz = Math.max(ts * 0.5, len * ts);
+                const slopeDeg = Math.atan2(tgtPx - casterPx, horiz) * (180 / Math.PI);
+                const tilt = Math.max(CINE_TILT_GUARD_MIN,
+                    Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
+                let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
                 if (upGapPx > 0) {
                     const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
                     zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
                 }
+                camera.moveTo({
+                    x: fx, y: fy, zoom, tilt, yaw: yawFwd + CINE_CAM_YAW_OFFSET, elevZ,
+                    duration: actionMs(560), easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: fogAllowed || undefined
+                });
             }
 
-            // Tell the rig to keep the caster framed (dolly-in floor response) while
-            // this shot may crane up at a sky target. Cleared when the shot ends
-            // (restore/snap/reset), so free-look keeps its sky-revealing floor pan.
-            camera._cineKeepSubject = true;
-
-            camera.moveTo({
-                x: fx, y: fy, zoom, tilt, yaw, elevZ,
-                duration: actionMs(560), easing: 'easeInOut',
-                _allowZoomChange: true, _bypassCap: true,
-                _fogAllowed: fogAllowed || undefined
-            });
-
-            // Impact kick.
+            // Impact kick — in sync with the real landing.
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (state.phase !== 'battle') return;
                 shakeBoard('normal');
-            }, timings.sourceHold + timings.travelMs + actionMs(60));
+            }, impactMs);
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // animateDashActionCamera() — STANDARD third-person action shot for dash
-        // / charge spells (Brave Charge, dashes, …).
+        // animateDashActionCamera() — camera for dash / charge / rush moves.
         //
-        // These get the SAME static over-the-shoulder action shot every other
-        // offensive cast gets (identical rig to _playCineActionShot): the camera
-        // swoops in BEHIND the caster's start, looks down the travel line, and
-        // HOLDS while the unit dashes through frame. It deliberately does NOT
-        // glide the focal down the path with the unit — the old "chase" version
-        // did that and it read wrong (the camera raced along with the unit,
-        // sitting too close to follow it). Framing on the START, holding still,
-        // lets you watch the charge cross the board within a steady shot.
+        // Deliberately TACTICAL: the over-the-shoulder shot these used to get
+        // ended the move parked in the target's face and read wrong for a
+        // traversal move. Dashes now keep the player's board view and simply
+        // pan/frame so the WHOLE travel line (launch and landing) is in shot
+        // for the duration — the drama stays with damaging casts.
         //
         // Returns true if it took the camera; false if it declined (the caller
         // then falls back to the plain path pan).
@@ -10570,238 +10702,11 @@
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
-
-            const dx = toPoint.x - fromPoint.x;
-            const dy = toPoint.y - fromPoint.y;
-            const len = Math.max(1, Math.hypot(dx, dy));
-            const dirx = dx / len, diry = dy / len;
-            const ts = CONFIG.tileSize || BASE_TILE;
-
-            // Heading: BEHIND the caster looking along the travel line (matches
-            // ThreeCamera.sync: view dir = (-sin yaw, -cos yaw)), swung a few
-            // degrees off-axis so the caster reads as an over-the-shoulder
-            // foreground subject rather than dead-centred — same as the attack cam.
-            // Absolute world yaw — no P2 flip (see note in _playCineActionShot).
-            let yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-
-            // Start + destination elevations (px) for the pitch and the above-
-            // target vertical fit, so a charge that climbs or drops still frames
-            // both ends cleanly.
-            let fromPx = 0, toPx = 0;
-            if (typeof window._getElevationPx === 'function' && typeof getHeightAt === 'function') {
-                const fh = getHeightAt(Math.round(fromPoint.x), Math.round(fromPoint.y));
-                const th = getHeightAt(Math.round(toPoint.x), Math.round(toPoint.y));
-                fromPx = fh > 0 ? window._getElevationPx(fh) : 0;
-                toPx   = th > 0 ? window._getElevationPx(th) : 0;
-            }
-
-            // PITCH: ride CINE_SHOULDER_ANGLE above the travel line and look
-            // along it — the identical over-the-shoulder pitch on flat OR sloped
-            // charges. Guards block only a degenerate flip.
-            const horiz = Math.max(ts * 0.5, len * ts);
-            const slopeDeg = Math.atan2(toPx - fromPx, horiz) * (180 / Math.PI);
-            const tilt = Math.max(CINE_TILT_GUARD_MIN,
-                Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
-
-            // FOCAL (screen centre): a FIXED short lead in front of the caster's
-            // START — exactly like _playCineActionShot — so the shot HOLDS on the
-            // caster's launch spot and never chases the unit down the path. Its
-            // height lifts toward a higher destination so start and end straddle
-            // screen centre.
-            const fx = fromPoint.x + dirx * CINE_FOCAL_LEAD_TILES;
-            const fy = fromPoint.y + diry * CINE_FOCAL_LEAD_TILES;
-            const upGapPx = Math.max(0, toPx - fromPx);
-            const elevZ = fromPx + ts * CINE_FOCAL_RISE + upGapPx * CINE_UP_FRAME_BIAS;
-
-            // SUBJECT SIZE: signature framing, easing back for a long charge so
-            // the whole path fits; widen further for a climb so the high end
-            // (plus its HP bar) clears the top. Same fit as the attack cam.
-            // Same TPS rig as the attack cam, anchored on the launch spot
-            // (shoulder height of the dashing caster when known).
-            const _dashCaster = (opts.casterId != null)
-                ? (state.units || []).find(un => un.id === opts.casterId) : null;
-            let zoom;
-            if (_cineTpsAnchor(fromPoint, _dashCaster)) {
-                zoom = _tpsBoomZoom(len);
-            } else {
-                zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
-                if (upGapPx > 0) {
-                    const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
-                    // Floor at CINE_MIN_ZOOM — same reasoning as the attack shot:
-                    // the fit may ease back, never blow out to a full-board view.
-                    zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
-                }
-            }
-
-            // Take ownership as a cinematic shot so: (a) the renderer's occlusion
-            // fade keeps the dashing caster (camera._cineShotUnitId) and the
-            // landing tile clear, (b) the rig's keep-subject dolly-in floor
-            // response keeps the caster framed while the pitch cranes with a
-            // slope, and (c) the auto-side debounced settle / finishAction's
-            // softResetToUnit un-tilts back to the resting angle once the dash
-            // lands. Capture the return framing only from a genuine gameplay pose
-            // (see the note in _playCineActionShot).
-            const sequenceId = ++boardCameraSequenceId;
-            _captureCineReturnView();
-            camera._cineShotId = sequenceId;
-            camera._cineShotUnitId = (opts.casterId != null) ? opts.casterId : null;
-            camera._cineShotTarget = { x: toPoint.x, y: toPoint.y, id: null };
-            camera._cineKeepSubject = true;
-
-            // ONE smooth swoop into the static over-the-shoulder framing (tilt/
-            // yaw/zoom tween in, not a hard cut), then HOLD — the camera stays put
-            // on the launch spot while the unit dashes through frame. No path
-            // glide, so it never chases the unit.
-            camera.moveTo({
-                x: fx, y: fy, zoom, tilt, yaw, elevZ,
-                duration: actionMs(480), easing: 'easeInOut',
-                _allowZoomChange: true, _bypassCap: true,
-                _fogAllowed: opts._fogAllowed || undefined
-            });
+            focusBoardCameraOnTiles([
+                { x: fromPoint.x, y: fromPoint.y },
+                { x: toPoint.x, y: toPoint.y }
+            ], { persist: true, transitionMs: actionMs(380), _fogAllowed: opts._fogAllowed });
             return true;
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // _playDescentCam() — cinematic camera for sky-strike spells (meteor,
-        // nuke, cosmic slam …). Three beats: (1) SWOOP into an over-the-
-        // shoulder 3rd-person view of the impact zone while the telegraph
-        // forms, (2) CRANE UP to the sky as the body spawns overhead so it
-        // falls into frame from above, (3) tilt back DOWN to follow it onto
-        // the impact, arriving with the hit. The timeline mirrors
-        // ThreeVFXEffects._fireDescent: VFX fires at sourceHold, the body
-        // spawns telegraphMs later, impact lands descentMs after that.
-        // ═══════════════════════════════════════════════════════════════════
-        function _playDescentCam(sourceUnit, target, descentCam, timings, fogAllowed, sequenceId) {
-            // Capture the return framing only from a true gameplay state — see
-            // the note in _playCineActionShot. Prevents a sky-strike shot from
-            // recording a cinematic tilt as the player's "overhead" view.
-            _captureCineReturnView();
-            camera._cineShotId = sequenceId;
-            camera._cineShotUnitId = sourceUnit.id;
-            // Published for the renderer's occlusion fade (see _playCineActionShot).
-            camera._cineShotTarget = { x: target.x, y: target.y, id: (target && target.id != null ? target.id : null) };
-
-            const sx = sourceUnit.x, sy = sourceUnit.y;
-            const tx = target.x, ty = target.y;
-            const ts = CONFIG.tileSize || BASE_TILE;
-            const dx = tx - sx, dy = ty - sy;
-            const dist = Math.abs(dx) + Math.abs(dy);
-            const len = Math.max(1, Math.hypot(dx, dy));
-            const dirx = dx / len, diry = dy / len;
-
-            // ONE fixed third-person zoom held for the WHOLE shot — establish on
-            // the caster, tilt UP to watch the body fall in, follow it back DOWN
-            // onto the impact, all at the SAME distance. NO zoom in/out. The old
-            // rig re-derived the zoom per beat from _cineZoomForTiles(5.0 → 6.5 →
-            // 4.0), which not only pumped in and out but sat FAR wider than the
-            // standard action cam (its tile-fit maths lands near ~0.6 zoom vs the
-            // action cam's ~2.0) — that is the "zooms out way too far" the meteor
-            // cam was doing. Reuse the action cam's own signature framing so the
-            // sky-strike shot opens at the exact same third-person distance and
-            // simply cranes up and back down from there.
-            const _tps = _cineTpsAnchor(sourceUnit, sourceUnit);
-            const fixedZoom = _tps ? _tpsBoomZoom(2)
-                : Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
-
-            // Caster + impact-tile elevations (px). The shot is anchored on the
-            // CASTER (a 3rd-person of them looking up at the falling body), then
-            // resolves down onto the impact tile.
-            let casterPx = 0, groundPx = 0;
-            if (typeof window._getElevationPx === 'function') {
-                const cz = _unitElevZ(sourceUnit);
-                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
-                if (typeof getHeightAt === 'function') {
-                    const h = getHeightAt(Math.round(tx), Math.round(ty));
-                    if (h > 0) groundPx = window._getElevationPx(h);
-                }
-            }
-
-            // Heading: behind the caster looking toward the impact, so it reads
-            // as a third-person over-the-shoulder shot. Self-cast / zero-range
-            // meteors keep the player's heading so the look-up doesn't spin.
-            let yaw = camera._tyaw;
-            if (dist >= 1) {
-                // Absolute world yaw — no P2 flip (see note in _playCineActionShot).
-                yaw = Math.atan2(-dx, -dy) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET;
-            }
-
-            // tilt: LOW = looking down, 90 = horizon, HIGH = looking up.
-            // On the TPS rig the gaze aims ALONG the view direction, so beat 2
-            // can genuinely crane PAST the horizon: the caster holds the lower
-            // frame while the meteor/saucer hangs in full view overhead — the
-            // shot this camera was always supposed to be. (The old rig topped
-            // out at 84° because looking further up just froze at eye level.)
-            const ESTAB_TILT  = _tps ? 78  : 60;  // over the caster's shoulder, toward the impact zone
-            const SKY_TILT    = _tps ? 122 : 84;  // crane UP — body in full view above the caster
-            const GROUND_TILT = _tps ? 64  : 54;  // back down onto the victim taking the hit
-
-            // Establishing beat anchors on the CASTER (same map-size-independent
-            // third-person framing as the action cam), nudged toward the impact.
-            const estabF = Math.min(1.3, CINE_FOCAL_LEAD);
-            const ex = sx + dirx * estabF;
-            const ey = sy + diry * estabF;
-            const casterElevZ = casterPx + ts * 0.55 + ts * CINE_HEADROOM;
-
-            const sourceHold  = Math.max(actionMs(200), timings.sourceHold);
-            const telegraphMs = Math.max(120, descentCam.telegraphMs || 800);
-            const descentMs   = Math.max(180, descentCam.descentMs || 700);
-
-            // 1) Swoop to an over-the-shoulder third-person view of the CASTER
-            //    while the telegraph ring forms on the impact tile down-range.
-            camera.moveTo({
-                x: ex, y: ey, zoom: fixedZoom, tilt: ESTAB_TILT, yaw,
-                elevZ: casterElevZ,
-                duration: actionMs(440), easing: 'easeInOut',
-                _allowZoomChange: true, _bypassCap: true,
-                _fogAllowed: fogAllowed || undefined
-            });
-
-            // 2) Stay LOW at the caster's height and tilt UP toward the sky so
-            //    the incoming body falls into frame from above — a third-person
-            //    of the caster looking up at the meteor. Bias the focal a little
-            //    toward the impact so the caster and the falling body share the
-            //    frame; the focal stays low (no crane up to the body's altitude).
-            window.setTimeout(() => {
-                if (camera._cineShotId !== sequenceId) return;
-                if (sequenceId !== boardCameraSequenceId) return;
-                if (state.phase !== 'battle' || state.cameraDisabled) return;
-                const upF = Math.min(dist || 1, CINE_FOCAL_LEAD + 1.2);
-                camera.moveTo({
-                    x: sx + dirx * upF, y: sy + diry * upF,
-                    zoom: fixedZoom, tilt: SKY_TILT, yaw,
-                    elevZ: casterPx + ts * 0.55,
-                    duration: Math.max(actionMs(260), telegraphMs * 0.9),
-                    easing: 'easeOut',
-                    _allowZoomChange: true, _bypassCap: true,
-                    _fogAllowed: fogAllowed || undefined
-                });
-            }, sourceHold);
-
-            // 3) Follow the body DOWN onto the impact tile — tilt back down,
-            //    accelerating like its fall, landing framed on the VICTIM
-            //    taking the damage (the rig's pivot re-anchors to the target's
-            //    own shoulder height and ground).
-            window.setTimeout(() => {
-                if (camera._cineShotId !== sequenceId) return;
-                if (sequenceId !== boardCameraSequenceId) return;
-                if (state.phase !== 'battle' || state.cameraDisabled) return;
-                if (_tps) _cineTpsAnchor(target, (target && target.id != null) ? target : null);
-                camera.moveTo({
-                    x: tx, y: ty, zoom: fixedZoom, tilt: GROUND_TILT, yaw,
-                    elevZ: groundPx + ts * 0.4,
-                    duration: Math.max(actionMs(240), descentMs),
-                    easing: 'easeIn',
-                    _allowZoomChange: true, _bypassCap: true,
-                    _fogAllowed: fogAllowed || undefined
-                });
-            }, sourceHold + telegraphMs);
-
-            // 4) Impact kick.
-            window.setTimeout(() => {
-                if (camera._cineShotId !== sequenceId) return;
-                if (state.phase !== 'battle') return;
-                shakeBoard('hard');
-            }, sourceHold + telegraphMs + descentMs);
         }
 
         function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
@@ -10884,20 +10789,29 @@
                 && !(typeof isCinematicPresent === 'function' && isCinematicPresent())
                 && (Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y)) >= 1;
 
-            const _descentEligible = opts.descentCam && state.cinematicActionCam && !_skipVisuals()
-                && !(typeof isCinematicPresent === 'function' && isCinematicPresent());
+            // EVERY spell gets the SAME two-beat shot — the per-spell sky-strike
+            // camera is gone. Descent spells (meteor & co) only contribute their
+            // real impact TIMING so the board kick lands with the falling body
+            // instead of at the generic travel time.
+            const _impactMs = opts.descentCam
+                ? timings.sourceHold
+                    + actionMs(Math.max(120, opts.descentCam.telegraphMs || 800)
+                             + Math.max(180, opts.descentCam.descentMs || 700))
+                : undefined;
 
-            // Default OFF; only the over-the-shoulder action shot below turns on the
-            // rig's keep-subject (dolly-in) floor response. Descent/plain shots and
-            // free-look keep the standard sky-revealing floor pan. Released on a
-            // short delay so a previous craned-up shot eases down instead of
-            // flipping floor response mid-crane (a new shot re-owns the flag).
+            // Default OFF; only the action shot below turns on the rig's
+            // keep-subject (dolly-in) floor response. Plain shots and free-look
+            // keep the standard sky-revealing floor pan. Released on a short
+            // delay so a previous craned-up shot eases down instead of flipping
+            // floor response mid-crane (a new shot re-owns the flag).
             camera._releaseCineSubject(actionMs(500));
 
-            if (_descentEligible) {
-                _playDescentCam(sourceUnit, target, opts.descentCam, timings, _fogPassthrough, sequenceId);
-            } else if (_cineEligible) {
-                _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId);
+            if (_cineEligible) {
+                // Cinematic chrome: letterbox + spell name + TOTAL DMG readout.
+                showActionCamChrome({ name: opts.attackName || '',
+                    heavy: true, totalMs: timings.totalMs });
+                _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId,
+                    { impactMs: _impactMs });
             } else {
 
                 const focusX = (sourceUnit.x + target.x) / 2;
@@ -11222,7 +11136,11 @@
                     _impactFreezeMs = finalDamage >= 80 ? 110 : finalDamage >= 50 ? 85 : 60;
                 }
                 const _popDamageFeedback = () => {
-                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
+                    // Cinematic action shot live → the number feeds the corner
+                    // TOTAL DMG readout instead of floating over the unit.
+                    if (!_actionCamTallyDamage(finalDamage, _floatKind === 'critdmg')) {
+                        showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
+                    }
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
@@ -27459,8 +27377,62 @@
             return Math.floor((unit.intStat || 0) * 0.35);
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // _playSelfCastHeroShot() — SELF-cast support framing (buffs, stances,
+        // self-heals): instead of a flat board pan, the camera swings around
+        // IN FRONT of the caster and faces them while their cast animation
+        // plays, with the light chrome (spell name only — no letterbox, no
+        // damage readout; support spells stay understated next to damaging
+        // casts). 3D-only; returns false so the caller keeps its tactical
+        // focus pan when the rig is unavailable or the shot is inappropriate.
+        // ═══════════════════════════════════════════════════════════════════
+        function _playSelfCastHeroShot(unit, opts = {}) {
+            if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return false;
+            if (state.phase !== 'battle') return false;
+            if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false;
+            if (camera._fogBlocked(_fogCamTilesVisible({ x: unit.x, y: unit.y }))) return false;
+            if (!_cineTpsAnchor(unit, unit)) return false;
+
+            const sequenceId = ++boardCameraSequenceId;
+            _captureCineReturnView();
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = unit.id;
+            camera._cineShotTarget = { x: unit.x, y: unit.y, id: unit.id };
+            camera._cineKeepSubject = true;
+
+            // In front of the unit looking back at them: the view direction
+            // must run AGAINST the facing — (-sin yaw, -cos yaw) = (-fx, -fy)
+            // → yaw = atan2(fx, fy). Small off-axis swing for a ¾ hero angle.
+            const f = (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : { dx: 0, dy: 1 };
+            const yaw = Math.atan2(f.dx, f.dy) * (180 / Math.PI) - CINE_CAM_YAW_OFFSET;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let casterPx = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const cz = _unitElevZ(unit);
+                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
+            }
+            camera.moveTo({
+                x: unit.x, y: unit.y,
+                zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
+                tilt: CINE_FACE_TILT, yaw,
+                elevZ: casterPx + ts * CINE_FOCAL_RISE,
+                duration: actionMs(420), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            if (opts.spellName) {
+                showActionCamChrome({ name: opts.spellName, heavy: false, totalMs: actionMs(1600) });
+            }
+            return true;
+        }
+
         function _spellFocusCamera(casterUnit, tx, ty, opts = {}) {
             if (state.cameraDisabled) return;
+
+            // SELF-cast (the target tile is the caster's own): hero shot facing
+            // the caster instead of a flat pan. Falls through to the tactical
+            // focus below when the 3D rig is off or the shot declines.
+            if (casterUnit && !casterUnit.dead && tx === casterUnit.x && ty === casterUnit.y
+                && _playSelfCastHeroShot(casterUnit, opts)) return;
 
             const points = [];
             if (casterUnit && !casterUnit.dead) {
