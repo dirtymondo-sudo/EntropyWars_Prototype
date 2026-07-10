@@ -7176,10 +7176,11 @@ const ThreeRenderer = (function () {
             if (!def || !def.model) return;
             var list = [def.model];
             if (_animLibActive(def)) {
-                // Shared animation library: ONE GLB covers every character's
-                // clips — skip the per-character clip downloads entirely (they
-                // stay wired as a lazy fallback if the bake fails mid-match).
-                list.push(def.animLib);
+                // Shared animation library: one or two GLBs cover every
+                // character's clips — skip the per-character clip downloads
+                // entirely (they stay wired as a lazy fallback if the bake
+                // fails mid-match).
+                _libUrls(def).forEach(function (u) { if (u) list.push(u); });
             } else {
                 var clips = def.clips || {};
                 for (var k in clips) { if (clips[k]) list.push(clips[k]); }
@@ -7226,49 +7227,69 @@ const ThreeRenderer = (function () {
        can't be played directly (the sprites.js HARD RULE) — instead each clip
        is BAKED onto the character's own skeleton the first time its model is
        attached:
-         1. Calibrate: rotate each mapped Meshy bone (top-down) so its world
+         1. Calibrate: rotate mapped Meshy ARM bones (top-down) so their world
             bone DIRECTION matches the UAL bone's rest direction — cancels the
-            rest-pose difference (Meshy A-poses vs the UAL T-pose).
+            arbitrary arm droop of Meshy bind poses (A-ish vs the UAL T-pose).
+            Every OTHER bone keeps the character's OWN rest orientation, so a
+            hunched werewolf stays hunched and personality survives the shared
+            library ("keep-own-pose" / reverse-delta mode). Per-def
+            libPose: 'standard' (or window.EW_ANIM_LIB_STANDARD_POSE = true)
+            calibrates ALL bones instead, forcing the library's exact pose —
+            use it if a character's rest pose is too broken to keep.
          2. Per-bone constant offset R = inv(srcRestWorldQ) * tgtCalWorldQ.
-         3. Sample the UAL clip at 30Hz through a real AnimationMixer and
-            write local-quaternion keys so each target bone's WORLD
-            orientation tracks srcWorldQ(t) * R. Hips also get position keys
-            (source pelvis world delta scaled by the rigs' hip-height ratio).
-       Bakes cache on the character model's _unitGlbCache entry, so N units of
-       one race pay the few-ms bake once. Any failure (library 404, missing
-       bones, exception) falls back to the def's own Meshy clip GLBs, exactly
-       the pre-library behavior. Kill-switch: window.EW_DISABLE_ANIM_LIB.
+         3. Sample the clip at 30Hz through a real AnimationMixer and write
+            local-quaternion keys so each target bone's WORLD orientation
+            tracks srcWorldQ(t) * R. Hips also get position keys (source
+            pelvis world delta scaled by the rigs' hip-height ratio).
+       def.animLib may be an ARRAY of library GLB urls; each libClips slot
+       picks its file by `lib` index ({clip, lib} values — plain strings mean
+       lib 0). Bakes cache on the character model's _unitGlbCache entry, so N
+       units of one race pay the few-ms bake once. Any failure (library 404,
+       missing bones, exception) falls back to the def's own Meshy clip GLBs,
+       exactly the pre-library behavior. Kill-switch: EW_DISABLE_ANIM_LIB.
        Math validated offline against the real GLBs (stick-figure renders of
        baked frames vs source, 2026-07-10). */
     var _ANIMLIB_SAMPLE_HZ = 30;
-    // [UAL bone, Meshy bone, UAL direction child, Meshy direction child].
-    // Parent-first order matters: the bake accumulates parent world rotations
-    // assuming every mapped ancestor was already processed. UAL finger/leaf
-    // bones and Meshy head_end/headfront have no counterpart and stay put.
+    // [UAL bone, Meshy bone, UAL direction child, Meshy direction child,
+    //  calibration weight]. Parent-first order matters: the bake accumulates
+    // parent world rotations assuming every mapped ancestor was already
+    // processed. Calibration weight 1 = force the bone onto the library's
+    // rest direction (arms — Meshy bind-pose arm angles are arbitrary rig
+    // noise); 0 = keep the character's own rest direction (spine/head/legs —
+    // that's where the personality lives). 'standard' pose mode treats every
+    // weight as 1. UAL finger/leaf bones and Meshy head_end/headfront have no
+    // counterpart and stay put.
     var _ANIMLIB_MAP = [
-        ['pelvis',     'Hips',          'spine_01',   'Spine02'],
-        ['spine_01',   'Spine02',       'spine_02',   'Spine01'],
-        ['spine_02',   'Spine01',       'spine_03',   'Spine'],
-        ['spine_03',   'Spine',         'neck_01',    'neck'],
-        ['neck_01',    'neck',          'Head',       'Head'],
-        ['Head',       'Head',          null,         null],
-        ['clavicle_l', 'LeftShoulder',  'upperarm_l', 'LeftArm'],
-        ['upperarm_l', 'LeftArm',       'lowerarm_l', 'LeftForeArm'],
-        ['lowerarm_l', 'LeftForeArm',   'hand_l',     'LeftHand'],
-        ['hand_l',     'LeftHand',      null,         null],
-        ['clavicle_r', 'RightShoulder', 'upperarm_r', 'RightArm'],
-        ['upperarm_r', 'RightArm',      'lowerarm_r', 'RightForeArm'],
-        ['lowerarm_r', 'RightForeArm',  'hand_r',     'RightHand'],
-        ['hand_r',     'RightHand',     null,         null],
-        ['thigh_l',    'LeftUpLeg',     'calf_l',     'LeftLeg'],
-        ['calf_l',     'LeftLeg',       'foot_l',     'LeftFoot'],
-        ['foot_l',     'LeftFoot',      'ball_l',     'LeftToeBase'],
-        ['ball_l',     'LeftToeBase',   null,         null],
-        ['thigh_r',    'RightUpLeg',    'calf_r',     'RightLeg'],
-        ['calf_r',     'RightLeg',      'foot_r',     'RightFoot'],
-        ['foot_r',     'RightFoot',     'ball_r',     'RightToeBase'],
-        ['ball_r',     'RightToeBase',  null,         null]
+        ['pelvis',     'Hips',          'spine_01',   'Spine02',      0],
+        ['spine_01',   'Spine02',       'spine_02',   'Spine01',      0],
+        ['spine_02',   'Spine01',       'spine_03',   'Spine',        0],
+        ['spine_03',   'Spine',         'neck_01',    'neck',         0],
+        ['neck_01',    'neck',          'Head',       'Head',         0],
+        ['Head',       'Head',          null,         null,           0],
+        ['clavicle_l', 'LeftShoulder',  'upperarm_l', 'LeftArm',      1],
+        ['upperarm_l', 'LeftArm',       'lowerarm_l', 'LeftForeArm',  1],
+        ['lowerarm_l', 'LeftForeArm',   'hand_l',     'LeftHand',     1],
+        ['hand_l',     'LeftHand',      null,         null,           1],
+        ['clavicle_r', 'RightShoulder', 'upperarm_r', 'RightArm',     1],
+        ['upperarm_r', 'RightArm',      'lowerarm_r', 'RightForeArm', 1],
+        ['lowerarm_r', 'RightForeArm',  'hand_r',     'RightHand',    1],
+        ['hand_r',     'RightHand',     null,         null,           1],
+        ['thigh_l',    'LeftUpLeg',     'calf_l',     'LeftLeg',      0],
+        ['calf_l',     'LeftLeg',       'foot_l',     'LeftFoot',     0],
+        ['foot_l',     'LeftFoot',      'ball_l',     'LeftToeBase',  0],
+        ['ball_l',     'LeftToeBase',   null,         null,           0],
+        ['thigh_r',    'RightUpLeg',    'calf_r',     'RightLeg',     0],
+        ['calf_r',     'RightLeg',      'foot_r',     'RightFoot',    0],
+        ['foot_r',     'RightFoot',     'ball_r',     'RightToeBase', 0],
+        ['ball_r',     'RightToeBase',  null,         null,           0]
     ];
+    function _libUrls(def) {
+        return Array.isArray(def.animLib) ? def.animLib : [def.animLib];
+    }
+    function _libStandardPose(def) {
+        return (typeof window !== 'undefined' && window.EW_ANIM_LIB_STANDARD_POSE)
+            || (def && def.libPose === 'standard');
+    }
 
     function _animLibActive(def) {
         return !!(def && def.animLib && def.libClips
@@ -7367,21 +7388,26 @@ const ThreeRenderer = (function () {
         return libEntry._libSrc;
     }
 
-    /* Calibration + constant offsets for one target character. */
-    function _libRetargetSetup(src, modelEntry) {
+    /* Calibration + constant offsets for one target character. In the default
+       keep-own-pose mode only weight-1 bones (arms) are pulled onto the
+       library's rest directions; standardPose forces every bone. */
+    function _libRetargetSetup(src, modelEntry, standardPose) {
         var tgt = _libStructTree(modelEntry.root);
         tgt.evalWorld();
         var pairs = [];
         for (var i = 0; i < _ANIMLIB_MAP.length; i++) {
             var row = _ANIMLIB_MAP[i];
             if (!src.rest[row[0]] || !tgt.byName[row[1]]) continue;
-            pairs.push({ s: row[0], t: row[1], sc: row[2], tc: row[3], tn: tgt.byName[row[1]] });
+            pairs.push({ s: row[0], t: row[1], sc: row[2], tc: row[3],
+                         w: standardPose ? 1 : row[4], tn: tgt.byName[row[1]] });
         }
         var tgtHips = tgt.byName.Hips;
         if (!tgtHips) throw new Error('target rig has no Hips bone');
         // 1. pose the target into the source's rest shape (direction match)
+        //    for calibrated bones; weight-0 bones keep the character's own
+        //    rest orientation (the animation applies as a rotation DELTA).
         pairs.forEach(function (pr) {
-            if (!pr.sc || !pr.tc) return;
+            if (!pr.w || !pr.sc || !pr.tc) return;
             var scr = src.rest[pr.sc], tcn = tgt.byName[pr.tc];
             if (!scr || !tcn) return;
             tgt.evalWorld();
@@ -7409,16 +7435,31 @@ const ThreeRenderer = (function () {
     }
 
     /* Bake every clip named by def.libClips onto the target skeleton.
-       Returns { slot: THREE.AnimationClip } (slots naming the same library
-       clip share one baked AnimationClip — the action wiring clones dupes). */
-    function _libBakeClips(libEntry, modelEntry, def) {
-        var src = _libEnsureSrc(libEntry);
-        var setup = _libRetargetSetup(src, modelEntry);
+       libEntries is an array of settled _unitGlbCache entries, one per url in
+       def.animLib; slot values pick theirs by `lib` index. Returns
+       { slot: THREE.AnimationClip } (slots naming the same library clip share
+       one baked AnimationClip — the action wiring clones dupes). */
+    function _libBakeClips(libEntries, modelEntry, def) {
+        var standardPose = _libStandardPose(def);
+        var ctxByLib = {};   // lib index -> { src, setup }, built on demand
+        function libCtx(idx) {
+            if (ctxByLib[idx]) return ctxByLib[idx];
+            var le = libEntries[idx];
+            if (!le || !le.root) return null;
+            var src = _libEnsureSrc(le);
+            return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose) });
+        }
         var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
         var bakedByClip = {}, out = {}, missing = [];
         Object.keys(def.libClips).forEach(function (slot) {
-            var clipName = def.libClips[slot];
-            if (bakedByClip[clipName]) { out[slot] = bakedByClip[clipName]; return; }
+            var ref = def.libClips[slot];
+            var clipName = (typeof ref === 'string') ? ref : ref.clip;
+            var libIdx = (ref && typeof ref === 'object' && ref.lib) || 0;
+            var key = libIdx + ':' + clipName;
+            if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
+            var ctx = libCtx(libIdx);
+            if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
+            var src = ctx.src, setup = ctx.setup;
             var srcClip = src.clipsByName[clipName];
             if (!srcClip) { missing.push(clipName); return; }
             var dur = srcClip.duration;
@@ -7476,8 +7517,8 @@ const ThreeRenderer = (function () {
                 tracks.push(new THREE.QuaternionKeyframeTrack(pr.t + '.quaternion', times, quats[pr.t]));
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
-            var baked = new THREE.AnimationClip('EWLib_' + clipName, dur, tracks);
-            bakedByClip[clipName] = baked;
+            var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
+            bakedByClip[key] = baked;
             out[slot] = baked;
         });
         if (missing.length) {
@@ -7487,35 +7528,45 @@ const ThreeRenderer = (function () {
         return out;
     }
 
-    /* Async wrapper: loads the library GLB (once, shared by every character),
-       bakes for this character model, caches the result on the model's cache
-       entry. cb(null) ⇒ caller falls back to the def's Meshy clip GLBs. */
+    /* Async wrapper: loads every library GLB (once each, shared by every
+       character), bakes for this character model, caches the result on the
+       model's cache entry. Baking proceeds if at least the PRIMARY library
+       (index 0) loaded — slots pointing at a missing secondary file are
+       skipped and covered by the runtime fallback chains. cb(null) ⇒ caller
+       falls back to the def's Meshy clip GLBs. */
     function _animLibBakeForModel(def, modelEntry, cb) {
-        if (modelEntry._libBakedFrom === def.animLib) { cb(modelEntry._libBaked); return; }
+        var urls = _libUrls(def);
+        var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep');
+        if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
         if (modelEntry._libBakeCbs) { modelEntry._libBakeCbs.push(cb); return; }
         modelEntry._libBakeCbs = [cb];
         function settle(result) {
             modelEntry._libBaked = result;
-            modelEntry._libBakedFrom = def.animLib;
+            modelEntry._libBakedFrom = bakeKey;
             var cbs = modelEntry._libBakeCbs;
             modelEntry._libBakeCbs = null;
             for (var i = 0; i < cbs.length; i++) { try { cbs[i](result); } catch (_e) {} }
         }
-        function onLibSettled(le) {
-            if (!le.root) { settle(null); return; }
+        var pending = urls.length;
+        function onOneSettled() {
+            if (--pending > 0) return;
+            var entries = urls.map(function (u) { return _unitGlbCache[u]; });
+            if (!entries[0] || !entries[0].root) { settle(null); return; }
             var baked = null;
             try {
-                baked = _libBakeClips(le, modelEntry, def);
+                baked = _libBakeClips(entries, modelEntry, def);
             } catch (ex) {
                 console.warn('[ThreeRenderer] animation-library retarget failed — using per-character clips:', ex && ex.message);
             }
             settle(baked);
         }
-        _loadUnitGLB(def.animLib, function () {});
-        var le = _unitGlbCache[def.animLib];
-        if (!le) { settle(null); return; }
-        if (le.root || le.failed) onLibSettled(le);
-        else (le.doneCbs = le.doneCbs || []).push(onLibSettled);
+        urls.forEach(function (url) {
+            _loadUnitGLB(url, function () {});
+            var le = _unitGlbCache[url];
+            if (!le || le.root || le.failed) { onOneSettled(); return; }
+            (le.doneCbs = le.doneCbs || []).push(onOneSettled);
+        });
+        if (!urls.length) settle(null);
     }
 
     /* True rendered-space bounds of a (possibly skinned) model at rest pose.
@@ -13277,6 +13328,7 @@ const ThreeRenderer = (function () {
                         (_ck === 'support') ? ['castSupport', 'castMagic', 'cast'] :
                         (_ck === 'ranged')  ? ['castRanged', 'cast'] :
                         (_ck === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
+                        (_ck === 'plant')   ? ['castPlant', 'castSupport', 'cast'] :
                         (_ck === 'melee')   ? ['castMelee', 'cast'] :
                         (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
                     if (!_maybeStartModelAnim(uid, _castChain)

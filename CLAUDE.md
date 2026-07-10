@@ -66,9 +66,12 @@ the anti-"start over" memory; keep it updated when you learn something new.
 ## Wiring up a 3D character (frequent request)
 Units can render as rigged Meshy GLB models instead of sprites. Since
 2026-07-10 animations come from a SHARED library (Quaternius UAL,
-`Assets/Models/UAL1_Standard.glb` on R2 — non-root-motion export) that
-three-renderer.js retargets onto every Meshy rig at load, so per-character
-animation exports are no longer needed. Recipe:
+`Assets/Models/UAL1_Standard.glb` + `UAL2_Standard.glb` on R2 — non-root-
+motion exports) that three-renderer.js retargets onto every Meshy rig at
+load, so per-character animation exports are no longer needed. Retargeting
+keeps each character's OWN rest posture (hunched beasts stay hunched; only
+arm bind angles are standardized), and per-character clip flavor is one
+`lib: {slot: {clip, lib, ts}}` opt (see UAL_SLOTS + PLAYTEST_NOTES). Recipe:
 1. The user uploads the rigged model `..._Character_output.glb` (or any
    `_withSkin` export) to the race's R2 sprite folder. The
    `_generate`/`_texture` stage GLBs are BONELESS — never use them.

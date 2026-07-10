@@ -1447,7 +1447,33 @@ verify visually after upload) — syntax-checked only.
   - Math validated offline 2026-07-10 (scratchpad stick-figure renders of
     fortune-teller + werewolf bakes vs UAL source; no NaNs, feet grounded,
     T-vs-A rest difference cancelled by the calibration pass).
-  - UAL clip inventory (dur s): Idle_Loop 2.5, Walk_Loop 1.33, Jog_Fwd_Loop
+  - **Round 2 (2026-07-10, same day)**: TWO library files now —
+    `Assets/Models/UAL1_Standard.glb` + `UAL2_Standard.glb` (both non-RM).
+    `def.animLib` is an ARRAY; `libClips` values are `{clip, lib}` (lib =
+    file index). UAL2 adds OverhandThrow (castThrow — real throw at last),
+    Farm_PlantSeed (NEW castPlant slot; classifySpellAnimKind returns
+    'plant' for /seed|sapling|sprout|plant/ spells, chain castPlant →
+    castSupport → cast), Melee_Hook, Zombie_Idle/Walk/Scratch, Sword_Idle/
+    Sword_Regular_Combo/Sword_Heavy_Combo, Pistol_Idle_Loop,
+    Idle_FoldArms_Loop, shield/slide/ninja/farm sets.
+  - **Keep-own-pose retargeting (round 2 — the "everyone looks the same"
+    fix)**: calibration now pulls only the ARM bones onto the library's rest
+    directions (Meshy arm bind angles are rig noise); spine/head/legs keep
+    the character's OWN rest orientation and the animation applies as a
+    rotation delta on top — so the hunched werewolf stays hunched (verified:
+    rest spine z-lean 0.43 preserved + amplified by the zombie idle) while
+    humans stay upright. `_ANIMLIB_MAP` carries the per-bone calibration
+    weight. Opt back into the old fully-standardized pose per character with
+    `libPose: 'standard'` or globally with
+    `window.EW_ANIM_LIB_STANDARD_POSE = true` (console A/B).
+  - **Per-character flavor overrides**: `_mk3d`/`_mkUAL` opts.lib =
+    `{slot: {clip, lib, ts}}` merges over UAL_SLOTS. Wired: knight
+    (Sword_Idle + Sword_Regular_Combo), all gun users incl. catgirl/annunaki
+    (Pistol_Idle_Loop), werewolf (Zombie idle/walk/scratch), vampire
+    (FoldArms idle + scratch), demon (Sword_Heavy_Combo), giant
+    (Punch_Cross), bigfoot/catgirl/kifighter/halfdemon (Melee_Hook),
+    atlantean (Swim_Idle_Loop).
+  - UAL1 clip inventory (dur s): Idle_Loop 2.5, Walk_Loop 1.33, Jog_Fwd_Loop
     0.93, Sprint_Loop 0.67, Jump_Start 1.33/Jump_Loop 2.5/Jump_Land 1.27,
     Roll 1.47, Hit_Chest 0.33, Hit_Head 0.43, Death01 2.4, Punch_Jab 0.87,
     Punch_Cross 1.0, Sword_Attack 1.53, Sword_Idle 1.67, Spell_Simple_
