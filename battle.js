@@ -22470,16 +22470,25 @@
                 _focusPlatesForAction(unit, x, y);
                 clearAoePreview();
                 clearHoveredTarget();
+                const _repeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;
                 state.pendingTarget = null;
 
                 const execZ = (z !== undefined && z !== null) ? z : state._clickedZ;
                 if (execZ !== undefined && execZ !== null) state._clickedZ = execZ;
                 // Arm the repeat queue: further clicks on this target while the
                 // action animates stack repetitions (see _tryQueueRepeat).
+                // A ×N count picked on the confirm drum (pendingTarget._repeatN,
+                // basic attacks only) pre-loads the queue so one confirm fires
+                // the whole chain — each repeat still re-validates AP/target.
+                const _preQueued = (state.actionMode === 'attack' && _repeatN > 1) ? _repeatN - 1 : 0;
                 state._repeatQueue = (state.actionMode === 'attack' || state.actionMode === 'spell')
-                    ? { unitId: unit.id, mode: state.actionMode, tool: state.selectedTool, x, y, z: execZ, queued: 0 }
+                    ? { unitId: unit.id, mode: state.actionMode, tool: state.selectedTool, x, y, z: execZ, queued: _preQueued }
                     : null;
-                if (state.actionMode === 'attack') { doAttack(unit, x, y, execZ); }
+                if (state.actionMode === 'attack') {
+                    const _atkR = doAttack(unit, x, y, execZ);
+                    // first swing rejected → don't leave pre-loaded repeats armed
+                    if ((_atkR === 0 || _atkR === false) && state._repeatQueue) state._repeatQueue.queued = 0;
+                }
                 else if (state.actionMode === 'spell') { doSpell(unit, x, y, execZ); }
                 else if (state.actionMode === 'item') {
                     // Items don't own the executing latch the way attacks/spells
@@ -23007,6 +23016,10 @@
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = clickedUnit.id;
                 focusUnitPanel(clickedUnit.id);
+                // Opening a target's quick-action menu swings the caster's
+                // over-the-shoulder view onto them — same shot the target
+                // drum uses, so the menu is always ABOUT the unit on screen.
+                _tpsTargetShot(actingUnit, clickedUnit);
                 playSfx('uiCursorFocus');
                 markDirty('board', 'selectedUnit', 'hud');
                 renderIfDirty();
@@ -23119,9 +23132,15 @@
                         state._tileActionTarget = null;
 
                         if (state._enemyActionTargetId === clickedUnit.id) {
+                            // second click closes the quick menu → back to the
+                            // caster's own third-person turn shot
                             state._enemyActionTargetId = null;
+                            if (typeof window._tpsTurnShot === 'function') window._tpsTurnShot();
                         } else {
                             state._enemyActionTargetId = clickedUnit.id;
+                            // quick menu opens → face the target (caster's
+                            // over-the-shoulder shot, same as the target drum)
+                            _tpsTargetShot(actingUnit, clickedUnit);
                         }
                         focusUnitPanel(clickedUnit.id);
                         playSfx('uiCursorFocus');
@@ -23332,6 +23351,7 @@
                 return;
             }
 
+            let _confRepeatN = 1;
             if (needsConfirm) {
                 let sameTarget = state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool;
                 if (!sameTarget && state.pendingTarget && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool) {
@@ -23360,6 +23380,7 @@
                     renderIfDirty();
                     return;
                 }
+                _confRepeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;
                 state.pendingTarget = null;
             }
 
@@ -23629,7 +23650,17 @@
                 return result;
             }
 
-            if (state.actionMode === 'attack') return _execAction(() => doAttack(actingUnit, x, y, state._clickedZ));
+            if (state.actionMode === 'attack') {
+                const _atkRes = _execAction(() => doAttack(actingUnit, x, y, state._clickedZ));
+                // ×N picked on the confirm drum → pre-load the repeat queue
+                // (drained back-to-back by endUnitIfDone, re-validated per
+                // swing). Armed only when the first swing actually fired.
+                if (_confRepeatN > 1 && _atkRes !== 0 && _atkRes !== false) {
+                    state._repeatQueue = { unitId: actingUnit.id, mode: 'attack', tool: null,
+                        x, y, z: state._clickedZ, queued: _confRepeatN - 1 };
+                }
+                return _atkRes;
+            }
             if (state.actionMode === 'jump') {
 
                 /* Same pattern as move: only intercept if user physically clicked a unit sprite,
