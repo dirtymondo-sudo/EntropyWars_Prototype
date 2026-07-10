@@ -8695,9 +8695,21 @@
                 // response stays live for the whole hold (the pose may be craned
                 // up); busy is released NOW so the turn loop never stalls on a
                 // camera that intentionally isn't moving.
+                // …but NOT when the shot's victim just DIED: the framing this
+                // branch would hold is beat 2's close-up parked on the target
+                // — i.e. a zoomed-in shot of a pile of bones — and there is no
+                // follow-up attack on that target to chain into. Kills usually
+                // refund AP (Press Turn), which made this hold the COMMON
+                // post-kill path: the "camera stuck zoomed into the remains
+                // after a kill" bug. A dead victim falls through to the full
+                // return below instead.
+                const _shotVictim = (this._cineShotTarget && this._cineShotTarget.id != null)
+                    ? (state.units || []).find(u => u.id === this._cineShotTarget.id) : null;
+                const _shotVictimGone = !!(_shotVictim && (_shotVictim.dead || _shotVictim._dying));
                 if (!opts.focusTarget && targetUnit && !targetUnit.dead
                     && this._cineShotId != null && this._preCineView
-                    && (targetUnit.ap || 0) > 0 && !unitFinished(targetUnit)) {
+                    && (targetUnit.ap || 0) > 0 && !unitFinished(targetUnit)
+                    && !_shotVictimGone) {
                     this._savedState = null;
                     this._cineShotId = null;
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -10667,6 +10679,12 @@
                     if (camera._cineShotId !== sequenceId) return;
                     if (sequenceId !== boardCameraSequenceId) return;
                     if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    // Victim already dead by cut time (fast melee resolutions):
+                    // don't hard-cut into a close-up of the remains — hold
+                    // beat 1 on the caster for the rest of the shot.
+                    const _cutVictim = (target && target.id != null)
+                        ? (state.units || []).find(u => u.id === target.id) : null;
+                    if (_cutVictim && (_cutVictim.dead || _cutVictim._dying)) return;
                     _cineTpsAnchor(target, (target && target.id != null) ? target : null);
                     const zoomHit = _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
