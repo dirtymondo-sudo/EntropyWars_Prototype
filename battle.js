@@ -14117,17 +14117,77 @@
             return Math.max(0, ready - (state.round || 0));
         }
 
+        /* ═══ UNIVERSAL castability guard ════════════════════════════════
+           ONE function answers "why can't this unit cast this spell right
+           now?". The ability drum's greying, the quick menus, doSpell and
+           canAffordSpell all route through here — add any NEW hard lock
+           (accessory rules, statuses, mode rules) HERE ONCE and every menu
+           greys it out and every cast path rejects it automatically.
+           Returns a short player-facing reason string, or null = castable
+           (target availability is checked separately — see
+           hasSpellTargetInRange / spellTargetUsableOn). */
+        function getSpellBlockReason(unit, spell) {
+            if (!unit || !spell) return null;
+            if (unitHasStatus(unit, 'silence')) return 'Silenced';
+            if (!unitMeetsSpellTierReq(unit, spell)) {
+                const trl = spell.tier === 'II' ? 2 : spell.tier === 'III' ? 3 : 1;
+                return 'Req Lv.' + trl;
+            }
+            const cdLeft = getSpellCooldownRemaining(unit, spell);
+            if (cdLeft > 0) return '⏳ CD ' + cdLeft;
+            // Berserker's Brand / Archon's Focus choice lock: each life the
+            // unit is bound to the FIRST spell it casts. doSpell already
+            // rejects other casts — this surfaces the lock in every menu.
+            if (typeof unitHasAccessory === 'function'
+                && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId
+                && (unitHasAccessory(unit, 'berserkers_brand') || unitHasAccessory(unit, 'archons_focus'))) {
+                return '🔒 Brand-locked';
+            }
+            if ((unit.ap || 0) < getSpellApCost(spell)) return 'No AP';
+            // Build spells consume banked materials (salvage economy).
+            if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
+                return 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(spell.materialCost) : 'materials');
+            }
+            // Machine Elves: Pulse/Tune need prisms already on the board.
+            const _mirrorWhy = _mirrorSpellBlockReason(unit, spell);
+            if (_mirrorWhy) return _mirrorWhy;
+            // MP is deliberately checked LAST: canAffordSpell() treats a bare
+            // 'No MP' as passable (its callers gate MP themselves), so no
+            // other block may hide behind it.
+            const mpDelta = (typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
+            if ((unit.mp || 0) < (spell.cost || 0) + mpDelta) return 'No MP';
+            return null;
+        }
+        window.getSpellBlockReason = getSpellBlockReason;
+
+        /* Per-UNIT target validity for support kinds — decides both which
+           units appear in the target drum AND whether the spell counts as
+           "has a target": heal needs a DAMAGED ally, cleanse needs an ally
+           actually carrying a debuff, revive needs a revivable corpse. */
+        function spellTargetUsableOn(unit, spell, u) {
+            if (!unit || !spell || !u) return false;
+            const k = spell.kind;
+            if (k === 'revive') return !!u.dead && !u.reviveLocked;
+            if (u.dead) return false;
+            if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            if (k === 'cleanse') {
+                return typeof getActiveStatusKeys === 'function'
+                    && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff');
+            }
+            return true;
+        }
+        window.spellTargetUsableOn = spellTargetUsableOn;
+
         function canAffordSpell(unit, spell) {
             const cost = spell ? getSpellApCost(spell) : AP_COST_SPELL;
             if ((unit.ap || 0) < cost) return false;
-            if (spell && !unitMeetsSpellTierReq(unit, spell)) return false;
-            if (spell && getSpellCooldownRemaining(unit, spell) > 0) return false;
-            // Build spells consume banked materials (salvage economy) — the HUD
-            // graying, both AIs and doSpell all inherit this gate.
-            if (spell && spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) return false;
-            // Machine Elves: Pulse/Tune need prisms already on the board.
-            if (spell && _mirrorSpellBlockReason(unit, spell)) return false;
-            return true;
+            if (!spell) return true;
+            // Everything else (tier, cooldown, materials, mirror prisms, the
+            // Brand choice lock…) lives in the universal guard. NOTE: raw MP
+            // affordability is deliberately NOT part of this check — callers
+            // gate MP themselves — so the guard's MP reason is skipped here.
+            const why = getSpellBlockReason(unit, spell);
+            return !why || why === 'No MP';
         }
 
         /* ─── Press Turn helpers ─────────────────────────────────────────────
@@ -14586,16 +14646,19 @@
                 return false;
             }
 
-            if (kind === 'heal') {
+            // heal/cleanse route through spellTargetUsableOn (the universal
+            // per-target guard): heal needs a DAMAGED ally in range, cleanse an
+            // ally actually carrying a debuff — otherwise the drum greys them.
+            if (kind === 'heal' || kind === 'cleanse') {
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
                 return allies.some(a => {
-                    if (a.hp >= a.maxHp) return false;
+                    if (!spellTargetUsableOn(unit, spell, a)) return false;
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
                     return d <= range;
                 });
             }
 
-            if (['buff', 'shield', 'cleanse'].includes(kind)) {
+            if (['buff', 'shield'].includes(kind)) {
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
                 return allies.some(a => {
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
@@ -21410,7 +21473,7 @@
                the same signals _waitForAnimationsThen watches. While true the
                action menu + sub/quick panels hide so input can't race an
                animation (walks, spells, projectiles, deaths, camera travel). */
-            boardBusy() {
+            boardBusy(opts) {
                 try {
                     if (_walkAnimActive || state._walkAnimActive) return true;
                     if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return true;
@@ -21422,7 +21485,11 @@
                         && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
                     if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
                         && ThreeVFX.hasActiveParticles()) return true;
-                    if (camera.isBusy()) return true;
+                    /* ignoreCamera: while the player browses a TARGET LIST the
+                       caster→target preview shot glides the camera — hiding the
+                       menu for a camera-only glide made the whole Horologe
+                       blink out on every target pick. */
+                    if (!(opts && opts.ignoreCamera) && camera.isBusy()) return true;
                 } catch (_) {}
                 return false;
             },
@@ -21953,6 +22020,10 @@
                 if (!skipLOS && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
                 if (isOffensive && isAllyUnit(u, unit)) continue;
                 if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                // Universal per-target guard: a full-HP ally is not a heal
+                // target, a clean ally is not a cleanse target — they must
+                // not appear in the target drum at all.
+                if (!isOffensive && !spellTargetUsableOn(unit, spell, u)) continue;
                 targets.push({ x: u.x, y: u.y, dist: d, unit: u });
             }
             targets.sort((a, b) => a.dist - b.dist);
@@ -22430,8 +22501,8 @@
             // stack, so an airborne target picked from the menu used to
             // resolve to whoever stood beneath it and the camera never
             // looked up.
-            if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets'
-                || state.actionMenuView === 'items') {
+            if (state.actionMode === 'attack' || state.actionMode === 'spell'
+                || state.actionMode === 'item') {
                 const _mu = getSelectedUnit();
                 const _mtgt = (typeof unitAt === 'function')
                     ? (((z !== undefined && z !== null) && unitAt(x, y, z)) || unitAt(x, y))
@@ -23278,6 +23349,13 @@
                         viaHover: false
                     };
                     playSfx('uiCursorFocus');
+                    // Picking a UNIT on the map swings the caster's over-the-
+                    // shoulder view onto it — exactly like picking it from the
+                    // target drum (tile picks keep the tactical view).
+                    if (clickedUnit && !clickedUnit.dead
+                        && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
+                        _tpsTargetShot(actingUnit, clickedUnit);
+                    }
                     markDirty('board', 'selectedUnit', 'hud');
                     renderIfDirty();
                     return;
@@ -27442,10 +27520,21 @@
             // throwRange itself, so skip the normal caster-range / LOS / fog gates here.
             const isSkyThrowPhase2 = spell.kind === 'skyThrow' && unit._skyThrowGrab;
 
+            /* Sky grabs (Predator Drop / Sky Slam / Sky Throw's grab phase) dive
+               down from the air: range is HORIZONTAL-ONLY and terrain never
+               blocks the swoop. This must match getSpellRangeTiles /
+               _getSpellValidTargets (2D Manhattan, no LOS) — the 3D combatReach
+               gate below counted an AIRBORNE caster's own altitude against the
+               range-1 grab, so Predator Drop only worked from the ground and
+               rejected every airborne cast with "out of range". */
+            const _isSkyGrabCast = spell.kind === 'skyDrop' || spell.kind === 'skySlam'
+                || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
+
             const isLineDirection = spell.kind === 'line' || spell.kind === 'linePush';
             if (!isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
                 const effSpellRange = getEffectiveSpellRange(unit, spell);
-                if (dEff < minRange || dEff > effSpellRange) {
+                const gateD = _isSkyGrabCast ? _rawDxy : dEff;
+                if (gateD < minRange || gateD > effSpellRange) {
                     addLog('Spell target is out of range.');
                     state._teleportingUnit = null;
                     playErrorSfx();
@@ -27458,7 +27547,7 @@
                 // gate (like teleport). The AI's spell targeter already treats it this way;
                 // gating it here is what produced "Terrain blocks the spell path" on tiles
                 // the AI legitimately picked, wasting the unit's turn.
-                if (spell.kind !== 'teleport' && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+                if (spell.kind !== 'teleport' && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && !_isSkyGrabCast && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
                     addLog('Terrain blocks the spell path.');
                     playErrorSfx();
                     return 0;
@@ -28411,6 +28500,14 @@
             }
 
             else if (spell.kind === 'cleanse') {
+                // Universal guard parity: never burn MP/AP cleansing an ally
+                // with nothing on them (map clicks bypass the target drum).
+                const _clPre = (unitAt(x, y, z) || unitAt(x, y));
+                if (_clPre && !spellTargetUsableOn(unit, spell, _clPre)) {
+                    addLog(`${unitDisplayName(_clPre)} has no debuffs to cleanse.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: cleanse uses ally support pipeline
                 const _clResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
                     errorMsg: 'Invalid target for Cleanse.',

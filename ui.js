@@ -4395,32 +4395,14 @@
                 return;
             }
 
-            if (state.pendingTarget && (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets')) {
-                playSfx('uiBack');
-                state.pendingTarget = null;
-                renderBattleSelectionUI();
-                return;
-            }
-
-            if (state.pendingTarget) {
-                playSfx('uiBack');
-                state.pendingTarget = null;
-                renderBattleSelectionUI();
-                return;
-            }
-
-            if (state.actionMenuView === 'spellTargets') {
-                playSfx('uiBack');
-                state.actionMenuView = 'spells';
-                state.actionMode = null;
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                state._spellOrientation = null;
-                renderBattleSelectionUI();
-                return;
-            }
-
-            if (state.actionMenuView === 'spellOrientation') {
+            /* ── ONE LEVEL AT A TIME ──────────────────────────────────────
+               Back always steps exactly one menu level: target list → the
+               list it was opened from (abilities/items/root), armed
+               spell/item aim → its list, sub-menu → root. A pending ✓ pick
+               is NOT its own level — it clears as part of leaving the
+               targeting step (the old pending-only step made back feel like
+               it "didn't work" half the time). */
+            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation') {
                 playSfx('uiBack');
                 state.actionMenuView = 'spells';
                 state.actionMode = null;
@@ -4436,6 +4418,38 @@
                 state.actionMenuView = 'root';
                 state.actionMode = null;
                 state.selectedTool = null;
+                state.pendingTarget = null;
+                renderBattleSelectionUI();
+                return;
+            }
+
+            // Armed spell aiming from the abilities drum (tile-target / free
+            // aim) → back to the ABILITIES list, never all the way to root.
+            if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && state.selectedTool) {
+                playSfx('uiBack');
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                state._spellOrientation = null;
+                if (typeof clearAoePreview === 'function') clearAoePreview();
+                if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
+                renderBattleSelectionUI();
+                return;
+            }
+
+            // Armed item targeting → back to the ITEMS list.
+            if (state.actionMode === 'item' && state.actionMenuView === 'items' && state.selectedTool) {
+                playSfx('uiBack');
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                if (typeof clearAoePreview === 'function') clearAoePreview();
+                renderBattleSelectionUI();
+                return;
+            }
+
+            if (state.pendingTarget) {
+                playSfx('uiBack');
                 state.pendingTarget = null;
                 renderBattleSelectionUI();
                 return;

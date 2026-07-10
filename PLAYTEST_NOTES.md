@@ -4,6 +4,67 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## PREDATOR DROP AIRBORNE + HOROLOGE UX OVERHAUL (2026-07-10) — battle.js, hud.js, ui.js
+Token `20260709z` → `20260710a`. All four files must ship together.
+- **Predator Drop from the air (battle.js doSpell)**: sky grabs (skyDrop /
+  skySlam / skyThrow grab phase) now bypass the generic 3D combatReach range
+  gate and the LOS gate — `_isSkyGrabCast` uses `_rawDxy` (2D Manhattan),
+  matching getSpellRangeTiles/_getSpellValidTargets. The 3D gate was counting
+  an AIRBORNE caster's own altitude against the range-1 grab ("out of range"
+  after the move-into-position walk); it only ever worked from the ground.
+- **UNIVERSAL castability guard (battle.js)**: `getSpellBlockReason(unit,
+  spell)` (window-exported) = the ONE place for hard cast locks — silence,
+  tier, cooldown, **Berserker's Brand/Archon's Focus choice lock**
+  (`unit._brandLockSpellId`), AP, materials, mirror prisms, MP (MP checked
+  LAST — canAffordSpell treats a bare 'No MP' as passable since its callers
+  gate MP themselves). canAffordSpell delegates to it, so the ability drum,
+  quick menus, canCastAnySpellWithTargets and both AIs all inherit any new
+  rule added there. hud.js `_hrlgSpellBlades` shows the returned reason
+  string (e.g. "🔒 Brand-locked") on the greyed blade.
+- **`spellTargetUsableOn(unit, spell, u)` (battle.js, window-exported)**:
+  per-unit target validity — heal needs a DAMAGED ally, cleanse an ally with
+  an actual `kind:'debuff'` status, revive a revivable corpse. Enforced in
+  `_getSpellValidTargets` (drum lists), `hasSpellTargetInRange` (heal/cleanse
+  split out of buff/shield → blade greys with 'No target'), and doSpell's
+  cleanse executor (map clicks can't waste MP on a clean ally).
+- **No menu blink while target-picking (hud.js + battle.js)**:
+  `GAME.boardBusy(opts)` takes `{ignoreCamera:true}`; `_hudBoardBusy` passes
+  it while `st.pendingTarget && !st._actionExecuting`. The caster→target
+  TPS preview glide no longer hides the whole Horologe on every first click
+  (that blink was why the two-click confirm read as broken).
+- **Big green CONFIRM button (hud.js)**: `.hrlg-confirm` banner above the
+  view tab whenever a ✓ pick is pending in any targeting view (attack/spell/
+  item target drums AND free-aim); fires the same selectTargetFromMenu
+  confirm. The pending row also gets `.pend` (green edge, pulse) + a
+  "✓ TARGET" chip instead of the old tiny checkmark.
+- **Caster-POV camera on MAP clicks (battle.js clickTile)**: first click on a
+  unit while attack/spell/item is armed now calls `_tpsTargetShot` (menu
+  picks already did); selectTargetFromMenu's camera condition switched from
+  actionMenuView-list to actionMode-based so it also fires for free-aim
+  spell target lists.
+- **View tab names the armed tool (hud.js)**: aim views show the SPELL/ITEM
+  name (was "Abilities"/"Items"); aim viewKey includes the tool so the drum
+  resets per spell.
+- **Target drum for tile-aim spells (hud.js)**: aim|spell view now renders
+  `_hrlgTargetBlades` + CANCEL whenever `_getSpellValidTargets` has units
+  (kinds in `_tileOnlyKinds` — placements/deploys/teleport/dash/seeds —
+  keep the lone CANCEL). Both paths (list pick / board click) always exist.
+- **Back = exactly one level (ui.js handleBackAction)**: armed spell aim →
+  ABILITIES list (was cancelActionSelection → root); armed item → ITEMS;
+  target lists clear pending AND step out in one press (the pending-only
+  step made back feel dead). hud.js: right-click ANYWHERE on the rig =
+  crown back (never END TURN) — the board's right-click handler never fired
+  over the HUD, which is why back "randomly didn't work".
+- **Drum wheel rework (hud.js)**: WINDOW-capture wheel listener while the
+  menu is mounted — any wheel inside the rig's bounding box cycles the drum
+  (delta ACCUMULATION, one row per ~80px, deltaMode-aware) instead of
+  leaking to board zoom the moment the pointer drifts off a blade. Skips
+  events inside `.pause-card/.ew-dialog/.modal`.
+- **Scrolled-out ≠ disabled (hud.js)**: `_hrlgSlot` shows TWO peek rows
+  (op 0.62/0.3, full color); disabled rows are now categorically different —
+  flat, desaturated, DASHED left edge, red reason tag. Overflow arrows moved
+  past the second peek row (`_arrowTy` +2.55).
+
 ## CAMERA OVERHAUL round 4 — boom crane-over + orbit continuity (2026-07-09, same session)
 Token `20260709x` → `20260709y`. three-camera.js, battle.js, state.js.
 - **Boom collision CRANES OVER obstacles** (three-camera.js): when terrain

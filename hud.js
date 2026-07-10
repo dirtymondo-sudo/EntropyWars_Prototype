@@ -136,12 +136,17 @@ window._updateEntropyGaugeHUD = function() {
 function _hudBoardBusy(st) {
   if (!st) return false;
   if (st._walkAnimActive) return true;          // set by battle.js + online.js walks
+  // TARGET BROWSING (a ✓ pick armed, nothing executing yet): the only thing
+  // moving is the caster→target camera preview — the menu must STAY UP, not
+  // blink out for the length of every camera glide (it made the two-click
+  // confirm read as broken and forced a "click again").
+  const _targetBrowsing = !!(st.pendingTarget && !st._actionExecuting);
   const G = window.GAME;
   try {
-    if (G && typeof G.boardBusy === 'function') return !!G.boardBusy();
+    if (G && typeof G.boardBusy === 'function') return !!G.boardBusy({ ignoreCamera: _targetBrowsing });
     // Fallbacks for an older battle.js that doesn't export boardBusy yet:
     if (st.units && st.units.some(u => u._dying)) return true;
-    if (G && G._camera && typeof G._camera.isBusy === 'function' && G._camera.isBusy()) return true;
+    if (!_targetBrowsing && G && G._camera && typeof G._camera.isBusy === 'function' && G._camera.isBusy()) return true;
     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
         && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
     if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
@@ -1554,9 +1559,12 @@ function _hrlgSlot(off, rowH, focused, sel) {
   const base = { tx: x - HRLG_TUCK, ty };
   if (sel)     return { ...base, op: 1, s: 1.12, z: 7 };
   if (focused) return { ...base, op: 1, s: 1.0,  z: 5 };
-  // distance past the nearest window edge: 1 row peeks, the rest are gone
+  // distance past the nearest window edge: TWO rows peek (the first barely
+  // faded — "scrolled, not disabled"; genuinely unusable rows grey out via
+  // .dead/.ghost instead, so availability and scroll position never blur).
   const dEdge = Math.abs(off) - (HRLG_FOCUS_WIN - 1) / 2;
-  if (dEdge <= 1.05) return { ...base, op: 0.35, s: 0.85, z: 3 };
+  if (dEdge <= 1.05) return { ...base, op: 0.62, s: 0.92, z: 3 };
+  if (dEdge <= 2.05) return { ...base, op: 0.3,  s: 0.86, z: 2 };
   return { ...base, op: 0, s: 0.8, z: 1 };
 }
 
@@ -1578,7 +1586,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
   const port = (b.portrait && b.portrait.url) ? b.portrait : null;   // JRPG target row
   const slot = _hrlgSlot(off, rowH, focused, sel);
   const right = [];
-  if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓'));
+  if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
   if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));
   if (!dead && typeof b.cost === 'number' && !b.sub) {
@@ -1632,6 +1640,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
       + (port ? ' trow' : tall ? ' tall' : '')
       + (focused ? ' center' : ' dim')
       + (sel ? ' sel' : '')
+      + (b.check ? ' pend' : '')
       + (active ? ' active' : '')
       + (fireId === b.id ? ' fire' : ''),
     style: {
@@ -1683,7 +1692,7 @@ function HorologeBlade({ b, idx, off, rowH, focused, sel, active, fireId, onFire
 // and hands it to this component, which owns HOW it looks and moves.
 // (Separate component so its hooks never sit behind ActionMenu's early
 // returns.)
-function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, modeLabel, am, pushers, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const [fireId, setFireId] = useState(null);
@@ -1813,22 +1822,34 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     focusBlade(blades[next]);
   };
 
-  // Scroll on the menu cycles the drum — and must NEVER fall through to the
-  // board's camera-zoom wheel. React can't guarantee a non-passive wheel
-  // listener, so bind natively on the rig root with passive:false.
+  // Scroll on/near the menu cycles the drum — and must NEVER fall through to
+  // the board's camera-zoom wheel. Bound on WINDOW in the capture phase with
+  // passive:false: any wheel event whose pointer sits inside the rig's box is
+  // the drum's (the old rig-only listener leaked to the board zoom whenever
+  // the pointer drifted a few px off a blade mid-scroll — the #1 "I keep
+  // zooming the map by accident" report). Deltas ACCUMULATE so trackpads
+  // glide one row per ~80px instead of one row per micro-event.
   const cycleRef = useRef(cycle); cycleRef.current = cycle;
   useEffect(() => {
-    const el = rigRef.current; if (!el) return;
-    let lastT = 0;
+    let acc = 0, lastT = 0;
     const onWheel = (e) => {
+      const el = rigRef.current; if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      // don't hijack scrolling inside real overlays (pause menu, dialogs…)
+      const t = e.target;
+      if (t && t.closest && t.closest('.pause-card, .ew-dialog, .modal, select, textarea')) return;
       e.preventDefault(); e.stopPropagation();
       const now = performance.now();
-      if (now - lastT < 90) return;   // one notch per gesture-step
+      if (now - lastT > 400) acc = 0;   // stale gesture → fresh accumulator
       lastT = now;
-      cycleRef.current(e.deltaY > 0 ? 1 : -1);
+      acc += (e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY);
+      const STEP = 80;                  // one mouse notch (~100) = one row
+      while (acc >= STEP)  { acc -= STEP; cycleRef.current(1); }
+      while (acc <= -STEP) { acc += STEP; cycleRef.current(-1); }
     };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => window.removeEventListener('wheel', onWheel, { capture: true });
   }, []);
 
   // ↑/↓ cycle the drum, ENTER fires the centered blade — full keyboard
@@ -1898,12 +1919,19 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
   // how many entries sit beyond the focus window
   const hiddenUp = carousel ? winStart : 0;
   const hiddenDn = carousel ? Math.max(0, blades.length - winStart - WIN) : 0;
-  // vertical spot for the ▲/▼ overflow arrows, just past the peeking row
-  const _arrowTy = ((WIN - 1) / 2 + 1.55) * rowH;
+  // vertical spot for the ▲/▼ overflow arrows, just past the TWO peeking rows
+  const _arrowTy = ((WIN - 1) / 2 + 2.55) * rowH;
 
   return h('div', {
     ref: rigRef, className: 'hrlg-rig',
     style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' },
+    // right-click ANYWHERE on the menu = BACK one level (same as the crown/
+    // ESC — never END TURN). The board's own right-click back doesn't fire
+    // over the HUD, which is why back "randomly didn't work" over the drum.
+    onContextMenu: (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (backable) pressCrown();
+    },
   },
     h('div', { className: 'hrlg-fan', key: viewKey },
       blades.map((b, i) => h(HorologeBlade, {
@@ -2043,6 +2071,22 @@ function HorologeMenu({ view, viewKey, title, blades, fc, factionKey, roman, uni
     modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
     carousel && blades.length > 3 && h('div', { className: 'hrlg-scroll-hint' },
       '⭥ ' + (selIdx + 1) + '/' + blades.length),
+    /* ── THE CONFIRM BUTTON ──────────────────────────────────────────
+       While a target is picked (✓), one big green button seals it — no
+       hunting for the tiny checkmark row. Clicking the ✓ row again (or
+       ENTER / pad-A) still confirms too. */
+    confirm && h('div', {
+      className: 'hrlg-confirm',
+      onClick: () => {
+        if (typeof playSfx === 'function') playSfx('uiConfirm');
+        if (clockApi.strike) clockApi.strike(90);
+        confirm.fire();
+      },
+    },
+      h('span', { className: 'hrlg-confirm-check' }, '✓'),
+      h('span', { className: 'hrlg-confirm-lbl' },
+        'CONFIRM', confirm.label ? h('span', { className: 'hrlg-confirm-tgt' }, ' — ' + confirm.label) : null),
+    ),
   );
 }
 
@@ -2151,7 +2195,12 @@ function _hrlgSpellBlades(unit, st) {
     const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(unit, sp) : 0;
     let reason = '';
     if (!canCast) {
-      if (isSilenced) reason = 'Silenced';
+      // The UNIVERSAL guard (battle.js getSpellBlockReason) speaks first —
+      // silence/tier/cooldown/MP/AP/materials/prisms AND hard locks like the
+      // Berserker's Brand. New block rules added there grey out here for free.
+      const _why = (typeof getSpellBlockReason === 'function') ? getSpellBlockReason(unit, sp) : null;
+      if (_why) reason = _why;
+      else if (isSilenced) reason = 'Silenced';
       else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; reason = 'Req Lv.' + trl; }
       else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
       else if (unit.mp < cost) reason = 'No MP';
@@ -2812,11 +2861,31 @@ function ActionMenu({ st, hidden }) {
     // already cancels. Other tile modes keep the lone CANCEL blade.
     blades = (am === 'move' || am === 'jump') ? [] : [cancelBlade];
   } else if (menuView === 'spells' && am === 'spell' && st.selectedTool) {
-    // tile-targeted / free-aim spell armed from the abilities drum
-    view = 'aim'; viewKey = 'aim|spell';
-    title = { icon: '✦', text: 'Abilities' };
-    modeLabel = (st.selectedTool + ' — CLICK A TARGET').toUpperCase();
-    blades = [cancelBlade];
+    // tile-targeted / free-aim spell armed from the abilities drum. The view
+    // tab names the ACTUAL spell being aimed (it used to just say
+    // "Abilities"), and — whenever units are legitimate targets — the same
+    // portrait target drum as unit-target spells rides alongside the free
+    // board aim, so BOTH paths (list pick / map click) always exist.
+    const _aimSp = (unit.spells || []).find(s => s.name === st.selectedTool)
+      || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
+    // Placement / terrain / self-repositioning kinds genuinely aim at TILES —
+    // a unit list would just mislead. Everything else lists units too.
+    const _tileOnlyKinds = ['placeTrap', 'placeBlock', 'buildStructure', 'terrainCreate',
+      'deployObject', 'deployPair', 'deployTurret', 'warpRune', 'summonWeather', 'placeMirror',
+      'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
+    const _listUnits = _aimSp && !_tileOnlyKinds.includes(_aimSp.kind || '')
+      && typeof _getSpellValidTargets === 'function'
+      && _getSpellValidTargets(unit, _aimSp).length > 0;
+    view = 'aim'; viewKey = 'aim|spell|' + st.selectedTool;
+    title = { icon: '✦', text: st.selectedTool };
+    modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
+    if (_listUnits) {
+      built = _hrlgTargetBlades(unit, st, 'spell');
+      built.blades = [...built.blades, cancelBlade];
+    } else {
+      modeLabel = (st.selectedTool + ' — CLICK A TARGET').toUpperCase();
+      blades = [cancelBlade];
+    }
   } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
     const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;
     const itName = (itRule && itRule.name) || st.selectedTool;
@@ -2825,9 +2894,10 @@ function ActionMenu({ st, hidden }) {
       built = _hrlgItemTargetBlades(unit, st); view = 'sub'; viewKey = 'itemTargets|' + st.selectedTool;
       modeLabel = (itName + ' — PICK A TARGET').toUpperCase();
     } else {
-      // tile-targeted item (warp stone): keep free board aim
+      // tile-targeted item (warp stone): keep free board aim — the tab names
+      // the item itself, not the Items menu it came from.
       view = 'aim'; viewKey = 'aim|item';
-      title = { icon: '❖', text: 'Items' };
+      title = { icon: '❖', text: itName };
       modeLabel = (itName + ' — CLICK A TARGET').toUpperCase();
       blades = [cancelBlade];
     }
@@ -2863,6 +2933,30 @@ function ActionMenu({ st, hidden }) {
     blades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   }
   if (built) { blades = built.blades; title = built.title; }
+
+  // ── the big green CONFIRM: armed whenever a target pick (✓) is pending in
+  // any targeting view — sealing it is one unmissable click instead of
+  // re-finding the row with the tiny checkmark. Fires the exact same
+  // selectTargetFromMenu confirm the ✓ row itself uses.
+  let confirmObj = null;
+  const _pt = st.pendingTarget;
+  const _inTargetingView = menuView === 'attackTargets' || menuView === 'spellTargets'
+    || String(viewKey).indexOf('itemTargets|') === 0
+    || (view === 'aim' && (am === 'attack' || am === 'spell' || am === 'item'));
+  if (_pt && _inTargetingView && !st._actionExecuting) {
+    const _ptUnit = (typeof unitAt === 'function')
+      ? ((_pt.z != null ? unitAt(_pt.x, _pt.y, _pt.z) : null) || unitAt(_pt.x, _pt.y))
+      : null;
+    confirmObj = {
+      label: _ptUnit
+        ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
+        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y)),
+      fire: () => {
+        if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
+        if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(_pt.x, _pt.y, _pt.z);
+      },
+    };
+  }
 
   // ── clock-HUD item slots: the unit's held items ride under the watch
   // vitals as 3 one-click slots. Clicking one either uses the item on the
@@ -2908,7 +3002,7 @@ function ActionMenu({ st, hidden }) {
     ap: unit.ap || 0, maxAP: maxAP,
     hp: unit.hp || 0, maxHp: unit.maxHp || 0, mp: unit.mp || 0, maxMp: unit.maxMp || 0,
     modeLabel: modeLabel, am: am, pushers: pushers,
-    items: hudItems, onItem: onItem,
+    items: hudItems, onItem: onItem, confirm: confirmObj,
     onAction: onAction, onEndTurn: onEndTurn, onCancel: onCancel,
   });
 }
@@ -5795,9 +5889,53 @@ function _injectHudHideStyles() {
       box-shadow: 0 0 6px rgba(255,204,68,0.4);
     }
     .hrlg-check {
-      flex: none; font-size: 12px; font-weight: 700; color: #ffe096;
-      text-shadow: 0 0 8px rgba(255,224,150,0.8);
+      flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      color: #0d1a10; background: #57d98a; padding: 2px 6px; white-space: nowrap;
+      box-shadow: 0 0 10px rgba(87,217,138,0.6);
     }
+    /* the PENDING (✓ picked) target row reads unmistakably armed: green
+       edge + glow, whatever else is going on in the drum */
+    .hrlg-blade.pend .hrlg-body {
+      border-color: #57d98a; border-left-color: #57d98a;
+      box-shadow: -2px 0 22px rgba(87,217,138,0.4), inset 3px 0 0 #57d98a;
+      animation: hrlgPendPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes hrlgPendPulse {
+      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.3), inset 3px 0 0 #57d98a; }
+      50%      { box-shadow: -2px 0 28px rgba(87,217,138,0.65), inset 3px 0 0 #57d98a; }
+    }
+    /* ── THE CONFIRM BUTTON — big, green, impossible to miss. Sits right of
+       the clock under the drum; clicking it fires the armed target pick. */
+    .hrlg-confirm {
+      position: absolute; left: 128px; bottom: 392px; min-width: 240px; height: 44px;
+      display: flex; align-items: center; gap: 10px; padding: 0 26px 0 14px;
+      pointer-events: auto; cursor: pointer; z-index: 11;
+      background: linear-gradient(100deg, #0e2417 0%, #0a1a10 60%, rgba(10,26,16,0.75) 100%);
+      border: 1px solid #57d98a; border-left: 4px solid #57d98a;
+      clip-path: polygon(10px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+      transform: skewX(-10deg);
+      animation: hrlgConfirmPulse 1.1s ease-in-out infinite;
+    }
+    .hrlg-confirm > * { transform: skewX(10deg); }
+    .hrlg-confirm:hover { animation: none; filter: brightness(1.35); }
+    .hrlg-confirm:active { transform: skewX(-10deg) translateY(2px); }
+    @keyframes hrlgConfirmPulse {
+      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.35); }
+      50%      { box-shadow: -2px 0 30px rgba(87,217,138,0.8); }
+    }
+    .hrlg-confirm-check {
+      flex: none; width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: #57d98a; color: #06130a; font-size: 15px; font-weight: 700;
+      box-shadow: 0 0 12px rgba(87,217,138,0.8);
+    }
+    .hrlg-confirm-lbl {
+      font-family: 'Cinzel', serif; font-weight: 700; font-size: 14px;
+      letter-spacing: 0.12em; color: #b8f5d0; white-space: nowrap;
+      text-shadow: 0 0 12px rgba(87,217,138,0.6);
+      overflow: hidden; text-overflow: ellipsis; max-width: 320px;
+    }
+    .hrlg-confirm-tgt { color: #fff; font-size: 12px; letter-spacing: 0.06em; }
     /* ── view tab: names the open menu, riding the top of the clock ── */
     .hrlg-view-tab {
       position: absolute; left: 128px; bottom: 358px; max-width: 320px; height: 24px;
@@ -5863,13 +6001,19 @@ function _injectHudHideStyles() {
     }
     .hrlg-blade.dead.center { cursor: default; }
     /* .dead = inert; .ghost = greyed but still clickable (opens the list so
-       it can explain itself). Both share the same washed-out look. */
+       it can explain itself). UNAVAILABLE looks categorically different from
+       "scrolled out of the window" (which keeps its colors, only fading):
+       disabled rows are flat, desaturated, DASHED-edged and carry a red
+       reason tag — no more guessing which of the two you're looking at. */
     .hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body {
-      background: #0a0b11; border-color: rgba(120,140,180,0.13); border-left-color: #555c70;
-      filter: grayscale(1); opacity: 0.68;
+      background: #08090e; border-color: rgba(120,140,180,0.1);
+      border-left: 3px dashed #454b5c;
+      filter: grayscale(1); opacity: 0.55;
     }
     .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
     .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #555c70; text-shadow: none; }
+    /* the red reason tag stays readable even inside the washed-out row */
+    .hrlg-blade.dead .hrlg-tag, .hrlg-blade.ghost .hrlg-tag { filter: none; opacity: 1; color: #ff8a97; }
     /* confirm flash sweeping along the blade */
     .hrlg-flash {
       position: absolute; inset: 0; background: var(--hfc); mix-blend-mode: screen;
