@@ -1010,6 +1010,12 @@ const ThreeRenderer = (function () {
     var _lastBuiltTileSize = -1;
 
     var _FLUID_TERRAIN_SET = { water: true, deep_water: true, lava: true };
+
+    /* Water surfaces sit slightly below the top of their block so every
+       shoreline reads as a little ridge/edge (Minecraft-style). Fraction of
+       one elevation step, applied at tile-build time. Lava is exempt — it
+       glows to the brim. */
+    var WATER_TOP_INSET = 0.18;
     var _fluidTimeSec = 0;
     /* Shared shader uniform objects for the animated water tops. Every fluid
        top material points at these SAME objects, so the per-frame update in
@@ -2371,6 +2377,10 @@ const ThreeRenderer = (function () {
                             if (ri > 0 && run.fromZ > runs[ri - 1].toZ + 1) _sawGapBelow = true;
                             var rBottomY = run.fromZ * elevStep;
                             var rTopY = (run.toZ + 1) * elevStep;
+                            /* water tops dip below the block line → shoreline ridge */
+                            if (ri === runs.length - 1 && _FLUID_TERRAIN_SET[run.terrain] && run.terrain !== 'lava') {
+                                rTopY -= elevStep * WATER_TOP_INSET;
+                            }
                             var rH = rTopY - rBottomY;
                             if (rH < 0.5) continue;
 
@@ -2427,16 +2437,20 @@ const ThreeRenderer = (function () {
 
                     var boxH = Math.max(elevStep, ht * elevStep);
                     var isFluid = !!_FLUID_TERRAIN_SET[tKey];
+                    /* water tops dip below the block line (shoreline ridge):
+                       the box is SHORTENED, not sunk, so the column's base
+                       stays put. Lava stays brim-full. */
+                    var fluidDrop = (isFluid && tKey !== 'lava') ? elevStep * WATER_TOP_INSET : 0;
                     var mats = isFluid ? buildFluidBoxMaterials(tKey, sKey)
                              : isLava  ? buildLavaBoxMaterials(tKey, sKey)
                              :           buildBoxMaterials(tKey, sKey);
-                    var boxGeo = _getBoxGeo(ts, boxH);
+                    var boxGeo = _getBoxGeo(ts, boxH - fluidDrop);
                     m = new THREE.Mesh(boxGeo, mats);
                     if (ht <= 0) {
 
-                        m.position.set(x * ts + ts / 2, -boxH / 2, y * ts + ts / 2);
+                        m.position.set(x * ts + ts / 2, -(boxH - fluidDrop) / 2 - fluidDrop, y * ts + ts / 2);
                     } else {
-                        m.position.set(x * ts + ts / 2, boxH / 2, y * ts + ts / 2);
+                        m.position.set(x * ts + ts / 2, (boxH - fluidDrop) / 2, y * ts + ts / 2);
                     }
                 }
                 m._ew_terrain = tKey; m._ew_height = ht; m._ew_tileX = x; m._ew_tileY = y;

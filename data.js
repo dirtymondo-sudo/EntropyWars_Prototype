@@ -6801,7 +6801,7 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
           damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Call the drowned deep. Water pours into the target tile and floods every connected tile at or below its level (up to 12) — trenches and craters fill, chasms become deep water. Enemies caught take damage, are slowed, and can start to drown.' },
+          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take damage, are slowed, and can start to drown.' },
         { id: 'raceOrichalcumBarrier', spellType: 'anomaly', element: 'earth', name: 'Pillar of Atlantis',
           type: 'utility', cost: 25, range: 2, apCost: 1,
           kind: 'deployObject', objectHp: 80, blocksMovement: true,

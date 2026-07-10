@@ -4,6 +4,36 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## WATER REWORK (2026-07-10) — battle.js, map.js, data.js, three-renderer.js
+Token `20260710n` → `20260710o`. Water made liquid-like (the Meteor→Flood→
+lightning "electrocute the crater" combo now works):
+- **Flood (`raceFlood`, `elevationFlood`) basin fill**: was "spread through
+  connected tiles at/below the TARGET's floor" — cast on a meteor-crater
+  center (center −2, ring −1) it wet only that 1 tile. Now
+  `computeElevationFloodTiles(x,y,cap)` (battle.js, next to
+  `settleWaterAround`) raises the waterline level by level (max head
+  `FLOOD_MAX_POUR = 3`) and keeps the highest line whose connected
+  below-line region fits in `tileCount` — craters/trenches fill to the rim
+  (waterline−floor ≥ 2 ⇒ deep_water, chasm ⇒ deep). Open ground = old capped
+  floor-level spread. Shared with the ghost preview (`spell.kind ===
+  'terrainCreate'` preview branch) so the hologram matches.
+- **Minecraft runoff**: all terrainCreate WATER paints (squareFlood/
+  orientable/BFS branches) route through `_paintSpellTile` → `_waterRunoffDest`
+  — water conjured on a slope/ledge slides downhill (steepest cardinal drop)
+  to a local low or merges into standing water; fell ≥ 2 ⇒ deep_water. No
+  more lone elevated water cubes. Runoff destinations are added to
+  `affectedTiles` (damage follows the wave); dedupe via `_pushAffected`.
+- **Water interactions**: conjured water on `lava` ⇒ `obsidian`; snuffs
+  burning tiles it covers (`extinguishTile`); units caught by fresh water get
+  `_applyKnockbackHazard` (deep = instant drowning bite, as Flood already did).
+- **Burn cure**: standing in / entering `water`/`deep_water`/`healing_spring`
+  clears `burn` + `lava_burn` (in `updateTerrainStay`, map.js — runs on every
+  move and each round tick); `_applyKnockbackHazard` also douses on knock-ins.
+- **Visual**: water/deep_water tile tops render `WATER_TOP_INSET = 0.18` of an
+  elevStep below the block line (three-renderer.js — shortened box in the flat
+  path + top run of voxel columns) so shorelines show a ridge. Lava exempt.
+  Units already sink 0.22/0.45 (SUBMERSION_DEPTH) so they still read submerged.
+
 ## NORDIC SPELL/VFX REWORK (2026-07-10) — data.js, battle.js, ui.js, ai.js, party-builder.js, three-vfx-effects.js
 Token `20260710j` → `20260710k`. The Nordic alien kit got the dramatic
 PS1-era-JRPG treatment plus mechanical reworks:

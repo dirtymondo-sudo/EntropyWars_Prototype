@@ -2450,6 +2450,16 @@
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const terr = getTerrainAt(unit.x, unit.y);
+            // 💧 Landing in water puts you out — burn and lingering lava-burn
+            // are doused the instant a unit is shoved into the drink.
+            if ((terr === 'water' || terr === 'deep_water') && unit.status
+                && (unit.status.burn || unit.status.lava_burn)) {
+                clearStatus(unit, 'burn');
+                clearStatus(unit, 'lava_burn');
+                unit._lavaBurnStacks = 0;
+                addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
+                showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
+            }
             if (terr === 'lava') {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
                 ensureUnitStatus(unit).lava_burn = 3;
@@ -2549,6 +2559,105 @@
                 }
             }
             return flooded;
+        }
+
+        // 🏞️ Minecraft-style runoff (2026-07-10): conjured water doesn't perch
+        // on a slope or a ledge as a lone floating cube — it slides downhill,
+        // steepest cardinal drop first, until it reaches a local low point or
+        // merges into standing water below. Used by the terrainCreate water
+        // spells at paint time.
+        function _waterRunoffDest(sx, sy) {
+            let cx = sx, cy = sy, fell = 0;
+            for (let guard = 0; guard < 24; guard++) {
+                const h = getBaseHeightAt(cx, cy);
+                let best = null, bestH = h, bestWet = false;
+                const nbrs = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
+                for (const n of nbrs) {
+                    if (!isInside(n[0], n[1])) continue;
+                    const t = getTerrainAt(n[0], n[1]);
+                    const wet = (t === 'water' || t === 'deep_water');
+                    if (!wet && !_tileCanFlood(n[0], n[1])) continue;
+                    const nh = getBaseHeightAt(n[0], n[1]);
+                    if (nh < bestH) { bestH = nh; best = n; bestWet = wet; }
+                }
+                if (!best) break;
+                fell += getBaseHeightAt(cx, cy) - bestH;
+                cx = best[0]; cy = best[1];
+                if (bestWet) break;   // joined a standing pool below
+            }
+            return { x: cx, y: cy, fell };
+        }
+
+        // 🌊 Basin fill (2026-07-10) — shared by the Flood-spell handler and its
+        // ghost preview. Water poured onto (x,y) behaves like a liquid with
+        // volume: the waterline rises level by level and keeps the HIGHEST line
+        // whose connected below-the-line region still fits within `cap` tiles.
+        // A meteor crater or trench therefore fills to its rim (deep in the
+        // bowl, shallow at the ring) instead of only wetting the lowest tile
+        // the cast happened to hit; open ground falls back to a plain capped
+        // spread at floor level. Chasms count as bottomless and always take
+        // the water.
+        const FLOOD_MAX_POUR = 3;   // max head of water one cast pours above the target floor
+
+        function computeElevationFloodTiles(x, y, cap) {
+            const startH = getBaseHeightAt(x, y);
+            function passable(tx, ty) {
+                if (!isInside(tx, ty)) return false;
+                const t = getTerrainAt(tx, ty);
+                if (t === 'water' || t === 'deep_water' || t === 'chasm') return true;
+                return _tileCanFlood(tx, ty);
+            }
+            function floorAt(tx, ty) {
+                if (getTerrainAt(tx, ty) === 'chasm') return startH - 99;  // bottomless
+                return getBaseHeightAt(tx, ty);
+            }
+            // Connected region strictly below `line`; null = leaks past the cap
+            // (that waterline is not contained by the surrounding ground).
+            function regionBelow(line) {
+                const seen = new Set();
+                const queue = [{ x, y }];
+                const out = [];
+                while (queue.length) {
+                    const c = queue.shift();
+                    const k = c.x + ',' + c.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (!passable(c.x, c.y)) continue;
+                    if (floorAt(c.x, c.y) >= line) continue;
+                    out.push({ x: c.x, y: c.y });
+                    if (out.length > cap) return null;
+                    queue.push({ x: c.x + 1, y: c.y }, { x: c.x - 1, y: c.y },
+                               { x: c.x, y: c.y + 1 }, { x: c.x, y: c.y - 1 });
+                }
+                return out;
+            }
+            let waterline = startH + 1;
+            let region = regionBelow(waterline);
+            if (region) {
+                for (let line = startH + 2; line <= startH + FLOOD_MAX_POUR; line++) {
+                    const higher = regionBelow(line);
+                    if (!higher) break;   // that line overflows — the one below is the brim
+                    region = higher; waterline = line;
+                }
+            } else {
+                // Open ground — no containable waterline. Nearest-first spread
+                // at floor level, capped (the pre-rework behaviour).
+                region = [];
+                const seen = new Set();
+                const queue = [{ x, y }];
+                while (queue.length && region.length < cap) {
+                    const c = queue.shift();
+                    const k = c.x + ',' + c.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (!passable(c.x, c.y)) continue;
+                    if (floorAt(c.x, c.y) >= waterline) continue;
+                    region.push({ x: c.x, y: c.y });
+                    queue.push({ x: c.x + 1, y: c.y }, { x: c.x - 1, y: c.y },
+                               { x: c.x, y: c.y + 1 }, { x: c.x, y: c.y - 1 });
+                }
+            }
+            return { waterline, tiles: region };
         }
 
         // ── RACE_PHYSIQUE accessors (2026-07-07 physique pass) ───────────────
@@ -26827,6 +26936,13 @@
 
             if (spell.kind === 'terrainCreate') {
                 const count = spell.tileCount || 3;
+                if (spell.elevationFlood) {
+                    // basin-fill preview — mirrors the handler's rising-waterline
+                    // algorithm so the ghost shows exactly what will flood
+                    const fill = computeElevationFloodTiles(tx, ty, count);
+                    for (const t of fill.tiles) pushChange(t.x, t.y);
+                    return changes;
+                }
                 if (spell.orientable) {
                     const tiles = getOrientedLineTiles(tx, ty, count, state._spellOrientation || 'horizontal');
                     for (const t of tiles) pushChange(t.x, t.y);
@@ -29804,38 +29920,68 @@
 
                     const convertedTiles = [];
                     const affectedTiles = [];
-                    if (spell.elevationFlood) {
-                        // 🌊 Elevation-aware flood (Atlantean Flood): water pours
-                        // into the target tile and spreads through CONNECTED ground
-                        // at or below the pour point's level — trenches, craters and
-                        // low basins fill first; higher ground stays dry. Ground 2+
-                        // below the pour point (and chasms — the holes this spell
-                        // exists to fill) becomes DEEP water; the rest shallow.
-                        const startH = getBaseHeightAt(x, y);
-                        const visited = new Set();
-                        const queue = [{ x, y }];
-                        while (queue.length > 0 && affectedTiles.length < count) {
-                            const tile = queue.shift();
-                            const pk = posKey(tile.x, tile.y);
-                            if (visited.has(pk)) continue;
-                            visited.add(pk);
-                            if (!isInside(tile.x, tile.y)) continue;
-                            const current = getTerrainAt(tile.x, tile.y);
-                            const alreadyWet = current === 'water' || current === 'deep_water';
-                            const isHole = current === 'chasm';
-                            if (!alreadyWet && !isHole && !_tileCanFlood(tile.x, tile.y)) continue;
-                            const h = getBaseHeightAt(tile.x, tile.y);
-                            if (h > startH) continue;               // water doesn't climb
-                            affectedTiles.push({ x: tile.x, y: tile.y });
-                            if (!alreadyWet) {
-                                const wet = (isHole || startH - h >= 2) ? 'deep_water' : 'water';
-                                if (current !== wet) {
-                                    setTerrainAt(tile.x, tile.y, wet);
-                                    convertedTiles.push({ x: tile.x, y: tile.y });
-                                }
+                    const _seenAffected = new Set();
+                    const _pushAffected = (tx, ty) => {
+                        const ak = tx + ',' + ty;
+                        if (_seenAffected.has(ak)) return;
+                        _seenAffected.add(ak);
+                        affectedTiles.push({ x: tx, y: ty });
+                    };
+                    // 💧 Conjured water behaves like water (2026-07-10): it
+                    // quenches lava it lands on into obsidian and snuffs any
+                    // ground fire it covers.
+                    const _isWaterPaint = (terrainType === 'water' || terrainType === 'deep_water');
+                    const _paintTile = (tx, ty, current, tt) => {
+                        let t = tt || terrainType;
+                        if (_isWaterPaint && current === 'lava') {
+                            t = 'obsidian';
+                            addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into obsidian!`);
+                        }
+                        if (current === t) return false;
+                        setTerrainAt(tx, ty, t);
+                        if (_isWaterPaint && t !== 'obsidian' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
+                        return true;
+                    };
+                    // Paint one spell tile, letting conjured water RUN DOWNHILL
+                    // (Minecraft-style) instead of perching on slopes/ledges as
+                    // a lone floating cube. Water that slides 2+ levels lands as
+                    // deep water; water reaching an existing pool just merges.
+                    const _paintSpellTile = (tx, ty) => {
+                        const current = getTerrainAt(tx, ty);
+                        if (current === 'wall') return;
+                        _pushAffected(tx, ty);
+                        if (_isWaterPaint) {
+                            const dest = _waterRunoffDest(tx, ty);
+                            if (dest.x !== tx || dest.y !== ty) {
+                                _pushAffected(dest.x, dest.y);
+                                const dCur = getTerrainAt(dest.x, dest.y);
+                                if (dCur === 'water' || dCur === 'deep_water') return;   // merged into the pool below
+                                const tt = (dest.fell >= 2 && terrainType === 'water') ? 'deep_water' : terrainType;
+                                if (_paintTile(dest.x, dest.y, dCur, tt)) convertedTiles.push({ x: dest.x, y: dest.y });
+                                return;
                             }
-                            queue.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y },
-                                       { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+                        }
+                        if (_paintTile(tx, ty, current)) convertedTiles.push({ x: tx, y: ty });
+                    };
+                    if (spell.elevationFlood) {
+                        // 🌊 Basin-aware flood (2026-07-10 rework): water pours
+                        // into the target tile and RISES — the waterline climbs
+                        // level by level while the surrounding ground still
+                        // contains it, so a meteor crater fills to its rim (deep
+                        // water in the bowl, shallow at the ring) instead of only
+                        // wetting the lowest tile the cast happened to hit.
+                        // Chasms swallow the pour as deep water; on open ground
+                        // it falls back to a capped floor-level spread.
+                        const fill = computeElevationFloodTiles(x, y, count);
+                        for (const tile of fill.tiles) {
+                            const current = getTerrainAt(tile.x, tile.y);
+                            _pushAffected(tile.x, tile.y);
+                            if (current === 'water' || current === 'deep_water') continue;
+                            const isHole = current === 'chasm';
+                            const wet = (isHole || fill.waterline - getBaseHeightAt(tile.x, tile.y) >= 2) ? 'deep_water' : 'water';
+                            if (_paintTile(tile.x, tile.y, current, wet)) {
+                                convertedTiles.push({ x: tile.x, y: tile.y });
+                            }
                         }
                         // Fresh water claims its victims: drowning/hazard check for
                         // anyone standing where the water just rose.
@@ -29847,12 +29993,7 @@
                         const candidates = getOrientedLineTiles(x, y, count, _castOrientation);
                         for (const tile of candidates) {
                             if (!isInside(tile.x, tile.y)) continue;
-                            const current = getTerrainAt(tile.x, tile.y);
-                            if (current === 'wall') continue;
-                            affectedTiles.push({ x: tile.x, y: tile.y });
-                            if (current === terrainType) continue;
-                            setTerrainAt(tile.x, tile.y, terrainType);
-                            convertedTiles.push({ x: tile.x, y: tile.y });
+                            _paintSpellTile(tile.x, tile.y);
                         }
                     } else if (spell.squareFlood) {
 
@@ -29861,13 +30002,7 @@
                         const sq = getSquareArea(x, y, spell.aoeRadius || 1);
                         for (const tile of sq) {
                             if (!isInside(tile.x, tile.y)) continue;
-                            const current = getTerrainAt(tile.x, tile.y);
-                            if (current === 'wall') continue;
-                            affectedTiles.push({ x: tile.x, y: tile.y });
-                            if (current !== terrainType) {
-                                setTerrainAt(tile.x, tile.y, terrainType);
-                                convertedTiles.push({ x: tile.x, y: tile.y });
-                            }
+                            _paintSpellTile(tile.x, tile.y);
                         }
                     } else {
 
@@ -29880,16 +30015,19 @@
                             if (visited.has(pk)) continue;
                             visited.add(pk);
                             if (!isInside(tile.x, tile.y)) continue;
-                            const current = getTerrainAt(tile.x, tile.y);
-                            if (current === 'wall') continue;
-                            affectedTiles.push({ x: tile.x, y: tile.y });
-                            if (current !== terrainType) {
-                                setTerrainAt(tile.x, tile.y, terrainType);
-                                convertedTiles.push({ x: tile.x, y: tile.y });
-                            }
+                            if (getTerrainAt(tile.x, tile.y) === 'wall') continue;
+                            _paintSpellTile(tile.x, tile.y);
                             converted++;
                             queue.push({ x: tile.x + 1, y: tile.y }, { x: tile.x - 1, y: tile.y },
                                        { x: tile.x, y: tile.y + 1 }, { x: tile.x, y: tile.y - 1 });
+                        }
+                    }
+                    // 💦 The splash douses anyone caught in fresh water (burn wiped
+                    // by the knockback-hazard path; deep water starts the drowning).
+                    if (_isWaterPaint && !spell.elevationFlood) {
+                        for (const ct of convertedTiles) {
+                            const _wpU = unitAt(ct.x, ct.y);
+                            if (_wpU && !_wpU.dead) _applyKnockbackHazard(_wpU);
                         }
                     }
 
