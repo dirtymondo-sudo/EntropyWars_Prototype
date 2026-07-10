@@ -15,7 +15,7 @@ if (!document.getElementById('ms-hover-css')) {
     }
     .ms-btn:hover {
       filter: brightness(1.25);
-      box-shadow: 0 0 10px rgba(180,200,240,0.12);
+      box-shadow: 0 0 10px rgba(201,180,240,0.12);
     }
     .ms-btn:active {
       transform: scale(0.97);
@@ -28,13 +28,13 @@ if (!document.getElementById('ms-hover-css')) {
                   box-shadow 0.15s, transform 0.1s !important;
     }
     .ms-btn-ghost:hover {
-      background: rgba(180,200,240,0.08) !important;
-      border-color: rgba(180,200,240,0.35) !important;
+      background: rgba(201,180,240,0.08) !important;
+      border-color: rgba(201,180,240,0.35) !important;
       color: #e6e9f2 !important;
     }
     .ms-btn-ghost:active {
       transform: scale(0.96);
-      background: rgba(180,200,240,0.14) !important;
+      background: rgba(201,180,240,0.14) !important;
     }
 
     /* Primary CTA (CONFIRM) */
@@ -43,7 +43,7 @@ if (!document.getElementById('ms-hover-css')) {
     }
     .ms-btn-primary:hover {
       filter: brightness(1.15) saturate(1.1);
-      box-shadow: 0 0 40px rgba(242,196,104,0.35), 0 2px 12px rgba(242,196,104,0.25) !important;
+      box-shadow: 0 0 40px rgba(201,165,255,0.35), 0 2px 12px rgba(201,165,255,0.25) !important;
       transform: translateY(-1px);
     }
     .ms-btn-primary:active {
@@ -57,16 +57,16 @@ if (!document.getElementById('ms-hover-css')) {
                   transform 0.12s !important;
     }
     .ms-mode-card:hover {
-      background: linear-gradient(180deg, rgba(242,196,104,0.1), rgba(0,0,0,0.4)) !important;
-      border-color: rgba(242,196,104,0.4) !important;
-      box-shadow: 0 0 14px rgba(242,196,104,0.08);
+      background: linear-gradient(180deg, rgba(201,165,255,0.1), rgba(0,0,0,0.4)) !important;
+      border-color: rgba(201,165,255,0.4) !important;
+      box-shadow: 0 0 14px rgba(201,165,255,0.08);
       transform: translateX(2px);
     }
     .ms-mode-card:active {
       transform: translateX(2px) scale(0.99);
     }
     .ms-mode-card.selected:hover {
-      box-shadow: 0 0 20px rgba(242,196,104,0.15);
+      box-shadow: 0 0 20px rgba(201,165,255,0.15);
       transform: none;
     }
 
@@ -76,8 +76,8 @@ if (!document.getElementById('ms-hover-css')) {
                   transform 0.12s !important;
     }
     .ms-map-card:hover {
-      border-color: rgba(180,200,240,0.4) !important;
-      box-shadow: 0 0 14px rgba(180,200,240,0.08);
+      border-color: rgba(201,180,240,0.4) !important;
+      box-shadow: 0 0 14px rgba(201,180,240,0.08);
       transform: translateY(-1px);
     }
     .ms-map-card:active {
@@ -89,7 +89,7 @@ if (!document.getElementById('ms-hover-css')) {
       transition: background 0.12s, color 0.12s, border-color 0.12s !important;
     }
     .ms-seg-opt:hover {
-      background: linear-gradient(180deg, rgba(242,196,104,0.12), transparent) !important;
+      background: linear-gradient(180deg, rgba(201,165,255,0.12), transparent) !important;
       color: #e6e9f2 !important;
     }
 
@@ -99,10 +99,10 @@ if (!document.getElementById('ms-hover-css')) {
                   box-shadow 0.12s, transform 0.1s !important;
     }
     .ms-chip:hover {
-      border-color: rgba(242,196,104,0.5) !important;
-      color: #f2c468 !important;
-      background: rgba(242,196,104,0.1) !important;
-      box-shadow: 0 0 8px rgba(242,196,104,0.1);
+      border-color: rgba(201,165,255,0.5) !important;
+      color: #c9a5ff !important;
+      background: rgba(201,165,255,0.1) !important;
+      box-shadow: 0 0 8px rgba(201,165,255,0.1);
     }
     .ms-chip:active {
       transform: scale(0.95);
@@ -113,27 +113,27 @@ if (!document.getElementById('ms-hover-css')) {
       transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
     }
     .ms-stepper-btn:hover {
-      background: rgba(180,200,240,0.1) !important;
-      border-color: rgba(180,200,240,0.35) !important;
+      background: rgba(201,180,240,0.1) !important;
+      border-color: rgba(201,180,240,0.35) !important;
       color: #e6e9f2 !important;
     }
     .ms-stepper-btn:active {
       transform: scale(0.9);
-      background: rgba(180,200,240,0.18) !important;
+      background: rgba(201,180,240,0.18) !important;
     }
   `;
   document.head.appendChild(_css);
 }
 
 const EW = {
-  bg: '#06070c', bg2: '#0b0d16', bg3: '#11141f',
-  panel: 'rgba(20,24,38,0.72)',
-  panelEdge: 'rgba(120,140,180,0.16)',
-  panelEdgeHi: 'rgba(180,200,240,0.32)',
-  ink: '#e6e9f2', inkMute: '#8a93a8', inkDim: '#555c70',
-  grid: 'rgba(120,140,180,0.06)',
-  space: '#5fd6ff', time: '#f2c468', chaos: '#e168c8',
-  good: '#6ee2a8', bad: '#ff7a8a', warn: '#f2c468',
+  bg: '#070510', bg2: '#0d0a16', bg3: '#141021',
+  panel: 'rgba(22,18,36,0.72)',
+  panelEdge: 'rgba(150,130,190,0.18)',
+  panelEdgeHi: 'rgba(201,165,255,0.35)',
+  ink: '#e9e6f2', inkMute: '#8f88a8', inkDim: '#5c5570',
+  grid: 'rgba(150,130,190,0.06)',
+  space: '#5fd6ff', time: '#c9a5ff', chaos: '#e168c8',
+  good: '#6ee2a8', bad: '#ff7a8a', warn: '#c9a5ff',
   unholy: '#b88cff',
 };
 
@@ -203,7 +203,7 @@ function accentForMap(mp) {
   if (name.includes('necropolis') || name.includes('crypt') || name.includes('rift') || name.includes('dreamscape')) return '#b88cff';
   if (name.includes('garden') || name.includes('bloom') || name.includes('highlands') || name.includes('battlefield')) return '#6ee2a8';
   if (name.includes('workshop') || name.includes('forge') || name.includes('kill')) return '#ff7a8a';
-  if (name.includes('archive') || name.includes('codex') || name.includes('palimpsest')) return '#f2c468';
+  if (name.includes('archive') || name.includes('codex') || name.includes('palimpsest')) return '#c9a5ff';
   if (name.includes('wasteland') || name.includes('ruin') || name.includes('suburb')) return '#d9c39a';
   if (name.includes('cavern') || name.includes('bunker') || name.includes('cave')) return '#8a93a8';
   if (name.includes('apocalypse')) return '#e168c8';
@@ -213,7 +213,7 @@ function accentForMap(mp) {
   if (w >= 16) return '#b88cff';
   if (w >= 12) return '#6ee2a8';
   if (w >= 8) return '#5fd6ff';
-  return '#f2c468';
+  return '#c9a5ff';
 }
 
 function StarField() {
@@ -368,7 +368,7 @@ function ModeCard({ m, selected, onClick }) {
         fontSize: 18, color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
       }}, m.label),
       h('div', { style: {
-        fontFamily: 'Inter, sans-serif', fontSize: 11,
+        fontFamily: '"DotGothic16", monospace', fontSize: 10, letterSpacing: '0.06em',
         color: EW.inkMute, lineHeight: 1.4, marginTop: 5,
       }}, m.desc)
     )
@@ -473,7 +473,7 @@ function ChipBtn({ on, color, onClick, children }) {
     onClick: onClick,
     className: 'ms-chip',
     style: {
-      background: on ? (color ? color + '22' : 'rgba(242,196,104,0.14)') : 'rgba(0,0,0,0.3)',
+      background: on ? (color ? color + '22' : 'rgba(201,165,255,0.14)') : 'rgba(0,0,0,0.3)',
       border: '1px solid ' + (on ? (color || EW.time) : EW.panelEdge),
       color: on ? (color || EW.time) : EW.inkMute,
       padding: '4px 9px',
@@ -636,8 +636,8 @@ function MatchSelect() {
 
   return h('div', { style: {
     width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
-    background: 'radial-gradient(ellipse 1200px 800px at 50% 30%, #14182a 0%, ' + EW.bg + ' 60%, #02030a 100%)',
-    color: EW.ink, fontFamily: 'Inter, system-ui, sans-serif',
+    background: 'radial-gradient(ellipse 1200px 800px at 50% 30%, #120e1e 0%, ' + EW.bg + ' 60%, #000 100%)',
+    color: EW.ink, fontFamily: '"DotGothic16", monospace',
   }},
     h(StarField),
 
@@ -972,7 +972,7 @@ function MatchSelect() {
             padding: '9px 12px', background: 'rgba(0,0,0,0.35)',
             border: '1px solid ' + EW.panelEdge,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            fontFamily: 'Inter, sans-serif', fontSize: 13, color: EW.ink,
+            fontFamily: '"DotGothic16", monospace', fontSize: 12, letterSpacing: '0.06em', color: EW.ink,
           }},
             h('span', { style: { fontWeight: 600 } }, winLabel),
             h('span', { style: {
@@ -1062,8 +1062,8 @@ function MatchSelect() {
         onClick: handleConfirm,
         className: 'ms-btn-primary',
         style: {
-          background: 'linear-gradient(180deg, ' + EW.time + ', #c89545)',
-          color: '#1a1305', border: '1px solid ' + EW.time,
+          background: 'linear-gradient(180deg, ' + EW.time + ', #9a6ae0)',
+          color: '#16091f', border: '1px solid ' + EW.time,
           padding: '18px 40px', display: 'flex', alignItems: 'center', gap: 16,
           cursor: 'pointer', boxShadow: '0 0 32px ' + EW.time + '44',
         },

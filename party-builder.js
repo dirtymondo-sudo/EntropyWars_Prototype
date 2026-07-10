@@ -15,13 +15,13 @@ if (!document.getElementById('pb-hover-css')) {
                   box-shadow 0.15s, transform 0.1s !important;
     }
     .pb-btn-ghost:hover {
-      background: rgba(180,200,240,0.08) !important;
-      border-color: rgba(180,200,240,0.35) !important;
+      background: rgba(201,180,240,0.08) !important;
+      border-color: rgba(201,180,240,0.35) !important;
       color: #e6e9f2 !important;
     }
     .pb-btn-ghost:active {
       transform: scale(0.96);
-      background: rgba(180,200,240,0.14) !important;
+      background: rgba(201,180,240,0.14) !important;
     }
 
     /* CLR button (red-ish ghost) */
@@ -85,8 +85,8 @@ if (!document.getElementById('pb-hover-css')) {
                   transform 0.1s !important;
     }
     .pb-slot-card:hover {
-      border-color: rgba(180,200,240,0.4) !important;
-      box-shadow: 0 0 10px rgba(180,200,240,0.08);
+      border-color: rgba(201,180,240,0.4) !important;
+      box-shadow: 0 0 10px rgba(201,180,240,0.08);
     }
     .pb-slot-card:active {
       transform: scale(0.98);
@@ -98,8 +98,8 @@ if (!document.getElementById('pb-hover-css')) {
                   transform 0.1s !important;
     }
     .pb-vessel-card:hover {
-      border-color: rgba(180,200,240,0.4) !important;
-      box-shadow: 0 0 12px rgba(180,200,240,0.1);
+      border-color: rgba(201,180,240,0.4) !important;
+      box-shadow: 0 0 12px rgba(201,180,240,0.1);
       transform: translateY(-1px);
     }
     .pb-vessel-card:active {
@@ -112,8 +112,8 @@ if (!document.getElementById('pb-hover-css')) {
                   box-shadow 0.12s, transform 0.1s !important;
     }
     .pb-faction-chip:hover {
-      border-color: rgba(180,200,240,0.4) !important;
-      box-shadow: 0 0 8px rgba(180,200,240,0.08);
+      border-color: rgba(201,180,240,0.4) !important;
+      box-shadow: 0 0 8px rgba(201,180,240,0.08);
       filter: brightness(1.2);
     }
     .pb-faction-chip:active {
@@ -131,13 +131,13 @@ if (!document.getElementById('pb-hover-css')) {
       transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
     }
     .pb-stepper-btn:hover {
-      background: rgba(180,200,240,0.12) !important;
-      border-color: rgba(180,200,240,0.35) !important;
+      background: rgba(201,180,240,0.12) !important;
+      border-color: rgba(201,180,240,0.35) !important;
       color: #e6e9f2 !important;
     }
     .pb-stepper-btn:active {
       transform: scale(0.85);
-      background: rgba(180,200,240,0.2) !important;
+      background: rgba(201,180,240,0.2) !important;
     }
 
     /* ── Battle-parity ability BLADES ──────────────────────────────
@@ -149,8 +149,8 @@ if (!document.getElementById('pb-hover-css')) {
       position: relative;
       display: flex; align-items: center; gap: 8px;
       min-height: 40px; padding: 3px 14px 4px 8px; margin: 0 9px 0 5px;
-      background: linear-gradient(100deg, #0c101f 0%, #0a0c15 55%, rgba(10,12,21,0.55) 100%);
-      border: 1px solid rgba(120,140,180,0.2);
+      background: linear-gradient(100deg, #0f0a1c 0%, #0b0716 55%, rgba(12,9,22,0.55) 100%);
+      border: 1px solid rgba(150,130,190,0.2);
       border-left: 3px solid var(--cat, #8890b0);
       clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
       transform: skewX(-6deg); transform-origin: 0 50%;
@@ -160,27 +160,27 @@ if (!document.getElementById('pb-hover-css')) {
     }
     .pbx-blade > * { transform: skewX(6deg); }
     .pbx-blade:hover {
-      background: linear-gradient(100deg, #16203a 0%, #0e1326 65%, rgba(14,19,38,0.6) 100%);
+      background: linear-gradient(100deg, #1b1433 0%, #120c22 65%, rgba(20,14,36,0.6) 100%);
       border-color: var(--cat, #8890b0);
-      box-shadow: -2px 0 14px rgba(120,150,220,0.14), inset 3px 0 0 var(--cat, #8890b0);
+      box-shadow: -2px 0 14px rgba(160,130,220,0.14), inset 3px 0 0 var(--cat, #8890b0);
       transform: skewX(-6deg) translateX(3px);
     }
     .pbx-blade:active { filter: brightness(0.85); }
     .pbx-blade.on {
-      background: linear-gradient(100deg, #121a30 0%, #0d1222 65%, rgba(13,18,34,0.6) 100%);
+      background: linear-gradient(100deg, #160f2a 0%, #110b1f 65%, rgba(19,13,32,0.6) 100%);
       border-color: var(--cat, #8890b0);
       box-shadow: inset 3px 0 0 var(--cat, #8890b0), -1px 0 10px rgba(0,0,0,0.4);
     }
     .pbx-blade.empty {
-      border: 1px dashed rgba(120,140,180,0.22);
-      border-left: 3px solid rgba(120,140,180,0.12);
+      border: 1px dashed rgba(150,130,190,0.22);
+      border-left: 3px solid rgba(150,130,190,0.12);
       background: rgba(255,255,255,0.015);
       cursor: default; min-height: 26px;
     }
     .pbx-blade.empty:hover {
       transform: skewX(-6deg); box-shadow: none;
       background: rgba(255,255,255,0.015);
-      border-color: rgba(120,140,180,0.22);
+      border-color: rgba(150,130,190,0.22);
     }
     /* ── EQUIPPED slot blades — green = locked into a spell slot ── */
     .pbx-blade.equipped {
@@ -254,7 +254,7 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-subbar {
       display: flex; align-items: center; gap: 9px;
       min-height: 34px; padding: 4px 14px 4px 10px; margin: 7px 9px 0 5px;
-      background: linear-gradient(100deg, #121a30 0%, #0d1222 65%, rgba(13,18,34,0.6) 100%);
+      background: linear-gradient(100deg, #160f2a 0%, #110b1f 65%, rgba(19,13,32,0.6) 100%);
       border: 1px solid var(--cat, #8890b0); border-left: 3px solid var(--cat, #8890b0);
       clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
       transform: skewX(-6deg); transform-origin: 0 50%;
@@ -264,7 +264,7 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-subbar > * { transform: skewX(6deg); }
     .pbx-subbar:hover {
       background: linear-gradient(100deg, #1a2542 0%, #101731 65%, rgba(16,23,49,0.6) 100%);
-      box-shadow: -2px 0 16px rgba(120,150,220,0.16), inset 3px 0 0 var(--cat, #8890b0);
+      box-shadow: -2px 0 16px rgba(160,130,220,0.16), inset 3px 0 0 var(--cat, #8890b0);
       transform: skewX(-6deg) translateX(3px);
     }
     .pbx-subbar:active { filter: brightness(0.85); }
@@ -273,7 +273,7 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-trait {
       display: flex; align-items: flex-start; gap: 7px;
       padding: 3px 8px 4px 6px; background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(120,140,180,0.12);
+      border: 1px solid rgba(150,130,190,0.12);
       border-left: 2px solid var(--pb-fc, rgba(242,196,104,0.5));
     }
 
@@ -287,15 +287,15 @@ if (!document.getElementById('pb-hover-css')) {
       clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
     }
     .pbx-eqslot:hover {
-      border-color: var(--acc, rgba(180,200,240,0.55));
+      border-color: var(--acc, rgba(201,180,240,0.55));
       box-shadow: 0 0 10px rgba(160,190,255,0.12);
       background: rgba(20,26,44,0.5);
       transform: translateY(-1px);
     }
     .pbx-eqslot.filled {
-      border-style: solid; border-color: var(--acc, rgba(180,200,240,0.55));
+      border-style: solid; border-color: var(--acc, rgba(201,180,240,0.55));
       background: linear-gradient(180deg, rgba(20,26,44,0.5), rgba(0,0,0,0.4));
-      box-shadow: 0 0 8px rgba(0,0,0,0.5), inset 0 0 12px rgba(120,150,220,0.06);
+      box-shadow: 0 0 8px rgba(0,0,0,0.5), inset 0 0 12px rgba(160,130,220,0.06);
     }
     .pbx-eqslot-icon { font-size: 19px; line-height: 1; }
     .pbx-eqslot:not(.filled) .pbx-eqslot-icon {
@@ -324,24 +324,24 @@ if (!document.getElementById('pb-hover-css')) {
     /* ── Gear / item picker rows ── */
     .pbx-pick-row {
       display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-      background: rgba(0,0,0,0.3); border: 1px solid rgba(120,140,180,0.16);
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(150,130,190,0.16);
       cursor: pointer; transition: background 0.12s, border-color 0.12s;
     }
     .pbx-pick-row:hover {
-      background: rgba(120,150,220,0.08);
-      border-color: rgba(180,200,240,0.4);
+      background: rgba(160,130,220,0.08);
+      border-color: rgba(201,180,240,0.4);
     }
   `;
   document.head.appendChild(_css);
 }
 
 const EW = {
-  bg: '#06070c', bg2: '#0b0d16', bg3: '#11141f',
-  panel: 'rgba(20,24,38,0.72)',
-  panelEdge: 'rgba(120,140,180,0.16)',
-  panelEdgeHi: 'rgba(180,200,240,0.32)',
-  ink: '#e6e9f2', inkMute: '#8a93a8', inkDim: '#555c70',
-  grid: 'rgba(120,140,180,0.06)',
+  bg: '#070510', bg2: '#0d0a16', bg3: '#141021',
+  panel: 'rgba(22,18,36,0.72)',
+  panelEdge: 'rgba(150,130,190,0.18)',
+  panelEdgeHi: 'rgba(201,180,240,0.35)',
+  ink: '#e9e6f2', inkMute: '#8f88a8', inkDim: '#5c5570',
+  grid: 'rgba(150,130,190,0.06)',
   space: '#5ab0ff', time: '#f2c468', chaos: '#e168c8',
   human:'#a0a0c3', alien:'#32aa50', divine:'#dcaa1e',
   unholy:'#9632b4', anomaly:'#dc3c82', tech:'#28a0be',
@@ -610,7 +610,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta }) {
     h('span', { style:{ width:30, color:labelColor, letterSpacing:'0.04em', fontSize:10 } }, label,
       zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
       zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
-    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(120,140,180,0.08)' } },
+    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(150,130,190,0.08)' } },
       h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
     h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
@@ -945,7 +945,7 @@ function RangeDiamond({ radius, fill, edge, label, value, color }) {
 // RPG-style equipment/item slot square flanking the hero sprite.
 function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onClear }) {
   const s = size || 48;
-  return h('div', { onClick, title, className:'pbx-eqslot' + (filled ? ' filled' : ''), style:{ width:s, height:s, '--acc': accent || 'rgba(180,200,240,0.55)' } },
+  return h('div', { onClick, title, className:'pbx-eqslot' + (filled ? ' filled' : ''), style:{ width:s, height:s, '--acc': accent || 'rgba(201,180,240,0.55)' } },
     filled && onClear ? h('span', { className:'pbx-eqslot-x', title:'Remove', onClick:(e)=>{ e.stopPropagation(); onClear(); } }, '✕') : null,
     h('span', { className:'pbx-eqslot-icon' }, filled ? icon : '+'),
     filled && label ? h('span', { className:'pbx-eqslot-label' }, label) : null);
@@ -1304,7 +1304,7 @@ function PartyBuilder() {
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const docNum = 'EW-' + (Math.abs((unitRace||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*7)%9000+1000);
 
-  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #12101e 0%, ${EW.bg} 60%, #02030a 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
+  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #12101e 0%, ${EW.bg} 60%, #000004 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
     h(StarField),
 
     h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},

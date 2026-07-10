@@ -1836,23 +1836,28 @@
         }
 
         .lobby-kicker {
-            font-size: 0.85rem;
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--purple);
+            letter-spacing: 0.34em;
+            color: #9a7fd1;
             margin-bottom: 8px;
         }
 
         .lobby-title {
+            font-family: 'Cinzel', serif;
             font-size: 2rem;
             font-weight: 700;
-            color: var(--text);
+            letter-spacing: 0.06em;
+            color: #fff;
+            text-shadow: 0 0 24px rgba(214,178,255,0.28);
             margin-bottom: 6px;
         }
 
         .lobby-subtitle {
-            font-size: 0.9rem;
-            color: var(--muted);
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            color: #746d8c;
             margin-bottom: 28px;
             line-height: 1.5;
         }
@@ -1867,35 +1872,42 @@
         .lobby-actions button {
             padding: 12px 28px;
             border: none;
-            border-radius: 3px;
-            font-size: 1rem;
+            border-radius: 0;
+            font-family: 'Cinzel', serif;
+            font-size: 0.95rem;
             font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
             cursor: pointer;
             width: 260px;
-            transition: all 0.2s;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
         }
 
         .lobby-actions button.primary-lobby {
-            background: linear-gradient(180deg, rgba(120, 100, 180, 0.18), rgba(100, 80, 160, 0.12));
-            border: 1px solid rgba(140, 130, 220, 0.25);
-            color: #d0cce8;
+            background: rgba(201, 165, 255, 0.07);
+            border: 1px solid rgba(201, 165, 255, 0.4);
+            color: #e6ddfa;
             box-shadow: none;
         }
 
         .lobby-actions button.primary-lobby:hover {
-            transform: translateY(-1px);
-            background: linear-gradient(180deg, rgba(130, 110, 190, 0.25), rgba(110, 90, 170, 0.18));
-            border-color: rgba(150, 140, 230, 0.35);
+            background: rgba(201, 165, 255, 0.13);
+            border-color: rgba(201, 165, 255, 0.65);
+            color: #fff;
+            box-shadow: 0 0 18px rgba(201, 165, 255, 0.2);
+            text-shadow: 0 0 12px rgba(201, 165, 255, 0.55);
         }
 
         .lobby-actions button.secondary-lobby {
-            background: rgba(140, 140, 200, 0.03);
-            color: var(--muted);
-            border: 1px solid rgba(140, 140, 200, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #8f88a8;
+            border: 1px solid rgba(150, 130, 190, 0.2);
         }
 
         .lobby-actions button.secondary-lobby:hover {
-            background: rgba(90, 136, 152, 0.1);
+            background: rgba(201, 165, 255, 0.06);
+            border-color: rgba(201, 165, 255, 0.45);
+            color: #fff;
         }
 
         .lobby-or {
@@ -1911,11 +1923,12 @@
             font-size: 2.8rem;
             font-weight: 700;
             letter-spacing: 12px;
-            color: var(--gold);
+            color: #fff;
+            text-shadow: 0 0 24px rgba(201, 165, 255, 0.45);
             padding: 16px 24px;
-            background: rgba(200, 180, 100, 0.02);
-            border: 1px solid rgba(200, 180, 100, 0.12);
-            border-radius: 3px;
+            background: rgba(201, 165, 255, 0.03);
+            border: 1px solid rgba(201, 165, 255, 0.18);
+            border-radius: 0;
             margin: 16px 0;
         }
 
@@ -1935,15 +1948,16 @@
             text-transform: uppercase;
             width: 180px;
             padding: 10px;
-            background: rgba(140, 140, 200, 0.03);
-            border: 1px solid rgba(140, 140, 200, 0.12);
-            border-radius: 3px;
-            color: var(--text);
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(150, 130, 190, 0.2);
+            border-radius: 0;
+            color: #fff;
             outline: none;
         }
 
         .lobby-join-row input:focus {
-            border-color: var(--accent);
+            border-color: rgba(201, 165, 255, 0.65);
+            box-shadow: 0 0 14px rgba(201, 165, 255, 0.18);
         }
 
         .lobby-join-row button {
@@ -1975,15 +1989,19 @@
         .lobby-back {
             background: none;
             border: none;
-            color: var(--muted);
+            color: #746d8c;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
             margin-top: 16px;
             padding: 8px;
+            transition: color 0.15s, text-shadow 0.15s;
         }
 
         .lobby-back:hover {
-            color: var(--text);
+            color: #fff;
+            text-shadow: 0 0 12px rgba(201, 165, 255, 0.55);
         }
 
         .lobby-actions button.offline-btn {
@@ -2003,7 +2021,7 @@
         .lobby-player-badge {
             display: inline-block;
             padding: 3px 10px;
-            border-radius: 6px;
+            border-radius: 0;
             font-size: 0.75rem;
             font-weight: 600;
             letter-spacing: 1px;
@@ -2353,13 +2371,13 @@
         .md-char-empty { font-size: 14px; color: var(--muted); padding: 40px; text-align: center; }
         .md-char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
         .md-char-card {
-            border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
-            background: rgba(255,255,255,0.03); cursor: pointer; padding: 8px 6px 7px;
+            border: 1px solid rgba(150,130,190,0.2); border-radius: 0;
+            background: rgba(0,0,0,0.3); cursor: pointer; padding: 8px 6px 7px;
             display: flex; flex-direction: column; align-items: center; gap: 4px;
             transition: border-color 0.12s, background 0.12s, transform 0.12s;
         }
-        .md-char-card:hover { border-color: rgba(185,142,240,0.55); background: rgba(185,142,240,0.07); transform: translateY(-2px); }
-        .md-char-card.selected { border-color: #b98ef0; background: rgba(185,142,240,0.14); box-shadow: 0 0 14px rgba(185,142,240,0.25); }
+        .md-char-card:hover { border-color: rgba(201,165,255,0.55); background: rgba(201,165,255,0.06); transform: translateY(-2px); }
+        .md-char-card.selected { border-color: #c9a5ff; background: rgba(201,165,255,0.12); box-shadow: 0 0 14px rgba(201,165,255,0.25); }
         .md-char-img {
             width: 84px; height: 84px; background-size: contain; background-position: center bottom;
             background-repeat: no-repeat; image-rendering: pixelated; background-color: rgba(0,0,0,0.25);
@@ -2370,17 +2388,23 @@
         .md-char-footer { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
         .md-char-genders { display: flex; gap: 6px; }
         .md-char-gender {
-            font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.16); color: var(--muted);
+            font-size: 12px; padding: 7px 14px; border-radius: 0; cursor: pointer;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(150,130,190,0.2); color: #8f88a8;
         }
-        .md-char-gender.on { border-color: #b98ef0; color: #e6dbff; background: rgba(185,142,240,0.16); }
+        .md-char-gender.on { border-color: #c9a5ff; color: #e6dbff; background: rgba(201,165,255,0.12); }
         .md-char-start {
-            font-size: 14px; font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
-            padding: 11px 26px; border-radius: 8px; color: #16091f;
-            background: linear-gradient(180deg, #c9a5ff, #9a6ae0); border: 1px solid #b98ef0;
-            box-shadow: 0 4px 18px rgba(185,142,240,0.35);
+            font-family: 'Cinzel', serif;
+            font-size: 14px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+            cursor: pointer;
+            padding: 11px 26px; border-radius: 0; color: #e6ddfa;
+            background: rgba(201,165,255,0.07); border: 1px solid rgba(201,165,255,0.4);
+            transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
         }
-        .md-char-start:hover { filter: brightness(1.1); }
+        .md-char-start:hover {
+            background: rgba(201,165,255,0.13); border-color: rgba(201,165,255,0.65);
+            color: #fff; box-shadow: 0 0 18px rgba(201,165,255,0.2);
+            text-shadow: 0 0 12px rgba(201,165,255,0.55);
+        }
         .mm-btn-settings:hover .mm-label { color: var(--muted); }
         .mm-btn-codex:hover .mm-label { color: #60d0a0; }
         .mm-settings-body {
@@ -2411,13 +2435,14 @@
         /* ══ MAIN MENU — black-void redesign (loading-screen vibe) ══════
            Bare left-aligned serif text over rising entropy motes; the
            .ls-grain / .ls-mote atmosphere classes come from
-           styles-cinematic.css. Everything is scoped to #mainMenuPage —
-           the play hub and other pages keep the old .mm-* panel styles. */
-        #mainMenuPage {
+           styles-cinematic.css. Everything is scoped to .void-menu — add
+           that class to any .title-page (main menu, play hub, …) to give
+           it the same bare serif text-link treatment. */
+        .void-menu {
             background: #000;
             overflow: hidden;
         }
-        #mainMenuPage .mm-stack {
+        .void-menu .mm-stack {
             position: absolute;
             left: clamp(24px, 9vw, 160px);
             top: 10vh;
@@ -2427,7 +2452,7 @@
             align-items: flex-start;
             z-index: 2;
         }
-        #mainMenuPage .mm-logo {
+        .void-menu .mm-logo {
             font-family: 'Cinzel', 'Times New Roman', serif;
             font-size: clamp(2.3rem, 6vw, 4.6rem);
             font-weight: 700;
@@ -2438,7 +2463,7 @@
             margin: 0;
             text-shadow: 0 0 34px rgba(214,178,255,0.28);
         }
-        #mainMenuPage .mm-sub {
+        .void-menu .mm-sub {
             font-family: 'Cinzel', serif;
             font-size: clamp(0.78rem, 1.3vw, 1.05rem);
             color: #9a7fd1;
@@ -2447,14 +2472,14 @@
             margin: 0.55em 0 0;
             text-align: left;
         }
-        #mainMenuPage .mm-rule {
+        .void-menu .mm-rule {
             height: 2px;
             width: min(30vw, 420px);
             margin: 2.4vh 0 2.8vh;
             background: #fff;
             box-shadow: 0 0 14px rgba(255,255,255,0.55);
         }
-        #mainMenuPage .mm-buttons {
+        .void-menu .mm-buttons {
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -2468,7 +2493,7 @@
             padding-left: 1.2em;   /* room for the › hover marker */
             margin-left: -1.2em;
         }
-        #mainMenuPage .mm-btn {
+        .void-menu .mm-btn {
             display: flex;
             align-items: baseline;
             gap: 14px;
@@ -2482,18 +2507,18 @@
             transform: none;
             transition: transform 0.16s ease;
         }
-        #mainMenuPage .mm-btn:hover {
+        .void-menu .mm-btn:hover {
             background: none;
             border: none;
             box-shadow: none;
             transform: translateX(10px);
         }
-        #mainMenuPage .mm-btn:active {
+        .void-menu .mm-btn:active {
             transform: translateX(10px) scale(0.99);
             filter: none;
             box-shadow: none;
         }
-        #mainMenuPage .mm-label {
+        .void-menu .mm-label {
             position: relative;
             font-family: 'Cinzel', serif;
             font-size: clamp(1.02rem, 1.9vw, 1.45rem);
@@ -2503,7 +2528,7 @@
             color: #b7b0ca;
             transition: color 0.16s ease, text-shadow 0.16s ease;
         }
-        #mainMenuPage .mm-label::before {
+        .void-menu .mm-label::before {
             content: '›';
             position: absolute;
             left: -0.85em;
@@ -2511,12 +2536,12 @@
             color: #c9a5ff;
             transition: opacity 0.16s ease;
         }
-        #mainMenuPage .mm-btn:hover .mm-label {
+        .void-menu .mm-btn:hover .mm-label {
             color: #fff;
             text-shadow: 0 0 18px rgba(201,165,255,0.65);
         }
-        #mainMenuPage .mm-btn:hover .mm-label::before { opacity: 1; }
-        #mainMenuPage .mm-desc-text {
+        .void-menu .mm-btn:hover .mm-label::before { opacity: 1; }
+        .void-menu .mm-desc-text {
             font-family: 'DotGothic16', monospace;
             font-size: 0.7rem;
             letter-spacing: 0.14em;
@@ -2527,11 +2552,11 @@
             transition: opacity 0.2s ease, transform 0.2s ease;
             white-space: nowrap;
         }
-        #mainMenuPage .mm-btn:hover .mm-desc-text {
+        .void-menu .mm-btn:hover .mm-desc-text {
             opacity: 1;
             transform: translateX(0);
         }
-        #mainMenuPage .mm-elo-display {
+        .void-menu .mm-elo-display {
             position: absolute;
             left: clamp(24px, 9vw, 160px);
             bottom: 4.2vh;
@@ -2539,7 +2564,7 @@
             text-align: left;
             z-index: 2;
         }
-        #mainMenuPage .mm-online-count {
+        .void-menu .mm-online-count {
             position: absolute;
             right: clamp(20px, 5vw, 80px);
             bottom: 4.2vh;
@@ -2550,10 +2575,10 @@
             color: #8f88a8;
         }
         @media (max-width: 720px), (max-height: 560px) {
-            #mainMenuPage .mm-stack { top: 6vh; bottom: 12vh; }
-            #mainMenuPage .mm-logo { font-size: clamp(1.7rem, 8.5vw, 2.6rem); }
-            #mainMenuPage .mm-buttons { min-width: 0; }
-            #mainMenuPage .mm-desc-text { display: none; }
+            .void-menu .mm-stack { top: 6vh; bottom: 12vh; }
+            .void-menu .mm-logo { font-size: clamp(1.7rem, 8.5vw, 2.6rem); }
+            .void-menu .mm-buttons { min-width: 0; }
+            .void-menu .mm-desc-text { display: none; }
         }
 
 
@@ -2582,10 +2607,12 @@
             margin-bottom: 16px;
         }
         .ms-title-text {
-            font-size: 11px;
-            letter-spacing: 2px;
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            letter-spacing: 0.3em;
             text-transform: uppercase;
-            color: var(--muted);
+            color: #b7b0ca;
+            text-shadow: 0 0 18px rgba(201,165,255,0.25);
         }
         .ms-gm-item {
             padding: 16px 18px;
@@ -2723,19 +2750,21 @@
         .ms-mc.void { background: transparent; }
         .ms-back-btn {
             padding: 6px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(200,180,150,0.1);
+            border-radius: 0;
+            border: none;
             background: transparent;
-            color: var(--muted);
+            color: #746d8c;
             font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: color 0.15s ease, text-shadow 0.15s ease;
             font-family: inherit;
             margin-right: auto;
         }
         .ms-back-btn:hover {
-            border-color: rgba(140,140,200,0.2);
-            color: var(--text);
+            color: #fff;
+            text-shadow: 0 0 12px rgba(201,165,255,0.55);
         }
         /* ══════════════════════════════════════════════ */
         /* ══ NEW PARTY BUILDER ══                       */
@@ -3368,21 +3397,22 @@ body.diorama-3d .tile-underpass.jump::before {
 
 /* ══════════════════════════════════════════════════════════════════
    UNIFIED HOVER GLOW — gives the menu / match-select / party-builder
-   buttons the same warm-gold "bloom" focus the in-battle spell/ability
-   cards use: a soft pulsing glow + a warm rim + a gentle scale pop.
+   buttons the same eerie-lavender "bloom" focus the void menus use:
+   a soft pulsing glow + a pale rim + a gentle scale pop.
    These rules are intentionally last so the bloom layers cleanly on top
    of each button's own hover background; per-button accent colors (mode
    labels, etc.) are left untouched. Semantic confirm/start buttons get
-   a matching green-tinted bloom instead.
+   a matching green-tinted bloom instead. Bare text links (.void-menu
+   .mm-btn) are excluded — they glow via text-shadow, not box-shadow.
    ══════════════════════════════════════════════════════════════════ */
 @keyframes ewMenuGlow {
     0%, 100% {
-        box-shadow: 0 0 6px rgba(255,242,206,0.42),
-                    0 0 14px rgba(255,206,108,0.28);
+        box-shadow: 0 0 6px rgba(230,221,250,0.38),
+                    0 0 14px rgba(201,165,255,0.26);
     }
     50% {
-        box-shadow: 0 0 9px rgba(255,248,222,0.60),
-                    0 0 22px rgba(255,214,120,0.42);
+        box-shadow: 0 0 9px rgba(240,234,252,0.55),
+                    0 0 22px rgba(201,165,255,0.40);
     }
 }
 @keyframes ewMenuGlowGreen {
@@ -3396,7 +3426,6 @@ body.diorama-3d .tile-underpass.jump::before {
     }
 }
 
-.mm-btn:hover,
 .bt-secondary:hover,
 .roster-item-btn:hover:not(:disabled),
 .lobby-actions button.primary-lobby:hover,
@@ -3404,14 +3433,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .lobby-actions button.offline-btn:hover,
 .ms-gm-item:hover:not(.locked),
 .ms-team-btn:hover:not(.disabled),
-.ms-back-btn:hover,
 .pb-race-card:hover,
 .pb-picker-card:hover,
 .pb-picker-reset:hover,
 .pb-action-btn:hover,
-.pb-back-btn:hover,
 .pb-party-slot:hover {
-    border-color: rgba(255,224,150,0.70) !important;
+    border-color: rgba(201,165,255,0.70) !important;
     transform: translateY(-1px) scale(1.02);
     animation: ewMenuGlow 1.5s ease-in-out infinite;
 }
