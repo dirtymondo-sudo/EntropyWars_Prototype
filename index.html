@@ -47,12 +47,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260710y">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260710y">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260710y">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260710y">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260710z">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260710z">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260710z">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260710z">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260710y">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260710z">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -66,7 +66,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260710z"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -139,9 +139,11 @@
             margin-right: 5px;
             vertical-align: middle;
         }
-        /* ── Ranked Queue Styles ── */
+        /* ── Ranked Queue Styles (void-menu language: flat, sharp, lavender) ── */
         .lobby-ranked-btn {
-            background: linear-gradient(135deg, #dc3c82 0%, #9632b4 100%) !important;
+            background: rgba(201,165,255,0.08) !important;
+            border-color: rgba(201,165,255,0.45) !important;
+            color: #e6ddfa !important;
             font-size: 1.1rem !important;
             letter-spacing: 0.05em;
         }
@@ -156,27 +158,28 @@
             flex-wrap: wrap;
         }
         .ranked-size-btn {
-            background: rgba(255,255,255,0.06);
-            border: 2px solid rgba(255,255,255,0.12);
-            color: #ccc;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(150,130,190,0.2);
+            color: #8f88a8;
             font-family: 'DotGothic16', monospace;
             font-size: 1rem;
+            letter-spacing: 0.08em;
             padding: 10px 18px;
-            border-radius: 8px;
+            border-radius: 0;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
             min-width: 56px;
         }
         .ranked-size-btn:hover {
-            border-color: rgba(255,255,255,0.25);
-            background: rgba(255,255,255,0.1);
+            border-color: rgba(201,165,255,0.5);
+            background: rgba(201,165,255,0.06);
             color: #fff;
         }
         .ranked-size-btn.active {
-            border-color: #dc3c82;
-            background: rgba(220,60,130,0.15);
+            border-color: #c9a5ff;
+            background: rgba(201,165,255,0.12);
             color: #fff;
-            box-shadow: 0 0 12px rgba(220,60,130,0.3);
+            box-shadow: 0 0 12px rgba(201,165,255,0.25);
         }
         .lobby-ranked-info {
             text-align: center;
@@ -185,16 +188,13 @@
         .lobby-ranked-elo {
             font-family: 'DotGothic16', monospace;
             font-size: 1.05rem;
-            color: #dcaa1e;
+            color: var(--gold);
             letter-spacing: 0.08em;
-        }
-        .lobby-queue-start {
-            background: linear-gradient(135deg, #dc3c82 0%, #9632b4 100%) !important;
         }
         .lobby-queue-timer {
             font-family: 'DotGothic16', monospace;
             font-size: 2rem;
-            color: #dc3c82;
+            color: #c9a5ff;
             text-align: center;
             margin: 12px 0;
             letter-spacing: 0.15em;
@@ -391,7 +391,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260710y" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260710z" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -406,8 +406,8 @@
         <!-- PAGE 2: Main Menu — black void styled after the battle loading
              screen: scanline grain + rising entropy motes (classes reused
              from styles-cinematic.css) + bare left-aligned serif text.
-             Layout rules live in styles-base.css under #mainMenuPage. -->
-        <div id="mainMenuPage" class="title-page">
+             Layout rules live in styles-base.css under .void-menu. -->
+        <div id="mainMenuPage" class="title-page void-menu">
             <div class="ls-grain"></div>
             <div class="ls-motes">
                 <div class="ls-mote" style="left:3vw;width:3px;height:3px;--dx:4vw;animation-duration:11.5s;animation-delay:-2.2s"></div>
@@ -494,29 +494,32 @@
             </div>
         </div>
 
-        <!-- PAGE: PLAY HUB — Choose your path -->
-        <div id="playHubPage" class="title-page">
-            <div class="mm-wrap">
-                <div class="mm-logo" style="font-size:24px; margin-bottom:2px;">PLAY</div>
-                <div class="mm-sub" style="margin-bottom:28px;">Choose your path</div>
-                <div class="mm-buttons" style="width:340px; gap:12px;">
-                    <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()">
-                        <span class="mm-icon">⚡</span>
-                        <div><div class="mm-label">Quick Play</div><div class="mm-desc-text">Ranked online — find an opponent fast</div></div>
-                    </button>
-                    <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()">
-                        <span class="mm-icon">🤝</span>
-                        <div><div class="mm-label">Friendly Match</div><div class="mm-desc-text">Play a friend with a room code</div></div>
-                    </button>
-                    <button class="mm-btn mm-btn-vscpu" onclick="window._goToVsCpu()">
-                        <span class="mm-icon">🤖</span>
-                        <div><div class="mm-label">VS CPU</div><div class="mm-desc-text">Battle the computer offline</div></div>
-                    </button>
+        <!-- PAGE: PLAY HUB — Choose your path (void-menu: same look as the main menu) -->
+        <div id="playHubPage" class="title-page void-menu">
+            <div class="ls-grain"></div>
+            <div class="ls-motes">
+                <div class="ls-mote" style="left:6vw;width:3px;height:3px;--dx:3vw;animation-duration:12s;animation-delay:-3.5s"></div>
+                <div class="ls-mote ls-mote-green" style="left:18vw;width:2px;height:2px;--dx:-4vw;animation-duration:14.5s;animation-delay:-8.2s"></div>
+                <div class="ls-mote" style="left:31vw;width:4px;height:4px;--dx:2vw;animation-duration:9s;animation-delay:-1.8s"></div>
+                <div class="ls-mote" style="left:45vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13.5s;animation-delay:-6.4s"></div>
+                <div class="ls-mote ls-mote-green" style="left:58vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.7s"></div>
+                <div class="ls-mote" style="left:69vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-4.1s"></div>
+                <div class="ls-mote" style="left:80vw;width:4px;height:4px;--dx:3vw;animation-duration:10s;animation-delay:-7.3s"></div>
+                <div class="ls-mote" style="left:92vw;width:3px;height:3px;--dx:-3vw;animation-duration:12.5s;animation-delay:-2.6s"></div>
+            </div>
+            <div class="mm-stack">
+                <div class="mm-logo">PLAY</div>
+                <div class="mm-sub">Choose your path</div>
+                <div class="mm-rule"></div>
+                <div class="mm-buttons">
+                    <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()"><span class="mm-label">Quick Play</span><span class="mm-desc-text">Ranked online — find an opponent fast</span></button>
+                    <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()"><span class="mm-label">Friendly Match</span><span class="mm-desc-text">Play a friend with a room code</span></button>
+                    <button class="mm-btn mm-btn-vscpu" onclick="window._goToVsCpu()"><span class="mm-label">VS CPU</span><span class="mm-desc-text">Battle the computer offline</span></button>
+                    <button class="mm-btn mm-btn-return" onclick="window._playHubBack()"><span class="mm-label">Back</span><span class="mm-desc-text">Return to the main menu</span></button>
                 </div>
-                <div class="mm-elo-display" style="margin-top:20px;">
-                    <span class="mm-elo-tag" id="playHubEloTag"></span>
-                </div>
-                <button class="lobby-back" style="margin-top:16px;" onclick="window._playHubBack()">← Back</button>
+            </div>
+            <div class="mm-elo-display">
+                <span class="mm-elo-tag" id="playHubEloTag"></span>
             </div>
         </div>
 
@@ -621,7 +624,7 @@
                         </div>
                         <div class="lobby-config-section">
                             <div class="lobby-config-label">MAP</div>
-                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.12);color:#ccc;font-family:'DotGothic16',monospace;font-size:0.9rem;padding:8px 14px;border-radius:8px;width:100%;max-width:280px;cursor:pointer;">
+                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);color:#b7b0ca;font-family:'DotGothic16',monospace;font-size:0.9rem;padding:8px 14px;border-radius:0;width:100%;max-width:280px;cursor:pointer;">
                                 <!-- Populated dynamically by friendlyRefreshMaps() -->
                             </select>
                         </div>
@@ -659,7 +662,7 @@
                     <div class="lobby-kicker">Connected!</div>
                     <div class="lobby-title">Both Players Joined</div>
                     <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the party builder…</div>
-                    <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
+                    <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);border-radius:0;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
                     <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
                 </div>
             </div>
@@ -907,18 +910,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260710z"></script>
     <script>window._spritesLoaded = true;</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260710z"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260710y';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260710z';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1069,23 +1072,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260710z"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260710z"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260710z"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1115,14 +1118,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260710y"></script>
-    <script src="https://cdn.entropywars.net/ai.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260710z"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260710z"></script>
     <!-- "Claude" AI override: MUST load after ai.js (wraps window.aiTakeTurn) -->
-    <script src="https://cdn.entropywars.net/ainew.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/ainew.js?v=20260710z"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260710y"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260710z"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">
