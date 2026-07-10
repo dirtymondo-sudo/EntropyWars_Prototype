@@ -487,13 +487,16 @@ function getRaceSpriteAnimations(race, gender) {
 // ─────────────────────────────────────────────────────────────────────────
 
 // Spell/ability → animation category. Returns 'magic' | 'support' |
-// 'ranged' | 'melee' | 'throw'. Keep this the single source of truth so
+// 'ranged' | 'melee' | 'throw' | 'plant'. Keep this the single source of truth so
 // secondary jobs stay consistent: a Warrior who learns Fireball still plays
 // castMagic; a Black Mage swinging a wrench plays castMelee.
 function classifySpellAnimKind(spell) {
   if (!spell) return 'melee';
   const text = ((spell.id || '') + ' ' + (spell.name || '') + ' '
               + (spell.projectileOverride || '')).toLowerCase();
+  // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
+  // plant — the animation library's Farm_PlantSeed via the castPlant slot.
+  if (/seed|sapling|sprout|plant(?!ation)/.test(text)) return 'plant';
   // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
   // matter the damage type — the QB "just throws".
   if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
@@ -522,13 +525,18 @@ function classifySpellAnimKind(spell) {
 //     renderer silently loads the per-character clips exactly as before.
 //   • Kill-switches: window.EW_DISABLE_ANIM_LIB = true (console) forces the
 //     Meshy-clip fallback globally; per character pass { noAnimLib: true }.
-// The library file lives OUTSIDE the sprites folder — upload the NON-root-
-// motion UAL1_Standard.glb to R2 at Assets/Models/UAL1_Standard.glb.
-// (Board tweens move the unit group; root motion would double the travel.)
-const EW_ANIM_LIB_URL = 'https://cdn.entropywars.net/Assets/Models/UAL1_Standard.glb';
+// The library files live OUTSIDE the sprites folder — upload the NON-root-
+// motion UAL1_Standard.glb AND UAL2_Standard.glb to R2 at
+// Assets/Models/UAL<n>_Standard.glb. (Board tweens move the unit group; root
+// motion would double the travel.) A slot's `lib` index picks the file.
+const EW_ANIM_LIB_URLS = [
+  'https://cdn.entropywars.net/Assets/Models/UAL1_Standard.glb',
+  'https://cdn.entropywars.net/Assets/Models/UAL2_Standard.glb',
+];
 
-// Game slot → UAL clip + timeScale. Durations are library constants, so the
-// scales live here once instead of per character (played ≈ dur / ts):
+// Game slot → UAL clip (+ which library file) + timeScale. Durations are
+// library constants, so the scales live here once instead of per character
+// (played ≈ dur / ts):
 //   idle Idle_Loop 2.5s · walk Jog_Fwd_Loop 0.93s (→0.52s ≈ 150ms/tile pace)
 //   run Sprint_Loop 0.67s (multi-tile dashes + hub free-roam sprint)
 //   jump Jump_Start 1.33s (→0.6s hop) · dodge Roll 1.47s (→0.49s evade roll)
@@ -536,26 +544,28 @@ const EW_ANIM_LIB_URL = 'https://cdn.entropywars.net/Assets/Models/UAL1_Standard
 //   cast/castMagic Spell_Simple_Shoot 0.5s (→1.0s) · castSupport
 //   Spell_Simple_Idle_Loop 2.1s hand-weave (→1.2s) · castRanged Pistol_Shoot
 //   0.63s (→1.05s) · castMelee Sword_Attack 1.53s (→1.28s swing) · castThrow
-//   Punch_Cross 1.0s overhand (→1.1s — the library has no true throw clip).
+//   OverhandThrow (UAL2) 1.33s (→1.1s) · castPlant Farm_PlantSeed (UAL2)
+//   2.77s kneel-and-plant (→1.2s — seed spells, see classifySpellAnimKind).
 const UAL_SLOTS = {
-  idle:        { clip: 'Idle_Loop',              ts: 1.0  },
-  walk:        { clip: 'Jog_Fwd_Loop',           ts: 1.8  },
-  run:         { clip: 'Sprint_Loop',            ts: 1.3  },
-  jump:        { clip: 'Jump_Start',             ts: 2.2  },
-  dodge:       { clip: 'Roll',                   ts: 3.0  },
-  hit:         { clip: 'Hit_Chest',              ts: 0.55 },
-  death:       { clip: 'Death01',                ts: 1.5  },
-  cast:        { clip: 'Spell_Simple_Shoot',     ts: 0.5  },
-  castMagic:   { clip: 'Spell_Simple_Shoot',     ts: 0.5  },
-  castSupport: { clip: 'Spell_Simple_Idle_Loop', ts: 1.75 },
-  castRanged:  { clip: 'Pistol_Shoot',           ts: 0.6  },
-  castMelee:   { clip: 'Sword_Attack',           ts: 1.2  },
-  castThrow:   { clip: 'Punch_Cross',            ts: 0.9  },
+  idle:        { clip: 'Idle_Loop',              lib: 0, ts: 1.0  },
+  walk:        { clip: 'Jog_Fwd_Loop',           lib: 0, ts: 1.8  },
+  run:         { clip: 'Sprint_Loop',            lib: 0, ts: 1.3  },
+  jump:        { clip: 'Jump_Start',             lib: 0, ts: 2.2  },
+  dodge:       { clip: 'Roll',                   lib: 0, ts: 3.0  },
+  hit:         { clip: 'Hit_Chest',              lib: 0, ts: 0.55 },
+  death:       { clip: 'Death01',                lib: 0, ts: 1.5  },
+  cast:        { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5  },
+  castMagic:   { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5  },
+  castSupport: { clip: 'Spell_Simple_Idle_Loop', lib: 0, ts: 1.75 },
+  castRanged:  { clip: 'Pistol_Shoot',           lib: 0, ts: 0.6  },
+  castMelee:   { clip: 'Sword_Attack',           lib: 0, ts: 1.2  },
+  castThrow:   { clip: 'OverhandThrow',          lib: 1, ts: 1.2  },
+  castPlant:   { clip: 'Farm_PlantSeed',         lib: 1, ts: 2.3  },
 };
 // Shared per-def field objects (read-only in the renderer).
 const _UAL_CLIPS = {}, _UAL_TS = {};
 for (const _slot in UAL_SLOTS) {
-  _UAL_CLIPS[_slot] = UAL_SLOTS[_slot].clip;
+  _UAL_CLIPS[_slot] = { clip: UAL_SLOTS[_slot].clip, lib: UAL_SLOTS[_slot].lib || 0 };
   _UAL_TS[_slot] = UAL_SLOTS[_slot].ts;
 }
 
@@ -575,7 +585,7 @@ function _mk3d(folder, prefix, anims, opts) {
   const def = Object.assign({
     model: `${F}/Meshy_AI_${prefix}_biped_Character_output.glb`,
     clips,
-    animLib: EW_ANIM_LIB_URL,
+    animLib: EW_ANIM_LIB_URLS,
     libClips: _UAL_CLIPS,
     libTimeScales: _UAL_TS,
     // Relative on-board size. The renderer NORMALIZES every model to the same
@@ -596,6 +606,20 @@ function _mk3d(folder, prefix, anims, opts) {
     jumpTimeScale: 3.2,   // Regular_Jump 1.93s → ~0.6s
   }, opts || {});
   if (def.noAnimLib) { delete def.animLib; delete def.libClips; delete def.libTimeScales; }
+  // Per-character library flavor: opts.lib = { slot: {clip, lib, ts} }
+  // overrides individual UAL_SLOTS entries (e.g. a knight idling with
+  // Sword_Idle, the werewolf walking with Zombie_Walk_Fwd_Loop) while every
+  // unlisted slot keeps the shared defaults.
+  if (def.lib && def.libClips) {
+    const lc = Object.assign({}, def.libClips), lt = Object.assign({}, def.libTimeScales);
+    for (const slot in def.lib) {
+      const o = def.lib[slot];
+      lc[slot] = { clip: o.clip, lib: o.lib || 0 };
+      if (o.ts) lt[slot] = o.ts;
+    }
+    def.libClips = lc; def.libTimeScales = lt;
+  }
+  delete def.lib;
   return def;
 }
 
@@ -629,12 +653,12 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95 }),   // quick-draw is 7.33s; show draw+shot fast
+    }, { castTimeScale: 5.0, heightRatio: 0.95, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // quick-draw is 7.33s; show draw+shot fast
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.02 }),   // tall agent
+    }, { castTimeScale: 5.0, heightRatio: 1.02, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // tall agent
   },
   // Female Psychic (Telepath) — pilot wiring + the 2026-07-05 Running/Hit
   // uploads (generic Meshy_AI_Animation_* names, no character prefix — her
@@ -650,7 +674,7 @@ const RACE_MODELS_3D = {
         cast:  `${_PSY_3D}/Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb`,
         death: `${_PSY_3D}/Meshy_AI_Animation_Knock_Down_withSkin.glb`,
       },
-      animLib: EW_ANIM_LIB_URL,
+      animLib: EW_ANIM_LIB_URLS,
       libClips: _UAL_CLIPS,
       libTimeScales: _UAL_TS,
       heightRatio: 0.95,    // female human, a touch shorter than the anchor
@@ -693,22 +717,22 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.93 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.93, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
     male: _mk3d('Homosapien/Male/engineer', 'mad_scientist', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
   },
   // Gunslingers.
   'cowboy': {
     female: _mk3d('Homosapien/Female/gunslinger', 'hot_attractive_cowgir', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.95, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
     male: _mk3d('Homosapien/Male/gunslinger', 'gunslinger_cowboy', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
   },
   // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
   // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
@@ -716,7 +740,9 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/knight', 'hot_attractive_female', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Triple_Combo_Attack', castMelee: 'Thrust_Slash',
-    }, { castTimeScale: 2.2, heightRatio: 0.96 }),   // armored, sturdy
+    }, { castTimeScale: 2.2, heightRatio: 0.96,      // armored, sturdy
+         lib: { idle: { clip: 'Sword_Idle' },        // fencer ready stance
+                castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } } })
   },
   // Female Pirate — flintlock = quick-draw. (Same files are duplicated in
   // …/Female/raider; the pirate/ copies are wired.)
@@ -724,13 +750,13 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/pirate', 'hot_female_pirate', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.95, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
     // "Dashingly handsome swashbuckler" — same file set mirrored in
     // …/Male/raider.
     male: _mk3d('Homosapien/Male/pirate', 'dashingly_handsome_sw', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.02 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.02, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
   },
   // Homosapien (Freelancer) — also the werewolf's DAY form: getRace3DModel()
   // returns this male entry for any werewolf while getCurrentCyclePhase() is
@@ -751,7 +777,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
-    }, { castTimeScale: 5.0, heightRatio: 0.82 }),   // little green man
+    }, { castTimeScale: 5.0, heightRatio: 0.82, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // little green man
   },
   // Machine Elf (Engineer, specialist caster) — "DMT_clockwork_elf". A tiny
   // psychedelic clockwork entity: Charged_Spell_Cast is the generic/magic
@@ -785,7 +811,7 @@ const RACE_MODELS_3D = {
       castSupport: 'mage_soell_cast_3',
       // spare on R2: Walking, Knock_Down
     }, { castTimeScale: 5.0, castTimeScales: { castMagic: 2.0, castSupport: 2.0 },
-         heightRatio: 1.35 }),   // towering Sumerian god
+         heightRatio: 1.35, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // towering Sumerian god
   },
   // Demon (Black Mage, bruiser) — "red_demon". Charged_Spell_Cast covers the
   // generic + magic cast. MALE ONLY so far — the female demon has no model
@@ -795,7 +821,8 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       // spare on R2: Walking, Knock_Down
-    }, { heightRatio: 1.18 }),   // hulking horned demon
+    }, { heightRatio: 1.18,      // hulking horned demon
+         lib: { castMelee: { clip: 'Sword_Heavy_Combo', lib: 1, ts: 3.5 } } }),
   },
   // Half-Demon (Assassin, melee) — "hot_attractive_rich_f". No magic exports;
   // her strikes are brawler clips (uppercut / kick). Left_Uppercut is the
@@ -805,7 +832,8 @@ const RACE_MODELS_3D = {
     female: _mk3d('halfdemon/female', 'hot_attractive_rich_f', {
       idle: 'Idle_7', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Left_Uppercut_from_Guard', castMelee: 'Left_Uppercut_from_Guard',
-    }, { castTimeScale: 2.2, heightRatio: 0.98 }),   // statuesque half-demon
+    }, { castTimeScale: 2.2, heightRatio: 0.98,      // statuesque half-demon
+         lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
   'fairy': {
     female: _mk3d('Fairy/female', 'young_fairy', {
@@ -819,7 +847,8 @@ const RACE_MODELS_3D = {
     male: _mk3d('bigfoot/male', 'bigfoot', {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 1.4 }),   // towering cryptid
+    }, { heightRatio: 1.4,      // towering cryptid
+         lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
   // Giant (Warrior, melee tank) — "ancient_giant". A brawler with charged
   // smash clips: Charged_Upward_Slash is the generic cast, Charged_Ground_Slam
@@ -829,7 +858,8 @@ const RACE_MODELS_3D = {
     male: _mk3d('Giant/male', 'ancient_giant', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Charged_Upward_Slash', castMelee: 'Charged_Ground_Slam',
-    }, { castTimeScale: 2.2, heightRatio: 1.7 }),   // colossal ancient giant
+    }, { castTimeScale: 2.2, heightRatio: 1.7,      // colossal ancient giant
+         lib: { castMelee: { clip: 'Punch_Cross', ts: 0.9 } } }),
   },
   'grey': {
     male: _mk3d('grey/male', 'grey_alien', {
@@ -852,7 +882,8 @@ const RACE_MODELS_3D = {
     female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
       idle: 'Swim_Idle', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 0.98 }),   // statuesque sea-dweller
+    }, { heightRatio: 0.98,      // statuesque sea-dweller
+         lib: { idle: { clip: 'Swim_Idle_Loop' } } }),
   },
   // Werewolf NIGHT form (the beast). The DAY form is the Homosapien Freelancer
   // male model — see getRace3DModel(), which swaps this out for the human model
@@ -862,7 +893,10 @@ const RACE_MODELS_3D = {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Right_Hand_Sword_Slash', castMelee: 'Right_Hand_Sword_Slash',
       // spare on R2: Idle_11, Knock_Down
-    }, { castTimeScale: 2.2, heightRatio: 1.3 }),   // large hulking beast
+    }, { castTimeScale: 2.2, heightRatio: 1.3,      // large hulking beast
+         lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },        // feral sway
+                walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
+                castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
   },
   // Catgirl — gun for ranged (native Gunslinger), left hook for melee,
   // backflip jump. Spare on R2: Right_Hand_Sword_Slash, Hit_Reaction, Regular_Jump.
@@ -871,7 +905,9 @@ const RACE_MODELS_3D = {
       idle: 'Idle_5', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMelee: 'Left_Hook_from_Guard',
-    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 }, heightRatio: 0.88 }),   // petite
+    }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 }, heightRatio: 0.88,   // petite
+         lib: { idle: { clip: 'Pistol_Idle_Loop' },
+                castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
   // Female Ki Fighter — punch combo as the generic cast, kung-fu punch for
   // melee, mage_soell_cast_3 (note the _3) for ki blasts / support, backflip
@@ -881,7 +917,8 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Backflip_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Punch_Combo_5', castMelee: 'Kung_Fu_Punch',
       castMagic: 'mage_soell_cast_3', castSupport: 'mage_soell_cast_3',
-    }, { castTimeScale: 2.2, heightRatio: 0.93 }),
+    }, { castTimeScale: 2.2, heightRatio: 0.93,
+         lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
   // Female Vampire (humanoid form only — bat-swarm form keeps its particle
   // build, the renderer skips models for it).
@@ -890,7 +927,9 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast_1',
-    }, { heightRatio: 0.97 }),   // tall, elegant
+    }, { heightRatio: 0.97,      // tall, elegant
+         lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 },
+                castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
   },
   // Still missing from R2 (prefix unknown — need the Character_output file
   // name per folder to wire): male pirate.
