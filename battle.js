@@ -27913,8 +27913,33 @@
                 }
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
+                    // Star Crossed: read the target's zodiac — the affliction
+                    // depends on their sign's element, and if their sign rules
+                    // the sky right now, the reading strikes 50% harder.
+                    let _zodiacEffects = null, _zodiacMult = 1;
+                    if (spell.zodiacReading) {
+                        const _zElementOf = {
+                            aries: 'fire', leo: 'fire', sagittarius: 'fire',
+                            taurus: 'earth', virgo: 'earth', capricorn: 'earth',
+                            gemini: 'air', libra: 'air', aquarius: 'air',
+                            cancer: 'water', scorpio: 'water', pisces: 'water',
+                        };
+                        const _zEl = _zElementOf[target.zodiac] || 'air';
+                        _zodiacEffects = ({
+                            fire:  [{ id: 'burn', duration: 2 }],
+                            earth: [{ id: 'root', duration: 1 }, { id: 'glare', duration: 1 }],
+                            air:   [{ id: 'silence', duration: 1 }],
+                            water: [{ id: 'drowsy', duration: 2 }],
+                        })[_zEl];
+                        const _zIcon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[target.zodiac]) || '✦';
+                        if (target.zodiac && state.activeZodiac === target.zodiac) {
+                            _zodiacMult = 1.5;
+                            addLog(`${_zIcon} ${unitDisplayName(target)}'s sign rules the sky — the reading strikes 50% harder!`);
+                        }
+                        addLog(`${_zIcon} ${spell.name} reads ${unitDisplayName(target)}'s chart: a ${_zEl} sign.`);
+                    }
                     if (spell.dmg) {
-                        const _debDmg = spell.dmg + spellPower;
+                        const _debDmg = Math.round((spell.dmg + spellPower) * _zodiacMult);
                         applyDamageToUnit(target, _debDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                             sourceUnit: unit,
                             allowMarkBonus: false,
@@ -27924,7 +27949,7 @@
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_debDmg}`, false);
                     }
 
-                    let effectsToApply = spell.statusEffects;
+                    let effectsToApply = _zodiacEffects || spell.statusEffects;
                     if (unit.cls === 'Psychic' && effectsToApply) {
                         effectsToApply = effectsToApply.map(e => e.id === 'glare' ? {
                             ...e,
@@ -28501,6 +28526,13 @@
                         enemies.forEach((enemy, idx) => {
                             window.setTimeout(() => {
                                 if (enemy.dead) return;
+                                // Pure-debuff barrages (Meow): apply the status to
+                                // everyone in the nova but deal NO damage — melee
+                                // vs magic doesn't apply to a spell that never hits.
+                                if (spell.noDamage) {
+                                    applyStatusEffects(enemy, spell.statusEffects, `${spell.name}: `, unit);
+                                    return;
+                                }
                                 let dmg = Math.max(32, Math.floor(((spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16) * _barrageWaterMult));
                                 if (spell.id === 'shootout' && typeof window !== 'undefined'
                                     && window.ThreeVFXEffects && window.ThreeVFXEffects.spawnBulletRain3D
@@ -28524,7 +28556,7 @@
                             }, idx * barrageGap);
                         });
                     }, impactDelay);
-                    addLog(`${spell.name} hits ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
+                    addLog(`${spell.name} ${spell.noDamage ? 'affects' : 'hits'} ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
                     completionDelay = Math.max(impactDelay + (enemies.length - 1) * barrageGap + actionMs(700),
                         (cam?.totalMs ?? (impactDelay + actionMs(600))) + actionMs(120));
                 }
@@ -30534,13 +30566,34 @@
                 } else { _vfxBuff(unit.x, unit.y); }
                 const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
                 let buffCount = 0;
-                for (const ally of allies) {
-                    applyStatusEffects(ally, [{ id: ally.id === unit.id ? 'inspiredWeak' : 'inspired', duration: 2 }], `${spell.name}: `, unit);
-                    if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
-                    buffCount++;
+                if (spell.randomTeamBuff) {
+                    // Tarot Draw: one random stat, boosted for the WHOLE team.
+                    const _rtb = spell.randomTeamBuff;
+                    const _stat = _rtb.stats[Math.floor(Math.random() * _rtb.stats.length)];
+                    const _stages = _rtb.stages || 1;
+                    const _cardFor = {
+                        atk: { card: 'The Chariot', label: 'ATK' },
+                        int: { card: 'The Magician', label: 'INT' },
+                        def: { card: 'The Tower', label: 'DEF' },
+                        mdef: { card: 'The High Priestess', label: 'MDEF' },
+                        spd: { card: 'The Fool', label: 'SPD' },
+                    };
+                    const _card = _cardFor[_stat] || { card: 'The Star', label: _stat.toUpperCase() };
+                    for (const ally of allies) {
+                        applyStatStageBoost(ally, { [_stat]: _stages }, `${spell.name}: `, unit);
+                        buffCount++;
+                    }
+                    showFloatingTextForUnit(unit, `🎴 ${_card.card}`, 'buff');
+                    addLog(`${unitDisplayName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
+                } else {
+                    for (const ally of allies) {
+                        applyStatusEffects(ally, [{ id: ally.id === unit.id ? 'inspiredWeak' : 'inspired', duration: 2 }], `${spell.name}: `, unit);
+                        if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
+                        buffCount++;
+                    }
+                    showFloatingTextForUnit(unit, '🎵', 'buff');
+                    addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
                 }
-                showFloatingTextForUnit(unit, '🎵', 'buff');
-                addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
                 completionDelay = actionMs(400);
             }
 

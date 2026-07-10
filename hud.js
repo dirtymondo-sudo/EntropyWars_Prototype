@@ -2144,8 +2144,12 @@ function _hrlgSpellBadges(sp, cat, compact) {
   badges.push({ label: _tc.label, style: Object.assign(typeBadgeStyle(_tc.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.9 }), title: _tc.title });
   const _db = spellDeliveryBadge(sp, cat);
   badges.push({ label: _db.label, style: Object.assign(typeBadgeStyle(_db.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }) });
-  const _rb = spellRangeBadge(sp);
-  badges.push({ label: _rb.glyph + ' ' + _rb.label, style: Object.assign(typeBadgeStyle(_rb.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }), title: _rb.title });
+  // MELEE/RANGED delivery class only matters for spells that deal damage —
+  // don't stamp "⚔ MELEE" on a buff or a pure debuff.
+  if (spellDealsDamage(sp)) {
+    const _rb = spellRangeBadge(sp);
+    badges.push({ label: _rb.glyph + ' ' + _rb.label, style: Object.assign(typeBadgeStyle(_rb.color, { fontSize: _HRLG_SUB_FS, padding: _HRLG_SUB_PAD }), { opacity: 0.85 }), title: _rb.title });
+  }
   return badges;
 }
 
@@ -3134,10 +3138,20 @@ function spellTargetMode(sp) {
   return 'Single Target';
 }
 
+// Does this spell actually deal damage? PHYSICAL/MAGIC and MELEE/RANGED
+// badges only make sense for spells that hit something — a pure debuff or
+// utility labeled "MELEE" or "MAGIC" is just confusing.
+function spellDealsDamage(sp) {
+  if (sp.noDamage) return false;
+  if (sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg) return true;
+  // Kinds that always roll damage even without an explicit dmg field.
+  return ['barrage', 'skyDrop', 'skyThrow', 'skySlam'].includes(sp.kind || '');
+}
+
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
 function spellDeliveryBadge(sp, cat) {
+  if (!spellDealsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a' };
   if (sp.damageType === 'physical') return { label: 'PHYSICAL', color: '#e0944a' };
-  if (cat === 'heal' || cat === 'buff' || cat === 'utility') return { label: 'UTILITY', color: '#d8b24a' };
   return { label: 'MAGIC', color: '#b56ce0' };
 }
 

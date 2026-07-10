@@ -5875,18 +5875,18 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', cost: 30, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [19, 19, 19, 19, 19],
-          desc: 'Furious 5-hit melee combo. 95 total damage. Shreds through shields.' },
+          hitDamages: [18, 18, 18, 18, 18],
+          desc: 'Furious 5-hit melee combo. 90 total damage. Shreds through shields.' },
         { id: 'raceNimbleDodge', spellType: 'human', element: 'wind', name: 'Nimble Dodge',
-          type: 'utility', cost: 15, apCost: 1, range: 0,
+          type: 'utility', cost: 20, apCost: 1, range: 0, cooldownRounds: 3,
           kind: 'escape', teleportDistance: 2,
           statusEffects: [{ id: 'invisible', duration: 1 }],
-          desc: 'Gracefully dash 2 tiles away and vanish for 1 turn. Perfect evasive maneuver.' },
+          desc: 'Gracefully dash 2 tiles away and vanish for 1 turn. Perfect evasive maneuver. Needs 3 rounds between dodges.' },
         { id: 'raceMeow', spellType: 'anomaly', element: 'sonic', name: 'Meow',
           type: 'debuff', cost: 18, range: 0, apCost: 1,
-          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
+          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true, noDamage: true,
           statusEffects: [{ id: 'glare', duration: 2 }],
-          desc: 'An adorable, disarming meow. All enemies within 2 tiles have their DEF lowered for 2 turns.' },
+          desc: 'An adorable, disarming meow. All enemies within 2 tiles have their DEF lowered for 2 turns. Deals no damage.' },
         { id: 'raceLoveBite', spellType: 'anomaly', element: 'blood', name: 'Love Bite',
           type: 'damage', cost: 22, dmg: 76, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -5987,7 +5987,7 @@ const RACE_ABILITIES = {
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
           type: 'utility', cost: 20, apCost: 1, range: 2,
           kind: 'deployObject',
-          objectHp: 20, blastRadius: 1, blastDmg: 100,
+          objectHp: 20, blastRadius: 1, blastDmg: 130,
           detonateOnStep: true, maxActivePerCaster: 3,
           desc: 'Deploy an electrified coil. Detonates when an enemy steps on it. 3×3 shock damage.' },
         { id: 'racePlandemic', spellType: 'tech', element: 'poison', name: 'Plandemic',
@@ -5998,11 +5998,11 @@ const RACE_ABILITIES = {
         { id: 'raceCloneDecoy', spellType: 'tech', element: 'metal', name: 'Cloning Machine',
           type: 'utility', cost: 20, apCost: 1, range: 1,
           kind: 'deployObject',
-          objectHp: 60, maxActivePerCaster: 1,
+          objectHp: 100, maxActivePerCaster: 1,
           drawsRangedAttack: true, drawsMeleeAttack: true,
           desc: 'Print a decoy clone on an adjacent tile. It draws enemy attention but cannot attack.' },
         { id: 'raceOvercharge', spellType: 'tech', element: 'poison', name: 'Chemical Bath',
-          type: 'damage', cost: 30, dmg: 100, range: 3,
+          type: 'damage', cost: 40, manaCostOverride: 40, dmg: 100, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Douse a 3×3 area in caustic chemicals. Magic damage and burns everyone hit for 2 turns.' }
@@ -6119,23 +6119,27 @@ const RACE_ABILITIES = {
     ],
     'fortune teller': [
         { id: 'raceTarotDraw', spellType: 'anomaly', element: 'arcane', name: 'Tarot Draw',
-          type: 'buff', cost: 20, apCost: 1, range: 3,
-          kind: 'buff',
-          statStageBoost: { int: 2 },
-          desc: 'Draw from the deck of fate. Grant a unit +2 INT stages — sharpen their magic.' },
+          type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 3,
+          kind: 'warCry', auraRadius: 99,
+          randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
+          desc: 'Draw a card from the deck of fate. Your WHOLE TEAM gains +1 stage of a random stat — ATK, INT, DEF or MDEF. The cards decide.' },
+        { id: 'raceStarCrossed', spellType: 'anomaly', element: 'arcane', name: 'Star Crossed',
+          type: 'debuff', cost: 25, dmg: 70, range: 4, apCost: 1,
+          kind: 'debuff', damageType: 'magic', zodiacReading: true,
+          desc: 'Read the target\'s birth chart and turn their own stars against them. Magic damage plus an affliction by their zodiac: Fire signs burn, Earth signs are rooted and exposed, Air signs are silenced, Water signs grow drowsy. +50% damage if their sign rules the sky.' },
         { id: 'raceCurseOfMisfortune', spellType: 'anomaly', element: 'shadow', name: 'Family Curse',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
           statStageBoost: { atk: -1, def: -1, mdef: -1, int: -1 },
           desc: 'Lay a generational hex of bad luck. Target loses -1 ATK, -1 DEF, -1 MDEF and -1 INT stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', element: 'arcane', name: 'Crystal Ball',
-          type: 'damage', cost: 25, dmg: 180, range: 5, apCost: 1,
+          type: 'damage', cost: 45, manaCostOverride: 45, dmg: 200, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           desc: 'Foresee a death. Mark a spot — destiny strikes the target (and any enemies beside them) for heavy magic damage 1 round later.' },
         { id: 'raceSpiritChannel', spellType: 'anomaly', element: 'psychic', name: 'Palm Read',
           type: 'heal', cost: 30, range: 3, apCost: 1,
-          kind: 'heal', healAmt: 150, cleanse: 2,
-          desc: 'Read an ally\'s fate in their palm. Heal 150 HP and cleanse 2 debuffs.' }
+          kind: 'heal', healAmt: 190, cleanse: 2,
+          desc: 'Read an ally\'s fate in their palm. Heal 190 HP and cleanse 2 debuffs.' }
     ],
 
     'martian': [
@@ -6183,7 +6187,10 @@ const RACE_ABILITIES = {
        precise light beams, hard single-target lockdown, and team serenity. */
     'nordic': [
         { id: 'raceAuroraRay', spellType: 'alien', element: 'light', name: 'Aurora Ray',
-          type: 'damage', cost: 30, dmg: 155, range: 5,
+          // Line pricing assumes ~2.4 targets hit, but in practice a 1-wide beam
+          // rarely catches more than one — at the formula's 65 MP this was
+          // Nordic's whole pool for one shot (20% win rate in the sim stats).
+          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 170, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'glare', duration: 1 }],
           desc: 'Sweep a curtain of polar light down a line. Damages everything in the beam and dazzles survivors (DEF down 1 turn). Beautiful. Unsettling.' },
@@ -6204,12 +6211,12 @@ const RACE_ABILITIES = {
           kind: 'deployObject',
           objectHp: 70, maxActivePerCaster: 1,
           auraHeal: 40, auraRadius: 2,
-          desc: 'Plant a pylon of Pleiadian light. Allies within 2 tiles regenerate 35 HP per turn while it stands. The mothership is watching.' },
+          desc: 'Plant a pylon of Pleiadian light. Allies within 2 tiles regenerate 40 HP per turn while it stands. The mothership is watching.' },
         { id: 'racePleiadianShield', spellType: 'alien', element: 'light', name: 'Pleiadian Shield',
           type: 'buff', cost: 25, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 220,
           statusEffects: [{ id: 'inspired', duration: 1 }],
-          desc: 'Wrap an ally in a lattice of federation light. Grants a 150 HP shield and Inspired for 1 turn.' },
+          desc: 'Wrap an ally in a lattice of federation light. Grants a 220 HP shield and Inspired for 1 turn.' },
         { id: 'raceNordicAccord', spellType: 'alien', element: 'psychic', name: 'Nordic Accord',
           type: 'buff', cost: 40, apCost: 1, heal: 0, range: 0,
           kind: 'healAll',
@@ -6480,7 +6487,7 @@ const RACE_ABILITIES = {
           kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false,
           desc: 'Blink through shadow up to 4 tiles. Ignores line of sight. Needs 2 rounds to gather shadow between blinks.' },
         { id: 'raceDemonicClaw', spellType: 'human', element: 'shadow', name: 'Demonic Claw',
-          type: 'damage', cost: 25, dmg: 120, range: 1,
+          type: 'damage', cost: 25, dmg: 105, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
           desc: 'Savage claw strike. Marks the target for 2 turns (+30 bonus damage).' },
@@ -6538,9 +6545,9 @@ const RACE_ABILITIES = {
     ],
     'vampire': [
         { id: 'raceLifetap', spellType: 'unholy', element: 'blood', name: 'Lifetap',
-          type: 'damage', cost: 25, dmg: 108, range: 2,
+          type: 'damage', cost: 25, dmg: 95, range: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
-          desc: 'Drain the lifeforce from an enemy. Heals 50% of damage dealt.' },
+          desc: 'Drain the lifeforce from an enemy. Heals 40% of damage dealt.' },
         { id: 'raceBatSwarm', spellType: 'unholy', element: 'shadow', name: 'Bat Swarm',
           type: 'damage', cost: 30, dmg: 66, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7841,6 +7848,12 @@ function computeSpellManaCost(s){
     if (s.stealSpell) P += 18;            // permanently strip a buff/spell off the target
     if (s.apDrain) P += 8;
     if (k === 'scan' || s.scanner || k === 'remoteView' || s.untargetable) P += 4;
+    // Tarot Draw: one random stat stage for the WHOLE team — price it like a
+    // team-wide statStageBoost (stage worth 5 pts × ~3.5 effective targets).
+    if (s.randomTeamBuff) P += ((s.randomTeamBuff.stages || 1) * 5) * 3.5;
+    // Star Crossed: applies one zodiac-dependent affliction (burn / root+glare
+    // / silence / drowsy) — price the expected value of that status package.
+    if (s.zodiacReading) P += 10;
 
     // --- Range = safety (no penalty for short-range support; small melee discount) ---
     const r = Math.min(s.range != null ? s.range : 3, 8);

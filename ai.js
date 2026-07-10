@@ -1583,7 +1583,9 @@
             let s = 10;
             const nearAllies = v.allies.filter(a => Math.abs(a.x - target.x) + Math.abs(a.y - target.y) <= 3).length;
             s += nearAllies * 5;
-
+            // Damage-carrying debuffs (Star Crossed, Glare…) are worth their
+            // hit on top of the status value.
+            s += (spell.dmg || 0) * 0.5;
             s += getTargetPriority(target, unit, v) * 0.3;
             return s;
         }
