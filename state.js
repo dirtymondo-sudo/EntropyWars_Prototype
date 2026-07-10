@@ -729,23 +729,14 @@
                 }
 
                 const isVisible = !state.fogOfWar || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(ds.x, ds.y));
-                if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
-                    // Shared end-of-round framing (resting tactical angle, one
-                    // tour zoom) so the detonation dive matches every other beat.
-                    if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
-                    if (typeof eorFocusCamera === 'function') {
-                        eorFocusCamera(ds.x, ds.y, { duration: 380 });
-                    } else {
-                        const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
-                        camera.moveTo({ x: ds.x, y: ds.y, zoom: _detZoom, duration: 350, _fogAllowed: true });
-                    }
-                }
 
+                const _vfxAllowed = state.phase === 'battle'
+                    && !(typeof _skipVisuals === 'function' ? _skipVisuals() : state.animationsDisabled);
                 const _spellIdForVfx = ds.spellId || _delayedSpellIdFromName(ds.spellName);
                 const _hasDescentVfx = _spellIdForVfx
                     && typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(_spellIdForVfx, 'descent')
-                    && state.phase === 'battle' && !(typeof _skipVisuals === 'function' ? _skipVisuals() : state.animationsDisabled);
+                    && _vfxAllowed;
 
                 let _descentVfxMs = 0;
                 if (_hasDescentVfx) {
@@ -755,10 +746,67 @@
                     } catch (e) {  }
                 }
 
-                const _impactDelay = _descentVfxMs > 0 ? actionMs(_descentVfxMs) : 0;
+                /* Spells with a signature apparition but no descent VFX
+                   (Crystal Ball, Prophecy of Disaster) conjure it as the
+                   "arming" beat before the blast. */
+                let _hasArmingVfx = false;
+                if (!_hasDescentVfx && isVisible && _vfxAllowed && !ds.markedUnitId
+                    && _spellIdForVfx && typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && typeof window.ThreeVFXEffects.fireGeometry === 'function') {
+                    try {
+                        _hasArmingVfx = window.ThreeVFXEffects.fireGeometry(_spellIdForVfx, ds.x, ds.y, ds.aoeRadius || 1);
+                    } catch (e) {  }
+                }
+
+                /* ── Camera: the cinematic multi-cam detonation shot (Action
+                   Cam toggle) — ground-zero angle for the inbound, reverse-cut
+                   wide for the blast. Falls back to the classic tactical dive
+                   when ineligible (2D renderer, toggle off, marked shots). ── */
+                let _cine = null;
+                if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
+                    if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
+                    if (!ds.markedUnitId && typeof window !== 'undefined'
+                        && typeof window.playDetonationCinematic === 'function') {
+                        try {
+                            _cine = window.playDetonationCinematic(ds, { descentMs: _descentVfxMs });
+                        } catch (e) { _cine = null; }
+                    }
+                    if (!_cine) {
+                        // Shared end-of-round framing (resting tactical angle,
+                        // one tour zoom) matching every other between-round beat.
+                        if (typeof eorFocusCamera === 'function') {
+                            eorFocusCamera(ds.x, ds.y, { duration: 380 });
+                        } else {
+                            const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
+                            camera.moveTo({ x: ds.x, y: ds.y, zoom: _detZoom, duration: 350, _fogAllowed: true });
+                        }
+                    }
+                }
+
+                const _impactDelay = _cine ? _cine.impactMs
+                    : (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
+                        : (_hasArmingVfx ? actionMs(1100) : 0));
 
                 window.setTimeout(() => {
                     _detonateDelayedSpell(ds);
+
+                    /* Descent-less detonations still need a BLAST to look at —
+                       a sonic-boom ring + flash in the spell's palette. */
+                    if (isVisible && !_hasDescentVfx && !ds.markedUnitId && _vfxAllowed
+                        && typeof window !== 'undefined' && window.ThreeVFXEffects) {
+                        try {
+                            const VFX = window.ThreeVFXEffects;
+                            const _blastCol = (ds.spellType === 'anomaly' || ds.spellType === 'arcane') ? 0xcc88ff
+                                : (ds.spellType === 'unholy' ? 0xbb55dd : 0xffaa55);
+                            if (VFX.sigSonicBoom3D) {
+                                VFX.sigSonicBoom3D(ds.x, ds.y, {
+                                    rings: 3, radiusTiles: (ds.aoeRadius || 1) + 1.2,
+                                    color: _blastCol, shake: 'hard',
+                                });
+                            }
+                            if (typeof playSfx === 'function') playSfx('explosion');
+                        } catch (e) {  }
+                    }
 
                     if (isVisible && typeof showBattleDialogue === 'function') {
                         showBattleDialogue(`💥 ${ds.spellName} detonates!`, 1200);
@@ -770,7 +818,9 @@
                     checkWin();
                     if (state.winner) { if (onDone) onDone(); return; }
 
-                    const _postImpactDelay = actionMs(500);
+                    const _postImpactDelay = _cine
+                        ? Math.max(actionMs(500), _cine.afterMs)
+                        : actionMs(500);
                     window.setTimeout(detonateNext, _postImpactDelay);
                 }, _impactDelay);
             }

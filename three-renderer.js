@@ -12110,7 +12110,7 @@ const ThreeRenderer = (function () {
         }
     }
 
-    function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs) {
+    function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         var fromZ = unit.z || 0;
         var toZ = (typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0;
         // Scale the slide with travel distance so multi-tile dashes / knockbacks
@@ -12126,6 +12126,9 @@ const ThreeRenderer = (function () {
             toX: toX, toY: toY, toZ: toZ,
             startTime: _animNow(),
             durationMs: _dpDur,
+            /* optional hold at the FROM tile before the slide begins — lets a
+               rope/tether visibly bite before the yank starts */
+            delayMs: (opts && opts.delayMs) || 0,
             sprint: _dpDist >= 2
         });
 
@@ -12154,7 +12157,7 @@ const ThreeRenderer = (function () {
         var _dpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _displaceTweens) {
             var uid = entry[0], tw = entry[1];
-            var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
+            var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeOut(t);
             var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
             var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
@@ -12388,6 +12391,153 @@ const ThreeRenderer = (function () {
             }
         }
         for (var r = 0; r < toRemove.length; r++) _strikeTweens.delete(toRemove[r]);
+    }
+
+    var _throwTweens = new Map();
+
+    /* Aerial throw/drop arc — the skyThrow/skyDrop/skySlam family. The body is
+       yanked straight UP off its tile (lift), hangs flailing at the carry
+       height (hang), then is flung down a fast ballistic arc into the landing
+       tile (fling). opts.onImpact fires exactly at touchdown — battle.js
+       applies damage and the unit's final logical tile there — then a short
+       settle slide carries the body from the impact point to wherever the
+       unit actually ended up (its rest position), which doubles as the
+       "bounce off the victim onto the next tile" beat for slams.
+       opts: liftMs/hangMs/flingMs/settleMs, liftPx (world px of carry height),
+             drop (true = no horizontal travel, straight drop in place),
+             onLift (fired once at the top of the lift), onImpact. */
+    function startThrowArcTween(unit, fromX, fromY, toX, toY, opts) {
+        if (!unit) return;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var liftMs   = opts.liftMs   || 480;
+        var hangMs   = opts.hangMs   || 280;
+        var flingMs  = opts.flingMs  || (opts.drop ? 260 : 320);
+        var settleMs = opts.settleMs != null ? opts.settleMs : 180;
+        var liftPx   = opts.liftPx != null ? opts.liftPx : ts * 2.2;
+        var fromSY = _tileSurfaceY(fromX, fromY, unit.z);
+        var toSY = _tileSurfaceY(toX, toY);
+        _throwTweens.set(unit.id, {
+            fromX: fromX, fromY: fromY, fromSY: fromSY,
+            toX: toX, toY: toY, toSY: toSY,
+            startTime: _animNow(),
+            liftMs: liftMs, hangMs: hangMs, flingMs: flingMs, settleMs: settleMs,
+            totalMs: liftMs + hangMs + flingMs,
+            liftPx: liftPx,
+            drop: !!opts.drop,
+            liftFired: false, impactFired: false,
+            impactPos: null, settleStart: 0,
+            onLift: opts.onLift || null,
+            onImpact: opts.onImpact || null
+        });
+        var entry = _getUnitEntry(unit.id);
+        if (entry && entry.group) entry.group.visible = true;
+    }
+
+    function _updateThrowTweens() {
+        if (_throwTweens.size === 0) return;
+        var now = _animNow();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var toRemove = [];
+        var _thVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
+        for (var entry of _throwTweens) {
+            var uid = entry[0], tw = entry[1];
+            var elapsed = now - tw.startTime;
+            var ue = _getUnitEntry(uid);
+
+            /* fog: show the flight if either endpoint is visible to the viewer */
+            if (ue && ue.group && _thVp && _fogVisibleSet) {
+                var _thUnit = _unitById.get(uid);
+                if (_thUnit && _thUnit.player !== _thVp) {
+                    ue.group.visible = _fogVisibleSet.has(tw.fromX + ',' + tw.fromY)
+                        || _fogVisibleSet.has(tw.toX + ',' + tw.toY);
+                }
+            }
+
+            var apexY = tw.fromSY + tw.liftPx;
+            var wx, wy, wz;
+
+            if (elapsed < tw.liftMs) {
+                /* ── LIFT: hauled straight up off the tile, stretched taut ── */
+                var lt = _easeInOut(elapsed / tw.liftMs);
+                wx = tw.fromX * ts + ts / 2;
+                wz = tw.fromY * ts + ts / 2;
+                wy = tw.fromSY + tw.liftPx * lt;
+                if (ue && ue.sprite) ue.sprite.scale.set(1 - 0.12 * lt, 1 + 0.18 * lt, 1);
+                if (ue && ue.model) ue.model.scale.set(1 - 0.06 * lt, 1 + 0.10 * lt, 1 - 0.06 * lt);
+            } else if (elapsed < tw.liftMs + tw.hangMs) {
+                /* ── HANG: suspended at carry height, struggling ── */
+                if (!tw.liftFired) {
+                    tw.liftFired = true;
+                    if (tw.onLift) try { tw.onLift(); } catch (e) { console.warn('[ThreeRenderer] throwArc onLift error:', e); }
+                }
+                var ht = elapsed - tw.liftMs;
+                wx = tw.fromX * ts + ts / 2 + Math.sin(ht * 0.014) * ts * 0.05;
+                wz = tw.fromY * ts + ts / 2 + Math.cos(ht * 0.011) * ts * 0.05;
+                wy = apexY + Math.sin(ht * 0.008) * ts * 0.06;
+                var flail = 1 + 0.06 * Math.sin(ht * 0.02);
+                if (ue && ue.sprite) ue.sprite.scale.set(0.9 * flail, 1.16 / flail, 1);
+                if (ue && ue.model) ue.model.scale.set(0.95 * flail, 1.08 / flail, 0.95 * flail);
+            } else if (elapsed < tw.totalMs) {
+                /* ── FLING: accelerating ballistic slam into the landing tile ── */
+                var ft = (elapsed - tw.liftMs - tw.hangMs) / tw.flingMs;
+                var horiz = ft * ft;                       // accelerate outward
+                var bump = tw.drop ? 0 : ts * 0.35 * 4 * ft * (1 - ft);
+                wx = (tw.fromX + (tw.toX - tw.fromX) * horiz) * ts + ts / 2;
+                wz = (tw.fromY + (tw.toY - tw.fromY) * horiz) * ts + ts / 2;
+                wy = apexY + (tw.toSY - apexY) * (ft * ft) + bump;
+                if (ue && ue.sprite) ue.sprite.scale.set(0.88, 1.2, 1);
+                if (ue && ue.model) ue.model.scale.set(0.94, 1.1, 0.94);
+            } else if (!tw.impactFired) {
+                /* ── IMPACT: touchdown frame ── */
+                tw.impactFired = true;
+                tw.settleStart = now;
+                wx = tw.toX * ts + ts / 2;
+                wz = tw.toY * ts + ts / 2;
+                wy = tw.toSY;
+                tw.impactPos = { x: wx, y: wy, z: wz };
+                if (ue && ue.group && ue.group.visible) {
+                    _spawnGroundPuff(tw.toX, tw.toY, 10, { vxy: 190 });
+                }
+                if (ue && ue.sprite) ue.sprite.scale.set(1.28, 0.68, 1);
+                if (ue && ue.model) {
+                    ue.model.scale.set(1.12, 0.82, 1.12);
+                    ue.model && (ue._ew_landAt = _animNow());
+                }
+                if (tw.onImpact) try { tw.onImpact(); } catch (e) { console.warn('[ThreeRenderer] throwArc onImpact error:', e); }
+            } else {
+                /* ── SETTLE: ease from the impact point to the unit's real rest
+                   tile (identical when the throw landed cleanly; a short bounce
+                   when battle.js moved the body to an adjacent tile) ── */
+                var st = Math.min((now - tw.settleStart) / Math.max(1, tw.settleMs), 1);
+                var unitRef = _findUnit(uid);
+                var rest = unitRef ? _unitRestPos(unitRef) : tw.impactPos;
+                var se = _easeOut(st);
+                wx = tw.impactPos.x + (rest.x - tw.impactPos.x) * se;
+                wy = tw.impactPos.y + (rest.y - tw.impactPos.y) * se;
+                wz = tw.impactPos.z + (rest.z - tw.impactPos.z) * se;
+                var sq = 1 - st;
+                if (ue && ue.sprite) ue.sprite.scale.set(1 + 0.28 * sq, 1 - 0.32 * sq, 1);
+                if (ue && ue.model) ue.model.scale.set(1 + 0.12 * sq, 1 - 0.18 * sq, 1 + 0.12 * sq);
+                if (st >= 1) {
+                    if (ue && ue.sprite) ue.sprite.scale.set(1, 1, 1);
+                    if (ue && ue.model) ue.model.scale.set(1, 1, 1);
+                    if (ue && ue.group && unitRef) {
+                        // _unitRestPos already accounts for submersion sink
+                        ue.group.position.set(rest.x, rest.y, rest.z);
+                        ue.group._ew_spriteTopY = rest.y + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+                    }
+                    toRemove.push(uid);
+                    continue;
+                }
+            }
+
+            if (ue && ue.group) {
+                ue.group.position.set(wx, wy, wz);
+                ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) _throwTweens.delete(toRemove[r]);
     }
 
     function startDeathTween(unitId) {
@@ -12697,7 +12847,30 @@ const ThreeRenderer = (function () {
         return grp;
     }
 
-    function _buildTetherMesh(kind, hook) {
+    // A cowboy lasso: an open rope loop (torus) with a honda-knot bead where
+    // the rope feeds through. Shares the rope texture/material family with the
+    // tether tube. While the throw is in flight the loop faces the travel
+    // direction and SPINS about it; on the bite it drops flat and cinches
+    // (scale-down) around the target's torso.
+    function _buildLassoMesh(ropeTex) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var grp = new THREE.Group();
+        var mat = new THREE.MeshBasicMaterial({
+            map: ropeTex, color: 0xc9a25e,
+            transparent: true, alphaTest: 0.06, side: THREE.DoubleSide, depthWrite: false
+        });
+        var tube = ts * 0.030;
+        var loop = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.30, tube, 6, 24), mat);
+        grp.add(loop);
+        // honda knot — the bead the rope runs through, at the loop's edge
+        var knot = new THREE.Mesh(new THREE.SphereGeometry(tube * 2.2, 8, 6), mat);
+        knot.position.set(ts * 0.30, 0, 0);
+        grp.add(knot);
+        grp._ew_lassoMat = mat;
+        return grp;
+    }
+
+    function _buildTetherMesh(kind, hook, lasso) {
         var info = _TETHER_SPRITES[kind] || _TETHER_SPRITES['rope'];
 
         var tex = getTexture(info.url);
@@ -12715,13 +12888,20 @@ const ThreeRenderer = (function () {
         group.add(ropeMesh);
 
         var hookMesh = null;
-        if (hook) {
+        if (hook && !lasso) {
             hookMesh = _buildHookMesh(tex);
             hookMesh.visible = false;
             group.add(hookMesh);
         }
 
-        return { group: group, ropeMesh: ropeMesh, mat: mat, tex: tex, hookMesh: hookMesh, geo: null };
+        var lassoMesh = null;
+        if (lasso) {
+            lassoMesh = _buildLassoMesh(tex);
+            lassoMesh.visible = false;
+            group.add(lassoMesh);
+        }
+
+        return { group: group, ropeMesh: ropeMesh, mat: mat, tex: tex, hookMesh: hookMesh, lassoMesh: lassoMesh, geo: null };
     }
 
     // Rebuild the rope as a textured tube following the drooping curve, tiling the
@@ -12751,6 +12931,25 @@ const ThreeRenderer = (function () {
             tw.hookMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tan);
             tw.hookMesh.visible = len > ts * 0.4;
         }
+
+        if (tw.lassoMesh) {
+            // The loop rides the target's end of the rope: the flying tip while
+            // shooting/held (point 1), the dragged near end while retracting
+            // (point 0 — the victim being reeled in).
+            var lassoT = (tw.phase === 'retract') ? 0 : 1;
+            tw.lassoMesh.position.copy(curve.getPointAt(lassoT));
+            if (tw._lassoCinched) {
+                // flat horizontal loop cinched around the torso
+                tw.lassoMesh.quaternion.setFromUnitVectors(
+                    new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0));
+            } else {
+                var lassoTan = curve.getTangentAt(1).normalize();
+                tw.lassoMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), lassoTan);
+                // spin the loop about its flight axis while it sails out
+                tw.lassoMesh.rotateZ(_animNow() * 0.02);
+            }
+            tw.lassoMesh.visible = tw._lassoCinched || len > ts * 0.25;
+        }
     }
 
     function _disposeTether(tw) {
@@ -12760,6 +12959,10 @@ const ThreeRenderer = (function () {
         if (tw.hookMesh) {
             tw.hookMesh.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
             if (tw.hookMesh._ew_hookMat) tw.hookMesh._ew_hookMat.dispose();
+        }
+        if (tw.lassoMesh) {
+            tw.lassoMesh.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+            if (tw.lassoMesh._ew_lassoMat) tw.lassoMesh._ew_lassoMat.dispose();
         }
         tw.removed = true;
     }
@@ -12771,7 +12974,7 @@ const ThreeRenderer = (function () {
         var from = _tetherWorldPos(fromX, fromY, fromZLevel);
         var to = _tetherWorldPos(toX, toY, toZLevel);
 
-        var built = _buildTetherMesh(kind, !!opts.hook);
+        var built = _buildTetherMesh(kind, !!opts.hook, !!opts.lasso);
 
         _setTetherTube(built, from, from);
         projectileGroup.add(built.group);
@@ -12781,6 +12984,7 @@ const ThreeRenderer = (function () {
             id: id,
             group: built.group, ropeMesh: built.ropeMesh, mat: built.mat,
             tex: built.tex, hookMesh: built.hookMesh, geo: built.geo,
+            lassoMesh: built.lassoMesh, _lassoCinched: false, _lassoCinchStart: 0,
             kind: kind, hook: !!opts.hook,
 
             from: from, to: to,
@@ -12817,6 +13021,10 @@ const ThreeRenderer = (function () {
 
                 var casterPos = tw.from;
                 var newTo = _tetherWorldPos(newToX, newToY);
+                if (tw.lassoMesh && !tw._lassoCinched) {
+                    tw._lassoCinched = true;
+                    tw._lassoCinchStart = _animNow();
+                }
                 tw.phase = 'retract';
                 tw.retractFrom = { x: tw.to.x, y: tw.to.y, z: tw.to.z };
                 tw.retractTo = casterPos;
@@ -12857,12 +13065,24 @@ const ThreeRenderer = (function () {
                     z: tw.from.z + (tw.to.z - tw.from.z) * t
                 };
                 _setTetherTube(tw, tw.from, curTo);
-                if (t >= 1) { tw.phase = 'hold'; tw._heldBuilt = false; }
+                if (t >= 1) {
+                    tw.phase = 'hold'; tw._heldBuilt = false;
+                    // lasso bite: the loop stops spinning, drops flat and cinches
+                    if (tw.lassoMesh && !tw._lassoCinched) {
+                        tw._lassoCinched = true;
+                        tw._lassoCinchStart = now;
+                    }
+                }
 
             } else if (tw.phase === 'hold') {
 
                 // Endpoints are fixed while held — rebuild the tube once, not per frame.
                 if (!tw._heldBuilt) { _setTetherTube(tw, tw.from, tw.to); tw._heldBuilt = true; }
+                if (tw.lassoMesh && tw._lassoCinched) {
+                    var lct = Math.min((now - tw._lassoCinchStart) / 160, 1);
+                    var lcs = 1 - 0.42 * lct;
+                    tw.lassoMesh.scale.set(lcs, lcs, 1);
+                }
 
             } else if (tw.phase === 'retract') {
 
@@ -12879,6 +13099,11 @@ const ThreeRenderer = (function () {
                     z: tw.retractFrom.z + (tw.retractNewFrom.z - tw.retractFrom.z) * rt
                 } : tw.from;
                 _setTetherTube(tw, curNear, curFar);
+                if (tw.lassoMesh && tw._lassoCinched) {
+                    var lct2 = Math.min((now - tw._lassoCinchStart) / 160, 1);
+                    var lcs2 = 1 - 0.42 * lct2;
+                    tw.lassoMesh.scale.set(lcs2, lcs2, 1);
+                }
                 if (rt >= 1) {
                     tw.phase = 'fade';
                     tw.fadeStartTime = now;
@@ -12889,6 +13114,7 @@ const ThreeRenderer = (function () {
                 var ft = Math.min((now - tw.fadeStartTime) / tw.fadeMs, 1);
                 tw.mat.opacity = 1 - ft;
                 if (tw.hookMesh && tw.hookMesh._ew_hookMat) tw.hookMesh._ew_hookMat.opacity = 1 - ft;
+                if (tw.lassoMesh && tw.lassoMesh._ew_lassoMat) tw.lassoMesh._ew_lassoMat.opacity = 1 - ft;
                 if (ft >= 1) {
                     _disposeTether(tw);
                     _tetherTweens.splice(i, 1);
@@ -13966,6 +14192,7 @@ const ThreeRenderer = (function () {
         _updateDisplaceTweens();
         _updateJumpTweens();
         _updateStrikeTweens();
+        _updateThrowTweens();
         _updateDeathTweens();
         _updateProjectileTweens();
         _updateTetherTweens();
@@ -20085,7 +20312,7 @@ const ThreeRenderer = (function () {
 
         showIntentBadges, clearIntentBadges, worldToScreen,
 
-        startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startDeathTween,
+        startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startThrowArcTween, startDeathTween,
         setTimeWarp,
 
         startProjectileTween,
@@ -20206,8 +20433,8 @@ window.ThreeAnim = {
         if (ThreeRenderer.isActive()) ThreeRenderer.startWalkTween(unit, path, onDone);
     },
 
-    displace: function(unit, fromX, fromY, toX, toY, durationMs) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs);
+    displace: function(unit, fromX, fromY, toX, toY, durationMs, opts) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts);
     },
 
     jumpArc: function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
@@ -20216,6 +20443,15 @@ window.ThreeAnim = {
 
     strikeLeap: function(unit, tx, ty, opts) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startStrikeLeapTween(unit, tx, ty, opts);
+    },
+
+    /* Lift → hang → fling → impact arc for thrown/dropped units (skyThrow &
+       co). Returns true when the 3D tween took the animation (battle.js then
+       defers damage/position to opts.onImpact); false = caller falls back. */
+    throwArc: function(unit, fromX, fromY, toX, toY, opts) {
+        if (!ThreeRenderer.isActive()) return false;
+        ThreeRenderer.startThrowArcTween(unit, fromX, fromY, toX, toY, opts);
+        return true;
     },
 
     death: function(unitId) {

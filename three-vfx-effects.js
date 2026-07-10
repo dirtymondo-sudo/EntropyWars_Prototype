@@ -1946,6 +1946,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _spawnEffect(effectDef, { tx: params.tx, ty: params.ty });
     }
 
+    /* Fire a spell's bespoke 3D geometry directly (the _spell3DGeometry
+       registry), bypassing the SPELL_MAP intent gate. Used by the end-of-round
+       detonation pipeline for spells that have a signature apparition but no
+       descent/impact mapping (Crystal Ball's orb, Prophecy's vision).
+       Returns true when something was spawned. */
+    function fireGeometry(spellId, tx, ty, aoeRadius) {
+        if (_suppressed()) return false;
+        var fn = _spell3DGeometry[spellId];
+        if (typeof fn !== 'function') return false;
+        try { fn(tx, ty, aoeRadius); } catch (e) { return false; }
+        return true;
+    }
+
     function fireHeal(tx, ty) {
         if (_suppressed() || _catOff('healing')) return;
         _fireUtility('_heal_burst', { tx: tx, ty: ty });
@@ -10896,6 +10909,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         fire: fire,
         fireBoltDirect: fireBoltDirect,
+        fireGeometry: fireGeometry,
         hasMapping: hasMapping,
 
         laserBeam3D: _spawnLaserBeam3D,

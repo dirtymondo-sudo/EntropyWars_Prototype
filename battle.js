@@ -6698,7 +6698,7 @@
                                                 : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
                 const toZLevel = _toUnit3 ? (_toUnit3.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_toUnit3.x, _toUnit3.y) : 0))
                                             : (typeof getHeightAt === 'function' ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
-                const threeHandle = window.ThreeAnim.tether(fromX, fromY, toX, toY, tetherKind, shootMs, fromZLevel, toZLevel, { hook: !!opts.hook });
+                const threeHandle = window.ThreeAnim.tether(fromX, fromY, toX, toY, tetherKind, shootMs, fromZLevel, toZLevel, { hook: !!opts.hook, lasso: !!opts.lasso });
                 if (threeHandle) {
 
                     const handle = {
@@ -6800,6 +6800,14 @@
             if (!spell) return false;
             const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
             return /grapple|hook|harpoon|claw/.test(idn);
+        }
+
+        // Which pull/tether spells throw a spinning ROPE LOOP that cinches
+        // around the target (the cowboy's Lasso) instead of a bare rope end.
+        function _tetherLassoForSpell(spell) {
+            if (!spell) return false;
+            const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
+            return /lasso|wrangle/.test(idn);
         }
 
         // Bresenham line of tiles from (x0,y0) to (x1,y1), EXCLUDING the origin and
@@ -10817,6 +10825,114 @@
                 shakeBoard('normal');
             }, impactMs);
         }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // playDetonationCinematic() — the end-of-round DETONATION multi-cam
+        // (Nuke, Crystal Ball, Artillery Strike, the Decrees…). Called from
+        // state.js's detonation loop in place of the flat tactical dive.
+        //   BEAT 1 — GROUND ZERO: hard cut to a low, near-level shot across
+        //     the doomed tile with the sky in frame, so the inbound descent
+        //     (the f22 flyover, the falling star, the artillery shells) plays
+        //     out ON CAMERA. Slow push-in through the telegraph.
+        //   BEAT 2 — THE BLAST: reverse-angle hard cut to a wide shot at the
+        //     exact impact frame — white flash, hard kick, then a slow push
+        //     through the aftermath (mushroom cloud, burning crater).
+        // Returns { impactMs, totalMs, afterMs } so the caller can land the
+        // damage on the cut, or null when ineligible (caller keeps the
+        // classic eorFocusCamera dive).
+        // ═══════════════════════════════════════════════════════════════════
+        function playDetonationCinematic(ds, opts = {}) {
+            if (!ds || state.phase !== 'battle' || state.winner) return null;
+            if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return null;
+            if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return null;
+            let _threeOn = false;
+            try {
+                _threeOn = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive();
+            } catch (e) {}
+            if (!_threeOn) return null;
+
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const descentMs = Math.max(0, opts.descentMs || 0);
+            // No descent VFX (Crystal Ball & co) still gets an arming beat so
+            // the cut structure — and the dread — stays identical.
+            const inboundMs = descentMs > 0 ? actionMs(descentMs) : actionMs(1100);
+            const afterMs = actionMs(1300);
+            const totalMs = inboundMs + afterMs;
+
+            const sequenceId = ++boardCameraSequenceId;
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+            _captureCineReturnView();
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = null;
+            camera._cineShotTarget = { x: ds.x, y: ds.y, id: null };
+            camera._cineKeepSubject = true;
+            camera._busy = true;
+            const camSeq = ++camera._seqId;
+            if (camera._busyTimer) clearTimeout(camera._busyTimer);
+            camera._busyTimer = setTimeout(() => {
+                if (camera._seqId === camSeq) camera._busy = false;
+                camera._busyTimer = null;
+            }, totalMs + actionMs(300));
+
+            showActionCamChrome({ name: ds.spellName || 'Detonation', heavy: true, totalMs });
+
+            const groundPx = (typeof window._camGroundPx === 'function')
+                ? window._camGroundPx(Math.round(ds.x), Math.round(ds.y)) : 0;
+            const yaw1 = Math.floor(Math.random() * 4) * 90 + 25;
+
+            // ── BEAT 1 — GROUND ZERO ──
+            _cineTpsAnchor({ x: ds.x, y: ds.y }, null);
+            _cineHardCut({
+                x: ds.x, y: ds.y,
+                zoom: _tpsZoomForBoomTiles(5.4), tilt: 82, yaw: yaw1,
+                elevZ: groundPx + ts * 0.9
+            });
+            _acChromeFlash('cut');
+            _cineBeatMove({
+                zoom: _tpsZoomForBoomTiles(4.5),
+                duration: Math.max(220, inboundMs - 60), easing: 'linear',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+
+            // ── BEAT 2 — THE BLAST ──
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                const r = Math.max(1, ds.aoeRadius || 1);
+                _cineTpsAnchor({ x: ds.x, y: ds.y }, null);
+                _cineHardCut({
+                    x: ds.x, y: ds.y,
+                    zoom: _tpsZoomForBoomTiles(6.2 + r * 1.6), tilt: 64, yaw: yaw1 + 140,
+                    elevZ: groundPx + ts * (1.1 + r * 0.35)
+                });
+                _acChromeFlash('kill');
+                shakeBoard('hard');
+                _cineBeatMove({
+                    zoom: _tpsZoomForBoomTiles(5.6 + r * 1.6),
+                    duration: Math.max(300, afterMs - actionMs(150)), easing: 'linear',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+            }, inboundMs);
+
+            // ── END — release the shot; the between-round tour reframes from
+            // the resting tactical angle.
+            window.setTimeout(() => {
+                if (camera._cineShotId === sequenceId) {
+                    camera._cineShotId = null;
+                    camera._cineShotUnitId = null;
+                    camera._cineShotTarget = null;
+                    camera._cineKeepSubject = false;
+                    camera._preCineView = null;
+                    if (camera._seqId === camSeq) camera._busy = false;
+                    eorFocusCamera(ds.x, ds.y, { duration: 650 });
+                }
+                hideActionCamChrome();
+            }, totalMs);
+
+            return { impactMs: inboundMs, totalMs, afterMs };
+        }
+        window.playDetonationCinematic = playDetonationCinematic;
 
         // ═══════════════════════════════════════════════════════════════════
         // animateDashActionCamera() — camera for dash / charge / rush moves.
@@ -24604,11 +24720,12 @@
             }, ms + 40);
         }
 
-        function animateDisplacementPath(unit, fromX, fromY, steps, perStepMs) {
+        function animateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts) {
 
             if (window.ThreeAnim && window.ThreeAnim.isActive() && steps && steps.length) {
                 var last = steps[steps.length - 1];
-                window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length);
+                window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
+                    { delayMs: (opts && opts.delayMs) || 0 });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -24679,7 +24796,7 @@
                 setTimeout(slideNext, stepMs);
             }
 
-            requestAnimationFrame(() => setTimeout(slideNext, 20));
+            requestAnimationFrame(() => setTimeout(slideNext, 20 + ((opts && opts.delayMs) || 0)));
         }
 
         function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
@@ -29476,7 +29593,8 @@
                 _spellFocusCamera(unit, x, y);
 
                 const _pullTetherKind = _tetherKindForSpell(spell);
-                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell) });
+                const _pullIsLasso = _tetherLassoForSpell(spell);
+                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell), lasso: _pullIsLasso });
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
@@ -29537,8 +29655,23 @@
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
                 if (pulled > 0) _applyKnockbackHazard(target);
 
+                let _pullTotalAnimMs = 0;
+
                 if (_pullSteps.length > 0) {
-                    animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120);
+                    /* The yank waits for the rope/vine to visibly fly out and
+                       BITE (shoot + a beat) before the drag starts — the old
+                       instant drag had the victim moving before the tether
+                       even reached them. Lassos linger a touch longer while
+                       the loop cinches. */
+                    const _yankDelayMs = actionMs(280) + actionMs(_pullIsLasso ? 220 : 120);
+                    animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120, { delayMs: _yankDelayMs });
+                    if (_pullIsLasso) {
+                        window.setTimeout(() => {
+                            if (target && !target.dead) {
+                                showFloatingTextForUnit(target, '🤠 ROPED!', 'streak', { durationMs: 900 });
+                            }
+                        }, actionMs(300));
+                    }
                     const pullAnimMs = _pullSteps.length * 120;
 
                     if (spell.id === 'raceTractorBeam' && !_skipVisuals()
@@ -29551,7 +29684,7 @@
                         const _ufoPathMs = _pullSteps.length * _ufoStepMs;
                         window.ThreeVFXEffects.sigUFO3D(_pullFromX, _pullFromY, {
                             enterMs: 260,
-                            hoverMs: _ufoPathMs + 480,
+                            hoverMs: _ufoPathMs + 480 + _yankDelayMs,
                             exitMs: 460,
                             beam: true, beamColor: 0x55ff99,
                             path: [{ x: _pullFromX, y: _pullFromY }].concat(_pullSteps),
@@ -29575,23 +29708,27 @@
                             _ufoStepIdx++;
                             setTimeout(_ufoStepFx, _ufoStepMs);
                         }
-                        setTimeout(_ufoStepFx, 290);
+                        setTimeout(_ufoStepFx, Math.max(290, _yankDelayMs));
                     }
 
-                    if (_pullTether) {
-                        _pullTether.retract(target.x, target.y, pullAnimMs);
-                    }
-
-                    if (!state.cameraDisabled) {
-                        stopBoardCameraAnimation();
-                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                        const _pullZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
-                        animateBoardCameraPath(
-                            { x: _pullFromX, y: _pullFromY },
-                            { x: target.x, y: target.y },
-                            { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: _fogCamTilesVisible({ x: _pullFromX, y: _pullFromY }, { x: target.x, y: target.y }) }
-                        );
-                    }
+                    /* Retract + camera follow start when the yank does. */
+                    const _pullEndX = target.x, _pullEndY = target.y;
+                    window.setTimeout(() => {
+                        if (_pullTether) {
+                            _pullTether.retract(_pullEndX, _pullEndY, pullAnimMs);
+                        }
+                        if (!state.cameraDisabled && state.phase === 'battle') {
+                            stopBoardCameraAnimation();
+                            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                            const _pullZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
+                            animateBoardCameraPath(
+                                { x: _pullFromX, y: _pullFromY },
+                                { x: _pullEndX, y: _pullEndY },
+                                { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: _fogCamTilesVisible({ x: _pullFromX, y: _pullFromY }, { x: _pullEndX, y: _pullEndY }) }
+                            );
+                        }
+                    }, _yankDelayMs);
+                    _pullTotalAnimMs = _yankDelayMs + pullAnimMs + actionMs(250);
                 } else {
 
                     if (_pullTether) {
@@ -29603,7 +29740,7 @@
                     if (!state.cameraDisabled) _softResetCameraToUnit(target, { focusTarget: true });
                 }
                 scheduleBoardRender();
-                completionDelay = actionMs(600);
+                completionDelay = Math.max(actionMs(600), _pullTotalAnimMs);
             }
 
             else if (spell.kind === 'swap') {
@@ -31553,7 +31690,7 @@
 
                 _spellFocusCamera(unit, x, y);
 
-                window.setTimeout(() => {
+                const _sdApplyLanding = () => {
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
@@ -31575,8 +31712,38 @@
                         _invalidateBoardGrid();
                     }
                     scheduleBoardRender();
-                }, actionMs(400));
-                completionDelay = actionMs(800);
+                };
+
+                /* ── 3D drop arc: hauled straight up to the carry height, held
+                   struggling, then dropped — the damage lands on the impact
+                   frame with dust + a shock ring instead of on a blind timer. ── */
+                const _sdTs = CONFIG.tileSize || BASE_TILE;
+                const _sdLiftPx = (typeof window._getElevationPx === 'function')
+                    ? Math.max(_sdTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
+                    : _sdTs * 2.2;
+                const _sdLiftMs = actionMs(460), _sdHangMs = actionMs(280), _sdFlingMs = actionMs(280);
+                const _sdUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                    && window.ThreeAnim.throwArc && !_skipVisuals()
+                    && window.ThreeAnim.throwArc(target, target.x, target.y, target.x, target.y, {
+                        drop: true,
+                        liftMs: _sdLiftMs, hangMs: _sdHangMs, flingMs: _sdFlingMs,
+                        liftPx: _sdLiftPx,
+                        onImpact: () => {
+                            _sdApplyLanding();
+                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                            try {
+                                const VFX = window.ThreeVFXEffects;
+                                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(target.x, target.y, { r0: _sdTs * 0.2, r1: _sdTs * 1.4, ms: 400 });
+                            } catch (e) {}
+                        }
+                    }));
+
+                if (_sdUsedArc) {
+                    completionDelay = _sdLiftMs + _sdHangMs + _sdFlingMs + actionMs(450);
+                } else {
+                    window.setTimeout(_sdApplyLanding, actionMs(400));
+                    completionDelay = actionMs(800);
+                }
             }
 
             else if (spell.kind === 'skyThrow') {
@@ -31624,7 +31791,7 @@
 
                     _spellFocusCamera(unit, x, y);
 
-                    window.setTimeout(() => {
+                    const _applyThrowLanding = () => {
                         if (collisionTarget && !collisionTarget.dead && collisionTarget.id !== throwTarget.id) {
 
                             const colBonus = spell.collisionBonus || 50;
@@ -31671,10 +31838,61 @@
                         }
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${unitDisplayName(unit)} hurls ${unitDisplayName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
-                        animateDisplacement(throwTarget, fromX, fromY, throwTarget.x, throwTarget.y, 200);
                         scheduleBoardRender();
-                    }, actionMs(400));
-                    completionDelay = actionMs(800);
+                    };
+
+                    /* ── 3D throw arc: the victim is visibly hauled UP into the
+                       carry height, hangs flailing, then is FLUNG down into the
+                       landing tile — damage and the tile change land exactly on
+                       the impact frame instead of teleporting at cast. ── */
+                    const _thTs = CONFIG.tileSize || BASE_TILE;
+                    const _thLiftPx = (typeof window._getElevationPx === 'function')
+                        ? Math.max(_thTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
+                        : _thTs * 2.2;
+                    const _thLiftMs = actionMs(480), _thHangMs = actionMs(300), _thFlingMs = actionMs(320);
+                    const _thUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                        && window.ThreeAnim.throwArc && !_skipVisuals()
+                        && window.ThreeAnim.throwArc(throwTarget, fromX, fromY, x, y, {
+                            liftMs: _thLiftMs, hangMs: _thHangMs, flingMs: _thFlingMs,
+                            liftPx: _thLiftPx,
+                            onImpact: () => {
+                                _applyThrowLanding();
+                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _thTs * 0.2, r1: _thTs * 1.5, ms: 420 });
+                                } catch (e) {}
+                            }
+                        }));
+
+                    if (_thUsedArc) {
+                        /* UFO overwatch for the grey tractor-beam throw: the
+                           craft hangs over the victim with its beam on through
+                           the lift, then paces the fling to the landing tile. */
+                        if (spell.id === 'raceAbductionBeam' && !_skipVisuals()
+                            && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigUFO3D === 'function') {
+                            const _thCarryMs = _thLiftMs + _thHangMs;
+                            window.ThreeVFXEffects.sigUFO3D(fromX, fromY, {
+                                enterMs: 300,
+                                hoverMs: _thCarryMs + _thFlingMs + 250,
+                                exitMs: 480,
+                                beam: true, beamColor: 0x55ff99,
+                                hoverH: _thTs * 3.1,
+                                path: [
+                                    { x: fromX, y: fromY }, { x: fromX, y: fromY },
+                                    { x: fromX, y: fromY }, { x: x, y: y }
+                                ],
+                                pathMs: _thCarryMs + _thFlingMs,
+                            });
+                        }
+                        completionDelay = _thLiftMs + _thHangMs + _thFlingMs + actionMs(500);
+                    } else {
+                        window.setTimeout(() => {
+                            _applyThrowLanding();
+                            animateDisplacement(throwTarget, fromX, fromY, throwTarget.x, throwTarget.y, 200);
+                        }, actionMs(400));
+                        completionDelay = actionMs(800);
+                    }
                 } else {
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
@@ -31702,6 +31920,22 @@
                     playSfx(spellLaunchSfx(spell));
                     addLog(`${unitDisplayName(unit)} grabs ${unitDisplayName(target)}! Choose where to throw them.`);
                     showFloatingTextForUnit(target, 'GRABBED!', 'streak', { durationMs: 1000 });
+
+                    /* Lock-on flavor while the thrower aims: a tractor/grab
+                       pillar pins the victim (green federation light for the
+                       grey saucer, violet for unholy talons, sky-blue rest). */
+                    if (!_skipVisuals() && window.ThreeVFXEffects
+                        && typeof window.ThreeVFXEffects.sigLightPillar3D === 'function') {
+                        try {
+                            const _gpTs = CONFIG.tileSize || BASE_TILE;
+                            const _gpCol = spell.id === 'raceAbductionBeam' ? 0x55ff99
+                                : (spell.spellType === 'unholy' ? 0xbb66ff : 0xaad4ff);
+                            window.ThreeVFXEffects.sigLightPillar3D(target.x, target.y, {
+                                color: _gpCol, coreColor: 0xffffff, ms: actionMs(900),
+                                height: _gpTs * 2.6, radius: _gpTs * 0.3,
+                            });
+                        } catch (e) {}
+                    }
 
                     if (typeof state !== 'undefined') {
                         state._skyThrowHighlight = {
@@ -31764,7 +31998,7 @@
 
                 _spellFocusCamera(unit, x, y);
 
-                window.setTimeout(() => {
+                const _ssApplyLanding = (useAnim) => {
 
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -31810,7 +32044,7 @@
                         unit.x = casterFromX;
                         unit.y = casterFromY;
                     }
-                    animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${unitDisplayName(unit)} slams ${unitDisplayName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
 
@@ -31819,8 +32053,42 @@
                         _invalidateBoardGrid();
                     }
                     scheduleBoardRender();
-                }, actionMs(400));
-                completionDelay = actionMs(800);
+                };
+
+                /* ── 3D slam arc: the CASTER rockets up, hangs a beat, then
+                   dives onto the target — damage + shockwave land on the impact
+                   frame, and the settle beat bounces the caster off onto the
+                   adjacent landing tile. ── */
+                const _ssTs = CONFIG.tileSize || BASE_TILE;
+                const _ssLiftPx = (typeof window._getElevationPx === 'function')
+                    ? Math.max(_ssTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
+                    : _ssTs * 2.2;
+                const _ssLiftMs = actionMs(360), _ssHangMs = actionMs(140), _ssFlingMs = actionMs(240);
+                const _ssUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                    && window.ThreeAnim.throwArc && !_skipVisuals()
+                    && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, slamX, slamY, {
+                        liftMs: _ssLiftMs, hangMs: _ssHangMs, flingMs: _ssFlingMs,
+                        liftPx: _ssLiftPx, settleMs: 220,
+                        onImpact: () => {
+                            _ssApplyLanding(false);
+                            if (typeof shakeBoard === 'function') shakeBoard('hard');
+                            try {
+                                const VFX = window.ThreeVFXEffects;
+                                if (VFX && VFX.sigSonicBoom3D) {
+                                    VFX.sigSonicBoom3D(slamX, slamY, { rings: 2, radiusTiles: (spell.aoeRadius || 1) + 0.6 });
+                                } else if (VFX && VFX.sigShockRing3D) {
+                                    VFX.sigShockRing3D(slamX, slamY, { r0: _ssTs * 0.2, r1: _ssTs * 1.8, ms: 460 });
+                                }
+                            } catch (e) {}
+                        }
+                    }));
+
+                if (_ssUsedArc) {
+                    completionDelay = _ssLiftMs + _ssHangMs + _ssFlingMs + actionMs(500);
+                } else {
+                    window.setTimeout(() => _ssApplyLanding(true), actionMs(400));
+                    completionDelay = actionMs(800);
+                }
             }
 
             else if (spell.kind === 'leapStrike') {
@@ -31866,7 +32134,7 @@
 
                 _vfxDash(unit.x, unit.y, x, y);
 
-                window.setTimeout(() => {
+                const _lsApplyLanding = (useAnim) => {
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
@@ -31905,7 +32173,7 @@
                         unit.y = landTile.y;
                         if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
-                    animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${unitDisplayName(unit)} leaps onto ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
 
@@ -31914,8 +32182,36 @@
                         _invalidateBoardGrid();
                     }
                     scheduleBoardRender();
-                }, actionMs(300));
-                completionDelay = actionMs(700);
+                };
+
+                /* ── 3D dive arc: a short hop off the ledge, then a hard dive
+                   onto the target below; the settle beat rolls the caster onto
+                   the adjacent landing tile. ── */
+                const _lsTs = CONFIG.tileSize || BASE_TILE;
+                const _lsLiftPx = Math.max(_lsTs * 0.8,
+                    (typeof window._getElevationPx === 'function') ? window._getElevationPx(1) + _lsTs * 0.5 : _lsTs * 0.9);
+                const _lsLiftMs = actionMs(220), _lsHangMs = actionMs(60), _lsFlingMs = actionMs(230);
+                const _lsUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                    && window.ThreeAnim.throwArc && !_skipVisuals()
+                    && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, x, y, {
+                        liftMs: _lsLiftMs, hangMs: _lsHangMs, flingMs: _lsFlingMs,
+                        liftPx: _lsLiftPx, settleMs: 200,
+                        onImpact: () => {
+                            _lsApplyLanding(false);
+                            if (typeof shakeBoard === 'function') shakeBoard('normal');
+                            try {
+                                const VFX = window.ThreeVFXEffects;
+                                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
+                            } catch (e) {}
+                        }
+                    }));
+
+                if (_lsUsedArc) {
+                    completionDelay = _lsLiftMs + _lsHangMs + _lsFlingMs + actionMs(450);
+                } else {
+                    window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
+                    completionDelay = actionMs(700);
+                }
             }
 
             if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);

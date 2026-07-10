@@ -4150,3 +4150,49 @@ data.js, index.html** (token → 20260708b).
   Tesseract rain shapes render additive+bright (bloom glow). Water/deep_water tile
   tops have animated caustics/sparkle (uniforms `uFluidTime`/`uFluidTile`, ticked
   in `_updateFluidWaves`; lava untouched). Lightning: whiter core + impact flash.
+
+## Spell VFX overhaul (2026-07-10, session "spell-vfx-animations")
+- **Throw-arc tween** (`three-renderer.js`): `startThrowArcTween(unit, fromX,
+  fromY, toX, toY, opts)` / `ThreeAnim.throwArc(...)` (returns true when the 3D
+  renderer took the animation). Phases: **lift** (straight up to `opts.liftPx`,
+  stretched), **hang** (flailing hover, fires `opts.onLift` once), **fling**
+  (accelerating ballistic slam into the landing tile), **impact** (big ground
+  puff, fires `opts.onImpact` — damage + logical tile change belong THERE),
+  **settle** (eases from the impact point to `_unitRestPos`, doubling as the
+  bounce-off-the-victim beat when battle.js moved the unit to an adjacent tile
+  in onImpact). `opts.drop: true` = no horizontal travel (skyDrop).
+- **All four sky/leap kinds now use it** (battle.js): `skyThrow` phase 2 (victim
+  lifted→hurled; UFO with tractor beam paces the fling for `raceAbductionBeam`),
+  `skyDrop` (lift + straight drop in place), `skySlam` (the CASTER arcs onto the
+  target, sonic boom, bounces to the landing tile), `leapStrike` (dive arc, keeps
+  the dash streak). Damage/status/terrain all apply in the extracted
+  `_apply*Landing()` closures — legacy `setTimeout(actionMs(400))` path retained
+  as the 2D fallback. skyThrow grab phase now pins the victim with a
+  `sigLightPillar3D` lock-on (green for grey saucer / violet unholy / sky-blue).
+- **Lasso** (`raceLasso`, any /lasso|wrangle/ pull): tether system grew a
+  spinning rope-loop tip — `_buildLassoMesh` in three-renderer.js (torus +
+  honda knot, rope texture); the loop spins about the flight axis during the
+  tether's shoot phase, then drops flat and CINCHES (scale-down) on the bite,
+  staying around the victim through the retract. Classifier
+  `_tetherLassoForSpell` in battle.js; opts flow playTetherEffect → ThreeAnim.tether
+  → startTetherTween `{lasso:true}`.
+- **Delayed yank for ALL pull spells**: `startDisplaceTween`/`ThreeAnim.displace`
+  and `animateDisplacementPath` accept `opts.delayMs` — the victim now holds
+  still for rope-flight + bite (280+120 ms, lassos 280+220) before the drag,
+  with tether retract + camera path shifted to match. Fixes "victim moves before
+  the rope reaches them" on Lasso/Harvest Hook/Earthen Grasp/Tentacle Lash/
+  Undying Grip and the tractor-beam tow.
+- **End-of-round detonation multi-cam**: `playDetonationCinematic(ds, {descentMs})`
+  in battle.js (exported on window; gated by `state.cinematicActionCam` + 3D).
+  Beat 1 = hard cut to a low ground-zero shot (sky in frame — the nuke's f22
+  flyover and falling ordnance finally read on camera) with a slow push-in for
+  the whole descent; beat 2 = reverse-angle wide hard cut at the impact frame
+  (kill-flash chrome, hard shake), slow push through the aftermath; then the
+  camera releases to `eorFocusCamera`. state.js `detonateNext()` uses
+  `_cine.impactMs` to land `_detonateDelayedSpell` exactly on the cut, and
+  `_cine.afterMs` before the next blast. Letterbox chrome shows the spell name.
+- **Descent-less detonators get visuals**: new `ThreeVFXEffects.fireGeometry(
+  spellId, tx, ty, r)` fires a spell's `_spell3DGeometry` entry directly —
+  Crystal Ball / Prophecy of Disaster now conjure their orb as the "arming"
+  beat (impact delayed ~1100 ms), and ALL no-descent blasts fire a palette-
+  matched `sigSonicBoom3D` + 'explosion' sfx at detonation.
