@@ -2424,6 +2424,36 @@ function _hrlgTargetBlades(unit, st, mode) {
       },
     };
   });
+  // ── Multi-strike picker: once a basic-attack target is pending, and the
+  // unit holds AP for more than one swing, offer ×1/×2/×3… rows. Picking a
+  // count just arms it on the pendingTarget (no cast); CONFIRM then fires
+  // the whole chain via the repeat queue — every extra swing re-validates
+  // AP / range / target-alive, so a mid-chain kill simply stops early.
+  if (mode === 'attack' && st.pendingTarget && !st._actionExecuting) {
+    const _atkAp = (typeof window !== 'undefined' && window.GAME && window.GAME.AP_COST_ACTION) || 1;
+    const _maxN = Math.min(6, Math.floor((unit.ap || 0) / _atkAp));
+    if (_maxN >= 2) {
+      const _curN = st.pendingTarget._repeatN || 1;
+      for (let n = 1; n <= _maxN; n++) {
+        blades.push({
+          id: 'repN:' + n,
+          icon: '⟳',
+          label: 'Strike ×' + n,
+          available: true,
+          check: _curN === n,
+          cost: n * _atkAp,
+          sub: n > 1 ? n + ' swings, back-to-back' : null,
+          fire: () => {
+            if (state.pendingTarget) state.pendingTarget._repeatN = n;
+            if (typeof playSfx === 'function') playSfx('uiCursorFocus');
+            if (typeof markDirty === 'function') markDirty('hud');
+            if (typeof renderIfDirty === 'function') renderIfDirty();
+          },
+        });
+      }
+    }
+  }
+
   if (!blades.length) {
     blades.push({
       id: 'none', icon: titleIcon, available: false,
@@ -2947,10 +2977,12 @@ function ActionMenu({ st, hidden }) {
     const _ptUnit = (typeof unitAt === 'function')
       ? ((_pt.z != null ? unitAt(_pt.x, _pt.y, _pt.z) : null) || unitAt(_pt.x, _pt.y))
       : null;
+    // Multi-strike count picked on the drum rides the label ("— Cowboy ×3")
+    const _repSuffix = (menuView === 'attackTargets' && _pt._repeatN > 1) ? ' ×' + _pt._repeatN : '';
     confirmObj = {
-      label: _ptUnit
+      label: (_ptUnit
         ? (typeof unitDisplayName === 'function' ? unitDisplayName(_ptUnit) : (_ptUnit.name || _ptUnit.cls))
-        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y)),
+        : (typeof coordLabel === 'function' ? coordLabel(_pt.x, _pt.y) : (_pt.x + ',' + _pt.y))) + _repSuffix,
       fire: () => {
         if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         if (typeof selectTargetFromMenu === 'function') selectTargetFromMenu(_pt.x, _pt.y, _pt.z);
@@ -3316,6 +3348,31 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
       available: true,
     });
+    // Multi-strike rows: enough AP for 2+ swings from where the unit stands
+    // (no move leg) → offer "Attack ×N" one-click chains. Fired via the same
+    // repeat queue as the confirm-drum picker; each swing re-validates.
+    if (canAttack) {
+      const _atkApQ = G.AP_COST_ACTION || 1;
+      const _maxRep = Math.min(4, Math.floor(unitAP / _atkApQ));
+      const _hasMinMax = atkPreview && atkPreview.min != null && atkPreview.max != null;
+      const _baseAvg = _hasMinMax ? (atkPreview.min + atkPreview.max) / 2 : 0;
+      for (let n = 2; n <= _maxRep; n++) {
+        actions.push({
+          id: 'attack',
+          repeat: n,
+          label: 'Attack ×' + n,
+          icon: '⚔',
+          apCost: _atkApQ * n,
+          moveTile: null,
+          preview: _hasMinMax ? { type: 'damage', min: atkPreview.min * n, max: atkPreview.max * n } : atkPreview,
+          typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
+          available: true,
+          // sort just BELOW the single Attack row (not by total damage, which
+          // would bury the primary verb under its own multipliers)
+          _sortDamage: _baseAvg - n * 0.01,
+        });
+      }
+    }
   } else {
     actions.push({
       id: 'attack',
@@ -3797,6 +3854,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 }
 
 function _actionSortDamage(action) {
+  if (action._sortDamage != null) return action._sortDamage;
   if (!action.preview) return 0;
   if (action.preview.amount) return action.preview.amount;
   if (action.preview.min != null && action.preview.max != null) return (action.preview.min + action.preview.max) / 2;
@@ -4084,7 +4142,16 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
     }
     state._actionExecuting = true;
     if (actionId === 'attack') {
-      if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty, tz);
+      if (typeof doAttack === 'function') {
+        const _atkQr = doAttack(actingUnit, tx, ty, tz);
+        // "Attack ×N" row → pre-load the repeat queue with the remaining
+        // swings (drained back-to-back by endUnitIfDone, each re-validated).
+        // Armed only when the first swing actually fired.
+        if (a.repeat > 1 && _atkQr !== 0 && _atkQr !== false) {
+          state._repeatQueue = { unitId: actingUnit.id, mode: 'attack', tool: null,
+            x: tx, y: ty, z: tz, queued: a.repeat - 1 };
+        }
+      }
     } else if (actionId === 'grappleAttack' && spell) {
       // Fire the grapple to reel the target into melee, then swing once the
       // reel settles. `target` is the live unit object, so its x/y reflect
