@@ -1911,6 +1911,23 @@ const ThreeRenderer = (function () {
         return elevPx;
     }
 
+    /* World Y of a standing surface at (x, y, z) — the multi-floor twin of
+       tileTopY. A z at/above the column top (or omitted) resolves to tileTopY
+       (natural smoothing, walkable roofs, stair lifts all apply); a z BELOW
+       the top — an interior/underground floor — sits at its own raw voxel
+       height, same rule as unitSurfaceY. Move-preview ghosts and path arrows
+       use this so a route through a cave draws inside the cave instead of
+       dancing along the roof above it. */
+    function surfaceYAt(x, y, z) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        if (z !== undefined && z !== null && state.boardColumns && state.boardColumns.length) {
+            var topH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
+                     : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
+            if (z < topH) return z * ts * ELEV_STEP_RATIO;
+        }
+        return tileTopY(x, y);
+    }
+
     function _escHtml(s) { return (typeof escapeHtml === 'function') ? escapeHtml(s) : String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
     var STAIR_STEPS = 5;
@@ -19889,7 +19906,7 @@ const ThreeRenderer = (function () {
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
-    var _lastHitX = -1, _lastHitY = -1;
+    var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
     /* Last known mouse position over the canvas + the camera pose it was last
        resolved against. The engine moves the camera on its own all the time
        (blitz activation pans, cinematics, end-of-round overview, wheel zoom),
@@ -19983,10 +20000,15 @@ const ThreeRenderer = (function () {
         }
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
-            updateHoverHighlight(tx, ty, _surfaceZFromHitY(tx, ty, hit.hitY));
+            var hz = _surfaceZFromHitY(tx, ty, hit.hitY);
+            /* Publish WHICH floor of the column the pointer is on, so the move
+               preview / click resolution in battle.js target the same surface
+               the highlight shows (multi-floor maps: cave floor vs the roof). */
+            if (typeof state !== 'undefined') state._hoverZ = hz;
+            updateHoverHighlight(tx, ty, hz);
 
-            if (tx !== _lastHitX || ty !== _lastHitY) {
-                _lastHitX = tx; _lastHitY = ty;
+            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ) {
+                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz;
                 if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
                 if (typeof updateHoveredTarget === 'function') {
                     var changed = updateHoveredTarget(tx, ty);
@@ -20007,10 +20029,11 @@ const ThreeRenderer = (function () {
             }
         } else {
             updateHoverHighlight(-1, -1);
+            if (typeof state !== 'undefined') state._hoverZ = undefined;
 
             if (_lastHitX >= 0 || _lastHitY >= 0) {
                 var prevX = _lastHitX, prevY = _lastHitY;
-                _lastHitX = -1; _lastHitY = -1;
+                _lastHitX = -1; _lastHitY = -1; _lastHitZ = undefined;
                 if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
                 if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
                 if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
@@ -20551,7 +20574,7 @@ const ThreeRenderer = (function () {
 
         showTerrainGhost, clearTerrainGhost,
 
-        unitSurfaceY, tileTopY,
+        unitSurfaceY, tileTopY, surfaceYAt,
 
         showIntentBadges, clearIntentBadges, worldToScreen,
 

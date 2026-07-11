@@ -3362,11 +3362,17 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const distFrom = (fx, fy, fz) => _distFromTo(fx, fy, fz);
 
-  const findMoveIntoRange = (requiredRange, actionApCost) => {
+  const findMoveIntoRange = (requiredRange, actionApCost, longRange) => {
     if (typeof getMoveTiles !== 'function' || typeof canUnitMove !== 'function') return null;
     if (!canUnitMove(actingUnit)) return null;
     const movesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
     if (movesLeft <= 0) return null;
+
+    /* Spell approaches measure with the engine's combatReach (long-range
+       casts drop downward for free); combatDist alone hid legal barrage
+       approach tiles. combatReach with longRange=false === combatDist, so
+       attacks are unchanged. */
+    const _dm = longRange ? ((fx, fy, fz) => _spellDistFromTo(fx, fy, fz, true)) : distFrom;
 
     const ring1 = getMoveTiles(actingUnit);
     let bestTile = null;
@@ -3378,7 +3384,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // Double-check tile is actually vacant at this z (ground+air dual occupancy guard)
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
 
-        const dFromTile = distFrom(t.x, t.y, t.z);
+        const dFromTile = _dm(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
 
           // Pass the LANDING z as sourceZ — omitting it makes the LOS ray
@@ -3403,7 +3409,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
       for (const t of getJumpTiles(actingUnit)) {
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-        const dFromTile = distFrom(t.x, t.y, t.z);
+        const dFromTile = _dm(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
           if (!bestTile || dFromTile > bestDist) {
@@ -3426,7 +3432,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           // Skip destination tiles that are occupied at this z
           if (typeof unitAt === 'function' && unitAt(t2.x, t2.y, t2.z)) continue;
 
-          const dFromTile = distFrom(t2.x, t2.y, t2.z);
+          const dFromTile = _dm(t2.x, t2.y, t2.z);
           if (dFromTile >= 1 && dFromTile <= requiredRange) {
             if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t2.x, t2.y, tx, ty, t2.z)) continue;
 
@@ -3445,7 +3451,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const effRange = typeof getEffectiveRange === 'function' ? getEffectiveRange(actingUnit) : (actingUnit.range || 1) + 1;
   const losBlocked = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
-  const inAttackRange = dist >= 1 && dist <= effRange && !losBlocked;
+  // Fog parity with the engine gates (doAttack / doSpell / getSpellRangeTiles):
+  // a target the caster can't see must not be offered — clicking it would just
+  // bounce off the engine's own vision check after the move.
+  const _fogSees = !state.fogOfWar || !!state.autoPlayers?.[actingUnit.player]
+    || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);
+  const inAttackRange = dist >= 1 && dist <= effRange && !losBlocked && _fogSees;
   const canAttack = inAttackRange && unitAP >= (G.AP_COST_ACTION || 1);
 
   let atkPreview = null;
@@ -3689,22 +3700,35 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       inSpellRange = dist >= 1 && beamRayHits(actingUnit.x, actingUnit.y);
     } else if (isDash) {
 
-      const onAxis = (actingUnit.x === tx || actingUnit.y === ty) && dist >= 1;
-      inSpellRange = onAxis && dist <= spRange;
+      // Engine parity (doSpell 'dash'): the gate is plain 2D Manhattan range +
+      // passable landing terrain — there is NO cardinal-axis requirement, and
+      // no elevation term. The old axis check hid perfectly legal diagonal /
+      // off-axis dashes from the quick menu.
+      const _dashD = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+      inSpellRange = _dashD >= 1 && _dashD <= spRange
+        && (typeof isTerrainPassable !== 'function' || isTerrainPassable(tx, ty));
     } else if (isLeap) {
       // Leap-strikes can only hit a target the caster stands ABOVE. From here that
       // needs an in-range enemy standing lower than us; if we're level/below it's not
       // castable from this tile — but a jump up can fix it (offered via spMoveTile).
       const _csh = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(actingUnit) : (actingUnit.z ?? 0);
-      const _tsh = targetUnit ? (typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(targetUnit) : (targetUnit.z ?? 0)) : 0;
+      // Engine parity: getSpellRangeTiles/doSpell compare the caster's standing
+      // height against the target's RAW z (its _tileStandZ), NOT its roof-boosted
+      // getUnitStandingHeight — the mismatch made leap-strike appear/disappear
+      // incorrectly whenever the target stood on a walkable-roof object.
+      const _tsh = targetUnit
+        ? (targetUnit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0))
+        : 0;
       inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
     } else {
 
       const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
-      inSpellRange = dist >= minRange && dist <= spRange && !spLos;
+      // _fogSees: the engine's cast gate rejects fogged targets — mirror it in
+      // the primary check so the menu never offers a cast that will bounce.
+      inSpellRange = dist >= minRange && dist <= spRange && !spLos && _fogSees;
       // Authoritative fallback: trust the engine's own range set (the same one the
-      // board highlight + doSpell use) so a spell is never greyed here when it's
-      // actually castable from where the unit stands.
+      // board highlight + doSpell use — fog-aware) so a spell is never greyed here
+      // when it's actually castable from where the unit stands.
       if (!inSpellRange && typeof getSpellRangeTiles === 'function'
           && getSpellRangeTiles(actingUnit, sp).some(t => t.x === tx && t.y === ty)) {
         inSpellRange = true;
@@ -3719,11 +3743,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // Walk the caster close enough that the clicked enemy falls inside the
         // self-centered blast, so the player gets a one-click "move then nova".
         const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
-        spMoveTile = findMoveIntoRange(barrageRadius, spellApCost);
+        spMoveTile = findMoveIntoRange(barrageRadius, spellApCost, spLongRange);
       } else if (isAoeOriginSelf) {
 
         const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
-        spMoveTile = findMoveIntoRange(selfRadius, spellApCost);
+        spMoveTile = findMoveIntoRange(selfRadius, spellApCost, spLongRange);
       } else if (isLine) {
         // Beam move-then-cast: step (or jump) to any reachable tile that puts
         // the enemy on one of the 8 ray headings with the ray unobstructed —
@@ -4516,7 +4540,7 @@ function _hrlgTileBlades(actingUnit, st) {
   const target = st._tileActionTarget;
   if (!target) return { title: null, blades: [] };
   const tx = target.x, ty = target.y;
-  const actions = _computeTileActions(actingUnit, tx, ty);
+  const actions = _computeTileActions(actingUnit, tx, ty, target.z);
   const dist = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
 
   const terrain = typeof getTerrainAt === 'function' ? getTerrainAt(tx, ty) : 'grass';
@@ -4558,7 +4582,7 @@ function _hrlgTileBlades(actingUnit, st) {
 }
 
 
-function _computeTileActions(actingUnit, tx, ty) {
+function _computeTileActions(actingUnit, tx, ty, tz) {
   if (!actingUnit || actingUnit.dead) return [];
   const actions = [];
   const G = window.GAME;
@@ -4568,8 +4592,11 @@ function _computeTileActions(actingUnit, tx, ty) {
   const onSelf = tx === actingUnit.x && ty === actingUnit.y;
   // 3D distance to the targeted tile: elevation gap to the tile's ground/roof
   // counts toward range (matches combatDist), so tile-targeted spell cards gray
-  // out when the destination is too far above/below to reach.
-  const _tileZ = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
+  // out when the destination is too far above/below to reach. Multi-floor: the
+  // clicked SURFACE (tz, from the click raycast) wins over the column top —
+  // targeting a cave floor must not measure range to the roof above it.
+  const _tileZ = (tz !== undefined && tz !== null) ? tz
+    : (typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0);
   const dist = (typeof G.combatDist === 'function')
     ? G.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, _tileZ)
     : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
@@ -4586,7 +4613,13 @@ function _computeTileActions(actingUnit, tx, ty) {
 
   if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit) && !onSelf) {
     const moveTiles = getMoveTiles(actingUnit);
-    const moveTile = moveTiles.find(t => t.x === tx && t.y === ty);
+    /* Multi-floor: "Move here" goes to the CLICKED surface when reachable,
+       else the reachable floor closest to it — never an arbitrary first match
+       (which could quietly pick the tunnel under the tile the player meant). */
+    const _mvAll = moveTiles.filter(t => t.x === tx && t.y === ty);
+    const _mvZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
+    const moveTile = _mvAll.find(t => (t.z ?? 0) === _mvZRef)
+      || _mvAll.slice().sort((a, b) => Math.abs((a.z ?? 0) - _mvZRef) - Math.abs((b.z ?? 0) - _mvZRef))[0];
     if (moveTile) {
       if (moveTile._takeoff) {
 
@@ -4622,7 +4655,10 @@ function _computeTileActions(actingUnit, tx, ty) {
       // Not walkable this turn — but a jump counts as movement too. If the
       // clicked tile is a legal landing spot, offer the leap directly instead
       // of showing no movement option at all (same 1 AP as a step).
-      const jumpTile = getJumpTiles(actingUnit).find(t => t.x === tx && t.y === ty);
+      const _jpAll = getJumpTiles(actingUnit).filter(t => t.x === tx && t.y === ty);
+      const _jpZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
+      const jumpTile = _jpAll.find(t => (t.z ?? 0) === _jpZRef)
+        || _jpAll.slice().sort((a, b) => Math.abs((a.z ?? 0) - _jpZRef) - Math.abs((b.z ?? 0) - _jpZRef))[0];
       if (jumpTile && !(typeof unitAt === 'function' && unitAt(tx, ty, jumpTile.z))) {
         actions.push({
           id: 'jump', label: 'Jump here', icon: '↷', category: 'movement',

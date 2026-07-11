@@ -4,6 +4,82 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## MULTI-FLOOR PASS: WRONG-FLOOR MOVES + COLUMN REPAINT + CAMERA (2026-07-11) — battle.js, map.js, hud.js, three-renderer.js
+Token `20260711f` → `20260711g`. User bug batch from a vertical editor map
+(surface + underground floors). KEY ARCHITECTURE FACT for future sessions: the
+engine is ALREADY voxel-3D — `state.boardColumns[y][x]` = [{z,terrain}],
+`getWalkableSurfaces(x,y)` (map.js ~1860) lists every standable floor of a
+column, and getMoveTiles/findMovePath/doMove are a proper Dijkstra over
+(x,y,z) surface nodes (the right algorithm for this — do NOT rebuild as A*).
+Every "column" bug lives in the LEGACY 2D lookups layered on top:
+`state.boardHeights`/`getHeightAt` = column TOP, `getTerrainAt` = top terrain,
+z-agnostic `find(t => t.x===x && t.y===y)` picks an arbitrary floor. Fixed:
+- **Ghost-says-surface-but-walks-underground**: hover preview (battle.js
+  `_updateMoveHoverPreview`) picked the dest floor by closest-to-unit-z and
+  drew ghost/arrow at `tileTopY` (column top) — the arrow LOOKED like a
+  surface route while the click resolved elsewhere. Now: renderer publishes
+  the hovered surface in `state._hoverZ` (three-renderer `_resolveHoverAt`,
+  from `_surfaceZFromHitY`), preview+click+doMove all resolve with ONE rule —
+  exact clicked/hovered z, else reachable floor CLOSEST to it — and ghost +
+  path waypoints draw at the real per-node z via new exported
+  `ThreeRenderer.surfaceYAt(x,y,z)` (multi-floor twin of tileTopY).
+- **2-move (walk+walk) click could teleport to an unreached floor**: clickTile
+  ring-2 branch took `destZ = _clickedZ` on faith even when the ring-2 tile
+  was a different surface (and findMovePath could return [] → half-walk with
+  final position set anyway). Now bestInterm search records the ACTUAL
+  reachable r2 tile (exact clicked floor preferred over cost) and uses its z;
+  hover preview mirrors the same selection.
+- **Tile quick menu**: `state._tileActionTarget` now carries `z` (all 6
+  assignment sites in clickTile); `_computeTileActions(unit,tx,ty,tz)` ranges
+  against the clicked FLOOR (was `getHeightAt` = roof) and "Move here"/"Jump
+  here" pick the clicked floor's tile (was first-match).
+- **Terrain spells repainted whole column**: map.js `setTerrainAt(x,y,t)`
+  looped every block in boardColumns/boardVoxels (all callers inherited it —
+  fire residue, leaveTerrain, state.js decay). Now paints ONE block: new
+  optional `z` arg, default topmost non-void; legacy boardTerrain mirror
+  always reflects the top block. battle.js terrainCreate `_paintSpellTile`
+  anchors each tile's painted floor to the CAST's surface (`_anchorZ` = spell
+  z arg or caster-nearest surface; `_paintZAt` per tile) so casting fire in a
+  cave paints the cave floor, not the roof; interior paints skip the water
+  runoff model (top-height based = roof from down there). Water/flood on the
+  open surface unchanged.
+- **Camera stayed at surface over underground units (tiny unit)**: every
+  focal-height path used `getHeightAt` (column top) for grounded units —
+  unit.z only honored when airborne. New shared `_camFocalZAt(x,y,u)`
+  (battle.js, next to `_camFocalUnitAt`): flyer z / grounded unit's own z
+  when BELOW column top / else terrain. Wired into `_apply` (integer +
+  fractional branches), `_naturalElevAt`, `focusOnTiles` (a below-top unit
+  WINS the multi-point max), and `unitElevationZ`. Framing distance is
+  unchanged (boom = baseDist/zoom), so underground turns get the same
+  tactical view as surface turns. NOTE: canopy cutaway already existed and
+  works on editor/community maps (`_updateCanopyCutaway`, three-renderer
+  ~11128; blocks need `_ew_canopy` tags which need void gaps — only preserved
+  when `_authoredVoxelGapsArePreserved()`); the "camera didn't descend" was
+  purely the focal bug.
+- **Enemy quick-menu vs engine (out-of-range after move / missing spells)**,
+  hud.js `_computeEnemyActions`: dash menu gate was cardinal-axis-only but
+  engine dash (doSpell ~32149) is plain 2D Manhattan + passable — diagonal
+  dashes were hidden; `findMoveIntoRange` measured `combatDist` while the
+  engine barrage path uses `combatReach(longRange)` (gravity drop) — hid
+  legal barrage approaches, now takes a longRange flag; leap-strike menu
+  compared roof-boosted `getUnitStandingHeight(target)` but engine compares
+  the target's RAW z — aligned; fog: primary attack/spell checks now apply
+  `isInVision` parity (`_fogSees`) like doAttack/doSpell.
+- KNOWN FOLLOW-UPS (not done): TPS/cinematic shots for underground units
+  (boom-collision rig assumes open air — pivot uses `_camGroundPx` = column
+  top); building-interior cutaway (house roofs are separate object meshes,
+  never `_ew_canopy`); beam menu ray is 2D (ignores elevation); 3D-aware
+  flood/runoff across interior floors; terrain-spell ghost preview
+  (`predictTerrainSpellChanges`) still previews at the surface even when the
+  paint will anchor to an interior floor.
+- NOT playtested (RULE #1c) — syntax-checked + isolated node test of the new
+  setTerrainAt only. First live checks: on a multi-floor editor map (1) hover
+  a multi-surface column in move mode — ghost/arrow must sit on the floor the
+  cursor points at, click must land exactly there; (2) cast a fire/ice
+  terrain spell on the surface, then dig down — buried blocks keep their
+  terrain; (3) start a turn with a unit in a cave — camera descends to it;
+  (4) quick-menu a diagonal enemy with a dash unit — dash row present.
+
 ## AI BALANCE PASS: LINE-BEAM WHIFFS + JOB TENDENCIES (2026-07-10) — ai.js, ainew.js, battle.js
 Token `20260710u` → `20260710x`. **DESIGN RULE (from the user): towers/Cubes
 are damageable by BASIC ATTACKS ONLY. Spells must NEVER damage towers — the

@@ -5380,6 +5380,15 @@
                 const unitZ = unit.z ?? 0;
                 return unitZ !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(unitZ) : 0;
             }
+            /* Multi-floor: grounded on a surface BELOW the column top (cave
+               floor, building storey) → anchor at the unit's own floor, not
+               the roof boardHeights reports. */
+            if (unit.z !== undefined && unit.z !== null && state.boardColumns?.length) {
+                const _topH = state.boardHeights?.[unit.y]?.[unit.x] ?? 0;
+                if (unit.z < _topH) {
+                    return unit.z !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(unit.z) : 0;
+                }
+            }
             return tileElevationZ(unit.x, unit.y);
         }
         /* Camera-facing ground height (px) for a tile — terrain PLUS walkable
@@ -8110,6 +8119,25 @@
             return g;
         }
 
+        /* Focal HEIGHT (tile z) the camera should track at a tile. boardHeights
+           only knows the top of the voxel column, so on multi-floor maps a unit
+           standing on an interior/underground floor was framed as if it stood
+           on the roof above it (tiny unit, camera parked at surface level).
+           Rule: an airborne flyer's own z; a grounded unit's own z whenever it
+           is BELOW the column top (cave floor, building storey); otherwise the
+           terrain surface. Keeping the real z here is what preserves the same
+           vertical tactical framing distance on every floor. */
+        function _camFocalZAt(x, y, u) {
+            const unit = (u !== undefined) ? u : _camFocalUnitAt(x, y);
+            const h = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+            if (unit && !unit.dead && unit.z !== undefined && unit.z !== null) {
+                if (typeof canFly === 'function' && canFly(unit)
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return unit.z;
+                if (state.boardColumns?.length && unit.z < h) return unit.z;
+            }
+            return h;
+        }
+
         const camera = {
 
             x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
@@ -8295,13 +8323,10 @@
                         if (floorX === ceilX && floorY === ceilY) {
 
                             const _camUnit = _camFocalUnitAt(floorX, floorY);
-                            if (_camUnit && typeof canFly === 'function' && canFly(_camUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(_camUnit)) {
-                                const unitZ = _camUnit.z ?? 0;
-                                elevZ = unitZ > 0 ? window._getElevationPx(unitZ) : 0;
-                            } else {
-                                const h = getHeightAt(floorX, floorY);
-                                if (h > 0) elevZ = window._getElevationPx(h);
-                            }
+                            /* Airborne flyers AND grounded units on a floor below
+                               the column top track the unit's own z (multi-floor). */
+                            const _focalH = _camFocalZAt(floorX, floorY, _camUnit);
+                            if (_focalH > 0) elevZ = window._getElevationPx(_focalH);
 
                             if (_camUnit && !_camUnit.dead) {
                                 elevZ += ts * 0.55;
@@ -8329,6 +8354,14 @@
                                 && typeof isUnitAirborne === 'function' && isUnitAirborne(_airU)) {
                                 const _az = _airU.z ?? 0;
                                 if (_az > 0) elevZ = Math.max(elevZ, window._getElevationPx(_az) + ts * 0.55);
+                            } else if (_airU && !_airU.dead
+                                && _airU.z !== undefined && _airU.z !== null
+                                && state.boardColumns?.length
+                                && _airU.z < ((typeof getHeightAt === 'function') ? getHeightAt(_rfx, _rfy) : 0)) {
+                                /* Grounded on an interior floor BELOW the column top
+                                   (cave/underground) — descend to the unit instead of
+                                   hovering at the terrain-interpolated roof height. */
+                                elevZ = window._getElevationPx(Math.max(0, _airU.z)) + ts * 0.55;
                             }
                         }
                     }
@@ -8519,14 +8552,10 @@
                 if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
                     const rx = Math.round(x), ry = Math.round(y);
                     const u = _camFocalUnitAt(rx, ry);
-                    if (u && typeof canFly === 'function' && canFly(u)
-                        && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
-                        const uz = u.z ?? 0;
-                        elevZ = uz > 0 ? window._getElevationPx(uz) : 0;
-                    } else {
-                        const h = getHeightAt(rx, ry);
-                        if (h > 0) elevZ = window._getElevationPx(h);
-                    }
+                    /* Multi-floor aware: flyer altitude OR a grounded unit's own
+                       interior floor, else the terrain surface (_camFocalZAt). */
+                    const fh = _camFocalZAt(rx, ry, u);
+                    if (fh > 0) elevZ = window._getElevationPx(fh);
                     if (u && !u.dead) elevZ += ts * 0.55;
                 }
                 return elevZ;
@@ -9006,18 +9035,23 @@
                 if (typeof window._getElevationPx === 'function') {
                     let maxZ = 0;
                     let hasUnit = false;
+                    let sawFloorUnit = false;
                     for (const p of points) {
                         const ix = Math.round(p.x), iy = Math.round(p.y);
                         const u = _camFocalUnitAt(ix, iy);
                         if (u && !u.dead) hasUnit = true;
-                        if (u && typeof canFly === 'function' && canFly(u)
-                            && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) {
-                            const uz = u.z ?? 0;
-                            if (uz > maxZ) maxZ = uz;
-                        } else {
-                            const h = (typeof getHeightAt === 'function') ? getHeightAt(ix, iy) : 0;
-                            if (h > maxZ) maxZ = h;
+                        /* Multi-floor aware focal z: flyer altitude, a grounded
+                           unit's own interior floor, else the terrain surface. */
+                        const fz = _camFocalZAt(ix, iy, u);
+                        if (u && !u.dead && fz < ((typeof getHeightAt === 'function') ? getHeightAt(ix, iy) : 0)) {
+                            /* A unit below its column top must WIN the max — the
+                               roof above it would otherwise drag the focal back
+                               up to the surface. Single-point focuses (turn
+                               activation) hit this branch. */
+                            maxZ = fz;
+                            sawFloorUnit = true;
                         }
+                        if (!sawFloorUnit && fz > maxZ) maxZ = fz;
                     }
                     if (maxZ > 0) {
                         const ts = CONFIG.tileSize || BASE_TILE;
@@ -15803,7 +15837,12 @@
                 _clearMoveHoverPreview();
                 return;
             }
-            const k = state.actionMode + '|' + unit.id + '|' + x + ',' + y + '|' + unit.x + ',' + unit.y
+            /* Multi-floor: the hovered SURFACE (state._hoverZ, published by the
+               renderer's raycast) is part of the preview identity — pointing at
+               the cave floor vs the roof of the same column are different
+               destinations and must repaint the route. */
+            const _hovZ = state._hoverZ;
+            const k = state.actionMode + '|' + unit.id + '|' + x + ',' + y + ',' + (_hovZ ?? '-') + '|' + unit.x + ',' + unit.y
                 + '|' + (unit.ap || 0) + '|' + (unit.movesThisTurn || 0);
             if (state._moveHoverKey === k) return;
             _clearMoveHoverPreview();
@@ -15821,10 +15860,16 @@
                 const actingY = ThreeRenderer.unitSurfaceY(unit);
                 const _isAir = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
 
-                // Waypoint height: grounded units hug the tile tops; airborne
-                // flyers keep their clearance (same math as the approach previews).
-                const _wpY = (wx, wy) => {
-                    if (!_isAir) return ThreeRenderer.tileTopY(wx, wy);
+                // Waypoint height: grounded units hug their ACTUAL surface (the
+                // path nodes carry z, so a route through a cave draws inside the
+                // cave — ThreeRenderer.surfaceYAt); airborne flyers keep their
+                // clearance (same math as the approach previews).
+                const _wpY = (wx, wy, wz) => {
+                    if (!_isAir) {
+                        return (typeof ThreeRenderer.surfaceYAt === 'function')
+                            ? ThreeRenderer.surfaceYAt(wx, wy, wz)
+                            : ThreeRenderer.tileTopY(wx, wy);
+                    }
                     const ts = CONFIG.tileSize || BASE_TILE;
                     const curGnd = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
                     const clearance = (unit.z || 0) - curGnd;
@@ -15833,30 +15878,40 @@
                         ? window._getElevationPx(gnd + clearance) : (gnd + clearance) * ts;
                     return Math.max(ts * 0.04, elev);
                 };
-                const _showDest = (routeColor, viaTile) => {
+                const _showDest = (routeColor, viaTile, destZ) => {
                     const marks = [];
                     if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3 });
                     marks.push({ x: x, y: y, color: routeColor, opacity: 0.45 });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
-                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.55 });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
+                };
+                /* Shared multi-floor tie-break: the surface the pointer is on
+                   wins outright; otherwise the reachable surface closest to it
+                   (or to the unit's own floor when no hover z is known). The
+                   click handler resolves with the SAME rule, so the previewed
+                   ghost is always where the unit will actually end up. */
+                const _pickByZ = (matches) => {
+                    const ref = (_hovZ !== undefined && _hovZ !== null) ? _hovZ : (unit.z ?? 0);
+                    const exact = (_hovZ !== undefined && _hovZ !== null)
+                        ? matches.find(t => (t.z ?? 0) === _hovZ) : null;
+                    if (exact) return exact;
+                    return matches.slice().sort((a, b) => Math.abs((a.z ?? 0) - ref) - Math.abs((b.z ?? 0) - ref))[0];
                 };
 
                 // 1) Reachable in one move → bending route arrow through the real path.
                 if (state.actionMode === 'move' && canUnitMove(unit)) {
                     const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
                     if (matches.length) {
-                        const unitZ = unit.z ?? 0;
-                        matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
-                        const dest = matches[0];
+                        const dest = _pickByZ(matches);
                         const routeColor = (dest._jump || dest._takeoff) ? 0x66ffcc : 0xffcc44;
                         const path = findMovePath(unit, x, y, dest.z);
                         const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
-                        for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
+                        for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
-                        else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y), { flow: true });
-                        _showDest(routeColor, null);
+                        else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y, dest.z), { flow: true });
+                        _showDest(routeColor, null, dest.z);
                         return;
                     }
                 }
@@ -15865,9 +15920,10 @@
                 if (!_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
                     const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
                     if (jm.length) {
+                        const jDest = _pickByZ(jm);
                         ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x66ffcc, false, actingY,
-                            ThreeRenderer.tileTopY(x, y), { arc: 0.45, flow: true });
-                        _showDest(0x66ffcc, null);
+                            _wpY(x, y, jDest.z), { arc: 0.45, flow: true });
+                        _showDest(0x66ffcc, null, jDest.z);
                         return;
                     }
                 }
@@ -15879,28 +15935,40 @@
                     && (unit.ap || 0) >= AP_COST_ACTION * 2) {
                     const r1 = getMoveTiles(unit);
                     const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
-                    let best = null, bestCost = Infinity;
+                    /* Multi-floor: pick the intermediate whose ring-2 reaches the
+                       HOVERED surface (exact floor beats cost), and remember the
+                       actual destination tile so the second path leg targets a
+                       genuinely reachable z — same rule as the click executor. */
+                    let best = null, bestDest = null, bestScore = Infinity;
+                    const _zRef2 = (_hovZ !== undefined && _hovZ !== null) ? _hovZ : (savedZ ?? 0);
                     for (const t1 of r1) {
                         if (t1._jump || t1._takeoff) continue;
                         unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? savedZ;
                         const r2 = getMoveTiles(unit);
-                        if (r2.some(t2 => t2.x === x && t2.y === y) && (t1.cost || 0) < bestCost) {
-                            bestCost = t1.cost || 0;
-                            best = t1;
+                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y);
+                        if (m2.length) {
+                            m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
+                            const exact = (_hovZ === undefined || _hovZ === null) || (m2[0].z ?? 0) === _hovZ;
+                            const score = (exact ? 0 : 1e6) + (t1.cost || 0);
+                            if (score < bestScore) {
+                                bestScore = score;
+                                best = t1;
+                                bestDest = m2[0];
+                            }
                         }
                     }
                     unit.x = savedX; unit.y = savedY; unit.z = savedZ;
                     if (best) {
                         const path1 = findMovePath(unit, best.x, best.y, best.z ?? savedZ);
                         unit.x = best.x; unit.y = best.y; unit.z = best.z ?? savedZ;
-                        const path2 = findMovePath(unit, x, y); // resolves its own destZ
+                        const path2 = findMovePath(unit, x, y, bestDest ? bestDest.z : undefined);
                         unit.x = savedX; unit.y = savedY; unit.z = savedZ;
                         const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
-                        for (const p of path1) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
-                        for (const p of path2) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y) });
+                        for (const p of path1) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                        for (const p of path2) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
                         if (wps.length >= 2) {
                             ThreeRenderer.drawPathArrow3D(wps, 0xffcc44);
-                            _showDest(0xffcc44, best);
+                            _showDest(0xffcc44, best, bestDest ? bestDest.z : undefined);
                             return;
                         }
                     }
@@ -23872,7 +23940,7 @@
 
             if (clickedUnit.id === actingUnit.id) {
                 state._enemyActionTargetId = null;
-                state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+                state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y, z: clickedUnit.z };
                 playSfx('uiCursorFocus');
                 markDirty('board', 'selectedUnit', 'hud');
                 renderIfDirty();
@@ -23895,7 +23963,7 @@
 
             focusUnitPanel(clickedUnit.id);
             state._enemyActionTargetId = null;
-            state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+            state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y, z: clickedUnit.z };
             playSfx('uiCursorFocus');
             markDirty('board', 'selectedUnit', 'hud');
             renderIfDirty();
@@ -23974,7 +24042,7 @@
                         if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
                             state._tileActionTarget = null;
                         } else {
-                            state._tileActionTarget = { x, y };
+                            state._tileActionTarget = { x, y, z: state._clickedZ };
                         }
                         playSfx('uiCursorFocus');
                         markDirty('hud');
@@ -24024,7 +24092,7 @@
 
                     focusUnitPanel(clickedUnit.id);
                     state._enemyActionTargetId = null;
-                    state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y };
+                    state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y, z: clickedUnit.z };
                     playSfx('uiCursorFocus');
                     markDirty('hud');
                     renderIfDirty();
@@ -24044,7 +24112,7 @@
                         if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
                             state._tileActionTarget = null;
                         } else {
-                            state._tileActionTarget = { x, y };
+                            state._tileActionTarget = { x, y, z: state._clickedZ };
                         }
                         playSfx('uiCursorFocus');
                         markDirty('hud');
@@ -24060,7 +24128,7 @@
                         if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
                             state._tileActionTarget = null;
                         } else {
-                            state._tileActionTarget = { x, y };
+                            state._tileActionTarget = { x, y, z: state._clickedZ };
                         }
                         playSfx('uiCursorFocus');
                     } else {
@@ -24299,12 +24367,21 @@
 
                 const _r1Tiles = getMoveTiles(actingUnit);
                 /* Multi-floor: prefer the tile entry on the SURFACE the player
-                   clicked (cloud top vs the floor beneath) so takeoff flags and
-                   the z handed to doMove match the clicked highlight. */
-                const _r1Match = ((state._clickedZ !== undefined && state._clickedZ !== null)
-                        ? _r1Tiles.find(t => t.x === x && t.y === y && (t.z ?? 0) === state._clickedZ)
-                        : null)
-                    || _r1Tiles.find(t => t.x === x && t.y === y);
+                   clicked (cloud top vs the floor beneath); when that exact
+                   floor isn't reachable, take the reachable surface CLOSEST to
+                   the clicked one — never an arbitrary first-found floor. The
+                   hover preview resolves with the same rule, so the ghost the
+                   player saw is where the unit actually goes. */
+                let _r1Match = null;
+                {
+                    const _r1All = _r1Tiles.filter(t => t.x === x && t.y === y);
+                    if (_r1All.length) {
+                        const _zRef = (state._clickedZ !== undefined && state._clickedZ !== null)
+                            ? state._clickedZ : (actingUnit.z ?? 0);
+                        _r1Match = _r1All.find(t => (t.z ?? 0) === _zRef)
+                            || _r1All.slice().sort((a, b) => Math.abs((a.z ?? 0) - _zRef) - Math.abs((b.z ?? 0) - _zRef))[0];
+                    }
+                }
                 if (_r1Match) {
 
                     if (_r1Match._takeoff && canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
@@ -24315,7 +24392,7 @@
                         state._actionExecuting = false;
                         return false;
                     }
-                    return _execMove(() => doMove(actingUnit, x, y, state._clickedZ));
+                    return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
                 }
 
                 /* 1-AP standalone jump takes precedence over the 2-AP walk+walk
@@ -24337,17 +24414,34 @@
                     && (actingUnit.ap || 0) >= AP_COST_ACTION * 2) {
 
                     const savedX = actingUnit.x, savedY = actingUnit.y, savedZ = actingUnit.z;
+                    /* Multi-floor: pick the intermediate whose ring-2 reaches the
+                       CLICKED surface (exact floor beats cost) and remember the
+                       actual reachable destination tile — the old code took the
+                       clicked z on faith, which could teleport the unit onto a
+                       floor the walk never reached (or under the map). Mirrors
+                       the hover preview's selection exactly. */
                     let bestInterm = null;
-                    let bestCost = Infinity;
+                    let bestDest = null;
+                    let bestScore = Infinity;
+                    const _zRef2 = (state._clickedZ !== undefined && state._clickedZ !== null)
+                        ? state._clickedZ : (savedZ ?? 0);
                     for (const t1 of _r1Tiles) {
                         /* Intermediates must be plain walks — mirrors the ring-2
                            highlight in ui.js, which skips jump/takeoff legs. */
                         if (t1._jump || t1._takeoff) continue;
                         actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
                         const r2 = getMoveTiles(actingUnit);
-                        if (r2.some(t2 => t2.x === x && t2.y === y) && (t1.cost || 0) < bestCost) {
-                            bestCost = t1.cost || 0;
-                            bestInterm = t1;
+                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y);
+                        if (m2.length) {
+                            m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
+                            const _exactZ = (state._clickedZ === undefined || state._clickedZ === null)
+                                || (m2[0].z ?? 0) === state._clickedZ;
+                            const score = (_exactZ ? 0 : 1e6) + (t1.cost || 0);
+                            if (score < bestScore) {
+                                bestScore = score;
+                                bestInterm = t1;
+                                bestDest = m2[0];
+                            }
                         }
                     }
                     actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
@@ -24367,7 +24461,10 @@
                             const _r2DestGnd = getHeightAt(x, y);
                             destZ = Math.max(_flyMinZ2, Math.min(_flyMaxZ2, _r2DestGnd + _r2Clr));
                         } else {
-                            destZ = state._clickedZ ?? (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, actingUnit.z) : 0);
+                            /* The z of the tile the ring-2 walk ACTUALLY reaches —
+                               never the raw clicked z on faith. */
+                            destZ = bestDest ? bestDest.z
+                                : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, actingUnit.z) : 0);
                         }
                         const path2 = findMovePath(actingUnit, x, y, destZ);
                         actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
@@ -25723,8 +25820,12 @@
                     if (_exact) {
                         z = _exact.z;
                     } else {
-                        const unitZ = unit.z ?? 0;
-                        matches.sort((a, b) => Math.abs((a.z ?? 0) - unitZ) - Math.abs((b.z ?? 0) - unitZ));
+                        /* Tie-break toward the REQUESTED surface when one was
+                           given (the clicked floor), not the unit's own z — a
+                           surface click must never quietly reroute underground
+                           just because the unit started down there. */
+                        const zRef = (z !== undefined && z !== null) ? z : (unit.z ?? 0);
+                        matches.sort((a, b) => Math.abs((a.z ?? 0) - zRef) - Math.abs((b.z ?? 0) - zRef));
                         z = matches[0].z;
                     }
                 } else if (z === undefined || z === null) {
@@ -30894,14 +30995,29 @@
                     // quenches lava it lands on into obsidian and snuffs any
                     // ground fire it covers.
                     const _isWaterPaint = (terrainType === 'water' || terrainType === 'deep_water');
-                    const _paintTile = (tx, ty, current, tt) => {
+                    /* Multi-floor anchor: paint the FLOOR the cast targeted (the
+                       clicked surface / the caster's own storey), not blindly the
+                       top of each column — casting fire inside a cave must paint
+                       the cave floor, never the roof overhead. undefined = the
+                       tile's top surface (legacy behavior, all flat maps). */
+                    const _anchorZ = (z !== undefined && z !== null) ? z
+                        : ((typeof nearestWalkableZ === 'function' && state.boardColumns?.length)
+                            ? nearestWalkableZ(x, y, unit.z) : undefined);
+                    const _paintZAt = (tx, ty) => {
+                        if (_anchorZ === undefined || typeof nearestWalkableZ !== 'function'
+                            || !state.boardColumns?.length) return undefined;
+                        const pz = nearestWalkableZ(tx, ty, _anchorZ);
+                        const topH = state.boardHeights?.[ty]?.[tx] ?? 0;
+                        return (pz < topH) ? pz : undefined;
+                    };
+                    const _paintTile = (tx, ty, current, tt, pz) => {
                         let t = tt || terrainType;
                         if (_isWaterPaint && current === 'lava') {
                             t = 'obsidian';
                             addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into obsidian!`);
                         }
                         if (current === t) return false;
-                        setTerrainAt(tx, ty, t);
+                        setTerrainAt(tx, ty, t, pz);
                         if (_isWaterPaint && t !== 'obsidian' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
                         return true;
                     };
@@ -30909,11 +31025,16 @@
                     // (Minecraft-style) instead of perching on slopes/ledges as
                     // a lone floating cube. Water that slides 2+ levels lands as
                     // deep water; water reaching an existing pool just merges.
+                    // Interior-floor paints (pz defined) skip the runoff model —
+                    // it is built on column-top heights, which are the ROOF from
+                    // down there — and wet their own floor tile in place.
                     const _paintSpellTile = (tx, ty) => {
-                        const current = getTerrainAt(tx, ty);
+                        const pz = _paintZAt(tx, ty);
+                        const current = (pz !== undefined && typeof getTerrainAt3D === 'function')
+                            ? getTerrainAt3D(tx, ty, pz) : getTerrainAt(tx, ty);
                         if (current === 'wall') return;
                         _pushAffected(tx, ty);
-                        if (_isWaterPaint) {
+                        if (_isWaterPaint && pz === undefined) {
                             const dest = _waterRunoffDest(tx, ty);
                             if (dest.x !== tx || dest.y !== ty) {
                                 _pushAffected(dest.x, dest.y);
@@ -30924,7 +31045,7 @@
                                 return;
                             }
                         }
-                        if (_paintTile(tx, ty, current)) convertedTiles.push({ x: tx, y: ty });
+                        if (_paintTile(tx, ty, current, undefined, pz)) convertedTiles.push({ x: tx, y: ty });
                     };
                     if (spell.elevationFlood) {
                         // 🌊 Basin-aware flood (2026-07-10 rework): water pours

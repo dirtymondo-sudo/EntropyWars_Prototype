@@ -2311,17 +2311,41 @@
             return state.boardTerrain?.[y]?.[x] || 'grass';
         }
 
-        function setTerrainAt(x, y, terrain) {
-            if (state.boardTerrain?.[y]) state.boardTerrain[y][x] = terrain;
-
-            if (state.boardColumns?.[y]?.[x]) {
-                const col = state.boardColumns[y][x];
-                for (let i = 0; i < col.length; i++) col[i].terrain = terrain;
-            }
-
-            if (state.boardVoxels?.[y]?.[x]) {
-                const vCol = state.boardVoxels[y][x];
-                for (let i = 0; i < vCol.length; i++) vCol[i].terrain = terrain;
+        /* Repaint ONE block of the column, never the whole stack. Tiles are
+           individual cubes: painting lava on the surface of a multi-floor map
+           must not convert the cave floors and walls buried underneath it
+           (the old loop recolored every z in the column). `z` picks the exact
+           block to repaint; omitted, the topmost solid (non-void) block — the
+           visible surface — is painted, which matches the legacy 2D meaning. */
+        function setTerrainAt(x, y, terrain, z) {
+            const col = state.boardColumns?.[y]?.[x];
+            if (col && col.length) {
+                let blk = null;
+                if (z !== undefined && z !== null) {
+                    blk = col.find(b => b.z === z) || null;
+                }
+                if (!blk) {
+                    for (let i = col.length - 1; i >= 0; i--) {
+                        const t = col[i].terrain;
+                        if (!t || t.indexOf('void') !== 0) { blk = col[i]; break; }
+                    }
+                }
+                if (blk) {
+                    blk.terrain = terrain;
+                    const vCol = state.boardVoxels?.[y]?.[x];
+                    if (vCol) {
+                        const vBlk = vCol.find(b => b.z === blk.z);
+                        if (vBlk) vBlk.terrain = terrain;
+                    }
+                    /* Legacy mirror always reflects the TOP block — unchanged
+                       when a lower floor was painted. */
+                    const top = col[col.length - 1];
+                    if (state.boardTerrain?.[y]) state.boardTerrain[y][x] = top.terrain || 'grass';
+                } else if (state.boardTerrain?.[y]) {
+                    state.boardTerrain[y][x] = terrain;
+                }
+            } else if (state.boardTerrain?.[y]) {
+                state.boardTerrain[y][x] = terrain;
             }
 
             if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
