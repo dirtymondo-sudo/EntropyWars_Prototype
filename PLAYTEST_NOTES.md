@@ -4675,3 +4675,25 @@ CSS lives at the end of styles-cinematic.css (`.ewi-*`; `body.ewi-cinema`
 parks #sidebarPanel/#scorePanel/scoreboard/#css2dOverlay via visibility).
 
 **Kill-switch (console)**: `window.EW_DISABLE_INTRO_CINE = true` → classic VS splash.
+
+## Action-menu (Horologe) redesign — 2026-07-11
+- **Crown = ONE labelled button** (`.hrlg-crown-cap` now holds arrow + `.hrlg-crown-text`
+  "BACK"/"END TURN"; the floating `.hrlg-crown-label` above the nub is gone). 116px wide.
+- **⚒ BUILD moved OUT of the verb drum** onto the bezel: permanent pusher at 10-11
+  o'clock (`.hrlg-buildbtn`, `build` prop on HorologeMenu, root view only, greys with
+  the `_buildActionProblem` reason). Still in the More list + B key. Root order is now
+  Move › Attack › Abilities › Combo › Items › More › END TURN.
+- **View tab** (`.hrlg-view-tab`) is 44px tall / 17px Cinzel — fits the 34×34 unit
+  portrait chip the enemy quick-menu puts there. Moved right (left:170) to clear the
+  wider crown.
+- **Abilities sort**: castable first, then damage › debuff › heal › buff › utility
+  (classifySpell), then tier. Each spell blade is TINTED by category (`catColor` →
+  `.hrlg-blade.catc`, `--bc*` vars): red/green/blue/purple/amber. Quick-menu spell rows too.
+- **Selection**: yellow `▶` JRPG cursor (`.hrlg-cursor`, inside .hrlg-body — outside
+  would hide under the bezel) + breathing glow (`hrlgSelGlow`) on the .sel row.
+- **Combo finally lists targets**: `_hrlgComboBlades` two-step drum — adjacent ally
+  partners (portrait rows, combo name + synergy) then in-range targets; fires
+  `state.comboPartner` / `doComboAttack` directly. Board clicks still work in parallel.
+- **Palette**: EW ink/panel + all hrlg surfaces de-blued to bone-on-black neutrals
+  (#0c0c0a family); descbar chrome bone+blood-red instead of gold/holo-blue; crown red
+  now #ff4a3c. Vitals bars 17/14px with 12px numbers (were 8px unreadable).
