@@ -16026,12 +16026,11 @@
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
 
-        // ── Enemy threat-range preview ───────────────────────────────────────
-        // Hovering an enemy sprite (or click-selecting one via the quick-action
-        // menu) paints its reach in red: bright tiles it can attack from where
-        // it stands, faint tiles it could reach-and-hit after moving this turn.
-        // This replaces the old per-move-tile hatched "exposed" border — enemy
-        // range is now shown on demand instead of cluttering every move tile.
+        // ── Enemy threat-range preview (REMOVED 2026-07-11, user request) ──
+        // Hover/click used to paint the enemy's reach in red hatched tiles;
+        // that read as noise, so the painting is gone. The function stays
+        // because the renderer's hover loop and the quick menus still call it
+        // — it now only sweeps away any overlay left behind.
         function _clearEnemyRangePreview() {
             if (!state._enemyRangeActive) return;
             state._enemyRangeActive = false;
@@ -16043,68 +16042,7 @@
         }
 
         function updateEnemyRangePreview(hoveredUnitId) {
-            try {
-                if (state.phase !== 'battle' || state.winner || state.devAutoSim
-                    || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) {
-                    _clearEnemyRangePreview();
-                    return;
-                }
-                const viewer = getViewerPlayer();
-                let target = null;
-                if (hoveredUnitId != null) {
-                    const hu = state.units.find(u => u.id === hoveredUnitId && !u.dead && !u._dying);
-                    if (hu && hu.player !== viewer) target = hu;
-                }
-                if (!target && state._enemyActionTargetId) {
-                    const pu = state.units.find(u => u.id === state._enemyActionTargetId && !u.dead && !u._dying);
-                    if (pu && pu.player !== viewer) target = pu;
-                }
-                if (!target
-                    || (typeof unitHasStatus === 'function' && unitHasStatus(target, 'invisible'))) {
-                    _clearEnemyRangePreview();
-                    return;
-                }
-                if (state.fogOfWar && typeof computeVisibleTiles === 'function') {
-                    const vis = computeVisibleTiles(viewer);
-                    if (!vis.has(posKey(target.x, target.y))) { _clearEnemyRangePreview(); return; }
-                }
-
-                // Bright: tiles the enemy can attack without moving (real range + LOS).
-                const nowKeys = new Set();
-                for (const t of getAttackTiles(target)) nowKeys.add(posKey(t.x, t.y));
-
-                // Faint: the full danger zone — anywhere it could stand this turn
-                // plus its attack reach from there.
-                const eRange = getEffectiveRange(target);
-                const laterKeys = new Set();
-                const stands = [{ x: target.x, y: target.y }];
-                try { for (const mt of getMoveTiles(target)) stands.push(mt); } catch (e) { /* keep the bright set */ }
-                for (const s of stands) {
-                    for (let dy = -eRange; dy <= eRange; dy++) {
-                        for (let dx = -eRange; dx <= eRange; dx++) {
-                            const man = Math.abs(dx) + Math.abs(dy);
-                            if (man < 1 || man > eRange) continue;
-                            const nx = s.x + dx, ny = s.y + dy;
-                            if (!isInside(nx, ny)) continue;
-                            laterKeys.add(posKey(nx, ny));
-                        }
-                    }
-                }
-
-                const tiles = [];
-                for (const pk of laterKeys) {
-                    if (nowKeys.has(pk)) continue;
-                    const c = pk.indexOf(',');
-                    tiles.push({ x: parseInt(pk.slice(0, c), 10), y: parseInt(pk.slice(c + 1), 10), color: 0xff3344, opacity: 0.22 });
-                }
-                for (const pk of nowKeys) {
-                    const c = pk.indexOf(',');
-                    tiles.push({ x: parseInt(pk.slice(0, c), 10), y: parseInt(pk.slice(c + 1), 10), color: 0xff3344, opacity: 0.5 });
-                }
-                if (!tiles.length) { _clearEnemyRangePreview(); return; }
-                ThreeRenderer.setOverlay('enemyRange', tiles, 0xff3344, 0.3);
-                state._enemyRangeActive = true;
-            } catch (e) { _clearEnemyRangePreview(); }
+            _clearEnemyRangePreview();
         }
         window.updateEnemyRangePreview = updateEnemyRangePreview;
 

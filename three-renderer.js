@@ -9376,7 +9376,7 @@ const ThreeRenderer = (function () {
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
             dotCount = HL_DOT_COUNT[baseTok] || 0;
             if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.0;  style = { fill: 0.36 }; }
-            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.9;  style = { fill: 0.30, hatch: 0.6 }; }
+            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.9;  style = { fill: 0.30 }; }
             else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.85; style = { fill: 0.32 }; }
             else {
                 color = HL_COLORS[baseTok] || HL_COLORS['move'];
@@ -9510,20 +9510,21 @@ const ThreeRenderer = (function () {
     var _previewBaseOpacity = {};
 
     /* Per-overlay visual-weight recipes (see the shader dials).
-       Consequence overlays (aoe / telegraph / plan targets) hatch + fill
-       heavily; context overlays (range previews) are outline lattices;
-       danger context (enemyRange) hatches faintly. Unlisted names keep the
-       old generic look. */
+       Consequence overlays (aoe / telegraph / plan targets) fill heavily;
+       context overlays (range previews) are outline lattices. The animated
+       diagonal hatch stripes were removed 2026-07-11 (user request) — the
+       uHatch shader dial still exists but nothing drives it anymore.
+       Unlisted names keep the old generic look. */
     var _OVERLAY_STYLE = {
-        'aoe':                 { fill: 0.60, edgeGlow: 1.15, hatch: 0.9 },
-        'telegraph':           { fill: 0.55, edgeGlow: 1.1,  hatch: 0.9 },
-        'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9,  hatch: 0.9 },
-        'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1,  hatch: 0.5 },
-        'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1,  hatch: 0.5 },
+        'aoe':                 { fill: 0.60, edgeGlow: 1.15 },
+        'telegraph':           { fill: 0.55, edgeGlow: 1.1 },
+        'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9 },
+        'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1 },
+        'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1 },
         'spellRange':          { fill: 0.13, edgeGlow: 1.0 },
         'attackRange':         { fill: 0.13, edgeGlow: 1.0 },
         'spellRangeElem':      { fill: 0.30, edgeGlow: 0.9 },
-        'enemyRange':          { fill: 0.14, edgeGlow: 0.55, hatch: 0.45 },
+        'enemyRange':          { fill: 0.14, edgeGlow: 0.55 },
         'weather':             { fill: 0.30, edgeGlow: 0.15 },
         'movePreview':         { fill: 0.30, edgeGlow: 0.9 },
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },

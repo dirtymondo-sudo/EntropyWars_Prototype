@@ -3975,12 +3975,18 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
     if (towardTile) {
+      // Dry-run the full chase chain so the blade + hover preview can show
+      // the tile the unit will ACTUALLY stop on, not just the first step.
+      const towardPath = towardTile._heightApproach
+        ? null
+        : _predictMoveTowardsPath(actingUnit, targetUnit, towardTile);
       actions.push({
         id: 'moveTowards',
         label: towardLabel,
         icon: towardIcon,
         apCost: 1,
         moveTile: towardTile,
+        _towardPath: towardPath && towardPath.length ? towardPath : null,
         preview: null,
         typeNote: '',
         available: true,
@@ -4110,6 +4116,41 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   // destination when repositioning, else the unit's current tile.
   let castX = actingUnit.x, castY = actingUnit.y;
 
+  // "Move Towards" spends the unit's WHOLE remaining movement chasing (see
+  // _chainMoveTowards) — preview the REAL chained route and end tile, not
+  // just the first step, so hovering the blade shows exactly where the unit
+  // will stop. No strike arrow: this action is pure movement.
+  if (action && action.id === 'moveTowards' && action._towardPath && action._towardPath.length
+      && mt && !mt._heightApproach) {
+    const steps = action._towardPath;
+    const dest = steps[steps.length - 1];
+    const ts = CONFIG.tileSize || BASE_TILE;
+    const _isAir = typeof canFly === 'function' && canFly(actingUnit)
+      && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+    const _stepY = (s) => {
+      if (_isAir && typeof getHeightAt === 'function') {
+        // Airborne flyers keep their clearance over the terrain below.
+        const curGnd = getHeightAt(actingUnit.x, actingUnit.y);
+        const clearance = (actingUnit.z || 0) - curGnd;
+        const sz = getHeightAt(s.x, s.y) + clearance;
+        const elev = (typeof window._getElevationPx === 'function') ? window._getElevationPx(sz) : sz * ts;
+        return Math.max(ts * 0.04, elev);
+      }
+      return ThreeRenderer.tileTopY(s.x, s.y);
+    };
+    const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    for (const s of steps) wps.push({ x: s.x, y: s.y, yOverride: _stepY(s) });
+    const routeColor = steps.some(s => s._jump) ? 0x66ffcc : 0xffcc44;
+    ThreeRenderer.drawPathArrow3D(wps, routeColor);
+    // Intermediate tiles faint, the ACTUAL destination bright.
+    ThreeRenderer.setOverlay('movePreview',
+      steps.map((s, i) => ({ x: s.x, y: s.y, color: routeColor, opacity: i === steps.length - 1 ? 0.6 : 0.25 })),
+      routeColor, 0.45);
+    ThreeRenderer.showGhostUnit(actingUnit, dest.x, dest.y, _stepY(dest), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+    ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+    return;
+  }
+
   // A height approach (take off / land / raise) casts from the caster's own tile,
   // so there's no walk arrow to draw — fall through to the direct caster→target arrow.
   if (mt && !mt._heightApproach) {
@@ -4236,6 +4277,49 @@ function _bestTowardStep(actingUnit, targetUnit) {
     }
   }
   return best;
+}
+
+// Dry-run the whole Move Towards chase chain (first step included) and return
+// the list of steps the unit would actually take, so the menu/hover preview
+// can show the REAL end tile instead of just the first step. Mirrors
+// _chainMoveTowards: keep stepping/leaping while AP, moves and distance allow.
+// The unit is mutated only inside the try and always restored — pure preview.
+function _predictMoveTowardsPath(actingUnit, targetUnit, firstStep) {
+  const saved = {
+    x: actingUnit.x, y: actingUnit.y, z: actingUnit.z,
+    moves: actingUnit.movesThisTurn, ap: actingUnit.ap,
+    jumped: actingUnit._jumpedThisTurn,
+  };
+  const apCost = (window.GAME && window.GAME.AP_COST_ACTION) || 1;
+  const steps = [];
+  const _apply = (step) => {
+    steps.push(step);
+    actingUnit.x = step.x; actingUnit.y = step.y;
+    if (step.z !== undefined && step.z !== null) actingUnit.z = step.z;
+    actingUnit.ap = Math.max(0, (actingUnit.ap || 0) - apCost);
+    if (step._jump) actingUnit._jumpedThisTurn = true;
+    else actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 1;
+  };
+  try {
+    if (firstStep) _apply(firstStep);
+    let guard = 12;
+    while (guard-- > 0) {
+      if ((actingUnit.ap || 0) < 1) break;
+      const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
+      if (dist <= 1) break;
+      const step = _bestTowardStep(actingUnit, targetUnit);
+      if (!step) break;
+      // The real chain's doJump refuses a second leap — stop where it would.
+      if (step._jump && actingUnit._jumpedThisTurn) break;
+      _apply(step);
+    }
+  } catch (e) { /* preview is cosmetic — never let it break the menu */ }
+  finally {
+    actingUnit.x = saved.x; actingUnit.y = saved.y; actingUnit.z = saved.z;
+    actingUnit.movesThisTurn = saved.moves; actingUnit.ap = saved.ap;
+    actingUnit._jumpedThisTurn = saved.jumped;
+  }
+  return steps;
 }
 
 function _chainMoveTowards(actingUnit, targetUnit) {
@@ -4508,7 +4592,17 @@ function _hrlgEnemyBlades(actingUnit, st) {
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
       meta: typeAdv ? { text: typeAdv, color: typeAdv === '▲' ? EW.good : EW.bad } : null,
-      note: isMove && a.id !== 'moveTowards' ? '↳ ' + _mvVerb : null,
+      note: isMove
+        ? (a.id === 'moveTowards'
+          // "Move Towards" chains the whole approach — name the tile the
+          // unit will actually stop on so the click is never a surprise.
+          ? (a._towardPath && a._towardPath.length
+            ? '↳ ' + (typeof coordLabel === 'function'
+                ? coordLabel(a._towardPath[a._towardPath.length - 1].x, a._towardPath[a._towardPath.length - 1].y)
+                : a._towardPath[a._towardPath.length - 1].x + ',' + a._towardPath[a._towardPath.length - 1].y)
+            : null)
+          : '↳ ' + _mvVerb)
+        : null,
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => _fireEnemyAction(actingUnit, targetUnit, a),
       hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
@@ -4651,25 +4745,28 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           },
         });
       }
-    } else if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
-      // Not walkable this turn — but a jump counts as movement too. If the
-      // clicked tile is a legal landing spot, offer the leap directly instead
-      // of showing no movement option at all (same 1 AP as a step).
-      const _jpAll = getJumpTiles(actingUnit).filter(t => t.x === tx && t.y === ty);
-      const _jpZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
-      const jumpTile = _jpAll.find(t => (t.z ?? 0) === _jpZRef)
-        || _jpAll.slice().sort((a, b) => Math.abs((a.z ?? 0) - _jpZRef) - Math.abs((b.z ?? 0) - _jpZRef))[0];
-      if (jumpTile && !(typeof unitAt === 'function' && unitAt(tx, ty, jumpTile.z))) {
-        actions.push({
-          id: 'jump', label: 'Jump here', icon: '↷', category: 'movement',
-          apCost: 1, available: true,
-          handler: () => {
-            state._tileActionTarget = null;
-            if (typeof setActionMode === 'function') setActionMode('jump');
-            if (typeof doJump === 'function') doJump(actingUnit, tx, ty, jumpTile.z);
-          },
-        });
-      }
+    }
+  }
+
+  // Jump is its own movement verb, not just a fallback for when walking
+  // fails: whenever the clicked tile is a legal landing spot, offer the leap
+  // ALONGSIDE "Move here" (a jump arcs over hazards/gaps a walk would step
+  // through, and it still works after the turn's walks are spent).
+  if (!onSelf && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+    const _jpAll = getJumpTiles(actingUnit).filter(t => t.x === tx && t.y === ty);
+    const _jpZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
+    const jumpTile = _jpAll.find(t => (t.z ?? 0) === _jpZRef)
+      || _jpAll.slice().sort((a, b) => Math.abs((a.z ?? 0) - _jpZRef) - Math.abs((b.z ?? 0) - _jpZRef))[0];
+    if (jumpTile && !(typeof unitAt === 'function' && unitAt(tx, ty, jumpTile.z))) {
+      actions.push({
+        id: 'jump', label: 'Jump here', icon: '↷', category: 'movement',
+        apCost: 1, available: true,
+        handler: () => {
+          state._tileActionTarget = null;
+          if (typeof setActionMode === 'function') setActionMode('jump');
+          if (typeof doJump === 'function') doJump(actingUnit, tx, ty, jumpTile.z);
+        },
+      });
     }
   }
 
