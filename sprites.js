@@ -1058,6 +1058,13 @@ const RACE_MODELS_3D = {
       model: 'https://cdn.entropywars.net/Assets/Models/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb',
       heightRatio: 1.02,     // long-coat rifleman, a hair over the anchor
     }),
+    // Female sniper (2026-07-11d batch) — lives in the race's SPRITE folder
+    // (Homosapien/Female/sniper), unlike the male whose model sits in
+    // marksman/male. Gun-user idle; rifle shots via the default castRanged.
+    female: _mkUAL('Homosapien/Female/sniper', 'female_sniper_beauti', {
+      heightRatio: 0.96,
+      lib: { idle: { clip: 'Pistol_Idle_Loop' } },
+    }),
   },
 
   // ── 2026-07-11d wave (user batch upload — HEAD-verified on R2) ────────────
@@ -1089,12 +1096,125 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Swim_Idle_Loop', lib: 1 } },
     }),
   },
-  // Still missing from R2 (Character_output prefix unknown — HEAD-probe
-  // sweeps 2026-07-11d found nothing; need the R2 dashboard file names to
-  // wire): female sniper (marksman), anubis M, robinhood M, antperson M,
-  // necromancer F, succubus F, barbarella F, king arthur M, mantid M, mech M,
-  // minotaur M, mothman M, reptilian M, nun/priest F, robot M, cyborg F —
-  // plus the older male pirate gap.
+  // Anubis (Black Mage, caster) — "Anubis_Egyptian_dog_" (trailing _ is real:
+  // the prompt ended with a space → doubled underscore in …dog__biped_…).
+  // Towering jackal god; basic attacks zap (castMagic).
+  'anubis': {
+    male: _mkUAL('anubis/male', 'Anubis_Egyptian_dog_', {
+      heightRatio: 1.15,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // ── 2026-07-11e: the rest of the batch (file names user-provided from the
+  // R2 dashboard, all HEAD-verified). Models live in each race's SPRITE
+  // folder; prefixes are the Meshy prompt text. Trailing underscores are
+  // real (prompt truncation → doubled underscore before _biped_).
+  // Robin Hood (Sniper) — bow, not gun: basic attacks + ranged spells loose
+  // arrows (MAL Archery_Shot_1).
+  'robinhood': {
+    male: _mkUAL('robinhood', 'archer_robin_hood_r', {
+      heightRatio: 1.0,
+      basicAttackKind: 'arrow',
+      lib: { castRanged: { clip: 'Archery_Shot_1', lib: 2, ts: 1.2 } },
+    }),
+  },
+  // Antperson (Harvester, bruiser) — mandible/claw strikes.
+  'antperson': {
+    male: _mkUAL('antperson/male', 'giant_ant_realistic', {
+      heightRatio: 1.0,
+      basicAttackKind: 'claw',
+    }),
+  },
+  // Necromancer (Black Mage, caster) — death magic zaps.
+  'necromancer': {
+    female: _mkUAL('necromancer/female', 'hot_girl_necromancer', {
+      heightRatio: 0.95,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Succubus (Psychic, support) — charm/psychic zaps.
+  'succubus': {
+    female: _mkUAL('succubus/female', 'hot_seductive_pink_su', {
+      heightRatio: 0.98,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Barbarella (Agent, assassin) — retro ray-gun: shoots even point-blank.
+  'barbarella': {
+    female: _mkUAL('barbarella', 'hot_space_agent_girl_', {
+      heightRatio: 0.95,
+      basicAttackKind: 'ranged',
+      lib: { idle: { clip: 'Pistol_Idle_Loop' } },
+    }),
+  },
+  // King Arthur (Warrior, tank) — fencer stance + sword combos, like the
+  // knight. Sprite folder is 'king'.
+  'king arthur': {
+    male: _mkUAL('king', 'king_arthur_king_of_', {
+      heightRatio: 1.05,
+      lib: { idle: { clip: 'Sword_Idle' },
+             castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } },
+    }),
+  },
+  // Mantid (Psychic, assassin) — raking forelimb strikes.
+  'mantid': {
+    male: _mkUAL('mantid/male', 'mantid_realistic', {
+      heightRatio: 1.05,
+      basicAttackKind: 'claw',
+    }),
+  },
+  // Mech (Gunslinger, tank) — 3.5m walking weapons platform: shoots at any
+  // range, towers over humans (giant is 1.7).
+  'mech': {
+    male: _mkUAL('mech/male', 'mecha_mech_battle_m', {
+      heightRatio: 1.5,
+      basicAttackKind: 'ranged',
+    }),
+  },
+  // Minotaur (Raider, bruiser) — brawler sway + heavy fists.
+  'minotaur': {
+    male: _mkUAL('minotaur', 'minotaur_realistic', {
+      heightRatio: 1.25,
+      basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },
+    }),
+  },
+  // Mothman (Harbinger, support) — eerie psychic zaps.
+  'mothman': {
+    male: _mkUAL('mothman/male', 'mothman_cryptid_gian', {
+      heightRatio: 1.15,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Reptilian (Agent, assassin) — in a business suit, strikes with claws.
+  'reptilian': {
+    male: _mkUAL('reptilian/male', 'reptilian_in_a_busine', {
+      heightRatio: 1.1,
+      basicAttackKind: 'claw',
+    }),
+  },
+  // Nun / Priestess (homosapien White Mage) — holy zaps; heals get the
+  // castHeal staff wave from the shared slots.
+  'priest': {
+    female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
+      heightRatio: 0.94,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Robot (Warrior, tank) — hydraulic haymakers.
+  'robot': {
+    male: _mkUAL('robot/male', 'futuristic_robot_rea', {
+      heightRatio: 1.05,
+      basicAttackKind: 'punch',
+    }),
+  },
+  // Cyborg (Raider, bruiser) — augmented strikes.
+  'cyborg': {
+    female: _mkUAL('cyborg/female', 'hot_girl_futuristic_', {
+      heightRatio: 0.97,
+      basicAttackKind: 'punch',
+    }),
+  },
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────

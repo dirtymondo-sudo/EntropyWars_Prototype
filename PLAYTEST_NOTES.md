@@ -1807,15 +1807,31 @@ verify visually after upload) — syntax-checked only.
   - scarecrow M → `scarecrow/male` → `scarecrow` (claw basic attacks, zombie sway idle, hr 1.12)
   - santa clause M → `santaclause` (no gender dir) → `Santa_Clause` (throw basic attacks — present toss, Idle_10 sway, hr 1.08)
   - mermaid F → `mermaid/female` → `hot_mermaid_girl` (magic basic attacks, Swim_Idle_Loop, hr 0.95)
-  - NOT FOUND (16 — prompts too creative to guess; need the R2 dashboard
-    file names): female sniper, anubis, robinhood, antperson, necromancer F,
-    succubus, barbarella, king arthur (sprite folder is `king`), mantid,
-    mech, minotaur, mothman, reptilian, nun/priest F (sprite folder is
-    `Homosapien/Female/whitemage`; male sniper's MODEL folder was
-    `marksman/male` though, so gendered model folders may not match sprite
-    folders), robot, cyborg F. Probe scripts: scratchpad probe*.js —
-    folder set derived from sprites.js RACE_PATH_RULES; template
-    `Races/<folder>/Meshy_AI_<prefix ≤21ch>_biped_Character_output.glb`.
+  - The other 16 file names came from the user's R2 dashboard (the Meshy
+    PROMPT is the file name — e.g. "Anubis Egyptian dog" — so they can't be
+    guessed from race names; the CDN has no folder listing, only the
+    dashboard can enumerate). ALL 19 now wired + HEAD-verified (folder →
+    prefix; trailing `_` = real, prompt truncation doubles the underscore
+    before `_biped_`):
+    marksman F → Homosapien/Female/sniper → `female_sniper_beauti` ·
+    anubis → anubis/male → `Anubis_Egyptian_dog_` ·
+    robinhood → robinhood → `archer_robin_hood_r` (castRanged=Archery_Shot_1, bak arrow) ·
+    antperson → antperson/male → `giant_ant_realistic` (claw) ·
+    necromancer F → necromancer/female → `hot_girl_necromancer` (magic) ·
+    succubus F → succubus/female → `hot_seductive_pink_su` (magic) ·
+    barbarella F → barbarella → `hot_space_agent_girl_` (ranged, pistol idle) ·
+    king arthur → king → `king_arthur_king_of_` (Sword_Idle + Sword_Regular_Combo) ·
+    mantid → mantid/male → `mantid_realistic` (claw) ·
+    mech → mech/male → `mecha_mech_battle_m` (ranged, hr 1.5) ·
+    minotaur → minotaur → `minotaur_realistic` (punch, Idle_10) ·
+    mothman → mothman/male → `mothman_cryptid_gian` (magic) ·
+    reptilian → reptilian/male → `reptilian_in_a_busine` (claw) ·
+    priest/nun F → Homosapien/Female/whitemage → `sexy_nun_girl_realis` (magic) ·
+    robot → robot/male → `futuristic_robot_rea` (punch) ·
+    cyborg F → cyborg/female → `hot_girl_futuristic_` (punch).
+    All 19 races starter-unlocked (data.js + server.js; priest/marksman were
+    already listed — their new models flip the 3D-only gate). GLB rig
+    spot-checks (scarecrow/santa/mermaid/mech/nun): 24-joint skins, Hips ✓.
 - **LUNGE RETIRED for rigged-model basic attacks** (three-renderer.js
   _syncCombatAnims): the attack-clip chain now plays INSTEAD of the lunge
   tween — the lunge (+ attack sheet) only fires when no model clip started

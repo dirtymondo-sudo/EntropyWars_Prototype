@@ -8747,6 +8747,22 @@ const ACCT_STARTER_UNITS = [
   'scarecrow',      // Harvester (3D — 2026-07-11 batch, male only)
   'santa clause',   // White Mage (3D — 2026-07-11 batch, male only)
   'mermaid',        // White Mage (3D — 2026-07-11 batch, female only)
+  'anubis',         // Black Mage (3D — 2026-07-11 batch, male only)
+  'robinhood',      // Sniper (3D — archer)
+  'antperson',      // Harvester (3D)
+  'necromancer',    // Black Mage (3D — female only)
+  'succubus',       // Psychic (3D — female only)
+  'barbarella',     // Agent (3D — female only)
+  'king arthur',    // Warrior (3D)
+  'mantid',         // Psychic (3D)
+  'mech',           // Gunslinger (3D — walking tank)
+  'minotaur',       // Raider (3D)
+  'mothman',        // Harbinger (3D)
+  'reptilian',      // Agent (3D)
+  'robot',          // Warrior (3D)
+  'cyborg',         // Raider (3D — female only)
+  // 'priest' + 'marksman' were already starters — their female models
+  // shipping in this same batch is what unlocks them via the 3D-only gate.
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
   // starter. 'marksman'/'priest' above have NO 3D model yet, so the 3D-only
   // gate in isUnitUnlocked() keeps them locked until their models ship —
