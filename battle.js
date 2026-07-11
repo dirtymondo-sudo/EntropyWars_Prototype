@@ -5483,10 +5483,16 @@
             t.hits++;
             t.x = target.x;
             t.y = target.y;
+            // Hits landing inside a heavy cinematic action shot already feed the
+            // corner TOTAL DMG counter — a second floating "N TOTAL!" pop over
+            // the unit would double-report (and out-bid) it. Flag the flurry so
+            // its summary pop is skipped; per-hit numbers still show.
+            if (_acChromeState && _acChromeState.heavy && _acChromeEl
+                && _acChromeEl.classList.contains('active')) t.cine = true;
             if (t.timer) clearTimeout(t.timer);
             t.timer = window.setTimeout(() => {
                 delete _dmgTallies[key];
-                if (t.hits < 2 || state.phase !== 'battle' || state.winner) return;
+                if (t.cine || t.hits < 2 || state.phase !== 'battle' || state.winner) return;
                 showFloatingTextAtTile(t.x, t.y, `${t.total} TOTAL!`, 'total',
                     { durationMs: 1500, jitterX: 0, jitterY: 0 });
             }, 1200);
@@ -7880,16 +7886,20 @@
         // ACTION-CAM CHROME — the 2D dressing over the 3D cinematic action
         // shot: letterbox bars sliding in from the top/bottom, the spell name
         // in big type in the top-left corner, and a running TOTAL DMG readout
-        // under it. While the heavy chrome is live, applyDamageToUnit routes
-        // every damage number into the corner total via _actionCamTallyDamage
-        // instead of popping per-unit floating "-N" text.
+        // under it. While the heavy chrome is live, applyDamageToUnit ALSO
+        // feeds every damage number into the corner total via
+        // _actionCamTallyDamage — the counter rolls up slot-machine style —
+        // while the per-unit floating "-N" pops keep firing (both layers,
+        // classic JRPG). The floating gold "N TOTAL!" flurry summary is
+        // suppressed for these hits (see _tallyDamage) — the corner owns it.
         // One persistent overlay element (pointer-events:none, never blocks),
         // reused by every shot. `heavy` chrome (bars + vignette + damage) is
         // for damaging casts only; the light variant (name only) dresses the
         // self-buff hero shot so support spells stay understated.
         // ═══════════════════════════════════════════════════════════════════
         let _acChromeEl = null;
-        let _acChromeState = null;   // { heavy, total, until, hideTimer }
+        let _acChromeState = null;   // { heavy, total, shown, until, holdUntil, hideTimer, rollRaf }
+        let _acLingerTimer = null;   // linger→fade handoff after the bars leave
 
         function _ensureActionCamChrome() {
             if (_acChromeEl && _acChromeEl.isConnected) return _acChromeEl;
@@ -7915,9 +7925,11 @@
             const el = _ensureActionCamChrome();
             if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
             const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
-            _acChromeState = { heavy: !!opts.heavy, total: 0,
-                until: performance.now() + totalMs + 400, hideTimer: null };
-            el.classList.remove('light', 'hiding', 'finisher');
+            _acChromeState = { heavy: !!opts.heavy, total: 0, shown: 0,
+                until: performance.now() + totalMs + 400, holdUntil: 0,
+                hideTimer: null, rollRaf: null };
+            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
+            el.classList.remove('light', 'hiding', 'finisher', 'linger');
             if (!opts.heavy) el.classList.add('light');
             const nameEl = el.querySelector('.acam-spell-name');
             if (nameEl) {
@@ -7937,11 +7949,41 @@
         }
 
         function hideActionCamChrome() {
-            if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
+            const st = _acChromeState;
+            // Damage bought the readout more screen time (holdUntil pushes out
+            // with every hit) — defer the hide instead of cutting the counter
+            // off mid-roll. Camera shots end on their own clock; the chrome is
+            // allowed to outlive them by a beat.
+            if (st && st.holdUntil && performance.now() < st.holdUntil - 30) {
+                if (st.hideTimer) clearTimeout(st.hideTimer);
+                st.hideTimer = setTimeout(() => hideActionCamChrome(),
+                    Math.max(60, st.holdUntil - performance.now()));
+                return;
+            }
+            if (st?.hideTimer) clearTimeout(st.hideTimer);
+            if (st?.rollRaf) cancelAnimationFrame(st.rollRaf);
             _acChromeState = null;
             if (!_acChromeEl) return;
-            _acChromeEl.classList.remove('active');
-            _acChromeEl.classList.add('hiding');
+            const el = _acChromeEl;
+            // Snap the counter to the true final total before it leaves.
+            if (st && st.total > 0) {
+                const num = el.querySelector('.acam-dmg-num');
+                if (num) num.textContent = st.total.toLocaleString();
+            }
+            el.classList.remove('active');
+            if (st && st.heavy && st.total > 0) {
+                // The bars/vignette slide out but the name + final total LINGER
+                // — the payoff number holds the corner a beat, then fades.
+                el.classList.add('linger');
+                if (_acLingerTimer) clearTimeout(_acLingerTimer);
+                _acLingerTimer = setTimeout(() => {
+                    _acLingerTimer = null;
+                    el.classList.remove('linger');
+                    el.classList.add('hiding');
+                }, 1300);
+            } else {
+                el.classList.add('hiding');
+            }
         }
 
         /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
@@ -7980,24 +8022,59 @@
             return true;
         }
 
-        /* Feed a damage number into the corner TOTAL readout. Returns true when
-           consumed — the caller then skips the floating "-N" text. Only heavy
-           (damaging-cast) chrome eats numbers; buffs/utility never do. */
+        /* Slot-machine roll: chew through the gap between the shown number and
+           the true total a chunk per frame — fast spin off the hit, decelerating
+           into the final figure. Re-arming mid-roll just raises the target; the
+           spin absorbs it. */
+        function _acRollDamageNum() {
+            const st = _acChromeState;
+            if (!st || !_acChromeEl) return;
+            const num = _acChromeEl.querySelector('.acam-dmg-num');
+            if (!num) return;
+            if (st.rollRaf) cancelAnimationFrame(st.rollRaf);
+            const step = () => {
+                if (_acChromeState !== st) return;   // superseded by a new shot
+                const diff = st.total - st.shown;
+                if (diff <= 0) { st.rollRaf = null; return; }
+                st.shown = Math.min(st.total, st.shown + Math.max(1, Math.round(diff * 0.16)));
+                num.textContent = st.shown.toLocaleString();
+                st.rollRaf = requestAnimationFrame(step);
+            };
+            st.rollRaf = requestAnimationFrame(step);
+        }
+
+        /* Feed a damage number into the corner TOTAL readout. The per-unit
+           floating "-N" still pops (caller shows it unconditionally) — this is
+           the running scoreboard on top, not a replacement. Only heavy
+           (damaging-cast) chrome tallies; buffs/utility never do. Every hit
+           extends the readout's life so multi-hit spells never outlive it. */
         function _actionCamTallyDamage(dmg, isCrit) {
-            if (!_acChromeState || !_acChromeState.heavy) return false;
+            const st = _acChromeState;
+            if (!st || !st.heavy) return false;
             if (!(dmg > 0)) return false;
-            if (performance.now() > _acChromeState.until) return false;
+            if (performance.now() > st.until) return false;
             if (!_acChromeEl || !_acChromeEl.classList.contains('active')) return false;
             const row = _acChromeEl.querySelector('.acam-dmg-row');
             const num = _acChromeEl.querySelector('.acam-dmg-num');
             if (!row || !num) return false;
-            _acChromeState.total += dmg;
+            st.total += dmg;
+            // Each hit buys ~2.4s more screen time past the LAST damage tick, so
+            // the counter finishes its roll and holds the payoff instead of
+            // vanishing with the camera (the old "goes away too soon" — late
+            // ticks also fell outside `until` and were silently dropped, which
+            // is why the floating total used to out-bid the corner).
+            const HOLD_MS = 2400;
+            const now = performance.now();
+            st.until = Math.max(st.until, now + HOLD_MS + 400);
+            st.holdUntil = now + HOLD_MS;
+            if (st.hideTimer) clearTimeout(st.hideTimer);
+            st.hideTimer = setTimeout(() => hideActionCamChrome(), HOLD_MS);
             row.classList.add('show');
-            num.textContent = _acChromeState.total.toLocaleString();
             if (isCrit) num.classList.add('crit');
             num.classList.remove('tick');
             void num.offsetWidth;
             num.classList.add('tick');
+            _acRollDamageNum();
             return true;
         }
 
@@ -11390,11 +11467,11 @@
                     _impactFreezeMs = finalDamage >= 80 ? 110 : finalDamage >= 50 ? 85 : 60;
                 }
                 const _popDamageFeedback = () => {
-                    // Cinematic action shot live → the number feeds the corner
-                    // TOTAL DMG readout instead of floating over the unit.
-                    if (!_actionCamTallyDamage(finalDamage, _floatKind === 'critdmg')) {
-                        showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
-                    }
+                    // Cinematic action shot live → the number ALSO rolls into
+                    // the corner TOTAL DMG counter; the floating "-N" over the
+                    // unit still pops either way (both layers, classic JRPG).
+                    _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
