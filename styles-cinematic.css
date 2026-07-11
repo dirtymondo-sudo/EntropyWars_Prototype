@@ -3340,3 +3340,19 @@ body.ewi-cinema #sidebarPanel,
 body.ewi-cinema #scorePanel,
 body.ewi-cinema .battle-top-scoreboard,
 body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
+.ewi-speedlines {
+    position: absolute; inset: -12%; z-index: 3; pointer-events: none; opacity: 0;
+    background: repeating-conic-gradient(from 0deg,
+        rgba(255, 255, 255, 0) 0deg 4deg,
+        rgba(255, 255, 255, .11) 4.5deg 5.5deg,
+        rgba(255, 255, 255, 0) 6deg 10deg);
+    filter: blur(1px);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 34%, #000 78%);
+    mask-image: radial-gradient(circle at 50% 50%, transparent 34%, #000 78%);
+}
+.ewi-speedlines.ewi-speed-on { animation: ewiSpeedBurst .95s ease-out forwards; }
+@keyframes ewiSpeedBurst {
+    0%   { opacity: 0;  transform: scale(1); }
+    18%  { opacity: .8; }
+    100% { opacity: 0;  transform: scale(1.28); }
+}

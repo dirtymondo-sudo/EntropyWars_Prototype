@@ -19092,6 +19092,7 @@
                 '<div class="ewi-bar ewi-bar-top"></div>' +
                 '<div class="ewi-bar ewi-bar-bot"></div>' +
                 '<div class="ewi-flash"></div>' +
+                '<div class="ewi-speedlines"></div>' +
                 '<div class="ewi-title-card"><div class="ewi-title-rule"></div><div class="ewi-title"></div><div class="ewi-sub"></div><div class="ewi-title-rule"></div></div>' +
                 '<div class="ewi-team-tag"></div>' +
                 '<div class="ewi-fight"></div>' +
@@ -19122,6 +19123,7 @@
             function _releaseCamera() {
                 if (camera._cineShotId === sequenceId) {
                     camera._cineShotId = null;
+                    camera._cineShotUnitId = null;
                     camera._cineShotTarget = null;
                     camera._cineKeepSubject = false;
                     camera._preCineView = null;
@@ -19267,6 +19269,17 @@
                     const u0 = (state.units || []).find(u => u.player === teamA && !u.dead);
                     if (u0 && ThreeRenderer.getUnitVisualHeight) unitH = ThreeRenderer.getUnitVisualHeight(u0.id) || unitH;
                 } catch (e) {}
+                const restYaw = (camera._restYaw != null) ? camera._restYaw : 0;
+                const restTilt = (camera._restTilt != null) ? camera._restTilt : 50;
+                const teamUids = (p) => (state.units || []).filter(u => u.player === p && !u.dead).map(u => u.id);
+                /* each beat declares whose faces matter: the occlusion fade
+                   ghosts terrain/props between the camera and every one of
+                   them, and the canopy cutaway follows the row's center unit */
+                const focusTeam = (p) => {
+                    try { if (ThreeRenderer.introCineSetFocus) ThreeRenderer.introCineSetFocus(p ? teamUids(p) : []); } catch (e) {}
+                    const ids = p ? teamUids(p) : [];
+                    camera._cineShotUnitId = ids.length ? ids[Math.floor(ids.length / 2)] : null;
+                };
 
                 try { syncMusicToState(); } catch (e) {}
                 overlay.classList.add('ewi-active');
@@ -19281,6 +19294,7 @@
                     : ts * 0.5;
                 const outA1 = walkable[teamA] ? 1.1 : 0.15, outA2 = walkable[teamA] ? 0.55 : 0.0;
                 const outB1 = walkable[teamB] ? 1.7 : 0.15, outB2 = walkable[teamB] ? 0.9 : 0.0;
+                focusTeam(teamA);
                 shot({ x: A.cx, y: A.cy }, feetLift(A, gA, walkable[teamA]), {
                     x: A.cx + A.ox * outA1 + axA * 0.15, y: A.cy + A.oy * outA1 + ayA * 0.15,
                     zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
@@ -19299,6 +19313,7 @@
                 /* BEAT 2 (2.2–4.0s) — cut: Team B's feet, mid-march */
                 later(() => {
                     dip();
+                    focusTeam(teamB);
                     shot({ x: B.cx, y: B.cy }, feetLift(B, gB, walkable[teamB]), {
                         x: B.cx + B.ox * outB1 - axB * 0.15, y: B.cy + B.oy * outB1 - ayB * 0.15,
                         zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
@@ -19315,6 +19330,7 @@
                 /* BEAT 3 (4.0–6.3s) — skewed medium shot: your party settles into line */
                 later(() => {
                     dip();
+                    focusTeam(teamA);
                     const faceLift = unitH * 0.74;
                     shot({ x: A.cx, y: A.cy }, faceLift, {
                         x: A.cx + A.ox * 0.1 + axA * 0.35, y: A.cy + A.oy * 0.1 + ayA * 0.35,
@@ -19329,38 +19345,59 @@
                     _showTag(teamA);
                 }, 4000);
 
-                /* BEAT 4 (6.3–8.8s) — one unbroken push clean across the map
-                   into the enemy line's faces (the stairs dissolve behind it) */
-                later(() => { try { ThreeRenderer.introCineFadeStairs(1500); } catch (e) {} }, 6000);
+                /* BEAT 4a (6.3–6.75s) — SNAP TURN: the camera holds its ground
+                   beside your line and whips around to face the enemy across
+                   the map. (Orbit trick: refocus on the enemy line with a boom
+                   as long as the map — the eye barely moves, the view spins.) */
+                later(() => { try { ThreeRenderer.introCineFadeStairs(1200); } catch (e) {} }, 5900);
                 later(() => {
                     _hideTag();
+                    focusTeam(teamB);
                     _cineTpsAnchor({ x: B.cx, y: B.cy }, null);
                     camera._tpsHeadLift = unitH * 0.74;
                     camera._cineShotTarget = { x: Math.round(B.cx), y: Math.round(B.cy), id: null };
+                    const farTiles = Math.max(5, Math.hypot(B.cx - A.cx, B.cy - A.cy) + 1.5);
                     _cineBeatMove({
                         x: B.cx + B.ox * 0.1 - axB * 0.3, y: B.cy + B.oy * 0.1 - ayB * 0.3,
-                        zoom: _tpsZoomForBoomTiles(B.len * 0.5 + 1.7), tilt: 86,
+                        zoom: _tpsZoomForBoomTiles(farTiles), tilt: 86,
                         yaw: _yawFor(-B.ox * 1.0 - axB * 0.5, -B.oy * 1.0 - ayB * 0.5),
-                        duration: 2450, easing: 'easeInOut',
+                        duration: 430, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
                 }, 6300);
-                later(() => _showTag(teamB), 8000);
+                /* BEAT 4b (6.85–7.8s) — BLITZ DOLLY: straight shot across the
+                   whole battlefield, slamming to a stop in the enemy's faces */
+                later(() => {
+                    playSfx('teleport');
+                    $ei('ewi-speedlines').classList.add('ewi-speed-on');
+                    _cineBeatMove({
+                        zoom: _tpsZoomForBoomTiles(B.len * 0.5 + 1.7),
+                        duration: 950, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 6850);
+                later(() => $ei('ewi-speedlines').classList.remove('ewi-speed-on'), 8100);
+                later(() => _showTag(teamB), 7900);
 
-                /* BEAT 5 (8.8–11.2s) — hard cut to the sun; the map name slams in */
+                /* BEAT 5 (8.8–11.2s) — hard cut: flat on the map's center
+                   looking STRAIGHT UP at the sky while the map name slams in.
+                   Yaw/zoom already match the tactical view, so the crane-down
+                   is one pure rotation that lands exactly on the rest framing. */
                 later(() => {
                     _hideTag();
                     dip();
-                    let sky = { tilt: 118, yaw: 25 };
-                    try { if (ThreeRenderer.getSkyShot) sky = ThreeRenderer.getSkyShot('solarEclipse'); } catch (e) {}
+                    focusTeam(null);
+                    camera._cineTps = false;
+                    camera._tpsSubject = null;
+                    camera._cineShotTarget = null;
                     const bcx = Math.floor(bw() / 2), bcy = Math.floor(bh() / 2);
-                    shot({ x: bcx, y: bcy }, ts * 0.9, {
+                    _cineHardCut({
                         x: bcx, y: bcy,
-                        zoom: Math.max(0.15, getDefaultZoom() * 0.95),
-                        tilt: sky.tilt, yaw: sky.yaw
-                    }, true);
+                        zoom: getDefaultZoom(),
+                        tilt: 164, yaw: restYaw
+                    });
                     _cineBeatMove({
-                        tilt: sky.tilt + 3,
+                        tilt: 168,
                         duration: 2300, easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
@@ -19370,19 +19407,15 @@
                     playSfx('newRound');
                 }, 9150);
 
-                /* BEAT 6 (11.2–13.0s) — crane down onto the tactical view */
+                /* BEAT 6 (11.2–13.0s) — one clean rotation down out of the sky
+                   onto the tactical view (no pan, no yaw — already home) */
                 later(() => {
                     const tc = $ei('ewi-title-card');
                     tc.classList.remove('ewi-title-in');
                     tc.classList.add('ewi-title-out');
-                    camera._cineTps = false;
-                    camera._tpsSubject = null;
-                    const rt = camera._getBestResetTarget();
                     _cineBeatMove({
-                        x: rt.x, y: rt.y,
+                        tilt: restTilt, yaw: restYaw,
                         zoom: getDefaultZoom(),
-                        tilt: (camera._restTilt != null) ? camera._restTilt : 50,
-                        yaw: (camera._restYaw != null) ? camera._restYaw : 0,
                         duration: 1750, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });

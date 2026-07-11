@@ -1868,7 +1868,11 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var ux = unit.x, uy = unit.y;
 
-        if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+        /* Opening cinematic: flyers are visually GROUNDED for its duration so
+           the low feet/face shots frame them with everyone else (their logical
+           airborne z is untouched — see introCineStart/introCineEnd). */
+        if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
+            && !(_introGroundSet && _introGroundSet.size && _introGroundSet.has(unit.id))) {
             var h = unit.z || 0;
             return h * ts * ELEV_STEP_RATIO;
         }
@@ -10988,6 +10992,15 @@ const ThreeRenderer = (function () {
                 var tUnit = (tgt.id != null) ? _unitById.get(tgt.id) : null;
                 var tp = (tUnit && !tUnit.dead) ? _occUnitPoint(tUnit) : _occTilePoint(tgt.x, tgt.y);
                 if (tp) subs.push(tp);
+            }
+            /* Opening cinematic: keep the WHOLE framed team clear — one ray
+               bundle per unit (introCineSetFocus publishes the current beat's
+               subjects; capped so a big roster can't explode the raycast). */
+            if (_introOccUids && _introOccUids.length) {
+                for (var ii = 0; ii < _introOccUids.length && subs.length < 9; ii++) {
+                    var iu = _unitById.get(_introOccUids[ii]);
+                    if (iu && !iu.dead) { var ip = _occUnitPoint(iu); if (ip) subs.push(ip); }
+                }
             }
         } else if (selUnit) {
             // Normal play: keep just the selected/active unit clear.
@@ -20307,6 +20320,8 @@ const ThreeRenderer = (function () {
     var _introStairMats = [];
     var _introWalkUids = [];
     var _introFadeTimer = null;
+    var _introOccUids = [];          // units the occlusion fade keeps clear this beat
+    var _introGroundSet = new Set(); // flyers visually grounded for the intro
 
     function _introZoneInfo(player) {
         var zone = (state.spawnZones && state.spawnZones[player]) || null;
@@ -20406,6 +20421,13 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = {};
         var walkTeams = opts.walkTeams || [];
+        /* Ground every flyer for the duration (see unitSurfaceY) so the low
+           shots frame the whole roster, and park the spawn-zone dressing —
+           overlays and sanctuary walls sit exactly where the camera needs to
+           see faces. */
+        (state.units || []).forEach(function (u) { if (!u.dead) _introGroundSet.add(u.id); });
+        if (_spawnZoneGroup) _spawnZoneGroup.visible = false;
+        if (_sanctuaryWallGroup) _sanctuaryWallGroup.visible = false;
         _introStairGroup = new THREE.Group();
         _introStairGroup.name = 'introCineStairs';
         for (var w = 0; w < walkTeams.length; w++) {
@@ -20491,6 +20513,10 @@ const ThreeRenderer = (function () {
             _introStairGroup = null;
         }
         _introStairMats = [];
+        _introOccUids = [];
+        _introGroundSet.clear();
+        if (_spawnZoneGroup) _spawnZoneGroup.visible = true;
+        if (_sanctuaryWallGroup) _sanctuaryWallGroup.visible = true;
         for (var i = 0; i < _introWalkUids.length; i++) {
             var uid = _introWalkUids[i];
             var tw = _walkTweens.get(uid);
@@ -20534,6 +20560,7 @@ const ThreeRenderer = (function () {
 
         /* Opening cinematic (battle.js playOpeningCinematic) */
         introCineStart, introCineFadeStairs, introCineEnd,
+        introCineSetFocus: function (uids) { _introOccUids = uids || []; },
 
         startProjectileTween,
 

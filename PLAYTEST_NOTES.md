@@ -4209,12 +4209,24 @@ failure or ineligibility falls back to the classic VS splash unchanged.
    out of the void into its spawn zone (real walk clips via `_walkTweens`).
 2. 2.2–4.0s cut: enemy team's feet mid-march on their own staircase.
 3. 4.0–6.3s skewed medium shot: your party settles into line (team tag lower-third).
-4. 6.3–8.8s one unbroken push across the map into the enemy line's faces
-   (staircases dissolve via `introCineFadeStairs` — they were never map tiles).
-5. 8.8–11.2s hard cut to the sun (`ThreeRenderer.getSkyShot('solarEclipse')`),
-   map title + mode slam in (`_lsMapTitle()` + mp mode label, Cinzel).
-6. 11.2–13.0s crane down onto the tactical rest view → "FIGHT!" slam + flash +
-   `shakeBoard('hard')` → onDone (round banner / first turn as before).
+4. 6.3–7.8s SNAP TURN in place (orbit trick: refocus on the enemy line with a
+   map-length boom so the eye stays put while the view whips 180°), then a
+   950ms BLITZ DOLLY straight across the battlefield into the enemy's face
+   closeups (speed-lines burst + teleport whoosh; staircases dissolved via
+   `introCineFadeStairs` just before the turn).
+5. 8.8–11.2s hard cut: eye flat on the MAP CENTER looking straight up
+   (tilt 164→168, yaw/zoom already = rest framing) — pure sky, no map edges —
+   while the map title + mode slam in (`_lsMapTitle()` + mp mode label, Cinzel).
+6. 11.2–13.0s ONE pure rotation down out of the sky onto the tactical rest
+   view → "FIGHT!" slam + flash + `shakeBoard('hard')` → onDone.
+
+**Visibility during the intro**: per-beat `ThreeRenderer.introCineSetFocus(uids)`
+feeds the WHOLE framed team to the action-cam occlusion fade (terrain/props
+between camera and any of them ghost out; canopy cutaway follows the row's
+center unit via camera._cineShotUnitId). Spawn-zone overlays + sanctuary walls
+are hidden for the duration. FLYERS are visually grounded (unitSurfaceY
+override via _introGroundSet) so low shots frame the whole roster — their
+logical airborne z is untouched and they pop back up when the intro ends.
 
 **Renderer side** (`three-renderer.js` exports): `introCineStart(opts)` builds
 one wide terrain-textured staircase + floating causeway per team off the
