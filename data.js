@@ -10785,10 +10785,6 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
             M.t(pr.cx, pr.cy, D.poolTerrain); M.t(pr.cx + 1, pr.cy, D.poolTerrain);
         }
     }
-    if (rng() < 0.4) {
-        const hr = rooms[ri(rooms.length)];
-        M.t(hr.x0 + 1, hr.y0 + 1, 'healing_spring');
-    }
 
     /* 5) spawn room (first placed) + stairs in the farthest room */
     const spawnRoom = rooms[0];
@@ -10842,6 +10838,50 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     while (spawns2.length < enemyCount) spawns2.push({ x: stairsRoom.cx, y: stairsRoom.cy });
     spawns2.forEach(p => M.clearObj(p.x, p.y));
     M.spawns(spawns1, spawns2);
+
+    /* 7) recovery niches — every floor guarantees ONE healing spring (HP,
+       15%/turn) and ONE crystal vein (MP, 15%/turn) tucked into room corners,
+       the PMD "oasis" beat: end a turn standing on them to recover. Placed
+       LAST so the stairs / spawn stamps above can't overwrite them; corners
+       that collide with those tiles are skipped. */
+    {
+        const reserved = [stairs].concat(spawns1, spawns2);
+        const free = c => isFloorTile(c.x, c.y)
+            && !reserved.some(p => p.x === c.x && p.y === c.y)
+            && !nooks.some(p => p.x === c.x && p.y === c.y);
+        const nooks = [];
+        for (const r of rooms) {
+            const corners = [
+                { x: r.x0 + 1, y: r.y0 + 1 }, { x: r.x1 - 1, y: r.y0 + 1 },
+                { x: r.x0 + 1, y: r.y1 - 1 }, { x: r.x1 - 1, y: r.y1 - 1 },
+            ];
+            for (const c of corners) if (free(c)) nooks.push(c);
+        }
+        /* cramped floor fallback: any free room tile qualifies as a niche */
+        if (nooks.length < 2) {
+            for (const r of rooms) {
+                for (let y = r.y0; y <= r.y1 && nooks.length < 4; y++)
+                    for (let x = r.x0; x <= r.x1 && nooks.length < 4; x++)
+                        if (free({ x, y })) nooks.push({ x, y });
+            }
+        }
+        for (let i = nooks.length - 1; i > 0; i--) { const j = ri(i + 1); [nooks[i], nooks[j]] = [nooks[j], nooks[i]]; }
+        const spring = nooks.pop();
+        if (spring) { M.t(spring.x, spring.y, 'healing_spring'); M.clearObj(spring.x, spring.y); }
+        const vein = nooks.pop();
+        if (vein) {
+            M.t(vein.x, vein.y, 'crystal');
+            M.clearObj(vein.x, vein.y);
+            /* grow the vein one tile when the neighbour is free — reads better */
+            const vx2 = vein.x + 1;
+            if (isFloorTile(vx2, vein.y)
+                && !reserved.some(p => p.x === vx2 && p.y === vein.y)
+                && !(spring && spring.x === vx2 && spring.y === vein.y)) {
+                M.t(vx2, vein.y, 'crystal');
+                M.clearObj(vx2, vein.y);
+            }
+        }
+    }
 
     const entry = M.finish();
     /* stamp the staircase direction: it ascends toward a wall neighbour when

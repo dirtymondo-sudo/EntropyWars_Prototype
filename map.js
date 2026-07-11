@@ -139,7 +139,11 @@
            startMatch's MD hook (battle.js) strips the CPU team and populates
            the hub with the rest of the unlocked roster as NPCs; walking onto
            the cave entrance starts the 10-floor run. */
-        let _mdCharSel = { race: null, gender: null };
+        /* comp: undefined = not decided yet (defaults to the first option),
+           null = deliberately going alone, string = companion race. The
+           companion picker only shows on a FRESH save (roster of 1) — that's
+           your FIRST companion; later allies are recruited by clearing runs. */
+        let _mdCharSel = { race: null, gender: null, comp: undefined };
 
         window._goToMysteryDungeon = function() {
             playSfx('uiButtonConfirm');
@@ -207,8 +211,8 @@
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { bestFloor: 0, clears: 0 };
             let html = '<div class="md-char-intro">Pick who you\'ll take into <b>Agartha Depths</b> — 10 floors, no respawns. '
                 + (pool.length > 1
-                    ? 'Recruited allies hang out at the Guild Hub.'
-                    : 'You start alone — clear the dungeon to recruit allies to the Guild Hub.')
+                    ? 'Recruited allies hang out at the Guild Hub — assemble your party (up to 4) at the cave gate.'
+                    : 'Pick a first companion below — more allies join the Guild Hub each time you clear the dungeon.')
                 + (sv.bestFloor > 0 ? ` &nbsp;·&nbsp; Best depth: <b>Floor ${sv.bestFloor}</b> · Clears: <b>${sv.clears || 0}</b>` : '')
                 + '</div>';
             html += '<div class="md-char-grid">';
@@ -224,6 +228,35 @@
                     + '</div>';
             }
             html += '</div>';
+
+            /* ── First-companion picker (fresh save only) ─────────────────── */
+            const fresh = pool.length === 1;
+            if (fresh) {
+                const compPool = _mdCompanionPool(_mdCharSel.race);
+                if (_mdCharSel.comp !== null && (!_mdCharSel.comp || !compPool.includes(_mdCharSel.comp))) {
+                    _mdCharSel.comp = compPool[0] || null;
+                }
+                html += '<div class="md-char-section">🤝 CHOOSE YOUR FIRST COMPANION — they fight beside you on ⚔ AUTO tactics (switchable in battle)</div>';
+                html += '<div class="md-char-grid md-char-grid-comp">';
+                html += `<div class="md-char-card md-char-card-none${_mdCharSel.comp === null ? ' selected' : ''}" onclick="window._mdCompPick(null)">`
+                    + '<div class="md-char-img md-char-img-none">🚶</div>'
+                    + '<div class="md-char-name">Go Alone</div>'
+                    + '<div class="md-char-job">Hard mode</div>'
+                    + '</div>';
+                for (const rk of compPool) {
+                    const cSel = rk === _mdCharSel.comp;
+                    const cg = (typeof getAvailableGendersForRace === 'function') ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male';
+                    const cImg = _mdCharImgUrl(rk, cg);
+                    const cJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+                    html += `<div class="md-char-card${cSel ? ' selected' : ''}" onclick="window._mdCompPick('${rk.replace(/'/g, "\\'")}')">`
+                        + (cImg ? `<div class="md-char-img" style="background-image:url('${cImg}')"></div>` : '<div class="md-char-img"></div>')
+                        + `<div class="md-char-name">${_mdRaceLabel(rk)}</div>`
+                        + `<div class="md-char-job">${cJob}</div>`
+                        + '</div>';
+                }
+                html += '</div>';
+            }
+
             html += '<div class="md-char-footer">';
             if (genders.length > 1) {
                 html += '<div class="md-char-genders">' + genders.map(g =>
@@ -234,6 +267,25 @@
             html += '</div>';
             body.innerHTML = html;
         }
+
+        /* Races eligible as the starter companion: 3D-ready, not the hero,
+           not already in the MD roster. */
+        function _mdCompanionPool(heroRace) {
+            const races = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
+            const sv = (typeof loadMdSave === 'function') ? loadMdSave() : null;
+            const owned = new Set((sv && sv.unlockedRaces) || []);
+            return races.filter(rk => {
+                if (rk === heroRace || owned.has(rk)) return false;
+                try { if (typeof isRace3DReady === 'function' && !isRace3DReady(rk)) return false; } catch (e) {}
+                return true;
+            });
+        }
+
+        window._mdCompPick = function(rk) {
+            playSfx('uiButtonConfirm');
+            _mdCharSel.comp = rk;   // null = go alone
+            _mdRenderCharSelect();
+        };
 
         window._mdCharPick = function(rk) {
             playSfx('uiButtonConfirm');
@@ -251,6 +303,18 @@
         window._mdCharStart = function() {
             playSfx('uiButtonConfirm');
             if (!_mdCharSel.race) return;
+            /* the chosen first companion joins the MD roster permanently —
+               they hang out at the Guild Hub and join the party by default
+               in the pre-run party select at the cave gate */
+            if (_mdCharSel.comp && _mdCharSel.comp !== _mdCharSel.race) {
+                try {
+                    const sv = loadMdSave();
+                    if (!(sv.unlockedRaces || []).includes(_mdCharSel.comp)) {
+                        sv.unlockedRaces = (sv.unlockedRaces || []).concat([_mdCharSel.comp]);
+                        saveMdSave(sv);
+                    }
+                } catch (e) {}
+            }
             _mdStartHubWithChar(_mdCharSel.race, _mdCharSel.gender || 'male');
         };
 

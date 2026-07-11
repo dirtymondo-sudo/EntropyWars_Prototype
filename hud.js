@@ -797,28 +797,75 @@ function Scoreboard({ st }) {
     const mdAlive = (st.units || []).filter(u => u.player === 2 && !u.dead && !u._dying).length;
     const mdMono = '"DotGothic16", monospace';
     const mdSerif = '"Cinzel", serif';
+
+    /* party in slot order — slot 0 (or the first survivor) is the leader */
+    const mdParty = (st.units || [])
+      .filter(u => u.player === 1 && !u._mdNpc && !u.dead && !u._dying)
+      .sort((a, b) => (parseInt(String(a.id).split('-')[1], 10) || 0) - (parseInt(String(b.id).split('-')[1], 10) || 0));
+    const mdLeader = mdParty[0] || null;
+    const mdStairs = st._mdStairs;
+    const mdOnStairs = !!(mdLeader && mdStairs && mdLeader.x === mdStairs.x && mdLeader.y === mdStairs.y
+      && !st._mdTransitioning && !st._mdEnded);
+
+    const TACTIC_META = {
+      manual: { icon: '🎮', label: 'MANUAL', hint: 'You control this unit. Click to switch to ⚔ Auto.' },
+      auto:   { icon: '⚔', label: 'AUTO',   hint: 'The AI fights for this unit. Click to switch to 🛡 Stay Close.' },
+      guard:  { icon: '🛡', label: 'CLOSE',  hint: 'Auto, but regroups toward the leader. Click to switch to 🎮 Manual.' },
+    };
+
     return h('div', {
       className: 'ew-scoreboard',
       style: {
         position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', alignItems: 'center', gap: 14, zIndex: 10,
-        background: EW.panel, border: '1px solid ' + EW.panelEdge,
-        boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
-        clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, zIndex: 10,
       },
     },
-      h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
-        (mdD ? mdD.label : 'Mystery Dungeon')),
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3 } },
-        h('span', { style: { fontFamily: mdMono, fontSize: 9, letterSpacing: '0.2em', color: EW.inkMute } }, 'FLOOR'),
-        h('span', { style: { fontFamily: mdSerif, fontSize: 24, fontWeight: 600, color: EW.time, lineHeight: 1, textShadow: '0 0 10px ' + EW.time + '55', marginLeft: 4 } },
-          st._mdRun.floor),
-        h('span', { style: { fontFamily: mdMono, fontSize: 12, color: EW.inkMute } }, '/' + mdTotal),
+      h('div', {
+        style: {
+          display: 'flex', alignItems: 'center', gap: 14,
+          background: EW.panel, border: '1px solid ' + EW.panelEdge,
+          boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
+          clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+        },
+      },
+        h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
+          (mdD ? mdD.label : 'Mystery Dungeon')),
+        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3 } },
+          h('span', { style: { fontFamily: mdMono, fontSize: 9, letterSpacing: '0.2em', color: EW.inkMute } }, 'FLOOR'),
+          h('span', { style: { fontFamily: mdSerif, fontSize: 24, fontWeight: 600, color: EW.time, lineHeight: 1, textShadow: '0 0 10px ' + EW.time + '55', marginLeft: 4 } },
+            st._mdRun.floor),
+          h('span', { style: { fontFamily: mdMono, fontSize: 12, color: EW.inkMute } }, '/' + mdTotal),
+        ),
+        h('span', { style: { width: 1, height: 22, background: EW.panelEdge } }),
+        h('span', { style: { fontFamily: mdMono, fontSize: 11, color: mdAlive ? EW.chaos : '#7fdc9a' } },
+          mdAlive ? ('☠ ' + mdAlive + ' foe' + (mdAlive === 1 ? '' : 's')) : '✓ floor clear'),
+        mdOnStairs
+          ? h('button', {
+              className: 'md-descend-btn',
+              title: 'Your leader is on the stairs — descend to the next floor',
+              onClick: () => { if (window._mdConfirmDescend) window._mdConfirmDescend(); },
+            }, '⬇ DESCEND')
+          : h('span', { style: { fontFamily: mdMono, fontSize: 10, color: EW.inkMute } }, '🗝 find the stairs'),
       ),
-      h('span', { style: { width: 1, height: 22, background: EW.panelEdge } }),
-      h('span', { style: { fontFamily: mdMono, fontSize: 11, color: mdAlive ? EW.chaos : '#7fdc9a' } },
-        mdAlive ? ('☠ ' + mdAlive + ' foe' + (mdAlive === 1 ? '' : 's')) : '✓ floor clear'),
-      h('span', { style: { fontFamily: mdMono, fontSize: 10, color: EW.inkMute } }, '🗝 find the stairs'),
+
+      /* tactic chips — one per party member; click cycles Manual → Auto → Stay Close */
+      mdParty.length > 1 && h('div', { style: { display: 'flex', gap: 5, justifyContent: 'center' } },
+        mdParty.map(u => {
+          const t = (typeof window._mdUnitTactic === 'function' && window._mdUnitTactic(u)) || 'manual';
+          const tm = TACTIC_META[t] || TACTIC_META.manual;
+          const isLead = mdLeader && u.id === mdLeader.id;
+          const isActive = st._blitzActiveUnitId === u.id;
+          const nm = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+          return h('button', {
+            key: u.id,
+            className: 'md-tactic-chip' + (t === 'manual' ? ' manual' : '') + (isActive ? ' acting' : ''),
+            title: (isLead ? 'LEADER · ' : '') + tm.hint,
+            onClick: () => { if (window._mdCycleTactic) window._mdCycleTactic(u.id); },
+          },
+            (isLead ? '👑 ' : '') + (nm.length > 10 ? nm.slice(0, 9) + '…' : nm) + ' ' + tm.icon + ' ' + tm.label
+          );
+        }),
+      ),
     );
   }
 

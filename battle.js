@@ -16984,10 +16984,16 @@
                        [{build,name,loadout,meta,hp,mp}] (null on floor 1)
              _mdStairs / _mdEntrance   trigger tiles for the current board
              _mdEnded / _mdTransitioning   re-entrancy guards
-           Flow: hub → step on entrance → _mdStartRun → _mdLoadFloor →
-           startMatch … step on stairs → _mdAdvanceFloor (carry HP/MP,
-           regenerate board, startMatch again) … floor 10 stairs or party
-           wipe → _mdEndRun → overlay → _mdReturnToHub.
+           Flow: hub → step on entrance → _mdOpenPartySelect (uiDialog
+           'mdParty': pick up to 4 delvers + jobs) → _mdStartRun(cfg) →
+           _mdLoadFloor → startMatch … leader steps/JUMPS onto stairs →
+           _mdPromptDescend (uiDialog 'mdStairs', plus the persistent
+           ⬇ DESCEND button in the HUD floor badge) → _mdAdvanceFloor
+           (carry HP/MP, regenerate board, startMatch again) … floor 10
+           stairs or party wipe → _mdEndRun → overlay → _mdReturnToHub.
+           Companions: per-slot tactics in partyMeta[1][i]._mdTactic
+           ('manual' | 'auto' | 'guard', default auto for non-leaders) —
+           _mdUnitAuto routes their turns through the stock unit AI.
            The 'dungeon' ruleset never routes through checkWin's stock
            branches or finalizeMatch — _mdCheckWin owns the outcome.        */
 
@@ -17113,22 +17119,256 @@
             }
         }
 
-        /* Move-completion hook (called next to checkFlagPickup): did a party
-           unit land on the hub entrance or the floor stairs? */
+        /* Move-completion hook (called next to checkFlagPickup, and from
+           doJump's post-jump step so LANDING on the stairs works too): did a
+           party unit land on the hub entrance or the floor stairs? */
         function _mdCheckStairs(unit) {
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
             if (!unit || unit.player !== 1 || unit._mdNpc || unit.dead || unit._dying) return;
             if (state._mdTransitioning || state._mdEnded) return;
             if (state._mdPhase === 'hub') {
                 const ent = state._mdEntrance || [];
-                if (ent.some(p => p.x === unit.x && p.y === unit.y)) _mdStartRun();
+                if (ent.some(p => p.x === unit.x && p.y === unit.y)) _mdOpenPartySelect();
             } else if (state._mdPhase === 'floor') {
                 const s = state._mdStairs;
-                if (s && unit.x === s.x && unit.y === s.y) _mdAdvanceFloor();
+                if (s && unit.x === s.x && unit.y === s.y) {
+                    if (unit.id !== _mdLeaderId()) {
+                        addLog(`🪜 ${unitDisplayName(unit)} found the stairs — bring your LEADER here to descend.`);
+                        return;
+                    }
+                    _mdPromptDescend();
+                }
             }
         }
 
-        function _mdStartRun() {
+        /* ── Leader + per-companion tactics ────────────────────────────────
+           The party leader (lowest living slot — normally the character you
+           picked) is human-controlled; companions default to AUTO tactics so
+           the AI fights for them (PMD-style: you only drive your own unit).
+           Tactic lives on partyMeta[1][slot]._mdTactic, so it survives
+           floor-to-floor unit rebuilds via run.partyState:
+             'manual' 🎮 you control them like any unit
+             'auto'   ⚔ the stock unit AI plays them (default for companions)
+             'guard'  🛡 auto, but regroups toward the leader before fighting */
+        function _mdLeaderUnit() {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return null;
+            const party = state.units.filter(u => u.player === 1 && !u._mdNpc && !u.dead && !u._dying);
+            if (!party.length) return null;
+            party.sort((a, b) =>
+                (parseInt(String(a.id).split('-')[1], 10) || 0) - (parseInt(String(b.id).split('-')[1], 10) || 0));
+            return party[0];
+        }
+        function _mdLeaderId() { const u = _mdLeaderUnit(); return u ? u.id : null; }
+        window._mdLeaderId = _mdLeaderId;
+
+        function _mdUnitTactic(u) {
+            if (!u || u.player !== 1 || u._mdNpc) return null;
+            const idx = parseInt(String(u.id).split('-')[1], 10);
+            const meta = (Number.isFinite(idx) && state.partyMeta[1]) ? state.partyMeta[1][idx] : null;
+            if (meta && meta._mdTactic) return meta._mdTactic;
+            return (u.id === _mdLeaderId()) ? 'manual' : 'auto';
+        }
+        window._mdUnitTactic = _mdUnitTactic;
+
+        /* True when the stock AI should play this player-1 unit's turn. */
+        function _mdUnitAuto(u) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return false;
+            if (!u || u.player !== 1 || u._mdNpc || u.dead) return false;
+            const t = _mdUnitTactic(u);
+            return t === 'auto' || t === 'guard';
+        }
+        function _mdAutoTurnActive() {
+            if (!state._blitzActiveUnitId) return false;
+            const u = state.units.find(x => x.id === state._blitzActiveUnitId);
+            return !!(u && _mdUnitAuto(u));
+        }
+
+        window._mdCycleTactic = function (unitId) {
+            const u = state.units.find(x => x.id === unitId && x.player === 1 && !x._mdNpc && !x.dead);
+            if (!u) return;
+            const idx = parseInt(String(u.id).split('-')[1], 10);
+            if (!Number.isFinite(idx)) return;
+            if (!state.partyMeta[1]) state.partyMeta[1] = [];
+            if (!state.partyMeta[1][idx]) state.partyMeta[1][idx] = {};
+            const order = ['manual', 'auto', 'guard'];
+            const next = order[(order.indexOf(_mdUnitTactic(u)) + 1) % order.length];
+            state.partyMeta[1][idx]._mdTactic = next;
+            const label = next === 'manual' ? '🎮 MANUAL — you control them'
+                : next === 'auto' ? '⚔ AUTO — fights on their own'
+                : '🛡 STAY CLOSE — fights beside the leader';
+            addLog(`📋 ${unitDisplayName(u)} tactics → ${label}`);
+            playSfx('uiCursorMove');
+            /* flipping the ACTIVE unit onto auto hands its turn to the AI now */
+            if (state._blitzActiveUnitId === u.id && _mdUnitAuto(u) && !state.aiThinking
+                && state.phase === 'battle' && !state.winner) {
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                maybeTriggerComputerTurn();
+            }
+            markDirty('hud', 'selectedUnit');
+            renderIfDirty();
+        };
+
+        /* 'guard' tactic pre-step, run before aiTakeTurn: while the companion
+           is far from the leader with no enemy nearby, spend the action
+           walking back toward them (same doMove→finishComputerAction contract
+           as ai.js's own 'move' case). Returns true when it took the action. */
+        function _mdGuardRegroup(unit) {
+            const lead = _mdLeaderUnit();
+            if (!lead || lead.id === unit.id) return false;
+            const d = Math.abs(unit.x - lead.x) + Math.abs(unit.y - lead.y);
+            const enemyNear = state.units.some(e => e.player === 2 && !e.dead && !e._dying
+                && Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 4);
+            if (d <= 3 || enemyNear) return false;
+            let best = null, bestD = d;
+            try {
+                for (const t of getMoveTiles(unit)) {
+                    if (t._jump || t._takeoff) continue;
+                    if (unitAt(t.x, t.y)) continue;
+                    const td = Math.abs(t.x - lead.x) + Math.abs(t.y - lead.y);
+                    if (td < bestD) { bestD = td; best = t; }
+                }
+            } catch (e) {}
+            if (!best) return false;
+            state.actionMode = 'move';
+            const moveResult = doMove(unit, best.x, best.y, best.z);
+            if (moveResult === false || moveResult === 0) { state.actionMode = null; return false; }
+            const animDelay = (typeof moveResult === 'number' && moveResult > 1) ? moveResult : 0;
+            window.setTimeout(() => finishComputerAction(), Math.max(animDelay, 60));
+            return true;
+        }
+
+        /* ── Stairs → next floor: an explicit CHOICE with real buttons ─────
+           Landing the leader on the stairs (walk OR jump) opens a confirm
+           dialog; declining leaves a persistent ⬇ DESCEND button in the
+           floor badge (top of screen) while the leader stands there. */
+        function _mdPromptDescend() {
+            if (state._mdTransitioning || state._mdEnded || !state._mdRun) return;
+            if (state.uiDialog) return;
+            const D = _mdActiveDungeon();
+            state.uiDialog = {
+                type: 'mdStairs',
+                floor: state._mdRun.floor,
+                total: D ? D.floors : 10,
+                last: state._mdRun.floor >= (D ? D.floors : 10),
+            };
+            playSfx('uiCursorFocus');
+            markDirty('dialog');
+            renderIfDirty();
+        }
+        window._mdConfirmDescend = function () {
+            if (state.uiDialog && state.uiDialog.type === 'mdStairs') {
+                state.uiDialog = null;
+                markDirty('dialog');
+                renderIfDirty();
+            }
+            if (state._mdTransitioning || state._mdEnded || !state._mdRun) return;
+            const lead = _mdLeaderUnit();
+            const s = state._mdStairs;
+            if (!lead || !s || lead.x !== s.x || lead.y !== s.y) {
+                addLog('🪜 Your leader must be standing on the stairs to descend.');
+                return;
+            }
+            playSfx('uiButtonConfirm');
+            _mdAdvanceFloor();
+        };
+
+        /* ── Pre-run party select ──────────────────────────────────────────
+           Stepping on the cave gate opens the roster instead of instantly
+           starting the run: pick up to 4 delvers (leader locked in), choose
+           each one's job — the auto-kit builds the matching loadout. */
+        function _mdOpenPartySelect() {
+            if (state.uiDialog || state._mdTransitioning || state._mdEnded) return;
+            _mdStopFreeRoam();
+            try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+            const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { unlockedRaces: [] };
+            const leadMeta = (state.partyMeta[1] && state.partyMeta[1][0]) || {};
+            const leadRace = leadMeta.race || 'homosapien';
+            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            const pool = ((typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [])
+                .filter(rk => (sv.unlockedRaces || []).includes(rk) && rk !== leadRace);
+            state._mdPartySel = {
+                leader: {
+                    race: leadRace,
+                    gender: leadMeta.gender || 'male',
+                    name: (state.partyNames[1] && state.partyNames[1][0]) || _mdRaceLabelB(leadRace),
+                    job: (state.partyBuilds[1] && state.partyBuilds[1][0]) || defJob(leadRace),
+                },
+                options: pool.map((rk, i) => ({
+                    race: rk,
+                    job: defJob(rk),
+                    gender: (typeof getAvailableGendersForRace === 'function')
+                        ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male',
+                    on: i < 3,
+                })),
+            };
+            state.uiDialog = { type: 'mdParty' };
+            playSfx('uiCursorFocus');
+            markDirty('dialog');
+            renderIfDirty();
+        }
+
+        function _mdRaceLabelB(rk) {
+            try {
+                if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label) return RACE_PROFILES[rk].label;
+            } catch (e) {}
+            return String(rk || '').replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        window._mdPartyToggle = function (i) {
+            const sel = state._mdPartySel;
+            if (!sel || !sel.options[i]) return;
+            const picked = sel.options.filter(o => o.on).length;
+            if (!sel.options[i].on && picked >= 3) {
+                addLog('The party is full — 4 delvers max (leader + 3).');
+                playErrorSfx();
+                return;
+            }
+            sel.options[i].on = !sel.options[i].on;
+            playSfx('uiCursorMove');
+            markDirty('dialog');
+            renderIfDirty();
+        };
+        window._mdPartyJob = function (i, job) {
+            const sel = state._mdPartySel;
+            if (!sel || !sel.options[i]) return;
+            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
+            sel.options[i].job = job;
+            playSfx('uiCursorMove');
+        };
+        window._mdPartyLeaderJob = function (job) {
+            const sel = state._mdPartySel;
+            if (!sel) return;
+            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
+            sel.leader.job = job;
+            playSfx('uiCursorMove');
+        };
+        window._mdPartyStart = function () {
+            const sel = state._mdPartySel;
+            if (!sel) return;
+            const cfg = [Object.assign({}, sel.leader)]
+                .concat(sel.options.filter(o => o.on).slice(0, 3).map(o => Object.assign({}, o)));
+            state.uiDialog = null;
+            state._mdPartySel = null;
+            markDirty('dialog');
+            renderIfDirty();
+            playSfx('uiButtonConfirm');
+            _mdStartRun(cfg);
+        };
+        window._mdPartyCancel = function () {
+            state.uiDialog = null;
+            state._mdPartySel = null;
+            markDirty('dialog');
+            renderIfDirty();
+            addLog('🏘 You stay in the Guild Hub. Step onto the cave entrance again when you\'re ready.');
+            /* resume the hub walk — the player is still standing on the gate;
+               stepping off and back on re-opens the roster */
+            setTimeout(_mdStartFreeRoam, 120);
+        };
+
+        function _mdStartRun(partyCfg) {
             const dungeonId = 'agartha_depths';
             const D = (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[dungeonId]) || null;
             if (!D || typeof generateMdFloor !== 'function') { addLog('⛔ The dungeon gate is sealed (dungeon data missing).'); return; }
@@ -17141,6 +17381,20 @@
                 loadouts: (state.loadouts[1] || []).map(l => JSON.parse(JSON.stringify(l || {}))),
                 meta: (state.partyMeta[1] || []).map(m => JSON.parse(JSON.stringify(m || {}))),
             };
+            /* the gate's party-select choice becomes the delving party (slot 0
+               = leader). Auto spell/item kit per job, no surprise accessories —
+               same treatment the solo delver gets at char select. */
+            if (partyCfg && partyCfg.length) {
+                state.partyBuilds[1] = partyCfg.map(c => c.job);
+                state.partyNames[1] = partyCfg.map(c => c.name || _mdRaceLabelB(c.race));
+                state.partyMeta[1] = partyCfg.map(c => ({ race: c.race, gender: c.gender || 'male' }));
+                state.loadouts[1] = partyCfg.map(c => {
+                    const ld = (typeof optimizeLoadoutForClass === 'function')
+                        ? optimizeLoadoutForClass(c.job, c.race) : emptyLoadout();
+                    if (ld) ld.equipment = { accessory1: null, accessory2: null };
+                    return ld;
+                });
+            }
             state._mdRun = {
                 dungeonId,
                 floor: 1,
@@ -19865,6 +20119,9 @@
                 } else if (state._mdRun) {
                     const foes = state.units.filter(u => u.player === 2 && !u.dead).length;
                     addLog(`🗝️ Floor ${state._mdRun.floor} — find the stairs and step onto them! ${foes} enem${foes === 1 ? 'y' : 'ies'} lurk${foes === 1 ? 's' : ''} in the dark. No respawns!`);
+                    addLog('💧 Healing springs restore HP and 💎 crystal veins restore MP — end a turn standing on them.');
+                    const _mdPartyN = state.units.filter(u => u.player === 1 && !u._mdNpc && !u.dead).length;
+                    if (_mdPartyN > 1) addLog('📋 Companions fight on AUTO — tap their chip on the floor badge (top) to switch ⚔ Auto / 🛡 Stay Close / 🎮 Manual.');
                 }
             }
 
@@ -20794,7 +21051,11 @@
                     }
                 }
 
-                if (state.controllers?.[nextUnit.player] === CTRL.AI) {
+                /* Mystery Dungeon: AUTO-tactic companions are player-1 units
+                   driven by the stock unit AI — route them down the AI branch
+                   even though controllers[1] is LOCAL. */
+                if (state.controllers?.[nextUnit.player] === CTRL.AI
+                    || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(nextUnit))) {
 
                     _stopShotClock();
                     if (!state.cameraDisabled && _shouldCameraFollowUnit(nextUnit)) {
@@ -20905,7 +21166,8 @@
             const _shouldAIRun = () => {
                 if (state._blitzActiveUnitId) {
                     const bUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
-                    return bUnit && state.controllers?.[bUnit.player] === CTRL.AI;
+                    return bUnit && (state.controllers?.[bUnit.player] === CTRL.AI
+                        || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(bUnit)));
                 }
                 if (state.controllers?.[state.activePlayer] === CTRL.AI) return true;
                 if (state.squadLeaderMode && state.activePlayer === 1) {
@@ -20939,7 +21201,8 @@
                     state.selectedTool = null;
                     if (state._blitzActiveUnitId) {
                         const stuckUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
-                        if (stuckUnit && state.controllers?.[stuckUnit.player] === CTRL.AI) {
+                        if (stuckUnit && (state.controllers?.[stuckUnit.player] === CTRL.AI
+                            || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(stuckUnit)))) {
                             stuckUnit.ap = 0;
                             endUnitIfDone(stuckUnit);
                         } else {
@@ -22626,12 +22889,19 @@
                 return;
             }
 
-            if (state.controllers?.[unit.player] !== CTRL.AI) {
+            const _mdAuto = typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit);
+            if (state.controllers?.[unit.player] !== CTRL.AI && !_mdAuto) {
                 state.aiThinking = false;
                 clearAiSafetyTimer();
                 return;
             }
             _aiActionGen = _blitzTurnGen;
+
+            /* Mystery Dungeon 'Stay Close' tactic: regroup toward the leader
+               before letting the stock AI fight. */
+            if (_mdAuto && typeof _mdUnitTactic === 'function' && _mdUnitTactic(unit) === 'guard') {
+                try { if (_mdGuardRegroup(unit)) return; } catch (e) { console.error('[MD] guard regroup failed:', e); }
+            }
 
             if (false) {
 
@@ -22991,6 +23261,14 @@
             if (typeof _isDungeonMode === 'function' && _isDungeonMode() && state._mdPhase === 'hub') return;
             const unit = state.units.find(u => u.id === unitId && !u.dead);
             if (!unit || state.phase !== 'battle') return;
+
+            /* Mystery Dungeon: AUTO/GUARD companions can't be taken over by a
+               click — the AI owns their turns. Focus their panel instead
+               (cycle their tactic chip to MANUAL to control them). */
+            if (typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit)) {
+                focusUnitPanel(unitId);
+                return;
+            }
 
             if (state._blitzActiveUnitId && unitId !== state._blitzActiveUnitId) {
 
@@ -24409,6 +24687,10 @@
             if (state.phase !== 'battle' || state.winner) return;
 
             if (state.autoPlayers?.[state.activePlayer]) return;
+
+            /* Mystery Dungeon: while an AUTO companion acts, the board is the
+               AI's — same input freeze as a CPU player's turn. */
+            if (typeof _mdAutoTurnActive === 'function' && _mdAutoTurnActive()) return;
 
             if (state._actionExecuting) { _tryQueueRepeat(getSelectedUnit(), x, y); return; }
 
@@ -26648,6 +26930,9 @@
                     state._enemyActionTargetId = null;
                 }
                 if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
+                /* Jumping IS also arriving: landing on the Mystery Dungeon
+                   stairs (or the hub gate) counts exactly like walking there. */
+                if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
                 checkWin();
                 endUnitIfDone(unit);
                 if (typeof renderAfterMove === 'function') renderAfterMove();

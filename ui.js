@@ -5592,14 +5592,125 @@
             const card = document.getElementById('uiDialogCard');
             if (!overlay || !card) return;
             const dialog = state.uiDialog;
+            /* onclick is (re)assigned per dialog type below; onchange is only
+               used by the Mystery Dungeon party picker — always reset it so a
+               stale handler never leaks into the next dialog. */
+            card.onchange = null;
             if (!dialog) {
                 overlay.classList.add('hidden');
                 overlay.setAttribute('aria-hidden', 'true');
                 card.innerHTML = '';
+                card.onclick = null;
                 return;
             }
             overlay.classList.remove('hidden');
             overlay.setAttribute('aria-hidden', 'false');
+
+            /* ── Mystery Dungeon: stairs confirm ─────────────────────────────
+               A real two-button choice (hover/press feedback via .pickup-btn)
+               instead of a passive banner — this IS a button, click it. */
+            if (dialog.type === 'mdStairs') {
+                const nextFloor = (dialog.floor || 1) + 1;
+                card.innerHTML = `
+          <div class="pickup-dialog">
+            <div class="pickup-icon pickup-icon-text">🪜</div>
+            <div class="pickup-title">${dialog.last ? 'The final stairs!' : 'Stairs found!'}</div>
+            <div class="pickup-flavor">${dialog.last
+                ? 'This staircase leads out of the dungeon. Take it to finish the run victorious!'
+                : `These stairs descend to Floor ${nextFloor} of ${dialog.total}. Your whole party goes down together — HP and MP carry over.`}</div>
+            <div class="pickup-choices">
+              <button class="pickup-btn pickup-btn-take" data-dialog-action="primary">
+                <span class="pickup-btn-icon">⬇</span>
+                <span class="pickup-btn-text">
+                  <strong>${dialog.last ? 'Finish the run' : 'Descend to Floor ' + nextFloor}</strong>
+                  <small>${dialog.last ? 'Claim your reward' : 'Leave this floor behind'}</small>
+                </span>
+              </button>
+              <button class="pickup-btn pickup-btn-leave" data-dialog-action="secondary">
+                <span class="pickup-btn-icon">✕</span>
+                <span class="pickup-btn-text">
+                  <strong>Not yet</strong>
+                  <small>Keep exploring — use the ⬇ DESCEND button up top when ready</small>
+                </span>
+              </button>
+            </div>
+          </div>`;
+                card.onclick = function(e) {
+                    const btn = e.target.closest('[data-dialog-action]');
+                    if (!btn) return;
+                    if (btn.getAttribute('data-dialog-action') === 'primary') handleUiDialogPrimary();
+                    else handleUiDialogSecondary();
+                };
+                return;
+            }
+
+            /* ── Mystery Dungeon: pre-run party / loadout picker ───────────── */
+            if (dialog.type === 'mdParty') {
+                const sel = state._mdPartySel;
+                if (!sel) { state.uiDialog = null; overlay.classList.add('hidden'); card.onclick = null; return; }
+                const jobs = (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
+                const jobOpts = cur => jobs.map(j =>
+                    `<option value="${escapeHtml(j)}"${j === cur ? ' selected' : ''}>${escapeHtml(j)}</option>`).join('');
+                const raceLabel = rk => {
+                    try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[rk] && RACE_PROFILES[rk].label) return RACE_PROFILES[rk].label; } catch (e) {}
+                    return String(rk || '').replace(/\b\w/g, c => c.toUpperCase());
+                };
+                const picked = 1 + sel.options.filter(o => o.on).length;
+                const rows = sel.options.map((o, i) => `
+              <div class="md-party-row${o.on ? ' on' : ''}" data-md-party-toggle="${i}">
+                <span class="md-party-check">${o.on ? '✓' : ''}</span>
+                <span class="md-party-name">${escapeHtml(raceLabel(o.race))}</span>
+                <select class="md-party-job" data-md-party-job="${i}">${jobOpts(o.job)}</select>
+              </div>`).join('');
+                card.innerHTML = `
+          <div class="md-party-dialog">
+            <div class="ui-dialog-kicker">🗝️ Agartha Depths — 10 floors, no respawns</div>
+            <div class="ui-dialog-title">Assemble Your Party</div>
+            <div class="ui-dialog-subtitle">Take up to 4 delvers and pick each one's job (spells &amp; items auto-kit to it).<br>Companions fight on <b>⚔ AUTO</b> — tap their chip on the floor badge in battle to switch tactics.</div>
+            <div class="md-party-list">
+              <div class="md-party-row leader on">
+                <span class="md-party-check">👑</span>
+                <span class="md-party-name">${escapeHtml(sel.leader.name || raceLabel(sel.leader.race))} <small>(you)</small></span>
+                <select class="md-party-job" data-md-party-leader-job="1">${jobOpts(sel.leader.job)}</select>
+              </div>
+              ${rows || '<div class="md-party-empty">No companions in the guild yet — clear floors to recruit allies!</div>'}
+            </div>
+            <div class="md-party-count">${picked} / 4 delvers</div>
+            <div class="pickup-choices">
+              <button class="pickup-btn pickup-btn-take" data-dialog-action="primary">
+                <span class="pickup-btn-icon">🗝</span>
+                <span class="pickup-btn-text"><strong>Enter the Dungeon</strong><small>Floor 1 awaits</small></span>
+              </button>
+              <button class="pickup-btn pickup-btn-leave" data-dialog-action="secondary">
+                <span class="pickup-btn-icon">➜</span>
+                <span class="pickup-btn-text"><strong>Not yet</strong><small>Stay in the Guild Hub</small></span>
+              </button>
+            </div>
+          </div>`;
+                card.onclick = function(e) {
+                    if (e.target.closest('select')) return;   // job dropdowns handle themselves
+                    const tog = e.target.closest('[data-md-party-toggle]');
+                    if (tog) {
+                        if (window._mdPartyToggle) window._mdPartyToggle(parseInt(tog.getAttribute('data-md-party-toggle'), 10));
+                        return;
+                    }
+                    const btn = e.target.closest('[data-dialog-action]');
+                    if (!btn) return;
+                    if (btn.getAttribute('data-dialog-action') === 'primary') handleUiDialogPrimary();
+                    else handleUiDialogSecondary();
+                };
+                card.onchange = function(e) {
+                    const jobSel = e.target.closest('[data-md-party-job]');
+                    if (jobSel) {
+                        if (window._mdPartyJob) window._mdPartyJob(parseInt(jobSel.getAttribute('data-md-party-job'), 10), jobSel.value);
+                        return;
+                    }
+                    if (e.target.closest('[data-md-party-leader-job]')) {
+                        if (window._mdPartyLeaderJob) window._mdPartyLeaderJob(e.target.value);
+                    }
+                };
+                return;
+            }
 
             if (dialog.type === 'pickupDecision') {
                 const unit = state.units.find(u => u.id === dialog.unitId) || null;
@@ -5848,6 +5959,17 @@
         function handleUiDialogPrimary() {
             const dialog = state.uiDialog;
             if (!dialog) return;
+            if (dialog.type === 'mdStairs') {
+                state.uiDialog = null;
+                markDirty('dialog');
+                renderIfDirty();
+                if (window._mdConfirmDescend) window._mdConfirmDescend();
+                return;
+            }
+            if (dialog.type === 'mdParty') {
+                if (window._mdPartyStart) window._mdPartyStart();
+                return;
+            }
             if (dialog.type === 'pickupDecision') {
                 const action = dialog.onConfirm;
                 state.uiDialog = null;
@@ -5864,6 +5986,18 @@
         function handleUiDialogSecondary() {
             const dialog = state.uiDialog;
             if (!dialog) return;
+
+            if (dialog.type === 'mdStairs') {
+                state.uiDialog = null;
+                markDirty('dialog');
+                renderIfDirty();
+                addLog('🪜 You hold your ground. Hit the ⬇ DESCEND button (top of screen) when you\'re ready.');
+                return;
+            }
+            if (dialog.type === 'mdParty') {
+                if (window._mdPartyCancel) window._mdPartyCancel();
+                return;
+            }
 
             if (dialog.type === 'secondaryJobPick') return;
             if (dialog.type === 'pickupDecision') {

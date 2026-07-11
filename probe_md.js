@@ -73,8 +73,15 @@ async function snap(page, name) { try { await page.screenshot({ path: `${SHOTS}/
   let reachedFloor = false;
   for (let i = 0; i < 40; i++) {
     const p = await posOf().catch(() => null);
-    const st = await page.evaluate(() => ({ mdPhase: window.GAME.state._mdPhase, floor: window.GAME.state._mdRun?.floor }));
+    const st = await page.evaluate(() => ({ mdPhase: window.GAME.state._mdPhase, floor: window.GAME.state._mdRun?.floor, dlg: window.GAME.state.uiDialog?.type || null }));
     if (st.mdPhase === 'floor') { reachedFloor = true; break; }
+    // the gate now opens the party-select dialog — confirm it to start the run
+    if (st.dlg === 'mdParty') {
+      console.log('party select opened — confirming');
+      await page.evaluate(() => window._mdPartyStart());
+      await sleep(2500);
+      continue;
+    }
     if (!p) break;
     const dx = target.x - p.x, dy = target.y - p.y;
     if (!dx && !dy) { await sleep(500); continue; }
@@ -118,6 +125,14 @@ async function snap(page, name) { try { await page.screenshot({ path: `${SHOTS}/
     return { ret: G.doMove(u, onto.x, onto.y, onto.z) };
   });
   console.log('stairs move:', JSON.stringify(st1));
+  await sleep(2500);
+  // landing on the stairs now opens a descend-confirm dialog — click through it
+  const stairsDlg = await page.evaluate(() => {
+    const t = window.GAME.state.uiDialog?.type || null;
+    if (t === 'mdStairs' || !t) { window._mdConfirmDescend && window._mdConfirmDescend(); }
+    return t;
+  });
+  console.log('stairs dialog:', stairsDlg);
   await sleep(4500);
   const f2 = await page.evaluate(() => { const st = window.GAME.state; return { floor: st._mdRun?.floor, board: bw() + 'x' + bh(), hp: st.units.filter(u => u.player === 1).map(u => u.hp + '/' + u.maxHp) }; });
   console.log('FLOOR 2:', JSON.stringify(f2));

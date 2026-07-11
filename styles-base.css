@@ -2385,6 +2385,18 @@
         }
         .md-char-name { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; }
         .md-char-job { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+        .md-char-section {
+            font-family: "DotGothic16", monospace; font-size: 10px; letter-spacing: 0.16em;
+            color: var(--muted); text-transform: uppercase;
+            margin: 18px 0 8px; padding-top: 12px;
+            border-top: 1px solid rgba(150,130,190,0.18);
+        }
+        .md-char-grid-comp { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+        .md-char-grid-comp .md-char-img { width: 68px; height: 68px; }
+        .md-char-img-none {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 34px; color: var(--muted);
+        }
         .md-char-footer { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
         .md-char-genders { display: flex; gap: 6px; }
         .md-char-gender {

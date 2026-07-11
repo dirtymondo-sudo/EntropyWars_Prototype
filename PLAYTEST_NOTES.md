@@ -4,6 +4,67 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## MYSTERY DUNGEON round 4: companions + tactics + stairs UX + oasis tiles (2026-07-11) — battle.js, ui.js, hud.js, map.js, data.js, styles-hud.css, styles-base.css, index.html, probe_md.js
+Token `20260711k` → `20260711m`. Full PMD-ification pass:
+- **Stairs are now an explicit CHOICE with real buttons.** Landing the LEADER
+  on the stairs (walk OR jump — `doJump._doPostJump` now calls
+  `_mdCheckStairs`, previously only `completeMoveAlongPath` did) opens
+  uiDialog `mdStairs` (ui.js, pickup-btn styling → hover/press feedback).
+  Declining leaves a persistent pulsing **⬇ DESCEND** button in the HUD floor
+  badge (`.md-descend-btn`, hud.js Scoreboard MD branch) while the leader
+  stands on the tile — that's the re-trigger path since re-prompting needs a
+  fresh move onto the tile. A companion landing there just logs a hint;
+  descent is leader-gated (`_mdLeaderId` = lowest living slot).
+  `window._mdConfirmDescend()` validates leader-on-stairs then
+  `_mdAdvanceFloor()`.
+- **Pre-run party/loadout select.** Stepping on the hub cave gate no longer
+  starts the run instantly: `_mdOpenPartySelect()` (battle.js) stops
+  free-roam, exits pointer lock and opens uiDialog `mdParty` — leader locked
+  (job editable), roster companions toggleable up to 4 total, per-member JOB
+  dropdown (`CLASS_TEMPLATES` keys; `optimizeLoadoutForClass` auto-kit,
+  accessories stripped). Confirm → `_mdStartRun(partyCfg)` (snapshots
+  `_mdHomeParty` BEFORE applying cfg, so the hub restore stays solo). Cancel
+  → free-roam restarts; walk off + back on the gate re-opens it. ESC routes
+  through `handleUiDialogSecondary` (state.js:~5981) → cancel handlers.
+- **First-companion picker (map.js char select).** On a FRESH save (roster
+  of 1) the char-select page grows a second grid: pick ONE companion (3D-ready
+  races via `isRace3DReady`, or the "Go Alone" card). The pick is written to
+  `ew-md-save-v1.unlockedRaces` on start, so the companion loiters in the hub
+  and is default-selected at the gate. `_mdCharSel.comp`: undefined = default
+  to first option, null = deliberately solo.
+- **Per-companion tactics (auto-battle).** `partyMeta[1][slot]._mdTactic` ∈
+  `'manual' | 'auto' | 'guard'` (survives floor rebuilds via
+  `run.partyState.meta`); default = manual for the leader, AUTO for
+  companions. `_mdUnitAuto(u)` (floors only) routes those units through the
+  stock AI: gates added in `_continueBlitzWithUnit_impl` (AI branch),
+  `maybeTriggerComputerTurn._shouldAIRun`, `runComputerTurn` (controller
+  check), the AI-stall safety timer, `clickTile` (input freeze during their
+  turns, mirrors the autoPlayers gate) and `selectUnit` (click = focus panel
+  only, like the squadLeader gate). `'guard'` = `_mdGuardRegroup`: >3 tiles
+  from the leader with no enemy within 4 → walks the reachable tile nearest
+  the leader (same doMove→finishComputerAction contract as ai.js 'move'),
+  else falls through to `aiTakeTurn`. **Tactic chips** live under the floor
+  badge (hud.js, `.md-tactic-chip`): 👑 leader marker, click cycles
+  Manual→Auto→Stay Close (`window._mdCycleTactic`; flipping the ACTIVE unit
+  to auto hands its turn to the AI immediately). Leader dies → leadership
+  (and manual-by-default) passes to the next living slot.
+- **Oasis tiles guaranteed.** `generateMdFloor` step 7 (data.js, placed AFTER
+  spawns/stairs so nothing overwrites them): every floor gets ≥1
+  `healing_spring` (15% HP/turn, terrain rule already existed) and ≥1–2
+  `crystal` tiles (15% MP/turn) in room corners, with a free-room-tile
+  fallback for cramped floors. Validated headless: 240 seed/floor/party
+  combos — 0 unreachable stairs/enemies, 0 floors missing spring or crystal
+  (scratchpad test_mdgen.js; grid stores MF_TID codes — crystal=15,
+  healing_spring=18, floors are heightMap===3).
+- **probe_md.js updated** for the new flow: confirms the `mdParty` dialog at
+  the gate and clicks through `mdStairs` after the stairs move.
+- GOTCHA: uiDialogCard handlers — `card.onclick` is reassigned per dialog
+  type but `card.onchange` (used only by mdParty's job dropdowns) is reset at
+  the top of `renderUiDialog` so it can't leak across dialog types.
+- NOT done (candidates next): items/chests on floors, hunger/food, thrown
+  items, multiple dungeons (registry supports it), mid-run save/resume,
+  companion recruit-on-floor encounters.
+
 ## CAMERA PASS: isometric default + sky-gaze lift + kill-cam pull-back + EOR glide (2026-07-11) — three-camera.js, battle.js, state.js, index.html
 Token `20260711i` → `20260711j`.
 - **New default tactical framing**: `DEFAULT_BOARD_TILT` 50 → **40** (more
