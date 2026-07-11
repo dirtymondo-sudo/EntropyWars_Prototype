@@ -8744,6 +8744,9 @@ const ACCT_STARTER_UNITS = [
   'nordic',         // Harbinger (3D — nordic alien male)
   'annunaki',       // Sniper (3D — Sumerian god)
   'demon',          // Black Mage (3D — red demon, male only)
+  'scarecrow',      // Harvester (3D — 2026-07-11 batch, male only)
+  'santa clause',   // White Mage (3D — 2026-07-11 batch, male only)
+  'mermaid',        // White Mage (3D — 2026-07-11 batch, female only)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
   // starter. 'marksman'/'priest' above have NO 3D model yet, so the 3D-only
   // gate in isUnitUnlocked() keeps them locked until their models ship —

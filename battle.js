@@ -5146,9 +5146,17 @@
             // (castMelee vs castRanged — see sprites.js animation role guide).
             // kindOverride forces a specific clip family instead — 'chop' for
             // tree felling / dig-tool ops (castChop, the UAL2 axe loop).
+            // 2026-07-11d: a character's 3D def can claim a flavor for its
+            // basic attacks (basicAttackKind: 'magic'/'arrow'/'punch'/'claw'/
+            // 'throw'…) — casters zap instead of sword-slashing, Santa lobs a
+            // present. Explicit kindOverride ('chop') still wins.
             if (!state._attackAnimKind) state._attackAnimKind = {};
-            state._attackAnimKind[unit.id] = kindOverride ||
-                ((Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee');
+            let _atkKind = (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
+            if (!kindOverride && typeof getRace3DModel === 'function') {
+                const _def3d = getRace3DModel(unit.race, unit.gender);
+                if (_def3d && _def3d.basicAttackKind) _atkKind = _def3d.basicAttackKind;
+            }
+            state._attackAnimKind[unit.id] = kindOverride || _atkKind;
             state.attackAnimIds.add(unit.id);
             if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
             if (!_v2) scheduleBoardRender();
@@ -5159,6 +5167,18 @@
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
             }, 350);
+        }
+
+        // 2026-07-11d: true when this unit renders as a rigged 3D model, so
+        // its basic attacks play a character-appropriate clip IN PLACE
+        // (triggerAttackAnim → castMelee/castRanged or def.basicAttackKind)
+        // and the legacy lunge/strike-leap motions are retired for it.
+        // Sprite-rendered units (no model / 2D board / kill-switch) keep the
+        // classic leap.
+        function _unitAttacksWithClip(unit) {
+            if (!unit) return false;
+            if (!(window.ThreeAnim && window.ThreeAnim.isActive())) return false;
+            return !!(typeof getRace3DModel === 'function' && getRace3DModel(unit.race, unit.gender));
         }
 
         function triggerCastAnim(unit, spell) {
@@ -27073,7 +27093,8 @@
             const tw = towerAt(x, y);
             if (tw && !target && tw.owner !== unit.player) {
                 pushUndoSnapshot(true);
-                animateStrikeLeap(unit, x, y);
+                if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                else animateStrikeLeap(unit, x, y);
                 let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
 
                 damage = Math.max(1, damage - (tw.def || 0));
@@ -27159,7 +27180,8 @@
                 const enemyMirror = state.mirrors.find(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
                 if (enemyMirror) {
                     pushUndoSnapshot(true);
-                    animateStrikeLeap(unit, x, y);
+                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                    else animateStrikeLeap(unit, x, y);
                     damageMirrorAt(x, y, unit);
                     playSfx('damage');
                     spendAP(unit, AP_COST_ACTION);
@@ -27179,7 +27201,8 @@
                 const enemyTurret = state.turrets.find(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
                 if (enemyTurret) {
                     pushUndoSnapshot(true);
-                    animateStrikeLeap(unit, x, y);
+                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                    else animateStrikeLeap(unit, x, y);
                     let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
                     damageTurretAt(x, y, damage, unit);
                     playSfx('damage');
@@ -27207,7 +27230,8 @@
                 if (dObjIdx >= 0) {
                     const dObj = state._deployedObjects[dObjIdx];
                     pushUndoSnapshot(true);
-                    animateStrikeLeap(unit, x, y);
+                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                    else animateStrikeLeap(unit, x, y);
 
                     if (dObj.detonateOnAttack && dObj.blastRadius > 0) {
                         detonateDeployedObject(dObj, unit);
@@ -27237,7 +27261,8 @@
                     const seed = state.plantedSeeds[seedIdx];
                     const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech';
                     pushUndoSnapshot(true);
-                    animateStrikeLeap(unit, x, y);
+                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                    else animateStrikeLeap(unit, x, y);
                     state.plantedSeeds.splice(seedIdx, 1);
                     addLog(`${unitDisplayName(unit)} destroys a ${seedName} Seed at ${coordLabel(x, y)}!`);
                     showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
@@ -27259,8 +27284,8 @@
                 pushUndoSnapshot(true);
                 _ensureTreeState();
                 const wasPlanted = state.plantedTrees.some(t => t.x === x && t.y === y);
-                animateStrikeLeap(unit, x, y);
-                triggerAttackAnim(unit, x, y, 'chop');   // rigged models swing the axe
+                if (!_unitAttacksWithClip(unit)) animateStrikeLeap(unit, x, y);
+                triggerAttackAnim(unit, x, y, 'chop');   // rigged models swing the axe (no leap)
                 _fellTreeAt(x, y, unit);
                 // Only Harvesters can spend lumber (Timber Strike), so only they
                 // see the running lumber tally; for everyone else it's just clearing
@@ -27393,7 +27418,11 @@
             if (_isMeleeStrike) {
 
                 window.setTimeout(() => {
-                    animateStrikeLeap(unit, target.x, target.y);
+                    // 2026-07-11d: rigged models play their basic-attack clip
+                    // in place (punch/slash/claw/zap per basicAttackKind);
+                    // the strike leap survives only for sprite units.
+                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, target.x, target.y);
+                    else animateStrikeLeap(unit, target.x, target.y);
                     playSfx('basicAttack');
                 }, projectileDelay);
             } else {
@@ -27484,7 +27513,7 @@
                         const _echoDmg = Math.max(12, Math.floor(damage * 0.5));
                         window.setTimeout(() => {
                             if (state.winner || _echoTarget.dead || _echoTarget._dying || unit.dead) return;
-                            if (_isMeleeStrike) animateStrikeLeap(unit, _echoTarget.x, _echoTarget.y);
+                            if (_isMeleeStrike && !_unitAttacksWithClip(unit)) animateStrikeLeap(unit, _echoTarget.x, _echoTarget.y);
                             else triggerAttackAnim(unit, _echoTarget.x, _echoTarget.y);
                             playSfx('basicAttack');
                             showFloatingTextForUnit(unit, 'ECHO!', 'counter', { durationMs: 900 });

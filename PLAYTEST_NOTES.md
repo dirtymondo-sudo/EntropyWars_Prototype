@@ -1799,6 +1799,49 @@ verify visually after upload) — syntax-checked only.
   (430ms) AFTER its `eorFocusCamera` dive lands, so the floating damage /
   wiggle / sfx play on-screen instead of mid-pan.
 
+## 3D batch wave + basic-attack animations (2026-07-11d)
+- **User uploaded 19 new Character_output models** to the races' R2 sprite
+  folders. NO bucket listing exists, so prefixes were HEAD-probe swept
+  (~380k URLs across 7 sweeps). FOUND + WIRED (+ starter-unlocked in
+  data.js/server.js ACCT_STARTER_UNITS):
+  - scarecrow M → `scarecrow/male` → `scarecrow` (claw basic attacks, zombie sway idle, hr 1.12)
+  - santa clause M → `santaclause` (no gender dir) → `Santa_Clause` (throw basic attacks — present toss, Idle_10 sway, hr 1.08)
+  - mermaid F → `mermaid/female` → `hot_mermaid_girl` (magic basic attacks, Swim_Idle_Loop, hr 0.95)
+  - NOT FOUND (16 — prompts too creative to guess; need the R2 dashboard
+    file names): female sniper, anubis, robinhood, antperson, necromancer F,
+    succubus, barbarella, king arthur (sprite folder is `king`), mantid,
+    mech, minotaur, mothman, reptilian, nun/priest F (sprite folder is
+    `Homosapien/Female/whitemage`; male sniper's MODEL folder was
+    `marksman/male` though, so gendered model folders may not match sprite
+    folders), robot, cyborg F. Probe scripts: scratchpad probe*.js —
+    folder set derived from sprites.js RACE_PATH_RULES; template
+    `Races/<folder>/Meshy_AI_<prefix ≤21ch>_biped_Character_output.glb`.
+- **LUNGE RETIRED for rigged-model basic attacks** (three-renderer.js
+  _syncCombatAnims): the attack-clip chain now plays INSTEAD of the lunge
+  tween — the lunge (+ attack sheet) only fires when no model clip started
+  (sprite units / load failures). Sprite units keep the old look.
+- **Per-character basic-attack flavor**: new def opt `basicAttackKind`
+  ('magic'|'arrow'|'punch'|'claw'|'throw'|'ranged'|'melee') read by
+  battle.js triggerAttackAnim (kindOverride 'chop' still wins; reach>1 →
+  'ranged' / else 'melee' stays the default). Renderer chains: magic→
+  [castMagic,cast] · arrow→[castArrow,castRanged,cast] · punch→[castPunch,
+  castMelee,cast] · claw→[castClaw,castMelee,cast] · throw→[castThrow,
+  castRanged,cast]. Tagged: casters zap (fortune teller M+F, telepath M+F,
+  wizard, shaman, fairy, grey, machine elves, atlantean, mermaid), demon/
+  vampire/scarecrow claw, quarterback/santa throw.
+- **New UAL_SLOTS**: castPunch = UAL1 Punch_Cross @1.2 (punch/jab/uppercut/
+  fist spells — Robo Punch, Hydraulic Punch, Dragon Fist…), castClaw = UAL2
+  Zombie_Scratch @1.5 (claw/scratch/bite/fang/talon/maul/pounce — Demonic
+  Claw, Venom Fang, Ninefold Scratch, Pounce…). classifySpellAnimKind kinds
+  'punch' + 'claw' (checked after 'kick', before the damaging split; 'hook'
+  deliberately excluded — Harvest Hook is a pull). 'stomp' added to the
+  'slam' kind (Tremor/Cataclysm Stomp → Charged_Ground_Slam).
+- Offline validation: sprites.js loaded in a node vm — classify cases pass,
+  new defs carry basicAttackKind/lib slots, isRace3DReady true for all 3;
+  all edited files node --check clean. No in-browser run (RULE #1c).
+- No portraits on R2 yet for scarecrow/santaclause/mermaid (HEAD 404) —
+  map-sprite fallback shows in HUD panels until 128×128 portrait.png ships.
+
 ## MAL library — Meshy clips as a shared library + male sniper (2026-07-11)
 - **`Assets/Models/MAL1_Sniper.glb` (lib index 2)**: the user uploaded 20
   Meshy animations exported from ONE character (the male sniper,

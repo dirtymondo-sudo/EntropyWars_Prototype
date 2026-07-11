@@ -13604,23 +13604,34 @@ const ThreeRenderer = (function () {
         if (state.attackAnimIds) {
             for (var uid of state.attackAnimIds) {
                 if (!_prevAttackIds.has(uid) && !_lungeTweens.has(uid)) {
-                    var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
-                    if (dir && !_ewAnimsOff()) {
-                        _lungeTweens.set(uid, {
-                            dx: dir.dx * LUNGE_DIST,
-                            dz: dir.dy * LUNGE_DIST,
-                            startTime: _animNow(),
-                            durationMs: LUNGE_MS
-                        });
-                    }
-                    // Rigged model units play a cast-variant clip for attacks
-                    // (melee vs ranged, tagged by battle.js triggerAttackAnim);
-                    // sprite races play the attack sheet on top of the lunge.
+                    // Rigged model units play a character-appropriate attack
+                    // clip (kind tagged by battle.js triggerAttackAnim —
+                    // melee/ranged by reach, or the def's basicAttackKind:
+                    // casters zap, archers loose, brawlers punch, beasts
+                    // claw, Santa lobs). 2026-07-11d: the legacy lunge tween
+                    // is RETIRED for model units — the clip owns the strike;
+                    // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = (_ak === 'ranged') ? ['castRanged', 'cast']
-                        : (_ak === 'chop') ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
+                        : (_ak === 'chop')  ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
+                        : (_ak === 'magic') ? ['castMagic', 'cast']
+                        : (_ak === 'arrow') ? ['castArrow', 'castRanged', 'cast']
+                        : (_ak === 'punch') ? ['castPunch', 'castMelee', 'cast']
+                        : (_ak === 'claw')  ? ['castClaw', 'castMelee', 'cast']
+                        : (_ak === 'throw') ? ['castThrow', 'castRanged', 'cast']
                         : ['castMelee', 'cast'];
-                    if (!_maybeStartModelAnim(uid, _atkChain)) _maybeStartSpriteAnim(uid, 'attack');
+                    if (!_maybeStartModelAnim(uid, _atkChain)) {
+                        var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
+                        if (dir && !_ewAnimsOff()) {
+                            _lungeTweens.set(uid, {
+                                dx: dir.dx * LUNGE_DIST,
+                                dz: dir.dy * LUNGE_DIST,
+                                startTime: _animNow(),
+                                durationMs: LUNGE_MS
+                            });
+                        }
+                        _maybeStartSpriteAnim(uid, 'attack');
+                    }
                 }
             }
             _prevAttackIds = new Set(state.attackAnimIds);
@@ -13648,6 +13659,8 @@ const ThreeRenderer = (function () {
                         (_ck === 'slam')    ? ['castSlam', 'castAOE', 'castMelee', 'cast'] :
                         (_ck === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
                         (_ck === 'kick')    ? ['castKick', 'castMelee', 'cast'] :
+                        (_ck === 'punch')   ? ['castPunch', 'castMelee', 'cast'] :
+                        (_ck === 'claw')    ? ['castClaw', 'castMelee', 'cast'] :
                         (_ck === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
                         (_ck === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
                         (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];

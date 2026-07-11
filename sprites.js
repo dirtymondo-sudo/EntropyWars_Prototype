@@ -484,6 +484,15 @@ function getRaceSpriteAnimations(race, gender) {
 // Which slot plays for a given spell is decided by classifySpellAnimKind()
 // below (called from battle.js triggerCastAnim). Missing slots fall back
 // per-chain, ultimately to `cast`, then to the plain lunge/glow tween.
+//
+// BASIC ATTACKS (2026-07-11d): rigged models play their attack clip INSTEAD
+// of the legacy lunge tween (the lunge only survives as the sprite/fallback
+// path — see _syncCombatAnims). The clip family defaults to castMelee
+// (adjacent) / castRanged (reach > 1), but a def can claim a character-
+// appropriate flavor with `basicAttackKind: 'magic' | 'arrow' | 'punch' |
+// 'claw' | 'throw' | 'ranged' | 'melee'` — casters zap, archers loose,
+// brawlers punch, beasts rake, Santa lobs a present. battle.js
+// triggerAttackAnim reads it off the unit's 3D def ('chop' overrides win).
 // ─────────────────────────────────────────────────────────────────────────
 
 // Spell/ability → animation category. Returns 'magic' | 'support' |
@@ -501,8 +510,9 @@ function classifySpellAnimKind(spell) {
   // Fixing_Kneeling via castTrap). Runes (warpRune…) intentionally DON'T
   // match — they stay magic-cast flavored.
   if (/trap|snare|\bmine\b|contraption|deploy|sentry/.test(text)) return 'deploy';
-  // Ramparts and every "…Slam" — two-hand charged ground slam.
-  if (/rampart|slam\b|slan\b/.test(text)) return 'slam';   // raceChassisSlan typo is real
+  // Ramparts, every "…Slam" and stomps (Tremor/Cataclysm Stomp) — two-hand
+  // charged ground slam.
+  if (/rampart|slam\b|slan\b|stomp/.test(text)) return 'slam';   // raceChassisSlan typo is real
   // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
   // plant — the animation library's Farm_PlantSeed via the castPlant slot.
   if (/seed|sapling|sprout|plant(?!ation)/.test(text)) return 'plant';
@@ -513,6 +523,13 @@ function classifySpellAnimKind(spell) {
   if (/arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
+  // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
+  // whatever the damage type ("Rocket Fist", "Hydraulic Punch", "Robo Punch",
+  // "Dragon Fist"…). 'hook' deliberately excluded (Harvest Hook is a pull).
+  if (/punch|\bjab\b|uppercut|fist|knuckle|pummel|haymaker/.test(text)) return 'punch';
+  // Claws / bites / scratches (UAL2 Zombie_Scratch rake) — bestial strikes
+  // ("Demonic Claw", "Venom Fang", "Ninefold Scratch", "Pounce", bites…).
+  if (/claw|scratch|\bbite\b|fang|talon|maul|pounce/.test(text)) return 'claw';
   const damaging = !!(spell.type === 'damage' || spell.dmg ||
       (Array.isArray(spell.hitDamages) && spell.hitDamages.length));
   if (!damaging) {
@@ -625,6 +642,13 @@ const UAL_SLOTS = {
   // and keeps only the flailing rotations.
   hitHeavy:    { clip: 'Face_Punch_Reaction',    lib: 2, ts: 3.3  },
   fall:        { clip: 'Fall3',                  lib: 2, ts: 1.2, pinHips: true },
+  // 2026-07-11d: castPunch Punch_Cross (UAL1) 1.0s (→0.83s jab-cross) —
+  // punch/fist/uppercut spells + 'punch'-flavored basic attacks · castClaw
+  // Zombie_Scratch (UAL2) 1.3s (→0.87s rake) — claw/bite/scratch spells +
+  // bestial basic attacks (kinds 'punch'/'claw' via classifySpellAnimKind /
+  // def.basicAttackKind).
+  castPunch:   { clip: 'Punch_Cross',            lib: 0, ts: 1.2  },
+  castClaw:    { clip: 'Zombie_Scratch',         lib: 1, ts: 1.5  },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
@@ -719,11 +743,11 @@ const RACE_MODELS_3D = {
     male: _mk3d('Homosapien/Male/harbinger', 'male_fortune_teller', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 1.0 }),
+    }, { heightRatio: 1.0, basicAttackKind: 'magic' }),
     female: _mk3d('Homosapien/Female/harbinger', 'hot_attractive_fortun', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 0.95 }),
+    }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
   },
   'men in black': {
     female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
@@ -754,6 +778,7 @@ const RACE_MODELS_3D = {
       libClips: _UAL_CLIPS,
       libTimeScales: _UAL_TS,
       heightRatio: 0.95,    // female human, a touch shorter than the anchor
+      basicAttackKind: 'magic',   // psychic — basic attacks zap, never sword-slash
       yawOffset: 0,
       moveTimeScale: 1.3,   // Running 0.67s
       castTimeScale: 2.2,
@@ -767,7 +792,7 @@ const RACE_MODELS_3D = {
     male: _mk3d('Homosapien/Male/psychic', 'male_psychic_trench_', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 1.0 }),   // adult human male, at the anchor height
+    }, { heightRatio: 1.0, basicAttackKind: 'magic' }),   // adult human male, at the anchor height
   },
   // Female Black Mage (Witch).
   'wizard': {
@@ -775,7 +800,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_9', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast',
-    }, { heightRatio: 0.94 }),
+    }, { heightRatio: 0.94, basicAttackKind: 'magic' }),
   },
   // Female Shaman (Harvester) — "beautiful_attractive_" (note the doubled
   // underscore in her file stem …_attractive__biped_… → the _mk3d prefix keeps a
@@ -786,7 +811,7 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/harvester', 'beautiful_attractive_', {
       idle: 'Idle_7', walk: 'Running', hit: 'Hit_Reaction',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
-    }, { heightRatio: 0.94 }),   // human female, a touch shorter than the anchor
+    }, { heightRatio: 0.94, basicAttackKind: 'magic' }),   // human female, a touch shorter than the anchor
   },
   // Engineers (Mad Scientist) — their "gun" cast is the ray-gun quick-draw.
   'mad scientist': {
@@ -869,7 +894,8 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castRanged: 'Cowboy_Quick_Draw_Shooting',
       // spare on R2: Walking, Knock_Down
-    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 0.72 }),   // small clockwork elf
+    }, { castTimeScales: { castRanged: 5.0 }, heightRatio: 0.72,
+         basicAttackKind: 'magic' }),   // small clockwork elf — psychedelic zaps, not sword swings
   },
   // Nordic (Warrior, support) — "nordic_alien_male". His only action export
   // is the quick-draw, wired to castRanged ONLY so melee swings keep the
@@ -903,6 +929,7 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       // spare on R2: Walking, Knock_Down
     }, { heightRatio: 1.18,      // hulking horned demon
+         basicAttackKind: 'claw',   // basic attacks rake with talons (castClaw)
          lib: { castMelee: { clip: 'Sword_Heavy_Combo', lib: 1, ts: 3.5 } } }),
   },
   // Half-Demon (Assassin, melee) — "hot_attractive_rich_f". No magic exports;
@@ -922,7 +949,7 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast',
       // spare emotes on R2: Mirror_Viewing, Wave_for_Help_1 (future victory/emote slots)
-    }, { heightRatio: 0.6 }),   // tiny winged sprite
+    }, { heightRatio: 0.6, basicAttackKind: 'magic' }),   // tiny winged sprite
   },
   'bigfoot': {
     male: _mk3d('bigfoot/male', 'bigfoot', {
@@ -949,7 +976,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_10', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       // spare on R2: Idle_15 (alt idle)
-    }, { heightRatio: 0.78 }),   // short classic grey alien
+    }, { heightRatio: 0.78, basicAttackKind: 'magic' }),   // short classic grey alien
   },
   // Quarterback — Right_Hand_Sword_Slash doubles as his throwing motion
   // (footballs classify as 'throw'); Face_Punch_Reaction is the hit flinch.
@@ -959,6 +986,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       cast: 'Right_Hand_Sword_Slash', castThrow: 'Right_Hand_Sword_Slash',
     }, { castTimeScale: 2.2, heightRatio: 1.1,      // big athlete + pads
+         basicAttackKind: 'throw',  // he just throws — footballs ARE his basic attack
          lib: { idle: { clip: 'Idle_10', lib: 2 } } }),                // brawler sway
   },
   // Female Atlantean — Swim_Idle as her resting loop (aquatic flavor).
@@ -967,6 +995,7 @@ const RACE_MODELS_3D = {
       idle: 'Swim_Idle', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 0.98,      // statuesque sea-dweller
+         basicAttackKind: 'magic',  // tide-caller — basic attacks surge, no blades
          lib: { idle: { clip: 'Swim_Idle_Loop' } } }),
   },
   // Werewolf NIGHT form (the beast). The DAY form is the Homosapien Freelancer
@@ -1014,12 +1043,10 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast_1',
     }, { heightRatio: 0.97,      // tall, elegant
+         basicAttackKind: 'claw',   // fangs and nails, never a sword
          lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 },
                 castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
   },
-  // Still missing from R2 (prefix unknown — need the Character_output file
-  // name per folder to wire): male pirate.
-
   // ── Sniper (marksman) — 2026-07-11. The male sniper IS the MAL library's
   // source character (MAL1_Sniper.glb was consolidated from his 20 clip
   // exports in Assets/Models/), so his model is his Idle_5 _withSkin export
@@ -1032,6 +1059,42 @@ const RACE_MODELS_3D = {
       heightRatio: 1.02,     // long-coat rifleman, a hair over the anchor
     }),
   },
+
+  // ── 2026-07-11d wave (user batch upload — HEAD-verified on R2) ────────────
+  // Scarecrow (Harvester, support) — creepy field guardian: zombie sway idle,
+  // raking claws for basic attacks (castClaw).
+  'scarecrow': {
+    male: _mkUAL('scarecrow/male', 'scarecrow', {
+      heightRatio: 1.12,          // lanky, on a frame
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+             castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
+    }),
+  },
+  // Santa Clause (White Mage, support) — jolly gift-lobber: the basic attack
+  // is an overhand present toss (castThrow); staff waves cover the support kit.
+  'santa clause': {
+    male: _mkUAL('santaclause', 'Santa_Clause', {
+      heightRatio: 1.08,          // big-bellied but human-scale
+      basicAttackKind: 'throw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // broad jolly sway
+    }),
+  },
+  // Mermaid (White Mage, healer) — aquatic: swim-idle like the atlantean;
+  // magic surges for basic attacks (no weapon on a tail).
+  'mermaid': {
+    female: _mkUAL('mermaid/female', 'hot_mermaid_girl', {
+      heightRatio: 0.95,
+      basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 1 } },
+    }),
+  },
+  // Still missing from R2 (Character_output prefix unknown — HEAD-probe
+  // sweeps 2026-07-11d found nothing; need the R2 dashboard file names to
+  // wire): female sniper (marksman), anubis M, robinhood M, antperson M,
+  // necromancer F, succubus F, barbarella F, king arthur M, mantid M, mech M,
+  // minotaur M, mothman M, reptilian M, nun/priest F, robot M, cyborg F —
+  // plus the older male pirate gap.
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
