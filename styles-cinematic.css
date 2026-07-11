@@ -3236,12 +3236,27 @@
    with fill-mode:forwards, which out-prioritizes any transition on the
    same element (that was the "spell name stays in the corner after the
    attack" bug). */
-.acam-chrome.hiding .acam-title { opacity: 0; }
+.acam-chrome.hiding .acam-title {
+    opacity: 0;
+    transition: opacity .7s ease;   /* slow burn out — let the payoff breathe */
+}
+
+/* ── Linger (battle.js hideActionCamChrome): the bars/vignette slide out
+      with the camera, but the name + final TOTAL holds the corner a beat —
+      the settled number gets its hero moment before the fade. ── */
+.acam-chrome.linger .acam-title { opacity: 1; }
+.acam-chrome.linger .acam-dmg-num { animation: acamDmgSettle 1.2s ease-out forwards; }
+@keyframes acamDmgSettle {
+    0%   { filter: brightness(1.6); }
+    18%  { filter: brightness(1.15); transform: scale(1.06); }
+    100% { filter: brightness(1);    transform: scale(1); }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .acam-bar { transition: none; }
     .acam-spell-name.in { animation: none; opacity: 1; }
     .acam-dmg-num.tick { animation: none; }
+    .acam-chrome.linger .acam-dmg-num { animation: none; }
     .acam-flash.pop, .acam-flash.cut { animation: none; opacity: 0; }
     .acam-speedlines.burst { animation: none; opacity: 0; }
 }
