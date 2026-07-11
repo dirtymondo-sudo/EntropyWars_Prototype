@@ -4233,7 +4233,8 @@ match prepare / guest phase transition). Hint text switches to
 "WAITING FOR OPPONENT…" after voting.
 
 **Eligibility/fallbacks**: skipped for dev-sim/animations-off, camera-disabled,
-fog-of-war matches, Mystery Dungeon. A team only stair-marches when ALL its
+Mystery Dungeon. Plays in fog-of-war matches too (intro march tweens are
+exempt from the fog visibility check in _updateWalkTweens). A team only stair-marches when ALL its
 units sit inside `state.spawnZones[p]` (FFA scatter-spawns / custom maps keep
 units in place but still get their camera beats). Hard-safety timeout 17s.
 CSS lives at the end of styles-cinematic.css (`.ewi-*`; `body.ewi-cinema`

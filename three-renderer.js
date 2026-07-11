@@ -12039,7 +12039,9 @@ const ThreeRenderer = (function () {
             if (ue && ue.group) {
 
                 var _wkVisible = true;
-                if (_wkVp && _fogVisibleSet) {
+                /* Intro-cinematic marches are always on camera — never fog-hide
+                   them (the intro plays in fog-of-war matches too). */
+                if (_wkVp && _fogVisibleSet && !tw._intro) {
                     var _wkUnit = _unitById.get(uid);
                     if (_wkUnit && _wkUnit.player !== _wkVp) {
 

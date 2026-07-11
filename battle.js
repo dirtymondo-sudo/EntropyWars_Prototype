@@ -19054,7 +19054,6 @@
         function _introCineEligible() {
             if (window.EW_DISABLE_INTRO_CINE) return false;
             if (_skipVisuals() || state.cameraDisabled) return false;
-            if (state.fogOfWar) return false;   // the march would spoil (and fog-hide) enemy positions
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.introCineStart) return false;
             return true;
