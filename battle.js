@@ -7899,7 +7899,6 @@
         // ═══════════════════════════════════════════════════════════════════
         let _acChromeEl = null;
         let _acChromeState = null;   // { heavy, total, shown, until, holdUntil, hideTimer, rollRaf }
-        let _acLingerTimer = null;   // linger→fade handoff after the bars leave
 
         function _ensureActionCamChrome() {
             if (_acChromeEl && _acChromeEl.isConnected) return _acChromeEl;
@@ -7928,8 +7927,7 @@
             _acChromeState = { heavy: !!opts.heavy, total: 0, shown: 0,
                 until: performance.now() + totalMs + 400, holdUntil: 0,
                 hideTimer: null, rollRaf: null };
-            if (_acLingerTimer) { clearTimeout(_acLingerTimer); _acLingerTimer = null; }
-            el.classList.remove('light', 'hiding', 'finisher', 'linger');
+            el.classList.remove('light', 'hiding', 'finisher');
             if (!opts.heavy) el.classList.add('light');
             const nameEl = el.querySelector('.acam-spell-name');
             if (nameEl) {
@@ -7950,10 +7948,10 @@
 
         function hideActionCamChrome() {
             const st = _acChromeState;
-            // Damage bought the readout more screen time (holdUntil pushes out
-            // with every hit) — defer the hide instead of cutting the counter
-            // off mid-roll. Camera shots end on their own clock; the chrome is
-            // allowed to outlive them by a beat.
+            // Damage buys the readout just enough time to finish its roll and be
+            // read (holdUntil, ~1s past the last hit) — defer the hide only that
+            // long, so late multi-hit ticks still count but the chrome leaves
+            // with the camera instead of outstaying the shot.
             if (st && st.holdUntil && performance.now() < st.holdUntil - 30) {
                 if (st.hideTimer) clearTimeout(st.hideTimer);
                 st.hideTimer = setTimeout(() => hideActionCamChrome(),
@@ -7964,26 +7962,13 @@
             if (st?.rollRaf) cancelAnimationFrame(st.rollRaf);
             _acChromeState = null;
             if (!_acChromeEl) return;
-            const el = _acChromeEl;
             // Snap the counter to the true final total before it leaves.
             if (st && st.total > 0) {
-                const num = el.querySelector('.acam-dmg-num');
+                const num = _acChromeEl.querySelector('.acam-dmg-num');
                 if (num) num.textContent = st.total.toLocaleString();
             }
-            el.classList.remove('active');
-            if (st && st.heavy && st.total > 0) {
-                // The bars/vignette slide out but the name + final total LINGER
-                // — the payoff number holds the corner a beat, then fades.
-                el.classList.add('linger');
-                if (_acLingerTimer) clearTimeout(_acLingerTimer);
-                _acLingerTimer = setTimeout(() => {
-                    _acLingerTimer = null;
-                    el.classList.remove('linger');
-                    el.classList.add('hiding');
-                }, 1300);
-            } else {
-                el.classList.add('hiding');
-            }
+            _acChromeEl.classList.remove('active');
+            _acChromeEl.classList.add('hiding');
         }
 
         /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
@@ -8058,12 +8043,13 @@
             const num = _acChromeEl.querySelector('.acam-dmg-num');
             if (!row || !num) return false;
             st.total += dmg;
-            // Each hit buys ~2.4s more screen time past the LAST damage tick, so
-            // the counter finishes its roll and holds the payoff instead of
-            // vanishing with the camera (the old "goes away too soon" — late
-            // ticks also fell outside `until` and were silently dropped, which
-            // is why the floating total used to out-bid the corner).
-            const HOLD_MS = 2400;
+            // Each hit guarantees ~1s of screen time past the LAST damage tick —
+            // just enough for the roll-up to settle and be read. The chrome
+            // otherwise hides on the shot's own clock, so the readout leaves
+            // right as the camera returns instead of outstaying the moment.
+            // (Late ticks used to fall outside `until` and get silently
+            // dropped — that's why the floating total out-bid the corner.)
+            const HOLD_MS = 1000;
             const now = performance.now();
             st.until = Math.max(st.until, now + HOLD_MS + 400);
             st.holdUntil = now + HOLD_MS;
