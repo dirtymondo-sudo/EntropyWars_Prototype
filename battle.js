@@ -19039,6 +19039,412 @@
         }
         window.showBattleLoadingScreen = showBattleLoadingScreen;
 
+        /* ═════════ OPENING CINEMATIC — the match-intro multi-cam ═════════
+           Replaces the flat VS splash with a ~13s scripted sequence shot on the
+           REAL battlefield with the action-cam rig: both teams march up a grand
+           staircase out of the void into their spawn zones (ground-level feet
+           shot for each), a skewed medium shot of your party settling into
+           line, a slow push clean across the map into the enemy's faces, a
+           hard cut up to the sun while the map title slams in, then a crane
+           down onto the tactical view — FIGHT!
+           Skippable with a click; online BOTH players must click (votes ride
+           the relay channel, see online.js 'intro-skip').
+           Kill-switch (console): window.EW_DISABLE_INTRO_CINE = true. */
+
+        function _introCineEligible() {
+            if (window.EW_DISABLE_INTRO_CINE) return false;
+            if (_skipVisuals() || state.cameraDisabled) return false;
+            if (state.fogOfWar) return false;   // the march would spoil (and fog-hide) enemy positions
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.introCineStart) return false;
+            return true;
+        }
+
+        /* A team only gets the stair-march treatment when its units actually
+           sit in a tidy edge spawn zone — FFA scatter-spawns and hand-authored
+           custom maps fail this and simply keep their units in place (they
+           still get their camera beats, just no walk). */
+        function _introTeamWalkable(p) {
+            const zone = state.spawnZones?.[p];
+            if (!zone || !zone.length) return false;
+            const set = new Set(zone.map(t => `${t.x},${t.y}`));
+            const team = (state.units || []).filter(u => u.player === p && !u.dead);
+            if (!team.length) return false;
+            return team.every(u => set.has(`${u.x},${u.y}`));
+        }
+
+        function playOpeningCinematic(onDone) {
+            const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            const teamA = viewer === 2 ? 2 : 1;          // your party marches first
+            const teamB = teamA === 1 ? 2 : 1;
+            const walkable = {};
+            walkable[teamA] = _introTeamWalkable(teamA);
+            walkable[teamB] = _introTeamWalkable(teamB);
+
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const online = !!(window._NET && window._NET.online);
+
+            /* ── chrome ── */
+            const overlay = document.createElement('div');
+            overlay.className = 'ewi-overlay';
+            overlay.innerHTML =
+                '<div class="ewi-veil"></div>' +
+                '<div class="ewi-grain"></div>' +
+                '<div class="ewi-bar ewi-bar-top"></div>' +
+                '<div class="ewi-bar ewi-bar-bot"></div>' +
+                '<div class="ewi-flash"></div>' +
+                '<div class="ewi-title-card"><div class="ewi-title-rule"></div><div class="ewi-title"></div><div class="ewi-sub"></div><div class="ewi-title-rule"></div></div>' +
+                '<div class="ewi-team-tag"></div>' +
+                '<div class="ewi-fight"></div>' +
+                '<div class="ewi-skip">CLICK TO SKIP</div>';
+            document.body.appendChild(overlay);
+            const $ei = (cls) => overlay.querySelector('.' + cls);
+            const veil = $ei('ewi-veil');
+            document.body.classList.add('ewi-cinema');
+
+            try {
+                const mp = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                $ei('ewi-title').textContent = (typeof _lsMapTitle === 'function') ? _lsMapTitle() : 'PROVING GROUNDS';
+                $ei('ewi-sub').textContent = (mp && mp.label) ? mp.label.toUpperCase() : '';
+            } catch (e) {}
+
+            let finished = false;
+            const timers = [];
+            const later = (fn, ms) => { timers.push(window.setTimeout(() => { if (!finished) fn(); }, ms)); };
+
+            /* claim the camera for the whole intro */
+            const sequenceId = ++boardCameraSequenceId;
+            const camSeq = ++camera._seqId;
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+            camera._cineShotId = sequenceId;
+            camera._busy = true;
+
+            function _releaseCamera() {
+                if (camera._cineShotId === sequenceId) {
+                    camera._cineShotId = null;
+                    camera._cineShotTarget = null;
+                    camera._cineKeepSubject = false;
+                    camera._preCineView = null;
+                }
+                if (camera._seqId === camSeq) camera._busy = false;
+            }
+
+            function cleanup(fadeMs) {
+                timers.forEach(clearTimeout);
+                try { ThreeRenderer.introCineEnd(); } catch (e) {}
+                window._ewIntroSkipPoke = null;
+                window._ewIntroRemoteSkip = false;
+                _releaseCamera();
+                document.body.classList.remove('ewi-cinema');
+                overlay.style.pointerEvents = 'none';
+                overlay.classList.add('ewi-out');
+                window.setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, fadeMs || 500);
+            }
+
+            function finish() {
+                if (finished) return;
+                finished = true;
+                cleanup(550);
+                if (onDone) onDone();
+            }
+
+            /* ── skip: solo = one click; online = every player must click ── */
+            let myVote = false;
+            function skipNow() {
+                if (finished) return;
+                finished = true;
+                veil.style.transition = 'opacity 0.15s linear';
+                veil.style.opacity = '1';
+                window.setTimeout(() => {
+                    cleanup(400);
+                    try {
+                        /* a mid-beat camera may sit off-board — recenter so the
+                           instant reset frames the battlefield, not the void */
+                        camera.x = camera._tx = Math.floor(bw() / 2);
+                        camera.y = camera._ty = Math.floor(bh() / 2);
+                        resetBoardCamera(true);
+                    } catch (e) {}
+                    if (onDone) onDone();
+                }, 170);
+            }
+            function _maybeSkip() {
+                if (finished || !myVote) return;
+                if (online && !window._ewIntroRemoteSkip) return;
+                skipNow();
+            }
+            window._ewIntroSkipPoke = _maybeSkip;
+            overlay.addEventListener('click', () => {
+                if (finished || myVote) return;
+                myVote = true;
+                playSfx('uiButtonConfirm');
+                if (online) {
+                    if (typeof window._ewSendIntroSkip === 'function') window._ewSendIntroSkip();
+                    $ei('ewi-skip').textContent = 'WAITING FOR OPPONENT…';
+                }
+                _maybeSkip();
+            });
+
+            /* hard safety net: a wedged intro must never block the first round */
+            timers.push(window.setTimeout(finish, 17000));
+
+            /* ── camera vocabulary (rides the cine TPS rig like the detonation
+               multi-cam: pivot height from _tpsHeadLift over the anchor tile's
+               ground, no boom collision, hard floor only past the horizon) ── */
+            const _groundW = (x, y) => {
+                const g = (typeof window._camGroundPx === 'function')
+                    ? window._camGroundPx(Math.round(x), Math.round(y)) : 0;
+                return Math.max(0, g || 0);
+            };
+            function shot(anchor, liftPx, opts, cut) {
+                if (!_cineTpsAnchor({ x: anchor.x, y: anchor.y }, null)) {
+                    camera._elevOverride = camera._tElev = -1;
+                }
+                camera._tpsHeadLift = liftPx || ts * 0.9;
+                /* published for the renderer's occlusion fade — props between
+                   the camera and the framed team go see-through */
+                camera._cineShotTarget = { x: Math.round(anchor.x), y: Math.round(anchor.y), id: null };
+                (cut ? _cineHardCut : _cineBeatMove)(Object.assign({
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                }, opts));
+            }
+            function dip() {
+                if (finished) return;
+                veil.style.transition = 'opacity 0.09s linear';
+                veil.style.opacity = '1';
+                window.setTimeout(() => {
+                    if (finished) return;
+                    veil.style.transition = 'opacity 0.25s linear';
+                    veil.style.opacity = '0';
+                }, 100);
+            }
+            function _teamLabel(p) {
+                let nm = null;
+                try { nm = state.partyNames && state.partyNames[p]; } catch (e) {}
+                if (!nm) nm = 'PLAYER ' + p;
+                nm = String(nm).toUpperCase();
+                return p === viewer ? nm + ' — YOUR PARTY' : nm;
+            }
+            function _showTag(p) {
+                const tag = $ei('ewi-team-tag');
+                tag.textContent = _teamLabel(p);
+                tag.classList.add('ewi-tag-in');
+            }
+            function _hideTag() { $ei('ewi-team-tag').classList.remove('ewi-tag-in'); }
+
+            /* Framing info for a team: from the renderer's stair info when it
+               marched, otherwise derived from where its units stand. */
+            function _frame(p, info) {
+                if (info && info[p]) return info[p];
+                const team = (state.units || []).filter(u => u.player === p && !u.dead);
+                let cx = Math.floor(bw() / 2), cy = Math.floor(bh() / 2), topZ = 0;
+                if (team.length) {
+                    cx = team.reduce((s, u) => s + u.x, 0) / team.length;
+                    cy = team.reduce((s, u) => s + u.y, 0) / team.length;
+                    team.forEach(u => {
+                        const h = (typeof getHeightAt === 'function') ? (getHeightAt(u.x, u.y) || 0) : 0;
+                        if (h > topZ) topZ = h;
+                    });
+                }
+                const bcx = (bw() - 1) / 2, bcy = (bh() - 1) / 2;
+                let ox = cx - bcx, oy = cy - bcy;
+                if (Math.abs(ox) >= Math.abs(oy)) { ox = ox >= 0 ? 1 : -1; oy = 0; }
+                else { oy = oy >= 0 ? 1 : -1; ox = 0; }
+                return { cx, cy, ox, oy, topZ, len: Math.max(2, team.length) };
+            }
+            /* eye direction offset → camera yaw (ThreeCamera: eye sits at
+               focal + dist·(sin yaw, cos yaw) in tile axes) */
+            const _yawFor = (ex, ey) => Math.atan2(ex, ey) * 180 / Math.PI;
+
+            /* ═══ THE TIMELINE ═══ */
+            function _runBeats(info) {
+                if (finished) return;
+                const A = _frame(teamA, info), B = _frame(teamB, info);
+                const axA = -A.oy, ayA = A.ox;      // lateral along A's line
+                const axB = -B.oy, ayB = B.ox;
+                const gA = _groundW(A.cx, A.cy), gB = _groundW(B.cx, B.cy);
+                let unitH = ts * 1.0;
+                try {
+                    const u0 = (state.units || []).find(u => u.player === teamA && !u.dead);
+                    if (u0 && ThreeRenderer.getUnitVisualHeight) unitH = ThreeRenderer.getUnitVisualHeight(u0.id) || unitH;
+                } catch (e) {}
+
+                try { syncMusicToState(); } catch (e) {}
+                overlay.classList.add('ewi-active');
+                veil.style.transition = 'opacity 0.7s ease-out';
+                veil.style.opacity = '0';
+
+                /* BEAT 1 (0.0–2.2s) — ground level, Team A's feet on the stairs.
+                   A team that didn't march (scatter spawns) gets the same low
+                   shot framed on where it already stands. */
+                const feetLift = (F, g, marched) => marched
+                    ? ((F.topZ - 1) * ts + ts * 0.55) - g
+                    : ts * 0.5;
+                const outA1 = walkable[teamA] ? 1.1 : 0.15, outA2 = walkable[teamA] ? 0.55 : 0.0;
+                const outB1 = walkable[teamB] ? 1.7 : 0.15, outB2 = walkable[teamB] ? 0.9 : 0.0;
+                shot({ x: A.cx, y: A.cy }, feetLift(A, gA, walkable[teamA]), {
+                    x: A.cx + A.ox * outA1 + axA * 0.15, y: A.cy + A.oy * outA1 + ayA * 0.15,
+                    zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
+                    yaw: _yawFor(axA * 1.0 + A.ox * 0.62, ayA * 1.0 + A.oy * 0.62)
+                }, true);
+                _cineBeatMove({
+                    x: A.cx + A.ox * outA2, y: A.cy + A.oy * outA2,
+                    zoom: _tpsZoomForBoomTiles(2.4),
+                    duration: 2100, easing: 'linear',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+                if (walkable[teamA] || walkable[teamB]) {
+                    for (let ft = 480; ft < 4000; ft += 370) later(() => playSfx('moveStep'), ft);
+                }
+
+                /* BEAT 2 (2.2–4.0s) — cut: Team B's feet, mid-march */
+                later(() => {
+                    dip();
+                    shot({ x: B.cx, y: B.cy }, feetLift(B, gB, walkable[teamB]), {
+                        x: B.cx + B.ox * outB1 - axB * 0.15, y: B.cy + B.oy * outB1 - ayB * 0.15,
+                        zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
+                        yaw: _yawFor(-axB * 1.0 + B.ox * 0.62, -ayB * 1.0 + B.oy * 0.62)
+                    }, true);
+                    _cineBeatMove({
+                        x: B.cx + B.ox * outB2, y: B.cy + B.oy * outB2,
+                        zoom: _tpsZoomForBoomTiles(2.4),
+                        duration: 1700, easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 2200);
+
+                /* BEAT 3 (4.0–6.3s) — skewed medium shot: your party settles into line */
+                later(() => {
+                    dip();
+                    const faceLift = unitH * 0.74;
+                    shot({ x: A.cx, y: A.cy }, faceLift, {
+                        x: A.cx + A.ox * 0.1 + axA * 0.35, y: A.cy + A.oy * 0.1 + ayA * 0.35,
+                        zoom: _tpsZoomForBoomTiles(A.len * 0.62 + 2.0), tilt: 84,
+                        yaw: _yawFor(-A.ox * 1.0 + axA * 0.55, -A.oy * 1.0 + ayA * 0.55)
+                    }, true);
+                    _cineBeatMove({
+                        x: A.cx + A.ox * 0.1 - axA * 0.35, y: A.cy + A.oy * 0.1 - ayA * 0.35,
+                        duration: 2250, easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                    _showTag(teamA);
+                }, 4000);
+
+                /* BEAT 4 (6.3–8.8s) — one unbroken push clean across the map
+                   into the enemy line's faces (the stairs dissolve behind it) */
+                later(() => { try { ThreeRenderer.introCineFadeStairs(1500); } catch (e) {} }, 6000);
+                later(() => {
+                    _hideTag();
+                    _cineTpsAnchor({ x: B.cx, y: B.cy }, null);
+                    camera._tpsHeadLift = unitH * 0.74;
+                    camera._cineShotTarget = { x: Math.round(B.cx), y: Math.round(B.cy), id: null };
+                    _cineBeatMove({
+                        x: B.cx + B.ox * 0.1 - axB * 0.3, y: B.cy + B.oy * 0.1 - ayB * 0.3,
+                        zoom: _tpsZoomForBoomTiles(B.len * 0.5 + 1.7), tilt: 86,
+                        yaw: _yawFor(-B.ox * 1.0 - axB * 0.5, -B.oy * 1.0 - ayB * 0.5),
+                        duration: 2450, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 6300);
+                later(() => _showTag(teamB), 8000);
+
+                /* BEAT 5 (8.8–11.2s) — hard cut to the sun; the map name slams in */
+                later(() => {
+                    _hideTag();
+                    dip();
+                    let sky = { tilt: 118, yaw: 25 };
+                    try { if (ThreeRenderer.getSkyShot) sky = ThreeRenderer.getSkyShot('solarEclipse'); } catch (e) {}
+                    const bcx = Math.floor(bw() / 2), bcy = Math.floor(bh() / 2);
+                    shot({ x: bcx, y: bcy }, ts * 0.9, {
+                        x: bcx, y: bcy,
+                        zoom: Math.max(0.15, getDefaultZoom() * 0.95),
+                        tilt: sky.tilt, yaw: sky.yaw
+                    }, true);
+                    _cineBeatMove({
+                        tilt: sky.tilt + 3,
+                        duration: 2300, easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 8800);
+                later(() => {
+                    $ei('ewi-title-card').classList.add('ewi-title-in');
+                    playSfx('newRound');
+                }, 9150);
+
+                /* BEAT 6 (11.2–13.0s) — crane down onto the tactical view */
+                later(() => {
+                    const tc = $ei('ewi-title-card');
+                    tc.classList.remove('ewi-title-in');
+                    tc.classList.add('ewi-title-out');
+                    camera._cineTps = false;
+                    camera._tpsSubject = null;
+                    const rt = camera._getBestResetTarget();
+                    _cineBeatMove({
+                        x: rt.x, y: rt.y,
+                        zoom: getDefaultZoom(),
+                        tilt: (camera._restTilt != null) ? camera._restTilt : 50,
+                        yaw: (camera._restYaw != null) ? camera._restYaw : 0,
+                        duration: 1750, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 11200);
+
+                /* FIGHT! */
+                later(() => {
+                    $ei('ewi-fight').textContent = 'FIGHT!';
+                    $ei('ewi-fight').classList.add('ewi-fight-on');
+                    $ei('ewi-flash').classList.add('ewi-flash-on');
+                    overlay.classList.add('ewi-end');
+                    playSfx('newRound');
+                    playSfx('explosion');
+                    shakeBoard('hard');
+                }, 12950);
+
+                later(finish, 13650);
+            }
+
+            /* ── bring the battlefield up behind the opaque veil, then roll ── */
+            const _bo = document.getElementById('builderOverlay');
+            if (_bo) _bo.style.display = 'none';
+            const _mr = document.getElementById('mapRow');
+            if (_mr) _mr.style.display = '';
+            try { invalidateLayoutCache(); render(); } catch (e) {}
+            requestAnimationFrame(() => {
+                if (finished) return;
+                try {
+                    invalidateLayoutCache();
+                    renderBoard();
+                    if (!ThreeRenderer.isActive()) {
+                        CONFIG.tileSize = BASE_TILE;
+                        ThreeRenderer.activate();
+                    }
+                } catch (e) {
+                    console.warn('[IntroCine] board bring-up failed:', e);
+                    finish();
+                    return;
+                }
+                requestAnimationFrame(() => {
+                    if (finished) return;
+                    let shotsInfo = null;
+                    try {
+                        const walkTeams = [teamA, teamB].filter(p => walkable[p]);
+                        const delays = {}, durs = {}, outs = {};
+                        delays[teamA] = 0;    durs[teamA] = 3800; outs[teamA] = 2.8;
+                        delays[teamB] = 600;  durs[teamB] = 4600; outs[teamB] = 3.6;
+                        shotsInfo = ThreeRenderer.introCineStart({
+                            walkTeams: walkTeams,
+                            walkDelayMs: delays,
+                            walkMs: durs,
+                            startOutTiles: outs
+                        });
+                    } catch (e) { console.warn('[IntroCine] stair/march setup failed:', e); }
+                    try { _runBeats(shotsInfo || {}); }
+                    catch (e) { console.warn('[IntroCine] beats failed:', e); finish(); }
+                });
+            });
+        }
+        window.playOpeningCinematic = playOpeningCinematic;
+
         function showVSSplash(onDone) {
 
             if (_skipVisuals()) { if (onDone) onDone(); return; }
@@ -19046,6 +19452,20 @@
             const p1Units = (state.units || []).filter(u => u.player === 1);
             const p2Units = (state.units || []).filter(u => u.player === 2);
             if (!p1Units.length || !p2Units.length) { if (onDone) onDone(); return; }
+
+            /* The cinematic intro replaces the flat VS card whenever the 3D
+               battlefield can host it; any failure falls back to the classic
+               splash right here. */
+            if (_introCineEligible()) {
+                try { playOpeningCinematic(onDone); return; }
+                catch (e) {
+                    console.warn('[IntroCine] failed — falling back to VS splash:', e);
+                    try { document.body.classList.remove('ewi-cinema'); } catch (_e) {}
+                    try { if (ThreeRenderer.introCineEnd) ThreeRenderer.introCineEnd(); } catch (_e) {}
+                    const _stray = document.querySelector('.ewi-overlay');
+                    if (_stray && _stray.parentNode) _stray.parentNode.removeChild(_stray);
+                }
+            }
 
             let dismissed = false;
             function dismiss() {

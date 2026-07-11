@@ -4196,3 +4196,47 @@ data.js, index.html** (token → 20260708b).
   Crystal Ball / Prophecy of Disaster now conjure their orb as the "arming"
   beat (impact delayed ~1100 ms), and ALL no-descent blasts fire a palette-
   matched `sigSonicBoom3D` + 'explosion' sfx at detonation.
+
+## Opening cinematic (match intro) — added 2026-07-11
+
+The flat VS splash is now replaced (when possible) by a ~13s multi-cam intro
+shot on the real battlefield. `battle.js showVSSplash()` checks
+`_introCineEligible()` and routes to `playOpeningCinematic(onDone)`; any
+failure or ineligibility falls back to the classic VS splash unchanged.
+
+**Sequence** (all beats ride the cine TPS rig, like `playDetonationCinematic`):
+1. 0.0–2.2s ground-level feet shot: viewer's team marches up a grand staircase
+   out of the void into its spawn zone (real walk clips via `_walkTweens`).
+2. 2.2–4.0s cut: enemy team's feet mid-march on their own staircase.
+3. 4.0–6.3s skewed medium shot: your party settles into line (team tag lower-third).
+4. 6.3–8.8s one unbroken push across the map into the enemy line's faces
+   (staircases dissolve via `introCineFadeStairs` — they were never map tiles).
+5. 8.8–11.2s hard cut to the sun (`ThreeRenderer.getSkyShot('solarEclipse')`),
+   map title + mode slam in (`_lsMapTitle()` + mp mode label, Cinzel).
+6. 11.2–13.0s crane down onto the tactical rest view → "FIGHT!" slam + flash +
+   `shakeBoard('hard')` → onDone (round banner / first turn as before).
+
+**Renderer side** (`three-renderer.js` exports): `introCineStart(opts)` builds
+one wide terrain-textured staircase + floating causeway per team off the
+spawn-zone edge and stages per-unit marches by inserting entries directly into
+`_walkTweens` with a future `startTime` (the updater now clamps gt ≥ 0 for
+this) and fractional off-board path points with explicit `z` levels
+(`_tileSurfaceY(x,y,z)` honors explicit z). Walk-clip `timeScale` is slowed
+×0.55 during the march (restored after) so feet don't skate at parade pace.
+`introCineEnd()` is the universal teardown (also wired into
+`resetForNewMatch`). Unit LOGIC tiles never move — skip just deletes tweens.
+
+**Skip**: any click. Online BOTH players must click — votes ride the relay
+channel as `{type:'intro-skip'}` (online.js dispatcher latches
+`window._ewIntroRemoteSkip`, pokes `window._ewIntroSkipPoke`; votes reset on
+match prepare / guest phase transition). Hint text switches to
+"WAITING FOR OPPONENT…" after voting.
+
+**Eligibility/fallbacks**: skipped for dev-sim/animations-off, camera-disabled,
+fog-of-war matches, Mystery Dungeon. A team only stair-marches when ALL its
+units sit inside `state.spawnZones[p]` (FFA scatter-spawns / custom maps keep
+units in place but still get their camera beats). Hard-safety timeout 17s.
+CSS lives at the end of styles-cinematic.css (`.ewi-*`; `body.ewi-cinema`
+parks #sidebarPanel/#scorePanel/scoreboard/#css2dOverlay via visibility).
+
+**Kill-switch (console)**: `window.EW_DISABLE_INTRO_CINE = true` → classic VS splash.

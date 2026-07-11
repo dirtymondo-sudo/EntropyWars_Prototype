@@ -3245,3 +3245,98 @@
     .acam-flash.pop, .acam-flash.cut { animation: none; opacity: 0; }
     .acam-speedlines.burst { animation: none; opacity: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OPENING CINEMATIC (match intro) — battle.js playOpeningCinematic
+   Grand-staircase march → face rows → push across the map → sun + map
+   title → crane down → FIGHT! Retro-JRPG presentation: hard letterbox,
+   CRT grain, Cinzel title cards.
+   ═══════════════════════════════════════════════════════════════════════ */
+.ewi-overlay {
+    position: fixed; inset: 0; z-index: 5900;
+    pointer-events: auto; cursor: pointer; overflow: hidden;
+    opacity: 1; transition: opacity .55s ease;
+}
+.ewi-overlay.ewi-out { opacity: 0; }
+.ewi-veil { position: absolute; inset: 0; background: #000; opacity: 1; z-index: 2; pointer-events: none; }
+.ewi-grain {
+    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    opacity: .34; mix-blend-mode: overlay;
+    background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.30) 0 1px, transparent 1px 3px);
+    animation: ewiFlicker 1.6s steps(2) infinite;
+}
+@keyframes ewiFlicker { 0%, 100% { opacity: .30; } 50% { opacity: .40; } }
+.ewi-bar {
+    position: absolute; left: 0; right: 0; height: 11.5%; background: #000; z-index: 3;
+    transition: transform .6s cubic-bezier(.22, 1, .36, 1);
+}
+.ewi-bar-top { top: 0; transform: translateY(-101%); }
+.ewi-bar-bot { bottom: 0; transform: translateY(101%); }
+.ewi-overlay.ewi-active .ewi-bar-top, .ewi-overlay.ewi-active .ewi-bar-bot { transform: translateY(0); }
+.ewi-overlay.ewi-end .ewi-bar-top { transform: translateY(-101%); }
+.ewi-overlay.ewi-end .ewi-bar-bot { transform: translateY(101%); }
+.ewi-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 4; }
+.ewi-flash.ewi-flash-on { animation: ewiFlashPop .55s ease-out forwards; }
+@keyframes ewiFlashPop { 0% { opacity: .95; } 100% { opacity: 0; } }
+.ewi-title-card { position: absolute; top: 19%; left: 0; right: 0; text-align: center; z-index: 5; opacity: 0; pointer-events: none; }
+.ewi-title-card.ewi-title-in { animation: ewiTitleSlam .65s cubic-bezier(.16, 1, .3, 1) forwards; }
+.ewi-title-card.ewi-title-out { animation: ewiTitleOut .5s ease-in forwards; }
+@keyframes ewiTitleSlam {
+    0%   { opacity: 0; transform: scale(1.65); filter: blur(10px); }
+    55%  { opacity: 1; transform: scale(.98);  filter: blur(0); }
+    100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ewiTitleOut { to { opacity: 0; transform: scale(1.06); filter: blur(6px); } }
+.ewi-title {
+    font-family: 'Cinzel', serif; font-weight: 900;
+    font-size: clamp(30px, 6vw, 72px); letter-spacing: .22em; text-indent: .22em;
+    color: #f3e6c2;
+    text-shadow: 0 0 22px rgba(255, 196, 84, .55), 0 3px 0 rgba(60, 30, 0, .8), 0 6px 24px rgba(0, 0, 0, .9);
+}
+.ewi-sub {
+    font-family: 'Cinzel', serif; font-size: clamp(12px, 1.7vw, 20px);
+    letter-spacing: .55em; text-indent: .55em; color: rgba(243, 230, 194, .8); margin-top: 6px;
+}
+.ewi-title-rule {
+    width: min(46vw, 520px); height: 1px; margin: 10px auto;
+    background: linear-gradient(90deg, transparent, rgba(243, 230, 194, .75), transparent);
+}
+.ewi-team-tag {
+    position: absolute; bottom: 14.5%; left: 6%; z-index: 5; pointer-events: none;
+    font-family: 'Cinzel', serif; font-weight: 700;
+    font-size: clamp(16px, 2.4vw, 30px); letter-spacing: .3em;
+    color: #f3e6c2; text-shadow: 0 2px 14px rgba(0, 0, 0, .95), 0 0 26px rgba(255, 196, 84, .3);
+    opacity: 0; transform: translateX(-28px);
+    transition: opacity .4s ease, transform .55s cubic-bezier(.22, 1, .36, 1);
+}
+.ewi-team-tag.ewi-tag-in { opacity: 1; transform: translateX(0); }
+.ewi-fight {
+    position: absolute; inset: 0; z-index: 6; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-weight: 900;
+    font-size: clamp(56px, 13vw, 170px); letter-spacing: .12em; text-indent: .12em;
+    color: #ffd677; -webkit-text-stroke: 2px rgba(90, 30, 0, .85);
+    text-shadow: 0 0 34px rgba(255, 150, 40, .75), 0 8px 0 rgba(80, 20, 0, .65), 0 14px 40px rgba(0, 0, 0, .9);
+    opacity: 0;
+}
+.ewi-fight.ewi-fight-on { animation: ewiFightSlam .7s cubic-bezier(.16, 1, .3, 1) forwards; }
+@keyframes ewiFightSlam {
+    0%   { opacity: 0; transform: scale(3) rotate(-4deg); filter: blur(12px); }
+    45%  { opacity: 1; transform: scale(.94) rotate(.5deg); filter: blur(0); }
+    65%  { transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.ewi-skip {
+    position: absolute; bottom: 3.4%; right: 3%; z-index: 7; pointer-events: none;
+    font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
+    color: rgba(255, 255, 255, .6);
+    opacity: 0; transition: opacity .4s ease;
+}
+.ewi-overlay.ewi-active .ewi-skip { opacity: .85; }
+.ewi-overlay.ewi-end .ewi-skip { opacity: 0; }
+/* Cinema mode: park the battle HUD while the intro owns the screen.
+   visibility (not display) keeps layout, so the board never reflows mid-shot. */
+body.ewi-cinema #sidebarPanel,
+body.ewi-cinema #scorePanel,
+body.ewi-cinema .battle-top-scoreboard,
+body.ewi-cinema #css2dOverlay { visibility: hidden !important; }

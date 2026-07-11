@@ -12017,7 +12017,9 @@ const ThreeRenderer = (function () {
             // Progress along the ENTIRE path, eased once end-to-end: gentle accel
             // leaving the start tile, constant speed through the middle, gentle
             // decel into the destination. No more easing (and stopping) per tile.
-            var gt = Math.min((now - tw.startTime) / tw.totalMs, 1);
+            // Clamped at 0 so a tween armed with a FUTURE startTime (the intro
+            // cinematic staggers each team's march) holds at the path start.
+            var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
             var traveled = _easeInOut(gt) * tw.segs;
             var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
             var ease = traveled - stepIdx; // linear within the current segment
@@ -20280,6 +20282,7 @@ const ThreeRenderer = (function () {
             }
         });
         _shadowsDirty = true;
+        try { introCineEnd(); } catch (e) {}
         _lastBoardW = 0; _lastBoardH = 0;
         _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
         _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
@@ -20288,6 +20291,218 @@ const ThreeRenderer = (function () {
         // rigs (clamped death poses, faded materials) into the new one.
         _disposeAllModelRigs();
         if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+    }
+
+    /* ═════════ Opening cinematic (match intro) — battle.js playOpeningCinematic ═════════
+       Builds a temporary "grand staircase" prop off each team's spawn-zone edge
+       (the board floats in a void, so the steps rise out of the abyss like the
+       horizon's stairways-to-nowhere) and marches each team up it into the zone
+       through the regular walk-tween pipeline — real walk clips, real facing,
+       real surface heights. Everything here is transient scenery + visual
+       offsets: unit LOGIC tiles never change, so skipping at any moment just
+       deletes the tweens and every unit is already home. */
+    var _introStairGroup = null;
+    var _introStairMats = [];
+    var _introWalkUids = [];
+    var _introFadeTimer = null;
+
+    function _introZoneInfo(player) {
+        var zone = (state.spawnZones && state.spawnZones[player]) || null;
+        if (!zone || !zone.length) return null;
+        var _bwv = (typeof bw === 'function') ? bw()
+                 : (state.boardTerrain && state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
+        var _bhv = (typeof bh === 'function') ? bh()
+                 : (state.boardTerrain ? state.boardTerrain.length : 0);
+        if (!_bwv || !_bhv) return null;
+        var ax = 0, ay = 0;
+        for (var i = 0; i < zone.length; i++) { ax += zone[i].x; ay += zone[i].y; }
+        ax /= zone.length; ay /= zone.length;
+        /* Outward = toward the nearest board edge (spawn zones hug an edge). */
+        var dL = ax, dR = (_bwv - 1) - ax, dT = ay, dB = (_bhv - 1) - ay;
+        var m = Math.min(dL, dR, dT, dB);
+        var ox = 0, oy = 0;
+        if (m === dL) ox = -1; else if (m === dR) ox = 1; else if (m === dT) oy = -1; else oy = 1;
+        /* Zone lip height (levels) — the stairs rise to meet the highest tile. */
+        var topZ = 0;
+        for (var j = 0; j < zone.length; j++) {
+            var h = (typeof getHeightAt === 'function') ? (getHeightAt(zone[j].x, zone[j].y) || 0)
+                  : ((state.boardHeights && state.boardHeights[zone[j].y]) ? (state.boardHeights[zone[j].y][zone[j].x] || 0) : 0);
+            if (h > topZ) topZ = h;
+        }
+        return { zone: zone, cx: ax, cy: ay, ox: ox, oy: oy, topZ: topZ, len: zone.length };
+    }
+
+    function _introBuildStairs(zi, ts) {
+        var group = new THREE.Group();
+        var mats = [];
+        /* Dress the prop in the zone's own terrain texture so it reads as part
+           of the map; plain flat-shaded masonry when no texture resolves. */
+        var tKey = null;
+        try {
+            var t0 = zi.zone[Math.floor(zi.zone.length / 2)];
+            var col = state.boardColumns && state.boardColumns[t0.y] && state.boardColumns[t0.y][t0.x];
+            if (col && col.length) tKey = col[col.length - 1].terrain;
+            else if (state.boardTerrain && state.boardTerrain[t0.y]) tKey = state.boardTerrain[t0.y][t0.x];
+        } catch (e) {}
+        var tex = null;
+        try { tex = tKey ? getTerrainTexture(tKey) : null; } catch (e) {}
+        function _mat(shade) {
+            var m = tex
+                ? new THREE.MeshLambertMaterial({ map: tex, color: new THREE.Color(shade, shade, shade), transparent: true })
+                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0.45 * shade, 0.42 * shade, 0.37 * shade), transparent: true });
+            mats.push(m);
+            return m;
+        }
+        var elevStep = ts * ELEV_STEP_RATIO;
+        var topY = zi.topZ * elevStep;
+        var baseY = topY - elevStep;            // one full level below the zone lip
+        var rise = topY - baseY;
+        var width = zi.len * ts + ts * 0.7;
+        var STEPS = 6;
+        /* Steps span 0.5..1.6 tiles outward from the zone tile centers — the
+           exact band the walk path climbs — each a chunky box (PS1 masonry). */
+        var d0 = ts * 0.5, d1 = ts * 1.6;
+        var depth = (d1 - d0) / STEPS;
+        for (var i = 0; i < STEPS; i++) {
+            var stepTop = baseY + rise * (i + 1) / STEPS;
+            var dOut = d1 - depth * (i + 0.5);
+            var hgt = (stepTop - baseY) + ts * 0.55;
+            var sm = new THREE.Mesh(new THREE.BoxGeometry(width, hgt, depth), _mat(0.8 + 0.05 * (i % 2)));
+            sm.position.set(0, stepTop - hgt / 2, dOut);
+            group.add(sm);
+        }
+        /* Approach causeway floating out into the void behind the steps. */
+        var cwLen = ts * 3.6;
+        var cw = new THREE.Mesh(new THREE.BoxGeometry(width, ts * 0.6, cwLen), _mat(0.72));
+        cw.position.set(0, baseY - ts * 0.3, d1 + cwLen / 2);
+        group.add(cw);
+        /* Flanking pillars at the stair head — a little ceremonial gate. */
+        for (var s = -1; s <= 1; s += 2) {
+            var pw = ts * 0.24, ph = ts * 1.25;
+            var p = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pw), _mat(0.9));
+            p.position.set(s * (width / 2 + pw * 0.7), topY + ph / 2, d0 + ts * 0.2);
+            group.add(p);
+            var c = new THREE.Mesh(new THREE.BoxGeometry(pw * 1.5, pw * 0.5, pw * 1.5), _mat(1.0));
+            c.position.set(s * (width / 2 + pw * 0.7), topY + ph + pw * 0.25, d0 + ts * 0.2);
+            group.add(c);
+        }
+        /* Local +Z runs outward; spin the whole flight onto the zone's edge. */
+        group.rotation.y = Math.atan2(zi.ox, zi.oy);
+        group.position.set(zi.cx * ts + ts / 2, 0, zi.cy * ts + ts / 2);
+        return { group: group, mats: mats };
+    }
+
+    /* Arm the intro: build stairs for each requested team and stage its march.
+       opts: { walkTeams: [1,2], walkDelayMs: {p:ms}, walkMs: {p:ms},
+               startOutTiles: {p:tiles} }.
+       Returns {player: {cx, cy, ox, oy, topZ, len}} camera-framing info
+       (tile space) for battle.js, or null when the scene isn't up. */
+    function introCineStart(opts) {
+        opts = opts || {};
+        if (!scene) return null;
+        introCineEnd();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var info = {};
+        var walkTeams = opts.walkTeams || [];
+        _introStairGroup = new THREE.Group();
+        _introStairGroup.name = 'introCineStairs';
+        for (var w = 0; w < walkTeams.length; w++) {
+            var p = walkTeams[w];
+            var zi = _introZoneInfo(p);
+            if (!zi) continue;
+            var built = _introBuildStairs(zi, ts);
+            _introStairGroup.add(built.group);
+            _introStairMats = _introStairMats.concat(built.mats);
+            var team = (state.units || []).filter(function (u) { return u.player === p && !u.dead; });
+            var delay = (opts.walkDelayMs && opts.walkDelayMs[p]) || 0;
+            var dur = (opts.walkMs && opts.walkMs[p]) || 3600;
+            var startOut = (opts.startOutTiles && opts.startOutTiles[p]) || 2.8;
+            for (var u = 0; u < team.length; u++) {
+                var un = team[u];
+                var uz = (typeof getHeightAt === 'function') ? (getHeightAt(un.x, un.y) || 0) : 0;
+                var jit = ((u * 7) % 3) * 0.22;      // deterministic per-slot stagger
+                var o0 = startOut + jit;
+                /* causeway (one level down) → stair foot → stair top → own tile */
+                var path = [
+                    { x: un.x + zi.ox * o0,  y: un.y + zi.oy * o0,  z: zi.topZ - 1 },
+                    { x: un.x + zi.ox * 1.6, y: un.y + zi.oy * 1.6, z: zi.topZ - 1 },
+                    { x: un.x + zi.ox * 0.5, y: un.y + zi.oy * 0.5, z: uz },
+                    { x: un.x, y: un.y }
+                ];
+                _walkTweens.set(un.id, {
+                    path: path,
+                    segs: path.length - 1,
+                    startTime: _animNow() + delay + jit * 300,
+                    totalMs: dur + jit * 500,
+                    isFlying: false,
+                    onDone: null,
+                    _intro: true
+                });
+                _introWalkUids.push(un.id);
+                var entry = _getUnitEntry(un.id);
+                if (entry && entry.group) entry.group.visible = false;   // updater re-places it at the path start next frame
+                var plate = _plateObjs.get(un.id);
+                if (plate) plate.css2d.visible = false;
+                /* The march glides far slower than a combat move — slow the walk
+                   clip to match so the feet don't skate. Restored in introCineEnd. */
+                if (entry && entry.actions && entry.actions.walk) {
+                    if (entry._ew_introTsOrig == null) entry._ew_introTsOrig = entry.actions.walk.timeScale;
+                    entry.actions.walk.timeScale = entry._ew_introTsOrig * 0.55;
+                }
+            }
+            info[p] = { cx: zi.cx, cy: zi.cy, ox: zi.ox, oy: zi.oy, topZ: zi.topZ, len: zi.len };
+        }
+        scene.add(_introStairGroup);
+        return info;
+    }
+
+    /* Dissolve the staircases — by the cross-map push they were never part of
+       the map at all. */
+    function introCineFadeStairs(ms) {
+        if (!_introStairGroup) return;
+        var mats = _introStairMats;
+        var t0 = performance.now();
+        var dur = Math.max(100, ms || 900);
+        if (_introFadeTimer) clearInterval(_introFadeTimer);
+        _introFadeTimer = setInterval(function () {
+            var k = Math.min(1, (performance.now() - t0) / dur);
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = 1 - k;
+            if (k >= 1) {
+                clearInterval(_introFadeTimer); _introFadeTimer = null;
+                if (_introStairGroup) {
+                    if (scene) scene.remove(_introStairGroup);
+                    _disposeR(_introStairGroup);
+                    _introStairGroup = null; _introStairMats = [];
+                }
+            }
+        }, 33);
+    }
+
+    /* Tear the whole intro down (natural end OR skip): remove scenery, drop any
+       still-running intro march (units snap to their real tiles — where they
+       already logically are), restore walk-clip speeds and visibility. */
+    function introCineEnd() {
+        if (_introFadeTimer) { clearInterval(_introFadeTimer); _introFadeTimer = null; }
+        if (_introStairGroup) {
+            if (scene) scene.remove(_introStairGroup);
+            _disposeR(_introStairGroup);
+            _introStairGroup = null;
+        }
+        _introStairMats = [];
+        for (var i = 0; i < _introWalkUids.length; i++) {
+            var uid = _introWalkUids[i];
+            var tw = _walkTweens.get(uid);
+            if (tw && tw._intro) _walkTweens.delete(uid);
+            var entry = _getUnitEntry(uid);
+            if (entry) {
+                if (entry.group) entry.group.visible = true;
+                if (entry._ew_introTsOrig != null && entry.actions && entry.actions.walk) {
+                    entry.actions.walk.timeScale = entry._ew_introTsOrig;
+                }
+                entry._ew_introTsOrig = null;
+            }
+        }
+        _introWalkUids = [];
     }
 
     return {
@@ -20314,6 +20529,9 @@ const ThreeRenderer = (function () {
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startThrowArcTween, startDeathTween,
         setTimeWarp,
+
+        /* Opening cinematic (battle.js playOpeningCinematic) */
+        introCineStart, introCineFadeStairs, introCineEnd,
 
         startProjectileTween,
 

@@ -39,6 +39,13 @@
             if (window._NET && window._NET.socket) window._NET.socket.emit(evt, data);
         }
 
+        /* Opening-cinematic skip vote (battle.js playOpeningCinematic): each
+           player's click sends one of these; the intro only skips when EVERY
+           player has voted. */
+        window._ewSendIntroSkip = function () {
+            _emit('relay', { type: 'intro-skip', from: (window._NET && window._NET.myPlayer) || 0 });
+        };
+
         function showVsSplash(callback) {
             if (!ONLINE_RULES.active) {
                 if (callback) callback();
@@ -101,6 +108,8 @@
         const _origPrepareBattle = prepareBattleStateFromCurrentBuilds;
         prepareBattleStateFromCurrentBuilds = function() {
             _origPrepareBattle();
+            /* fresh match ⇒ stale intro-skip votes from the last one are void */
+            window._ewIntroRemoteSkip = false;
             if (_isOnline()) {
 
                 state.aiPlayer = -1;
@@ -2185,6 +2194,14 @@
 
                 NET.socket.on('relay', function(data) {
                     var st = window._gameState;
+                    if (data.type === 'intro-skip') {
+                        /* Opponent voted to skip the opening cinematic. Latch the
+                           vote (it may arrive before OUR cinematic mounts) and
+                           poke the running intro so it can re-check the tally. */
+                        window._ewIntroRemoteSkip = true;
+                        if (typeof window._ewIntroSkipPoke === 'function') window._ewIntroSkipPoke();
+                        return;
+                    }
                     if (data.type === 'rematch-request') {
                         if (!NET._rematchState) NET._rematchState = {
                             1: false,
@@ -2884,6 +2901,9 @@
                     if (typeof window.render === 'function') window.render();
 
                     if (prevPhase === 'setup' && st.phase === 'battle') {
+
+                        /* fresh match on the guest ⇒ void stale intro-skip votes */
+                        window._ewIntroRemoteSkip = false;
 
                         var _splashFn = typeof showVSSplash === 'function' ? showVSSplash
                                       : typeof window.showVSSplash === 'function' ? window.showVSSplash
