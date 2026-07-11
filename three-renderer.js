@@ -7245,10 +7245,12 @@ const ThreeRenderer = (function () {
         return !!(e && e.root);
     }
 
-    /* ── Shared animation library retargeting (Quaternius UAL → Meshy rigs) ──
+    /* ── Shared animation library retargeting (UAL / MAL → Meshy rigs) ──
        RACE_MODELS_3D defs that carry `animLib` + `libClips` (see sprites.js)
        animate from ONE shared library GLB instead of per-character Meshy clip
-       exports. Meshy rest poses are unique per character, so foreign clips
+       exports. Libraries may be UAL (Quaternius, UE5-named rig) or MAL
+       (Meshy-named rig — clips exported once from a single Meshy character,
+       consolidated into an animation-only GLB; see _libEnsureSrc). Meshy rest poses are unique per character, so foreign clips
        can't be played directly (the sprites.js HARD RULE) — instead each clip
        is BAKED onto the character's own skeleton the first time its model is
        attached:
@@ -7388,16 +7390,24 @@ const ThreeRenderer = (function () {
     }
 
     /* One-time source-side prep, cached on the library's cache entry: rest
-       world transforms of every mapped UAL bone + a sampling mixer. */
+       world transforms of every mapped source bone + a sampling mixer.
+       Source rigs come in TWO namings: UAL libraries carry UE5-style bone
+       names (pelvis/spine_01/…, _ANIMLIB_MAP column 0) while Meshy-sourced
+       libraries (MAL1_Sniper.glb — every clip exported once from the male
+       sniper, consolidated offline 2026-07-11) carry the Meshy names
+       (Hips/Spine02/…, column 1 — the same names the TARGET rigs use).
+       Either way `bones`/`rest` are keyed by the CANONICAL column-0 name, so
+       calibration + bake below never care which family the clips came from. */
     function _libEnsureSrc(libEntry) {
         if (libEntry._libSrc) return libEntry._libSrc;
         var root = libEntry.root;
         root.updateMatrixWorld(true);
+        var meshyNamed = !root.getObjectByName('pelvis') && !!root.getObjectByName('Hips');
         var p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
         var bones = {}, rest = {};
         for (var i = 0; i < _ANIMLIB_MAP.length; i++) {
             var name = _ANIMLIB_MAP[i][0];
-            var node = root.getObjectByName(name);
+            var node = root.getObjectByName(meshyNamed ? _ANIMLIB_MAP[i][1] : name);
             if (!node) continue;
             node.matrixWorld.decompose(p, q, s);
             bones[name] = node;
@@ -13617,6 +13627,12 @@ const ThreeRenderer = (function () {
                         (_ck === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
                         (_ck === 'plant')   ? ['castPlant', 'castSupport', 'cast'] :
                         (_ck === 'melee')   ? ['castMelee', 'cast'] :
+                        (_ck === 'heal')    ? ['castHeal', 'castSupport', 'castMagic', 'cast'] :
+                        (_ck === 'aoe')     ? ['castAOE', 'castMagic', 'cast'] :
+                        (_ck === 'slam')    ? ['castSlam', 'castAOE', 'castMelee', 'cast'] :
+                        (_ck === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
+                        (_ck === 'kick')    ? ['castKick', 'castMelee', 'cast'] :
+                        (_ck === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
                         (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {

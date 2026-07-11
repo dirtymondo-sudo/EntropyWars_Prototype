@@ -1799,6 +1799,70 @@ verify visually after upload) — syntax-checked only.
   (430ms) AFTER its `eorFocusCamera` dive lands, so the floating damage /
   wiggle / sfx play on-screen instead of mid-pan.
 
+## MAL library — Meshy clips as a shared library + male sniper (2026-07-11)
+- **`Assets/Models/MAL1_Sniper.glb` (lib index 2)**: the user uploaded 20
+  Meshy animations exported from ONE character (the male sniper,
+  `Meshy_AI_sniper_biped_Animation_<Name>_withSkin.glb`, ~7.9MB EACH — they
+  carry the full mesh+texture). Claude consolidated them offline into one
+  1.4MB animation-only GLB: skeleton nodes kept, meshes/skins/textures
+  stripped, each file's single clip copied in and RENAMED to its file stem
+  (`Armature|Idle_5|baselayer` → `Idle_5`). Builder: scratchpad
+  `build_mal.js` (@gltf-transform/core; npm sharp 403s behind the proxy, so
+  never install @gltf-transform/functions). Clip inventory (dur s): Idle_5
+  1.9 / Idle_10 3.7 (brawler) / Idle_11 1.93 (female) / Walking 1.07 /
+  Walking_Woman 1.0 / Running 0.67 / Regular_Jump 1.93 / Dead 3.0 / Block3
+  1.53 / Hit_Reaction_1 1.27 / Face_Punch_Reaction 2.87 / Fall3 1.33 /
+  Cowboy_Quick_Draw_Shooting 7.33 / Spartan_Kick 1.47 / Archery_Shot_1 1.07 /
+  mage_soell_cast 2.3 / mage_soell_cast_3 3.37 / mage_soell_cast_7 2.73 /
+  Charged_Spell_Cast 2.7 / Charged_Ground_Slam 3.03. All rigs identical;
+  walk/run/idle loops have ZERO net hip drift (in-place, no root motion).
+- **Renderer**: `_libEnsureSrc` (three-renderer.js) now auto-detects the
+  source rig naming — no 'pelvis' node but a 'Hips' node ⇒ Meshy-named
+  source; bones/rest are keyed by the CANONICAL UAL name either way, so
+  calibration/bake code is untouched. Meshy→Meshy retarget still goes
+  through the same keep-own-pose pipeline (sniper's A-pose rest ≈ targets',
+  so arm calibration is near-identity).
+- **Offline validation** (scratchpad validate_bake.js — 1:1 port of the bake
+  math over gltf-transform): MAL1×{fortune teller, werewolf}×7 clips + UAL1
+  regression ×3 clips — no NaNs, feet grounded on locomotion, Dead lies at
+  floor level, segment lengths preserved to 0.00%. NOT in-browser verified
+  (RULE #1c) — visual check on real hardware still pending.
+- **UAL_SLOTS remap (sprites.js)**: Meshy clips are the new body-language
+  defaults — idle Idle_5 / walk Walking 2.05 / run Running / jump
+  Regular_Jump / dodge Block3 / hit Hit_Reaction_1 / death Dead / castMagic
+  mage_soell_cast_3 / castSupport mage_soell_cast_7. Weapon actions stay
+  UAL (castRanged Pistol_Shoot, castMelee Sword_Attack, castThrow, castPlant).
+  NEW slots + classifySpellAnimKind kinds (chains in _syncCombatAnims):
+  castHeal mage_soell_cast ('heal': heals/revives, checked before 'aoe') ·
+  castAOE Charged_Spell_Cast ('aoe': watchtower/walls/raise) · castSlam
+  Charged_Ground_Slam ('slam': /rampart|slam\b/ incl. raceChassisSlan typo) ·
+  castArrow Archery_Shot_1 ('arrow') · castKick Spartan_Kick ('kick') ·
+  castConsume = UAL2 Consume ('consume': potions/elixir/stim). battle.js
+  hooks added: both potion uses fire `triggerCastAnim(unit, {id:'consume…'})`;
+  counterattacks fire `triggerAttackAnim` on the countering unit (riposte).
+- **Gendered defaults**: `_FEM_SLOT_DEFAULTS` (idle Idle_11, walk
+  Walking_Woman) applied to every `female:` def post-build via
+  `_applyFemaleSlotDefaults()`; a def's own `opts.lib` slots win
+  (`_libOverridden` recorded in _mk3d). Flavor added: cowboy M+F castRanged
+  = Cowboy_Quick_Draw_Shooting @5.0 (lib 2), catgirl + ki fighter jump =
+  NinjaJump_Start (UAL2), bigfoot/giant/quarterback idle = Idle_10.
+- **Male sniper WIRED + UNLOCKED**: race 'marksman' (job Sniper) —
+  RACE_MODELS_3D entry whose `model` IS his Idle_5 `_withSkin` export in
+  Assets/Models (no Character_output on R2; any withSkin export is a valid
+  rigged model). Was already in ACCT_STARTER_UNITS behind the 3D-only gate,
+  so wiring the model auto-unlocked him. heightRatio 1.02. No portrait yet
+  (map sprite fallback) — optional 128×128 portrait.png later.
+- **NOT wired (clips ready, no engine hook)**: Fall3 (falling), Face_Punch_
+  Reaction (heavy-hit variant — hitFlashKind only knows 'hit'), UAL2
+  Shield_OneShot (block), TreeChopping_Loop (chop/dig), Fixing_Kneeling
+  (plant bomb). Counter plays hit-flinch → castMelee riposte, not
+  block→attack.
+- **MANDATORY upload for this to work**: `MAL1_Sniper.glb` → R2
+  `Assets/Models/MAL1_Sniper.glb`. Without it the bake skips every lib-2
+  slot → characters stand in rest pose (UAL casts still play). The 20
+  individual withSkin files on R2 stay (the sniper's model URL points at
+  Idle_5's), but are no longer fetched as clips by anyone.
+
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
 - **SHARED ANIMATION LIBRARY (2026-07-10 — supersedes per-character clips)**:
   the Quaternius Universal Animation Library (CC0, 43 clips, UE5-style rig,

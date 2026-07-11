@@ -65,10 +65,16 @@ the anti-"start over" memory; keep it updated when you learn something new.
 
 ## Wiring up a 3D character (frequent request)
 Units can render as rigged Meshy GLB models instead of sprites. Since
-2026-07-10 animations come from a SHARED library (Quaternius UAL,
-`Assets/Models/UAL1_Standard.glb` + `UAL2_Standard.glb` on R2 — non-root-
-motion exports) that three-renderer.js retargets onto every Meshy rig at
-load, so per-character animation exports are no longer needed. Retargeting
+2026-07-10 animations come from SHARED libraries on R2 (`Assets/Models/`):
+Quaternius `UAL1_Standard.glb` + `UAL2_Standard.glb` (non-root-motion), and
+since 2026-07-11 `MAL1_Sniper.glb` — the 20 Meshy animations exported ONCE
+from the male sniper, consolidated offline into a 1.4MB animation-only GLB.
+three-renderer.js retargets all of them onto every Meshy rig at load, so
+per-character animation exports are no longer needed; Meshy-sourced
+libraries retarget exactly like UAL ones (_libEnsureSrc auto-detects rig
+naming). To grow the library: download animations for ONE character, then
+consolidate (strip meshes/textures, merge clips named by file stem — see
+PLAYTEST_NOTES "MAL library"). Retargeting
 keeps each character's OWN rest posture (hunched beasts stay hunched; only
 arm bind angles are standardized), and per-character clip flavor is one
 `lib: {slot: {clip, lib, ts}}` opt (see UAL_SLOTS + PLAYTEST_NOTES). Recipe:

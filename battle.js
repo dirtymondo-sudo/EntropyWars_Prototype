@@ -27506,6 +27506,10 @@
                         });
                         if (_activeCinematic?.showCounter) _activeCinematic.showCounter();
                         _showPressFeedback(_counterAttacker, _counterPressRes);
+                        // Rigged models throw the riposte swing (castMelee) —
+                        // counters are always d===1 melee, so the kind tag is
+                        // right by construction.
+                        triggerAttackAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y);
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
                             ignoreArmor: false,
@@ -29100,6 +29104,9 @@
                     _spellFocusCamera(unit, x, y);
                 }
                 pushUndoSnapshot(true);
+                // Rigged models swig the potion (classifySpellAnimKind
+                // 'consume' → castConsume, the UAL2 Consume clip).
+                triggerCastAnim(unit, { id: 'consumeHealPotion', name: 'Healing Potion' });
                 unit.items.healPotion -= 1;
                 const heal = Math.max(1, Math.round(96 * getTerrainHealMultiplier(target.x, target.y)));
                 const healed = applyHealingToUnit(target, heal, unit);
@@ -29140,6 +29147,7 @@
                     _spellFocusCamera(unit, x, y);
                 }
                 pushUndoSnapshot(true);
+                triggerCastAnim(unit, { id: 'consumeManaPotion', name: 'Mana Potion' });
                 unit.items.manaPotion -= 1;
                 const restore = 40;
                 const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
