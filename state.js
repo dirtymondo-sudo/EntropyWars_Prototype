@@ -1664,7 +1664,7 @@
             return null;
         }
 
-        function applyFallDamage(unit, fromZ, toZ, logPrefix) {
+        function applyFallDamage(unit, fromZ, toZ, logPrefix, opts) {
             if (!unit || unit.dead) return 0;
             if (typeof canFly === 'function' && canFly(unit)) return 0;
             const FALL_THRESHOLD = (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3;
@@ -1680,6 +1680,12 @@
             const _wNote = _wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
+            // Enemy-caused falls (knockbacks, pulls, tremor pits — callers tag
+            // opts.byEnemy) flail on the way down (MAL Fall3 via battle.js
+            // triggerFallAnim); voluntary drops (move/jump) stay quiet.
+            if (opts && opts.byEnemy && !unit.dead && typeof triggerFallAnim === 'function') {
+                triggerFallAnim(unit);
+            }
             return dmg;
         }
 
@@ -1749,7 +1755,7 @@
                         });
                     }
 
-                    applyFallDamage(unit, fromZ, unit.z ?? 0, prefix);
+                    applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
 
                     if (typeof animateDisplacement === 'function') {
                         animateDisplacement(unit, fromX, fromY, c.x, c.y, 200);

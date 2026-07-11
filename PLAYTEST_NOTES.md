@@ -1869,9 +1869,36 @@ verify visually after upload) — syntax-checked only.
     Catches snareTrap, frostMine, magnetMine, raceTeslaTrap, raceLucidTrap,
     raceWebSnare, raceFlashbangMine, raceTinkersContraption, deployTurret;
     warpRune intentionally does NOT match (runes keep magic-cast flavor).
-- **NOT wired (clips ready, no engine hook)**: Fall3 (falling), Face_Punch_
-  Reaction (heavy-hit variant — hitFlashKind only knows 'hit'/'block').
-  Counter plays hit-flinch → castMelee riposte, not block→attack.
+- **Round 3 (2026-07-11c — heavy hits + falls wired)**:
+  - `hitHeavy` slot (MAL Face_Punch_Reaction @3.3 → 0.87s reel): the damage
+    branch of applyDamageToUnit tags the flash 'hitHeavy' when
+    finalDamage ≥ 60 (the SAME threshold that golds the number / picks the
+    hit11 spark), opts.isCrit, or the type note says super effective. DoT
+    ticks keep their own flashColor kinds. Renderer chain
+    ['hitHeavy','hit']; unknown flash kinds already tint white, so the
+    heavy flash looks like a hit flash (+ shake).
+  - `fall` slot (MAL Fall3 @1.2 → 1.1s flail, **pinHips: true**): new
+    battle.js `triggerFallAnim(unit)` (state.fallAnimIds, mirrors dodge) +
+    renderer sync block (runs AFTER hit-flash so the fall owns the moment).
+    Fires from: forceGroundUnit (wounded crash + spell groundings) and
+    state.js applyFallDamage when the caller passes `{byEnemy:true}` —
+    tagged at: crash-push spells (2 sites), tremor-trap pit, displacement
+    spell, pull spell, state.js applyBlowback. Voluntary drops (doMove
+    ledge drops line ~12766, doJump) are deliberately untagged.
+  - **pinHips bake flag** (libClips value `{clip, lib, pinHips:true}`,
+    plumbed through UAL_SLOTS/_mk3d): _libBakeClips writes the character's
+    own REST hips translation for every sample instead of the retargeted
+    pelvis travel — Fall3 bakes a fall-from-height plunge (hips 2.79→0.21×
+    rest height, verified) that would fight the board tween's actual drop.
+    Bake cache key gets a ':pin' suffix so pinned/unpinned bakes of the
+    same clip can coexist.
+  - Offline bake validation re-run (validate_bake.js): Fall3 /
+    Face_Punch_Reaction / Block3 / Spartan_Kick / Archery_Shot_1 (MAL) +
+    Fixing_Kneeling (UAL1, kneels to 0.43× hips) × fortune teller +
+    werewolf — no NaNs, segErr 0.00%.
+- **NOT wired (clips ready, no engine hook)**: none left from the 20 MAL
+  clips + requested UAL set. Counter plays hit-flinch → castMelee riposte,
+  not block→attack (sequencing two clips would need renderer work).
 - **MANDATORY upload for this to work**: `MAL1_Sniper.glb` → R2
   `Assets/Models/MAL1_Sniper.glb`. Without it the bake skips every lib-2
   slot → characters stand in rest pose (UAL casts still play). The 20

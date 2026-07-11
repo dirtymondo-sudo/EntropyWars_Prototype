@@ -617,6 +617,14 @@ const UAL_SLOTS = {
   castChop:    { clip: 'TreeChopping_Loop',      lib: 1, ts: 1.2  },
   castTrap:    { clip: 'Fixing_Kneeling',        lib: 0, ts: 4.0  },
   block:       { clip: 'Shield_OneShot',         lib: 1, ts: 1.6  },
+  // 2026-07-11c: hitHeavy Face_Punch_Reaction 2.87s (→0.87s reel — crits
+  // ≥60 dmg / super-effective hits, hitFlash kind 'hitHeavy') · fall Fall3
+  // 1.33s (→1.1s flail — forced groundings + enemy-caused fall damage).
+  // pinHips: Fall3 bakes a 1.5×hips-height plunge into the clip; the board
+  // tween owns the actual drop, so the bake pins the hips at rest height
+  // and keeps only the flailing rotations.
+  hitHeavy:    { clip: 'Face_Punch_Reaction',    lib: 2, ts: 3.3  },
+  fall:        { clip: 'Fall3',                  lib: 2, ts: 1.2, pinHips: true },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
@@ -629,6 +637,7 @@ const _FEM_SLOT_DEFAULTS = {
 const _UAL_CLIPS = {}, _UAL_TS = {};
 for (const _slot in UAL_SLOTS) {
   _UAL_CLIPS[_slot] = { clip: UAL_SLOTS[_slot].clip, lib: UAL_SLOTS[_slot].lib || 0 };
+  if (UAL_SLOTS[_slot].pinHips) _UAL_CLIPS[_slot].pinHips = true;
   _UAL_TS[_slot] = UAL_SLOTS[_slot].ts;
 }
 
@@ -678,6 +687,7 @@ function _mk3d(folder, prefix, anims, opts) {
     for (const slot in def.lib) {
       const o = def.lib[slot];
       lc[slot] = { clip: o.clip, lib: o.lib || 0 };
+      if (o.pinHips) lc[slot].pinHips = true;
       if (o.ts) lt[slot] = o.ts;
     }
     def.libClips = lc; def.libTimeScales = lt;

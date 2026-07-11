@@ -1157,6 +1157,7 @@ const ThreeRenderer = (function () {
     var _prevAttackIds = new Set();
     var _prevCastIds = new Set();
     var _prevDodgeIds = new Set();
+    var _prevFallIds = new Set();
     var _prevHitFlashIds = new Set();
     var _prevHealFlashIds = new Set();
     var _prevWiggleIds = new Set();
@@ -7490,7 +7491,12 @@ const ThreeRenderer = (function () {
             var ref = def.libClips[slot];
             var clipName = (typeof ref === 'string') ? ref : ref.clip;
             var libIdx = (ref && typeof ref === 'object' && ref.lib) || 0;
-            var key = libIdx + ':' + clipName;
+            // pinHips: bake WITHOUT hips travel — the character's own rest
+            // hips translation is written for every sample, keeping only the
+            // rotations. Used by the fall slot (Fall3 bakes a 1.5×hips-height
+            // plunge; the board tween owns the actual drop).
+            var pinHips = !!(ref && typeof ref === 'object' && ref.pinHips);
+            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : '');
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
             if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
@@ -7534,17 +7540,25 @@ const ThreeRenderer = (function () {
                     quats[pr.t][i * 4 + 2] = lq[2]; quats[pr.t][i * 4 + 3] = lq[3];
                 }
                 // hips travel: source pelvis world delta, scaled, → hips local
-                src.bones.pelvis.matrixWorld.decompose(pv, qv, sv);
-                var hp = setup.hipsParent;
-                var wpt = [
-                    setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
-                    setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
-                    setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
-                var loc = hp
-                    ? _lqRotV(_lqInv(hp.wq), _lvSub(wpt, hp.wp))
-                    : wpt.slice();
-                if (hp) { loc = [loc[0] / (hp.ws[0] || 1), loc[1] / (hp.ws[1] || 1), loc[2] / (hp.ws[2] || 1)]; }
-                hipsPos[i * 3] = loc[0]; hipsPos[i * 3 + 1] = loc[1]; hipsPos[i * 3 + 2] = loc[2];
+                // (pinHips slots write the pristine rest translation instead —
+                // node locals are only ever mutated on .q by the bake, so
+                // tgt.byName.Hips.t is still the untouched rest value here).
+                if (pinHips) {
+                    var rt = setup.tgt.byName.Hips.t;
+                    hipsPos[i * 3] = rt[0]; hipsPos[i * 3 + 1] = rt[1]; hipsPos[i * 3 + 2] = rt[2];
+                } else {
+                    src.bones.pelvis.matrixWorld.decompose(pv, qv, sv);
+                    var hp = setup.hipsParent;
+                    var wpt = [
+                        setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
+                        setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
+                        setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
+                    var loc = hp
+                        ? _lqRotV(_lqInv(hp.wq), _lvSub(wpt, hp.wp))
+                        : wpt.slice();
+                    if (hp) { loc = [loc[0] / (hp.ws[0] || 1), loc[1] / (hp.ws[1] || 1), loc[2] / (hp.ws[2] || 1)]; }
+                    hipsPos[i * 3] = loc[0]; hipsPos[i * 3 + 1] = loc[1]; hipsPos[i * 3 + 2] = loc[2];
+                }
             }
             action.stop();
             var tracks = [];
@@ -7856,10 +7870,11 @@ const ThreeRenderer = (function () {
                     if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
                 }
                 var act = mixer.clipAction(clip);
-                // One-shot slots: death, hit flinch, the shield block, and
-                // every cast variant (cast / castMagic / castSupport /
-                // castRanged / castMelee / castThrow — sprites.js role guide).
-                if (name === 'death' || name === 'hit' || name === 'block' || name.indexOf('cast') === 0) {
+                // One-shot slots: death, hit flinches (hit / hitHeavy), the
+                // shield block, the fall flail, and every cast variant
+                // (cast / castMagic / … — sprites.js role guide).
+                if (name === 'death' || name.indexOf('hit') === 0 || name === 'block'
+                    || name === 'fall' || name.indexOf('cast') === 0) {
                     act.setLoop(THREE.LoopOnce, 0);
                     act.clampWhenFinished = true;
                 } else {
@@ -13675,10 +13690,24 @@ const ThreeRenderer = (function () {
                     // A zero-damage block raises the shield instead (battle.js
                     // tags the flash 'block' when the hit is fully absorbed).
                     if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
+                    else if (_hk === 'hitHeavy' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hitHeavy', 'hit']);   // crit / super effective — big reel
                     else if (_hk === 'block' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['block', 'hit']);
                 }
             }
             _prevHitFlashIds = new Set(state.hitFlashIds);
+        }
+
+        // Enemy-caused falls (forced groundings, knock-offs — battle.js
+        // triggerFallAnim): Fall3 flail, pinned hips, while the board tween
+        // does the actual dropping. Runs AFTER the hit-flash block so the
+        // fall owns the moment when both fire on the same impact.
+        if (state.fallAnimIds) {
+            for (var uid of state.fallAnimIds) {
+                if (!_prevFallIds.has(uid) && !_deathTweens.has(uid)) {
+                    _maybeStartModelAnim(uid, ['fall']);
+                }
+            }
+            _prevFallIds = new Set(state.fallAnimIds);
         }
 
         if (state.healFlashIds) {

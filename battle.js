@@ -3147,7 +3147,7 @@
                             if (!canOccupy(nx, ny) && !(_tryCrashThrough(target, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
                             target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny });
                         }
-                        if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `);
+                        if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
                         if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
                         if (_crSteps.length > 0) _applyKnockbackHazard(target);
                     }
@@ -3384,7 +3384,7 @@
                         if (!canOccupy(nx, ny) && !(_tryCrashThrough(hit, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
                         hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny });
                     }
-                    if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `);
+                    if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `, { byEnemy: true });
                     if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
                     if (_lpSteps.length > 0) _applyKnockbackHazard(hit);
                 }
@@ -5245,6 +5245,24 @@
                 if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
                 if (!_v2) scheduleBoardRender();
             }, 420);
+        }
+
+        // Enemy-caused falls: forced groundings (forceGroundUnit) and fall
+        // damage from knock-offs (applyFallDamage with opts.byEnemy — state.js).
+        // Rigged models flail with the MAL Fall3 clip (hips pinned; the board
+        // tween owns the actual drop). Voluntary drops (move/jump) stay quiet.
+        function triggerFallAnim(unit) {
+            if (!unit || unit.dead || _skipVisuals()) return;
+            const _v2 = window._v2UnitSystemActive?.();
+            if (!state.fallAnimIds) state.fallAnimIds = new Set();
+            state.fallAnimIds.add(unit.id);
+            if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+            if (!_v2) scheduleBoardRender();
+            window.setTimeout(() => {
+                state.fallAnimIds.delete(unit.id);
+                if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
+                if (!_v2) scheduleBoardRender();
+            }, 1100);
         }
 
         const HIT_EFFECT_URLS = {
@@ -11509,7 +11527,14 @@
                         }
                     }
                 }
-                flashUnit(target.id, opts.flashColor || 'hit');
+                // Crits (the same ≥60 threshold that golds the number and
+                // picks the hit11 spark) and super-effective hits reel with
+                // the heavy flinch (hitHeavy → MAL Face_Punch_Reaction);
+                // ordinary hits keep the short flinch. DoT ticks pass their
+                // own flashColor (burn/poison/…) and are untouched.
+                const _heavyFlinch = finalDamage >= 60 || !!opts.isCrit
+                    || !!(typeNote && typeNote.includes('super effective'));
+                flashUnit(target.id, opts.flashColor || (_heavyFlinch ? 'hitHeavy' : 'hit'));
 
                 // Damage number style: crit hits pop gold, counter/follow-up
                 // chain hits pop electric blue (kind supplied by the caller),
@@ -25671,7 +25696,7 @@
                 const fromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
                 applyTerrainDeform(trap.x, trap.y, 0, { centerDelta: -2, edgeDelta: 0 });
                 if (!victim.dead && typeof applyFallDamage === 'function') {
-                    applyFallDamage(victim, fromZ, victim.z ?? 0, `${trap.spellName || 'Tremor Charge'}: `);
+                    applyFallDamage(victim, fromZ, victim.z ?? 0, `${trap.spellName || 'Tremor Charge'}: `, { byEnemy: true });
                 }
                 addLog('⛏ The ground collapses into a fresh pit!');
             } else if (trap.trapType === 'magnet') {
@@ -26789,6 +26814,7 @@
                 : groundZ;
             unit.z = (landedZ === null) ? groundZ : landedZ;
             if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'out');
+            triggerFallAnim(unit);   // rigged models flail on the way down
             if (opts.reason === 'wounded') {
                 showFloatingTextForUnit(unit, '💥 CRASH!', 'debuff', { durationMs: 1100 });
                 addLog(`${unitDisplayName(unit)} is too wounded to stay airborne and crashes to the ground!`);
@@ -30778,7 +30804,7 @@
                     if (hitObstacle && spell.collisionBonus) damage += spell.collisionBonus;
 
                     if (typeof applyFallDamage === 'function') {
-                        applyFallDamage(target, _displaceFromZ, target.z ?? 0, `${spell.name}: `);
+                        applyFallDamage(target, _displaceFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
                     }
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -30993,7 +31019,7 @@
                 }
 
                 if (typeof applyFallDamage === 'function') {
-                    applyFallDamage(target, _pullFromZ, target.z ?? 0, `${spell.name}: `);
+                    applyFallDamage(target, _pullFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
                 }
 
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
