@@ -4,6 +4,21 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## HOTFIX: SUBMERSION CRASH FROZE CAMERA ON SMALL CUSTOM MAPS (2026-07-11) — three-renderer.js
+Token `20260711g` → `20260711h`. User repro: playtest a 6x6 custom editor map
+→ "Fight!" then the camera never moves and the intro never plays. Cause: the
+intro-cinematic march arms walk tweens whose path nodes start OFF-BOARD and
+FRACTIONAL (`introCineStart`: `un.x + zi.ox * ~2.8` causeway nodes), and
+`_getSubmersionForTile` (added in the water rework) guarded only the ROW:
+`boardTerrain[ty][tx]` with a valid row + out-of-range/fractional tx →
+`undefined.replace()` → uncaught throw in `_updateWalkTweens` →
+`renderFrame` died EVERY frame (camera, intro, everything frozen). Fixed by
+guarding the cell (`(terrain || '').replace`) in `_getSubmersionForTile` +
+`_getSubmersionDepth`. Lesson for future renderer helpers: any per-frame
+board lookup must tolerate off-board coords — intro marches, knockback
+arcs, and projectiles all leave the grid; one throw in renderFrame bricks
+the whole game loop.
+
 ## MULTI-FLOOR PASS: WRONG-FLOOR MOVES + COLUMN REPAINT + CAMERA (2026-07-11) — battle.js, map.js, hud.js, three-renderer.js
 Token `20260711f` → `20260711g`. User bug batch from a vertical editor map
 (surface + underground floors). KEY ARCHITECTURE FACT for future sessions: the

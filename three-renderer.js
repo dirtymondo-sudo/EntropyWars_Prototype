@@ -6830,14 +6830,18 @@ const ThreeRenderer = (function () {
         var terrain = (state.boardTerrain && state.boardTerrain[unit.y])
                     ? state.boardTerrain[unit.y][unit.x] : '';
 
-        var tKey = terrain.replace(/_\d+$/, '');
+        var tKey = (terrain || '').replace(/_\d+$/, '');
         return SUBMERSION_DEPTH[tKey] || 0;
     }
 
     function _getSubmersionForTile(tx, ty) {
+        /* Guard the CELL, not just the row: intro-cinematic march paths start
+           OFF-BOARD (fractional x/y outside the grid), so boardTerrain[ty]
+           can be a valid row while [tx] is undefined — on small custom maps
+           that crashed renderFrame every frame (frozen camera, dead intro). */
         var terrain = (state.boardTerrain && state.boardTerrain[ty])
                     ? state.boardTerrain[ty][tx] : '';
-        var tKey = terrain.replace(/_\d+$/, '');
+        var tKey = (terrain || '').replace(/_\d+$/, '');
         return SUBMERSION_DEPTH[tKey] || 0;
     }
 
