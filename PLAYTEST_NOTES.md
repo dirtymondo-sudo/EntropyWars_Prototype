@@ -4,6 +4,77 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## AI LAB OVERHAUL: TURBO SIMS + SPRT TRAINING + STRENGTH TEST + SPELL TELEMETRY + AI v3 (2026-07-11) — battle.js, ainew.js, map.js, ui.js, three-renderer.js, index.html
+Token `20260711h` → `20260711i`. Big pass on the AI-training / balance-lab
+pipeline ("make the CPU a chess engine, get data faster"):
+
+**Animations-off actually off (the reported bug).** The pause "Animation"
+toggle never reached the GLB rigs: `_updateUnitModels` ran `mixer.update(dt)`
+unconditionally (three-renderer ~8060) and `_syncCombatAnims` kept firing
+attack/cast clips. New `_ewAnimsOff()` (mirrors battle.js `_skipVisuals`)
+freezes mixers/one-shots/lean, `_maybeStartModelAnim`/`_maybeStartSpriteAnim`
+return true (claim, play nothing), lunge/dodge tween creation gated. The
+toggle is now PERSISTED (`ew_animationsDisabled` in localStorage, ui.js) —
+it used to silently reset every reload.
+
+**Turbo sims (~5-20× more games/hour).** During `devAutoSim` with anims off:
+renderFrame drops to ~5fps (`EW_TURBO_FRAME_MS`, default 200, 0=off);
+`_waitForAnimationsThen` takes a fast path (only `_walkAnimActive` +
+`_dying`, 16ms poll, MAX_WAIT 2s); AI action floors 12→2ms; speed tiers now
+[1,2,4,8,16] (new x16 button in the battle dev bar; labs launch at 16 →
+effective ×64). CAVEAT: keep the tab FOREGROUND — background tabs clamp
+setTimeout to 1s and murder throughput.
+
+**Weight table audit (schema 10→11, key `ai-weights-v11`).** ainew.js's
+getAIWeight wrapper used to FLOOR height/CC/kill weights — some floors above
+the key's own max (killBonusScore floor 60 > max 50, statusEffectBonus 40 >
+max 20, moveHighGroundMelee 2.5 > max 2), so A/B experiments on those keys
+tested values the game never saw. Floors are now the real defaults with
+widened ranges; wrapper deleted. Weights with board-dependent code paths
+carry `probe: 'hourglass'|'nexus'` and `_weightRelevantNow()` skips their
+experiments when the training board can't exercise them.
+
+**SPRT early stopping (how fishtest gates Stockfish patches).** Experiments
+stop as soon as H1 "side wins 65%" beats H0 coin-flip at α=β=0.05
+(bound ±2.944; e.g. 14-2 stops at 16 games). Cap raised 40→60 (only truly
+even weights run long). `recordTrainingMatch` → `_finalizeExperiment` with
+`exp.sprtEarly`; exports carry the full experiment audit trail.
+
+**NEW: AI Strength Test** (Settings→Developer→"Launch AI Strength Test",
+`_selectMode('aistrength')`, `_strengthTestMode`). Mirror teams; champion
+(trained weights + ainew overlay) vs BASELINE (default weights via
+getAIWeight, stock ai.js via `window._ewStrengthBaseline()` delegation in
+ainew). Baseline side flips every 2 matches (de-correlated from the
+1-match starting-player flip). Dashboard: WR, Wilson 95% CI, Elo delta,
+verdict; export `ew-strength-test.json`. This is the proof arm: run after
+training/AI changes; if champion CI doesn't clear 50%, the change was noise.
+
+**Balance Lab data v3 (`ew-balance-stats-v3`).** New `spellUse` bucket =
+per-CAST telemetry: `_balSpellCollector` armed in doSpell next to the press
+collector, damage/kills attributed in applyDamageToUnit, flushed in
+finishAction (cleared in doAttack + finishComputerAction against stale
+attribution). Dashboard gains "Casts" tab (dmg/cast, dmg/MP, kills/100MP,
+whiff rate). JSON export now has an `analysis` section computed at export:
+Wilson CIs on every job/race WR, race WR decomposed into job expectation +
+race residual (the BALANCE_NOTES 07-09b method, automatic now), spell
+efficiency league, avg rounds/comeback/FK→win. CSV: +wilsonLow/High,
++residualVsJob, +spellUse section. Auto-batch-download every 20 matches is
+now Balance-Lab-only (training runs were spamming downloads at turbo speed).
+
+**ainew.js v3 ("chess engine" pass).** pickEngageMove now values each tile
+by the BEST REAL SHOT from it (estDamage evaluated from the tile: downhill,
+back-arc, armor, +1 range at h≥2) = 1-ply move×action search; threat maps
+(`makeThreatFn`) use real per-matchup damage instead of atk×0.65 (lethal
+tiles get an explicit death penalty); pickTeamFocus prefers enemies the
+TEAM's summed real burst can confirm-kill this round; kills are taken with
+the cheapest sufficient action (−MP tiebreak) and chip damage pays an MP
+economy tax. Strength-test baseline delegation lives at the top of
+aiTakeTurn.
+
+**Known follow-ups**: stock ai.js damage estimate is still `atk*0.65` on its
+delegate paths (supports); the balance matchLog could carry per-team kill
+totals; dashboard races tab doesn't show the residual (exports do).
+
 ## HOTFIX: SUBMERSION CRASH FROZE CAMERA ON SMALL CUSTOM MAPS (2026-07-11) — three-renderer.js
 Token `20260711g` → `20260711h`. User repro: playtest a 6x6 custom editor map
 → "Fight!" then the camera never moves and the intro never plays. Cause: the

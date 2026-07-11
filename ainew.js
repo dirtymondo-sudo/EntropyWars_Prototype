@@ -3,13 +3,19 @@
 // A SURGICAL drop-in on top of the stock ai.js. Load this AFTER ai.js
 // (it captures and delegates to the original window.aiTakeTurn). It layers
 // playtested combat edges onto the stock AI's mature framework instead of
-// rewriting 4000 lines. v2 — "make it actually hard" pass:
+// rewriting 4000 lines. v3 — "chess engine" pass: every decision is valued
+// through the REAL damage pipeline (a 1-ply search over move×action pairs —
+// like a chess engine evaluating resulting positions instead of guessing),
+// threat maps use real per-matchup damage, focus targeting prefers enemies
+// the TEAM can confirm-kill this round, and kills are taken with the
+// cheapest sufficient action (saved MP = future kills). Also hosts the
+// baseline delegation for the AI Strength Test (champion vs baseline).
 //
 //   1) PROACTIVE HIGH-GROUND SEEKING (kept from v1).
 //      Elevation matters: downhill ×(1 + 0.10/level), high-ground −5/level
-//      flat defense, +1 range for ranged at h≥2. The stock AI weights height
-//      at 0.3/0.5 vs distance ×10, so it ignores it. We wrap GAME.getAIWeight
-//      to raise the height weights (floor, never lower).
+//      flat defense, +1 range for ranged at h≥2. The old getAIWeight wrapper
+//      that floored the height weights is GONE — the floors are folded into
+//      AI_WEIGHT_DEFAULTS (schema 11, battle.js) so training them is real.
 //
 //   2) HARD TEAM FOCUS-FIRE (kept, smarter target pick).
 //      One shared focus target per team; commitment beats dithering. The
@@ -119,34 +125,11 @@
         try { return !!(g.unitHasStatus && g.unitHasStatus(tg, 'protect')); } catch (e) { return false; }
     }
 
-    // ---- 1) Elevation: boost high-ground weights once, by wrapping getAIWeight.
-    const HEIGHT_WEIGHTS = {
-        moveHighGroundRanged_v1: 3.5,  // was 0.3 — ranged really wants the +1 range + downhill
-        moveHighGroundMelee_v1: 2.5,   // was 0.5
-        moveRetreatHeight_v1: 3.0,
-        jumpHighGroundRanged_v1: 18,
-        jumpHighGroundMelee_v1: 8,
-        flyRangedHeightBonus_v1: 14,
-        // Stock CC/status scoring is so timid the AI never casts control; raise
-        // the floor so the delegated stock paths value status effects too.
-        statusEffectBonus_v1: 40,
-        killBonusScore_v1: 60,
-    };
-    function ensureHeightWeights(g) {
-        if (!g || !g.getAIWeight || g.__claudeHeightWrap) return;
-        const orig = g.getAIWeight.bind(g);
-        g.getAIWeight = function (key, player) {
-            const base = orig(key, player);
-            if (Object.prototype.hasOwnProperty.call(HEIGHT_WEIGHTS, key)) {
-                // take the stronger of the trained value and our floor, so we
-                // only ever push the AI to value height MORE, never less.
-                return Math.max(base, HEIGHT_WEIGHTS[key]);
-            }
-            return base;
-        };
-        g.__claudeHeightWrap = true;
-        console.log('[ainew] v2 active: height weights, focus-fire, press-turn, CC, kiting.');
-    }
+    // ---- 1) Elevation weights: v2 used to wrap GAME.getAIWeight and floor the
+    // height/CC/kill weights from out here. Those floors are now FOLDED INTO
+    // AI_WEIGHT_DEFAULTS in battle.js (schema 11) — several floors sat above a
+    // weight's own max, which silently made the A/B trainer's experiments on
+    // those keys meaningless. One source of truth now; no wrapper. (v3)
 
     function standH(g, u) { try { return g.getUnitStandingHeight(u); } catch (e) { return u.z ?? 0; } }
     function tileH(g, t) {
@@ -169,6 +152,21 @@
         return g.state.units.filter(u => u.player === unit.player && !u.dead && u.hp > 0);
     }
 
+    // Best single-action damage `atk` could put on `def` right now, through the
+    // real damage pipeline (basic attack or biggest affordable damage spell).
+    function bestSingleDamage(g, atk, def) {
+        let bd = estDamage(g, atk, def, null, atk.x, atk.y);
+        if (!g.unitHasStatus(atk, 'silence')) {
+            for (const sp of (atk.spells || [])) {
+                if (!DMG_KINDS.has(sp.kind)) continue;
+                if ((atk.mp || 0) < (sp.cost || 0)) continue;
+                const d2 = estDamage(g, atk, def, sp);
+                if (d2 > bd) bd = d2;
+            }
+        }
+        return bd;
+    }
+
     // ---- 2) Shared team focus target (hard focus-fire).
     function pickTeamFocus(g, unit) {
         const st = g.state;
@@ -183,13 +181,26 @@
         const team = liveAllies(g, unit);
         const cx = team.reduce((s, u) => s + u.x, 0) / (team.length || 1);
         const cy = team.reduce((s, u) => s + u.y, 0) / (team.length || 1);
+        // TEAM BURST: how much real damage the whole team could land on each
+        // enemy this round. An enemy the team can actually DELETE this round
+        // is worth far more focus than a slightly-softer one it can't — kills
+        // are the points; wounded survivors get healed back up.
+        const burst = new Map();
+        for (const en of enemies) {
+            let b = 0;
+            for (const al of team) b += bestSingleDamage(g, al, en);
+            burst.set(en.id, b);
+        }
         // Lowest effective HP (incl. shield), pulled toward enemies near the
-        // team; healers and big casters first — kill the support core.
+        // team; healers and big casters first — kill the support core; and a
+        // strong preference for targets the team burst can confirm this round.
         enemies.sort((a, b) => {
             const eff = u => (u.hp + (u.shield || 0));
             let ka = HEALERS.has(a.cls) ? -300 : 0, kb = HEALERS.has(b.cls) ? -300 : 0;
             ka -= Math.min(200, (a.int || 0) * 2);
             kb -= Math.min(200, (b.int || 0) * 2);
+            if ((burst.get(a.id) || 0) >= eff(a)) ka -= 400;   // team can kill it NOW
+            if ((burst.get(b.id) || 0) >= eff(b)) kb -= 400;
             const da = Math.abs(a.x - cx) + Math.abs(a.y - cy);
             const db = Math.abs(b.x - cx) + Math.abs(b.y - cy);
             return (eff(a) + ka + da * 25) - (eff(b) + kb + db * 25);
@@ -315,8 +326,13 @@
         const myH = standH(g, unit);
         const scoreDmg = (tg, est, opts) => {
             opts = opts || {};
+            const cost = opts.cost || 0;
             let s = est;
-            if (est >= effHp(tg)) s += 50000;                    // secure the kill
+            // Secure the kill — but among killing actions prefer the CHEAPEST
+            // one that still kills (don't dump a 70-MP nuke on a 20-HP target;
+            // the saved MP is a future kill). Overkill damage adds nothing.
+            if (est >= effHp(tg)) s += 50000 - Math.min(4000, cost * 8);
+            else s -= cost * 1.5;                                // MP economy on chip damage
             s += (tg.maxHp - tg.hp) * 1.5;                       // pile onto the wounded
             if (focus && tg.id === focus.id) s += 8000;          // HARD focus fire
             if (HEALERS.has(tg.cls)) s += 4000;                  // kill support first
@@ -375,7 +391,7 @@
                         if (!first) continue;
                         const prim = rayTargets[0];
                         const est = estDamage(g, unit, prim, sp);
-                        let sc = scoreDmg(prim, est, { spellType: sp.spellType || null, canMiss: false, press: PRESS_KINDS.has(sp.kind) });
+                        let sc = scoreDmg(prim, est, { spellType: sp.spellType || null, canMiss: false, press: PRESS_KINDS.has(sp.kind), cost: sp.cost || 0 });
                         for (let ri = 1; ri < rayTargets.length; ri++) {
                             const oe = estDamage(g, unit, rayTargets[ri], sp);
                             sc += oe * 0.9 + (oe >= effHp(rayTargets[ri]) ? 3000 : 0);
@@ -394,7 +410,7 @@
                     let sc, est = 0;
                     if (isDmg) {
                         est = estDamage(g, unit, tg, sp) * (sp.guaranteedCrit ? 1.5 : 1);
-                        sc = scoreDmg(tg, est, { spellType: sp.spellType || null, canMiss: false, press: PRESS_KINDS.has(sp.kind) });
+                        sc = scoreDmg(tg, est, { spellType: sp.spellType || null, canMiss: false, press: PRESS_KINDS.has(sp.kind), cost: sp.cost || 0 });
                         // splash: count extra enemies (and friendly fire) in the blast
                         if (SPLASH_KINDS.has(sp.kind)) {
                             const rad = sp.aoeRadius || sp.crossRadius || 1;
@@ -518,19 +534,40 @@
         return false;
     }
 
-    // ---- 4) Positioning. Threat = how much damage the enemy team can put on a
-    // tile next activation (coarse move+range reach, like the stock threat map).
-    function threatAt(g, tx, ty, tz, enemies) {
-        let t = 0;
+    // ---- 4) Positioning. Threat = how much REAL damage the enemy team could
+    // put on this unit at a tile next activation. v3: replaces the flat
+    // atk×0.65 guess with the engine damage pipeline (armor, type chart,
+    // spells) — a Warrior tile that reads "safe" to a caster is now correctly
+    // lethal for a squishy, and a wall of physical bruisers barely registers
+    // for an armored knight. Build once per decision (enemy damage doesn't
+    // depend on the tile), then probe cheaply per tile.
+    function makeThreatFn(g, unit, enemies) {
+        const info = [];
         for (const e of enemies) {
             if (isProtected(g, e)) continue;
             let er = 1, em = 2;
             try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) { er = e.range || 1; }
             try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) { em = e.move || 2; }
-            const d = combatDist(g, tx, ty, tz, e);
-            if (d <= em + er) t += Math.max(24, Math.floor((e.atk || 60) * 0.65));
+            let dmg = estDamage(g, e, unit, null, e.x, e.y);
+            let bestR = er;
+            if (!g.unitHasStatus(e, 'silence')) {
+                for (const sp of (e.spells || [])) {
+                    if (!DMG_KINDS.has(sp.kind)) continue;
+                    if ((e.mp || 0) < (sp.cost || 0)) continue;
+                    const d2 = estDamage(g, e, unit, sp);
+                    if (d2 > dmg) dmg = d2;
+                    if ((sp.range || 1) > bestR) bestR = sp.range || 1;
+                }
+            }
+            info.push({ e, reach: em + bestR, dmg });
         }
-        return t;
+        return (tx, ty, tz) => {
+            let t = 0;
+            for (const i of info) {
+                if (combatDist(g, tx, ty, tz, i.e) <= i.reach) t += i.dmg;
+            }
+            return t;
+        };
     }
     // Hazard ground (2026-07-09, mirrors ai.js aiHazardPenaltyAt): pending
     // delayed-spell blast tiles (Crystal Ball marks are announced), lava, deep
@@ -573,9 +610,13 @@
         return r;
     }
     // Move-to-engage: deliver the unit INTO firing range (or close the gap when
-    // no tile reaches) so the focus shot fires on the next loop. Tile scoring:
-    // stand as FAR as reach allows (snipers snipe), take high ground, circle to
-    // the back arc, avoid enemy-covered tiles, converge on the shared focus.
+    // no tile reaches) so the focus shot fires on the next loop.
+    // v3 — chess-engine style: instead of a flat "opens a shot" constant, each
+    // candidate tile is valued by the BEST REAL SHOT it opens (the engine
+    // damage pipeline evaluated FROM that tile — downhill bonus, back arc,
+    // armor, the works) minus the real enemy threat standing there. That is a
+    // 1-ply lookahead over (move, action) pairs: the actual shot is re-picked
+    // and validated by findFocusAction on the next loop from the real tile.
     function pickEngageMove(g, unit, focus) {
         if (!g.canUnitMove || !g.canUnitMove(unit)) return null;
         let tiles; try { tiles = g.getMoveTiles(unit) || []; } catch (e) { return null; }
@@ -584,32 +625,61 @@
         if (!enemies.length) return null;
         const reach = reachOf(g, unit);
         const recent = new Set(unit._aiRecentTiles || []);
+        const threat = makeThreatFn(g, unit, enemies);
         const blocked = (tx, ty, e) => {
             try { return g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(tx, ty, e.x, e.y); } catch (q) { return false; }
         };
+        // Castable damage spells once (per-tile loop only re-checks range).
+        let atkRange = 1;
+        try { atkRange = g.getEffectiveRange(unit) || (unit.range || 1); } catch (e) { atkRange = unit.range || 1; }
+        const dmgSpells = [];
+        if (!g.unitHasStatus(unit, 'silence')) {
+            for (const sp of (unit.spells || [])) {
+                if (!DMG_KINDS.has(sp.kind)) continue;
+                if (!g.canAffordSpell(unit, sp)) continue;
+                if ((unit.mp || 0) < (sp.cost || 0)) continue;
+                dmgSpells.push(sp);
+            }
+        }
+        // Engine rule: ranged weapons/spells get +1 range from height ≥ 2.
+        const rangeAt = (base, th) => base + ((th >= 2 && base >= 2) ? 1 : 0);
 
-        // 1) Prefer a reachable tile that opens a shot — on the shared focus if we
-        //    can, else any enemy.
+        // 1) Prefer a reachable tile that opens a shot — valued by what the
+        //    shot is actually worth from there.
         let best = null;
         for (const t of tiles) {
             if (t.x === unit.x && t.y === unit.y) continue;
             const th = tileH(g, t);
-            const tThreat = threatAt(g, t.x, t.y, t.z, enemies);
+            const tThreat = threat(t.x, t.y, t.z);
             for (const e of enemies) {
                 if (isProtected(g, e)) continue;
                 const d = combatDist(g, t.x, t.y, t.z, e);
-                if (d < 1 || d > reach) continue;
+                if (d < 1 || d > reach + 1) continue;               // +1: height can extend reach
                 if (blocked(t.x, t.y, e)) continue;
-                let s = 2000 + Math.min(d, reach) * 12;             // max standoff range
+                // Best real shot from this tile at this enemy.
+                let bestShot = 0;
+                if (d <= rangeAt(atkRange, th)) {
+                    bestShot = estDamage(g, unit, e, null, t.x, t.y, th);
+                }
+                for (const sp of dmgSpells) {
+                    let er = sp.range || 1;
+                    try { if (g.getEffectiveSpellRange) er = g.getEffectiveSpellRange(unit, sp) || er; } catch (q) {}
+                    if (d > rangeAt(er, th)) continue;
+                    const sd = estDamage(g, unit, e, sp, t.x, t.y, th);
+                    if (sd > bestShot) bestShot = sd;
+                }
+                if (bestShot <= 0) continue;
+                let s = 1200 + bestShot * 6;                        // real damage IS the value
+                if (bestShot >= effHp(e)) s += 6000;                // tile opens a confirmed kill
                 if (focus && e.id === focus.id) s += 4000;          // converge the team
                 if (HEALERS.has(e.cls)) s += 1500;                  // collapse on support
                 s += (e.maxHp - e.hp) * 0.5;                        // finish the wounded
-                const eH = standH(g, e);
-                if (th > eH) s += (th - eH) * 30;                   // downhill shot
+                s += Math.min(d, reach) * 12;                       // stand off at max range
                 const arc = attackArcOf(g, t.x, t.y, e);
                 if (arc === 'back') s += 180;                       // ×1.25, undodgeable
                 else if (arc !== 'front') s += 60;
                 s -= tThreat * 0.35;                                // stay out of the pocket
+                if (tThreat >= effHp(unit)) s -= 1500;              // that tile is a death sentence
                 s -= hazardAt(g, unit, t.x, t.y) * 6;               // never snipe from a mine
                 if (recent.has(g.posKey(t.x, t.y))) s -= 80;        // anti-oscillation
                 if (!best || s > best.score) best = { x: t.x, y: t.y, z: t.z, score: s };
@@ -631,7 +701,7 @@
             const d = combatDist(g, t.x, t.y, t.z, tgt);
             let s = (curD - d) * 100;
             s += tileH(g, t) * 5;                                   // take the high road
-            s -= threatAt(g, t.x, t.y, t.z, enemies) * 0.2;         // don't march into 3 guns
+            s -= threat(t.x, t.y, t.z) * 0.2;                       // don't march into 3 guns
             s -= hazardAt(g, unit, t.x, t.y) * 2;                   // don't march THROUGH fire either
             if (recent.has(g.posKey(t.x, t.y))) s -= 60;
             if (!approach || s > approach.score) approach = { x: t.x, y: t.y, z: t.z, score: s };
@@ -650,8 +720,11 @@
         const enemies = liveEnemies(g, unit);
         if (!enemies.length) return null;
         const recent = new Set(unit._aiRecentTiles || []);
+        const threat = makeThreatFn(g, unit, enemies);
         const scoreTile = (x, y, z, h) => {
-            let s = -threatAt(g, x, y, z, enemies) * 1.0;
+            const t = threat(x, y, z);
+            let s = -t * 1.0;
+            if (t >= effHp(unit)) s -= 800;                         // that tile is death, not safety
             const nd = Math.min.apply(null, enemies.map(e => combatDist(g, x, y, z, e)));
             s += Math.min(nd, 6) * 15;                              // open the gap
             s += h * 25;                                             // high ground defends
@@ -697,7 +770,16 @@
     window.aiTakeTurn = function (unit) {
         const g = G();
         if (!g) return _baseAiTakeTurn(unit);
-        ensureHeightWeights(g);
+
+        // AI Strength Test: units on the baseline side play the untouched
+        // stock ai.js (with default weights, enforced in getAIWeight) so the
+        // dashboard measures exactly what this overlay + training added.
+        try {
+            if (typeof window._ewStrengthBaseline === 'function') {
+                const bp = window._ewStrengthBaseline();
+                if (bp && unit && unit.player === bp) return _baseAiTakeTurn(unit);
+            }
+        } catch (e) {}
 
         // One-shot bail-out: a focus action just got rejected for this unit, so
         // hand this turn to the stock AI (whose leapStrike scorer height-checks
@@ -768,8 +850,5 @@
         return _baseAiTakeTurn(unit);
     };
 
-    // Install the high-ground weight boost immediately if GAME is already up
-    // (battle.js loads before us), so it's live before the first AI turn — not
-    // only lazily on first aiTakeTurn.
-    try { ensureHeightWeights(G()); } catch (e) {}
+    console.log('[ainew] v3 active: real-damage eval, move×shot search, focus-fire, press-turn, CC, kiting.');
 })();

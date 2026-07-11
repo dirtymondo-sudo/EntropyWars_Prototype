@@ -7940,6 +7940,7 @@ const ThreeRenderer = (function () {
        feel; the state machine then falls back to idle/walk. Returns false for
        sprite units so callers can chain to the sprite-sheet path. */
     function _maybeStartModelAnim(uid, name) {
+        if (_ewAnimsOff()) return true;   // claim it: no clip AND no sprite/tween fallback
         var ue = _getUnitEntry(uid);
         if (!ue || !ue.mixer || !ue.actions) return false;
         if (Array.isArray(name)) {
@@ -7958,6 +7959,18 @@ const ThreeRenderer = (function () {
         ue._ew_oneShot = { name: name, until: _animNow() + ms };
         _playUnitModelAnim(ue, name, true);
         return true;
+    }
+
+    /* Animations master gate — mirrors battle.js _skipVisuals(). The pause-menu
+       "Animation" toggle (state.animationsDisabled) and the dev-sim fast path
+       (devAutoSim with anims hidden) must freeze GLB rig playback too: every
+       rigged unit's AnimationMixer ticking at 60fps was pure wasted CPU during
+       AI-training / balance-lab simulations, and made "animations off" a lie. */
+    function _ewAnimsOff() {
+        try {
+            if (state.devAutoSim) return !state._devSimShowAnims;
+            return !!state.animationsDisabled;
+        } catch (e) { return false; }
     }
 
     /* Per-frame model driver: advances every mixer and resolves the animation
@@ -7981,6 +7994,15 @@ const ThreeRenderer = (function () {
                         entry.modelMats[gi].color.setRGB(grey, grey, grey);
                     }
                 }
+            }
+            // Animations off (pause toggle / dev-sim): freeze the rig here —
+            // no clip switches, no mixer advance, no lean/bounce. The AP tint
+            // above stays live so spent units still grey out. Pending one-shots
+            // are dropped so a queued attack clip doesn't burst-play later.
+            if (_ewAnimsOff()) {
+                entry._ew_oneShot = null;
+                if (entry.model) { entry.model.rotation.x = 0; entry.model._ew_lean = 0; }
+                return;
             }
             // ── Motion lean + landing bounce (rigged AND static models) ──
             // Runners bank forward like a sprinter: a touch while walking,
@@ -13557,7 +13579,7 @@ const ThreeRenderer = (function () {
             for (var uid of state.attackAnimIds) {
                 if (!_prevAttackIds.has(uid) && !_lungeTweens.has(uid)) {
                     var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
-                    if (dir) {
+                    if (dir && !_ewAnimsOff()) {
                         _lungeTweens.set(uid, {
                             dx: dir.dx * LUNGE_DIST,
                             dz: dir.dy * LUNGE_DIST,
@@ -13611,7 +13633,7 @@ const ThreeRenderer = (function () {
             for (var uid of state.dodgeAnimIds) {
                 if (!_prevDodgeIds.has(uid) && !_dodgeTweens.has(uid)) {
                     var dir = state._dodgeAnimDir ? state._dodgeAnimDir[uid] : null;
-                    if (dir) {
+                    if (dir && !_ewAnimsOff()) {
                         _dodgeTweens.set(uid, {
                             dx: dir.dx * DODGE_DIST,
                             dz: dir.dy * DODGE_DIST,
@@ -13662,6 +13684,7 @@ const ThreeRenderer = (function () {
     // texture. Used by races registered in RACE_SPRITE_ANIMATIONS (sprites.js).
 
     function _maybeStartSpriteAnim(uid, kind) {
+        if (_ewAnimsOff()) return true;   // animations off: claim it, play nothing
         if (typeof getRaceSpriteAnimations !== 'function') return false;
         if (_spriteAnimTweens.has(uid)) return true;
         var unit = _findUnit(uid);
@@ -19651,6 +19674,7 @@ const ThreeRenderer = (function () {
     }
 
     var _fpsNextDue = 0;          // §4.7 FPS-cap accumulator
+    var _turboNextDue = 0;        // dev-sim turbo render throttle accumulator
     var _fpsFrames = 0, _fpsWinStart = 0, _fpsEl = null;
 
     function _ensureFpsEl() {
@@ -19691,6 +19715,21 @@ const ThreeRenderer = (function () {
             if (_frameNow - _fpsNextDue > 250) _fpsNextDue = _frameNow + 1000 / _perfSettings.fpsCap;
         }
         if (_perfSettings.fpsCounter) _tickFpsCounter(_frameNow);
+
+        /* Dev-sim turbo: while the auto-sim runs with animations hidden, the
+           board only needs an occasional visual refresh — drop the entire
+           render pass (scene updates + draw) to ~5 fps. Gameplay is driven by
+           battle.js timers, not this loop, so nothing stalls; tweens are
+           time-based and finish on the next processed frame. This plus the
+           frozen mixers is where the balance-lab / AI-training speedup comes
+           from. Override with window.EW_TURBO_FRAME_MS (0 disables). */
+        if (state.devAutoSim && !state._devSimShowAnims) {
+            var _turboMs = (window.EW_TURBO_FRAME_MS == null) ? 200 : window.EW_TURBO_FRAME_MS;
+            if (_turboMs > 0) {
+                if (_frameNow < _turboNextDue) return;
+                _turboNextDue = _frameNow + _turboMs;
+            }
+        }
 
         /* §4.1 terrain batching follows fog/editor/setting flips live. */
         if (_terrainBatchWanted() !== _mergedActive) _rebuildMergedTerrain();

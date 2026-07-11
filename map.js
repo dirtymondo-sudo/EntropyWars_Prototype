@@ -1147,8 +1147,12 @@
                             <button class="pm-set-btn" onclick="window._launchAITraining()">Launch AI Training</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Balance Lab runs AI vs AI with EQUAL weights and random, non-mirror teams — so job, race and spell win rates measure game balance, not AI skill. Uses the Mode / Map above. Live dashboard + JSON/CSV export.</div>
-                        <div class="pm-set-row">
+                        <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchBalanceSim()">Launch Balance Lab</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Strength Test proves the AI actually got harder: the current AI (trained weights + combat overlay) plays mirror matches against the untouched baseline AI, sides alternating. Win rate + Elo with a confidence interval — run it after training or an AI change.</div>
+                        <div class="pm-set-row">
+                            <button class="pm-set-btn" onclick="window._launchAIStrengthTest()">Launch AI Strength Test</button>
                         </div>
                     </div>
                 </div>`;
@@ -1194,6 +1198,12 @@
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
             _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
             window._selectMode('balancesim');
+        };
+
+        window._launchAIStrengthTest = function() {
+            _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
+            _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
+            window._selectMode('aistrength');
         };
 
         const MS_GAME_MODES = [
@@ -1695,6 +1705,14 @@
 
             state.isRankedMatch = false;
 
+            // Leaving for any non-sim mode clears the sim-mode flags so a
+            // stale training/balance/strength session can't keep recording.
+            if (mode !== 'aitrain' && mode !== 'balancesim' && mode !== 'aistrength') {
+                _aiTrainingMode = false;
+                _balanceSimMode = false;
+                _strengthTestMode = false;
+            }
+
             if (mode === 'aitrain') {
 
                 state.controllers[1] = CTRL.AI;
@@ -1703,8 +1721,9 @@
                 state.squadLeaderMode = false;
                 _aiTrainingMode = true;
                 _balanceSimMode = false;
+                _strengthTestMode = false;
                 state.devAutoSim = true;
-                state.devSimSpeed = 8;
+                state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
 
                 activeMultiplayerMode = _trainModeSetting;
 
@@ -1744,8 +1763,9 @@
                 state.squadLeaderMode = false;
                 _aiTrainingMode = false;
                 _balanceSimMode = true;
+                _strengthTestMode = false;
                 state.devAutoSim = true;
-                state.devSimSpeed = 8;
+                state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
 
                 activeMultiplayerMode = _trainModeSetting;
 
@@ -1768,6 +1788,46 @@
                     // same driver finalizeMatch re-arms after every match, and
                     // (with _aiTrainingMode off) it randomizes non-mirror teams +
                     // rotates the map before each match.
+                    restartDevSimFromBuilder(60);
+
+                    state.audioUnlocked = true;
+                    syncMusicToState().catch(() => {});
+                });
+            }
+
+            if (mode === 'aistrength') {
+
+                // Champion-vs-baseline strength gauntlet: mirror teams, one side
+                // plays the full current AI (trained weights + ainew overlay),
+                // the other the untouched baseline (defaults + stock ai.js).
+                // Sides alternate every match; the dashboard reports WR/Elo/CI.
+                state.controllers[1] = CTRL.AI;
+                state.controllers[2] = CTRL.AI;
+                state.showPlayer2Builder = false;
+                state.squadLeaderMode = false;
+                _aiTrainingMode = false;
+                _balanceSimMode = false;
+                _strengthTestMode = true;
+                state.devAutoSim = true;
+                state.devSimSpeed = 16;
+
+                activeMultiplayerMode = _trainModeSetting;
+
+                const stMap = _trainMapSetting === 'rotate'
+                    ? _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length]
+                    : _trainMapSetting;
+                applyGameMode(stMap);
+
+                Promise.all([loadAIWeights(), loadStrengthStats()]).then(() => {
+                    dismissTitleScreen();
+                    render();
+
+                    setTimeout(() => {
+                        const tp = document.getElementById('trainingPanel');
+                        if (tp) tp.style.display = 'block';
+                        renderStrengthDashboard();
+                    }, 100);
+
                     restartDevSimFromBuilder(60);
 
                     state.audioUnlocked = true;

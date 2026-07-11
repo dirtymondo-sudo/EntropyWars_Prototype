@@ -11415,6 +11415,14 @@
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
 
+                    // Balance Lab per-cast telemetry: attribute enemy damage to
+                    // the spell currently resolving for this caster.
+                    if (_balSpellCollector && sourceUnit.id === _balSpellCollector.casterId
+                        && target.player !== sourceUnit.player) {
+                        _balSpellCollector.dmg += finalDamage;
+                        _balSpellCollector.targetsHit++;
+                    }
+
                     // Whip around to face the attacker: the first backstab lands,
                     // but a hit unit won't keep its back turned — repeat attacks
                     // from that tile now strike the front arc (re-flank to
@@ -11603,6 +11611,11 @@
                     ((state.round || 0) - (target._lastDamageSourceRound || 0)) <= 2;
                 const killer = sourceUnit || (_ldsFresh ? target._lastDamageSource : null) || null;
                 if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
+                // Balance Lab per-cast telemetry: credit the resolving spell.
+                if (_balSpellCollector && killer && killer.id === _balSpellCollector.casterId
+                    && target.player !== killer.player) {
+                    _balSpellCollector.kills++;
+                }
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
@@ -16116,7 +16129,9 @@
         }
 
         function setDevSimSpeed(speed) {
-            const next = [1, 2, 4].includes(Number(speed)) ? Number(speed) : 1;
+            // x8/x16 are the turbo tiers the AI-Training / Balance-Lab / Strength-Test
+            // launchers use (effective ×32 / ×64 with the auto-sim multiplier).
+            const next = [1, 2, 4, 8, 16].includes(Number(speed)) ? Number(speed) : 1;
             if (state.devSimSpeed === next) return;
             state.devSimSpeed = next;
             addLog(`Dev sim speed set to x${next}.`);
@@ -16216,7 +16231,9 @@
                         applyGameMode(nextMap);
                     }
 
-                    if (_aiTrainingMode) {
+                    if (_aiTrainingMode || _strengthTestMode) {
+                        // Mirror teams: identical builds isolate AI skill —
+                        // both for weight A/B tests and champion-vs-baseline.
                         _mirrorRandomizeTeams();
                     } else {
                         randomizeBothTeamsForDevSim();
@@ -17899,7 +17916,16 @@
                 renderBalanceDashboard();
             }
 
-            if (state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
+            if (_strengthTestMode && state.winner != null) {
+                recordStrengthMatch(state.winner);
+                renderStrengthDashboard();
+            }
+
+            // Auto-export raw match logs for offline analysis — Balance Lab
+            // only (mirror-match training/strength logs aren't balance data,
+            // and at turbo speeds the every-20-matches download spam was
+            // drowning the browser during long training runs).
+            if (_balanceSimMode && state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
                 try {
                     downloadJson(`entropy-wars-batch-${state.matchHistory.length}.json`, state.matchHistory);
                 } catch (e) {
@@ -18282,7 +18308,7 @@
 
             state.round = 1;
 
-            if (_aiTrainingMode) {
+            if (_aiTrainingMode || _strengthTestMode) {
                 state.startingPlayer = (state.matchNumber % 2 === 0) ? 1 : 2;
             } else {
                 state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
@@ -20522,13 +20548,29 @@
         }
 
         function _waitForAnimationsThen(callback) {
-            const MAX_WAIT = 8000;
+            // Turbo fast path: in a no-anims auto-sim (AI Training / Balance
+            // Lab / Strength Test) every visual this function polls for is
+            // already suppressed — VFX skipped, walks instant, death clears on
+            // a 0ms timer. Only gameplay-coupled flags are worth waiting on,
+            // at a tight poll. This alone removes several hundred ms of
+            // wall-clock per AI action from simulated matches.
+            const _turbo = state.devAutoSim && !state._devSimShowAnims;
+            const MAX_WAIT = _turbo ? 2000 : 8000;
             const POST_ANIM_DWELL = 350;
             const start = Date.now();
             var _dwellStart = 0;
             function check() {
                 if (state.winner) return;
                 if (Date.now() - start > MAX_WAIT) { callback(); return; }
+
+                if (_turbo) {
+                    if (_walkAnimActive || state.units.some(u => u._dying)) {
+                        setTimeout(check, 16);
+                        return;
+                    }
+                    callback();
+                    return;
+                }
 
                 if (_walkAnimActive) {
                     _dwellStart = 0;
@@ -20940,21 +20982,33 @@
 
                 if (_blitzTurnGen !== _rctGen) { state.aiThinking = false; return; }
                 runComputerTurn();
-            }, state.devAutoSim ? scaleDevSimDelay(35, 8) : 350);
+            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : 350);
         }
 
-        const AI_WEIGHT_SCHEMA_VERSION = 10;
+        /* Schema 11 — weight table audit (2026-07-11):
+           ainew.js used to wrap getAIWeight and FLOOR several of these keys
+           (killBonusScore→60, statusEffectBonus→40, the move/jump/fly height
+           weights) — some floors sat ABOVE the key's own max, so the A/B
+           trainer was burning 40-match experiments on weights whose runtime
+           value never changed. Those floors are now folded in here as the
+           real defaults (ranges widened to keep them trainable) and the
+           ainew.js wrapper is gone: ONE source of truth, every experiment
+           real again. Keys whose code paths only exist on some boards carry
+           a `probe` tag — _weightRelevantNow() skips their experiments when
+           the current training board can't exercise them (e.g. hourglass
+           weights on an hourglass-less TDM map = 40 matches of coin flips). */
+        const AI_WEIGHT_SCHEMA_VERSION = 11;
 
         const AI_WEIGHT_DEFAULTS = {
 
             healPotionHpPct_v1:       { value: 0.583, min: 0.20, max: 0.70, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
 
-            killBonusScore_v1:        { value: 39.435, min: 10,  max: 50,   label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            killBonusScore_v1:        { value: 60,    min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
             markedTargetBonus_v1:     { value: 4.275, min: 2,    max: 15,   label: 'Marked Target Bonus', desc: 'Score bonus for attacking marked targets' },
-            hourglassTargetBonus_v1:  { value: 10,    min: 10,   max: 50,   label: 'HG Carrier Bonus', desc: 'Score bonus for attacking hourglass carriers' },
+            hourglassTargetBonus_v1:  { value: 10,    min: 10,   max: 50,   probe: 'hourglass', label: 'HG Carrier Bonus', desc: 'Score bonus for attacking hourglass carriers' },
             comboSynergyBonus_v1:     { value: 14.856, min: 4,   max: 25,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            statusEffectBonus_v1:     { value: 17.469, min: 2,   max: 20,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
+            statusEffectBonus_v1:     { value: 40,    min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
 
             pressRefundValue_v1:      { value: 55,    min: 10,   max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
             whiffRiskPenalty_v1:      { value: 30,    min: 0,    max: 120,  label: 'Press: Whiff Risk Penalty', desc: "Penalty scaled by the target's evade chance — a missed attack drains extra AP and cuts the turn short" },
@@ -20974,14 +21028,14 @@
             levelAggressionMod_v1:   { value: 0.014, min: 0.0,  max: 0.15, label: 'Level Aggression Mod', desc: 'Per-level aggression bonus (higher level = more aggressive)' },
             nearLevelUpBonus_v1:     { value: 3.5,   min: 0,    max: 20,   label: 'Near Level-Up Bonus', desc: 'Score bonus for combat actions when unit is close to leveling up' },
 
-            hgSeekPriority_v1:       { value: 0,     min: 0,    max: 25,   label: 'HG Seek Priority', desc: 'How aggressively AI hunts hidden hourglasses (higher = earlier inspect/move to center)' },
+            hgSeekPriority_v1:       { value: 0,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'How aggressively AI hunts hidden hourglasses (higher = earlier inspect/move to center)' },
 
             antiOscillationPen_v1:   { value: -4.335, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
 
-            recallBonus_v1:          { value: 6.25,  min: 0,    max: 25,   label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
-            scannerPriority_v1:      { value: 23.75, min: 5,    max: 35,   label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            recallBonus_v1:          { value: 6.25,  min: 0,    max: 25,   probe: 'hourglass', label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
+            scannerPriority_v1:      { value: 23.75, min: 5,    max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
 
-            nexusCapBonus_v1:        { value: 21.25, min: 10,   max: 50,   label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            nexusCapBonus_v1:        { value: 21.25, min: 10,   max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
             towerDefendBonus_v1:     { value: 40.798, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
 
             earlyExploreBonus_v1:    { value: 21.375, min: 0,    max: 25,   label: 'Early Explore Bonus', desc: 'Score for spreading out and exploring in rounds 1-3' },
@@ -20990,8 +21044,8 @@
 
             mpPotionPriority_v1:     { value: 220,   min: 40,   max: 280,  label: 'Mana Potion Priority', desc: 'Base score for using mana potion (scales with spell value unlocked)' },
 
-            jumpHighGroundRanged_v1: { value: 12.756, min: 4,    max: 25,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
-            jumpHighGroundMelee_v1:  { value: 3,     min: 1,    max: 15,   label: 'Jump: Melee High Ground', desc: 'Per-level score for melee units jumping to higher ground' },
+            jumpHighGroundRanged_v1: { value: 18,    min: 4,    max: 30,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
+            jumpHighGroundMelee_v1:  { value: 8,     min: 1,    max: 15,   label: 'Jump: Melee High Ground', desc: 'Per-level score for melee units jumping to higher ground' },
             jumpAttackEnable_v1:     { value: 23.625, min: 10,   max: 45,   label: 'Jump: Attack Enable', desc: 'Base score for jump that puts enemy in attack range' },
             jumpTraversalBonus_v1:   { value: 12.8,  min: 8,    max: 40,   label: 'Jump: Traversal', desc: 'Bonus when jump reaches closer to goal than any walk tile' },
             jumpStuckCritical_v1:    { value: 30.407, min: 15,   max: 50,   label: 'Jump: Stuck Escape', desc: 'Bonus when jump is the only way to move toward goal' },
@@ -21002,28 +21056,65 @@
             reshapePerEnemy_v1:      { value: 2.5,   min: 1,    max: 12,   label: 'Reshape: Per-Enemy Gain', desc: 'Score per enemy that we gain height advantage over by raising' },
             reshapeDefensive_v1:     { value: 4,     min: 2,    max: 15,   label: 'Reshape: Defensive Raise', desc: 'Score for raising tile defensively when enemies approach' },
 
-            moveHighGroundRanged_v1: { value: 0.3,   min: 0.3,  max: 4,    label: 'Move: Ranged Height Pref', desc: 'Per-level score bonus for ranged units moving to higher tiles' },
-            moveHighGroundMelee_v1:  { value: 0.5,   min: 0,    max: 2,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
-            moveRetreatHeight_v1:    { value: 1.25,  min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
+            moveHighGroundRanged_v1: { value: 3.5,   min: 0.3,  max: 6,    label: 'Move: Ranged Height Pref', desc: 'Per-level score bonus for ranged units moving to higher tiles' },
+            moveHighGroundMelee_v1:  { value: 2.5,   min: 0,    max: 5,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
+            moveRetreatHeight_v1:    { value: 3.0,   min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
 
             enemySpawnZonePenalty_v1: { value: 18,    min: 5,    max: 40,   label: 'Enemy Spawn Zone Penalty', desc: 'Penalty for moving into enemy spawn zone' },
 
-            landToChannelBonus_v1:   { value: 20,    min: 8,    max: 45,   label: 'Land to Channel Bonus', desc: 'Score for landing specifically to channel a nexus' },
+            landToChannelBonus_v1:   { value: 20,    min: 8,    max: 45,   probe: 'nexus', label: 'Land to Channel Bonus', desc: 'Score for landing specifically to channel a nexus' },
 
             flyEscapeMeleeBonus_v1:  { value: 14,    min: 4,    max: 30,   label: 'Fly: Escape Melee Bonus', desc: 'Score for ascending to escape melee threats' },
-            flyRangedHeightBonus_v1: { value: 10,    min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
+            flyRangedHeightBonus_v1: { value: 14,    min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
         };
 
         let _aiTrainedWeights = null;
         let _aiP2ChallengerWeights = null;
         let _aiTrainingStats = null;
         let _aiTrainingMode = false;
-        let _aiTrainingBatchSize = 40;
+        // Batch CAP per experiment. With SPRT early stopping (below) most
+        // experiments now resolve in 12–30 matches; only genuinely 50/50
+        // weights run the full 60, and those correctly end "inconclusive".
+        let _aiTrainingBatchSize = 60;
 
         let _abExperiment = null;
         let _abWeightQueue = [];
         let _abPassNumber = 0;
         let _abCompletedExperiments = [];
+
+        // ── AI STRENGTH TEST (champion vs baseline gauntlet) ────────────────
+        // Chess-engine-style self-play gating: mirror teams, one side plays the
+        // full current AI (trained weights + ainew overlay), the other plays
+        // the BASELINE (default weights, stock ai.js only — ainew delegates).
+        // Sides alternate every match. The win rate + Elo estimate is the
+        // proof that a training run / AI change actually made the CPU harder.
+        let _strengthTestMode = false;
+        let _strengthStats = null;
+
+        function _strengthBaselinePlayer() {
+            if (!_strengthTestMode) return null;
+            // Flip every TWO matches. startMatch alternates the starting player
+            // on single-match parity, so this de-correlates "who is baseline"
+            // from "who moves first" — over any 4 matches each side plays both
+            // roles with and without the first move.
+            return (Math.floor((state.matchNumber || 1) / 2) % 2 === 0) ? 1 : 2;
+        }
+        // ainew.js consults this to route baseline-side units to the stock AI.
+        window._ewStrengthBaseline = _strengthBaselinePlayer;
+
+        // Some weights only have live code paths on certain boards (hourglass
+        // pickups, nexus/domination). Testing them on a board that can't
+        // exercise them is 40+ matches of coin-flipping, so their experiments
+        // are skipped when the current board lacks the feature.
+        function _weightRelevantNow(key) {
+            try {
+                const def = AI_WEIGHT_DEFAULTS[key];
+                if (!def || !def.probe) return true;
+                if (def.probe === 'hourglass') return !!(state.hourglasses && state.hourglasses.length);
+                if (def.probe === 'nexus') return !!(state.nexusPoints && Object.keys(state.nexusPoints).length);
+            } catch (e) {}
+            return true;
+        }
 
         function getAIWeight(key, player) {
             const p = player || state.activePlayer || 1;
@@ -21037,6 +21128,12 @@
                 const testLow = _abExperiment.lowVal ?? def.min;
                 if (p === 1) return p1GetsMax ? testHigh : testLow;
                 if (p === 2) return p1GetsMax ? testLow : testHigh;
+            }
+
+            // Strength test: the baseline side always plays the untrained
+            // defaults; the champion side plays the trained weights below.
+            if (_strengthTestMode && p === _strengthBaselinePlayer()) {
+                return AI_WEIGHT_DEFAULTS[key] ? AI_WEIGHT_DEFAULTS[key].value : 0;
             }
 
             let val = (_aiTrainedWeights && _aiTrainedWeights[key] != null)
@@ -21068,7 +21165,22 @@
                 addLog(`🧪 A/B Training Pass ${_abPassNumber}: testing ${keys.length} weights × ${_aiTrainingBatchSize} matches each (${untested.length} new).`);
             }
 
-            const nextKey = _abWeightQueue.shift();
+            let nextKey = _abWeightQueue.shift();
+            // Skip weights the current board can't exercise (see _weightRelevantNow).
+            let _skipGuard = 0;
+            while (nextKey && !_weightRelevantNow(nextKey) && _skipGuard++ < 100) {
+                addLog(`🧪 Skipping ${AI_WEIGHT_DEFAULTS[nextKey]?.label || nextKey} — this board/mode never exercises it.`);
+                nextKey = _abWeightQueue.shift();
+            }
+            if (!nextKey) {
+                // Whole queue was irrelevant — refill at most once to avoid recursing forever.
+                if (!_startNextExperiment._refilled) {
+                    _startNextExperiment._refilled = true;
+                    _startNextExperiment();
+                    _startNextExperiment._refilled = false;
+                }
+                return;
+            }
             const def = AI_WEIGHT_DEFAULTS[nextKey];
             const current = (_aiTrainedWeights && _aiTrainedWeights[nextKey] != null)
                 ? _aiTrainedWeights[nextKey] : def.value;
@@ -21257,7 +21369,26 @@
                 exp.results.push({ winner: winnerPlayer, p1GetsMax, maxPlayerWon });
                 exp.matchIndex++;
 
-                if (exp.matchIndex >= _aiTrainingBatchSize) {
+                // SPRT early stopping (how Stockfish's fishtest gates patches):
+                // sequential probability ratio test of H1 "this side wins 65%"
+                // vs H0 "coin flip". Crossing the bound ends the experiment
+                // immediately — a clear winner is usually found in 12–30
+                // matches instead of always burning the full batch, and the
+                // full batch is only spent on genuinely-close weights.
+                const _dTotal = exp.maxWins + exp.minWins;
+                let _sprtCall = null;
+                if (_dTotal >= 10) {
+                    const LN_W = Math.log(0.65 / 0.5);   //  0.2624 per win
+                    const LN_L = Math.log(0.35 / 0.5);   // -0.3567 per loss
+                    const BOUND = Math.log(0.95 / 0.05); //  2.944 (α=β=0.05)
+                    if (exp.maxWins * LN_W + exp.minWins * LN_L >= BOUND) _sprtCall = 'high';
+                    else if (exp.minWins * LN_W + exp.maxWins * LN_L >= BOUND) _sprtCall = 'low';
+                }
+
+                if (_sprtCall) {
+                    exp.sprtEarly = _sprtCall;
+                    _finalizeExperiment();
+                } else if (exp.matchIndex >= _aiTrainingBatchSize) {
                     _finalizeExperiment();
                 } else {
 
@@ -21282,7 +21413,15 @@
             let adopted = null;
             let newVal = exp.currentVal;
 
-            if (maxWR >= DECISIVE_THRESHOLD) {
+            if (exp.sprtEarly === 'high') {
+                newVal = exp.highVal;
+                adopted = 'high';
+                addLog(`🧪 ✓ ${exp.label}: SPRT early stop after ${total} — HIGH wins ${exp.maxWins}-${exp.minWins} → adopting ${newVal}`);
+            } else if (exp.sprtEarly === 'low') {
+                newVal = exp.lowVal;
+                adopted = 'low';
+                addLog(`🧪 ✓ ${exp.label}: SPRT early stop after ${total} — LOW wins ${exp.minWins}-${exp.maxWins} → adopting ${newVal}`);
+            } else if (maxWR >= DECISIVE_THRESHOLD) {
 
                 newVal = exp.highVal;
                 adopted = 'high';
@@ -21329,6 +21468,7 @@
                 oldVal,
                 newVal: _aiTrainedWeights[exp.key],
                 adopted,
+                sprt: exp.sprtEarly || null,
                 pass: _abPassNumber,
                 timestamp: Date.now(),
             };
@@ -21511,7 +21651,7 @@
                     <div class="train-title" style="margin:0">AI Training — A/B</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Mirror · ${_aiTrainingBatchSize} matches per weight · Pass ${_abPassNumber || 1}</div>
+                <div class="train-subtitle">Mirror · SPRT early-stop, cap ${_aiTrainingBatchSize} matches/weight · Pass ${_abPassNumber || 1}</div>
 
                 <div class="train-cards">
                     <div class="train-card">
@@ -21619,17 +21759,27 @@
             const exportData = {
                 _meta: {
                     game: 'Entropy Wars',
+                    schemaVersion: AI_WEIGHT_SCHEMA_VERSION,
                     generation: gen,
                     totalMatches: totalM,
                     championWinRate: champWR + '%',
+                    pass: _abPassNumber || 0,
+                    batchCap: _aiTrainingBatchSize,
                     exportedAt: new Date().toISOString()
                 },
-                weights: {}
+                weights: {},
+                // Full experiment audit trail: what was tested, the score, the
+                // decision, and whether SPRT stopped it early — enough to review
+                // a training run offline without the browser session.
+                experiments: (_abCompletedExperiments || []).slice(-100),
             };
             for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const def = AI_WEIGHT_DEFAULTS[key];
                 const val = w[key] ?? def.value;
-                exportData.weights[key] = { value: val, default: def.value, min: def.min, max: def.max };
+                exportData.weights[key] = {
+                    value: val, default: def.value, min: def.min, max: def.max,
+                    changed: Math.abs(val - def.value) > 0.005 || undefined,
+                };
             }
 
             const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -21683,6 +21833,141 @@
             input.click();
         }
 
+        // Wilson 95% score interval — the honest error bar for a win rate at
+        // small n (used by the strength test and the balance exports).
+        function _wilson(wins, n, z = 1.96) {
+            if (!n) return { lo: 0, hi: 1 };
+            const p = wins / n, z2 = z * z;
+            const den = 1 + z2 / n;
+            const center = p + z2 / (2 * n);
+            const half = z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n);
+            return { lo: Math.max(0, (center - half) / den), hi: Math.min(1, (center + half) / den) };
+        }
+        function _eloFromWr(wr) {
+            const p = Math.max(0.01, Math.min(0.99, wr));
+            return Math.round(-400 * Math.log10(1 / p - 1));
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // AI STRENGTH TEST — champion vs baseline gauntlet (mirror teams).
+        // The verification arm of the training pipeline: it does not tune
+        // anything, it MEASURES whether the current AI (trained weights +
+        // ainew.js overlay) actually beats the untouched baseline (default
+        // weights, stock ai.js), and by how many Elo. Run it after a training
+        // pass or an AI code change; if the champion isn't clearly >50% here,
+        // the "improvement" was noise.
+        // ════════════════════════════════════════════════════════════════════
+        function _freshStrengthStats() {
+            return { matches: 0, champWins: 0, baseWins: 0, noContests: 0, byMatch: [], startedAt: Date.now() };
+        }
+        async function loadStrengthStats() {
+            try {
+                const raw = await _aiStorageGet('ew-strength-stats-v1');
+                if (raw) _strengthStats = JSON.parse(raw);
+            } catch (e) { _strengthStats = null; }
+            if (!_strengthStats) _strengthStats = _freshStrengthStats();
+            return _strengthStats;
+        }
+        async function saveStrengthStats() {
+            try { await _aiStorageSet('ew-strength-stats-v1', JSON.stringify(_strengthStats)); } catch (e) {}
+        }
+        async function resetStrengthStats() {
+            _strengthStats = _freshStrengthStats();
+            await saveStrengthStats();
+        }
+
+        function recordStrengthMatch(winnerPlayer) {
+            if (!_strengthStats) _strengthStats = _freshStrengthStats();
+            if (winnerPlayer !== 1 && winnerPlayer !== 2) {
+                _strengthStats.noContests++;
+                saveStrengthStats();
+                return;
+            }
+            // matchNumber has not been incremented yet, so this is the side
+            // assignment the finished match actually played with.
+            const baseline = _strengthBaselinePlayer();
+            const champWon = winnerPlayer !== baseline;
+            _strengthStats.matches++;
+            if (champWon) _strengthStats.champWins++; else _strengthStats.baseWins++;
+            _strengthStats.byMatch.push(champWon ? 1 : 0);
+            if (_strengthStats.byMatch.length > 500) {
+                _strengthStats.byMatch.splice(0, _strengthStats.byMatch.length - 500);
+            }
+            saveStrengthStats();
+        }
+
+        function renderStrengthDashboard() {
+            const panel = document.getElementById('trainingPanel');
+            if (!panel) return;
+            const s = _strengthStats || _freshStrengthStats();
+            const n = s.matches || 0;
+            const wr = n > 0 ? s.champWins / n : 0.5;
+            const ci = _wilson(s.champWins, n);
+            const elo = n > 0 ? _eloFromWr(wr) : 0;
+            const sig = n >= 10 && ci.lo > 0.5;
+            const worse = n >= 10 && ci.hi < 0.5;
+
+            const dots = (s.byMatch || []).slice(-60).map(w =>
+                `<span class="train-batch-dot" style="background:${w ? 'var(--green)' : 'var(--red)'}"></span>`).join('');
+
+            let verdict;
+            if (n < 10) verdict = `<span style="color:var(--muted)">Collecting data… (${n} matches)</span>`;
+            else if (sig) verdict = `<span style="color:var(--green)">✓ Champion is STRONGER than baseline (CI ${Math.round(ci.lo * 100)}–${Math.round(ci.hi * 100)}%)</span>`;
+            else if (worse) verdict = `<span style="color:var(--red)">✗ Champion is WEAKER than baseline — revert the last change/training</span>`;
+            else verdict = `<span style="color:var(--gold)">≈ No significant difference yet (CI ${Math.round(ci.lo * 100)}–${Math.round(ci.hi * 100)}%)</span>`;
+
+            panel.innerHTML = `
+                <div class="train-drag-handle" id="trainDragHandle">
+                    <div class="train-title" style="margin:0">AI Strength Test</div>
+                    <span class="train-drag-grip">⠿ drag</span>
+                </div>
+                <div class="train-subtitle">Champion (trained + overlay) vs Baseline (defaults, stock AI) · mirror teams · sides alternate</div>
+
+                <div class="train-cards">
+                    <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${n}</span></div>
+                    <div class="train-card"><span class="train-card-label">Champ WR</span><span class="train-card-value">${n ? Math.round(wr * 100) + '%' : '—'}</span></div>
+                    <div class="train-card" title="Elo difference implied by the win rate"><span class="train-card-label">Elo Δ</span><span class="train-card-value">${n ? (elo > 0 ? '+' : '') + elo : '—'}</span></div>
+                    <div class="train-card"><span class="train-card-label">No-Contest</span><span class="train-card-value">${s.noContests || 0}</span></div>
+                </div>
+
+                <div class="train-group">
+                    <div class="train-group-title">Verdict</div>
+                    <div style="text-align:center;font-size:11px;padding:6px 0">${verdict}</div>
+                    <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
+                    <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${Math.min(60, (s.byMatch || []).length)} matches · green = champion won</div>
+                </div>
+
+                <div class="train-btns">
+                    <button class="train-btn danger" onclick="if(confirm('Reset strength-test results?')){resetStrengthStats().then(()=>{renderStrengthDashboard();addLog('Strength test reset.');});}">Reset</button>
+                    <button class="train-btn" onclick="_exportStrengthStats()">Export</button>
+                </div>
+            `;
+            _initTrainPanelDrag(panel);
+        }
+
+        function _exportStrengthStats() {
+            const s = _strengthStats || _freshStrengthStats();
+            const n = s.matches || 0;
+            const wr = n > 0 ? s.champWins / n : 0.5;
+            const ci = _wilson(s.champWins, n);
+            const data = {
+                _meta: {
+                    game: 'Entropy Wars',
+                    kind: 'strength-test',
+                    exportedAt: new Date().toISOString(),
+                    matches: n,
+                    champWinRate: Number(wr.toFixed(4)),
+                    wilson95: { lo: Number(ci.lo.toFixed(4)), hi: Number(ci.hi.toFixed(4)) },
+                    eloDelta: n > 0 ? _eloFromWr(wr) : 0,
+                    significantAt95: n >= 10 && (ci.lo > 0.5 || ci.hi < 0.5),
+                },
+                stats: s,
+                championWeights: _aiTrainedWeights || {},
+            };
+            downloadJson('ew-strength-test.json', data);
+            addLog('Exported strength test to ew-strength-test.json');
+        }
+
         loadAIWeights();
 
         // ════════════════════════════════════════════════════════════════════
@@ -21702,7 +21987,14 @@
         let _balanceSimMode = false;
         let _balanceStats = null;
         let _balanceTab = 'jobs';
-        const BALANCE_STATS_VERSION = 2;
+        // Per-cast spell telemetry (balance sim only): armed in doSpell,
+        // damage/kills attributed in applyDamageToUnit while the cast
+        // resolves, flushed into _balanceStats.spellUse by finishAction.
+        // This is the DIRECT efficiency signal (dmg + kills per cast/MP) —
+        // the old spells bucket only knew "a unit fielding this spell won",
+        // which BALANCE_NOTES repeatedly had to correct for by hand.
+        let _balSpellCollector = null;
+        const BALANCE_STATS_VERSION = 3;
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
         const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
         const _BAL_TABS = [
@@ -21710,6 +22002,7 @@
             { id: 'races', label: 'Races' },
             { id: 'builds', label: 'Builds' },
             { id: 'spells', label: 'Spells' },
+            { id: 'spellUse', label: 'Casts' },
             { id: 'secondaryJobs', label: '2nd Job' },
         ];
 
@@ -21734,6 +22027,7 @@
                 firstKillWins: 0,
                 jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
                 builds: {},
+                spellUse: {},
                 matchLog: [],
                 updatedAt: 0,
             };
@@ -21741,7 +22035,7 @@
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds']) {
+            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds', 'spellUse']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -21792,12 +22086,27 @@
             b.dmgDealt += dd; b.dmgTaken += dt; b.deaths += died;
         }
 
+        // Flush one resolved cast into the spellUse efficiency table.
+        function _balRecordSpellCast(c) {
+            if (!c || !c.name) return;
+            ensureBalanceStats();
+            const m = _balanceStats.spellUse;
+            if (!m[c.name]) m[c.name] = { casts: 0, mp: 0, dmg: 0, kills: 0, targetsHit: 0, whiffs: 0 };
+            const b = m[c.name];
+            b.casts++; b.mp += c.mp || 0; b.dmg += c.dmg || 0;
+            b.kills += c.kills || 0; b.targetsHit += c.targetsHit || 0;
+            // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
+            // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
+            if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+        }
+
         async function loadBalanceStats() {
             try {
                 let raw = await _aiStorageGet('ew-balance-stats-v' + BALANCE_STATS_VERSION);
-                // Carry v1 aggregates forward into the v2 schema (ensureBalanceStats
-                // backfills the new fields); saves land on the v2 key from then on.
-                if (!raw && BALANCE_STATS_VERSION > 1) raw = await _aiStorageGet('ew-balance-stats-v1');
+                // Carry older aggregates forward (ensureBalanceStats backfills
+                // the new fields); saves land on the current key from then on.
+                if (!raw) raw = await _aiStorageGet('ew-balance-stats-v2');
+                if (!raw) raw = await _aiStorageGet('ew-balance-stats-v1');
                 if (raw) _balanceStats = JSON.parse(raw);
             } catch (e) { _balanceStats = null; }
             return ensureBalanceStats();
@@ -21971,6 +22280,37 @@
             // well-sampled rows ahead of low-sample ones.
             const map = s[_balanceTab] || {};
             const showPerf = _balanceTab !== 'spells';
+
+            // "Casts" tab: real per-cast spell efficiency (dmg/MP, kills/100MP,
+            // whiff rate) — a different table shape from the win-rate buckets.
+            if (_balanceTab === 'spellUse') {
+                const useRows = Object.keys(map).map(k => {
+                    const u = map[k];
+                    if (!u || !u.casts) return null;
+                    return {
+                        key: k, casts: u.casts,
+                        dpc: u.dmg / u.casts,
+                        dpm: u.mp > 0 ? u.dmg / u.mp : 0,
+                        kp100: u.mp > 0 ? u.kills / u.mp * 100 : 0,
+                        whiff: u.whiffs / u.casts,
+                    };
+                }).filter(Boolean).sort((a, b) => b.dpm - a.dpm);
+                let useHtml;
+                if (!useRows.length) {
+                    useHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">No cast data yet (records as spells resolve).</div>`;
+                } else {
+                    useHtml = useRows.slice(0, 80).map(r => `<div class="train-wt-row" title="${r.casts} casts">
+                        <span class="train-wt-name" style="flex:1">${r.key}</span>
+                        <span class="train-wt-val" style="min-width:38px;text-align:right">${r.dpc.toFixed(0)}d</span>
+                        <span class="train-wt-val" style="color:var(--gold);min-width:44px;text-align:right">${r.dpm.toFixed(1)}d/mp</span>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:52px;text-align:right">${r.kp100.toFixed(1)}k·${Math.round(r.whiff * 100)}%w</span>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.casts}c</span>
+                    </div>`).join('');
+                }
+                // fall through to the shared panel shell below with this table
+                var _spellUseTable = { tableHtml: useHtml };
+            }
+
             const rows = _balRows(map).sort((a, b) => {
                 const aw = a.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
                 const bw = b.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
@@ -21979,7 +22319,9 @@
             });
 
             let tableHtml;
-            if (rows.length === 0) {
+            if (_spellUseTable) {
+                tableHtml = _spellUseTable.tableHtml;
+            } else if (rows.length === 0) {
                 tableHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">No data yet.</div>`;
             } else {
                 tableHtml = rows.slice(0, 80).map(r => {
@@ -22037,7 +22379,9 @@
                     <div class="train-group-title">Breakdown</div>
                     <div style="display:flex;gap:4px;margin-bottom:8px">${tabsHtml}</div>
                     <div class="train-wt-list">${tableHtml}</div>
-                    <div style="font-size:9px;color:var(--muted);margin-top:6px;text-align:center">${showPerf
+                    <div style="font-size:9px;color:var(--muted);margin-top:6px;text-align:center">${_balanceTab === 'spellUse'
+                        ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
+                        : showPerf
                         ? '% = win rate · g = games · k = avg kills · s = survival'
                         : '% = win rate of teams fielding the spell · g = games'}</div>
                 </div>
@@ -22052,6 +22396,75 @@
             _initTrainPanelDrag(panel);
         }
 
+        /* Derived analysis for the export — computes what every balance pass in
+           BALANCE_NOTES.md previously derived by hand:
+           • Wilson 95% CIs on every job/race WR (is the outlier real or noise?)
+           • race WR decomposed into JOB EXPECTATION (the WR of the job the race
+             is locked to) + RACE RESIDUAL (what the race's own kit/stats add) —
+             the 2026-07-09b method, now automatic.
+           • spellUse efficiency league: dmg/cast, dmg/MP, kills per 100 MP,
+             whiff rate — judged per CAST, independent of who owns the spell. */
+        function _balBuildAnalysis() {
+            ensureBalanceStats();
+            const s = _balanceStats;
+            const jobRows = {};
+            for (const k of Object.keys(s.jobs || {})) {
+                const b = s.jobs[k];
+                if (!b || !b.games) continue;
+                const ci = _wilson(b.wins, b.games);
+                jobRows[k] = {
+                    games: b.games, wr: Number((b.wins / b.games).toFixed(4)),
+                    wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
+                    kpg: Number((b.kills / b.games).toFixed(2)),
+                    survival: Number((1 - b.deaths / b.games).toFixed(3)),
+                };
+            }
+            const raceRows = {};
+            for (const k of Object.keys(s.races || {})) {
+                const b = s.races[k];
+                if (!b || !b.games) continue;
+                const ci = _wilson(b.wins, b.games);
+                const wr = b.wins / b.games;
+                const defJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[k]) || null;
+                const jb = defJob && s.jobs && s.jobs[defJob] && s.jobs[defJob].games
+                    ? s.jobs[defJob].wins / s.jobs[defJob].games : null;
+                raceRows[k] = {
+                    games: b.games, wr: Number(wr.toFixed(4)),
+                    wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
+                    defaultJob: defJob,
+                    jobExpectation: jb != null ? Number(jb.toFixed(4)) : null,
+                    residual: jb != null ? Number((wr - jb).toFixed(4)) : null,
+                    kpg: Number((b.kills / b.games).toFixed(2)),
+                    survival: Number((1 - b.deaths / b.games).toFixed(3)),
+                };
+            }
+            const spellEff = {};
+            for (const k of Object.keys(s.spellUse || {})) {
+                const u = s.spellUse[k];
+                if (!u || !u.casts) continue;
+                spellEff[k] = {
+                    casts: u.casts,
+                    dmgPerCast: Number((u.dmg / u.casts).toFixed(1)),
+                    dmgPerMp: u.mp > 0 ? Number((u.dmg / u.mp).toFixed(2)) : null,
+                    killsPer100Mp: u.mp > 0 ? Number((u.kills / u.mp * 100).toFixed(2)) : null,
+                    killsPerCast: Number((u.kills / u.casts).toFixed(3)),
+                    avgTargetsHit: Number((u.targetsHit / u.casts).toFixed(2)),
+                    whiffRate: Number((u.whiffs / u.casts).toFixed(3)),
+                    mpPerCast: Number((u.mp / u.casts).toFixed(1)),
+                };
+            }
+            const decisive = (s.totalMatches || 0) - (s.noContests || 0);
+            return {
+                decisiveMatches: decisive,
+                avgRounds: decisive > 0 ? Number(((s.roundsTotal || 0) / decisive).toFixed(2)) : null,
+                comebackRate: decisive > 0 ? Number(((s.comebackWins || 0) / decisive).toFixed(3)) : null,
+                firstKillWinRate: decisive > 0 ? Number(((s.firstKillWins || 0) / decisive).toFixed(3)) : null,
+                jobs: jobRows,
+                races: raceRows,
+                spellEfficiency: spellEff,
+            };
+        }
+
         function _exportBalanceStats() {
             ensureBalanceStats();
             const data = {
@@ -22061,38 +22474,64 @@
                     version: BALANCE_STATS_VERSION,
                     totalMatches: _balanceStats.totalMatches,
                     noContests: _balanceStats.noContests,
+                    mode: (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
+                        ? getActiveMultiplayerMode().id : null,
+                    mapSetting: (typeof _trainMapSetting !== 'undefined') ? _trainMapSetting : null,
                     exportedAt: new Date().toISOString(),
                 },
+                analysis: _balBuildAnalysis(),
                 stats: _balanceStats,
             };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ew-balance-stats.json';
-            a.click();
-            URL.revokeObjectURL(url);
-            addLog('Exported balance stats to ew-balance-stats.json');
+            downloadJson('ew-balance-stats.json', data);
+            addLog('Exported balance stats (+analysis) to ew-balance-stats.json');
         }
 
         function _exportBalanceCsv() {
             ensureBalanceStats();
-            const lines = ['category,name,games,wins,winRate,avgKills,avgDmgDealt,avgDmgTaken,survivalRate'];
+            const lines = ['category,name,games,wins,winRate,wilsonLow,wilsonHigh,avgKills,avgDmgDealt,avgDmgTaken,survivalRate,residualVsJob'];
             const cats = [
                 ['job', _balanceStats.jobs], ['race', _balanceStats.races],
                 ['secondaryJob', _balanceStats.secondaryJobs], ['spell', _balanceStats.spells],
                 ['build', _balanceStats.builds],
             ];
+            const jm = _balanceStats.jobs || {};
             for (const [cat, m] of cats) {
                 for (const key of Object.keys(m || {})) {
                     const b = m[key];
                     if (!b || !b.games) continue;
                     const g = b.games;
+                    const ci = _wilson(b.wins, g);
+                    let resid = '';
+                    if (cat === 'race' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[key]) {
+                        const jb = jm[RACE_DEFAULT_JOBS[key]];
+                        if (jb && jb.games) resid = (b.wins / g - jb.wins / jb.games).toFixed(3);
+                    }
                     const safe = '"' + String(key).replace(/"/g, '""') + '"';
                     lines.push([
                         cat, safe, g, b.wins, (b.wins / g).toFixed(3),
+                        ci.lo.toFixed(3), ci.hi.toFixed(3),
                         (b.kills / g).toFixed(2), (b.dmgDealt / g).toFixed(1),
                         (b.dmgTaken / g).toFixed(1), (1 - b.deaths / g).toFixed(3),
+                        resid,
+                    ].join(','));
+                }
+            }
+            // Per-cast spell efficiency rows (different column meaning, own header).
+            const su = _balanceStats.spellUse || {};
+            if (Object.keys(su).length) {
+                lines.push('');
+                lines.push('category,name,casts,mpTotal,dmgTotal,kills,avgTargetsHit,dmgPerCast,dmgPerMp,killsPer100Mp,whiffRate');
+                for (const key of Object.keys(su)) {
+                    const u = su[key];
+                    if (!u || !u.casts) continue;
+                    const safe = '"' + String(key).replace(/"/g, '""') + '"';
+                    lines.push([
+                        'spellUse', safe, u.casts, u.mp, u.dmg, u.kills,
+                        (u.targetsHit / u.casts).toFixed(2),
+                        (u.dmg / u.casts).toFixed(1),
+                        u.mp > 0 ? (u.dmg / u.mp).toFixed(2) : '',
+                        u.mp > 0 ? (u.kills / u.mp * 100).toFixed(2) : '',
+                        (u.whiffs / u.casts).toFixed(3),
                     ].join(','));
                 }
             }
@@ -22111,6 +22550,11 @@
             if (_aiActionGen !== _blitzTurnGen) {
                 return;
             }
+            // Balance Lab: the spell telemetry window closes with the action —
+            // a collector still armed here belonged to a cast that fizzled
+            // without reaching finishAction (never let round-end DoT ticks or
+            // the next action leak into it).
+            _balSpellCollector = null;
             state.aiThinking = false;
             state.actionMode = null;
             state.actionMenuView = 'root';
@@ -22159,7 +22603,7 @@
 
                 const isDevSim = state.devAutoSim;
                 const telegraphMs = isDevSim ? 0 : 220;
-                const actionDelay = isDevSim ? scaleDevSimDelay(delay, 12) : delay;
+                const actionDelay = isDevSim ? scaleDevSimDelay(delay, 2) : delay;
                 if (!isDevSim && target.x !== undefined && target.y !== undefined) {
 
                     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
@@ -26246,6 +26690,9 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
+            // Balance Lab: a basic attack must never be attributed to a spell
+            // whose cast fizzled earlier without reaching finishAction.
+            _balSpellCollector = null;
 
             const _clickedTarget = unitAt(x, y, z);
 
@@ -29073,8 +29520,26 @@
                 _armPressCollector(unit);
             }
 
+            // Balance Lab: arm the per-cast spell telemetry collector (same
+            // lifecycle as the press collector — one action resolves at a time).
+            if (_balanceSimMode) {
+                _balSpellCollector = {
+                    casterId: unit.id, name: spell.name,
+                    mp: spell.cost || 0,
+                    isDmg: _PRESS_SPELL_KINDS.has(spell.kind),
+                    dmg: 0, kills: 0, targetsHit: 0,
+                };
+            }
+
             const finishAction = () => {
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
+
+                // Balance Lab: flush the cast telemetry (damage/kills landed
+                // during resolution via the applyDamageToUnit hooks).
+                if (_balSpellCollector && _balSpellCollector.casterId === unit.id) {
+                    _balRecordSpellCast(_balSpellCollector);
+                    _balSpellCollector = null;
+                }
 
                 /* Unit animation override: revert race-specific cast sprite */
                 _revertSpriteOverride(unit);

@@ -8883,6 +8883,8 @@
         if (devSimBattleSpeed1Btn) devSimBattleSpeed1Btn.onclick = () => setDevSimSpeed(1);
         if (devSimBattleSpeed2Btn) devSimBattleSpeed2Btn.onclick = () => setDevSimSpeed(2);
         if (devSimBattleSpeed4Btn) devSimBattleSpeed4Btn.onclick = () => setDevSimSpeed(4);
+        const devSimBattleSpeed16Btn = document.getElementById('devSimBattleSpeed16Btn');
+        if (devSimBattleSpeed16Btn) devSimBattleSpeed16Btn.onclick = () => setDevSimSpeed(16);
 
         function syncCameraCheckboxes() {
             const checked = !state.cameraDisabled;
@@ -8936,6 +8938,9 @@
 
         function onAnimToggle(e) {
             state.animationsDisabled = !e.target.checked;
+            // Persist like the Action-Cam toggle — this used to silently reset
+            // to ON every reload, which made "animations off" feel broken.
+            try { localStorage.setItem('ew_animationsDisabled', state.animationsDisabled ? '1' : '0'); } catch (err) {}
 
             if (state.devAutoSim) {
                 state._devSimShowAnims = e.target.checked;
@@ -8946,6 +8951,13 @@
         const animCb2 = document.getElementById('animToggleBattle');
         if (animCb1) animCb1.onchange = onAnimToggle;
         if (animCb2) animCb2.onchange = onAnimToggle;
+        // Restore the persisted animations preference on load.
+        try {
+            if (localStorage.getItem('ew_animationsDisabled') === '1') {
+                state.animationsDisabled = true;
+                syncAnimCheckboxes();
+            }
+        } catch (err) {}
 
         function syncFogCheckboxes() {
             const checked = state.fogOfWar;
