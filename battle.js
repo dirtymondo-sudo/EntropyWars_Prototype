@@ -5132,7 +5132,7 @@
             }, 650);
         }
 
-        function triggerAttackAnim(unit, tx, ty) {
+        function triggerAttackAnim(unit, tx, ty, kindOverride) {
             if (!unit || unit.dead || _skipVisuals()) return;
             const _v2 = window._v2UnitSystemActive?.();
             const dx = tx - unit.x;
@@ -5144,9 +5144,11 @@
             };
             // Tag melee vs ranged so rigged 3D models pick the right clip
             // (castMelee vs castRanged — see sprites.js animation role guide).
+            // kindOverride forces a specific clip family instead — 'chop' for
+            // tree felling / dig-tool ops (castChop, the UAL2 axe loop).
             if (!state._attackAnimKind) state._attackAnimKind = {};
-            state._attackAnimKind[unit.id] =
-                (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
+            state._attackAnimKind[unit.id] = kindOverride ||
+                ((Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee');
             state.attackAnimIds.add(unit.id);
             if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
             if (!_v2) scheduleBoardRender();
@@ -11594,6 +11596,9 @@
                 showFloatingTextForUnit(target, '0', 'damage');
                 addLog(`${sourceText}${unitDisplayName(target)} blocks the hit.`);
                 playSfx('block');
+                // Rigged models raise the shield (UAL2 Shield_OneShot via the
+                // 'block' hit-flash kind — steel glint, no impact shake).
+                flashUnit(target.id, 'block');
             }
 
             if (opts.statusEffects || opts.status) applyStatusEffects(target, opts.statusEffects || opts.status, '', sourceUnit);
@@ -27229,6 +27234,7 @@
                 _ensureTreeState();
                 const wasPlanted = state.plantedTrees.some(t => t.x === x && t.y === y);
                 animateStrikeLeap(unit, x, y);
+                triggerAttackAnim(unit, x, y, 'chop');   // rigged models swing the axe
                 _fellTreeAt(x, y, unit);
                 // Only Harvesters can spend lumber (Timber Strike), so only they
                 // see the running lumber tally; for everyone else it's just clearing
@@ -28313,6 +28319,8 @@
             }
 
             if (tool === 'dig') {
+                // Both dig ops read as axe/pick work on rigged models.
+                triggerAttackAnim(unit, x, y, 'chop');
                 if (info.isTree) {
                     _fellTreeAt(x, y, unit);   // credits +1 🪵 (+ lumber + entropy)
                     playSfx('physicalAbility');

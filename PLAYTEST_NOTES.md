@@ -1852,11 +1852,26 @@ verify visually after upload) — syntax-checked only.
   rigged model). Was already in ACCT_STARTER_UNITS behind the 3D-only gate,
   so wiring the model auto-unlocked him. heightRatio 1.02. No portrait yet
   (map sprite fallback) — optional 128×128 portrait.png later.
+- **Round 2 (2026-07-11b — block / chop / deploy wired)**:
+  - `block` slot (UAL2 Shield_OneShot @1.6 → 0.52s): the zero-damage
+    "blocks the hit" branch of applyDamageToUnit now fires
+    `flashUnit(target.id,'block')`; the renderer plays chain
+    ['block','hit'], tints the flash a subtle steel-blue and SKIPS the
+    impact shake (nothing landed). `_wireSlot` one-shot rule extended to
+    'block'.
+  - `castChop` (UAL2 TreeChopping_Loop @1.2 → 0.81s): triggerAttackAnim
+    grew an optional `kindOverride` arg; the doAttack tree-chop branch and
+    BOTH dig-tool ops (tree fell + block dig) pass 'chop' → renderer chain
+    ['castChop','castMelee','cast'].
+  - `castTrap` (UAL1 Fixing_Kneeling 5.2s @4.0 → 1.3s kneel-and-rig): new
+    classifySpellAnimKind kind 'deploy' (/trap|snare|\bmine\b|contraption|
+    deploy|sentry/) → chain ['castTrap','castPlant','castSupport','cast'].
+    Catches snareTrap, frostMine, magnetMine, raceTeslaTrap, raceLucidTrap,
+    raceWebSnare, raceFlashbangMine, raceTinkersContraption, deployTurret;
+    warpRune intentionally does NOT match (runes keep magic-cast flavor).
 - **NOT wired (clips ready, no engine hook)**: Fall3 (falling), Face_Punch_
-  Reaction (heavy-hit variant — hitFlashKind only knows 'hit'), UAL2
-  Shield_OneShot (block), TreeChopping_Loop (chop/dig), Fixing_Kneeling
-  (plant bomb). Counter plays hit-flinch → castMelee riposte, not
-  block→attack.
+  Reaction (heavy-hit variant — hitFlashKind only knows 'hit'/'block').
+  Counter plays hit-flinch → castMelee riposte, not block→attack.
 - **MANDATORY upload for this to work**: `MAL1_Sniper.glb` → R2
   `Assets/Models/MAL1_Sniper.glb`. Without it the bake skips every lib-2
   slot → characters stand in rest pose (UAL casts still play). The 20

@@ -7856,10 +7856,10 @@ const ThreeRenderer = (function () {
                     if (entry.actions[k] && entry.actions[k].getClip() === clip) { clip = clip.clone(); break; }
                 }
                 var act = mixer.clipAction(clip);
-                // One-shot slots: death, hit flinch, and every cast
-                // variant (cast / castMagic / castSupport / castRanged /
-                // castMelee / castThrow — see sprites.js role guide).
-                if (name === 'death' || name === 'hit' || name.indexOf('cast') === 0) {
+                // One-shot slots: death, hit flinch, the shield block, and
+                // every cast variant (cast / castMagic / castSupport /
+                // castRanged / castMelee / castThrow — sprites.js role guide).
+                if (name === 'death' || name === 'hit' || name === 'block' || name.indexOf('cast') === 0) {
                     act.setLoop(THREE.LoopOnce, 0);
                     act.clampWhenFinished = true;
                 } else {
@@ -13602,8 +13602,9 @@ const ThreeRenderer = (function () {
                     // (melee vs ranged, tagged by battle.js triggerAttackAnim);
                     // sprite races play the attack sheet on top of the lunge.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
-                    var _atkChain = (_ak === 'ranged')
-                        ? ['castRanged', 'cast'] : ['castMelee', 'cast'];
+                    var _atkChain = (_ak === 'ranged') ? ['castRanged', 'cast']
+                        : (_ak === 'chop') ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
+                        : ['castMelee', 'cast'];
                     if (!_maybeStartModelAnim(uid, _atkChain)) _maybeStartSpriteAnim(uid, 'attack');
                 }
             }
@@ -13633,6 +13634,7 @@ const ThreeRenderer = (function () {
                         (_ck === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
                         (_ck === 'kick')    ? ['castKick', 'castMelee', 'cast'] :
                         (_ck === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
+                        (_ck === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
                         (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
@@ -13670,7 +13672,10 @@ const ThreeRenderer = (function () {
                     _flashTweens.set(uid, { startTime: _animNow(), durationMs: FLASH_MS, kind: _hk });
                     // Rigged models flinch (hit-reaction clip) alongside the
                     // flash — unless the unit is dying (death clip owns it).
+                    // A zero-damage block raises the shield instead (battle.js
+                    // tags the flash 'block' when the hit is fully absorbed).
                     if (_hk === 'hit' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['hit']);
+                    else if (_hk === 'block' && !_deathTweens.has(uid)) _maybeStartModelAnim(uid, ['block', 'hit']);
                 }
             }
             _prevHitFlashIds = new Set(state.hitFlashIds);
@@ -13973,13 +13978,18 @@ const ThreeRenderer = (function () {
                     fr = 1 + flash * 0.9; fg = 1 - flash * 0.5; fb = 1 + flash * 1.1;
                 } else if (tw.kind === 'paralysis') {
                     fr = 1 + flash * 1.4; fg = 1 + flash * 1.1; fb = 1 - flash * 0.7;
+                } else if (tw.kind === 'block') {
+                    // Zero-damage block — cool steel glint, subtler than a hit.
+                    fr = 1 + flash * 0.4; fg = 1 + flash * 0.6; fb = 1 + flash * 0.9;
                 } else {
                     // 'hit' / 'damage' — plain white flash.
                     fr = 1 + flash * 1.5; fg = 1 + flash * 1.5; fb = 1 + flash * 1.5;
                 }
                 for (var mi = 0; mi < ft.mats.length; mi++) ft.mats[mi].color.setRGB(fr, fg, fb);
 
-                if (tw.kind !== 'heal') {
+                // No impact shake on heals (nothing hit) or blocks (the whole
+                // point is that the hit didn't land).
+                if (tw.kind !== 'heal' && tw.kind !== 'block') {
                     if (t < 0.6) {
                         var shakeDecay = 1 - (t / 0.6);
                         var shakeFreq = Math.sin(t * Math.PI * 8);

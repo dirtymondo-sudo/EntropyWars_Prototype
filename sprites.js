@@ -497,6 +497,10 @@ function classifySpellAnimKind(spell) {
   // Potions / consumables (battle.js item use fires a synthetic spell) —
   // UAL2 Consume swig via castConsume.
   if (/potion|elixir|panacea|stim\b|consume|drink/.test(text)) return 'consume';
+  // Deployable traps / mines / turrets kneel and rig the device (UAL1
+  // Fixing_Kneeling via castTrap). Runes (warpRune…) intentionally DON'T
+  // match — they stay magic-cast flavored.
+  if (/trap|snare|\bmine\b|contraption|deploy|sentry/.test(text)) return 'deploy';
   // Ramparts and every "…Slam" — two-hand charged ground slam.
   if (/rampart|slam\b|slan\b/.test(text)) return 'slam';   // raceChassisSlan typo is real
   // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
@@ -604,6 +608,15 @@ const UAL_SLOTS = {
   castAOE:     { clip: 'Charged_Spell_Cast',     lib: 2, ts: 2.2  },
   castSlam:    { clip: 'Charged_Ground_Slam',    lib: 2, ts: 2.4  },
   castConsume: { clip: 'Consume',                lib: 1, ts: 1.2  },
+  // 2026-07-11b: castChop TreeChopping_Loop (UAL2) 0.97s (→0.81s — tree
+  // chops + dig-tool ops, attack kind 'chop') · castTrap Fixing_Kneeling
+  // (UAL1) 5.2s kneel-and-rig (→1.3s — deployable traps/mines/turrets,
+  // spell kind 'deploy'; runes intentionally excluded) · block
+  // Shield_OneShot (UAL2) 0.83s (→0.52s — zero-damage "blocks the hit",
+  // hitFlash kind 'block').
+  castChop:    { clip: 'TreeChopping_Loop',      lib: 1, ts: 1.2  },
+  castTrap:    { clip: 'Fixing_Kneeling',        lib: 0, ts: 4.0  },
+  block:       { clip: 'Shield_OneShot',         lib: 1, ts: 1.6  },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
