@@ -4,6 +4,40 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CAMERA PASS: isometric default + sky-gaze lift + kill-cam pull-back + EOR glide (2026-07-11) — three-camera.js, battle.js, state.js, index.html
+Token `20260711i` → `20260711j`.
+- **New default tactical framing**: `DEFAULT_BOARD_TILT` 50 → **40** (more
+  overhead, whole map reads strategically) and `DEFAULT_BOARD_YAW` 0 → **45**
+  (isometric). All camera-object seeds (`tilt/yaw`, `_tt/_tyaw`, `_smooth*`,
+  `_rest*`), `prepareBattleStateFromCurrentBuilds`, and the view presets
+  follow it (STANDARD = DEFAULT_BOARD_TILT, CLOSE 55, FAR 30). Everything
+  that returns to `_restTilt/_restYaw` (resets, EOR tour, turn pans) lands on
+  the new angle automatically.
+- **SKY-GAZE LIFT (three-camera.js `sync`)**: in board/tactical modes (not
+  TPS, not keep-subject) the eye's hard floor RISES smoothly as the gaze
+  pitches past the horizon — smoothstep ramp starting at dirY −0.35 (~tilt
+  70°) up to ground+9 tiles when looking well into the sky. Fixes "terrain in
+  the way when looking up at zodiac/sun/eclipse" and the intro's map-name sky
+  shot: the camera now hovers ABOVE the battlefield for sky tableaux instead
+  of shooting from ankle height. Board sky gazes also aim along the view dir
+  FROM THE LIFTED EYE (was: from the ground pivot, which pointed the raised
+  camera back down at dirt).
+- **Sky cinematic centres first (state.js `playSkyCinematic`)**: the crane-up
+  folds a pan to board centre into the same move (upMs 1050→1250, downMs
+  900→1050), so the tableau is always shot from over the middle of the map.
+- **Kill cam un-sticks (battle.js)**: on an AUTO/AI side, `softResetToUnit`
+  kept beat 2's close-up parked on the victim and only levelled pitch — after
+  a kill that meant a lingering zoomed-in shot of the gravestone/bones. The
+  auto branch now detects the shot victim died (`_cineShotTarget` id →
+  dead/_dying) and arms `_armLevelSettle(…, {pullBack:true, x,y})`, a new
+  mode that ALSO restores tactical zoom and re-centres on the surviving
+  actor. (Player-side press-turn hold already fell through via
+  `_shotVictimGone`.)
+- **EOR tour glide**: `showEndOfRoundOverview` 520→800ms,
+  `eorFocusCamera` default 420→640ms, status-tick dives 400→620ms (tick
+  defer 430→650ms), earthquake dive 420→620ms — the resolve sequence reads
+  as one slow tour instead of reset-yank-reset.
+
 ## AI LAB OVERHAUL: TURBO SIMS + SPRT TRAINING + STRENGTH TEST + SPELL TELEMETRY + AI v3 (2026-07-11) — battle.js, ainew.js, map.js, ui.js, three-renderer.js, index.html
 Token `20260711h` → `20260711i`. Big pass on the AI-training / balance-lab
 pipeline ("make the CPU a chess engine, get data faster"):

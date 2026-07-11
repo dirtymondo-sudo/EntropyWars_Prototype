@@ -248,11 +248,32 @@ const ThreeCamera = (function () {
         if (dirY > 1e-4 || !(isTps || cam._cineKeepSubject)) {
             const eg = _groundYWorld(eyeX, eyeZ) + clear;
             if (eyeY < eg) eyeY = eg;
+            /* ── SKY-GAZE LIFT (board/tactical modes only) ──
+               The hard floor above parks the eye a mere ⅓ tile over the
+               ground, so every look UP at the sky (the zodiac/celestial
+               cinematic, the intro's map-name crane, free-look past the
+               horizon) was shot from ankle height — any raised tile or prop
+               nearby jutted into what should be an open-sky view. As the
+               gaze pitches toward the sky, RAISE that floor smoothly so the
+               camera ends up hovering well above the battlefield looking up
+               at a clean firmament. The ramp starts a little BEFORE the
+               horizon so a continuous crane (sky cinematic up/down, intro
+               beat 6) glides through the transition instead of dipping to
+               the dirt at 90° and popping back up. Subject-framing modes
+               (TPS, keep-subject cine shots) keep their own dolly response —
+               they WANT to stay at the character's shoulder. */
+            if (!isTps && !cam._cineKeepSubject && dirY > -0.35) {
+                const t01 = Math.min(1, (dirY + 0.35) / 0.8);
+                const skyF = t01 * t01 * (3 - 2 * t01);
+                const skyBase = Math.max(_groundYWorld(eyeX, eyeZ), focalY);
+                const skyFloor = skyBase + clear + ts * 9 * skyF;
+                if (eyeY < skyFloor) eyeY = skyFloor;
+            }
         }
 
         targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
 
-        if (isTps || (dirY > 1e-4 && !cam._cineKeepSubject)) {
+        if (isTps) {
             /* Aim ALONG the view direction, not AT the pivot. lookAt(pivot)
                caps the gaze at eye level: once the eye is floored on the
                ground, staring back at the subject can never pitch into the
@@ -267,6 +288,18 @@ const ThreeCamera = (function () {
             targetLookX = pivX + dirX * ahead;
             targetLookY = pivY + dirY * ahead;
             targetLookZ = pivZ + dirZ * ahead;
+        } else if (dirY > 1e-4 && !cam._cineKeepSubject) {
+            /* Board free-look / cinematic SKY gaze: aim along the view
+               direction FROM THE CLAMPED EYE, not from the ground pivot.
+               With the sky-gaze lift above, an aim point derived from the
+               (ground-level) pivot could land BELOW the raised eye and pitch
+               the camera back down at the terrain — aiming from the eye
+               keeps the gaze direction exactly (dirX,dirY,dirZ) no matter
+               how far the floor lifted it, so the sky subject stays framed. */
+            const ahead = ts * 6;
+            targetLookX = eyeX + dirX * ahead;
+            targetLookY = eyeY + dirY * ahead;
+            targetLookZ = eyeZ + dirZ * ahead;
         } else {
             /* Level/downward gaze (and keep-subject cine shots): classic
                orbit — the focal stays dead-centred. When the ground clamp

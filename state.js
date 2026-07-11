@@ -1271,10 +1271,22 @@
                 const shot = ThreeRenderer.getSkyShot(kind === 'zodiac' ? 'zodiac' : (evType || 'bloodMoon'));
                 const retTilt = (camera._restTilt != null) ? camera._restTilt : 50;
                 const retYaw = (camera._restYaw != null) ? camera._restYaw : 0;
-                const upMs = actionMs(1050);
-                const downMs = actionMs(900);
+                const upMs = actionMs(1250);
+                const downMs = actionMs(1050);
 
-                camera.moveTo({ tilt: shot.tilt, yaw: shot.yaw, duration: upMs, easing: 'easeInOut', _fogAllowed: true });
+                // Crane up OVER THE MIDDLE of the map, folded into one motion
+                // with the pitch/yaw swing. Framing the sky from wherever the
+                // previous EOR beat parked the camera let nearby hills/props
+                // jut into what should be an open-sky tableau; centred, the
+                // rig's sky-gaze lift (three-camera.js) floats the eye high
+                // above the battlefield for a clean view of the firmament.
+                const _skyCx = (typeof bw === 'function') ? Math.floor(bw() / 2) : undefined;
+                const _skyCy = (typeof bh === 'function') ? Math.floor(bh() / 2) : undefined;
+                camera.moveTo({
+                    ...(_skyCx !== undefined ? { x: _skyCx, y: _skyCy } : {}),
+                    tilt: shot.tilt, yaw: shot.yaw,
+                    duration: upMs, easing: 'easeInOut', _fogAllowed: true
+                });
 
                 window.setTimeout(() => {
                     let revealMs = 0;

@@ -4100,7 +4100,7 @@
                     // Dive onto the unit taking the burn/poison/drowning tick —
                     // shared EOR framing (resting tilt/yaw + the one tour zoom),
                     // so this reads as a glide across the board, not a cut.
-                    eorFocusCamera(unit.x, unit.y, { duration: 400 });
+                    eorFocusCamera(unit.x, unit.y, { duration: 620 });
                 }
 
                 // The tick's floating damage, wiggle and sfx must wait for that
@@ -4163,7 +4163,7 @@
                 const delay = dlgMsgs.length > 0 ? (1200 + dlgMsgs.length * 350) : 400;
                 window.setTimeout(processNext, delay);
                 };
-                if (willDive) window.setTimeout(_applyTick, 430);
+                if (willDive) window.setTimeout(_applyTick, 650);
                 else _applyTick();
             }
 
@@ -4598,8 +4598,8 @@
             }
             let _eqCamLead = 0;
             if (_eqFocus && !state.cameraDisabled) {
-                eorFocusCamera(_eqFocus.x, _eqFocus.y, { duration: 420 });
-                _eqCamLead = 440;
+                eorFocusCamera(_eqFocus.x, _eqFocus.y, { duration: 620 });
+                _eqCamLead = 650;
             }
 
             window.setTimeout(() => {
@@ -8082,8 +8082,11 @@
         // return can always un-tilt to a sane board angle instead of freezing at
         // a cinematic tilt. The common path restores the player's exact
         // pre-cine view (`_preCineView`); this is the floor under it.
-        const DEFAULT_BOARD_TILT = 50;
-        const DEFAULT_BOARD_YAW  = 0;
+        // Canonical tactical framing: pitched well OVER the map (tilt 40 —
+        // lower = more top-down in this engine) so the whole battlefield
+        // reads strategically, with a 45° yaw for the classic isometric look.
+        const DEFAULT_BOARD_TILT = 40;
+        const DEFAULT_BOARD_YAW  = 45;
         // Ceiling on the REMEMBERED resting/return pitch. The player can still
         // crane the live camera all the way up (tilt-drag allows 135° — looking
         // at the sky), but that pose must never become the angle every
@@ -8140,17 +8143,17 @@
 
         const camera = {
 
-            x: 0, y: 0, zoom: 1, tilt: 50, yaw: 0, camZ: 900,
+            x: 0, y: 0, zoom: 1, tilt: DEFAULT_BOARD_TILT, yaw: DEFAULT_BOARD_YAW, camZ: 900,
             _elevOverride: -1,
             // Focal height frozen while (and after) the player hand-pans the
             // board — see the latch in _apply(). null = tracking normally.
             _panElevLatch: null,
 
-            _tx: 0, _ty: 0, _tz: 1, _tt: 50, _tyaw: 0, _tcz: 900, _tElev: -1,
+            _tx: 0, _ty: 0, _tz: 1, _tt: DEFAULT_BOARD_TILT, _tyaw: DEFAULT_BOARD_YAW, _tcz: 900, _tElev: -1,
 
             _startTime: 0,
             _duration: 0,
-            _fromX: 0, _fromY: 0, _fromZ: 1, _fromT: 50, _fromYaw: 0, _fromCZ: 900, _fromElev: -1,
+            _fromX: 0, _fromY: 0, _fromZ: 1, _fromT: DEFAULT_BOARD_TILT, _fromYaw: DEFAULT_BOARD_YAW, _fromCZ: 900, _fromElev: -1,
             _elevRelease: false,
             _yawDelta: 0,
             _easing: 'easeOut',
@@ -8161,8 +8164,8 @@
             _lastCssTiltNum: null,
             _lastCssZoomRounded: -1,
 
-            _smoothTilt: 50,
-            _smoothYaw: 0,
+            _smoothTilt: DEFAULT_BOARD_TILT,
+            _smoothYaw: DEFAULT_BOARD_YAW,
             _smoothX: 0,
             _smoothY: 0,
             _smoothZoom: 1,
@@ -8187,8 +8190,8 @@
             // end-of-round overview, or a focus pan can never leave the camera
             // stranded at a transient angle: the next turn activation (and every
             // soft-reset) snaps tilt+yaw back to these.
-            _restTilt: 50,
-            _restYaw: 0,
+            _restTilt: DEFAULT_BOARD_TILT,
+            _restYaw: DEFAULT_BOARD_YAW,
 
             _ease(t, type) {
                 if (type === 'linear') return t;
@@ -8518,8 +8521,18 @@
             // once the streak pauses. Every new action re-arms it; the
             // fire-time guards skip it if something else owns the camera.
             _autoSettleTimer: null,
-            _armLevelSettle(delayMs) {
+            // opts.pullBack (with optional opts.x/opts.y): the settle ALSO
+            // restores the tactical zoom (and re-centres) instead of only
+            // levelling pitch/yaw. Used by the post-KILL path — the action
+            // shot is parked zoomed-in on the victim's remains (gravestone /
+            // pile of bones) and nothing else pulls the zoom back out on an
+            // auto side, so a pitch-only settle left the camera stuck in a
+            // close-up of the corpse.
+            _armLevelSettle(delayMs, opts) {
                 if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
+                const _pull = !!(opts && opts.pullBack);
+                const _px = opts ? opts.x : undefined;
+                const _py = opts ? opts.y : undefined;
                 this._autoSettleTimer = setTimeout(() => {
                     this._autoSettleTimer = null;
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
@@ -8530,9 +8543,14 @@
                     // not the tactical overhead.
                     const _setTilt = this._tpsHold ? TPS_TURN_TILT : this._restTilt;
                     const _setYaw  = this._tpsHold ? this.yaw : this._restYaw;
-                    if (this.tilt <= _setTilt + 3) return;
+                    if (!_pull && this.tilt <= _setTilt + 3) return;
                     this.moveTo({
                         tilt: _setTilt, yaw: _setYaw,
+                        ...(_pull ? {
+                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                            _allowZoomChange: true, _bypassCap: true,
+                            ...(_px !== undefined ? { x: _px, y: _py } : {})
+                        } : {}),
                         duration: actionMs(650), easing: 'easeInOut', _fogAllowed: true
                     });
                     // The un-tilt drops the pitch back below the horizon —
@@ -8839,7 +8857,23 @@
                     // hand-panning, or the pitch is already level. _fogAllowed lets
                     // it run on an AI fog turn (a non-viewer camera move is
                     // otherwise blocked).
-                    this._armLevelSettle(actionMs(600));
+                    //
+                    // …EXCEPT when the shot's victim just DIED: the framing being
+                    // kept is beat 2's close-up parked on the target — a zoomed-in
+                    // shot of a gravestone / pile of bones — and a pitch-only
+                    // settle left the camera stuck in that close-up until the next
+                    // unit's activation pan (the "camera zooms in on the remains
+                    // and never resets" bug on AI kills). Pull the zoom back out
+                    // to the tactical framing too, re-centred on the actor when it
+                    // survives. A follow-up shot in the streak still re-arms this
+                    // before it fires, so mid-streak kills stay cinematic.
+                    const _autoVictim = (this._cineShotTarget && this._cineShotTarget.id != null)
+                        ? (state.units || []).find(u => u.id === this._cineShotTarget.id) : null;
+                    const _autoVictimGone = !!(_autoVictim && (_autoVictim.dead || _autoVictim._dying));
+                    this._armLevelSettle(actionMs(600), _autoVictimGone ? {
+                        pullBack: true,
+                        ...(targetUnit && !targetUnit.dead ? { x: targetUnit.x, y: targetUnit.y } : {})
+                    } : undefined);
                     return;
                 }
                 // ── Turn-ownership guard (the "camera isn't on my unit at the
@@ -9387,9 +9421,9 @@
            FOV only applies in 3D (ThreeCamera); the CSS fallback ignores it.
            Persisted in ew_cameraPreset. */
         const CAMERA_PRESETS = [
-            { key: 'standard', icon: '🎥', label: 'STANDARD VIEW', tilt: 50, zoomMult: 1.0,  fov: 45 },
-            { key: 'close',    icon: '🎬', label: 'CLOSE VIEW',    tilt: 58, zoomMult: 1.35, fov: 50 },
-            { key: 'far',      icon: '🗺', label: 'FAR VIEW',      tilt: 38, zoomMult: 0.72, fov: 42 }
+            { key: 'standard', icon: '🎥', label: 'STANDARD VIEW', tilt: DEFAULT_BOARD_TILT, zoomMult: 1.0, fov: 45 },
+            { key: 'close',    icon: '🎬', label: 'CLOSE VIEW',    tilt: 55, zoomMult: 1.35, fov: 50 },
+            { key: 'far',      icon: '🗺', label: 'FAR VIEW',      tilt: 30, zoomMult: 0.72, fov: 42 }
         ];
         let _cameraPresetIdx = 0;
         try {
@@ -10372,7 +10406,10 @@
                 zoom: isUserZoomEngaged() ? _uz : _fitZoom,
                 tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
                 yaw: camera._restYaw,
-                duration: 520, easing: 'easeInOut',
+                // Long, gentle pull-back: the overview is re-issued between
+                // several EOR beats, and a short tween made each re-issue read
+                // as a "reset jerk" instead of one continuous glide.
+                duration: 800, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
@@ -10396,7 +10433,7 @@
                 x, y,
                 zoom: opts.zoom ?? getEorFocusZoom(),
                 tilt: camera._restTilt, yaw: camera._restYaw,
-                duration: opts.duration ?? 420, easing: 'easeInOut',
+                duration: opts.duration ?? 640, easing: 'easeInOut',
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
@@ -18006,11 +18043,12 @@
             // prior match's cinematic camera framing (map too small / far away).
             // Reframe the camera to the default overhead view and force the
             // renderer to rebuild terrain + units from scratch for the new board.
-            state.dioramaTiltDeg = 50;
-            state.dioramaYawDeg = 0;
+            state.dioramaTiltDeg = DEFAULT_BOARD_TILT;
+            state.dioramaYawDeg = DEFAULT_BOARD_YAW;
             if (typeof camera !== 'undefined' && camera) {
-                camera.tilt = 50; camera.yaw = 0;
-                camera._smoothTilt = 50; camera._smoothYaw = 0;
+                camera.tilt = DEFAULT_BOARD_TILT; camera.yaw = DEFAULT_BOARD_YAW;
+                camera._smoothTilt = DEFAULT_BOARD_TILT; camera._smoothYaw = DEFAULT_BOARD_YAW;
+                camera._restYaw = DEFAULT_BOARD_YAW;
             }
             // When the match is started from a menu, CONFIG.tileSize is still the
             // menu value (MENU_TILE). The 3D renderer runs continuously, so the
@@ -18029,8 +18067,8 @@
             if (boardStageEl && !(state.devAutoSim && state.cameraDisabled)) {
 
                 const _initCamZ = Math.max(state.dioramaCamZ ?? 900, 2400);
-                const _initTilt = state.dioramaTiltDeg ?? 50;
-                const _initYaw = state.dioramaYawDeg ?? 0;
+                const _initTilt = state.dioramaTiltDeg ?? DEFAULT_BOARD_TILT;
+                const _initYaw = state.dioramaYawDeg ?? DEFAULT_BOARD_YAW;
                 boardStageEl.style.transform = `perspective(${_initCamZ}px) rotateX(${_initTilt}deg) rotateZ(${_initYaw}deg)`;
 
                 boardStageEl.style.setProperty('--dio-tilt', `${_initTilt}deg`);
