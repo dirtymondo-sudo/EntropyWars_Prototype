@@ -5595,7 +5595,16 @@
 
         function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
             if (!target || target.dead || target._dying) return 0;
-            const rawAmount = Math.max(0, Math.round(Number(amount) || 0));
+            // Level 100: flat heals scale by the healer's level (same curve as
+            // damage) so a spell that restores ~30% today still restores ~30% at
+            // level 100. Percent-of-max-HP heals pass opts.preScaled to opt out.
+            let _amt = Number(amount) || 0;
+            if (!opts.preScaled && typeof levelScale === 'function') {
+                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
+                    : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
+                if (_srcLvl > 1) _amt = _amt * levelScale(_srcLvl);
+            }
+            const rawAmount = Math.max(0, Math.round(_amt));
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
@@ -11429,9 +11438,11 @@
             }
             function _buffUnit(caster, sp, d, target) {
                 if (d.shield) {
-                    const cap = Math.max(d.shield, Math.floor((target.maxHp || 0) * (sp.shieldCapPct || 0.5)));
-                    target.shield = Math.min((target.shield || 0) + d.shield, cap);
-                    try { showFloatingTextForUnit(target, '🛡 +' + d.shield, 'protect-block', { durationMs: 1000 }); } catch (e) {}
+                    // Level 100: flat shield values scale with the recipient's level.
+                    const _shield = (typeof levelScale === 'function') ? Math.round(d.shield * levelScale(getUnitLevel(target))) : d.shield;
+                    const cap = Math.max(_shield, Math.floor((target.maxHp || 0) * (sp.shieldCapPct || 0.5)));
+                    target.shield = Math.min((target.shield || 0) + _shield, cap);
+                    try { showFloatingTextForUnit(target, '🛡 +' + _shield, 'protect-block', { durationMs: 1000 }); } catch (e) {}
                 }
                 if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(target, d.statuses, sp.name, caster); } catch (e) {} }
                 if (d.statStage) { try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(target, d.statStage, sp.name, caster); } catch (e) {} }
@@ -11442,7 +11453,7 @@
                         if (!_alive(a) || a.player !== caster.player || a.id === target.id) continue;
                         const ap2 = _posOf(a);
                         if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > (d.radius || 3) + 0.4) continue;
-                        if (d.shield) a.shield = Math.min((a.shield || 0) + d.shield, Math.max(d.shield, Math.floor((a.maxHp || 0) * (sp.shieldCapPct || 0.5))));
+                        if (d.shield) { const _sh = (typeof levelScale === 'function') ? Math.round(d.shield * levelScale(getUnitLevel(a))) : d.shield; a.shield = Math.min((a.shield || 0) + _sh, Math.max(_sh, Math.floor((a.maxHp || 0) * (sp.shieldCapPct || 0.5)))); }
                         if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(a, d.statuses, sp.name, caster); } catch (e) {} }
                         if (d.statStage) { try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(a, d.statStage, sp.name, caster); } catch (e) {} }
                     }
@@ -11925,7 +11936,7 @@
                         if (!def || !def.dot) continue;
                         /* half the per-round DoT, ~2.6× per "round" cadence →
                            slightly hotter than turn-based, feels right live */
-                        _dmg(u, Math.max(6, Math.round(def.dot * 0.5)), def.label || k, { damageType: 'dot', ignoreArmor: true });
+                        _dmg(u, Math.max(6, Math.round(def.dot * 0.5)), def.label || k, { damageType: 'dot', ignoreArmor: true, scaleByTargetLevel: true });
                     }
                 }
             }
@@ -13420,8 +13431,22 @@
                 addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
             }
 
-            const hourglassReduction = opts.ignoreArmor ? 0 : getHourglassDamageReduction(target);
-            const effectiveArmor = opts.ignoreArmor ? 0 : getEffectiveArmor(target, damageType);
+            // ── Level 100 magnitude ────────────────────────────────────────
+            // Scale the accumulated flat damage (base + attack buffs + mark) by
+            // the SOURCE unit's level so flat spell/attack numbers keep today's
+            // proportions against HP that has grown up to ~20×. Percent-of-max-HP
+            // and already-stat-derived callers pass opts.preScaled to opt out.
+            // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT).
+            if (!opts.preScaled && typeof levelScale === 'function') {
+                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
+                    : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
+                if (_srcLvl > 1) finalDamage = Math.max(1, Math.round(finalDamage * levelScale(_srcLvl)));
+            }
+            // Mitigation is stored in base magnitude, so scale it by the target's
+            // level to stay proportional against the now-scaled incoming damage.
+            const _defLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+            const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
+            const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
             if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
             if (hourglassReduction > 0) finalDamage = Math.max(1, finalDamage - hourglassReduction);
             if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
@@ -14270,7 +14295,7 @@
                 const drop = Math.max(1, fromZ - toZ);
                 const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG,
                     Math.round(u.maxHp * Math.max(BUILDING_COLLAPSE_PCT, FALL_DAMAGE_PCT_PER_LEVEL * drop)));
-                applyDamageToUnit(u, dmg, '🏚 Collapsing roof: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
+                applyDamageToUnit(u, dmg, '🏚 Collapsing roof: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
                 if (!u.dead) _settleUnitAfterCollapse(u, tiles);
             }
 
@@ -14282,7 +14307,7 @@
                 const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
                 u.z = toZ;
                 const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
-                applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined });
+                applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
                 if (!u.dead) {
                     addLog(`💥 ${unitDisplayName(u)} crawls out of the rubble!`);
                     _settleUnitAfterCollapse(u, tiles);
@@ -16217,10 +16242,17 @@
             'aoe', 'barrage', 'cross', 'aoePull',
         ]);
 
-        const XP_MAX_LEVEL = 10;
-        const XP_THRESHOLDS = [0, 32, 76, 136, 210, 300, 405, 530, 675, 845];
-
-        const XP_STAT_UPGRADE_PER_LEVEL = { 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2 };
+        // Level 100 (see LEVEL100_PLAN.md). XP_MAX_LEVEL mirrors data.js LEVEL_CAP.
+        const XP_MAX_LEVEL = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
+        // Cumulative thresholds, index = level-1, length = XP_MAX_LEVEL.
+        // threshold(L) = round(12 × (L-1)^1.9): early levels quick, L100 ≈ 74k.
+        const XP_THRESHOLDS = (function () {
+            const arr = [];
+            for (let L = 1; L <= XP_MAX_LEVEL; L++) {
+                arr.push(L === 1 ? 0 : Math.round(12 * Math.pow(L - 1, 1.9)));
+            }
+            return arr;
+        })();
 
         const XP_PASSIVE_PER_ROUND   = 2;
         const XP_KILL               = 14;
@@ -16245,10 +16277,52 @@
         function getUnitLevel(unit) {
             if (!unit) return 1;
             const xp = unit._xp || 0;
-            for (let lvl = XP_MAX_LEVEL; lvl >= 2; lvl--) {
-                if (xp >= XP_THRESHOLDS[lvl - 1]) return lvl;
+            // Cheap memo: getUnitLevel is now called on every damage/heal event
+            // (level scaling), so cache the result keyed on _xp.
+            if (unit._lvlCacheXp === xp && unit._lvlCache) return unit._lvlCache;
+            let lvl = 1;
+            for (let L = XP_MAX_LEVEL; L >= 2; L--) {
+                if (xp >= XP_THRESHOLDS[L - 1]) { lvl = L; break; }
             }
-            return 1;
+            unit._lvlCacheXp = xp;
+            unit._lvlCache = lvl;
+            return lvl;
+        }
+
+        // Level 100: recompute max HP/MP from the unit's level-1 base × the level
+        // curve. Offense/defense stats are NOT scaled here (all damage scales at
+        // the resolution chokepoints instead — see applyDamageToUnit). Equipment
+        // and secondary-job max HP/MP bonuses live in _bonusMaxHp/_bonusMaxMp so
+        // they survive a re-scale. Heals the HP/MP delta, exactly like a level-up.
+        function _recomputeStatsForLevel(unit, level) {
+            if (!unit || !unit._baseStats || typeof levelScale !== 'function') return;
+            const ls = levelScale(level);
+            const prevMaxHp = unit.maxHp || 0;
+            const prevMaxMp = unit.maxMp || 0;
+            unit.maxHp = Math.max(1, Math.round(unit._baseStats.maxHp * ls) + (unit._bonusMaxHp || 0));
+            unit.maxMp = Math.max(0, Math.round(unit._baseStats.maxMp * ls) + (unit._bonusMaxMp || 0));
+            const dHp = unit.maxHp - prevMaxHp;
+            const dMp = unit.maxMp - prevMaxMp;
+            unit.hp = Math.min(unit.maxHp, Math.max(0, (unit.hp || 0) + Math.max(0, dHp)));
+            unit.mp = Math.min(unit.maxMp, Math.max(0, (unit.mp || 0) + Math.max(0, dMp)));
+        }
+
+        // Build-time helper: bring a freshly-created unit up to `level` in one
+        // shot — apply every milestone/spell unlock from 2..level, then recompute
+        // scaled HP/MP and stamp _xp at the level threshold. Used by the map.js
+        // unit builder for both PvP-normalized (level 100) and progression units.
+        function setUnitLevel(unit, level) {
+            if (!unit) return;
+            level = Math.max(1, Math.min(XP_MAX_LEVEL, level | 0));
+            if (!unit._baseStats) {
+                unit._baseStats = { maxHp: unit.maxHp || 0, maxMp: unit.maxMp || 0 };
+            }
+            for (let L = 2; L <= level; L++) applyLevelUpRewards(unit, L);
+            _recomputeStatsForLevel(unit, level);
+            unit._xp = XP_THRESHOLDS[level - 1] || 0;
+            unit._lvlCacheXp = unit._xp;
+            unit._lvlCache = level;
+            unit.ap = UNIT_MAX_AP + (unit._xpBonusAP || 0);
         }
 
         function getXPForNextLevel(unit) {
@@ -16281,6 +16355,8 @@
                 for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
                     applyLevelUpRewards(unit, lvl);
                 }
+                // Grow max HP/MP to the new level (stats are recompute-from-base).
+                _recomputeStatsForLevel(unit, newLevel);
                 playSfx('levelUp');
                 if (!unit.dead) _vfxLevelUp(unit.x, unit.y);
             }
@@ -16291,73 +16367,56 @@
             const name = unitDisplayName(unit);
             const cls = unit.job || unit.cls;
 
-            const gains = (typeof LEVEL_UP_GAINS !== 'undefined') ? LEVEL_UP_GAINS[level] : null;
-            if (gains) {
-                unit.maxHp = (unit.maxHp || 0) + gains.hp;
-                unit.hp = Math.min((unit.hp || 0) + gains.hp, unit.maxHp);
-                unit.maxMp = (unit.maxMp || unit.mp || 0) + gains.mp;
-                unit.mp = Math.min((unit.mp || 0) + gains.mp, unit.maxMp);
-                unit.atk = (unit.atk || 0) + gains.atk;
-                unit.def = (unit.def || 0) + gains.def;
-                unit.mdef = (unit.mdef || 0) + (gains.mdef || 0);
-                unit.intStat = (unit.intStat || 0) + gains.int;
-            }
+            // Stat growth is NO LONGER an additive per-level table. Max HP/MP are
+            // recomputed from base × levelScale() by _recomputeStatsForLevel();
+            // offense/defense scale at the resolution chokepoints. This function
+            // now only grants spells and level milestones.
 
             const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[cls] : null;
 
+            // Spells unlock via the generalized hook (data.js getSpellUnlockLevel),
+            // so a future per-class CLASS_SPELL_UNLOCKS table drops in with no
+            // engine change. Default spread reproduces today's Lv1/1/5/15/30 feel.
             let spellsToLearn = [];
-            if (learnOrder) {
-                if (level === 1) {
-                    spellsToLearn = [learnOrder[0], learnOrder[1]].filter(Boolean);
-                } else if (level === 2) {
-                    spellsToLearn = [learnOrder[2]].filter(Boolean);
-                } else if (level === 3) {
-                    spellsToLearn = [learnOrder[3]].filter(Boolean);
-                } else if (level === 5) {
-                    spellsToLearn = [learnOrder[4]].filter(Boolean);
+            if (learnOrder && typeof getSpellUnlockLevel === 'function') {
+                for (let i = 0; i < learnOrder.length; i++) {
+                    if (learnOrder[i] && getSpellUnlockLevel(cls, i) === level) spellsToLearn.push(learnOrder[i]);
                 }
             }
             for (const spellId of spellsToLearn) {
                 learnSpellForUnit(unit, spellId);
             }
 
+            const _shopLvl = (typeof SPELL_SHOP_LEVEL !== 'undefined') ? SPELL_SHOP_LEVEL : 10;
+            const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
+            const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [40, 80];
+
             let milestoneMsg = '';
-            const gainStr = gains ? `+${gains.hp} HP, +${gains.atk} ATK, +${gains.def} DEF, +${gains.mdef || 0} MDEF, +${gains.int} INT` : '';
             const _inBattle = state.phase === 'battle';
-            if (level === 2) {
-                milestoneMsg = gainStr;
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.2! ${gainStr}`);
-            } else if (level === 3) {
+            if (level === _shopLvl) {
                 milestoneMsg = 'Spell Shop unlocks!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.3! Spell Shop unlocks! ${gainStr}`);
-            } else if (level === 4) {
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Spell Shop unlocks!`);
+            } else if (level === _secJobLvl) {
                 if (_inBattle) unit._pendingSecondaryJobPick = true;
                 milestoneMsg = 'Choose a Secondary Job!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.4! Choose a Secondary Job! ${gainStr}`);
-            } else if (level === 5) {
-                milestoneMsg = 'All spell slots filled!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.5! All spell slots filled! ${gainStr}`);
-            } else if (level === 6) {
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Choose a Secondary Job!`);
+            } else if (_apLvls.includes(level)) {
                 unit._xpBonusAP = (unit._xpBonusAP || 0) + 1;
-                unit.ap = Math.min(unit.ap + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
+                unit.ap = Math.min((unit.ap || 0) + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
                 milestoneMsg = '+1 AP cap!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.6! +1 AP cap! ${gainStr}`);
-            } else if (level === 7) {
-                milestoneMsg = 'Combo attacks unlocked!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.7! Combo attacks unlocked! ${gainStr}`);
-            } else if (level === 8) {
-                milestoneMsg = 'Advanced techniques!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.8! Advanced techniques unlocked! ${gainStr}`);
-            } else if (level === 9) {
-                unit._xpBonusAP = (unit._xpBonusAP || 0) + 1;
-                unit.ap = Math.min(unit.ap + 1, UNIT_MAX_AP + (unit._xpBonusAP || 0));
-                milestoneMsg = '+1 AP cap (2nd)!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.9! +1 AP cap (2nd)! ${gainStr}`);
-            } else if (level === 10) {
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! +1 AP cap!`);
+            } else if (level === XP_MAX_LEVEL) {
                 milestoneMsg = '✨ ASCENSION!';
-                if (_inBattle) addLog(`⬆ ${name} reaches Lv.10! ✨ ASCENSION! ${gainStr}`);
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! ✨ ASCENSION!`);
+            } else if (level % 25 === 0) {
+                milestoneMsg = 'Power surges!';
+                if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Power surges!`);
             }
-            if (level > 1 && !_skipVisuals() && state.phase === 'battle') {
+            // Only surface the level-up banner in battle for meaningful beats:
+            // spell learns, milestones, or every 5th level (avoids 99 popups when
+            // a unit is pre-leveled at build time — that runs outside battle).
+            const _worthShowing = spellsToLearn.length > 0 || milestoneMsg || (level % 5 === 0);
+            if (level > 1 && _worthShowing && !_skipVisuals() && state.phase === 'battle') {
                 showFloatingTextForUnit(unit, `⬆ LEVEL ${level}!`, 'levelup', { durationMs: 1800 });
                 playSfx('uiButtonConfirm');
 
@@ -16403,6 +16462,10 @@
 
             if (typeof computeSecJobBonuses === 'function') {
                 const b = computeSecJobBonuses(jobName);
+                // Route max HP/MP into the persistent bonus pool so a later
+                // level-up (which recomputes HP/MP from base) doesn't drop it.
+                unit._bonusMaxHp = (unit._bonusMaxHp || 0) + (b.hp || 0);
+                unit._bonusMaxMp = (unit._bonusMaxMp || 0) + (b.mp || 0);
                 unit.maxHp += b.hp; unit.hp = Math.min(unit.hp + Math.max(0, b.hp), unit.maxHp);
                 unit.maxMp += b.mp; unit.mp = Math.min(unit.mp + Math.max(0, b.mp), unit.maxMp);
                 unit.atk += b.atk; unit.def += b.def;
@@ -31335,7 +31398,7 @@
             }
 
             else if (combo.kind === 'shield') {
-                const shieldAmt = Math.round((combo.shield || 16) * synergyMult);
+                const shieldAmt = Math.round((combo.shield || 16) * synergyMult * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(initiator)) : 1));
                 const cap = Math.floor((initiator.maxHp || 100) * (combo.shieldCapPct || 0.30));
                 const gain = Math.min(shieldAmt, cap - (initiator.shield || 0));
                 if (gain > 0) {
@@ -31461,10 +31524,14 @@
                         triggerCastAnim(target, { id: 'consumeHealPotion', name: 'Healing Potion' });
                     }, _hpArrive);
                 }
-                const heal = Math.max(1, Math.round(96 * getTerrainHealMultiplier(target.x, target.y)));
+                // Level 100: potions restore a PERCENT of max HP (ITEM_RULES
+                // healPct), so they stay useful as HP scales. Passed preScaled —
+                // it's already a percent of the (scaled) max HP.
+                const _healPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+                const heal = Math.max(1, Math.round(target.maxHp * _healPct * getTerrainHealMultiplier(target.x, target.y)));
                 // The HP lands as the drink goes down — on camera.
                 window.setTimeout(() => {
-                    const healed = applyHealingToUnit(target, heal, unit);
+                    const healed = applyHealingToUnit(target, heal, unit, { preScaled: true });
                     flashSelectedUnitPanel('heal');
                     addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
                     renderBattleUpdate();
@@ -31536,7 +31603,9 @@
                         triggerCastAnim(target, { id: 'consumeManaPotion', name: 'Mana Potion' });
                     }, _mpArrive);
                 }
-                const restore = 40;
+                // Level 100: mana potion restores a PERCENT of max MP.
+                const _mpPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.manaPotion && ITEM_RULES.manaPotion.mpPct) || 0.35;
+                const restore = Math.max(1, Math.round(target.maxMp * _mpPct));
                 window.setTimeout(() => {
                     if (target.dead) return;
                     const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
@@ -32468,7 +32537,8 @@
                 panelFocusTarget = _shResult.target;
                 const _st = _shResult.target;
                 const shieldCap = Math.ceil(_st.maxHp * (spell.shieldCapPct || 0.5));
-                const shieldGain = Math.min((spell.shield || 0) + getHourglassPower(unit), Math.max(0, shieldCap - _st.shield));
+                const _shBase = (typeof levelScale === 'function') ? Math.round(((spell.shield || 0) + getHourglassPower(unit)) * levelScale(getUnitLevel(unit))) : ((spell.shield || 0) + getHourglassPower(unit));
+                const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
                 _st.shield += shieldGain;
                 addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
@@ -33762,7 +33832,9 @@
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct) : (spell.healAmt != null ? spell.healAmt : (spell.heal || 64));
-                applyHealingToUnit(unit, healAmt, unit);
+                // selfHealPct is already a percent of (scaled) max HP — opt it out
+                // of the level scale; the flat heal fallback still scales.
+                applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
                 if (spell.cleanse) {
                     const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                     for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
@@ -33999,7 +34071,8 @@
                 unit.mp -= effectiveSpellCost;
                 const area = getSquareArea(x, y, spell.aoeRadius || 1);
                 const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
-                const shieldPerAlly = Math.floor((spell.shieldHp || 200) / Math.max(1, allies.length));
+                const _shTotal = (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
+                const shieldPerAlly = Math.floor(_shTotal / Math.max(1, allies.length));
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1 });

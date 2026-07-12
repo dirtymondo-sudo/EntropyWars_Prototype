@@ -3244,13 +3244,17 @@ const ITEM_RULES = {
         name: 'Healing Potion',
         icon: '🧪',
         max: 6,
-        desc: 'Target any living ally. Restores 96 HP.'
+        // Level 100: potions heal a PERCENT of max HP so they stay useful as HP
+        // scales from ~500 to ~15k. 30% ≈ the old ~96/~320 feel at low level.
+        healPct: 0.30,
+        desc: 'Target any living ally. Restores 30% of max HP.'
     },
     manaPotion: {
         name: 'Mana Potion',
         icon: '🔹',
         max: 6,
-        desc: 'Target any living ally. Restores 40 MP.'
+        mpPct: 0.35,
+        desc: 'Target any living ally. Restores 35% of max MP.'
     },
     scanner: {
         name: 'Scanner',
@@ -11103,6 +11107,59 @@ const BOSS_GOLD_SPLIT_MODE = 'equal';
 
 const SPELL_SLOT_MAX = 8;
 
+// ============================================================================
+// Level 100 scaling — single source of truth (see LEVEL100_PLAN.md).
+// Principle: today's numbers are the level-100 *shape*. Every flat damage/heal/
+// shield/DoT and the unit's max HP/MP are multiplied by levelScale(level) at
+// resolution, so SAME-level combat at ANY level feels exactly like today — just
+// at a larger magnitude. Because attacker output and defender HP scale by the
+// same factor, low-level Mystery Dungeon / Challenge play stays balanced for
+// free. Offense/defense STATS (atk/def/mdef/int) are intentionally NOT scaled
+// in-place: all damage flows through the central resolution chokepoints
+// (applyDamageToUnit / applyHealingToUnit / armor) where a single levelScale()
+// multiply is applied, which avoids any double-scaling and keeps AI weight math
+// (which reads raw atk/dmg) in today's magnitude space.
+// ============================================================================
+const LEVEL_CAP = 100;
+// Global magnitude: a level-100 effect = today's number × EW_SCALE. Since stat
+// growth is now pure recompute-from-base (no additive per-level table), this is
+// the SOLE HP knob: race base HP (~445–660) × 24 ≈ 10.7k–15.8k, squarely inside
+// the 10k–20k level-100 target. EW_SCALE scales damage/heals by the same factor,
+// so hit/heal PROPORTIONS are unchanged — raise it for bigger numbers, not for a
+// different feel. (Owner-tunable — see LEVEL100_PLAN.md §9.)
+const EW_SCALE = 24;
+// Curve exponent — keeps early levels gentle, late levels meaningful.
+const LEVEL_SCALE_EXP = 1.35;
+function levelScale(level) {
+    if (LEVEL_CAP <= 1) return 1;
+    const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
+    return 1 + (EW_SCALE - 1) * Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+}
+
+// Spell-unlock levels mapped onto CLASS_SPELL_LEARN_ORDER indices. The engine
+// only ever calls getSpellUnlockLevel(); when movesets solidify, drop in a
+// data-driven CLASS_SPELL_UNLOCKS table here without touching battle.js.
+const DEFAULT_SPELL_UNLOCK_LEVELS = [1, 1, 5, 15, 30, 45, 60, 75, 90];
+function getSpellUnlockLevel(cls, spellIdx) {
+    if (spellIdx < DEFAULT_SPELL_UNLOCK_LEVELS.length) return DEFAULT_SPELL_UNLOCK_LEVELS[spellIdx];
+    return Math.min(LEVEL_CAP, 90 + (spellIdx - DEFAULT_SPELL_UNLOCK_LEVELS.length + 1) * 3);
+}
+
+// Milestone levels (single place to tune).
+const SPELL_SHOP_LEVEL = 10;
+const SECONDARY_JOB_LEVEL = 15;
+const AP_BONUS_LEVELS = [40, 80];
+
+// Mode level rules — PvP is normalized to the cap; progression modes level up
+// during play. Adding "Endless" later just means adding it to progressionModes.
+const MODE_LEVEL_RULES = {
+    pvpNormalizedLevel: LEVEL_CAP,
+    progressionModes: ['dungeon', 'challenge', 'endless', 'campaign'],
+};
+function isProgressionMode(modeId) {
+    return !!modeId && MODE_LEVEL_RULES.progressionModes.includes(modeId);
+}
+
 const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['pistolWhip', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
@@ -11281,6 +11338,9 @@ Object.assign(window, {
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
+  LEVEL_CAP, EW_SCALE, LEVEL_SCALE_EXP, levelScale,
+  getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
+  MODE_LEVEL_RULES, isProgressionMode,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
   computeSecJobBonuses, computeEquipBonuses,
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,

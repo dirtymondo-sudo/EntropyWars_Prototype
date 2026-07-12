@@ -411,7 +411,8 @@
                 const nextLvlXp = xpThresholds[ru.level] || curLvlXp;
                 const xpInLevel = ru.xp - curLvlXp;
                 const xpNeeded = nextLvlXp - curLvlXp;
-                const xpPct = (ru.level >= 10) ? 100 : (xpNeeded > 0 ? Math.min(100, (xpInLevel / xpNeeded) * 100) : 0);
+                const _xpMaxLvl = (typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 100;
+                const xpPct = (ru.level >= _xpMaxLvl) ? 100 : (xpNeeded > 0 ? Math.min(100, (xpInLevel / xpNeeded) * 100) : 0);
 
                 rosterHtml += `<div class="cpb-roster-card${isAssigned ? ' cpb-assigned' : ''}" onclick="window._cpbAssign('${ru.id}')">
                     <div class="cpb-rc-sprite" style="background-image:url('${spriteUrl}')"></div>

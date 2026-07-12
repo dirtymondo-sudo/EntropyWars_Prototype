@@ -4,7 +4,46 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Horologe → cascading JRPG command panels (2026-07-12, latest) — hud.js only
+## Level 100 system — Drop 1 (2026-07-12, latest) — data.js/battle.js/map.js/ui.js/ai.js/ainew.js
+Token `?v=20260712j` → `20260712k-lvl100`. Max level 10 → **100** (see
+LEVEL100_PLAN.md). Core model (single source of truth in **data.js**):
+`LEVEL_CAP=100`, `EW_SCALE=24`, `levelScale(L)` = `1+(EW_SCALE-1)·((L-1)/99)^1.35`
+(L1→×1, L50→×9.9, L100→×24).
+- **Only max HP/MP scale in-place** (`_recomputeStatsForLevel` in battle.js,
+  from a level-1 `unit._baseStats` snapshot taken in map.js `createUnit`).
+  Equip/secondary-job max HP/MP go into `_bonusMaxHp/_bonusMaxMp` so a re-scale
+  keeps them. atk/def/mdef/int are **left at base** on purpose.
+- **All damage/heal/shield/DoT scale at the resolution chokepoints**, not in the
+  stat: `applyDamageToUnit` and `applyHealingToUnit` multiply by
+  `levelScale(sourceLevel)` (armor/hourglass reduction scale by target level).
+  This is why there's no double-scaling and why the AI (which reads raw
+  atk/dmg) still reasons in today's magnitude space. Opt-outs: `opts.preScaled`
+  (already-percent-of-maxHp callers: collapse/crush, selfHealPct, potions) and
+  `opts.scaleByTargetLevel` (source-less DoT tick).
+- **Same-level combat at ANY level == today's proportions.** L100 unit HP
+  ≈ base×24 ≈ **10.7k–15.8k**. Low-level MD/Challenge is balanced for free.
+- **PvP normalized to L100**: map.js `createUnit` PvP branch calls
+  `setUnitLevel(unit, MODE_LEVEL_RULES.pvpNormalizedLevel)` (=100). Progression
+  modes (`state.isCampaign || state._mdRun`) use `min(campaignLevel, 100)`.
+  `MODE_LEVEL_RULES.progressionModes` includes `'endless'` as the future hook.
+- **Milestones remapped** (data.js consts): spell shop L10, secondary job L15,
+  +1 AP at L40 & L80. Spells unlock via `getSpellUnlockLevel(cls, idx)` (default
+  spread `[1,1,5,15,30,45,60,75,90]` onto `CLASS_SPELL_LEARN_ORDER`) — swap in a
+  `CLASS_SPELL_UNLOCKS` table later without touching the engine.
+- **XP curve**: `XP_THRESHOLDS` regenerated to 100 entries,
+  `round(12·(L-1)^1.9)` (L100 ≈ 74k). `getUnitLevel` memoizes on `_xp`.
+- **Potions → percent**: `ITEM_RULES.healPotion.healPct=0.30`,
+  `manaPotion.mpPct=0.35`.
+- **AI**: `estDamage` (ainew.js) now returns level-scaled damage; ai.js lethality
+  checks (`target.hp <= dmg`) compare against `_aiKillHp()` (HP de-scaled to base
+  space). Team-damage-log comparisons were already in scaled space — left alone.
+- **NOT yet done (later drops):** tower/turret/boss HP + objective scoring
+  (domination/arena/ctf still use unscaled `TOWER_MAX_HP=2500` → towers die fast);
+  damage-number `k`-formatting + hit-stop/crit VFX thresholds (maxed at scale);
+  AI weight HP-normalization refinement; old-save XP migration; party-builder
+  preview shows base (level-1) stats not the L100 values.
+
+## Horologe → cascading JRPG command panels (2026-07-12) — hud.js only
 Token `20260712g` → `20260712h`. The rotating blade DRUM is GONE (focus
 window, faded overflow rows, click-to-rotate, `_hrlgSlot` math, bezel-angle
 pushers). Full presentation rewrite; ALL game logic / state machine / blade

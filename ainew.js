@@ -244,6 +244,21 @@
         return sp.dmg || (sp.hitDamages ? sp.hitDamages.reduce((a, b) => a + b, 0) : 0) ||
             (sp.kind === 'barrage' || sp.kind === 'aoe' ? 120 : 90);
     }
+    // Level 100: real damage is scaled at the resolution chokepoints by the
+    // attacker's level curve, but estDamage computes in base magnitude. Multiply
+    // the estimate by the same curve so lethality checks (est vs scaled HP) and
+    // damage scores stay comparable to the real, scaled numbers.
+    function _aiLevelScale(u) {
+        if (typeof levelScale !== 'function') return 1;
+        let lvl = (u && u._lvlCache) || 0;
+        if (!lvl && typeof XP_THRESHOLDS !== 'undefined') {
+            const xp = (u && u._xp) || 0;
+            lvl = 1;
+            for (let L = XP_THRESHOLDS.length; L >= 2; L--) { if (xp >= XP_THRESHOLDS[L - 1]) { lvl = L; break; } }
+        }
+        return levelScale(lvl || 1);
+    }
+
     function estDamage(g, unit, tg, sp, fromX, fromY, fromH) {
         let raw, dmgType = 'physical', ignoreArmor = false;
         if (sp) {
@@ -271,7 +286,8 @@
             const armor = dmgType === 'magic' ? (tg.mdef || 0) : (tg.def || 0);
             est -= armor * 0.8;                                  // getEffectiveArmor approx
         }
-        return Math.max(1, est);
+        // Bring the base-magnitude estimate up to the real scaled magnitude.
+        return Math.max(1, est) * _aiLevelScale(unit);
     }
     function effHp(tg) { return tg.hp + (tg.shield || 0); }
 

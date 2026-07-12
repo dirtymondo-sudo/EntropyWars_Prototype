@@ -1167,6 +1167,27 @@
         }
     }
 
+    // Level 100: this AI scores in BASE damage magnitude (spell.dmg, atk*0.65),
+    // but unit HP is scaled ~24× by the level curve. For lethality checks that
+    // compare a base-magnitude damage estimate to target.hp, bring the HP back
+    // into base space with _aiKillHp() so "can I kill this?" stays correct.
+    // (Damage read from the team damage log is already in scaled space — don't
+    // de-scale those comparisons.)
+    function _aiLevelScale(u) {
+        if (typeof levelScale !== 'function') return 1;
+        let lvl = (u && u._lvlCache) || 0;
+        if (!lvl && typeof XP_THRESHOLDS !== 'undefined') {
+            const xp = (u && u._xp) || 0;
+            lvl = 1;
+            for (let L = XP_THRESHOLDS.length; L >= 2; L--) { if (xp >= XP_THRESHOLDS[L - 1]) { lvl = L; break; } }
+        }
+        return levelScale(lvl || 1);
+    }
+    function _aiKillHp(target, attacker) {
+        const s = _aiLevelScale(attacker);
+        return s > 0 ? (target.hp / s) : target.hp;
+    }
+
     function scoreAttacks(unit, v, out) {
         const g = G();
         if ((unit.ap || 0) < g.AP_COST_ACTION || _skipAttack) return;
@@ -1201,7 +1222,7 @@
 
             score += getTargetPriority(tgt, unit, v);
 
-            if (tgt.hp <= estDmg * typeMult + 32) score += g.getAIWeight('killBonusScore_v1') + 120;
+            if (_aiKillHp(tgt, unit) <= estDmg * typeMult + 32) score += g.getAIWeight('killBonusScore_v1') + 120;
 
             if (g.unitHasStatus(tgt, 'marked')) score += g.getAIWeight('markedTargetBonus_v1');
 
@@ -1437,7 +1458,7 @@
 
                 s += getTargetPriority(target, unit, v) * 0.5;
 
-                if (target.hp <= s + 24) s += g.getAIWeight('killBonusScore_v1') + 120;
+                if (_aiKillHp(target, unit) <= s + 24) s += g.getAIWeight('killBonusScore_v1') + 120;
             }
 
             if (unit.cls === 'Black Mage') s *= 1.5;
@@ -1479,7 +1500,7 @@
                     let hitVal = dashDmg;
                     hitVal *= getTypeMultiplier(unit, victim, spell.spellType || null);
                     hitVal += getTargetPriority(victim, unit, v) * 0.3;
-                    if (victim.hp <= dashDmg + 24) hitVal += g.getAIWeight('killBonusScore_v1') + 120;
+                    if (_aiKillHp(victim, unit) <= dashDmg + 24) hitVal += g.getAIWeight('killBonusScore_v1') + 120;
                     for (const eff of (spell.statusEffects || [])) hitVal += scoreStatusEffect(eff, victim, v);
                     s += hitVal;
                 }
@@ -1585,7 +1606,7 @@
             if (unit.hp < unit.maxHp * g.getAIWeight('healAllyThreshold_v1')) s += 15;
             if (target) {
                 s *= getTypeMultiplier(unit, target, spell.spellType || null);
-                if (target.hp <= (spell.dmg || 18) + 3) s += 30;
+                if (_aiKillHp(target, unit) <= (spell.dmg || 18) + 3) s += 30;
             }
             return s;
         }
@@ -1855,7 +1876,7 @@
 
             s *= getTypeMultiplier(unit, target, spell.spellType || null);
 
-            if (target.hp <= dmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+            if (_aiKillHp(target, unit) <= dmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
 
             if (hits >= 2) s *= 1.25;
             return s;
@@ -2010,7 +2031,7 @@
             const actualSplits = Math.min(nearbyEnemies, splitCount);
             let s = primaryDmg + actualSplits * splitDmg;
             s *= getTypeMultiplier(unit, target, spell.spellType || null);
-            if (target.hp <= primaryDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+            if (_aiKillHp(target, unit) <= primaryDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
             if (actualSplits >= 1) s *= 1.15;
             return s;
         }
@@ -2131,7 +2152,7 @@
                 );
                 s += enemiesNear.length * (spell.dmg * 0.8);
                 for (const e of enemiesNear) {
-                    if (e.hp <= (spell.dmg || 0) + 20) s += g.getAIWeight('killBonusScore_v1') + 40;
+                    if (_aiKillHp(e, unit) <= (spell.dmg || 0) + 20) s += g.getAIWeight('killBonusScore_v1') + 40;
                     s += getTargetPriority(e, unit, v) * 0.2;
                 }
             }
@@ -2178,7 +2199,7 @@
             s += 24;
             s *= getTypeMultiplier(unit, target, spell.spellType || null);
             s += getTargetPriority(target, unit, v) * 0.3;
-            if (target.hp <= (spell.dmg || 96) + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
+            if (_aiKillHp(target, unit) <= (spell.dmg || 96) + 24) s += g.getAIWeight('killBonusScore_v1') + 80;
             return s;
         }
 
@@ -2201,7 +2222,7 @@
             for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
             s *= getTypeMultiplier(unit, target, spell.spellType || null);
             s += getTargetPriority(target, unit, v) * 0.4;
-            if (target.hp <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
+            if (_aiKillHp(target, unit) <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
 
             if (kind === 'skyThrow') {
                 const nearbyEnemies = v.visibleEnemies.filter(e =>
@@ -2249,7 +2270,7 @@
             for (const eff of (spell.statusEffects || [])) s += scoreStatusEffect(eff, target, v);
             s *= getTypeMultiplier(unit, target, spell.spellType || null);
             s += getTargetPriority(target, unit, v) * 0.4;
-            if (target.hp <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
+            if (_aiKillHp(target, unit) <= estDmg + 24) s += g.getAIWeight('killBonusScore_v1') + 100;
 
             if (spell.aoeRadius) {
                 const aoeHits = v.visibleEnemies.filter(e =>
@@ -2417,7 +2438,7 @@
             else score = Math.round(((combo.dmg || 0) + (combo.heal || 0) * 0.7) * synergy.mult);
             if (combo.statusEffects?.length) score += g.getAIWeight('statusEffectBonus_v1');
             if (synergy.mult > 1) score += g.getAIWeight('comboSynergyBonus_v1');
-            if (comboTarget && comboTarget.hp <= (combo.dmg || 0) + 5) score += g.getAIWeight('comboKillBonus_v1');
+            if (comboTarget && _aiKillHp(comboTarget, unit) <= (combo.dmg || 0) + 5) score += g.getAIWeight('comboKillBonus_v1');
 
             if (comboTarget) score *= getTypeMultiplier(unit, comboTarget);
 
@@ -2507,7 +2528,7 @@
 
                 let attackVal = estDmg * getTypeMultiplier(unit, e);
                 attackVal += getTargetPriority(e, unit, v) * 0.5;
-                if (e.hp <= estDmg + 32) attackVal += 240;
+                if (_aiKillHp(e, unit) <= estDmg + 32) attackVal += 240;
 
                 // Backline jobs keep their distance: shoot from max range, and
                 // never walk INTO melee when the kit works from 3+ tiles away.
@@ -3884,7 +3905,7 @@
                     effDmg: dmg * getTypeMultiplier(unit, e.enemy)
                 }));
 
-                const killable = typedDmg.filter(e => e.enemy.hp <= e.effDmg + 3);
+                const killable = typedDmg.filter(e => _aiKillHp(e.enemy, unit) <= e.effDmg + 3);
                 if (killable.length > 0) {
                     killable.sort((a, b) => b.priority - a.priority);
                     return killable[0].enemy;

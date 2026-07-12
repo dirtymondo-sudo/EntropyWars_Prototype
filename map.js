@@ -6081,6 +6081,14 @@
                 _recallCooldown: 0
             };
 
+            // Level 100: snapshot the level-1 base max HP/MP so level scaling can
+            // recompute them from base × levelScale(). Equipment / secondary-job
+            // max HP/MP bonuses accumulate in _bonusMaxHp/_bonusMaxMp so they
+            // survive a re-scale (see _recomputeStatsForLevel in battle.js).
+            newUnit._baseStats = { maxHp: newUnit.maxHp, maxMp: newUnit.maxMp };
+            newUnit._bonusMaxHp = 0;
+            newUnit._bonusMaxMp = 0;
+
             const _availableRaceAbilities = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[identity.race])
                 ? RACE_ABILITIES[identity.race]
                     .filter(a => !a.jobRequirement || a.jobRequirement === template.cls)
@@ -6096,8 +6104,11 @@
 
             if (_isCampaign && _campaignLevel > 0) {
                 const targetLevel = Math.min(_campaignLevel, XP_MAX_LEVEL);
+                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
 
-                if (targetLevel >= 4) {
+                // Secondary job first — its flat bonuses ride on top of the scaled
+                // stats that setUnitLevel() computes from base.
+                if (targetLevel >= _secJobLvl) {
                     const metaSecJob = identityOverride?.secondaryJob || null;
                     if (metaSecJob) {
                         applySecondaryJob(newUnit, metaSecJob);
@@ -6106,26 +6117,15 @@
                     }
                 }
 
-                for (let lvl = 2; lvl <= targetLevel; lvl++) {
-                    if (lvl === 4 && targetLevel >= 4) {
-
-                        const gains = (typeof LEVEL_UP_GAINS !== 'undefined') ? LEVEL_UP_GAINS[lvl] : null;
-                        if (gains) {
-                            newUnit.maxHp += gains.hp; newUnit.hp = newUnit.maxHp;
-                            newUnit.maxMp += gains.mp; newUnit.mp = newUnit.maxMp;
-                            newUnit.atk += gains.atk; newUnit.def += gains.def;
-                            newUnit.mdef = (newUnit.mdef || 0) + (gains.mdef || 0);
-                            newUnit.intStat += gains.int;
-                        }
-                    } else {
-                        applyLevelUpRewards(newUnit, lvl);
-                    }
-                }
+                // One call scales HP/MP for the level and applies every spell
+                // unlock / AP milestone from 2..targetLevel.
+                setUnitLevel(newUnit, targetLevel);
 
                 const startXp = identityOverride?._campaignXp || identityOverride?._campaignEnemyXp || 0;
-                newUnit._xp = startXp > 0 ? startXp : (targetLevel >= 2 ? (XP_THRESHOLDS[targetLevel - 1] || 0) : 0);
-                newUnit._xpBonusAP = 0;
-                newUnit.ap = UNIT_MAX_AP;
+                if (startXp > 0) {
+                    newUnit._xp = startXp;
+                    newUnit._lvlCacheXp = undefined; // force level recache from roster xp
+                }
                 newUnit.hp = newUnit.maxHp;
                 newUnit.mp = newUnit.maxMp;
 
@@ -6170,35 +6170,21 @@
             else {
             const _cuMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
             if (_cuMode) {
+                // PvP normalization: every unit is built at the level cap so all
+                // competitive modes are level-100 vs level-100.
+                const targetLevel = (typeof MODE_LEVEL_RULES !== 'undefined') ? MODE_LEVEL_RULES.pvpNormalizedLevel : XP_MAX_LEVEL;
+                const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
 
-                const metaSecJob = identityOverride?.secondaryJob || null;
-                if (metaSecJob) {
-                    applySecondaryJob(newUnit, metaSecJob);
-                } else {
-
-                    aiPickSecondaryJob(newUnit);
-                }
-
-                for (let lvl = 2; lvl <= XP_MAX_LEVEL; lvl++) {
-                    if (lvl === 4) {
-
-                        const gains = (typeof LEVEL_UP_GAINS !== 'undefined') ? LEVEL_UP_GAINS[lvl] : null;
-                        if (gains) {
-                            newUnit.maxHp += gains.hp; newUnit.hp = newUnit.maxHp;
-                            newUnit.maxMp += gains.mp; newUnit.mp = newUnit.maxMp;
-                            newUnit.atk += gains.atk; newUnit.def += gains.def;
-                            newUnit.mdef = (newUnit.mdef || 0) + (gains.mdef || 0);
-                            newUnit.intStat += gains.int;
-                        }
+                if (targetLevel >= _secJobLvl) {
+                    const metaSecJob = identityOverride?.secondaryJob || null;
+                    if (metaSecJob) {
+                        applySecondaryJob(newUnit, metaSecJob);
                     } else {
-                        applyLevelUpRewards(newUnit, lvl);
+                        aiPickSecondaryJob(newUnit);
                     }
                 }
 
-                newUnit._xp = XP_THRESHOLDS[XP_MAX_LEVEL - 1] || 1060;
-
-                newUnit._xpBonusAP = 0;
-                newUnit.ap = UNIT_MAX_AP;
+                setUnitLevel(newUnit, targetLevel);
 
                 newUnit.hp = newUnit.maxHp;
                 newUnit.mp = newUnit.maxMp;
@@ -6243,8 +6229,10 @@
             // accessory's listed stat actually applies in combat.
             if (typeof computeEquipBonuses === 'function' && newUnit.equipment) {
                 const _eqB = computeEquipBonuses(newUnit.equipment);
-                if (_eqB.hp) { newUnit.maxHp += _eqB.hp; newUnit.hp = newUnit.maxHp; }
-                if (_eqB.mp) { newUnit.maxMp += _eqB.mp; newUnit.mp = newUnit.maxMp; }
+                // Route accessory max HP/MP into the persistent bonus pool so a
+                // later level-up (which recomputes HP/MP from base) keeps them.
+                if (_eqB.hp) { newUnit._bonusMaxHp = (newUnit._bonusMaxHp || 0) + _eqB.hp; newUnit.maxHp += _eqB.hp; newUnit.hp = newUnit.maxHp; }
+                if (_eqB.mp) { newUnit._bonusMaxMp = (newUnit._bonusMaxMp || 0) + _eqB.mp; newUnit.maxMp += _eqB.mp; newUnit.mp = newUnit.maxMp; }
                 newUnit.atk += _eqB.atk || 0;
                 newUnit.def += _eqB.def || 0;
                 newUnit.mdef = (newUnit.mdef || 0) + (_eqB.mdef || 0);
