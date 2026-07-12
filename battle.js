@@ -23456,71 +23456,75 @@
 
         const AI_WEIGHT_DEFAULTS = {
 
+            // Values below are the champion weights adopted from the gen-44
+            // self-play training run (schemaVersion 11, 2554 matches). The
+            // strength test gated them at a 58.2% win rate vs the untrained
+            // baseline (Wilson95 [0.507, 0.654], +58 Elo, significant at 95%).
             healPotionHpPct_v1:       { value: 0.583, min: 0.20, max: 0.70, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
 
-            killBonusScore_v1:        { value: 60,    min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
-            markedTargetBonus_v1:     { value: 4.275, min: 2,    max: 15,   label: 'Marked Target Bonus', desc: 'Score bonus for attacking marked targets' },
+            killBonusScore_v1:        { value: 21.5,  min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            markedTargetBonus_v1:     { value: 3.138, min: 2,    max: 15,   label: 'Marked Target Bonus', desc: 'Score bonus for attacking marked targets' },
             hourglassTargetBonus_v1:  { value: 10,    min: 10,   max: 50,   probe: 'hourglass', label: 'HG Carrier Bonus', desc: 'Score bonus for attacking hourglass carriers' },
             comboSynergyBonus_v1:     { value: 14.856, min: 4,   max: 25,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            statusEffectBonus_v1:     { value: 40,    min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
+            comboKillBonus_v1:        { value: 27.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            statusEffectBonus_v1:     { value: 19.7,  min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
 
-            pressRefundValue_v1:      { value: 55,    min: 10,   max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
-            whiffRiskPenalty_v1:      { value: 30,    min: 0,    max: 120,  label: 'Press: Whiff Risk Penalty', desc: "Penalty scaled by the target's evade chance — a missed attack drains extra AP and cuts the turn short" },
+            pressRefundValue_v1:      { value: 10,    min: 10,   max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
+            whiffRiskPenalty_v1:      { value: 0,     min: 0,    max: 120,  label: 'Press: Whiff Risk Penalty', desc: "Penalty scaled by the target's evade chance — a missed attack drains extra AP and cuts the turn short" },
 
-            engageAdvantage_v1:       { value: -0.41, min: -0.5, max: 0.3,  label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            hgCarrierFleeAdv_v1:      { value: -0.038, min: -0.3, max: 0.4,  label: 'HG Carrier Flee Threshold', desc: 'Advantage below which HG carriers retreat' },
+            engageAdvantage_v1:       { value: -0.27, min: -0.5, max: 0.3,  label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            hgCarrierFleeAdv_v1:      { value: -0.16, min: -0.3, max: 0.4,  label: 'HG Carrier Flee Threshold', desc: 'Advantage below which HG carriers retreat' },
 
             safeEnemyDistWeight_v1:   { value: 10.5,  min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
-            safeAllyProximity_v1:     { value: 4.426, min: 1,    max: 15,   label: 'Safe Move: Ally Proximity Bonus', desc: 'Bonus for staying near allies when retreating' },
+            safeAllyProximity_v1:     { value: 1,     min: 1,    max: 15,   label: 'Safe Move: Ally Proximity Bonus', desc: 'Bonus for staying near allies when retreating' },
 
             towerLowHpPush_v1:       { value: 25,    min: 25,   max: 90,   label: 'Tower Low HP Push', desc: 'Score bonus when enemy tower is nearly destroyed' },
-            towerMidHpPush_v1:       { value: 38.407, min: 10,   max: 55,   label: 'Tower Mid HP Push', desc: 'Score bonus when enemy tower is at half HP' },
+            towerMidHpPush_v1:       { value: 22.657, min: 10,   max: 55,   label: 'Tower Mid HP Push', desc: 'Score bonus when enemy tower is at half HP' },
 
             towerBaseBonus_v1:       { value: 26.446, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerClearBonus_v1:      { value: 60.5,  min: 20,   max: 80,   label: 'Tower Clear Bonus', desc: 'Score bonus for tower attack when no enemies on ground' },
+            towerClearBonus_v1:      { value: 39.5,  min: 20,   max: 80,   label: 'Tower Clear Bonus', desc: 'Score bonus for tower attack when no enemies on ground' },
 
-            levelAggressionMod_v1:   { value: 0.014, min: 0.0,  max: 0.15, label: 'Level Aggression Mod', desc: 'Per-level aggression bonus (higher level = more aggressive)' },
+            levelAggressionMod_v1:   { value: 0.007, min: 0.0,  max: 0.15, label: 'Level Aggression Mod', desc: 'Per-level aggression bonus (higher level = more aggressive)' },
             nearLevelUpBonus_v1:     { value: 3.5,   min: 0,    max: 20,   label: 'Near Level-Up Bonus', desc: 'Score bonus for combat actions when unit is close to leveling up' },
 
             hgSeekPriority_v1:       { value: 0,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'How aggressively AI hunts hidden hourglasses (higher = earlier inspect/move to center)' },
 
             antiOscillationPen_v1:   { value: -4.335, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
 
-            recallBonus_v1:          { value: 6.25,  min: 0,    max: 25,   probe: 'hourglass', label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
-            scannerPriority_v1:      { value: 23.75, min: 5,    max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            recallBonus_v1:          { value: 10.625, min: 0,   max: 25,   probe: 'hourglass', label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
+            scannerPriority_v1:      { value: 18.5,  min: 5,    max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
 
-            nexusCapBonus_v1:        { value: 21.25, min: 10,   max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            nexusCapBonus_v1:        { value: 35.25, min: 10,   max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
             towerDefendBonus_v1:     { value: 40.798, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
 
             earlyExploreBonus_v1:    { value: 21.375, min: 0,    max: 25,   label: 'Early Explore Bonus', desc: 'Score for spreading out and exploring in rounds 1-3' },
 
-            healAllyThreshold_v1:    { value: 0.8,   min: 0.3,  max: 0.8,  label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
+            healAllyThreshold_v1:    { value: 0.713, min: 0.3,  max: 0.8,  label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
 
             mpPotionPriority_v1:     { value: 220,   min: 40,   max: 280,  label: 'Mana Potion Priority', desc: 'Base score for using mana potion (scales with spell value unlocked)' },
 
-            jumpHighGroundRanged_v1: { value: 18,    min: 4,    max: 30,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
+            jumpHighGroundRanged_v1: { value: 22.55, min: 4,    max: 30,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
             jumpHighGroundMelee_v1:  { value: 8,     min: 1,    max: 15,   label: 'Jump: Melee High Ground', desc: 'Per-level score for melee units jumping to higher ground' },
-            jumpAttackEnable_v1:     { value: 23.625, min: 10,   max: 45,   label: 'Jump: Attack Enable', desc: 'Base score for jump that puts enemy in attack range' },
-            jumpTraversalBonus_v1:   { value: 12.8,  min: 8,    max: 40,   label: 'Jump: Traversal', desc: 'Bonus when jump reaches closer to goal than any walk tile' },
+            jumpAttackEnable_v1:     { value: 17.5,  min: 10,   max: 45,   label: 'Jump: Attack Enable', desc: 'Base score for jump that puts enemy in attack range' },
+            jumpTraversalBonus_v1:   { value: 24,    min: 8,    max: 40,   label: 'Jump: Traversal', desc: 'Bonus when jump reaches closer to goal than any walk tile' },
             jumpStuckCritical_v1:    { value: 30.407, min: 15,   max: 50,   label: 'Jump: Stuck Escape', desc: 'Bonus when jump is the only way to move toward goal' },
             jumpDownPenalty_v1:      { value: 2,     min: 2,    max: 15,   label: 'Jump: Downhill Penalty', desc: 'Per-level penalty for jumping to lower ground' },
             jumpThreatPenalty_v1:    { value: 4.875, min: 3,    max: 20,   label: 'Jump: Threat Penalty', desc: 'Per-threat penalty for jumping into danger zones' },
 
             reshapeRangedRaise_v1:   { value: 13.363, min: 2,    max: 20,   label: 'Reshape: Ranged Raise Base', desc: 'Base score for ranged units raising their own tile' },
-            reshapePerEnemy_v1:      { value: 2.5,   min: 1,    max: 12,   label: 'Reshape: Per-Enemy Gain', desc: 'Score per enemy that we gain height advantage over by raising' },
+            reshapePerEnemy_v1:      { value: 1,     min: 1,    max: 12,   label: 'Reshape: Per-Enemy Gain', desc: 'Score per enemy that we gain height advantage over by raising' },
             reshapeDefensive_v1:     { value: 4,     min: 2,    max: 15,   label: 'Reshape: Defensive Raise', desc: 'Score for raising tile defensively when enemies approach' },
 
             moveHighGroundRanged_v1: { value: 3.5,   min: 0.3,  max: 6,    label: 'Move: Ranged Height Pref', desc: 'Per-level score bonus for ranged units moving to higher tiles' },
-            moveHighGroundMelee_v1:  { value: 2.5,   min: 0,    max: 5,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
-            moveRetreatHeight_v1:    { value: 3.0,   min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
+            moveHighGroundMelee_v1:  { value: 3.375, min: 0,    max: 5,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
+            moveRetreatHeight_v1:    { value: 1.075, min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
 
-            enemySpawnZonePenalty_v1: { value: 18,    min: 5,    max: 40,   label: 'Enemy Spawn Zone Penalty', desc: 'Penalty for moving into enemy spawn zone' },
+            enemySpawnZonePenalty_v1: { value: 11.875, min: 5,   max: 40,   label: 'Enemy Spawn Zone Penalty', desc: 'Penalty for moving into enemy spawn zone' },
 
             landToChannelBonus_v1:   { value: 20,    min: 8,    max: 45,   probe: 'nexus', label: 'Land to Channel Bonus', desc: 'Score for landing specifically to channel a nexus' },
 
-            flyEscapeMeleeBonus_v1:  { value: 14,    min: 4,    max: 30,   label: 'Fly: Escape Melee Bonus', desc: 'Score for ascending to escape melee threats' },
-            flyRangedHeightBonus_v1: { value: 14,    min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
+            flyEscapeMeleeBonus_v1:  { value: 9.45,  min: 4,    max: 30,   label: 'Fly: Escape Melee Bonus', desc: 'Score for ascending to escape melee threats' },
+            flyRangedHeightBonus_v1: { value: 10.15, min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
         };
 
         let _aiTrainedWeights = null;

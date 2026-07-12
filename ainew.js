@@ -341,11 +341,11 @@
             // a resisted hit DRAINS one. Weigh both like the actions they are.
             if (opts.press) {
                 const tier = pressTier(unit, tg, opts.spellType || null);
-                if (tier > 0) s += Math.max(150, wght(g, 'pressRefundValue_v1', 55) * 3);
+                if (tier > 0) s += Math.max(150, wght(g, 'pressRefundValue_v1', 10) * 3);
                 else if (tier < 0) s -= 220;
             }
             if (opts.canMiss && typeof g.getEvasionChance === 'function') {
-                try { s -= (g.getEvasionChance(tg) || 0) * wght(g, 'whiffRiskPenalty_v1', 30) * 2; } catch (e) {}
+                try { s -= (g.getEvasionChance(tg) || 0) * wght(g, 'whiffRiskPenalty_v1', 0) * 2; } catch (e) {}
             }
             return s;
         };

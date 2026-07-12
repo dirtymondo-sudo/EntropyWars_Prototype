@@ -2954,14 +2954,14 @@ const JOB_MODIFIERS = {
     },
 
     'Harbinger': {
-        hp: 0,
-        mp: 40,
+        hp: 30,
+        mp: 55,
         atk: -24,
         def: -5,
         mdef: 12,
         move: 0,
         awr: +1,
-        int: 26,
+        int: 32,
         spd: +1,
         range: 1,
         inspect: 1
@@ -2996,7 +2996,7 @@ const JOB_MODIFIERS = {
     'Sniper': {
         hp: -5,
         mp: -5,
-        atk: 22,
+        atk: 18,
         def: -8,
         mdef: -5,
         move: -1,
@@ -4927,8 +4927,8 @@ const SPELL_LIBRARY = [
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        statusEffects: [{ id: 'root', duration: 2 }],
-        desc: 'A precise long-range shot to the legs. Deals damage and roots the target for 2 turns — they can still fight back, but they aren\'t going anywhere.'
+        statusEffects: [{ id: 'root', duration: 1 }],
+        desc: 'A precise long-range shot to the legs. Deals damage and roots the target for 1 turn — they can still fight back, but they aren\'t going anywhere.'
     },
 
     {
