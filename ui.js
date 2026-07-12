@@ -2424,6 +2424,14 @@
         _hlCache = _hlCacheStore.map;
         _hlZCache = _hlCacheStore.zMap || new Map();
         _hlZExtra = _hlCacheStore.zExtra || new Map();
+        /* An out-of-range click (clickTile / _moveThen*) blanks
+           window._ewHlCache to yank stale tiles, but leaves _hlCacheStore
+           pointing at the still-valid populated cache. On this cache-HIT
+           branch the recompute block below (which reassigns window._ewHlCache)
+           never runs, so the renderer would keep reading the emptied cache and
+           the highlights would stay gone. Re-point the renderer at the live
+           cache here so the reachable tiles reappear on the very next frame. */
+        if (window._ewHlCache !== _hlCacheStore) window._ewHlCache = _hlCacheStore;
       } else {
         _hlCache = new Map();
         _hlZCache = new Map();

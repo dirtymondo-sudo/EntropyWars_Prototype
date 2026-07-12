@@ -15860,6 +15860,115 @@
             return true;
         }
 
+        // ───────────────────────────────────────────────────────────────────
+        // Move-towards: clicking an OUT-OF-RANGE tile while Move is selected
+        // walks the unit as far toward that tile as the turn allows — the
+        // movement analogue of _tryMoveThenAttack. Walk-only (1 or 2 move
+        // actions), reserving no AP for a swing. Returns the reachable,
+        // unoccupied tile CLOSEST to (tx,ty) that actually makes progress, or
+        // null if the unit can't get any nearer.
+        function _moveTowardsBudget(unit) {
+            if (!unit) return 0;
+            if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
+            const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
+            if (movesLeft <= 0) return 0;
+            // Each move action spends AP_COST_ACTION AP (finishMove). Unlike the
+            // attack approach we keep NO reserve — every step can go to walking.
+            const apSteps = Math.floor((unit.ap || 0) / AP_COST_ACTION);
+            return Math.max(0, Math.min(movesLeft, apSteps));
+        }
+
+        function findMoveTowardsTile(unit, tx, ty) {
+            const steps = _moveTowardsBudget(unit);
+            if (steps <= 0) return null;
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const startDist = Math.abs(sx - tx) + Math.abs(sy - ty);
+            let best = null, bestDist = startDist, bestCost = Infinity;
+            const _consider = (cand, dist, cost) => {
+                // Strictly closer wins; equal distance → cheaper (fewer steps).
+                if (dist < bestDist || (dist === bestDist && cost < bestCost)) {
+                    best = cand; bestDist = dist; bestCost = cost;
+                }
+            };
+            try {
+                const ring1 = getMoveTiles(unit);
+                for (const t of ring1) {
+                    // Plain walks only (no jump/takeoff legs — those are their own
+                    // deliberate verbs), and never step onto an occupied tile.
+                    if (t._jump || t._takeoff) continue;
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                    _consider({ x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }, d, 1);
+                }
+                if (steps >= 2) {
+                    for (const t1 of ring1) {
+                        if (t1._jump || t1._takeoff) continue;
+                        if (unitAt(t1.x, t1.y, t1.z)) continue;
+                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
+                        const r2 = getMoveTiles(unit);
+                        for (const t2 of r2) {
+                            if (t2._jump || t2._takeoff) continue;
+                            if (unitAt(t2.x, t2.y, t2.z)) continue;
+                            const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
+                            _consider({ x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2,
+                                via: { x: t1.x, y: t1.y, z: t1.z ?? sz } }, d, 2);
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            // Only worth it if we actually get closer than standing still.
+            return (best && bestDist < startDist) ? best : null;
+        }
+
+        // Walk `unit` toward the clicked tile via `approach` (1 or 2 legs) — no
+        // attack afterward. Mirrors _moveThenAttack's animated step chain.
+        function _moveTowards(unit, approach) {
+            _clearMoveHoverPreview();
+            state._enemyActionTargetId = null;
+            state._actionExecuting = true;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+
+            const _finish = () => {
+                state._actionExecuting = false;
+                if (state.phase === 'battle' && !state.winner) {
+                    markDirty('board', 'hud', 'selectedUnit');
+                    renderIfDirty();
+                }
+            };
+            const _step = (mx, my, mz, next) => {
+                const r = doMove(unit, mx, my, mz);
+                if (r === false) { _finish(); return; }
+                const delay = typeof r === 'number' ? r : 450;
+                setTimeout(next, delay);
+            };
+            if (approach.via) {
+                _step(approach.via.x, approach.via.y, approach.via.z, () => {
+                    _step(approach.x, approach.y, approach.z, _finish);
+                });
+            } else {
+                _step(approach.x, approach.y, approach.z, _finish);
+            }
+        }
+
+        // Called from clickTile when Move is selected and the player clicks a
+        // tile they can't reach this turn: step as far toward it as possible.
+        function _tryMoveTowards(actingUnit, x, y) {
+            if (!actingUnit || state.actionMode !== 'move') return false;
+            if (typeof canUnitMove === 'function' && !canUnitMove(actingUnit)) return false;
+            const approach = findMoveTowardsTile(actingUnit, x, y);
+            if (!approach) return false;
+            _moveTowards(actingUnit, approach);
+            return true;
+        }
+
         // Hover preview for the move-then-attack — reuses the spell approach
         // visuals (move arrow + ghost + target highlight). Dedups on the hovered
         // tile so the 1–2 step probe only recomputes when the cursor changes.
@@ -16202,6 +16311,47 @@
                             _showDest(0xffcc44, best, bestDest ? bestDest.z : undefined);
                             return;
                         }
+                    }
+                }
+
+                // 4) Out of reach this turn → "Move Towards": ghost + arrow on the
+                //    tile the unit WOULD stop at (closest reachable step toward the
+                //    hovered tile), with a dim marker on the unreachable goal so the
+                //    player sees where the click will actually take them.
+                if (state.actionMode === 'move' && canUnitMove(unit)
+                    && typeof findMoveTowardsTile === 'function') {
+                    const approach = findMoveTowardsTile(unit, x, y);
+                    if (approach) {
+                        const towardsColor = 0xffaa33;
+                        const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
+                        const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
+                        if (approach.via) {
+                            const pathA = findMovePath(unit, approach.via.x, approach.via.y, approach.via.z ?? savedZ);
+                            for (const p of pathA) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                            unit.x = approach.via.x; unit.y = approach.via.y; unit.z = approach.via.z ?? savedZ;
+                            const pathB = findMovePath(unit, approach.x, approach.y, approach.z ?? savedZ);
+                            for (const p of pathB) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                            unit.x = savedX; unit.y = savedY; unit.z = savedZ;
+                        } else {
+                            const pathA = findMovePath(unit, approach.x, approach.y, approach.z ?? savedZ);
+                            for (const p of pathA) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                        }
+                        if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, towardsColor);
+                        else ThreeRenderer.drawArrow3D(savedX, savedY, approach.x, approach.y, towardsColor,
+                            false, actingY, _wpY(approach.x, approach.y, approach.z), { flow: true });
+                        // Dim goal marker on the tile the player actually pointed at.
+                        const marks = [
+                            { x: approach.x, y: approach.y, color: towardsColor, opacity: 0.45 },
+                        ];
+                        if (!(x === approach.x && y === approach.y)) {
+                            marks.push({ x: x, y: y, color: towardsColor, opacity: 0.18 });
+                        }
+                        ThreeRenderer.setOverlay('moveHoverDest', marks, towardsColor, 0.45);
+                        ThreeRenderer.showGhostUnit(unit, approach.x, approach.y,
+                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                        state._moveHoverActive = true;
+                        scheduleBoardRender();
+                        return;
                     }
                 }
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
@@ -25548,6 +25698,15 @@
                 if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
                     return;
                 }
+
+                // Out of reach this turn → "Move Towards": walk as far toward the
+                // clicked tile as the unit's remaining moves/AP allow (the
+                // movement analogue of the move-then-attack approach). Only when
+                // the tile is empty — a click on a unit above already routed to
+                // its menu. Falls through to doMove (which reports the miss) when
+                // no progress toward the tile is possible.
+                if (!clickedUnit && _tryMoveTowards(actingUnit, x, y)) return;
+
                 return doMove(actingUnit, x, y, state._clickedZ);
             }
 
