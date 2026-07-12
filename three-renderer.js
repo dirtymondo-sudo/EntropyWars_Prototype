@@ -12090,7 +12090,9 @@ const ThreeRenderer = (function () {
         // One steady pace across the WHOLE path so multi-tile moves glide as a
         // single motion instead of stop-starting at every waypoint. Longer paths
         // get a slightly quicker per-tile pace so a 3-tile move doesn't drag.
-        var perTile = Math.max(135, 190 - segs * 12);
+        // 2026-07-12: ~15% slower (135/190 → 155/215) — moves were over before
+        // the eye could follow the path; still brisk, just trackable.
+        var perTile = Math.max(155, 215 - segs * 10);
         var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;

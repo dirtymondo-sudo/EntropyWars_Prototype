@@ -2933,7 +2933,7 @@
             focusUnitPanel(target.id);
             playSfx(spellLaunchSfx(spell));
             const cam = playOffensiveActionCamera(unit, target, {
-                sourceHold: 500, targetHold: 700, attackName: spell.name
+                sourceHold: 750, targetHold: 850, attackName: spell.name
             });
 
             // Red targeting-laser sweep from the sniper to the painted target.
@@ -3253,7 +3253,7 @@
             const VFX = window.ThreeVFXEffects;
             const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
             const cam = playOffensiveActionCamera(unit, camTarget, {
-                sourceHold: 900, targetHold: 900,
+                sourceHold: 1100, targetHold: 900,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 attackName: spell.name,
                 // Timing data only — descent spells keep the standard two-beat
@@ -3477,7 +3477,11 @@
 
             // Phase 2: Camera
             let cam = null;
-            const camOpts = opts.cameraOpts || { sourceHold: 900, targetHold: 900 };
+            // 2026-07-12: sourceHold 900→1250 — the rigged cast clips
+            // (castMagic/castAOE/etc.) need ~1.2s of wind-up to read; the old
+            // hold cut away from the caster mid-swing. targetHold nudged up so
+            // the impact still gets its full beat after the later cut.
+            const camOpts = opts.cameraOpts || { sourceHold: 1250, targetHold: 1000 };
             if (profile.camera === 'offensive' && target) {
                 const _VFX = window.ThreeVFXEffects;
                 // Timing data only — descent spells keep the standard two-beat
@@ -10516,7 +10520,10 @@
 
             const zoom = opts.zoom ?? _getBattleZoom();
             const sourceHold = actionMs(opts.sourceHold ?? 1240);
-            const travelMs = actionMs(opts.travelMs ?? Math.max(220, Math.min(520, 140 + (distance * 54))));
+            // 2026-07-12: travel window widened (220–520 → 260–600) — projectiles
+            // crossed the screen too fast to track; a hair more air time makes
+            // the shot readable without stalling the turn.
+            const travelMs = actionMs(opts.travelMs ?? Math.max(260, Math.min(600, 170 + (distance * 58))));
             const targetHold = actionMs(opts.targetHold ?? 1140);
             const resetBuffer = actionMs(opts.resetBuffer ?? 210);
             return {
@@ -19561,7 +19568,7 @@
             });
 
             /* hard safety net: a wedged intro must never block the first round */
-            timers.push(window.setTimeout(finish, 17000));
+            timers.push(window.setTimeout(finish, 18500));
 
             /* ── camera vocabulary (rides the cine TPS rig like the detonation
                multi-cam: pivot height from _tpsHeadLift over the anchor tile's
@@ -19594,8 +19601,24 @@
                 }, 100);
             }
             function _teamLabel(p) {
+                // Player identity, not state.partyNames — that's an ARRAY of
+                // per-unit names, so the old lookup rendered a comma-joined
+                // unit list. Online: your profile name vs the opponent's
+                // username (online.js NET.opponentName); otherwise
+                // "PLAYER 1"/"PLAYER 2".
                 let nm = null;
-                try { nm = state.partyNames && state.partyNames[p]; } catch (e) {}
+                try {
+                    const net = window._NET;
+                    if (p === viewer) {
+                        nm = window.ProfileSystem?.getActiveProfile?.()?.username || null;
+                    } else if (net && net.online) {
+                        nm = net.opponentName || null;
+                    }
+                    if (!nm) {
+                        const pn = state.partyNames && state.partyNames[p];
+                        if (typeof pn === 'string' && pn) nm = pn;
+                    }
+                } catch (e) {}
                 if (!nm) nm = 'PLAYER ' + p;
                 nm = String(nm).toUpperCase();
                 return p === viewer ? nm + ' — YOUR PARTY' : nm;
@@ -19751,9 +19774,20 @@
                     });
                 }, 6850);
                 later(() => $ei('ewi-speedlines').classList.remove('ewi-speed-on'), 8100);
-                later(() => _showTag(teamB), 7900);
+                later(() => _showTag(teamB), 7800);
+                /* hold on the enemy faces (7.85–10.0s) — the blitz dolly used
+                   to cut away after ~900ms, barely a glance; a slow creep-in
+                   keeps the shot alive for the same ~2.2s the player's own
+                   line-up gets in BEAT 3 */
+                later(() => {
+                    _cineBeatMove({
+                        zoom: _tpsZoomForBoomTiles(B.len * 0.5 + 1.35),
+                        duration: 2100, easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, 7850);
 
-                /* BEAT 5 (8.8–11.2s) — hard cut: flat on the map's center
+                /* BEAT 5 (10.0–12.4s) — hard cut: flat on the map's center
                    looking STRAIGHT UP at the sky while the map name slams in.
                    Yaw/zoom already match the tactical view, so the crane-down
                    is one pure rotation that lands exactly on the rest framing. */
@@ -19775,13 +19809,13 @@
                         duration: 2300, easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
-                }, 8800);
+                }, 10000);
                 later(() => {
                     $ei('ewi-title-card').classList.add('ewi-title-in');
                     playSfx('newRound');
-                }, 9150);
+                }, 10350);
 
-                /* BEAT 6 (11.2–13.0s) — one clean rotation down out of the sky
+                /* BEAT 6 (12.4–14.2s) — one clean rotation down out of the sky
                    onto the tactical view (no pan, no yaw — already home) */
                 later(() => {
                     const tc = $ei('ewi-title-card');
@@ -19793,7 +19827,7 @@
                         duration: 1750, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
-                }, 11200);
+                }, 12400);
 
                 /* FIGHT! */
                 later(() => {
@@ -19804,9 +19838,9 @@
                     playSfx('newRound');
                     playSfx('explosion');
                     shakeBoard('hard');
-                }, 12950);
+                }, 14150);
 
-                later(finish, 13650);
+                later(finish, 14850);
             }
 
             /* ── bring the battlefield up behind the opaque veil, then roll ── */
@@ -19941,11 +19975,17 @@
                 teamLabel.className = 'vs-team-label';
 
                 const viewerP = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+                // Left panel is always the viewer's team; use real usernames
+                // when we have them (profile locally, NET.opponentName online).
+                let lbl;
                 if (side === 'left') {
-                    teamLabel.textContent = viewerP === 1 ? 'Player 1' : 'Player 2';
+                    lbl = window.ProfileSystem?.getActiveProfile?.()?.username
+                        || ('Player ' + viewerP);
                 } else {
-                    teamLabel.textContent = viewerP === 1 ? 'Player 2' : 'Player 1';
+                    lbl = (window._NET && window._NET.online && window._NET.opponentName)
+                        || ('Player ' + (viewerP === 1 ? 2 : 1));
                 }
+                teamLabel.textContent = lbl;
 
                 panel.appendChild(row);
                 panel.appendChild(teamLabel);
@@ -28991,7 +29031,7 @@
             let cam = null;
             if (isOffensive && target) {
                 cam = playOffensiveActionCamera(initiator, target, {
-                    sourceHold: 750, targetHold: 1050, attackName: combo.name
+                    sourceHold: 1100, targetHold: 1050, attackName: combo.name
                 });
             } else if (typeof _playSelfCastHeroShot === 'function') {
                 _playSelfCastHeroShot(initiator, { spellName: combo.name });
@@ -28999,14 +29039,25 @@
             const _launchAt = cam ? Math.max(0, cam.sourceHold - actionMs(150)) : 0;
             const _hitAt = cam ? cam.sourceHold + cam.travelMs : actionMs(200);
 
+            // 2026-07-12: combos now play the attackers' rigged attack clips
+            // (punch/slash/claw/zap per basicAttackKind) instead of the bare
+            // positional lunge — same _unitAttacksWithClip branch basic attacks
+            // use; sprite-rendered units keep the classic strike leap. The
+            // partner swings a beat after the initiator so the two wind-ups
+            // read as a one-two instead of a single blurred motion.
+            const _comboStrike = (u) => {
+                if (!u || u.dead || !target) return;
+                if (_unitAttacksWithClip(u)) triggerAttackAnim(u, target.x, target.y);
+                else animateStrikeLeap(u, target.x, target.y);
+            };
             const _comboLaunchFx = () => {
                 playSfx('fireball');
                 if (target) {
                     const comboTypeA = (initiator.types || [])[0] || 'human';
                     const comboTypeB = (partner.types || [])[0] || 'human';
                     _vfxCombo(initiator.x, initiator.y, partner.x, partner.y, target.x, target.y, comboTypeA, comboTypeB);
-                    animateStrikeLeap(initiator, target.x, target.y);
-                    animateStrikeLeap(partner, target.x, target.y);
+                    _comboStrike(initiator);
+                    window.setTimeout(() => _comboStrike(partner), actionMs(180));
                 }
             };
             if (_launchAt > 0) window.setTimeout(_comboLaunchFx, _launchAt);
@@ -29051,16 +29102,29 @@
 
             else if (combo.kind === 'multiHit' && target) {
                 const hits = combo.hitDamages || [combo.dmg || 10];
-                const comboHitGap = actionMs(300);
+                // 2026-07-12: gap 300→420ms — hits blurred together and the
+                // 350ms attack-anim window meant a rig clip could never
+                // re-trigger between them. Each follow-up hit now alternates
+                // initiator/partner, plays that attacker's strike clip, and
+                // fires its projectile early enough to ARRIVE at the hit
+                // instead of launching on it.
+                const comboHitGap = actionMs(420);
+                const _comboProjMs = actionMs(280);
                 hits.forEach((hitDmg, idx) => {
+                    if (idx > 0) {
+                        window.setTimeout(() => {
+                            if (target.dead) return;
+                            let striker = (idx % 2 === 1) ? partner : initiator;
+                            if (!striker || striker.dead) striker = !initiator.dead ? initiator : partner;
+                            if (!striker || striker.dead) return;
+                            _comboStrike(striker);
+                            playProjectileToUnit(striker, target, 'damage', _comboProjMs, combo.spellType);
+                            playSfx('fireball');
+                        }, Math.max(0, _hitAt + idx * comboHitGap - _comboProjMs));
+                    }
                     window.setTimeout(() => {
                         if (target.dead) return;
                         const totalHit = Math.max(1, Math.round((hitDmg + Math.floor(combinedPower / hits.length)) * synergyMult));
-
-                        if (idx > 0) {
-                            playProjectileToUnit(initiator, target, 'damage', actionMs(240), combo.spellType);
-                            playSfx('fireball');
-                        }
                         applyDamageToUnit(target, totalHit, `${combo.name} hit ${idx + 1}: `, {
                             sourceUnit: initiator,
                             damageType: combo.damageType,
@@ -29385,7 +29449,7 @@
                 _focusPlatesForImpact(unit, x, y, { holdMs: 3200 });
                 focusUnitPanel(target.id);
                 const _baneCam = playOffensiveActionCamera(unit, target, {
-                    sourceHold: 900, targetHold: 900,
+                    sourceHold: 1100, targetHold: 900,
                     attackName: baneRule.name, _noCinematic: true
                 });
                 pushUndoSnapshot(true);
@@ -30032,7 +30096,7 @@
                     focusUnitPanel(target.id);
                     playSfx(spellLaunchSfx(spell));
                     const cam = playOffensiveActionCamera(unit, target, {
-                        sourceHold: 900, targetHold: 900, attackName: spell.name
+                        sourceHold: 1100, targetHold: 900, attackName: spell.name
                     });
                     const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
                     const travelMs = cam?.travelMs ?? actionMs(560);
@@ -30110,7 +30174,7 @@
                 focusUnitPanel(target.id);
                 playSfx(spell.dmg ? spellLaunchSfx(spell) : 'debuff');
                 const cam = playOffensiveActionCamera(unit, target, {
-                    sourceHold: 900,
+                    sourceHold: 1100,
                     targetHold: 900,
                     attackName: spell.name
                 });
@@ -30765,7 +30829,7 @@
                 } else {
 
                     const cam = playOffensiveActionCamera(unit, enemies[0], {
-                        sourceHold: 900,
+                        sourceHold: 1100,
                         targetHold: 900,
                         attackName: spell.name
                     });
@@ -30957,7 +31021,7 @@
                     }
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
-                        sourceHold: 900, targetHold: 900, attackName: spell.name
+                        sourceHold: 1100, targetHold: 900, attackName: spell.name
                     });
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
@@ -31433,7 +31497,7 @@
                 }
                 playSfx(spellLaunchSfx(spell));
                 const cam = playOffensiveActionCamera(unit, target, {
-                    sourceHold: 900,
+                    sourceHold: 1100,
                     targetHold: 900,
                     attackName: spell.name
                 });
@@ -31818,7 +31882,7 @@
                 const _castOrientation = state._spellOrientation || 'horizontal';
 
                 const cam = playOffensiveActionCamera(unit, { x, y }, {
-                    sourceHold: 900,
+                    sourceHold: 1100,
                     targetHold: 900,
                     attackName: spell.name,
                     _noCinematic: true
@@ -32062,7 +32126,7 @@
                         panelFocusTarget = target;
                         focusUnitPanel(target.id);
                         playSfx('uiConfirm');
-                        const cam = playOffensiveActionCamera(unit, target, { sourceHold: 900, targetHold: 900, attackName: 'Grapple' });
+                        const cam = playOffensiveActionCamera(unit, target, { sourceHold: 1100, targetHold: 900, attackName: 'Grapple' });
 
                         const _grTether = playTetherEffect(unit.x, unit.y, target.x, target.y, 'rope', 0, { persistent: true, shootMs: actionMs(320), hook: true });
                         const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
@@ -32611,7 +32675,7 @@
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
                 const cam = playOffensiveActionCamera(unit, target, {
-                    sourceHold: 900,
+                    sourceHold: 1100,
                     targetHold: 900,
                     attackName: spell.name
                 });

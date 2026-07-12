@@ -4,6 +4,39 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## COMBAT PACING + INTRO POLISH (2026-07-12) — battle.js, three-renderer.js, index.html
+Token `20260712a` → `20260712b`. "Everything's a little too fast / camera
+leaves the caster too soon / combos are bare lunges" pass:
+- **Cast camera dwell**: executeSpellAnimation default cameraOpts 900/900 →
+  **1250/1000** (battle.js ~3484); every other plain `sourceHold: 900` call
+  site (line-sweep, grapple, etc.) bumped to **1100** via global replace.
+  Special VFX-tuned holds intentionally NOT touched: UFO descent 700
+  (telegraphMs sync), hook pull 600, dashes. Sniper laser-mark 500/700 →
+  750/850. All these paths schedule projectiles off `cam.sourceHold`, so
+  launch + cut shift together automatically.
+- **Projectile travel window** (getOffensiveCameraTimings ~10519):
+  `max(220,min(520,140+d*54))` → `max(260,min(600,170+d*58))`.
+- **Combos play real rig clips** (doComboAttack): `_comboStrike(u)` uses the
+  same `_unitAttacksWithClip ? triggerAttackAnim : animateStrikeLeap` branch
+  as basic attacks; partner swings +180ms after initiator (one-two read).
+  Camera sourceHold 750 → 1100. multiHit: gap 300 → **420ms** (must stay
+  >350ms — that's triggerAttackAnim's clear window, or the rig clip can't
+  re-trigger between hits); follow-up hits alternate initiator/partner, each
+  playing their strike clip + firing a 280ms projectile timed to ARRIVE at
+  the damage tick (was: projectile launched ON the tick from the initiator
+  only, rig frozen).
+- **Walk speed** (three-renderer.js startWalkTween ~12093): perTile
+  `max(135,190-segs*12)` → `max(155,215-segs*10)` (~15% slower).
+- **Intro cinematic** (_runBeats): enemy close-up was ~900ms vs your team's
+  2.3s. Enemy tag now at 7800, slow creep-in beat added at 7850 (2.1s), BEAT
+  5 sky cut 8800 → 10000, title 9150 → 10350, BEAT 6 11200 → 12400, FIGHT
+  12950 → 14150, finish 13650 → 14850, safety net 17000 → 18500.
+- **Intro team tags say who's playing**: `_teamLabel` no longer reads
+  `state.partyNames[p]` (that's an ARRAY of unit names — it rendered a
+  comma-joined list); now viewer → profile username, online opponent →
+  `window._NET.opponentName`, else "PLAYER N". Fallback flat VS splash
+  `buildPanel` labels updated the same way.
+
 ## MYSTERY DUNGEON round 4: companions + tactics + stairs UX + oasis tiles (2026-07-11) — battle.js, ui.js, hud.js, map.js, data.js, styles-hud.css, styles-base.css, index.html, probe_md.js
 Token `20260711k` → `20260711m`. Full PMD-ification pass:
 - **Stairs are now an explicit CHOICE with real buttons.** Landing the LEADER
