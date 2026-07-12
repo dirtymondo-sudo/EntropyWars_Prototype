@@ -4,6 +4,41 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Horologe → cascading JRPG command panels (2026-07-12, latest) — hud.js only
+Token `20260712g` → `20260712h`. The rotating blade DRUM is GONE (focus
+window, faded overflow rows, click-to-rotate, `_hrlgSlot` math, bezel-angle
+pushers). Full presentation rewrite; ALL game logic / state machine / blade
+item model / builders (`_hrlgSpellBlades` etc.) unchanged.
+- **Layout**: `.hrlg-rig` is now ONE flex row — `.hrlg-side` identity column
+  (206px: crown END TURN/BACK bar → 126px clock → name → Lv·race·job line →
+  HP/MP bars → big AP pips → 3 item slots 48px → MAT strip → `.hrlg-push`
+  tool rows) + `.hrlg-panels` to its right. NOTHING absolutely positioned
+  against magic offsets anymore → the old Build/Channel overlap is impossible.
+- **Cascading panels**: ActionMenu builds a `panels` ARRAY (stack), e.g.
+  root → spells → targets. Parent panels stay mounted, dimmed (`.hrlg-panel.bg`,
+  click = back one level); the LAST panel is active and owns cursor/keyboard/
+  wheel/desc-bar. Panel keys are stable (`'root'`, `'spells'`,
+  `'aim|spell|<tool>'`…) so going BACK never remounts/re-animates the parent —
+  that plus 0.15s row animations (was 0.4s + 40ms stagger) is the responsiveness
+  fix. Move/jump aiming shows NO panels (modeLabel + crown only), same as before.
+- **Rows**: every row is one-click live; hover = selection (cursor follows
+  mouse). Category-tinted spell rows wear their color EDGE TO EDGE
+  (`--bc-hi/--bc-lo` gradient over `#0d0d0b`, no fade-to-dark tail) and
+  hover/sel GROWS + GLOWS in that color (never washes out). Danger rows
+  (END TURN/CANCEL) get red via `--bc*` on `.hrlg-body.danger`.
+- **Badges**: ability rows carry ONLY the spell TYPE badge inline
+  (`_hrlgSpellBadges` now type-only). Target chip (⟳ SELF/♥ ALLY/⬚ TILE/
+  ◎ ENEMY) + PHYSICAL/MAGIC/UTILITY + ⚔ MELEE/⤢ RANGED chips moved into the
+  bottom description bar (`_renderSpellDescBar`).
+- **BUILD + pushers** (CHANNEL/DETONATE/ENTROPY/ENTER): full-width
+  `.hrlg-push` rows at the bottom of the identity column (root view only) —
+  the old `.hrlg-buildbtn` / `.hrlg-pusher` bezel studs are gone.
+- Long lists scroll INSIDE `.hrlg-list` (max-height 400px, wheel moves the
+  cursor + `scrollIntoView`); `hrlg-more-ind`/`hrlg-scroll-hint` are gone.
+- Contracts KEPT: `window._hrlgPad` {view, blades, cycle, fire, crown},
+  `_setSpellDescBase`, `window._hrlgNoteAction`, blade item fields, the
+  quick-menu tab `title.node` (still uses `.hrlg-view-tab-*` + `.hrlg-tport`).
+
 ## STRIKE MODE polish pass (2026-07-12, later) — battle.js, three-renderer.js, three-camera.js, three-post.js, ui.js, index.html
 Token `20260712e` → `20260712f`. Fixes from first hands-on feedback:
 - **Street-lamp FPS drop (three-post.js)**: `rebuildStreetLampLights` was
