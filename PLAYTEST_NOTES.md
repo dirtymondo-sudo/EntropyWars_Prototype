@@ -4,6 +4,55 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## STRIKE MODE polish pass (2026-07-12, later) — battle.js, three-renderer.js, three-camera.js, three-post.js, ui.js, index.html
+Token `20260712e` → `20260712f`. Fixes from first hands-on feedback:
+- **Street-lamp FPS drop (three-post.js)**: `rebuildStreetLampLights` was
+  creating a real PointLight per lantern (up to 6, distance 420) — every extra
+  scene light multiplies per-fragment shading across the WHOLE frame. Now
+  stride-picks at most **`LAMP_LIGHT_MAX = 3`** lights (distance 300); the
+  other lanterns keep their free self-lit glass + additive halo so they still
+  read as lit. Override/kill switch: `window.EW_LAMP_LIGHT_MAX` (0 = none).
+- **Sliding instead of walking (ROOT CAUSE)**: `_freeRoamTick`/`_rtTick`
+  overwrote `actions.walk.timeScale` with `def.moveTimeScale || 1` every
+  frame — but library rigs wire walk at `UAL_SLOTS.walk.ts = 2.05`, so the
+  Walking clip played at HALF pace (pure foot-skate) while `run` (1.3,
+  untouched) looked right — exactly "they only run when I hold shift".
+  `_wireSlot` now stamps **`act._ew_ts0`** (the wired baseline) on every
+  action and all runtime boosts (free-roam ×1.75 sprint, RT driver, dash
+  sprint ×1.15, restore paths) scale RELATIVE to `_ew_ts0`.
+- **Jump (SPACE)**: `_rtJump` no longer gated on ShooterControls' local
+  `roamOn` flag (went stale across dash restarts/respawn frames and ate the
+  press) — `hubFreeRoam.setJump` already no-ops safely when no walker runs.
+- **Spell VFX restored in RT (battle.js StrikeEngine)**: every VFX helper now
+  checks the spell's authored SPELL_MAP intent FIRST (same three-vfx-effects
+  pipeline as turn-based) and only falls back to the themed generic:
+  `_projVfx` → `fire('bolt')` (signature cannon/gun rigs live here);
+  `_launchGround` → `fire('descent')` sky cinematics with damage landing at
+  telegraph+descent ms, and line/linePush/cross fire a volumetric
+  `ThreeVFXEffects.beam`; `_aoeVfx` → `fire('aoe')` then `fireGeometry`
+  (signature 3D apparitions) then themed; heals/buffs/cleanse →
+  `_supportVfx` (`fire('aura')` > fireHeal/fireMana/fireBuff); pure debuffs →
+  fireDebuff; dashes → `fire('teleport')` / fireTeleportLegacy (blinks) /
+  fireDash. `_castSlots` picks castTrap for deployables and castPlant for
+  seed kinds so cast anims match the spell family.
+- **FIRST PERSON default + third-person option**:
+  - `ew_strikeOpts.viewMode` (`'first'` default | `'third'`), new **V** bind
+    (`view`, rebindable) toggles live; button in Settings → Controls → Strike
+    Mode; RT hint mentions it.
+  - three-camera.js: **`cam._fpEye`** — eye AT the TPS pivot (head), aims
+    along the view dir, no boom/collision/shoulder, tight 0.028 smoothing.
+  - ShooterControls `_frame`: FP drops the shoulder offset (reticle
+    dead-centre), `_tpsHeadLift ×1.13` (eye at the crown), ADS narrows FOV
+    (×0.68) instead of pulling the boom; `_zoom()`'s ADS boom shrink is
+    third-person-only. Death → corpse cam falls back to third person.
+  - Own model+plate hidden via **`window._ewFpHideUid`** (consumed each frame
+    in `_updateUnitModels`, self-restoring). `ThreeCamera.screenToUnit` now
+    skips units under an invisible ancestor so the hidden body can't tint the
+    reticle or eat picks.
+- Syntax-checked only (RULE #1c). Watch list: FP eye clipping inside tall
+  wall tiles when backing into them; descent-timed damage vs pause shifts;
+  bespoke bolt mappings with fractional (mid-walk) caster coords.
+
 ## STRIKE MODE round 3 — FULLY REAL-TIME SHOOTER (2026-07-12) — state.js, map.js, battle.js, three-renderer.js, ui.js, styles-hud.css, index.html
 Token `20260712d` → `20260712e`. Strike Mode is no longer a control scheme over
 blitz turns — it is a REAL-TIME third-person shooter TDM (Halo/MW2-style).

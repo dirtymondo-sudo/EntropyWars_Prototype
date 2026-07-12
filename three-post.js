@@ -844,8 +844,15 @@ const ThreePost = (function () {
     var LAMP_LIGHT_COLOR_NIGHT = 0xffb84d;
     var LAMP_LIGHT_INTENSITY_DAY   = 0.35;
     var LAMP_LIGHT_INTENSITY_NIGHT = 1.6;
-    var LAMP_LIGHT_DISTANCE   = 420;
+    var LAMP_LIGHT_DISTANCE   = 300;
     var LAMP_LIGHT_DECAY      = 1.5;
+    /* Real point-lights are the single most expensive thing a lamp adds —
+       every extra light multiplies per-fragment shading cost across the WHOLE
+       frame (and a changed light count recompiles every shader in the scene).
+       The lanterns already read as lit from their self-lit glass + additive
+       halo, so only a few of them need to genuinely throw light. Override via
+       window.EW_LAMP_LIGHT_MAX (0 disables them entirely). */
+    var LAMP_LIGHT_MAX = 3;
 
     // heads: [{ wx, wy, wz }] world positions of each lantern. Point-lights only —
     // the visible bloom halo is the renderer's _hzGlowCore sprite at each head
@@ -868,13 +875,26 @@ const ThreePost = (function () {
 
         if (!heads || !heads.length) return;
 
+        /* Budget the REAL lights (see LAMP_LIGHT_MAX above): stride-pick a
+           handful spread across the lamp line-up; every other lantern keeps
+           its (free) self-lit glow but throws no light. */
+        var maxLights = (typeof window !== 'undefined' && window.EW_LAMP_LIGHT_MAX != null)
+            ? Math.max(0, window.EW_LAMP_LIGHT_MAX | 0) : LAMP_LIGHT_MAX;
+        if (maxLights <= 0) return;
+        var picked = heads;
+        if (heads.length > maxLights) {
+            picked = [];
+            var stride = heads.length / maxLights;
+            for (var pi = 0; pi < maxLights; pi++) picked.push(heads[Math.floor(pi * stride)]);
+        }
+
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var isNight = (cycle === 'night');
         var lightColor = isNight ? LAMP_LIGHT_COLOR_NIGHT : LAMP_LIGHT_COLOR_DAY;
         var lightIntensity = isNight ? LAMP_LIGHT_INTENSITY_NIGHT : LAMP_LIGHT_INTENSITY_DAY;
 
-        for (var i = 0; i < heads.length; i++) {
-            var hd = heads[i];
+        for (var i = 0; i < picked.length; i++) {
+            var hd = picked[i];
 
             var pl = new THREE.PointLight(lightColor, lightIntensity, LAMP_LIGHT_DISTANCE, LAMP_LIGHT_DECAY);
             pl.position.set(hd.wx, hd.wy, hd.wz);

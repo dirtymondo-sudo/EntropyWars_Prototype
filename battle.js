@@ -9662,17 +9662,21 @@
                (layout-independent) plus 'Mouse0/1/2/3/4' for mouse buttons. ── */
             const STRIKE_OPTS_KEY = 'ew_strikeOpts';
             const STRIKE_BINDS_KEY = 'ew_strikeBinds';
-            const STRIKE_DEFAULT_OPTS = { sens: 0.16, adsSensMult: 0.6, invertY: false, fov: 55 };
+            /* viewMode: 'first' (default — FPS eye camera, own model hidden)
+               or 'third' (the classic over-the-shoulder TPS boom). Toggled
+               live with the 'view' bind (V) or in Settings → Controls. */
+            const STRIKE_DEFAULT_OPTS = { sens: 0.16, adsSensMult: 0.6, invertY: false, fov: 55, viewMode: 'first' };
             const STRIKE_DEFAULT_BINDS = {
                 forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD',
-                sprint: 'ShiftLeft', jump: 'Space',
+                sprint: 'ShiftLeft', jump: 'Space', view: 'KeyV',
                 fire: 'Mouse0', aim: 'Mouse2', scoreboard: 'Tab',
                 slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4',
                 slot5: 'Digit5', slot6: 'Digit6', slot7: 'Digit7', slot8: 'Digit8', slot9: 'Digit9',
             };
             const STRIKE_BIND_LABELS = {
                 forward: 'Move Forward', back: 'Move Back', left: 'Strafe Left', right: 'Strafe Right',
-                sprint: 'Sprint', jump: 'Jump', fire: 'Fire / Cast', aim: 'Aim (ADS)', scoreboard: 'Scoreboard',
+                sprint: 'Sprint', jump: 'Jump', view: 'Toggle 1st/3rd Person',
+                fire: 'Fire / Cast', aim: 'Aim (ADS)', scoreboard: 'Scoreboard',
                 slot1: 'Ability 1', slot2: 'Ability 2', slot3: 'Ability 3', slot4: 'Ability 4',
                 slot5: 'Ability 5', slot6: 'Ability 6', slot7: 'Ability 7', slot8: 'Ability 8', slot9: 'Ability 9',
             };
@@ -9689,6 +9693,14 @@
             }
             function _sOpt(k) { _loadStrikeCfg(); return _strikeOpts[k]; }
             function _sBind(k) { _loadStrikeCfg(); return _strikeBinds[k]; }
+            /* first-person active? (RT only — the turn-based scheme keeps TPS) */
+            function _fpWanted() { return _rt() && _sOpt('viewMode') !== 'third'; }
+            function _toggleViewMode() {
+                const next = _sOpt('viewMode') === 'third' ? 'first' : 'third';
+                window.StrikeControlsConfig.setOpt('viewMode', next);
+                try { if (typeof window._ewToast === 'function') window._ewToast(next === 'first' ? 'FIRST-PERSON VIEW' : 'THIRD-PERSON VIEW', 1000); } catch (e) {}
+                try { window._ewControlsRerender && window._ewControlsRerender(); } catch (e) {}
+            }
             /* action id for a KeyboardEvent.code / 'MouseN' string, or null */
             function _bindAction(code) {
                 _loadStrikeCfg();
@@ -9814,7 +9826,9 @@
                 const ts = CONFIG.tileSize || BASE_TILE;
                 const base = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
                     ? ThreeCamera.getBaseDist() : 800;
-                const dist = DIST_TILES * (adsHeld && _rt() ? 0.62 : 1);
+                /* ADS boom pull-in is a THIRD-person affordance; first person
+                   zooms with FOV instead (see the _frame FOV block). */
+                const dist = DIST_TILES * (adsHeld && _rt() && !_fpWanted() ? 0.62 : 1);
                 return _clamp(base * zoomMult / (ts * dist), 0.15, 10.0);
             }
             /* board-space over-the-shoulder focal for a subject at t {x,y} */
@@ -9931,9 +9945,11 @@
                     state.thirdPersonCamera = false;
                     if (!_hubActive()) _stopRoam();
                     /* hand the stock camera back exactly as we found it */
+                    window._ewFpHideUid = null;
                     if (typeof camera !== 'undefined' && camera) {
                         camera._tpsCollide = false;
                         camera._tpsSubject = null;
+                        camera._fpEye = false;
                     }
                     try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setUnderfootTile) ThreeRenderer.setUnderfootTile(-1, -1); } catch (e) {}
                 }
@@ -9993,6 +10009,7 @@
                     else if (act === 'aim') { adsHeld = true; }
                     else if (act && act.indexOf('slot') === 0) { _selectSlotRT(parseInt(act.slice(4), 10)); }
                     else if (act === 'jump') { _rtJump(true); }
+                    else if (act === 'view') { _toggleViewMode(); }
                     return;
                 }
                 if (e.button === 0) _fire();
@@ -10033,10 +10050,13 @@
                 const t = e.target?.tagName;
                 return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target?.isContentEditable;
             }
-            /* RT jump channel (shared by keyboard + a rebound mouse button) */
+            /* RT jump channel (shared by keyboard + a rebound mouse button).
+               NOT gated on roamOn — setJump no-ops safely without a walker,
+               and the old gate ate the press whenever the roamOn flag went
+               stale (dash restart, respawn frame), leaving SPACE dead. */
             function _rtJump(on) {
                 try {
-                    if (roamOn && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setJump) {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setJump) {
                         ThreeRenderer.hubFreeRoam.setJump(!!on);
                     }
                 } catch (er) {}
@@ -10079,6 +10099,11 @@
                     if (act && act.indexOf('slot') === 0 && !e.ctrlKey && !e.metaKey && !e.altKey) {
                         e.preventDefault(); e.stopImmediatePropagation();
                         _selectSlotRT(parseInt(act.slice(4), 10));
+                        return;
+                    }
+                    if (act === 'view') {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        if (!e.repeat) _toggleViewMode();
                         return;
                     }
                     if (act === 'fire') { e.preventDefault(); e.stopImmediatePropagation(); fireHeld = true; _fire(); return; }
@@ -10534,7 +10559,7 @@
                 if (_enabled() && !_aimActive() && own) {
                     const msg = inBattle
                         ? (_rt()
-                            ? '🎯 CLICK TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · SHIFT SPRINT · SPACE JUMP · MOUSE AIM · LMB FIRE · RMB AIM · WHEEL/1-9 ABILITIES · TAB SCORES · ESC RELEASES</span>'
+                            ? '🎯 CLICK TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · SHIFT SPRINT · SPACE JUMP · MOUSE AIM · LMB FIRE · RMB AIM · V VIEW · WHEEL/1-9 ABILITIES · TAB SCORES · ESC RELEASES</span>'
                             : '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · MOUSE LOOK · SPACE JUMP · SCROLL/1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · ENTER END TURN · ESC RELEASES</span>')
                         : '🎯 CLICK TO TAKE CONTROL — WASD WALK · MOUSE LOOK · SHIFT RUN · SPACE HOP';
                     if (hintEl._ewMsg !== msg) { hintEl._ewMsg = msg; hintEl.innerHTML = msg; }
@@ -10728,14 +10753,39 @@
                 /* camera — over-the-shoulder focal, per-frame. The pivot is
                    anchored to the walker's own ground + THIS model's shoulder
                    height (see ThreeCamera's _tpsCollide rig), so every
-                   character gets the same shot regardless of size/terrain. */
+                   character gets the same shot regardless of size/terrain.
+
+                   FIRST PERSON (Strike RT default): same pivot, but the eye
+                   sits AT the head (ThreeCamera cam._fpEye), the shoulder
+                   offset is dropped so the reticle is dead-centre, the own
+                   model+plate are hidden (window._ewFpHideUid → renderer),
+                   and ADS narrows the FOV instead of pulling a boom in.
+                   Death → the corpse cam falls back to third person so the
+                   player sees their own body. */
+                const fpLive = _fpWanted() && !!u;
+                window._ewFpHideUid = fpLive ? u.id : null;
+                if (typeof camera !== 'undefined' && camera) camera._fpEye = fpLive;
+                if (_rt()) {
+                    try {
+                        if (typeof ThreeCamera !== 'undefined' && ThreeCamera.setFOV) {
+                            const baseFov = _sOpt('fov') || 55;
+                            ThreeCamera.setFOV(fpLive && adsHeld ? Math.max(28, baseFov * 0.68) : baseFov);
+                        }
+                    } catch (e) {}
+                }
                 if (now >= holdUntil) {
                     const t = _camTarget();
                     if (t && typeof camera !== 'undefined' && camera) {
                         camera._tpsSubject = { x: t.x, y: t.y };
-                        camera._tpsHeadLift = _headLift(_camUnit());
-                        const f = _shoulderFocal(t);
-                        camera.snap({ x: f.x, y: f.y, tilt: 90 + pitch, yaw: yaw, zoom: _zoom() });
+                        if (fpLive) {
+                            /* eye height: just under the model's crown */
+                            camera._tpsHeadLift = _headLift(_camUnit()) * 1.13;
+                            camera.snap({ x: t.x, y: t.y, tilt: 90 + pitch, yaw: yaw, zoom: _zoom() });
+                        } else {
+                            camera._tpsHeadLift = _headLift(_camUnit());
+                            const f = _shoulderFocal(t);
+                            camera.snap({ x: f.x, y: f.y, tilt: 90 + pitch, yaw: yaw, zoom: _zoom() });
+                        }
                     }
                 }
 
@@ -11024,10 +11074,12 @@
             function _abilities(u) { return [...(u.spells || []), ...(u._raceAbilities || [])]; }
             function _castSlots(sp) {
                 const k = sp.kind || '';
+                if (k === 'deployTurret' || k === 'placeTrap' || k === 'bomb' || k === 'warpRune') return ['castTrap', 'castSupport', 'cast'];
+                if (k === 'plantTree' || k === 'seedPoison' || k === 'leechSeed' || k === 'seedHeal') return ['castPlant', 'castSupport', 'cast'];
                 if (sp.damageType === 'physical') return ['castRanged', 'castMelee', 'cast'];
                 if (k === 'heal' || k === 'healAll' || k === 'revive') return ['castHeal', 'castSupport', 'cast'];
                 if (sp.type === 'buff' || k === 'cleanse' || k === 'encore') return ['castSupport', 'castMagic', 'cast'];
-                if (k === 'aoe' || k === 'summonWeather') return ['castAOE', 'castMagic', 'cast'];
+                if (k === 'aoe' || k === 'summonWeather' || k === 'barrage') return ['castAOE', 'castMagic', 'cast'];
                 return ['castMagic', 'cast'];
             }
             function _spellPower(u, sp) {
@@ -11078,9 +11130,27 @@
                 r.classList.add('strike-hitmark');
             }
 
-            /* ── VFX helpers (all guarded — visuals must never break the sim) ── */
+            /* ── VFX helpers (all guarded — visuals must never break the sim).
+               Every helper checks the spell's BESPOKE SPELL_MAP intent first
+               (the same three-vfx-effects pipeline the turn-based game fires:
+               signature cannon/gun rigs, aurora curtains, sky descents, aura
+               bursts…) and only falls back to the themed generic when the
+               spell has no authored mapping — so Strike Mode keeps each
+               spell's real look instead of everything reading as gunfire. ── */
+            function _vfxMap(sp, intent) {
+                try {
+                    return typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.hasMapping
+                        && ThreeVFXEffects.fire && ThreeVFXEffects.hasMapping(sp.id, intent);
+                } catch (e) { return false; }
+            }
             function _projVfx(sp, from, to, ms, fromU, toU) {
                 const fz = (fromU && fromU.z) || 0, tz = (toU && toU.z) || 0;
+                try {
+                    if (_vfxMap(sp, 'bolt')) {
+                        ThreeVFXEffects.fire('bolt', sp.id, { fromX: from.fx, fromY: from.fy, toX: to.fx, toY: to.fy });
+                        return;
+                    }
+                } catch (e) {}
                 try {
                     if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.projectile) {
                         ThreeVFXEffects.projectile(from.fx, from.fy, to.fx, to.fy, sp.spellType, sp.id, sp.name, fz, tz, ms);
@@ -11094,10 +11164,20 @@
                     }
                 } catch (e) {}
             }
+            /* volumetric laser for the line/beam spell family */
+            function _beamVfx(sp, from, to, fromU, toU) {
+                try {
+                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.beam) {
+                        ThreeVFXEffects.beam(from.fx, from.fy, to.fx, to.fy, sp.spellType, sp.id, sp.name,
+                            (fromU && fromU.z) || 0, (toU && toU.z) || 0);
+                        return true;
+                    }
+                } catch (e) {}
+                return false;
+            }
             function _impactVfx(sp, tx, ty, z) {
                 try {
-                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.hasMapping
-                        && ThreeVFXEffects.hasMapping(sp.id, 'impact') && ThreeVFXEffects.fire) {
+                    if (_vfxMap(sp, 'impact')) {
                         ThreeVFXEffects.fire('impact', sp.id, { tx: tx, ty: ty });
                         return;
                     }
@@ -11105,6 +11185,21 @@
                 try { if (window.ThreeAnim && ThreeAnim.hitEffect) ThreeAnim.hitEffect(Math.round(tx), Math.round(ty)); } catch (e) {}
             }
             function _aoeVfx(sp, gx, gy, z) {
+                const tx = Math.round(gx), ty = Math.round(gy);
+                try {
+                    if (_vfxMap(sp, 'aoe')) {
+                        ThreeVFXEffects.fire('aoe', sp.id, { tx: tx, ty: ty, aoeRadius: sp.aoeRadius });
+                        return;
+                    }
+                } catch (e) {}
+                try {
+                    /* signature 3D apparitions with no intent mapping (orbs,
+                       visions, gas clouds) still deserve their geometry */
+                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireGeometry
+                        && ThreeVFXEffects.fireGeometry(sp.id, tx, ty, sp.aoeRadius)) {
+                        return;
+                    }
+                } catch (e) {}
                 try {
                     if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.aoe) {
                         ThreeVFXEffects.aoe(gx, gy, sp.spellType, sp.id, sp.name, z || 0);
@@ -11112,6 +11207,24 @@
                     }
                 } catch (e) {}
                 _impactVfx(sp, gx, gy, z);
+            }
+            /* ally-facing casts: bespoke aura > generic heal/buff burst */
+            function _supportVfx(sp, d, target) {
+                const tx = Math.round(target.x), ty = Math.round(target.y);
+                try {
+                    if (_vfxMap(sp, 'aura')) {
+                        ThreeVFXEffects.fire('aura', sp.id, { tx: tx, ty: ty });
+                        return;
+                    }
+                } catch (e) {}
+                try {
+                    if (typeof ThreeVFXEffects !== 'undefined') {
+                        if ((d && (d.cat === 'heal' || d.cat === 'healAll')) && ThreeVFXEffects.fireHeal) { ThreeVFXEffects.fireHeal(tx, ty); return; }
+                        if ((d && d.cat === 'manaAll') && ThreeVFXEffects.fireMana) { ThreeVFXEffects.fireMana(tx, ty); return; }
+                        if (ThreeVFXEffects.fireBuff) { ThreeVFXEffects.fireBuff(tx, ty); return; }
+                    }
+                } catch (e) {}
+                _impactVfx(sp, target.x, target.y, target.z);
             }
             function _castFx(u, sp) {
                 try { ThreeRenderer.strikeRT.playAnim(u.id, _castSlots(sp)); } catch (e) {}
@@ -11211,21 +11324,52 @@
                 if (d.statStage) {
                     try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(target, d.statStage, sp.name, caster); } catch (e) {}
                 }
+                if (!d.dmg && (d.statuses || d.statStage) && !_vfxMap(sp, 'impact')) {
+                    /* pure debuff with no authored impact — purple hex burst */
+                    try { if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDebuff) { ThreeVFXEffects.fireDebuff(Math.round(target.x), Math.round(target.y)); return; } } catch (e) {}
+                }
                 _impactVfx(sp, target.x, target.y, target.z);
             }
             function _launchGround(caster, sp, d, gx, gy) {
                 const from = _posOf(caster);
+                const cid = caster.id;
+                /* SKY-DESCENT spells (meteor, aurora ray, bullet rain…): fire
+                   the authored telegraph→descent cinematic on the target area
+                   and land the damage when the descent actually hits — the
+                   real spell, not a lobbed tracer. */
+                if (_vfxMap(sp, 'descent')) {
+                    let ms = 1400;
+                    try {
+                        ms = (ThreeVFXEffects.getDescentTelegraphMs ? ThreeVFXEffects.getDescentTelegraphMs(sp.id) : 700)
+                            + (ThreeVFXEffects.getDescentDescentMs ? ThreeVFXEffects.getDescentDescentMs(sp.id) : 700);
+                    } catch (e) {}
+                    try { ThreeVFXEffects.fire('descent', sp.id, { tx: Math.round(gx), ty: Math.round(gy), aoeRadius: sp.aoeRadius }); } catch (e) {}
+                    pendingFx.push({
+                        at: _now() + ms,
+                        fn: () => { const c = _findU(cid); if (c) _groundImpact(c, sp, d, gx, gy, true); },
+                    });
+                    return;
+                }
+                /* beam/line family: an instant volumetric lance, not a lob */
+                const isBeam = (sp.kind === 'line' || sp.kind === 'linePush' || sp.kind === 'cross');
+                if (isBeam && _beamVfx(sp, from, { fx: gx, fy: gy }, caster, null)) {
+                    pendingFx.push({
+                        at: _now() + 140,
+                        fn: () => { const c = _findU(cid); if (c) _groundImpact(c, sp, d, gx, gy); },
+                    });
+                    return;
+                }
                 const ms = Math.max(160, Math.hypot(gx - from.fx, gy - from.fy) / BOLT_SPEED * 1000);
                 _projVfx(sp, from, { fx: gx, fy: gy }, ms, caster, null);
-                const cid = caster.id;
                 pendingFx.push({
                     at: _now() + ms,
                     fn: () => { const c = _findU(cid); if (c) _groundImpact(c, sp, d, gx, gy); },
                 });
             }
-            function _groundImpact(caster, sp, d, gx, gy) {
+            function _groundImpact(caster, sp, d, gx, gy, vfxDone) {
                 const z = (typeof getHeightAt === 'function') ? getHeightAt(Math.round(gx), Math.round(gy)) : 0;
-                _aoeVfx(sp, gx, gy, z);
+                /* the descent pipeline already drew its own per-tile impacts */
+                if (!vfxDone) _aoeVfx(sp, gx, gy, z);
                 try { playSfx(d.dmg >= 120 ? 'explosion' : 'spellDamage', { volume: 0.7 }); } catch (e) {}
                 if (d.dmg || d.statuses) {
                     const radius = Math.max(0.8, (d.radius || 0) + 0.6);
@@ -11265,7 +11409,7 @@
                 try { applyHealingToUnit(target, amount, caster); } catch (e) {}
                 if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(target, d.statuses, sp.name, caster); } catch (e) {} }
                 try { playSfx('healRegen', { volume: 0.7 }); } catch (e) {}
-                _impactVfx(sp, target.x, target.y, target.z);
+                _supportVfx(sp, d, target);
             }
             function _burstAllies(caster, sp, d) {
                 const radius = Math.max(2, d.radius || 3);
@@ -11304,7 +11448,7 @@
                     }
                 }
                 try { playSfx('buff', { volume: 0.7 }); } catch (e) {}
-                _impactVfx(sp, target.x, target.y, target.z);
+                _supportVfx(sp, d, target);
             }
             function _cleanseUnit(caster, sp, target) {
                 try {
@@ -11316,6 +11460,7 @@
                 } catch (e) {}
                 try { playSfx('healRegen', { volume: 0.7 }); } catch (e) {}
                 try { showFloatingTextForUnit(target, 'CLEANSED', 'heal', { durationMs: 1000 }); } catch (e) {}
+                _supportVfx(sp, null, target);
             }
             function _encoreSelf(u, sp) {
                 /* Encore in real time: rewind 40% of every OTHER cooldown */
@@ -11392,7 +11537,22 @@
                     try { if (ThreeRenderer.hubFreeRoam.active()) ThreeRenderer.hubFreeRoam.stop(); } catch (e) {}
                 }
                 try { playSfx('teleport', { volume: 0.7 }); } catch (e) {}
-                _impactVfx(sp, tX, tY, u.z);
+                /* bespoke teleport portals > generic dash burst > impact */
+                let dashVfxDone = false;
+                try {
+                    if (_vfxMap(sp, 'teleport')) {
+                        ThreeVFXEffects.fire('teleport', sp.id, {
+                            fromX: Math.round(pos.fx), fromY: Math.round(pos.fy), toX: tX, toY: tY,
+                        });
+                        dashVfxDone = true;
+                    } else if (d.blink && typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireTeleportLegacy) {
+                        ThreeVFXEffects.fireTeleportLegacy(Math.round(pos.fx), Math.round(pos.fy), tX, tY);
+                        dashVfxDone = true;
+                    } else if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDash) {
+                        ThreeVFXEffects.fireDash(Math.round(pos.fx), Math.round(pos.fy), tX, tY);
+                    }
+                } catch (e) {}
+                if (!dashVfxDone) _impactVfx(sp, tX, tY, u.z);
                 if (d.dmg && aim.enemy && _alive(aim.enemy) && _dist(u, aim.enemy) <= 1.8) {
                     _spellHit(u, sp, d, aim.enemy);   // charge/leap spells hit on arrival
                 }

@@ -186,6 +186,47 @@ const ThreeCamera = (function () {
                 : _groundYWorld(focalX, focalZ);
             pivY = pivGroundY + headLift;
         }
+
+        /* ══ FIRST-PERSON EYE (Strike Mode) ══
+           cam._fpEye puts the eye AT the TPS pivot (the character's head) and
+           aims straight along the view direction — no boom, no boom collision,
+           no shoulder offset. The character's own model is hidden by the
+           renderer (window._ewFpHideUid) so there's nothing to frame; a small
+           ground clearance keeps the eye from clipping into the floor when
+           standing in shallow dips. Snappier smoothing: an FP reticle can't
+           afford the TPS boom's ~120ms glide. */
+        if (isTps && cam._fpEye) {
+            let fpEyeY = pivY;
+            const fpFloor = _groundYWorld(pivX, pivZ) + ts * 0.18;
+            if (fpEyeY < fpFloor) fpEyeY = fpFloor;
+            targetPosX = pivX;
+            targetPosY = fpEyeY;
+            targetPosZ = pivZ;
+            const aheadFp = ts * 3;
+            targetLookX = pivX + dirX * aheadFp;
+            targetLookY = fpEyeY + dirY * aheadFp;
+            targetLookZ = pivZ + dirZ * aheadFp;
+
+            const nowFp = performance.now() / 1000;
+            const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, 0.05) : 0.016;
+            _lastSyncTime = nowFp;
+            if (!_initialized) {
+                _smoothPosX = targetPosX; _smoothPosY = targetPosY; _smoothPosZ = targetPosZ;
+                _smoothLookX = targetLookX; _smoothLookY = targetLookY; _smoothLookZ = targetLookZ;
+                _initialized = true;
+            } else {
+                const stFp = 0.028;   // tight — mouse aim must feel 1:1
+                _smoothPosX  = _damp(_smoothPosX,  targetPosX,  stFp, dtFp);
+                _smoothPosY  = _damp(_smoothPosY,  targetPosY,  stFp, dtFp);
+                _smoothPosZ  = _damp(_smoothPosZ,  targetPosZ,  stFp, dtFp);
+                _smoothLookX = _damp(_smoothLookX, targetLookX, stFp, dtFp);
+                _smoothLookY = _damp(_smoothLookY, targetLookY, stFp, dtFp);
+                _smoothLookZ = _damp(_smoothLookZ, targetLookZ, stFp, dtFp);
+            }
+            threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
+            threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
+            return;
+        }
         let eyeX = pivX - dist * dirX;
         let eyeY = pivY - dist * dirY;
         let eyeZ = pivZ - dist * dirZ;
@@ -472,8 +513,16 @@ const ThreeCamera = (function () {
                three-renderer) veto hits whose sampled texel is transparent. */
             if (obj && obj._ew_alphaPickTest && hits[i].uv
                 && !obj._ew_alphaPickTest(hits[i].uv, obj)) continue;
+            /* Raycaster doesn't honour object.visible — a HIDDEN unit (the
+               first-person player's own body, a fogged enemy) must not eat
+               the pick aimed at whatever is visible behind it. */
+            let hidden = false;
             while (obj) {
-                if (obj._ew_unitId !== undefined) return { unitId: obj._ew_unitId };
+                if (obj.visible === false) hidden = true;
+                if (obj._ew_unitId !== undefined) {
+                    if (hidden) break;
+                    return { unitId: obj._ew_unitId };
+                }
                 obj = obj.parent;
             }
         }

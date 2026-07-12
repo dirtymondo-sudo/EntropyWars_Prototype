@@ -7885,6 +7885,12 @@ const ThreeRenderer = (function () {
                     act.setLoop(THREE.LoopRepeat, Infinity);
                 }
                 if (tScale) act.timeScale = tScale;
+                /* Remember the wired baseline so runtime speed boosts
+                   (free-roam sprint, Strike RT) can scale RELATIVE to it —
+                   overwriting with def.moveTimeScale||1 clobbered the library
+                   walk pace (UAL Walking is wired at ~2×) and made every
+                   real-time walker foot-skate. */
+                act._ew_ts0 = act.timeScale || 1;
                 entry.actions[name] = act;
                 if (name === 'idle' && !entry._ew_curAnim) {
                     entry._ew_curAnim = 'idle';
@@ -8011,7 +8017,26 @@ const ThreeRenderer = (function () {
         var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
+        var _fpHideUid = (typeof window !== 'undefined' && window._ewFpHideUid != null)
+            ? window._ewFpHideUid : null;
         unitEntries.forEach(function (entry, uid) {
+            /* ── First-person view: the camera sits in this unit's head, so its
+               own model (and name plate) must not render. ShooterControls owns
+               window._ewFpHideUid per frame; restore the moment it changes so
+               death cams / view toggles / respawns get the model back. ── */
+            if (entry.group) {
+                if (_fpHideUid === uid) {
+                    if (entry.group.visible) entry.group.visible = false;
+                    entry._ew_fpHid = true;
+                    var _poH = _plateObjs.get(uid);
+                    if (_poH && _poH.css2d && _poH.css2d.visible) { _poH.css2d.visible = false; _poH._ew_fpHid = true; }
+                } else if (entry._ew_fpHid) {
+                    entry._ew_fpHid = false;
+                    entry.group.visible = true;
+                    var _poR = _plateObjs.get(uid);
+                    if (_poR && _poR._ew_fpHid) { _poR._ew_fpHid = false; if (_poR.css2d) _poR.css2d.visible = true; }
+                }
+            }
             // AP-spent grey for ANY model entry (even an unrigged static one);
             // hit flashes / death own the tint while they're live.
             if (entry.modelMats && entry.modelMats.length
@@ -8077,8 +8102,8 @@ const ThreeRenderer = (function () {
             if (entry._ew_sprinting && !_displaceTweens.has(uid)) {
                 entry._ew_sprinting = false;
                 if (entry.actions && entry.actions.walk) {
-                    entry.actions.walk.timeScale =
-                        ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
+                    entry.actions.walk.timeScale = entry.actions.walk._ew_ts0
+                        || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
                 }
             }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
@@ -12264,8 +12289,8 @@ const ThreeRenderer = (function () {
         if (_dpDist >= 2 && entry && entry.mixer && entry.actions && entry.actions.walk) {
             entry._ew_oneShot = null;
             entry._ew_sprinting = true;
-            entry.actions.walk.timeScale =
-                ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * 1.15;
+            entry.actions.walk.timeScale = (entry.actions.walk._ew_ts0
+                || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1)) * 1.15;
         }
     }
 
@@ -12304,8 +12329,8 @@ const ThreeRenderer = (function () {
                 if (ue && ue._ew_sprinting) {
                     ue._ew_sprinting = false;
                     if (ue.actions && ue.actions.walk) {
-                        ue.actions.walk.timeScale =
-                            ((ue.modelDef && ue.modelDef.moveTimeScale) || 1);
+                        ue.actions.walk.timeScale = ue.actions.walk._ew_ts0
+                            || ((ue.modelDef && ue.modelDef.moveTimeScale) || 1);
                     }
                 }
                 // Dash arrival kicks up a dust skid (fog-safe: only when the
@@ -14340,7 +14365,12 @@ const ThreeRenderer = (function () {
         fr.want = (fr.jumpT >= 0) ? 'jump'
             : (moving ? (fr.running ? 'run' : 'walk') : 'idle');   // run falls back → walk
         if (moving && entry.actions && entry.actions.walk) {
-            entry.actions.walk.timeScale = ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * (running ? 1.75 : 1);
+            /* scale off the WIRED baseline (library walk ≈2×, Meshy = its
+               moveTimeScale) — hardcoding moveTimeScale||1 halved the library
+               walk cycle and read as ice-skating at ground speed */
+            var _wBase = entry.actions.walk._ew_ts0
+                || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
+            entry.actions.walk.timeScale = _wBase * (running ? 1.75 : 1);
         }
 
         /* camera follow (battle.js owns the camera controller) */
@@ -14385,8 +14415,9 @@ const ThreeRenderer = (function () {
                group must stay unrotated (see the walker's moonwalk note) */
             if (entry.group.rotation.y) entry.group.rotation.y = 0;
             if (entry.actions && entry.actions.walk) {
-                entry.actions.walk.timeScale =
-                    ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * (rt.run ? 1.75 : 1);
+                var _rBase = entry.actions.walk._ew_ts0
+                    || ((entry.modelDef && entry.modelDef.moveTimeScale) || 1);
+                entry.actions.walk.timeScale = _rBase * (rt.run ? 1.75 : 1);
             }
         });
     }

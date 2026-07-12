@@ -7065,7 +7065,7 @@
                     return `
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">🎯 Strike Mode (Real-Time Shooter)</div>
-                    <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Applies only to the real-time Strike Mode: WASD runs, mouse aims, LMB fires the held hotbar slot, RMB aims down sights, wheel/1-9 switch abilities, TAB holds the scoreboard. Every key below is rebindable — click a key, then press the new one (ESC cancels).</div>
+                    <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Applies only to the real-time Strike Mode: WASD runs, mouse aims, LMB fires the held hotbar slot, RMB aims down sights, V toggles first/third person, wheel/1-9 switch abilities, TAB holds the scoreboard. Every key below is rebindable — click a key, then press the new one (ESC cancels).</div>
                     <div class="pm-set-row" style="align-items:center;gap:8px">
                         <span class="pm-vol-label">Mouse Sens.</span>
                         <input type="range" class="pm-vol-slider" min="0.04" max="0.50" step="0.01" value="${so.sens}"
@@ -7085,6 +7085,7 @@
                         <span class="pm-vol-val">${so.fov}°</span>
                     </div>
                     <div class="pm-set-row" style="margin:8px 0;gap:6px;flex-wrap:wrap">
+                        <button class="pm-set-btn${so.viewMode !== 'third' ? ' active' : ''}" onclick="window.StrikeControlsConfig.setOpt('viewMode','${so.viewMode === 'third' ? 'first' : 'third'}');window._ewControlsRerender();">Camera: ${so.viewMode === 'third' ? '3RD PERSON' : '1ST PERSON'}</button>
                         <button class="pm-set-btn${so.invertY ? ' active' : ''}" onclick="window.StrikeControlsConfig.setOpt('invertY',${so.invertY ? 'false' : 'true'});window._ewControlsRerender();">Invert Mouse Y: ${so.invertY ? 'ON' : 'OFF'}</button>
                         <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetOpts();window._ewControlsRerender();">Reset Sliders</button>
                         <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetBinds();window._ewControlsRerender();">Reset Keybinds</button>
