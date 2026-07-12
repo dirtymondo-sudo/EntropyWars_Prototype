@@ -10920,10 +10920,14 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     entry._mdStairs = stairs;
     entry._mdFloor = floor;
     entry._mdDungeonId = D.id;
-    /* enemy levels shadow the delver's run level (= current floor, applied in
-       _mdLoadFloor), staying a step behind so depth stays winnable solo */
-    const lvlLo = Math.max(1, floor - 1);
-    const lvlHi = Math.min(10, floor);
+    /* enemy levels shadow the delver's run level (= current floor × the
+       dungeon's optional levelPerFloor, applied in _mdLoadFloor), staying a
+       step behind so depth stays winnable solo. Capped at LEVEL_CAP so deep
+       dungeons keep working under the level-100 system. */
+    const _mdCap = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
+    const _mdFloorLvl = Math.min(_mdCap, Math.max(1, Math.round(floor * (D.levelPerFloor || 1))));
+    const lvlLo = Math.max(1, _mdFloorLvl - 1);
+    const lvlHi = _mdFloorLvl;
     /* themed enemy list, rotated per floor for variety */
     const races = [];
     for (let i = 0; i < enemyCount; i++) races.push(D.enemyRaces[(floor + i) % D.enemyRaces.length]);
@@ -10931,7 +10935,7 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
         count: enemyCount,
         races,
         levelRange: [lvlLo, lvlHi],
-        boss: isBossFloor ? { race: D.bossRace, level: Math.min(10, floor + 1) } : null,
+        boss: isBossFloor ? { race: D.bossRace, level: Math.min(_mdCap, _mdFloorLvl + 1) } : null,
     };
     const basePb = PREBUILT_MAPS[D.baseMapId];
     if (basePb && basePb.terrainTints) entry.terrainTints = Object.assign({}, basePb.terrainTints);
@@ -11160,6 +11164,21 @@ function isProgressionMode(modeId) {
     return !!modeId && MODE_LEVEL_RULES.progressionModes.includes(modeId);
 }
 
+// ---- Race XP yields (progression modes only — see battle.js computeKillXP) --
+// Pokémon-style: every race has a base experience yield, and the payout of a
+// kill grows with the VICTIM's level. The yield is derived from the race's
+// campaign price (already the game's "how strong is this race" tier list):
+// fodder (price 100) ≈ 45, apex (price 1000) ≈ 180 — roughly Pokémon's
+// Pidgey→Mewtwo spread. Drop a race into RACE_XP_YIELD_OVERRIDES to hand-tune
+// it without touching the formula.
+const RACE_XP_YIELD_OVERRIDES = {};
+function getRaceXpYield(race) {
+    const key = (race || '').toLowerCase();
+    if (RACE_XP_YIELD_OVERRIDES[key] != null) return RACE_XP_YIELD_OVERRIDES[key];
+    const price = (typeof CAMPAIGN_RACE_PRICES !== 'undefined' && CAMPAIGN_RACE_PRICES[key]) || 200;
+    return Math.round(30 + price * 0.15);
+}
+
 const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['pistolWhip', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
@@ -11234,24 +11253,29 @@ function generateChallengeLevel(battleNum) {
   const runSeed = (typeof state !== 'undefined' && state && state.campaignSave && state.campaignSave.runSeed) || 0;
   const rng = _chalRng(runSeed + n * 2654435761);
   let teamSize, mapPool, enemyPool, levelRange, aiMult;
+  // Level 100: enemy levels track the battle number (≈ level = battleNum),
+  // stretching the run's narrative arc across the full 1–100 curve. The
+  // player's roster levels along via kill XP (Pokémon-style, see battle.js
+  // computeKillXP), and the level-gap damper in that formula self-corrects
+  // any drift, so both sides stay near parity for the whole run.
   if (n <= 2) {
-    teamSize = 1; mapPool = _CHAL_MAP_POOL_SMALL;  enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [1, 1]; aiMult = 0.4;
+    teamSize = 1; mapPool = _CHAL_MAP_POOL_SMALL;  enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [1, 2]; aiMult = 0.4;
   } else if (n <= 5) {
-    teamSize = 2; mapPool = _CHAL_MAP_POOL_SMALL;  enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [1, 1]; aiMult = 0.5;
+    teamSize = 2; mapPool = _CHAL_MAP_POOL_SMALL;  enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [2, 5]; aiMult = 0.5;
   } else if (n <= 10) {
-    teamSize = 4; mapPool = _CHAL_MAP_POOL_MED;    enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [1, 2]; aiMult = 0.7;
+    teamSize = 4; mapPool = _CHAL_MAP_POOL_MED;    enemyPool = _CHAL_ENEMY_TIER_EASY;  levelRange = [5, 11]; aiMult = 0.7;
   } else if (n <= 18) {
-    teamSize = 4; mapPool = _CHAL_MAP_POOL_MED;    enemyPool = _CHAL_ENEMY_TIER_MID;   levelRange = [2, 3]; aiMult = 1.0;
+    teamSize = 4; mapPool = _CHAL_MAP_POOL_MED;    enemyPool = _CHAL_ENEMY_TIER_MID;   levelRange = [10, 20]; aiMult = 1.0;
   } else if (n <= 28) {
-    teamSize = 6; mapPool = _CHAL_MAP_POOL_LARGE;  enemyPool = _CHAL_ENEMY_TIER_MID;   levelRange = [3, 4]; aiMult = 1.0;
+    teamSize = 6; mapPool = _CHAL_MAP_POOL_LARGE;  enemyPool = _CHAL_ENEMY_TIER_MID;   levelRange = [18, 32]; aiMult = 1.0;
   } else if (n <= 40) {
-    teamSize = 6; mapPool = _CHAL_MAP_POOL_LARGE;  enemyPool = _CHAL_ENEMY_TIER_HARD;  levelRange = [4, 5]; aiMult = 1.1;
+    teamSize = 6; mapPool = _CHAL_MAP_POOL_LARGE;  enemyPool = _CHAL_ENEMY_TIER_HARD;  levelRange = [30, 46]; aiMult = 1.1;
   } else if (n <= 60) {
-    teamSize = 8; mapPool = _CHAL_MAP_POOL_XLARGE; enemyPool = _CHAL_ENEMY_TIER_HARD;  levelRange = [5, 6]; aiMult = 1.15;
+    teamSize = 8; mapPool = _CHAL_MAP_POOL_XLARGE; enemyPool = _CHAL_ENEMY_TIER_HARD;  levelRange = [44, 66]; aiMult = 1.15;
   } else {
     teamSize = 8; mapPool = _CHAL_MAP_POOL_XLARGE; enemyPool = _CHAL_ENEMY_TIER_BOSS;
     const extra = Math.floor((n - 61) / 5);
-    levelRange = [Math.min(6 + extra, 9), Math.min(7 + extra, 10)];
+    levelRange = [Math.min(62 + extra * 3, 96), Math.min(72 + extra * 3, 100)];
     aiMult = 1.25;
   }
   const mapId = _chalPick(mapPool, rng);
@@ -11340,7 +11364,7 @@ Object.assign(window, {
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   LEVEL_CAP, EW_SCALE, LEVEL_SCALE_EXP, levelScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
-  MODE_LEVEL_RULES, isProgressionMode,
+  MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
   computeSecJobBonuses, computeEquipBonuses,
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,

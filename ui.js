@@ -4252,7 +4252,7 @@
                         let pts = 0;
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
-                        if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / 10) * _ARP.towerDmgPer10;
+                        if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                         if (state.hourglasses) {
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
@@ -6354,7 +6354,7 @@
                     let pts = 0;
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
-                    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / 10) * _ARP.towerDmgPer10;
+                    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
                     if (state.hourglasses) {
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;

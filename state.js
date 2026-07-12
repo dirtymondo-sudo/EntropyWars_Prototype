@@ -1695,14 +1695,18 @@
             if (!unit || unit.dead) return 0;
             if (typeof canFly === 'function' && canFly(unit)) return 0;
             const FALL_THRESHOLD = (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3;
-            const FALL_PER_LEVEL = (typeof FALL_DAMAGE_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PER_LEVEL : 8;
             const drop = (fromZ ?? 0) - (toZ ?? 0);
             if (drop < FALL_THRESHOLD) return 0;
+            // Level 100: fall damage is percent-of-max-HP (5% per level fallen
+            // beyond the grace threshold — same knob as battle.js
+            // FALL_DAMAGE_PCT_PER_LEVEL), so a 3-level drop stings identically
+            // whether the unit has 550 HP or 15,000.
+            const FALL_PCT = (typeof FALL_DAMAGE_PCT_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PCT_PER_LEVEL : 0.05;
             // ⚖️ RACE_PHYSIQUE (2026-07-07): mass scales the landing. A fairy
             // drifts down at half damage; a golem craters at ×1.25; a kaiju
             // hits like a falling building (×1.5). Flyers stay exempt above.
             const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
-            const dmg = Math.max(1, Math.round((drop - (FALL_THRESHOLD - 1)) * FALL_PER_LEVEL * _wMult));
+            const dmg = Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult));
             const prefix = logPrefix || '';
             const _wNote = _wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
@@ -1778,7 +1782,8 @@
 
                     if (BLOWBACK_DAMAGE > 0) {
                         applyDamageToUnit(unit, BLOWBACK_DAMAGE, `Blowback impact: `, {
-                            ignoreArmor: true
+                            ignoreArmor: true,
+                            scaleByTargetLevel: true
                         });
                     }
 
@@ -1799,7 +1804,8 @@
 
             addLog(`${logPrefix || ''}${unitDisplayName(unit)} is slammed against an obstacle!`);
             applyDamageToUnit(unit, BLOWBACK_DAMAGE + 2, `Blowback crush: `, {
-                ignoreArmor: true
+                ignoreArmor: true,
+                scaleByTargetLevel: true
             });
             return {
                 pushed: false,
@@ -2047,7 +2053,10 @@
                         const weatherCaster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
                         applyDamageToUnit(unit, eff.amount, `${eff.text}`, {
                             ignoreArmor: false,
-                            sourceUnit: weatherCaster || undefined
+                            sourceUnit: weatherCaster || undefined,
+                            // Natural weather has no caster — scale by the
+                            // victim's level so storms stay dangerous at L100.
+                            scaleByTargetLevel: true
                         });
                         if (weather.type === 'thunderstorm' && window.ThreeLightning &&
                             !(state.devAutoSim && !state._devSimShowAnims)) {
@@ -2063,9 +2072,12 @@
                             });
                         }
                     } else if (eff.type === 'heal') {
-                        if (eff.hpAmount) applyHealingToUnit(unit, eff.hpAmount, null);
+                        if (eff.hpAmount) applyHealingToUnit(unit, eff.hpAmount, null, { scaleByTargetLevel: true });
                         if (eff.mpAmount) {
-                            const mpGain = Math.min(eff.mpAmount, Math.max(0, unit.maxMp - unit.mp));
+                            // MP pools are level-scaled too — scale the gain.
+                            const _mpLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
+                                ? levelScale(getUnitLevel(unit)) : 1;
+                            const mpGain = Math.min(Math.round(eff.mpAmount * _mpLs), Math.max(0, unit.maxMp - unit.mp));
                             if (mpGain > 0) {
                                 unit.mp = Math.min(unit.maxMp, unit.mp + mpGain);
                                 showFloatingTextForUnit(unit, `+${mpGain} MP`, 'mp');
@@ -2240,7 +2252,10 @@
                             actedVisibly = true;
                             applyDamageToUnit(v, hit.amount, `${hit.text}`, {
                                 ignoreArmor: false,
-                                sourceUnit: caster || undefined
+                                sourceUnit: caster || undefined,
+                                // Natural storms have no caster — scale by the
+                                // victim's level (see applyWeatherTurnEffects).
+                                scaleByTargetLevel: true
                             });
                             if (weather.type === 'thunderstorm' && window.ThreeLightning &&
                                 !(state.devAutoSim && !state._devSimShowAnims)) {

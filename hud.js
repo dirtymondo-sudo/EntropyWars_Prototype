@@ -383,7 +383,7 @@ function _getModeInfo(st) {
     const eTw = st.towers && st.towers[enemy];
     let tDmg = 0;
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-    pts += Math.min(Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     let hgCount = 0;
     if (st.hourglasses) {
       hgCount = st.hourglasses.filter(hg => {
@@ -405,7 +405,7 @@ function _getModeInfo(st) {
     const kills = (st.matchKills ? (st.matchKills[p] || 0) : 0);
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
-    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / 10) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
     if (st.hourglasses) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;

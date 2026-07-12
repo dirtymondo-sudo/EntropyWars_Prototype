@@ -2730,9 +2730,27 @@
             return noBuff;
         }
 
-        const TOWER_MAX_HP = 2500;
-        const TOWER_DEF = 15;
+        const TOWER_MAX_HP = 2500;   // level-1 base magnitude
+        const TOWER_DEF = 15;        // level-1 base magnitude
         const TOWER_VISION_RANGE = 4;
+
+        /* Level 100: towers live in the same magnitude space as unit HP, so
+           their stats scale by the match's level context — the level cap in
+           PvP (where towers normally appear), the run's current level in
+           campaign/MD. Attack rolls against towers scale by the attacker's
+           level to match (battle.js doAttack), so time-to-kill a tower is
+           unchanged from the 2500-HP days. */
+        function _towerLevelScale() {
+            if (typeof levelScale !== 'function') return 1;
+            let lvl = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
+            if (state && (state.isCampaign || state._mdRun)) {
+                const metas = state.partyMeta?.[1] || [];
+                lvl = Math.max(1, ...metas.map(m => (m && m._campaignLevel) || 1));
+            }
+            return levelScale(lvl);
+        }
+        function _towerHp() { return Math.round(TOWER_MAX_HP * _towerLevelScale()); }
+        function _towerDef() { return Math.round(TOWER_DEF * _towerLevelScale()); }
 
         /* LOS-ONLY VISION: a unit reveals any tile it has a clear line of sight
            to, regardless of distance — the old per-unit "vision range" no longer
@@ -2812,12 +2830,12 @@
             const t1 = {
                 x: p1Pos.x, y: p1Pos.y,
                 homeBox: p1Box,
-                hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 1, gender: genders[0]
+                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0]
             };
             const t2 = {
                 x: p2Pos.x, y: p2Pos.y,
                 homeBox: p2Box,
-                hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 2, gender: genders[1]
+                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1]
             };
             for (const t of [t1, t2]) {
                 for (let dy = 0; dy <= (boxBotY - boxTopY); dy++) {
@@ -3117,9 +3135,9 @@
                     const p1 = owners[1], p2 = owners[2];
                     const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                 } else if (dragons.length === 1) {
@@ -3130,9 +3148,9 @@
                     const p1 = owners[1], p2 = owners[2];
                     const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                 } else {
@@ -3320,9 +3338,9 @@
                 if (t1Pos && t2Pos) {
                     const p1 = t1Pos, p2 = t2Pos;
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                     console.log('[Tower auto-place] P1 tower:', t1Pos, ' P2 tower:', t2Pos);
@@ -3602,12 +3620,12 @@
                     1: {
                         x: t1x, y: eMidY,
                         homeBox: { x1: t1x, y1: eMidY - 1, x2: t1x + 1, y2: eMidY },
-                        hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 1, gender: genders[0]
+                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0]
                     },
                     2: {
                         x: t2x, y: eMidY,
                         homeBox: { x1: t2x - 1, y1: eMidY - 1, x2: t2x, y2: eMidY },
-                        hp: TOWER_MAX_HP, maxHp: TOWER_MAX_HP, def: TOWER_DEF, owner: 2, gender: genders[1]
+                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1]
                     }
                 };
 

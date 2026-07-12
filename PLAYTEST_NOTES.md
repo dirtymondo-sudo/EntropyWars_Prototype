@@ -4,6 +4,54 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Level 100 system — Drop 2 (2026-07-12) — data.js/battle.js/map.js/state.js/ui.js/hud.js
+Token `20260712k` → `20260712l`. World objects + the XP economy join the
+level-100 magnitude space (Drop 1 below covers the core model).
+- **Towers**: `TOWER_MAX_HP`/`TOWER_DEF` stay level-1 bases (2500/15) in map.js;
+  every instantiation now uses `_towerHp()`/`_towerDef()` = base ×
+  `levelScale(matchLevel)` (`_towerLevelScale`: PvP = LEVEL_CAP, campaign/MD =
+  max `partyMeta[1]._campaignLevel`). The doAttack tower block scales the
+  attack roll by the ATTACKER's level to match → tower TTK unchanged. Arena/
+  domination tower-damage points are now **percent-of-tower** (full tower =
+  250 pts × `towerDmgPer10`) in battle.js ×2, ui.js ×2, hud.js ×2 — invariant
+  to the scaled HP. Turrets deliberately stay in BASE space (hp AND damage
+  taken are base-magnitude; their shots scale by the deploying caster's level
+  at `applyDamageToUnit`, with a new `scaleByTargetLevel` fallback for
+  orphaned turrets).
+- **Weather**: natural storms have no caster, so every weather damage/heal
+  site now passes `scaleByTargetLevel: true` (state.js
+  `applyWeatherTurnEffects`, homing strikes, battle.js
+  `processPendingEarthquake`); bloodRain/tesseract MP gains scale by
+  `levelScale(target)`. Caster-summoned weather still scales by the caster
+  (sourceUnit wins over the fallback). Flat `statMod`s (-10 DEF etc.) are
+  intentionally unscaled — offense/defense stats live in base space.
+- **Fall damage** (state.js `applyFallDamage`): flat 8/level → **percent**:
+  `maxHp × 0.05 × levels-beyond-grace × massMult` (same 5% knob as building
+  collapse). Blowback impact/crush damage scales by target level.
+- **XP economy (Pokémon/SMT-style)**:
+  - `grantXP` is **fully inert outside progression modes** (`xpProgressionActive`
+    = `state.isCampaign || state._mdRun ||
+    isProgressionMode(activeMode)`) — PvP XP isn't just capped, it never flows.
+  - Kill XP = `computeKillXP(killer, victim)` (battle.js, next to the XP
+    consts): per-race base yield `getRaceXpYield(race)` (data.js — derived
+    from `CAMPAIGN_RACE_PRICES`, ≈45 fodder → ≈180 apex, hand-tune via
+    `RACE_XP_YIELD_OVERRIDES`) × victim level / 14, × Gen-5 level-gap damper
+    `((2v+10)/(v+k+10))^4`, +1, ×1.5 for `_isBoss`. Self-corrects toward the
+    enemy curve (over-leveled grinding pays ~nothing, punching up pays a
+    premium). Simulated vs the challenge curve: player L10@b10, L28@b25,
+    L60@b50, L93@b75, caps ≈ b90. Assists = 35% of the assister's own
+    computeKillXP.
+  - Non-kill trickle awards (damage/heal/buff/round/etc.) scale ×`(1+(L-1)/10)`
+    so they fade relative to kills at depth, like Pokémon.
+- **Progression pacing**: `generateChallengeLevel` enemy levels stretched to
+  the full curve (battle n ≈ level n: [1,2]→[5,11]@10→[18,32]@28→[44,66]@60→
+  caps [96,100]); MD floor levels honour optional `MD_DUNGEONS[x].levelPerFloor`
+  (default 1 → 10-floor Agartha spans L1–10) and cap at LEVEL_CAP, boss = +1.
+- Still open: damage-number `k`-formatting + hit-stop/crit VFX percent
+  thresholds; old-save XP migration; party-builder preview shows level-1 stats;
+  dormant `BOSS_DEFS` (hellspawn/angel — `handleBossKill` is an empty stub)
+  left at base magnitude on purpose.
+
 ## Level 100 system — Drop 1 (2026-07-12, latest) — data.js/battle.js/map.js/ui.js/ai.js/ainew.js
 Token `?v=20260712j` → `20260712k-lvl100`. Max level 10 → **100** (see
 LEVEL100_PLAN.md). Core model (single source of truth in **data.js**):

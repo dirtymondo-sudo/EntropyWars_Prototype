@@ -4655,7 +4655,8 @@
             for (const hit of eq.hits) {
                 const unit = state.units.find(u => u.id === hit.unitId);
                 if (!unit || unit.dead) continue;
-                applyDamageToUnit(unit, hit.amount, `${hit.text}`, { ignoreArmor: false });
+                // Natural weather has no caster — scale by the victim's level.
+                applyDamageToUnit(unit, hit.amount, `${hit.text}`, { ignoreArmor: false, scaleByTargetLevel: true });
             }
 
             if (eq.blowback) {
@@ -6351,7 +6352,7 @@
             for (const ally of assistees) {
                 ally._matchAssists = (ally._matchAssists || 0) + 1;
                 ally._trackAssists = (ally._trackAssists || 0) + 1;
-                grantXP(ally, XP_ASSIST, 'assist');
+                grantXP(ally, Math.max(XP_ASSIST, Math.round(computeKillXP(ally, victim) * 0.35)), 'assist');
                 ally.gold = (ally.gold || 0) + GOLD_PER_ASSIST;
             }
         }
@@ -13701,7 +13702,7 @@
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
-                    grantXP(killer, XP_KILL, 'kill');
+                    grantXP(killer, computeKillXP(killer, target), 'kill');
 
                     killer.gold = (killer.gold || 0) + GOLD_PER_KILL;
                     showFloatingTextForUnit(killer, `+${GOLD_PER_KILL}g`, 'pickup');
@@ -13781,6 +13782,9 @@
                     ignoreArmor: false,
                     damageType: 'physical',
                     sourceUnit: caster || undefined,
+                    // Caster gone (dead/despawned)? Fall back to target-level
+                    // scaling so orphaned turrets don't tickle 10k-HP units.
+                    scaleByTargetLevel: true,
                     flashColor: 'hit'
                 });
             }
@@ -16274,6 +16278,51 @@
         const XP_COMBO              = 5;
         const XP_FOLLOWUP           = 4;
 
+        // ── Level 100 XP model ─────────────────────────────────────────────
+        // XP only flows in progression modes (Mystery Dungeon / Challenge /
+        // campaign / future Endless). Every competitive PvP mode is normalized
+        // to the level cap, so XP there is not just a no-op at cap — it is
+        // fully inert (grantXP returns immediately).
+        function xpProgressionActive() {
+            if (!state) return false;
+            if (state.isCampaign || state._mdRun) return true;
+            if (typeof isProgressionMode !== 'function') return false;
+            const m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            return !!(m && isProgressionMode(m.id));
+        }
+
+        // Pokémon/SMT-style kill XP. Each race has a base yield (data.js
+        // getRaceXpYield — derived from its campaign price tier) and the payout
+        // grows with the VICTIM's level, then is damped/boosted by the
+        // killer↔victim level gap (Pokémon Gen-5 "scaled" formula, with a
+        // harsher ^4 exponent for the SMT feel):
+        //   xp = floor( (yield × vLvl / 14) × ((2·vLvl+10)/(vLvl+kLvl+10))^4 ) + 1
+        // Grinding far-below-level mobs pays almost nothing, while punching up
+        // pays a premium — the run self-corrects toward the enemy level curve
+        // without any hard rubber-banding. Simulated against the challenge
+        // curve (enemy level ≈ battle number): player L10@b10, L28@b25,
+        // L60@b50, L93@b75, cap ≈ b90 — a modest hero's lead the whole way.
+        function computeKillXP(killer, victim) {
+            if (!victim) return XP_KILL;
+            const vLvl = getUnitLevel(victim);
+            const kLvl = killer ? getUnitLevel(killer) : vLvl;
+            const raceYield = (typeof getRaceXpYield === 'function')
+                ? getRaceXpYield(victim.race) : 60;
+            const base = (raceYield * vLvl) / 14;
+            const gap = Math.pow((2 * vLvl + 10) / (vLvl + kLvl + 10), 4);
+            let xp = Math.floor(base * gap) + 1;
+            if (victim._isBoss) xp = Math.floor(xp * 1.5);
+            return xp;
+        }
+
+        // Non-kill trickle XP (damage/heal/buff/passive-round/etc.) scales
+        // gently with the earner's level so it stays a nudge — kills are THE
+        // meaningful XP source at every level, like Pokémon/SMT.
+        function _xpTrickleScale(unit) {
+            const lvl = getUnitLevel(unit);
+            return 1 + (lvl - 1) / 10;
+        }
+
         function getUnitLevel(unit) {
             if (!unit) return 1;
             const xp = unit._xp || 0;
@@ -16345,6 +16394,13 @@
         function grantXP(unit, amount, reason) {
             if (!unit || unit.dead || !amount || amount <= 0) return;
             if (state.phase !== 'battle' || state.winner) return;
+            // PvP modes are level-normalized — XP is completely inert there.
+            if (!xpProgressionActive()) return;
+            // Kill/assist amounts arrive pre-computed by computeKillXP; the
+            // flat trickle awards get a gentle level multiplier instead.
+            if (reason !== 'kill' && reason !== 'assist') {
+                amount = amount * _xpTrickleScale(unit);
+            }
             const amt = Math.max(0, Math.round(amount));
             if (amt <= 0) return;
             const prevLevel = getUnitLevel(unit);
@@ -18771,7 +18827,9 @@
                     const eTw = state.towers?.[enemy];
                     let tDmg = 0;
                     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-                    let tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                    // Percent-of-tower form: invariant to level-scaled tower HP
+                    // (full tower = 250 pts × per10, same as the 2500-HP days).
+                    let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
                     if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                     pts += tDmgPts;
                     details.push({ label: 'Tower Dmg', raw: tDmg, pts: tDmgPts, icon: '🏰' });
@@ -19654,9 +19712,13 @@
                 state.partyMeta[1] = run.partyState.map(p => p.meta || {});
             }
             /* PMD-style run progression: the delver's level equals the current
-               floor (units are rebuilt per floor, so createUnit's campaign-level
-               pipeline applies it — the createUnit gate also accepts _mdRun). */
-            const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 10, Math.max(1, run.floor));
+               floor × the dungeon's optional levelPerFloor (units are rebuilt
+               per floor, so createUnit's campaign-level pipeline applies it —
+               the createUnit gate also accepts _mdRun). A 10-floor dungeon
+               spans L1–10; a deeper/harder dungeon can set levelPerFloor to
+               climb the 100-level curve faster. */
+            const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 100,
+                Math.max(1, Math.round(run.floor * ((D && D.levelPerFloor) || 1))));
             (state.partyMeta[1] || []).forEach(m => { if (m) m._campaignLevel = runLvl; });
             const partySize = Math.max(1, (state.partyBuilds[1] || []).length);
             let entry;
@@ -29389,6 +29451,12 @@
                 else animateStrikeLeap(unit, x, y);
                 let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
 
+                // Level 100: towers live in the same magnitude space as unit HP
+                // (map.js scales TOWER_MAX_HP/TOWER_DEF by the match level), so
+                // the attack roll scales by the attacker's level to match.
+                if (typeof levelScale === 'function') {
+                    damage = Math.round(damage * levelScale(getUnitLevel(unit)));
+                }
                 damage = Math.max(1, damage - (tw.def || 0));
 
                 spendAP(unit, AP_COST_ACTION);
@@ -36400,7 +36468,8 @@
                 const eTower = state.towers?.[enemy];
                 let tDmg = 0;
                 if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
-                let tDmgPts = Math.floor(tDmg / 10) * ARENA_PTS.towerDmgPer10;
+                // Percent-of-tower form (see _arenaScoreDetails above).
+                let tDmgPts = Math.floor(tDmg / ((eTower && eTower.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
                 if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                 pts += tDmgPts;
                 breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
