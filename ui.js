@@ -6757,6 +6757,12 @@
             const expPct = Math.round(expVal*100);
             const expMinPct = Math.round(expRange.min*100);
             const expMaxPct = Math.round(expRange.max*100);
+            const nightMood = (typeof ThreePost!=='undefined'&&ThreePost.getNightMood)?ThreePost.getNightMood():0.65;
+            const nightMoodPct = Math.round(nightMood*100);
+            const impactFx = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFx)?ThreePost.getImpactFx():0.7;
+            const impactFxMax = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFxMax)?ThreePost.getImpactFxMax():1.5;
+            const impactFxPct = Math.round(impactFx*100);
+            const impactFxMaxPct = Math.round(impactFxMax*100);
 
             // Retro / Haunted-PS1 filter state
             const _TP = (typeof ThreePost!=='undefined') ? ThreePost : null;
@@ -6846,6 +6852,22 @@
                         <span class="pm-setting-label">Brightness</span>
                         <input type="range" min="${expMinPct}" max="${expMaxPct}" step="1" value="${expPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setExposureScale)ThreePost.setExposureScale(this.value/100);this.nextElementSibling.textContent=(this.value/100).toFixed(2);">
                         <span class="pm-vol-val">${expVal.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Night Mood</span>
+                        <input type="range" min="0" max="100" step="5" value="${nightMoodPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setNightMood)ThreePost.setNightMood(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'soft':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${nightMoodPct===0?'soft':nightMood.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">how dark &amp; moody nights get — torches and spells become the light</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Impact Flash</span>
+                        <input type="range" min="0" max="${impactFxMaxPct}" step="5" value="${impactFxPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setImpactFx)ThreePost.setImpactFx(this.value/100);this.nextElementSibling.textContent=(this.value=='0'?'off':(this.value/100).toFixed(2));">
+                        <span class="pm-vol-val">${impactFxPct===0?'off':impactFx.toFixed(2)}</span>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">bloom kick when spells and projectiles land</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

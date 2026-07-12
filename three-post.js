@@ -84,6 +84,55 @@ const ThreePost = (function () {
 
     var _cinematicPass = null;
 
+    // ── Impact flash (bloom pulse) ───────────────────────────────────────
+    // Big hits kick the bloom strength up for a beat and let it decay — the
+    // cheap "the screen radiates" moment (the bloom pass already runs, so a
+    // pulse costs nothing). Scaled by the pause-menu Impact Flash slider;
+    // 0 disables pulses entirely. Fired by the VFX layer via bloomPulse().
+    var _impactFx = 0.7;                       // 0..1.5 slider
+    var IMPACT_FX_MAX = 1.5;
+    try {
+        var _ifxSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_impactFx') : null;
+        if (_ifxSaved !== null) {
+            var _ifv = parseFloat(_ifxSaved);
+            if (!isNaN(_ifv)) _impactFx = Math.max(0, Math.min(IMPACT_FX_MAX, _ifv));
+        }
+    } catch (e) {}
+    var _bloomPulseAmt = 0;                    // current pulse peak (bloom strength units)
+    var _bloomPulseT0 = 0;                     // pulse start (ms)
+    var _bloomPulseMs = 300;                   // pulse decay time
+
+    function bloomPulse(amount, ms) {
+        if (_impactFx <= 0) return;
+        var a = parseFloat(amount);
+        if (isNaN(a) || a <= 0) return;
+        a = Math.min(2.0, a) * _impactFx;
+        var now = performance.now();
+        // Overlapping pulses: keep whichever peak is currently stronger so
+        // multi-hit spam can't stack bloom to white-out.
+        var live = _bloomPulseCurrent(now);
+        if (a > live) {
+            _bloomPulseAmt = a;
+            _bloomPulseT0 = now;
+            _bloomPulseMs = Math.max(80, Math.min(1200, ms || 300));
+        }
+    }
+    function _bloomPulseCurrent(now) {
+        if (_bloomPulseAmt <= 0) return 0;
+        var t = (now - _bloomPulseT0) / _bloomPulseMs;
+        if (t >= 1) { _bloomPulseAmt = 0; return 0; }
+        var f = 1 - t;
+        return _bloomPulseAmt * f * f;         // ease-out decay
+    }
+    function setImpactFx(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _impactFx = Math.max(0, Math.min(IMPACT_FX_MAX, s));
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_impactFx', String(_impactFx)); } catch (e) {}
+    }
+    function getImpactFx() { return _impactFx; }
+    function getImpactFxMax() { return IMPACT_FX_MAX; }
+
     // ── CRT / cinematic filter + vignette state ─────────────────────────
     // The cinematic pass hosts two INDEPENDENT effects: the CRT look (scanlines
     // + chromatic aberration + barrel curvature + flicker) and a separate corner
@@ -180,7 +229,9 @@ const ThreePost = (function () {
             'uVignetteSoft':  { value: 0.55 },
             'uVignetteAmount':{ value: 0.0 },
             'uCrtAmount':     { value: 0.0 },
-            'uCurvature':     { value: 0.0 }
+            'uCurvature':     { value: 0.0 },
+            'uNightGrade':    { value: 0.0 },
+            'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -201,6 +252,8 @@ const ThreePost = (function () {
             'uniform float uVignetteAmount;',
             'uniform float uCrtAmount;',
             'uniform float uCurvature;',
+            'uniform float uNightGrade;',
+            'uniform vec3 uNightTint;',
             'varying vec2 vUv;',
             '',
             'vec2 curveUV(vec2 uv) {',
@@ -238,11 +291,25 @@ const ThreePost = (function () {
             '  float flicker = 1.0 - (0.006 * uCrtAmount) * sin(uTime * 8.3);',
             '  col.rgb *= flicker;',
             '',
-            '  // ── vignette (independent of the CRT look), scaled by uVignetteAmount ──',
+            '  // ── night colour grade — cool tint + desaturate + crushed shadows.',
+            '  // Driven per-frame by the day/night cycle × the Night Mood slider,',
+            '  // so nights read moody instead of "slightly blue day".',
+            '  if (uNightGrade > 0.001) {',
+            '    float ng = clamp(uNightGrade, 0.0, 1.0);',
+            '    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));',
+            '    col.rgb = mix(col.rgb, vec3(lum), 0.35 * ng);          // drain colour',
+            '    col.rgb *= mix(vec3(1.0), uNightTint, ng);             // moonlight tint',
+            '    vec3 crushed = col.rgb * col.rgb * (3.0 - 2.0 * col.rgb);',
+            '    col.rgb = mix(col.rgb, crushed, 0.30 * ng);            // deepen blacks',
+            '  }',
+            '',
+            '  // ── vignette (independent of the CRT look), scaled by uVignetteAmount.',
+            '  // The night grade closes the corners in further for the moody frame.',
             '  vec2 vc = uv - 0.5;',
             '  float vDist = dot(vc, vc);',
             '  float vignette = smoothstep(uVignetteSize, uVignetteSize - uVignetteSoft, vDist);',
-            '  col.rgb *= mix(1.0, vignette, clamp(uVignetteAmount, 0.0, 1.0));',
+            '  float vigAmt = clamp(uVignetteAmount + 0.35 * uNightGrade, 0.0, 1.0);',
+            '  col.rgb *= mix(1.0, vignette, vigAmt);',
             '',
             '  gl_FragColor = col;',
             '}'
@@ -503,6 +570,72 @@ const ThreePost = (function () {
         bloomStrength: 0, bloomThreshold: 1.0
     };
 
+    // ── Night Mood ───────────────────────────────────────────────────────
+    // The old night preset barely darkened the scene (exposure 0.98 → 0.92),
+    // so nights read as slightly blue days. The DEEP preset below is the
+    // moody extreme — a real drop in exposure/fill so torches, wards and
+    // spell glow become the light sources — and the pause-menu "Night Mood"
+    // slider blends the active night preset between the two (0 = old soft
+    // night, 1 = full deep night). The same value also drives the night
+    // colour grade in the cinematic pass and scales down the units' emissive
+    // self-glow in three-renderer.js (ThreePost.getNightMood).
+    var LIGHT_NIGHT_DEEP = {
+
+        sunColor:    0x8ba4e0,
+        sunIntensity: 0.38,
+        sunX: 0.4, sunY: 1.1, sunZ: 0.3,
+
+        skyColor:    0x1b2745,
+        groundColor: 0x0c0b14,
+        hemiIntensity: 0.16,
+
+        ambientColor: 0x353f66,
+        ambientIntensity: 0.15,
+        exposure: 0.68,
+        bloomStrength: 0, bloomThreshold: 1.0
+    };
+
+    var _nightMood = 0.65;                     // 0..1 pause-menu slider
+    try {
+        var _nmSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_nightMood') : null;
+        if (_nmSaved !== null) {
+            var _nmv = parseFloat(_nmSaved);
+            if (!isNaN(_nmv)) _nightMood = Math.max(0, Math.min(1, _nmv));
+        }
+    } catch (e) {}
+
+    // Blend the two night presets by the Night Mood slider. Colours lerp in
+    // RGB via THREE.Color so the result feeds _presetToTarget unchanged.
+    var _npColA = null, _npColB = null;
+    function _nightPreset() {
+        var m = _nightMood;
+        if (m <= 0) return LIGHT_NIGHT;
+        if (!_npColA) { _npColA = new THREE.Color(); _npColB = new THREE.Color(); }
+        function mixHex(a, b) {
+            _npColA.setHex(a); _npColB.setHex(b);
+            _npColA.lerp(_npColB, m);
+            return _npColA.getHex();
+        }
+        function mixNum(a, b) { return a + (b - a) * m; }
+        return {
+            sunColor: mixHex(LIGHT_NIGHT.sunColor, LIGHT_NIGHT_DEEP.sunColor),
+            sunIntensity: mixNum(LIGHT_NIGHT.sunIntensity, LIGHT_NIGHT_DEEP.sunIntensity),
+            sunX: LIGHT_NIGHT.sunX, sunY: LIGHT_NIGHT.sunY, sunZ: LIGHT_NIGHT.sunZ,
+            skyColor: mixHex(LIGHT_NIGHT.skyColor, LIGHT_NIGHT_DEEP.skyColor),
+            groundColor: mixHex(LIGHT_NIGHT.groundColor, LIGHT_NIGHT_DEEP.groundColor),
+            hemiIntensity: mixNum(LIGHT_NIGHT.hemiIntensity, LIGHT_NIGHT_DEEP.hemiIntensity),
+            ambientColor: mixHex(LIGHT_NIGHT.ambientColor, LIGHT_NIGHT_DEEP.ambientColor),
+            ambientIntensity: mixNum(LIGHT_NIGHT.ambientIntensity, LIGHT_NIGHT_DEEP.ambientIntensity),
+            exposure: mixNum(LIGHT_NIGHT.exposure, LIGHT_NIGHT_DEEP.exposure),
+            bloomStrength: 0, bloomThreshold: 1.0
+        };
+    }
+
+    // Smoothed 0(day)→1(night) factor for the per-frame night colour grade.
+    // Eased in syncLighting alongside the light lerp so the grade fades in
+    // with the same cadence as the sun.
+    var _nightF = 0;
+
     var LIGHT_LERP_SPEED = 1.5;
 
     var _cur = {
@@ -621,9 +754,16 @@ const ThreePost = (function () {
 
         if (cycle !== _lastCycle) {
             _lastCycle = cycle;
-            _target = _presetToTarget(cycle === 'night' ? LIGHT_NIGHT : LIGHT_DAY);
+            _target = _presetToTarget(cycle === 'night' ? _nightPreset() : LIGHT_DAY);
             _lerpT = 0;
         }
+
+        // Night factor for the colour grade — eased every frame (not gated on
+        // _lerpT) so mid-match flips always converge even if the light lerp
+        // was interrupted by a preset re-target.
+        var _nfTarget = (cycle === 'night') ? 1 : 0;
+        _nightF += (_nfTarget - _nightF) * Math.min(1, LIGHT_LERP_SPEED * 0.016 * 1.4);
+        if (Math.abs(_nightF - _nfTarget) < 0.002) _nightF = _nfTarget;
 
         if (_lerpT < 1.0) {
 
@@ -697,6 +837,21 @@ const ThreePost = (function () {
     // used by the renderer's per-unit shadow-proxy planes so a billboard
     // sprite always casts its full silhouette regardless of the free camera.
     function getSunAzimuth() { return Math.atan2(_cur.sunDirX, _cur.sunDirZ); }
+
+    // ── Night Mood API ───────────────────────────────────────────────────
+    // 0 = the old soft night, 1 = deep moody night. Re-targets the light lerp
+    // immediately when changed mid-night so the slider feels live.
+    function setNightMood(v) {
+        var s = parseFloat(v);
+        if (isNaN(s)) return;
+        _nightMood = Math.max(0, Math.min(1, s));
+        if (_lastCycle === 'night') {
+            _target = _presetToTarget(_nightPreset());
+            _lerpT = 0;
+        }
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_nightMood', String(_nightMood)); } catch (e) {}
+    }
+    function getNightMood() { return _nightMood; }
 
     function setFilmicTone(enabled) {
         _filmic = !!enabled;
@@ -1230,6 +1385,21 @@ const ThreePost = (function () {
         _updateLavaLights();
         _updateUnitLights();
 
+        // Night grade — per-frame: the eased night factor × the Night Mood
+        // slider. The cinematic pass must run whenever the grade is live,
+        // even with CRT + vignette both off.
+        if (_cinematicPass) {
+            var _ng = _nightF * _nightMood * 0.85;
+            _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
+            _cinematicPass.enabled = !!(_cin.crt || _cin.vignette || _ng > 0.001);
+        }
+
+        // Impact flash — decaying bloom kick over the steady user strength.
+        if (_bloomPass && _bloomPass.enabled) {
+            var _pulse = _bloomPulseCurrent(performance.now());
+            _bloomPass.strength = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH) + _pulse;
+        }
+
         if (_cinematicPass && _cinematicPass.enabled) {
             _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
         }
@@ -1299,7 +1469,9 @@ const ThreePost = (function () {
         var s = parseFloat(v);
         if (isNaN(s)) return;
         _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
-        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _exposureUser;
+        // Include the filmic compensation — omitting it made the Brightness
+        // slider visibly darken the scene until the next day/night ease.
+        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_exposure', String(_exposureUser)); } catch (e) {}
     }
     function getExposureScale() { return _exposureUser; }
@@ -1549,6 +1721,12 @@ const ThreePost = (function () {
         getSunAzimuth: getSunAzimuth,
         setFilmicTone: setFilmicTone,
         isFilmicTone: isFilmicTone,
+        setNightMood: setNightMood,
+        getNightMood: getNightMood,
+        bloomPulse: bloomPulse,
+        setImpactFx: setImpactFx,
+        getImpactFx: getImpactFx,
+        getImpactFxMax: getImpactFxMax,
         setDofStrength: setDofStrength,
         getDofStrength: getDofStrength,
         rebuildWardLights: rebuildWardLights,

@@ -7044,9 +7044,24 @@ const ThreeRenderer = (function () {
        AP-spent units glow at half strength to keep the grey-out readable. */
     var UNIT_SELFGLOW_DAY   = 0.15;
     var UNIT_SELFGLOW_NIGHT = 0.85;
+    /* Deep-night self-glow: at full Night Mood units keep only this much
+       emissive — enough to stay readable, low enough that the darkness and
+       the torch/ward point-lights actually land on them. The old fixed 0.85
+       made every unit 85% self-lit at night, which is most of why nights
+       never read as dark. */
+    var UNIT_SELFGLOW_NIGHT_DEEP = 0.30;
     function _unitSelfGlowIntensity(unit) {
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
-        var base = (cycle === 'night') ? UNIT_SELFGLOW_NIGHT : UNIT_SELFGLOW_DAY;
+        var base;
+        if (cycle === 'night') {
+            var mood = 0;
+            try {
+                if (typeof ThreePost !== 'undefined' && ThreePost.getNightMood) mood = ThreePost.getNightMood();
+            } catch (e) {}
+            base = UNIT_SELFGLOW_NIGHT + (UNIT_SELFGLOW_NIGHT_DEEP - UNIT_SELFGLOW_NIGHT) * mood;
+        } else {
+            base = UNIT_SELFGLOW_DAY;
+        }
         if (unit && unit.ap <= 0) base *= 0.5;
         return base;
     }

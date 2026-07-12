@@ -90,19 +90,21 @@ const ThreeVFXEffects = (function () {
         return window.ThreeVFX.spawn(opts);
     }
 
+    /* glow: the theme's light colour — drives the magic-orb / shock-ring
+       signature layers and any additive tinting on the generic bursts. */
     var _THEME_MAP = {
-        fire:      { core: 'flame-hot',    trail: 'ember',       burst: 'explosion-orange', ring: 'target-ring' },
-        ice:       { core: 'frost-crystal', trail: 'ice-shard',  burst: 'frost-mist',       ring: 'target-ring-blue' },
-        water:     { core: 'wave-1',        trail: 'frost-mist', burst: 'water-splash',     ring: 'target-ring-blue' },
-        lightning: { core: 'spark-elec',    trail: 'lightning',   burst: 'spark-blue',       ring: 'stun-ring' },
-        divine:    { core: 'divine-sparkle', trail: 'holy-light', burst: 'holy-pillar',      ring: 'halo-ring' },
-        unholy:    { core: 'dark-flame',    trail: 'void-mist',  burst: 'psi-pulse',        ring: 'target-ring' },
-        tech:      { core: 'plasma',        trail: 'spark-elec', burst: 'emp-arc',          ring: 'target-ring-blue' },
-        alien:     { core: 'ufo-glow',      trail: 'acid-green', burst: 'poison-bubble',    ring: 'target-ring-green' },
-        anomaly:   { core: 'psi-pulse',     trail: 'laser-pink', burst: 'void-mist',        ring: 'target-ring' },
-        human:     { core: 'flash',         trail: 'ember',      burst: 'dust-puff',        ring: 'target-ring' },
-        heal:      { core: 'heal-cross',    trail: 'heal-glow',  burst: 'divine-sparkle',   ring: 'target-ring-green' },
-        poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green' },
+        fire:      { core: 'flame-hot',    trail: 'ember',       burst: 'explosion-orange', ring: 'target-ring',       glow: 0xffa544 },
+        ice:       { core: 'frost-crystal', trail: 'ice-shard',  burst: 'frost-mist',       ring: 'target-ring-blue',  glow: 0x8fd8ff },
+        water:     { core: 'wave-1',        trail: 'frost-mist', burst: 'water-splash',     ring: 'target-ring-blue',  glow: 0x5fb8f0 },
+        lightning: { core: 'spark-elec',    trail: 'lightning',   burst: 'spark-blue',       ring: 'stun-ring',         glow: 0xaaddff },
+        divine:    { core: 'divine-sparkle', trail: 'holy-light', burst: 'holy-pillar',      ring: 'halo-ring',         glow: 0xffe9a8 },
+        unholy:    { core: 'dark-flame',    trail: 'void-mist',  burst: 'psi-pulse',        ring: 'target-ring',       glow: 0xb066ff },
+        tech:      { core: 'plasma',        trail: 'spark-elec', burst: 'emp-arc',          ring: 'target-ring-blue',  glow: 0x66e8ff },
+        alien:     { core: 'ufo-glow',      trail: 'acid-green', burst: 'poison-bubble',    ring: 'target-ring-green', glow: 0x86ff7a },
+        anomaly:   { core: 'psi-pulse',     trail: 'laser-pink', burst: 'void-mist',        ring: 'target-ring',       glow: 0xff77dd },
+        human:     { core: 'flash',         trail: 'ember',      burst: 'dust-puff',        ring: 'target-ring',       glow: 0xffd9a0 },
+        heal:      { core: 'heal-cross',    trail: 'heal-glow',  burst: 'divine-sparkle',   ring: 'target-ring-green', glow: 0xa8ffc4 },
+        poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green', glow: 0x9dff5e },
     };
 
     /* Organizational spell `element` tag (data.js) → visual theme. Not a
@@ -257,6 +259,11 @@ const ThreeVFXEffects = (function () {
                     size0: e.ts * 0.3, size1: e.ts * 1.2,
                     opacity0: 0.8, opacity1: 0,
                 });
+
+                /* small bloom kick on the hit (no-ops at Impact Flash 0) */
+                try {
+                    if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.15, 220);
+                } catch (ifErr) {}
             }
 
             if (e.elapsed > e.durMs + 500) {
@@ -403,6 +410,24 @@ const ThreeVFXEffects = (function () {
             size0: ts * 0.4, size1: ts * 1.8,
             opacity0: 0.6, opacity1: 0,
         });
+
+        /* Signature layers — the expanding light orb at the detonation heart,
+           a crisp ground shock ring, and a bloom kick so the whole hit
+           radiates for a beat. Each is guarded: sig effects self-cap
+           (_SIG_MAX_ACTIVE) and bloomPulse no-ops at Impact Flash 0. */
+        try {
+            _sigMagicOrb3D(centerTx, centerTy, {
+                color: theme.glow != null ? theme.glow : 0xffd9a0,
+                r1: ts * 1.0, ms: 700, rise: ts * 0.6,
+            });
+            _sigShockRing3D(centerTx, centerTy, {
+                color: theme.glow != null ? theme.glow : 0xffd9a0,
+                r1: ts * 2.2, ms: 480, torus: false,
+            });
+        } catch (sigErr) {}
+        try {
+            if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.5, 340);
+        } catch (bpErr) {}
     }
 
     var _zoneSpawnAcc = 0;
@@ -3010,6 +3035,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (e.shake && typeof window.shakeBoard === 'function') {
                     window.shakeBoard(e.shake);
                 }
+
+                /* Impact flash: every hit kicks the bloom a little; heavy
+                   (shake-configured) hits get a bigger kick + a ground shock
+                   ring. Both no-op cleanly (Impact Flash slider at 0 / sig cap). */
+                try {
+                    if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) {
+                        ThreePost.bloomPulse(e.shake ? 0.4 : 0.18, e.shake ? 320 : 240);
+                    }
+                    if (e.shake && e.toTx != null) {
+                        _sigShockRing3D(e.toTx, e.toTy, { color: 0xffe2b0, r1: e.ts * 1.5, ms: 400, torus: false });
+                    }
+                } catch (ifErr) {}
 
                 /* Fire the spell's normal impact VFX if it also has one */
                 if (SPELL_MAP[e.spellId] && SPELL_MAP[e.spellId].impact) {
@@ -6704,6 +6741,96 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 tor.scale.set(tr, tr, tr);
                 torMat.opacity = 0.5 * (1 - t);
             }
+        });
+    }
+
+    /* ── floating, expanding light orb ───────────────────────────────────
+       The interdimensional-magic signature: a white-hot core inside a
+       coloured halo that swells, floats upward, breathes, and dissolves.
+       Built from camera-facing Sprites (always read regardless of the free
+       orbit camera) + a slow-spinning halo ring + orbiting ember motes from
+       the particle pool. Pops hard under bloom (additive whites cross the
+       threshold), which is the whole point. */
+    function _sigMagicOrbMat(color, tex) {
+        return new THREE.SpriteMaterial({
+            map: tex,
+            color: new THREE.Color(color != null ? color : 0xffffff),
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+    }
+    function _sigMagicOrb3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var color = opts.color != null ? opts.color : 0x88bbff;
+        var r0 = opts.r0 != null ? opts.r0 : ts * 0.22;
+        var r1 = opts.r1 != null ? opts.r1 : ts * 1.15;
+        var ms = opts.ms != null ? opts.ms : 750;
+        var rise = opts.rise != null ? opts.rise : ts * 0.7;
+        var baseY = opts.height != null ? opts.height : ts * 0.45;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + baseY, wp.z);
+
+        var glowTex = _sigGlowTex();
+        var coreMat = _sigMagicOrbMat(0xffffff, glowTex);
+        var core = new THREE.Sprite(coreMat);
+        core.renderOrder = 168;
+        group.add(core);
+
+        var haloMat = _sigMagicOrbMat(color, glowTex);
+        var halo = new THREE.Sprite(haloMat);
+        halo.renderOrder = 167;
+        group.add(halo);
+
+        /* thin ring shell that expands ahead of the halo — the "unstable
+           containment" read; tilted so it catches the diorama camera */
+        var ringMat = _sigMat(color, { map: _sigRingTex() });
+        var ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), ringMat);
+        ring.rotation.x = -0.9;
+        ring.renderOrder = 166;
+        group.add(ring);
+
+        /* orbiting ember motes via the particle pool (cheap, pooled) */
+        if (_canSpawn() && opts.motes !== false) {
+            var moteN = opts.moteCount != null ? opts.moteCount : 10;
+            var c = tilePx(tx, ty);
+            var mz = unitSurfaceZ(tx, ty) + baseY;
+            for (var i = 0; i < moteN; i++) {
+                var ang = rn(0, 6.2832);
+                var spd = rn(40, 130);
+                _spawn({
+                    x: c.x + Math.cos(ang) * ts * 0.2, y: c.y + Math.sin(ang) * ts * 0.2, z: mz + rn(-8, 8),
+                    vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, vz: rn(20, 90),
+                    mode: 'billboard', sprite: opts.moteSprite || 'divine-sparkle',
+                    ml: ms * 0.7 + rn(0, ms * 0.4),
+                    size0: ts * 0.05 + rn(0, ts * 0.04), size1: 0,
+                    opacity0: 0.9, opacity1: 0,
+                    drag: 1.6, gravity: -30,
+                });
+            }
+        }
+
+        var peakO = opts.opacity != null ? opts.opacity : 1.0;
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var grow = _sigEaseOutCubic(t);
+            var breathe = 1 + 0.07 * Math.sin(el * 0.02);
+            var fade = t > 0.55 ? 1 - (t - 0.55) / 0.45 : 1;
+            var r = (r0 + (r1 - r0) * grow) * breathe;
+            core.scale.set(r * 0.85, r * 0.85, 1);
+            halo.scale.set(r * 2.1, r * 2.1, 1);
+            var rr = r * 2.6 * (0.8 + 0.4 * grow);
+            ring.scale.set(rr, rr, rr);
+            ring.rotation.z = el * 0.003;
+            coreMat.opacity = peakO * fade;
+            haloMat.opacity = peakO * 0.55 * fade;
+            ringMat.opacity = peakO * 0.45 * (1 - t);
+            group.position.y = wp.y + baseY + rise * t;
         });
     }
 
@@ -10929,6 +11056,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireCombo: fireCombo,
 
         sigMagicCircle3D: _sigMagicCircle3D,
+        sigMagicOrb3D: _sigMagicOrb3D,
         sigShockRing3D: _sigShockRing3D,
         sigSpeedBurst3D: _sigSpeedBurst3D,
         sigLightPillar3D: _sigLightPillar3D,
