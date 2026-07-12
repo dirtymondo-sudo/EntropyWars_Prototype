@@ -16338,20 +16338,27 @@
             return lvl;
         }
 
-        // Level 100: recompute max HP/MP from the unit's level-1 base × the level
-        // curve. Offense/defense stats are NOT scaled here (all damage scales at
-        // the resolution chokepoints instead — see applyDamageToUnit). Equipment
-        // and secondary-job max HP/MP bonuses live in _bonusMaxHp/_bonusMaxMp so
-        // they survive a re-scale. Heals the HP/MP delta, exactly like a level-up.
+        // Classic-scale leveling: stats grow ADDITIVELY with level (data.js
+        // levelStatGains — level 100 equals the old level-10 totals, ~1000 HP).
+        // Gains are applied as a DELTA from the last level applied to this unit,
+        // so flat equipment / secondary-job / shop bonuses already sitting on
+        // the live stats survive re-leveling untouched. Damage/heal numbers are
+        // no longer level-scaled (EW_SCALE = 1 makes levelScale() ≡ 1): what a
+        // spell card shows is what it deals. Heals the HP/MP delta like a
+        // level-up.
         function _recomputeStatsForLevel(unit, level) {
-            if (!unit || !unit._baseStats || typeof levelScale !== 'function') return;
-            const ls = levelScale(level);
-            const prevMaxHp = unit.maxHp || 0;
-            const prevMaxMp = unit.maxMp || 0;
-            unit.maxHp = Math.max(1, Math.round(unit._baseStats.maxHp * ls) + (unit._bonusMaxHp || 0));
-            unit.maxMp = Math.max(0, Math.round(unit._baseStats.maxMp * ls) + (unit._bonusMaxMp || 0));
-            const dHp = unit.maxHp - prevMaxHp;
-            const dMp = unit.maxMp - prevMaxMp;
+            if (!unit || typeof levelStatGains !== 'function') return;
+            const g = levelStatGains(level);
+            const prev = unit._lvlStatGains || { hp: 0, mp: 0, atk: 0, def: 0, mdef: 0, int: 0 };
+            const dHp = (g.hp || 0) - (prev.hp || 0);
+            const dMp = (g.mp || 0) - (prev.mp || 0);
+            unit.maxHp = Math.max(1, (unit.maxHp || 0) + dHp);
+            unit.maxMp = Math.max(0, (unit.maxMp || 0) + dMp);
+            unit.atk = Math.max(0, (unit.atk || 0) + (g.atk || 0) - (prev.atk || 0));
+            unit.def = Math.max(0, (unit.def || 0) + (g.def || 0) - (prev.def || 0));
+            unit.mdef = Math.max(0, (unit.mdef || 0) + (g.mdef || 0) - (prev.mdef || 0));
+            unit.intStat = Math.max(0, (unit.intStat || 0) + (g.int || 0) - (prev.int || 0));
+            unit._lvlStatGains = g;
             unit.hp = Math.min(unit.maxHp, Math.max(0, (unit.hp || 0) + Math.max(0, dHp)));
             unit.mp = Math.min(unit.maxMp, Math.max(0, (unit.mp || 0) + Math.max(0, dMp)));
         }
@@ -16423,10 +16430,9 @@
             const name = unitDisplayName(unit);
             const cls = unit.job || unit.cls;
 
-            // Stat growth is NO LONGER an additive per-level table. Max HP/MP are
-            // recomputed from base × levelScale() by _recomputeStatsForLevel();
-            // offense/defense scale at the resolution chokepoints. This function
-            // now only grants spells and level milestones.
+            // Stat growth lives in _recomputeStatsForLevel (additive classic
+            // scale, delta-applied). This function only grants spells and level
+            // milestones.
 
             const learnOrder = typeof CLASS_SPELL_LEARN_ORDER !== 'undefined' ? CLASS_SPELL_LEARN_ORDER[cls] : null;
 
@@ -16445,7 +16451,7 @@
 
             const _shopLvl = (typeof SPELL_SHOP_LEVEL !== 'undefined') ? SPELL_SHOP_LEVEL : 10;
             const _secJobLvl = (typeof SECONDARY_JOB_LEVEL !== 'undefined') ? SECONDARY_JOB_LEVEL : 15;
-            const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [40, 80];
+            const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [];
 
             let milestoneMsg = '';
             const _inBattle = state.phase === 'battle';

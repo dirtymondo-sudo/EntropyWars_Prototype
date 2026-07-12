@@ -4,6 +4,30 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Level 100 REBALANCE — classic magnitude restored (2026-07-12, LATEST) — data.js/battle.js
+Token `20260712l` → `20260712m`. Owner rollback of the ×24 magnitude: MP was
+effectively free in PvP (pools ×24, spell costs flat) and spell cards showed
+base numbers while dealing thousands. New model (WYSIWYG):
+- **`EW_SCALE = 1`** (data.js) ⇒ `levelScale() ≡ 1` — every resolution-time
+  damage/heal/shield/DoT/tower/AI multiplier (all still guarded in
+  battle.js/ai.js/ainew.js/state.js/map.js) is now an exact no-op. Spell card
+  number == damage dealt, at every level. Towers back to flat 2500 HP
+  (scoring is percent-of-tower so unaffected).
+- **Stat growth is additive again**: `LEVEL_TOTAL_STAT_GAINS`
+  (hp 360 / mp 108 / atk 58 / def 52 / mdef 43 / int 43 = column sums of the
+  retired Lv2–10 `LEVEL_UP_GAINS` table) × `((L-1)/99)^1.35`, applied by
+  `levelStatGains()` (data.js) via a rewritten delta-based
+  `_recomputeStatsForLevel` (battle.js) that preserves equipment/sec-job
+  bonuses sitting on live stats. Level 100 == the old level 10 statline
+  (~850–1000 HP, base+108 MP), so flat spell damage AND flat MP costs stay
+  balanced at every level — the classic game's own property. atk/def/mdef/int
+  now grow with level again (they didn't in the ×24 model).
+- **AP fixed at 3**: `AP_BONUS_LEVELS = []` (was [40,80]; battle.js fallback
+  also emptied). No unit ever exceeds `UNIT_MAX_AP` (3).
+- Potions stay percent-of-max (30% HP / 35% MP) — scale-proof either way.
+- Drops 1–2 below are kept for history; their "×24 scaled space" descriptions
+  no longer apply at runtime (the code paths remain, multiplying by 1).
+
 ## Level 100 system — Drop 2 (2026-07-12) — data.js/battle.js/map.js/state.js/ui.js/hud.js
 Token `20260712k` → `20260712l`. World objects + the XP economy join the
 level-100 magnitude space (Drop 1 below covers the core model).

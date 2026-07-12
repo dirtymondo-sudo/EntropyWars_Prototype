@@ -11112,32 +11112,43 @@ const BOSS_GOLD_SPLIT_MODE = 'equal';
 const SPELL_SLOT_MAX = 8;
 
 // ============================================================================
-// Level 100 scaling — single source of truth (see LEVEL100_PLAN.md).
-// Principle: today's numbers are the level-100 *shape*. Every flat damage/heal/
-// shield/DoT and the unit's max HP/MP are multiplied by levelScale(level) at
-// resolution, so SAME-level combat at ANY level feels exactly like today — just
-// at a larger magnitude. Because attacker output and defender HP scale by the
-// same factor, low-level Mystery Dungeon / Challenge play stays balanced for
-// free. Offense/defense STATS (atk/def/mdef/int) are intentionally NOT scaled
-// in-place: all damage flows through the central resolution chokepoints
-// (applyDamageToUnit / applyHealingToUnit / armor) where a single levelScale()
-// multiply is applied, which avoids any double-scaling and keeps AI weight math
-// (which reads raw atk/dmg) in today's magnitude space.
+// Level 100 scaling — single source of truth.
+// REBALANCED back to the classic magnitude (owner request, 2026-07-12): spell/
+// attack/heal/shield/DoT numbers are WYSIWYG — the number a spell card shows is
+// the damage it deals, at EVERY level, and MP costs stay flat against an MP
+// pool that only grows modestly. EW_SCALE = 1 turns the resolution-time
+// levelScale() multiplier (still guarded at every damage/heal chokepoint in
+// battle.js/ai.js/state.js/map.js) into an exact no-op everywhere.
+// Leveling instead grows unit STATS additively, exactly like the classic
+// Lv1→10 game: LEVEL_TOTAL_STAT_GAINS is the column sum of the old per-level
+// gains table stretched across levels 1→100, so a level-100 unit has the old
+// level-10 statline (~1000 HP). Because HP/MP only grow ~1.6–2× from level 1
+// to 100, flat spell damage and MP costs stay balanced at every level — same
+// property the classic game had.
 // ============================================================================
 const LEVEL_CAP = 100;
-// Global magnitude: a level-100 effect = today's number × EW_SCALE. Since stat
-// growth is now pure recompute-from-base (no additive per-level table), this is
-// the SOLE HP knob: race base HP (~445–660) × 24 ≈ 10.7k–15.8k, squarely inside
-// the 10k–20k level-100 target. EW_SCALE scales damage/heals by the same factor,
-// so hit/heal PROPORTIONS are unchanged — raise it for bigger numbers, not for a
-// different feel. (Owner-tunable — see LEVEL100_PLAN.md §9.)
-const EW_SCALE = 24;
+// Resolution-time magnitude multiplier. 1 = WYSIWYG (displayed spell damage ==
+// dealt damage at all levels). Do NOT raise this without also scaling spell
+// cards, MP costs, and every flat table — see the 2026-07 level-100 rollback.
+const EW_SCALE = 1;
 // Curve exponent — keeps early levels gentle, late levels meaningful.
 const LEVEL_SCALE_EXP = 1.35;
 function levelScale(level) {
     if (LEVEL_CAP <= 1) return 1;
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     return 1 + (EW_SCALE - 1) * Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+}
+
+// Additive stat growth, classic scale. Totals are the exact column sums of the
+// retired Lv2–10 LEVEL_UP_GAINS table, so level 100 == the old level 10.
+// The ramp follows the same gentle curve exponent as levelScale.
+const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 108, atk: 58, def: 52, mdef: 43, int: 43 };
+function levelStatGains(level) {
+    const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
+    const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+    const out = {};
+    for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * t);
+    return out;
 }
 
 // Spell-unlock levels mapped onto CLASS_SPELL_LEARN_ORDER indices. The engine
@@ -11152,7 +11163,8 @@ function getSpellUnlockLevel(cls, spellIdx) {
 // Milestone levels (single place to tune).
 const SPELL_SHOP_LEVEL = 10;
 const SECONDARY_JOB_LEVEL = 15;
-const AP_BONUS_LEVELS = [40, 80];
+// Units always have exactly UNIT_MAX_AP (3) AP — no bonus-AP level milestones.
+const AP_BONUS_LEVELS = [];
 
 // Mode level rules — PvP is normalized to the cap; progression modes level up
 // during play. Adding "Endless" later just means adding it to progressionModes.
@@ -11201,17 +11213,8 @@ const SPELL_SHOP_PRICES = {
     'III': 140,
 };
 
-const LEVEL_UP_GAINS = {
-    2:  { hp: 30, mp:  8, atk: 5, def: 4, mdef: 3, int: 3 },
-    3:  { hp: 30, mp:  8, atk: 5, def: 4, mdef: 3, int: 3 },
-    4:  { hp: 35, mp: 10, atk: 6, def: 5, mdef: 4, int: 4 },
-    5:  { hp: 35, mp: 10, atk: 6, def: 5, mdef: 4, int: 4 },
-    6:  { hp: 40, mp: 12, atk: 7, def: 6, mdef: 5, int: 5 },
-    7:  { hp: 40, mp: 12, atk: 7, def: 6, mdef: 5, int: 5 },
-    8:  { hp: 45, mp: 14, atk: 8, def: 7, mdef: 6, int: 6 },
-    9:  { hp: 50, mp: 16, atk: 9, def: 8, mdef: 7, int: 7 },
-    10: { hp: 55, mp: 18, atk: 10, def: 9, mdef: 8, int: 8 }
-};
+// (The old per-level LEVEL_UP_GAINS table was retired — its column sums live
+// on as LEVEL_TOTAL_STAT_GAINS above, stretched across levels 1→100.)
 
 const _CHAL_MAP_POOL_SMALL  = ['normal'];
 const _CHAL_MAP_POOL_MED    = ['medium', 'prebuilt_moon_delta', 'prebuilt_stonehenge_delta', 'prebuilt_nuketown_delta',
@@ -11363,6 +11366,7 @@ Object.assign(window, {
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   LEVEL_CAP, EW_SCALE, LEVEL_SCALE_EXP, levelScale,
+  LEVEL_TOTAL_STAT_GAINS, levelStatGains,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
