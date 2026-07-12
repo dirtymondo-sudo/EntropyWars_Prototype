@@ -3087,6 +3087,18 @@
                     playProjectile(first.x, first.y, second.x, second.y,
                         'proj-ricochet', bounceProjectileMs, spell.spellType, null, spell);
                     playSfx(spellLaunchSfx(spell));
+                    // The camera rides the bounce: hand the live action shot
+                    // to the second victim as the projectile flies (fallback:
+                    // tactical pan framing both when no shot owns the camera).
+                    if (!_cineRetargetShot({ x: second.x, y: second.y }, second,
+                            { duration: bounceProjectileMs + actionMs(80) })
+                        && !state.cameraDisabled && !_skipVisuals()) {
+                        focusBoardCameraOnTiles(
+                            [{ x: first.x, y: first.y }, { x: second.x, y: second.y }],
+                            { persist: true, transitionMs: bounceProjectileMs,
+                              _fogAllowed: _fogCamTilesVisible(
+                                  { x: first.x, y: first.y }, { x: second.x, y: second.y }) });
+                    }
 
                     window.setTimeout(() => {
                         if (second.dead) return;
@@ -3252,9 +3264,16 @@
             const camTarget = firstHit || { x: tx, y: ty };
             const VFX = window.ThreeVFXEffects;
             const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
+            // Every enemy caught in the area (plus the blast centre) — beat 2
+            // of the action shot frames the WHOLE group, not just the first hit.
+            const _aoeFrameTiles = (firstHit && extraTargets.length > 0)
+                ? [{ x: tx, y: ty }, { x: firstHit.x, y: firstHit.y },
+                   ...extraTargets.map(e => ({ x: e.x, y: e.y }))]
+                : undefined;
             const cam = playOffensiveActionCamera(unit, camTarget, {
                 sourceHold: 1100, targetHold: 900,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
+                frameTiles: _aoeFrameTiles,
                 attackName: spell.name,
                 // Timing data only — descent spells keep the standard two-beat
                 // shot; this just syncs the impact kick to the real landing.
@@ -3418,25 +3437,39 @@
             const profile = _animProfile(spell);
             focusUnitPanel(target.id);
             playSfx(profile.sfx || spellLaunchSfx(spell));
-            _spellFocusCamera(unit, x, y, { spellName: spell.name });
+            // Support cinematic: beat 1 on the caster casting/offering, beat 2
+            // glides to the recipient as the gift arrives. Falls back to the
+            // tactical focus pan (and the old flat timings) when unavailable.
+            const _supCine = (target.id !== unit.id)
+                ? _playSupportCineShot(unit, target, { spellName: spell.name })
+                : null;
+            if (!_supCine) _spellFocusCamera(unit, x, y, { spellName: spell.name });
 
             // VFX: aura (3D or canvas fallback)
             const VFX = window.ThreeVFXEffects;
             const hasAura = VFX && VFX.hasMapping(spell.id, 'aura');
             const vfxFallback = opts.vfxFallback || _vfxBuff;
             const projKind = opts.projectileKind || 'shield';
+            // With the cinematic, the projectile launches on beat 1's release
+            // frame and the aura blooms as beat 2 lands on the recipient.
+            const _supLaunch = _supCine ? _supCine.sourceHold : 0;
+            const _supTravel = _supCine ? _supCine.travelMs : actionMs(400);
+            const _supArrive = _supLaunch + _supTravel;
 
             if (target.id !== unit.id) {
                 // Projectile to target + delayed aura
-                playProjectileToUnit(unit, target, projKind, actionMs(400),
-                    spell.spellType, null, spell);
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle') return;
+                    playProjectileToUnit(unit, target, projKind, _supTravel,
+                        spell.spellType, null, spell);
+                }, _supLaunch);
                 if (hasAura) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
                         VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
-                    }, actionMs(400));
+                    }, _supArrive);
                 } else {
-                    window.setTimeout(() => { vfxFallback(target.x, target.y); }, actionMs(400));
+                    window.setTimeout(() => { vfxFallback(target.x, target.y); }, _supArrive);
                 }
             } else {
                 // Self-cast: immediate aura
@@ -3450,7 +3483,16 @@
             }
 
             unit.mp -= effectiveSpellCost;
-            return { target, completionDelay: actionMs(500) };
+            // applyAt: when the gift visibly ARRIVES — callers that want the
+            // effect (heal number, status pop) to land on camera schedule it
+            // here instead of applying instantly at cast.
+            return {
+                target,
+                applyAt: target.id !== unit.id ? _supArrive : 0,
+                completionDelay: _supCine
+                    ? Math.max(actionMs(500), _supCine.totalMs - actionMs(500))
+                    : actionMs(500)
+            };
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -10949,6 +10991,49 @@
                     if (camera._cineShotId !== sequenceId) return;
                     if (sequenceId !== boardCameraSequenceId) return;
                     if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    // ── Multi-target casts (barrage novae like Requiem, AoE
+                    // blasts): beat 2 is a WIDE reverse cut framing EVERY
+                    // affected target instead of a close-up of one victim —
+                    // a spell that hits five units should show five units
+                    // reacting. Zoom fits the whole spread (plus headroom for
+                    // sprites and their floating HP bars), never wider than
+                    // needed, so a tight two-target hit keeps the close feel.
+                    const _ft = shotOpts.frameTiles;
+                    if (_ft && _ft.length >= 2) {
+                        let _minX = Infinity, _maxX = -Infinity, _minY = Infinity, _maxY = -Infinity;
+                        for (const p of _ft) {
+                            if (p.x < _minX) _minX = p.x;
+                            if (p.x > _maxX) _maxX = p.x;
+                            if (p.y < _minY) _minY = p.y;
+                            if (p.y > _maxY) _maxY = p.y;
+                        }
+                        const _wcx = (_minX + _maxX) / 2, _wcy = (_minY + _maxY) / 2;
+                        const _span = Math.max(_maxX - _minX, _maxY - _minY);
+                        const _tiltWide = CINE_HIT_TILT - 8;
+                        const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                            _cineZoomForTiles(_span + 4.5, _tiltWide));
+                        const _gPx = (typeof window._camGroundPx === 'function')
+                            ? window._camGroundPx(Math.round(_wcx), Math.round(_wcy)) : 0;
+                        _cineTpsAnchor({ x: _wcx, y: _wcy }, null);
+                        camera._cineShotTarget = { x: Math.round(_wcx), y: Math.round(_wcy), id: null };
+                        _cineHardCut({
+                            x: _wcx, y: _wcy,
+                            zoom: _zoomWide, tilt: _tiltWide,
+                            yaw: yawFwd + CINE_CAM_YAW_OFFSET + CINE_HIT_SWING,
+                            elevZ: _gPx + ts * CINE_FOCAL_RISE
+                        });
+                        _acChromeFlash('cut');
+                        // Slow push-in through the volley landing across the group.
+                        _cineBeatMove({
+                            zoom: _zoomWide * 1.06,
+                            duration: Math.max(actionMs(300),
+                                Math.round(timings.travelMs * 0.5) + timings.targetHold),
+                            easing: 'linear',
+                            _allowZoomChange: true, _bypassCap: true,
+                            _fogAllowed: fogAllowed || undefined
+                        });
+                        return;
+                    }
                     // Victim already dead by cut time (fast melee resolutions):
                     // don't hard-cut into a close-up of the remains — hold
                     // beat 1 on the caster for the rest of the shot.
@@ -11005,6 +11090,45 @@
                 if (state.phase !== 'battle') return;
                 shakeBoard('normal');
             }, impactMs);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _cineRetargetShot() — mid-shot camera RETARGET. Glides the LIVE
+        // cinematic action shot to a new subject without ending it: a
+        // ricochet hands the frame to the next victim as the bounce flies,
+        // displacement spells (Kinetic Hurl & co) ride with the flung body
+        // to its landing tile, throws pace the fling down. Re-anchors the
+        // TPS pivot on the new subject, updates the occlusion-fade target,
+        // and eases the focal over opts.duration (keeping the shot's zoom/
+        // tilt/yaw unless overridden). Returns false — the caller keeps its
+        // tactical fallback — when no cinematic shot owns the camera.
+        // ═══════════════════════════════════════════════════════════════════
+        function _cineRetargetShot(point, unit, opts = {}) {
+            if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return false;
+            if (camera._cineShotId == null) return false;
+            if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            camera._cineShotTarget = { x: Math.round(point.x), y: Math.round(point.y),
+                id: (unit && unit.id != null) ? unit.id : null };
+            _cineTpsAnchor(point, unit || null);
+            let px = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const z = unit ? _unitElevZ(unit)
+                    : ((typeof getHeightAt === 'function')
+                        ? getHeightAt(Math.round(point.x), Math.round(point.y)) : 0);
+                px = z > 0 ? window._getElevationPx(z) : 0;
+            }
+            _cineBeatMove({
+                x: point.x, y: point.y,
+                elevZ: px + ts * CINE_FOCAL_RISE + (opts.elevPx || 0),
+                ...(opts.zoom !== undefined ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
+                ...(opts.tilt !== undefined ? { tilt: opts.tilt } : {}),
+                ...(opts.yaw  !== undefined ? { yaw: opts.yaw } : {}),
+                duration: Math.max(actionMs(200), opts.duration ?? actionMs(400)),
+                easing: opts.easing || 'easeInOut',
+                _bypassCap: true, _fogAllowed: true
+            });
+            return true;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -11240,7 +11364,7 @@
                 showActionCamChrome({ name: opts.attackName || '',
                     heavy: true, totalMs: timings.totalMs });
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId,
-                    { impactMs: _impactMs });
+                    { impactMs: _impactMs, frameTiles: opts.frameTiles });
             } else {
 
                 const focusX = (sourceUnit.x + target.x) / 2;
@@ -23299,6 +23423,11 @@
                     const _rqDrop = () => {
                         state._repeatQueue = null;
                         state._actionExecuting = false;
+                        // The chain skipped its per-action camera restore while
+                        // repeats were queued — an aborted chain (target died,
+                        // out of AP…) must hand the view back itself.
+                        if (!unit.dead && state.phase === 'battle' && !state.winner
+                            && !state.cameraDisabled) _softResetCameraToUnit(unit);
                         renderBattleUpdate();
                         endUnitIfDone(unit);
                     };
@@ -23324,7 +23453,7 @@
                             state.pendingTarget = null;
                             doSpell(unit, _rq.x, _rq.y, _rq.z);
                         } else { _rqDrop(); }
-                    }, actionMs(500));
+                    }, actionMs(340));   // short beat — chained ×N swings play back-to-back
                     return;   // the chained action re-enters endUnitIfDone when it lands
                 }
             }
@@ -27733,6 +27862,16 @@
                     camera._cineShotId = null;
                     return;
                 }
+                // ×N repeat chain still queued (x2/x3 on the confirm drum):
+                // HOLD the action framing — the next swing re-uses it. The
+                // reset used to snap the camera back and forth between every
+                // repeat; the chain's LAST swing (its own timer, queue idle)
+                // still restores normally right here. _actionExecuting covers
+                // the race where THIS timer belongs to swing N but swing N+1
+                // (the last) is already mid-animation with the queue at 0.
+                const _rqNext = state._repeatQueue;
+                if (_rqNext && _rqNext.unitId === unit.id
+                    && (_rqNext.queued > 0 || state._actionExecuting)) return;
                 _softResetCameraToUnit(unit);
             }, totalDelay);
             return totalDelay;
@@ -29267,24 +29406,62 @@
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
 
-                if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
-                    focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                        zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
-                        holdMs: 99999, persist: true, transitionMs: 350,
-                        _fogAllowed: true
-                    });
-                } else {
-                    _spellFocusCamera(unit, x, y);
+                // Potion cinematic (ally use): beat 1 on the caster winding up
+                // the throw, beat 2 glides to the ally catching and drinking
+                // it. Self-use / 2D keep the old framing (self already gets
+                // the hero shot via _spellFocusCamera).
+                const _hpCine = _playSupportCineShot(unit, target, { spellName: 'Healing Potion' });
+                if (!_hpCine) {
+                    if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                        focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                            holdMs: 99999, persist: true, transitionMs: 350,
+                            _fogAllowed: true
+                        });
+                    } else {
+                        _spellFocusCamera(unit, x, y);
+                    }
                 }
                 pushUndoSnapshot(true);
-                // Rigged models swig the potion (classifySpellAnimKind
-                // 'consume' → castConsume, the UAL2 Consume clip).
-                triggerCastAnim(unit, { id: 'consumeHealPotion', name: 'Healing Potion' });
                 unit.items.healPotion -= 1;
+                const _hpSelf = target.id === unit.id;
+                const _hpLaunch = _hpCine ? _hpCine.sourceHold : actionMs(150);
+                const _hpTravel = _hpCine ? _hpCine.travelMs : actionMs(380);
+                const _hpArrive = _hpSelf ? actionMs(250) : _hpLaunch + _hpTravel;
+                if (_hpSelf) {
+                    // Rigged models swig the potion (classifySpellAnimKind
+                    // 'consume' → castConsume, the UAL2 Consume clip).
+                    triggerCastAnim(unit, { id: 'consumeHealPotion', name: 'Healing Potion' });
+                } else {
+                    // The caster THROWS the bottle; the ally catches it and
+                    // swigs on the arrival frame.
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle') return;
+                        triggerAttackAnim(unit, target.x, target.y);
+                        playSfx('itemThrow');
+                        playProjectileToUnit(unit, target, 'heal', _hpTravel);
+                    }, _hpLaunch);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || target.dead) return;
+                        triggerCastAnim(target, { id: 'consumeHealPotion', name: 'Healing Potion' });
+                    }, _hpArrive);
+                }
                 const heal = Math.max(1, Math.round(96 * getTerrainHealMultiplier(target.x, target.y)));
-                const healed = applyHealingToUnit(target, heal, unit);
-                flashSelectedUnitPanel('heal');
-                addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
+                // The HP lands as the drink goes down — on camera.
+                window.setTimeout(() => {
+                    const healed = applyHealingToUnit(target, heal, unit);
+                    flashSelectedUnitPanel('heal');
+                    addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
+                    renderBattleUpdate();
+                }, _hpArrive);
+                if (_hpCine) {
+                    // End of shot: restore the player's view — the item path
+                    // has no finishAction to do it.
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                        if (camera._cineShotId === _hpCine.sequenceId && !unit.dead) _softResetCameraToUnit(unit);
+                    }, _hpCine.totalMs);
+                }
             } else if (state.selectedTool === 'manaPotion') {
                 if (unit.items.manaPotion <= 0) {
                     addLog('No mana potions left.');
@@ -29311,24 +29488,55 @@
                 focusUnitPanel(target.id);
                 playSfx('manaRegen');
 
-                if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
-                    focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                        zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
-                        holdMs: 99999, persist: true, transitionMs: 350,
-                        _fogAllowed: true
-                    });
-                } else {
-                    _spellFocusCamera(unit, x, y);
+                // Same two-beat potion cinematic as the Healing Potion.
+                const _mpCine = _playSupportCineShot(unit, target, { spellName: 'Mana Potion' });
+                if (!_mpCine) {
+                    if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                        focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                            holdMs: 99999, persist: true, transitionMs: 350,
+                            _fogAllowed: true
+                        });
+                    } else {
+                        _spellFocusCamera(unit, x, y);
+                    }
                 }
                 pushUndoSnapshot(true);
-                triggerCastAnim(unit, { id: 'consumeManaPotion', name: 'Mana Potion' });
                 unit.items.manaPotion -= 1;
+                const _mpSelf = target.id === unit.id;
+                const _mpLaunch = _mpCine ? _mpCine.sourceHold : actionMs(150);
+                const _mpTravel = _mpCine ? _mpCine.travelMs : actionMs(380);
+                const _mpArrive = _mpSelf ? actionMs(250) : _mpLaunch + _mpTravel;
+                if (_mpSelf) {
+                    triggerCastAnim(unit, { id: 'consumeManaPotion', name: 'Mana Potion' });
+                } else {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle') return;
+                        triggerAttackAnim(unit, target.x, target.y);
+                        playSfx('itemThrow');
+                        playProjectileToUnit(unit, target, 'heal', _mpTravel);
+                    }, _mpLaunch);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || target.dead) return;
+                        triggerCastAnim(target, { id: 'consumeManaPotion', name: 'Mana Potion' });
+                    }, _mpArrive);
+                }
                 const restore = 40;
-                const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
-                target.mp = Math.min(target.maxMp, target.mp + restore);
-                flashSelectedUnitPanel('heal');
-                if (mpGain > 0) showFloatingTextForUnit(target, `+${mpGain} MP`, 'mp');
-                addLog(`${unitDisplayName(unit)} uses Mana Potion on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
+                window.setTimeout(() => {
+                    if (target.dead) return;
+                    const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
+                    target.mp = Math.min(target.maxMp, target.mp + restore);
+                    flashSelectedUnitPanel('heal');
+                    if (mpGain > 0) showFloatingTextForUnit(target, `+${mpGain} MP`, 'mp');
+                    addLog(`${unitDisplayName(unit)} uses Mana Potion on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
+                    renderBattleUpdate();
+                }, _mpArrive);
+                if (_mpCine) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                        if (camera._cineShotId === _mpCine.sequenceId && !unit.dead) _softResetCameraToUnit(unit);
+                    }, _mpCine.totalMs);
+                }
             } else if (state.selectedTool === 'scanner') {
                 if (unit.items.scanner <= 0) {
                     addLog('No scanners left.');
@@ -29632,6 +29840,89 @@
                 showActionCamChrome({ name: opts.spellName, heavy: false, totalMs: actionMs(1600) });
             }
             return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _playSupportCineShot() — ALLY-targeted support framing (heals,
+        // potions, shields, buffs on someone else): a gentle two-beat
+        // sequence. BEAT 1 swings in front of the CASTER while they cast /
+        // uncork / throw the gift (same hero framing as the self-cast shot);
+        // BEAT 2 glides across to the RECIPIENT as the projectile/aura
+        // arrives, so the catch/drink/heal lands on camera. No hard cut — a
+        // heal should read as a hand-off, not an impact — and only the light
+        // chrome (name, no letterbox/damage readout). 3D-rig only; returns
+        // null so the caller keeps its tactical focus pan when unavailable.
+        // Returned timings let the caller sync its projectile and effect
+        // application to the beats: fire the gift at .sourceHold, land the
+        // effect at .sourceHold + .travelMs.
+        // ═══════════════════════════════════════════════════════════════════
+        function _playSupportCineShot(unit, target, opts = {}) {
+            if (!unit || !target || target.dead || target.id === unit.id) return null;
+            if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return null;
+            if (state.phase !== 'battle' || state.winner) return null;
+            if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return null;
+            if (camera._fogBlocked(_fogCamTilesVisible(
+                { x: unit.x, y: unit.y }, { x: target.x, y: target.y }))) return null;
+            if (!_cineTpsAnchor(unit, unit)) return null;
+
+            const sequenceId = ++boardCameraSequenceId;
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+            _captureCineReturnView();
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = unit.id;
+            camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
+            camera._cineKeepSubject = true;
+
+            const dx = target.x - unit.x, dy = target.y - unit.y;
+            const len = Math.max(1, Math.hypot(dx, dy));
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const yawFwd = Math.atan2(-dx, -dy) * (180 / Math.PI);
+            let casterPx = 0, tgtPx = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const cz = _unitElevZ(unit), tz = _unitElevZ(target);
+                casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
+                tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
+            }
+
+            const sourceHold = actionMs(opts.sourceHold ?? 780);
+            const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
+            const targetHold = actionMs(opts.targetHold ?? 1000);
+            const totalMs = sourceHold + travelMs + targetHold + actionMs(200);
+
+            // BEAT 1 — the giver: face the caster while they wind up the gift.
+            _cineBeatMove({
+                x: unit.x + (dx / len) * 0.1, y: unit.y + (dy / len) * 0.1,
+                zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
+                tilt: CINE_FACE_TILT, yaw: yawFwd + 180 - CINE_CAM_YAW_OFFSET,
+                elevZ: casterPx + ts * CINE_FOCAL_RISE,
+                duration: actionMs(380), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+
+            // BEAT 2 — the receiver: glide over WITH the gift and hold while
+            // they consume/absorb it.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                _cineTpsAnchor(target, (target.id != null) ? target : null);
+                camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
+                _cineBeatMove({
+                    x: target.x, y: target.y,
+                    zoom: _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                    tilt: CINE_HIT_TILT,
+                    yaw: yawFwd + CINE_CAM_YAW_OFFSET,
+                    elevZ: tgtPx + ts * CINE_FOCAL_RISE,
+                    duration: Math.max(actionMs(280), travelMs), easing: 'easeInOut',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+            }, sourceHold);
+
+            if (opts.spellName) {
+                showActionCamChrome({ name: opts.spellName, heavy: false, totalMs });
+            }
+            return { sequenceId, sourceHold, travelMs, targetHold, totalMs };
         }
 
         function _spellFocusCamera(casterUnit, tx, ty, opts = {}) {
@@ -30039,7 +30330,11 @@
                 }
                 state.pendingTarget = null;
 
-                if (!unit.dead) _softResetCameraToUnit(unit);
+                // ×N repeat chain still queued: hold the action framing —
+                // the next cast re-uses it (see the matching doAttack guard).
+                const _rqNext = state._repeatQueue;
+                const _rqChained = _rqNext && _rqNext.unitId === unit.id && _rqNext.queued > 0;
+                if (!unit.dead && !_rqChained) _softResetCameraToUnit(unit);
                 checkWin();
                 endUnitIfDone(unit);
                 markDirty('board', 'selectedUnit', 'hud');
@@ -30140,8 +30435,15 @@
                 const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
                 let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
                 if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
-                const healed = applyHealingToUnit(_ht, healAmount, unit);
-                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
+                // The HP lands when the gift ARRIVES (support cinematic beat 2)
+                // so the +N and the glow pop while the recipient is on camera.
+                window.setTimeout(() => {
+                    const healed = applyHealingToUnit(_ht, healAmount, unit);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
+                    markDirty('hud');
+                    renderIfDirty();
+                }, _healResult.applyAt || 0);
+                completionDelay = Math.max(completionDelay, _healResult.completionDelay);
             } else if (spell.kind === 'shield') {
                 // Phase 4 migration: shield uses ally support pipeline
                 const _shResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
@@ -30154,6 +30456,7 @@
                 const shieldGain = Math.min((spell.shield || 0) + getHourglassPower(unit), Math.max(0, shieldCap - _st.shield));
                 _st.shield += shieldGain;
                 addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
+                completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
                 // Phase 4 migration: buff uses ally support pipeline
                 const _buffResult = _executeAllySpellAnimation(unit, spell, x, y, effectiveSpellCost, {
@@ -30163,6 +30466,7 @@
                 panelFocusTarget = _buffResult.target;
                 applyStatusEffects(_buffResult.target, spell.statusEffects, `${spell.name}: `, unit);
                 if (spell.statStageBoost) applyStatStageBoost(_buffResult.target, spell.statStageBoost, `${spell.name}: `, unit);
+                completionDelay = Math.max(completionDelay, _buffResult.completionDelay);
             } else if (spell.kind === 'debuff') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
@@ -30831,6 +31135,10 @@
                     const cam = playOffensiveActionCamera(unit, enemies[0], {
                         sourceHold: 1100,
                         targetHold: 900,
+                        // Requiem & co hit everyone in the nova — beat 2 pulls
+                        // wide to frame every victim instead of just the first.
+                        frameTiles: enemies.length > 1
+                            ? enemies.map(e => ({ x: e.x, y: e.y })) : undefined,
                         attackName: spell.name
                     });
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
@@ -30901,7 +31209,7 @@
                 addLog(`${unitDisplayName(unit)} cleanses ${unitDisplayName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');
-                completionDelay = actionMs(500);
+                completionDelay = Math.max(actionMs(500), _clResult.completionDelay);
             }
 
             else if (spell.kind === 'displacement') {
@@ -30970,21 +31278,29 @@
                     if (flung > 0) _applyKnockbackHazard(target);
 
                     if (_displaceSteps.length > 0) {
+                        const flingAnimMs = spell.arcThrow
+                            ? Math.max(actionMs(420), _displaceSteps.length * actionMs(170))
+                            : _displaceSteps.length * 120;
                         if (spell.arcThrow) {
                             // Telekinetic hurl: lift the target off the ground and
                             // fling it in a parabola to its landing tile.
-                            const _arcMs = Math.max(actionMs(420), _displaceSteps.length * actionMs(170));
                             animateJumpArc(target, _displaceFromX, _displaceFromY, target.x, target.y,
-                                _displaceFromZ, target.z ?? 0, _arcMs);
+                                _displaceFromZ, target.z ?? 0, flingAnimMs);
                         } else {
                             animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120);
                         }
 
-                        if (!state.cameraDisabled) {
+                        // The camera FOLLOWS the flung body: the live action
+                        // shot glides with the victim to their landing tile
+                        // (keeping the cinematic framing) instead of staying
+                        // parked on the tile they were hurled off of. Falls
+                        // back to the tactical path pan when no shot is live.
+                        if (!state.cameraDisabled
+                            && !_cineRetargetShot({ x: target.x, y: target.y }, target,
+                                { duration: flingAnimMs + actionMs(150) })) {
                             ++boardCameraSequenceId;
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                            const flingAnimMs = _displaceSteps.length * 120;
                             const _flingZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
                             animateBoardCameraPath(
                                 { x: _displaceFromX, y: _displaceFromY },
@@ -33345,7 +33661,13 @@
                     const fromX = throwTarget.x, fromY = throwTarget.y;
                     const collisionTarget = (unitAt(x, y, z) || unitAt(x, y));
 
-                    _spellFocusCamera(unit, x, y);
+                    // Full action shot on the throw: beat 1 faces the caster
+                    // seizing the victim, beat 2 cuts to the victim mid-carry;
+                    // the fling retarget below then rides the body down to its
+                    // landing tile. (2D fallback keeps the tactical focus pan.)
+                    const _thCam = playOffensiveActionCamera(unit, throwTarget, {
+                        sourceHold: 420, targetHold: 900, attackName: spell.name
+                    });
 
                     const _applyThrowLanding = () => {
                         if (collisionTarget && !collisionTarget.dead && collisionTarget.id !== throwTarget.id) {
@@ -33441,13 +33763,24 @@
                                 pathMs: _thCarryMs + _thFlingMs,
                             });
                         }
-                        completionDelay = _thLiftMs + _thHangMs + _thFlingMs + actionMs(500);
+                        // Ride the fling: once the carry ends, the live action
+                        // shot glides WITH the thrown body down to its landing
+                        // tile so the impact happens on camera.
+                        window.setTimeout(() => {
+                            _cineRetargetShot({ x, y }, throwTarget,
+                                { duration: _thFlingMs + actionMs(160) });
+                        }, _thLiftMs + _thHangMs);
+                        completionDelay = Math.max(
+                            _thLiftMs + _thHangMs + _thFlingMs + actionMs(500),
+                            (_thCam?.totalMs ?? 0) + actionMs(120));
                     } else {
                         window.setTimeout(() => {
                             _applyThrowLanding();
                             animateDisplacement(throwTarget, fromX, fromY, throwTarget.x, throwTarget.y, 200);
+                            // Follow the landing even without the 3D arc.
+                            _cineRetargetShot({ x, y }, throwTarget, { duration: actionMs(320) });
                         }, actionMs(400));
-                        completionDelay = actionMs(800);
+                        completionDelay = Math.max(actionMs(800), (_thCam?.totalMs ?? 0) + actionMs(120));
                     }
                 } else {
 

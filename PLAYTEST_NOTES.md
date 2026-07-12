@@ -4,6 +4,39 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## CINEMATIC CAMERA: FOLLOW / MULTI-TARGET / SUPPORT SHOTS + ×N HOLD (2026-07-12) — battle.js, index.html
+Token `20260712b` → `20260712c`. New camera vocabulary (all in battle.js, next
+to `_playCineActionShot`):
+- **`_cineRetargetShot(point, unit, opts)`** — mid-shot RETARGET: glides the
+  live action shot to a new subject without ending it (re-anchors the TPS
+  pivot + occlusion-fade target). Returns false when no shot owns the camera
+  (callers keep their tactical fallback). Used by: ricochet bounce (camera
+  rides to the second victim), `displacement` kind (Kinetic Hurl & co — camera
+  follows the flung body to its landing tile), `skyThrow` fling (now also gets
+  a full `playOffensiveActionCamera` shot at cast; sourceHold 420).
+- **Multi-target beat 2** — `playOffensiveActionCamera(unit, tgt, { frameTiles:
+  [{x,y}…] })` → `_playCineActionShot` beat 2 becomes a WIDE reverse cut
+  framing the bbox of all tiles (zoom via `_cineZoomForTiles(span+4.5)`,
+  tilt `CINE_HIT_TILT-8`) instead of a one-victim close-up. Wired for `aoe`
+  (`_setupAoeCameraAndTiming` passes centre + every enemy hit) and `barrage`
+  novae (Requiem/Shootout — all enemies in range).
+- **`_playSupportCineShot(unit, target, {spellName})`** — ally-targeted
+  support two-beat: beat 1 faces the caster casting/throwing, beat 2 GLIDES
+  (no hard cut) to the recipient as the gift arrives; light chrome. Returns
+  `{sequenceId, sourceHold, travelMs, targetHold, totalMs}` or null (2D/self →
+  caller falls back to `_spellFocusCamera`). Wired into
+  `_executeAllySpellAnimation` (heal/shield/buff/cleanse — projectile launches
+  at sourceHold, aura + heal HP land at arrival via the returned `applyAt`)
+  and doItem heal/mana potions (caster THROWS the bottle → recipient plays the
+  consume clip on the catch; effect + log land on arrival; shot restores
+  itself at totalMs since the item path has no finishAction).
+- **×2/×3 repeat attacks no longer reset the camera between swings**: the
+  end-of-action `_softResetCameraToUnit` in doAttack's totalDelay timer and
+  doSpell's finishAction is SKIPPED while `state._repeatQueue` for that unit
+  still has `queued > 0` (or `state._actionExecuting` — covers the stale-timer
+  race where swing N's timer fires during the final swing). An aborted chain
+  restores via `_rqDrop`; the inter-repeat gap in endUnitIfDone is 500→340ms.
+
 ## COMBAT PACING + INTRO POLISH (2026-07-12) — battle.js, three-renderer.js, index.html
 Token `20260712a` → `20260712b`. "Everything's a little too fast / camera
 leaves the caster too soon / combos are bare lunges" pass:
