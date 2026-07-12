@@ -9172,6 +9172,24 @@ const ThreeRenderer = (function () {
 
         var targetSet = window._ewTargetableUnitIds || null;
 
+        /* Action-impact focus (battle.js _focusPlatesForImpact): while ANY
+           action fires — local player, CPU or online opponent — only the
+           actor + affected units keep their plates, so nothing blocks the
+           view of a unit being hit. Takes precedence over the targeting-mode
+           set above, and self-expires (state._actionExecuting extends the
+           hold through longer animations) so enemy actions, which never set
+           a local actionMode, release the filter on their own. */
+        var _af = window._ewActionPlateFocus || null;
+        if (_af) {
+            var _afBusy = false;
+            try { _afBusy = !!(typeof state !== 'undefined' && state && state._actionExecuting); } catch (e) {}
+            if (!_afBusy && Date.now() > _af.until) {
+                window._ewActionPlateFocus = null;
+            } else if (_af.set) {
+                targetSet = _af.set;
+            }
+        }
+
         for (var entry of _plateObjs) {
             var uid = entry[0], po = entry[1];
             var vis = true;
@@ -9197,10 +9215,13 @@ const ThreeRenderer = (function () {
             po.css2d.visible = vis;
         }
 
-        /* Decoy plates follow their sprite's fog visibility. */
+        /* Decoy plates follow their sprite's fog visibility — and any active
+           plate filter hides them too: a decoy can never be in the focus set,
+           so a plate that ignored the filter while every uninvolved real
+           unit's plate hid would instantly betray it as fake. */
         for (var _dvi = 0; _dvi < _decoyPlates.length; _dvi++) {
             var _dve = _decoyPlates[_dvi];
-            _dve.css2d.visible = _dve.mesh ? !!_dve.mesh.visible : true;
+            _dve.css2d.visible = targetSet ? false : (_dve.mesh ? !!_dve.mesh.visible : true);
         }
     }
 

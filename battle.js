@@ -23712,7 +23712,11 @@
             if (!unit || !tool) return true;
             const tu = unitAt(x, y);
             if (tool === 'healPotion' || tool === 'manaPotion') {
-                return !!(tu && !tu.dead && !isEnemyUnit(tu, unit));
+                if (!tu || tu.dead || isEnemyUnit(tu, unit)) return false;
+                // A full-up ally is not a potion target (doItem refuses it) —
+                // no confirm arms on it and its plate drops from the filter.
+                if (tool === 'healPotion') return tu.hp < tu.maxHp;
+                return tu.maxMp > 0 && tu.mp < tu.maxMp;
             }
             if (ITEM_RULES[tool]?.baneType) {
                 return !!(tu && !tu.dead && !isAllyUnit(tu, unit));
@@ -23741,6 +23745,43 @@
             }
             window._ewTargetableUnitIds = s;
         }
+
+        /* Same collapse, but at the moment an action actually FIRES — and for
+           ANY actor (local player, CPU, online opponent), not just the local
+           click paths that call _focusPlatesForAction. Writes a self-expiring
+           focus that _updatePlateVisibility (three-renderer.js) checks every
+           frame AHEAD of window._ewTargetableUnitIds, so an enemy attacking
+           one of your units hides every unrelated plate (nothing blocks the
+           view of the victim) and the filter releases on its own once the
+           animation window passes. state._actionExecuting extends the hold.
+           opts: { radius: AoE/aura reach around (x,y); tiles: extra impact
+           tiles (line/beam kinds); allies: true = whole team is affected
+           (healAll); holdMs: minimum hold, default 2000 }. */
+        function _focusPlatesForImpact(actor, x, y, opts) {
+            if (state.phase !== 'battle') return;
+            const o = opts || {};
+            const r = o.radius || 0;
+            const s = new Set();
+            if (actor) s.add(actor.id);
+            const distTo = (u, tx, ty) => {
+                let d = Math.abs(u.x - tx) + Math.abs(u.y - ty);
+                if (u._isBoss && u._bossSize === 2) {
+                    d = Math.min(d,
+                        Math.abs(u.x + 1 - tx) + Math.abs(u.y - ty),
+                        Math.abs(u.x - tx) + Math.abs(u.y + 1 - ty),
+                        Math.abs(u.x + 1 - tx) + Math.abs(u.y + 1 - ty));
+                }
+                return d;
+            };
+            for (const u of state.units) {
+                if (u.dead) continue;
+                if (o.allies && actor && isAllyUnit(u, actor)) { s.add(u.id); continue; }
+                if (distTo(u, x, y) <= r) { s.add(u.id); continue; }
+                if (o.tiles && o.tiles.some(t => distTo(u, t.x, t.y) === 0)) s.add(u.id);
+            }
+            window._ewActionPlateFocus = { set: s, until: Date.now() + (o.holdMs || 2000) };
+        }
+        window._ewFocusPlatesForImpact = _focusPlatesForImpact;
 
         function isSpellTileTargeted(spell) {
             if (!spell) return false;
@@ -27053,6 +27094,10 @@
             // Attack is validated — sweep targeting previews/arrows before the
             // swing animation starts (same chokepoint as doSpell).
             if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+            // Collapse nameplates to attacker + whoever's on the struck tile
+            // for the swing — fires for AI/online attackers too, so a
+            // bystander's plate can't block the view of the unit being hit.
+            _focusPlatesForImpact(unit, x, y, { holdMs: 2200 });
 
             let target = z != null ? (unitAt(x, y, z) || unitAt(x, y)) : unitAt(x, y);
 
@@ -29154,6 +29199,7 @@
                 // Facing: using an item turns the user toward its target
                 // (same contract as doAttack/doSpell; self-use is a no-op).
                 setUnitFacing(unit, x - unit.x, y - unit.y);
+                _focusPlatesForImpact(unit, x, y, { holdMs: 1800 });
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
 
@@ -29197,6 +29243,7 @@
                     return;
                 }
                 setUnitFacing(unit, x - unit.x, y - unit.y);
+                _focusPlatesForImpact(unit, x, y, { holdMs: 1800 });
                 focusUnitPanel(target.id);
                 playSfx('manaRegen');
 
@@ -29334,6 +29381,8 @@
                     return;
                 }
                 setUnitFacing(unit, x - unit.x, y - unit.y);
+                // Long hold: bane sequence = camera hold + throw + travel + impact.
+                _focusPlatesForImpact(unit, x, y, { holdMs: 3200 });
                 focusUnitPanel(target.id);
                 const _baneCam = playOffensiveActionCamera(unit, target, {
                     sourceHold: 900, targetHold: 900,
@@ -29797,6 +29846,16 @@
             // all targeting visuals (previews, arrows, ghost blocks, range
             // overlays) so nothing lingers into the cast animation.
             if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
+            // Nameplate focus for the cast: caster + everything in the blast
+            // (AoE/aura radius, beam line, or the whole team for healAll).
+            // Fires for AI/online casters too — see _focusPlatesForImpact.
+            _focusPlatesForImpact(unit, x, y, {
+                radius: spell.aoeRadius || spell.auraRadius || 0,
+                tiles: isLineDirection && typeof getLinePoints === 'function'
+                    ? getLinePoints(unit.x, unit.y, x, y) : null,
+                allies: spell.kind === 'healAll',
+                holdMs: 2600
+            });
 
             pushUndoSnapshot(true);
 

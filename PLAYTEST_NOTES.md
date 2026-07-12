@@ -4528,6 +4528,26 @@ data.js, index.html** (token → 20260708b).
   called at every player action-execution site) narrows it to caster + units
   within the spell's aoeRadius/auraRadius of the target tile — so only relevant
   bars show during animations.
+- **Action-impact focus (2026-07-12)**: `_focusPlatesForAction` only fires from
+  LOCAL click paths, so AI/online actions used to leave every plate up (an ally's
+  plate could block the view of your unit being hit). New
+  `_focusPlatesForImpact(actor, x, y, {radius, tiles, allies, holdMs})`
+  (battle.js, also `window._ewFocusPlatesForImpact`) writes
+  `window._ewActionPlateFocus = {set, until}` — consumed each frame by
+  `_updatePlateVisibility` (three-renderer.js) AHEAD of `_ewTargetableUnitIds`,
+  self-expiring by `Date.now()` (`state._actionExecuting` extends the hold).
+  Called at the post-validation chokepoints of doAttack (hold 2200ms), doSpell
+  (2600ms; radius = aoe/aura, `tiles` = beam line, `allies` for healAll) and
+  doItem's potion (1800ms) / bane (3200ms) branches — these executors are shared
+  by the local player, ai.js AND online.js replay, so every actor is covered.
+  While ANY filter set is active, decoy plates hide too (a decoy can't be in the
+  set; a plate ignoring the filter would betray it).
+- **Invalid-target declutter (2026-07-12)**: full-HP allies (heal potion),
+  full-MP/no-MP allies (mana potion) are no longer painted 'heal' in ui.js item
+  mode and fail `_itemTargetTeamOk` (no hover-confirm) — so aiming a potion shows
+  ONLY drinkable allies' plates, zero enemy plates. Free-aim ally-only spell
+  paint ('heal'/'shield'/'buff'/'cleanse'/'guard' kinds) now also gated by
+  `spellTargetUsableOn`, matching the target drum.
 - **`.tp-targeted` CSS exists but nothing ever sets it** — plate emphasis is done
   via visibility filtering + `_updatePlateEffBadges`, not that class.
 - **Killing-blow HP drain bug root cause**: the frame loop skipped BOTH

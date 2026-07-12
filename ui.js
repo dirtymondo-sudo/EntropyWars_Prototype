@@ -2839,7 +2839,13 @@
             }
           } else {
             for (const u of state.units) {
-              if (!u.dead && isAllyUnit(u, _selectedForHl)) _hlCache.set(posKey(u.x, u.y), 'heal');
+              if (u.dead || !isAllyUnit(u, _selectedForHl)) continue;
+              // A full-up ally isn't a valid potion target (doItem refuses it):
+              // don't paint it green, and let its plate drop from the filter so
+              // only units that can actually drink stay on screen while aiming.
+              if (state.selectedTool === 'healPotion' && u.hp >= u.maxHp) continue;
+              if (state.selectedTool === 'manaPotion' && (u.maxMp <= 0 || u.mp >= u.maxMp)) continue;
+              _hlCache.set(posKey(u.x, u.y), 'heal');
             }
           }
         } else if (state.actionMode === 'ward' && canUnitAct(_selectedForHl)) {
@@ -3068,11 +3074,15 @@
                     } else if (['heal', 'shield', 'buff', 'cleanse', 'guard'].includes(spell.kind)) {
                       // Ally-only kinds: green-light ONLY friendly occupants — an
                       // enemy standing in range must never read as a valid target
-                      // (it also drops off the nameplate filter below). The rest
-                      // of the range paints as neutral background so reach stays
-                      // readable in the free-aim view.
+                      // (it also drops off the nameplate filter below). Allies the
+                      // spell would do nothing for (full-HP heal, already-shielded
+                      // shield, clean cleanse — spellTargetUsableOn, same gate the
+                      // target drum uses) drop out too. The rest of the range
+                      // paints as neutral background so reach stays readable in
+                      // the free-aim view.
                       const friendlyTarget = _liveUnitMap.get(posKey(cx, cy));
-                      if (friendlyTarget && isAllyUnit(friendlyTarget, _selectedForHl)) {
+                      if (friendlyTarget && isAllyUnit(friendlyTarget, _selectedForHl)
+                          && (typeof spellTargetUsableOn !== 'function' || spellTargetUsableOn(_selectedForHl, spell, friendlyTarget))) {
                         _hlCache.set(posKey(cx, cy), 'heal');
                       } else if (state.actionMenuView !== 'spellTargets') {
                         _hlCache.set(posKey(cx, cy), 'spell-range-bg');
