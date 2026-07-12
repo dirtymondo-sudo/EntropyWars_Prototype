@@ -1609,12 +1609,12 @@ function HorologeHub({ factionKey, api, portraitUrl, unitKey, burning, poisoned 
 //   badges           inline chips [{label,style,title,plain}] after the
 //                    name — the spell TYPE badge only; delivery/range
 //                    detail lives in the bottom description bar now
-function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) {
+function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
   const port = (b.portrait && b.portrait.url) ? b.portrait : null;   // JRPG target row
   const right = [];
-  if (b.check) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
+  if (b.check && !confirmBtn) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
   if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));
   if (!dead && typeof b.cost === 'number' && !b.sub) {
@@ -1625,7 +1625,18 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) 
   if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
-  if (b.sub) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  // THE CONFIRM BUTTON rides the END of the pending (✓) row itself — a green
+  // seal right where the player's eye already is, instead of floating on top
+  // of the panel. stopPropagation: the row's own click ALSO confirms, and
+  // both firing would double-execute the action.
+  if (confirmBtn) right.push(h('span', {
+    key: 'cf', className: 'hrlg-confirm-inline',
+    onClick: (e) => { e.stopPropagation(); confirmBtn.fire(); },
+  },
+    h('span', { className: 'hrlg-confirm-inline-check' }, '✓'),
+    'CONFIRM',
+  ));
   // TYPE badge rides inline next to the name — it's the matchup intel.
   const badgeRow = (b.badges && b.badges.length) ? h('span', { className: 'hrlg-badges' },
     b.badges.map((bd, k) => bd.plain
@@ -1644,9 +1655,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) 
       h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto' } }, b.label),
       h('span', { className: 'hrlg-thp' },
         h('span', { className: 'hrlg-thp-fill', style: {
+          // flat fill — exact same #6ee2a8/#f2c468/#ff7a8a as the nameplates
           width: hpPct + '%',
-          background: 'linear-gradient(90deg, ' + hpCol + ', ' + hpCol + 'aa)',
-          boxShadow: '0 0 5px ' + hpCol + '55',
+          background: hpCol,
         }}),
         shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
         h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
@@ -1654,7 +1665,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) 
       port.showMp && port.maxMp > 0 && h('span', { className: 'hrlg-thp mp' },
         h('span', { className: 'hrlg-thp-fill', style: {
           width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
-          background: EW.space, opacity: 0.8,
+          background: '#5fd6ff',   // exact nameplate MP blue, full opacity
         }}),
         h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
       ),
@@ -1707,10 +1718,20 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) 
           )
         : badgeRow
         ? h(React.Fragment, null,
-            // the NAME never shrinks — badges/chips clip first if space runs out
-            h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto', maxWidth: 190 } }, b.label),
+            // the TYPE badge never clips — the name ellipsizes first instead
+            h('span', { className: 'hrlg-blabel', style: { flex: '0 1 auto', maxWidth: 170 } }, b.label),
             badgeRow,
             h('span', { className: 'hrlg-spacer' }),
+            right,
+          )
+        : (b.subBelow && b.sub)
+        ? h(React.Fragment, null,
+            // root verbs: the grey-out reason reads UNDER the name, so the
+            // blade can stay narrow without the reason tag fighting for width
+            h('span', { className: 'hrlg-lblcol' },
+              h('span', { className: 'hrlg-blabel' }, b.label),
+              h('span', { className: 'hrlg-subline' }, b.sub),
+            ),
             right,
           )
         : h(React.Fragment, null,
@@ -1719,6 +1740,16 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover }) 
           ),
       h('span', { className: 'hrlg-flash' }),
     ),
+  );
+}
+
+// Tiny mouse glyph with the RIGHT button lit — the "right-click goes back"
+// hint riding the sub-menu BACK chips (pads show their B button instead).
+function _HrlgRmbIcon() {
+  return h('svg', { width: 11, height: 15, viewBox: '0 0 12 16', style: { flex: 'none', display: 'block' } },
+    h('rect', { x: 0.75, y: 0.75, width: 10.5, height: 14.5, rx: 5.25, fill: 'rgba(0,0,0,0.45)', stroke: 'currentColor', strokeWidth: 1.1 }),
+    h('path', { d: 'M6,1.2 A4.9,4.9 0 0 1 11.2,6.2 L11.2,7 L6,7 Z', fill: 'currentColor' }),
+    h('line', { x1: 1, y1: 7, x2: 11, y2: 7, stroke: 'currentColor', strokeWidth: 0.8, opacity: 0.7 }),
   );
 }
 
@@ -1898,23 +1929,24 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     }));
   }
 
-  // the crown — the big bar on top of the identity column. In any sub/quick/
-  // aiming state it's the one, always-visible BACK control; at the root menu
-  // there's nothing to back out of, so it doubles as END TURN instead.
+  // the crown — the big bar on top of the identity column. It is ALWAYS
+  // END TURN now; backing out of sub-menus moved to the ↩ chip riding the
+  // corner of the active panel (plus right-click / ESC / B, unchanged).
   const backable = view !== 'root' || !!am;
-  const pressCrown = () => {
-    if (!backable) {
-      // root view → END TURN (same ritual as firing the END TURN row)
-      if (typeof playSfx === 'function') playSfx('uiConfirm');
-      if (clockApi.strike) clockApi.strike(90);
-      if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(700);
-      onEndTurn();
-      return;
-    }
+  const pressEndTurn = () => {
+    if (typeof playSfx === 'function') playSfx('uiConfirm');
+    if (clockApi.strike) clockApi.strike(90);
+    if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction(700);
+    onEndTurn();
+  };
+  const pressBack = () => {
     if (typeof playSfx === 'function') playSfx('uiBack');
     if (clockApi.wind) clockApi.wind(-360);   // unwind what the sub-menu wound
     onCancel();
   };
+  // pad B / right-click keep the old dual behavior: back when backable,
+  // end turn at the bare root.
+  const pressCrown = () => { if (backable) pressBack(); else pressEndTurn(); };
 
   // ── gamepad bridge: EWPad (state.js) steers the cursor through this hook —
   // same cycle/fire/crown paths the keyboard and mouse use, plus the view
@@ -1954,13 +1986,18 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     ));
   }
   if (view === 'root') {
-    (pushers || []).slice(0, 3).forEach(p => {
+    // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
+    // `available:false` + a `sub` reason instead of vanishing, exactly like
+    // the BUILD row above.
+    (pushers || []).slice(0, 4).forEach(p => {
+      const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
-        className: 'hrlg-push live pulse',
+        className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
-        title: p.title || p.label,
+        title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
         onClick: () => {
+          if (!live) return;
           if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
           if (clockApi.strike) clockApi.strike(-60);
           p.fire();
@@ -1968,6 +2005,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       },
         h('span', { className: 'hrlg-push-glyph' }, p.glyph),
         h('span', { className: 'hrlg-push-lbl' }, p.label),
+        h('span', { className: 'hrlg-push-sub' }, live ? (p.hint || '') : (p.sub || '')),
       ));
     });
   }
@@ -1980,7 +2018,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     // over the HUD, which is why back "randomly didn't work" over the menu.
     onContextMenu: (e) => {
       e.preventDefault(); e.stopPropagation();
-      if (backable) pressCrown();
+      if (backable) pressBack();
     },
   },
     /* ── the IDENTITY COLUMN: end turn/back, the watch, name, vitals,
@@ -1988,18 +2026,16 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
        absolute, nothing overlapping. */
     h('div', { className: 'hrlg-side' },
       h('div', {
-        className: 'hrlg-crown live' + (backable ? '' : ' endturn' + (ap <= 1 ? ' lastap' : '')),
-        title: backable
-          ? (inputDev === 'pad' ? 'Back (' + _hintKey('cancel', 'ESC') + ')' : 'Back (ESC)')
-          : (inputDev === 'pad' ? 'End Turn (' + _hintKey('endTurn', 'SPACE') + ' twice)' : 'End Turn (SPACE)'),
-        onClick: pressCrown,
+        className: 'hrlg-crown live endturn' + (ap <= 1 ? ' lastap' : ''),
+        title: inputDev === 'pad' ? 'End Turn (' + _hintKey('endTurn', 'SPACE') + ' twice)' : 'End Turn (SPACE)',
+        onClick: pressEndTurn,
       },
         h('span', { className: 'hrlg-crown-cap' },
-          h('span', { className: 'hrlg-crown-arrow' }, backable ? '◀' : '■'),
-          h('span', { className: 'hrlg-crown-text' }, backable ? 'BACK' : 'END TURN'),
+          h('span', { className: 'hrlg-crown-arrow' }, '■'),
+          h('span', { className: 'hrlg-crown-text' }, 'END TURN'),
           inputDev === 'pad' && window.EWPad ? h('span', {
             className: 'ew-padbtn ew-padbtn-face ew-padbtn-inline',
-          }, _hintKey(backable ? 'cancel' : 'endTurn', '')) : null,
+          }, _hintKey('endTurn', '')) : null,
         ),
       ),
       h('div', { className: 'hrlg-hubwrap' },
@@ -2016,9 +2052,10 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       maxHp > 0 && h('div', { className: 'hrlg-vitals' },
         (() => {
           const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
-          const hpCol = hpPct <= 30 ? EW.bad : hpPct <= 60 ? EW.warn : EW.good;
+          // exact nameplate palette + thresholds (.hp-fill / .hp-mid / .hp-low)
+          const hpCol = hpPct <= 30 ? '#ff7a8a' : hpPct <= 60 ? '#f2c468' : '#6ee2a8';
           return h('div', { className: 'hrlg-vbar' },
-            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: hpCol, boxShadow: '0 0 6px ' + hpCol + '66' } }),
+            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: hpCol } }),
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
           );
@@ -2026,7 +2063,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         maxMp > 0 && (() => {
           const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
           return h('div', { className: 'hrlg-vbar mp' },
-            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: EW.space, boxShadow: '0 0 6px ' + EW.space + '66' } }),
+            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: '#5fd6ff' } }),
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
           );
@@ -2048,6 +2085,9 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
           return h('div', {
             key: it.key,
             className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
+            // healing potion slot reads green like every other heal control
+            style: (it.key === 'healPotion' && it.canUse)
+              ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
             title: it.name + ' ×' + it.count
               + (it.desc ? ' — ' + it.desc : '')
               + (it.canUse ? '' : ' (can’t use right now)'),
@@ -2075,25 +2115,25 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       ),
       toolRows,
     ),
-    /* ── the CASCADING COMMAND PANELS — parent menus stay visible, dimmed,
-       to the left of the open child. Clicking a dimmed panel backs up. */
+    /* ── the CASCADING COMMAND PANELS — at most TWO on screen: the active
+       panel plus its immediate (dimmed) parent; deeper ancestors hide so
+       the cascade never sprawls across the board. Clicking the dimmed
+       parent backs up to it. */
     h('div', { className: 'hrlg-panels' },
-      _panels.map((p, pi) => {
-        const isOn = pi === _panels.length - 1;
+      _panels.slice(-2).map((p) => {
+        const isOn = p === activePanel;
+        // CONFIRM rides the END of the pending (✓) row itself; only when the
+        // pending pick has no matching row (free board-click aim) does the
+        // big standalone button appear above the list as a fallback.
+        const _ckIdx = (isOn && confirm) ? p.blades.findIndex(b => b.check) : -1;
         return h('div', {
           key: p.key,
-          className: 'hrlg-panel' + (isOn ? ' on' : ' bg'),
-          style: { zIndex: 4 + pi },
+          className: 'hrlg-panel' + (isOn ? ' on' : ' bg') + (p.key === 'root' ? ' root' : ''),
+          style: { zIndex: isOn ? 5 : 4 },
           title: isOn ? undefined : 'Back to this menu',
-          onClick: isOn ? undefined : () => {
-            if (typeof playSfx === 'function') playSfx('uiBack');
-            if (clockApi.wind) clockApi.wind(-360);
-            onCancel();
-          },
+          onClick: isOn ? undefined : () => pressBack(),
         },
-          /* THE CONFIRM BUTTON — while a target is picked (✓), one big green
-             button seals it. Clicking the ✓ row again / ENTER still work. */
-          isOn && confirm && h('div', {
+          isOn && confirm && _ckIdx < 0 && h('div', {
             className: 'hrlg-confirm',
             onClick: () => {
               if (typeof playSfx === 'function') playSfx('uiConfirm');
@@ -2106,6 +2146,22 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               'CONFIRM', confirm.label ? h('span', { className: 'hrlg-confirm-tgt' }, ' — ' + confirm.label) : null),
           ),
           isOn && modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
+          /* ↩ BACK chip — corner of every sub-menu: arrow pointing at the
+             (dimmed) parent to the left + the input that triggers it
+             (right-click, or B on a pad). */
+          isOn && backable && h('div', {
+            className: 'hrlg-backchip',
+            title: inputDev === 'pad'
+              ? 'Back to the previous menu (' + _hintKey('cancel', 'ESC') + ')'
+              : 'Back to the previous menu (right-click or ESC)',
+            onClick: (e) => { e.stopPropagation(); pressBack(); },
+          },
+            h('span', { className: 'hrlg-backchip-arrow' }, '◀'),
+            h('span', { className: 'hrlg-backchip-lbl' }, 'BACK'),
+            inputDev === 'pad' && window.EWPad
+              ? h('span', { className: 'ew-padbtn ew-padbtn-face' }, _hintKey('cancel', ''))
+              : h(_HrlgRmbIcon),
+          ),
           /* panel header: names the open menu in the same blade material */
           p.title && h('div', { className: 'hrlg-view-tab' },
             p.title.node || h(React.Fragment, null,
@@ -2121,14 +2177,31 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
               muted: !isOn,
               fireId: isOn ? fireId : null,
+              confirmBtn: (isOn && i === _ckIdx) ? confirm : null,
               onFire: isOn ? fireBlade : () => {},   // dimmed rows: panel click backs up
               onHover: isOn ? hoverBlade : () => {},
             })),
           ),
         );
       }),
-      /* aim modes with no panel (move/jump) still explain themselves */
-      (!_panels.length && modeLabel) ? h('div', { className: 'hrlg-mode lone' }, modeLabel) : null,
+      /* aim modes with no panel (move/jump) still explain themselves —
+         and still carry the corner BACK chip */
+      (!_panels.length && modeLabel) ? h('div', { className: 'hrlg-lone' },
+        backable && h('div', {
+          className: 'hrlg-backchip lone',
+          title: inputDev === 'pad'
+            ? 'Back (' + _hintKey('cancel', 'ESC') + ')'
+            : 'Back (right-click or ESC)',
+          onClick: (e) => { e.stopPropagation(); pressBack(); },
+        },
+          h('span', { className: 'hrlg-backchip-arrow' }, '◀'),
+          h('span', { className: 'hrlg-backchip-lbl' }, 'BACK'),
+          inputDev === 'pad' && window.EWPad
+            ? h('span', { className: 'ew-padbtn ew-padbtn-face' }, _hintKey('cancel', ''))
+            : h(_HrlgRmbIcon),
+        ),
+        h('div', { className: 'hrlg-mode lone' }, modeLabel),
+      ) : null,
     ),
   );
 }
@@ -2305,9 +2378,13 @@ function _hrlgItemBlades(unit, st) {
       else if (itemKey === 'manaPotion') reason = 'No ally needs MP';
       else reason = 'Can\'t use';
     }
+    // healing items wear heal-green edge to edge, like heal spells do
+    const isHealItem = itemKey === 'healPotion';
     return {
       id: 'it:' + itemKey,
       icon: rules?.icon || '❖',
+      iconColor: isHealItem ? '#57d97e' : undefined,
+      catColor: isHealItem ? '#57d97e' : undefined,
       label: rules?.name || itemKey,
       available: canUse,
       selected: am === 'item' && st.selectedTool === itemKey,
@@ -2585,7 +2662,8 @@ function _hrlgItemTargetBlades(unit, st) {
     return {
       id: 'it:' + i + ':' + u.x + ',' + u.y,
       icon: isBane ? (baneHit ? '▲' : '⌖') : '♥',
-      iconColor: isBane ? (baneHit ? EW.good : undefined) : '#55cc66',
+      iconColor: isBane ? (baneHit ? EW.good : undefined) : '#57d97e',
+      catColor: isHeal ? '#57d97e' : undefined,
       label: typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls),
       available: available,
       sub: sub,
@@ -3001,16 +3079,43 @@ function ActionMenu({ st, hidden }) {
       fire: () => { if (typeof window.doEntropyStrike === 'function' && typeof getSelectedUnit === 'function') window.doEntropyStrike(getSelectedUnit()); },
     });
   }
+  // ⬡ CHANNEL is a PERMANENT tool row now — always on the column, greyed
+  // with the reason whenever it can't fire (matches BUILD's behavior).
   if (typeof getNexusAtUnit === 'function') {
     const _nex = getNexusAtUnit(unit);
-    if (_nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player)
-        && (unit.ap || 0) >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
-      pushers.push({
-        id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: '#5fd6ff',
-        title: 'Channel this Nexus (1 AP)',
-        fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
-      });
-    }
+    const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
+    const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
+    const _chOk = _capturable && (unit.ap || 0) >= _chCost;
+    pushers.push({
+      id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: '#5fd6ff',
+      available: _chOk,
+      sub: !_nex ? 'Not on a nexus' : (!_capturable ? 'Already yours' : 'No AP'),
+      hint: _chCost + ' AP',
+      title: 'Channel this Nexus (' + _chCost + ' AP)',
+      fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
+    });
+  }
+  // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
+  if (typeof canFly === 'function' && canFly(unit) && typeof canChangeAltitude === 'function') {
+    const _groundZ = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
+    const _airborne = (unit.z ?? 0) > _groundZ;
+    const _alt = canChangeAltitude(unit, _airborne ? 'descend' : 'ascend');
+    const _altOk = !!(_alt && _alt.ok);
+    pushers.push({
+      id: 'fly',
+      glyph: _airborne ? '⬇' : '⬆',
+      label: _airborne ? 'LAND' : 'TAKE OFF',
+      color: '#8fd3ff',
+      available: _altOk,
+      sub: (_alt && _alt.reason) || ((unit.ap || 0) < 1 ? 'No AP' : 'Blocked'),
+      hint: '1 AP',
+      title: (_airborne ? 'Land — drop to the ground' : 'Take off — climb into the air') + ' (1 AP)',
+      fire: () => {
+        if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') {
+          doAltitudeChange(getSelectedUnit(), _airborne ? 'land' : 'ascend');
+        }
+      },
+    });
   }
   if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
     pushers.push({
@@ -3078,7 +3183,9 @@ function ActionMenu({ st, hidden }) {
   // pick who to hit. Every list renders through the same HorologeBlade
   // rows: one instrument, one look, one interaction.
   const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, hint: _hintKey('cancel', 'ESC') };
-  const rootBlades = actions.map(a => ({ ...a }));   // declared order IS the menu order
+  // root verbs are short words → the root panel is narrow; the grey-out
+  // reason renders UNDER the name (subBelow) instead of as a right-side tag
+  const rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
   rootBlades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
@@ -6244,9 +6351,10 @@ function _injectHudHideStyles() {
       width: 11px; height: 11px; transform: rotate(45deg);
       background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
     }
-    .hrlg-pip.on { background: var(--hfc); border-color: var(--hfc); box-shadow: 0 0 8px var(--hfc); }
-    .hrlg-pip.bonus { border-color: rgba(110,226,168,0.5); }
-    .hrlg-pip.bonus.on { background: #6ee2a8; border-color: #6ee2a8; box-shadow: 0 0 9px #6ee2a8; }
+    /* AP diamonds — ALWAYS yellow/gold, never the faction tint */
+    .hrlg-pip.on { background: #ffd23e; border-color: #ffd23e; box-shadow: 0 0 8px rgba(255,210,62,0.75); }
+    .hrlg-pip.bonus { border-color: rgba(255,210,62,0.5); }
+    .hrlg-pip.bonus.on { background: #ffd23e; border-color: #ffd23e; box-shadow: 0 0 9px rgba(255,210,62,0.8); }
     .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
     @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
     /* ── 3 item slots — one-click item use, big enough to hit ── */
@@ -6309,10 +6417,23 @@ function _injectHudHideStyles() {
     }
     .hrlg-panel.bg:hover { opacity: 0.7; filter: saturate(0.9) brightness(1); }
     .hrlg-panel.bg .hrlg-blade, .hrlg-panel.bg .hrlg-blade .hrlg-body { cursor: pointer; }
+    /* the root verb panel: short words, narrow blades — the reason a verb is
+       greyed out reads UNDER its name (hrlg-subline), not as a side tag */
+    .hrlg-panel.root { width: 224px; }
+    /* the ARMED verb in a dimmed parent panel grows TALL and keeps its full
+       color, so "which sub-menu am I in" is answered at a glance */
+    .hrlg-panel.bg .hrlg-blade.active { height: 58px; }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-body {
+      filter: none; opacity: 1;
+      border-color: var(--bc, var(--hfc));
+      box-shadow: -2px 0 16px var(--bc-soft, var(--hfc-soft)), inset 3px 0 0 var(--bc, var(--hfc));
+    }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: #fff; font-size: 16px; }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-glyph { font-size: 18px; }
     .hrlg-list {
-      display: flex; flex-direction: column; gap: 5px;
+      display: flex; flex-direction: column; gap: 0;
       max-height: 400px; overflow-y: auto; overflow-x: hidden;
-      padding: 5px 7px 5px 5px;
+      padding: 5px 12px 5px 6px;
       scrollbar-width: thin; scrollbar-color: var(--hfc-soft) rgba(255,255,255,0.05);
       overscroll-behavior: contain;
     }
@@ -6438,10 +6559,13 @@ function _injectHudHideStyles() {
       text-shadow: 0 1px 1px #000, 0 0 3px rgba(0,0,0,0.85);
     }
     .hrlg-thp.mp .hrlg-thp-num { font-size: 9px; }
-    .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    /* type badges NEVER clip — they're the matchup intel; the name
+       ellipsizes first instead (see the flex settings on hrlg-blabel) */
+    .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: none; }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
-    .hrlg-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #fff; opacity: 0.9; box-shadow: 0 0 5px rgba(255,255,255,0.6); }
+    /* AP cost diamonds — always gold, matching the big AP row */
+    .hrlg-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #ffd23e; opacity: 0.95; box-shadow: 0 0 5px rgba(255,210,62,0.6); }
     .hrlg-cfree { font-size: 9px; letter-spacing: 0.16em; color: #a8a391; flex: none; white-space: nowrap; }
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff8a97;
@@ -6470,7 +6594,9 @@ function _injectHudHideStyles() {
        player — in ITS OWN color, never a generic wash. */
     .hrlg-blade.sel .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
-      transform: skewX(-8deg) scaleY(1.06) scaleX(1.02) translateX(3px);
+      /* grow in place — no sideways shove, so the row's right edge (badges,
+         chips) is never pushed out of the panel and clipped */
+      transform: skewX(-8deg) scaleY(1.05);
       border-color: rgba(255,255,255,0.85); border-left-color: var(--bc, var(--hfc));
       box-shadow: 0 0 18px var(--bc-soft, var(--hfc-soft)), inset 0 0 16px var(--bc-faint, var(--hfc-faint)), inset 3px 0 0 var(--bc, var(--hfc));
       z-index: 3;
@@ -6513,8 +6639,9 @@ function _injectHudHideStyles() {
     }
     .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
     .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #6a665a; text-shadow: none; }
-    /* the red reason tag stays readable even inside the washed-out row */
-    .hrlg-blade.dead .hrlg-tag, .hrlg-blade.ghost .hrlg-tag { filter: none; opacity: 1; color: #ff8a97; }
+    /* the red reason tag/subline stays readable even inside the washed-out row */
+    .hrlg-blade.dead .hrlg-tag, .hrlg-blade.ghost .hrlg-tag,
+    .hrlg-blade.dead .hrlg-subline, .hrlg-blade.ghost .hrlg-subline { filter: none; opacity: 1; color: #ff8a97; }
     /* ghost rows the cursor sits on still show they're interactive */
     .hrlg-blade.ghost.sel .hrlg-body { opacity: 0.75; border-color: rgba(255,255,255,0.35); }
     /* confirm flash sweeping along the row */
@@ -6559,6 +6686,64 @@ function _injectHudHideStyles() {
       overflow: hidden; text-overflow: ellipsis; max-width: 260px;
     }
     .hrlg-confirm-tgt { color: #fff; font-size: 12px; letter-spacing: 0.06em; }
+    /* inline CONFIRM — the green seal at the END of the pending (✓) row */
+    .hrlg-confirm-inline {
+      flex: none; display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 10px; margin-right: -4px;
+      cursor: pointer; pointer-events: auto;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #b8f5d0;
+      background: linear-gradient(100deg, #123720 0%, #0c2414 100%);
+      border: 1px solid #57d98a;
+      clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+      text-shadow: 0 0 8px rgba(87,217,138,0.6); white-space: nowrap;
+      animation: hrlgConfirmPulse 1.1s ease-in-out infinite;
+    }
+    .hrlg-confirm-inline:hover { animation: none; filter: brightness(1.4); }
+    .hrlg-confirm-inline:active { transform: translateY(1px); }
+    .hrlg-confirm-inline-check {
+      flex: none; width: 15px; height: 15px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #57d98a; color: #06130a; font-size: 10px; font-weight: 700;
+      box-shadow: 0 0 8px rgba(87,217,138,0.8);
+    }
+    /* ↩ BACK chip — corner of every sub-menu: ◀ pointing at the dimmed
+       parent + the input glyph (right-click mouse / pad B) */
+    .hrlg-backchip {
+      align-self: flex-start; margin: 0 0 2px 6px; flex: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 24px; padding: 0 10px;
+      cursor: pointer; pointer-events: auto; z-index: 3;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #ff9184;
+      background: rgba(26,8,7,0.88);
+      border: 1px solid rgba(255,74,60,0.55);
+      clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+      text-shadow: 0 0 8px rgba(255,74,60,0.5);
+      transition: filter 0.1s ease, transform 0.1s ease;
+    }
+    .hrlg-backchip:hover { filter: brightness(1.45); transform: translateX(-2px); }
+    .hrlg-backchip:active { transform: translateX(-4px); }
+    .hrlg-backchip-arrow { font-size: 11px; line-height: 1; animation: hrlgBackNudge 1.3s ease-in-out infinite; }
+    @keyframes hrlgBackNudge {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(-2px); }
+    }
+    .hrlg-backchip-lbl { line-height: 1; padding-top: 1px; }
+    .hrlg-backchip svg { color: #ffb3a8; }
+    .hrlg-backchip .ew-padbtn { transform: scale(0.85); }
+    .hrlg-backchip.lone { align-self: flex-end; margin: 0 0 4px 0; }
+    /* panel-less aim states (move/jump): mode label + back chip column */
+    .hrlg-lone { display: flex; flex-direction: column; align-items: stretch; pointer-events: auto; }
+    /* root verbs: name + grey-out reason stacked inside one blade */
+    .hrlg-lblcol {
+      flex: 1; min-width: 0; display: flex; flex-direction: column;
+      justify-content: center; gap: 2px;
+    }
+    .hrlg-lblcol .hrlg-blabel { flex: none; }
+    .hrlg-subline {
+      font-size: 8px; letter-spacing: 0.12em; color: #ff8a97; line-height: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.8);
+    }
     /* NOTE: device-size scaling folds into --ew-ui-scale via _applyUIScale()
        in ui.js. */
 
@@ -6578,11 +6763,13 @@ function _injectHudHideStyles() {
        One long, thin black bar pinned bottom-center. Gold/holo-blue
        hairline edges that fade out toward the ends; the black fill fades
        too. Describes the drum's selected (or hovered) ability. */
+    /* Anchored bottom-RIGHT so it can never sit on top of the Horologe's
+       command panels (which own the bottom-left of the screen). */
     #ew-spell-descbar {
-      position: fixed; left: 50%; bottom: 12px; z-index: 60;
-      width: min(1160px, 96vw);
-      transform: translateX(-50%) scale(var(--ew-ui-scale, 1));
-      transform-origin: 50% 100%;
+      position: fixed; right: 14px; bottom: 12px; z-index: 60;
+      width: min(720px, 44vw);
+      transform: scale(var(--ew-ui-scale, 1));
+      transform-origin: 100% 100%;
       pointer-events: none; opacity: 0;
       transition: opacity 0.16s ease;
       font-family: 'DotGothic16', monospace;
@@ -6599,8 +6786,8 @@ function _injectHudHideStyles() {
     #ew-spell-descbar::before { top: 0; }
     #ew-spell-descbar::after  { bottom: 0; }
     .ew-descbar-inner {
-      min-height: 46px; padding: 8px 64px;
-      display: flex; align-items: center; justify-content: center;
+      min-height: 46px; padding: 8px 30px;
+      display: flex; align-items: center; justify-content: flex-start;
       gap: 14px; flex-wrap: wrap; row-gap: 4px;
       background: linear-gradient(90deg,
         rgba(7,7,6,0) 0%, rgba(7,7,6,0.9) 6%,
@@ -6623,6 +6810,14 @@ function _injectHudHideStyles() {
     @media (max-width: 760px) {
       .ew-descbar-inner { padding: 6px 26px; gap: 8px; }
       .ew-descbar-desc { max-width: 100%; }
+    }
+
+    /* ── Combat subtitles: lifted to the TOP (under the scoreboard) so they
+       never cover the command panels at the bottom of the screen. */
+    .battle-subtitle-bar {
+      bottom: auto !important;
+      top: calc(14px + 150px * var(--ew-hud-scale, 1)) !important;
+      align-items: flex-start !important;
     }
   `;
   document.head.appendChild(style);
