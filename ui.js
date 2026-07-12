@@ -7050,8 +7050,50 @@
                         <span class="pm-vol-val">${opts.sensitivity}×</span>
                     </div>
                 </div>
+                ${(() => {
+                    /* ── STRIKE MODE (real-time shooter) — mouse + keybinds ── */
+                    const scc = window.StrikeControlsConfig;
+                    if (!scc) return '';
+                    const binds = scc.getBinds();
+                    const so = scc.getOpts();
+                    let rows = '';
+                    for (const id of Object.keys(scc.labels)) {
+                        rows += `<div class="pm-keybind"><span class="pm-keybind-action">${_escCtl(scc.labels[id])}</span>`
+                            + `<button class="pm-kbd pm-bind-btn" title="Click, then press the key or mouse button to bind"`
+                            + ` onclick="window._ewStrikeRebind('${id}')">${_escCtl(scc.glyph(binds[id]))}</button></div>`;
+                    }
+                    return `
                 <div class="pm-set-group">
-                    <div class="pm-set-group-title">Keyboard &amp; Mouse</div>
+                    <div class="pm-set-group-title">🎯 Strike Mode (Real-Time Shooter)</div>
+                    <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Applies only to the real-time Strike Mode: WASD runs, mouse aims, LMB fires the held hotbar slot, RMB aims down sights, wheel/1-9 switch abilities, TAB holds the scoreboard. Every key below is rebindable — click a key, then press the new one (ESC cancels).</div>
+                    <div class="pm-set-row" style="align-items:center;gap:8px">
+                        <span class="pm-vol-label">Mouse Sens.</span>
+                        <input type="range" class="pm-vol-slider" min="0.04" max="0.50" step="0.01" value="${so.sens}"
+                            oninput="window.StrikeControlsConfig.setOpt('sens',parseFloat(this.value));this.nextElementSibling.textContent=this.value;">
+                        <span class="pm-vol-val">${so.sens}</span>
+                    </div>
+                    <div class="pm-set-row" style="align-items:center;gap:8px">
+                        <span class="pm-vol-label">ADS Sens. ×</span>
+                        <input type="range" class="pm-vol-slider" min="0.2" max="1.0" step="0.05" value="${so.adsSensMult}"
+                            oninput="window.StrikeControlsConfig.setOpt('adsSensMult',parseFloat(this.value));this.nextElementSibling.textContent=this.value+'×';">
+                        <span class="pm-vol-val">${so.adsSensMult}×</span>
+                    </div>
+                    <div class="pm-set-row" style="align-items:center;gap:8px">
+                        <span class="pm-vol-label">Field of View</span>
+                        <input type="range" class="pm-vol-slider" min="40" max="75" step="1" value="${so.fov}"
+                            oninput="window.StrikeControlsConfig.setOpt('fov',parseInt(this.value,10));this.nextElementSibling.textContent=this.value+'°';">
+                        <span class="pm-vol-val">${so.fov}°</span>
+                    </div>
+                    <div class="pm-set-row" style="margin:8px 0;gap:6px;flex-wrap:wrap">
+                        <button class="pm-set-btn${so.invertY ? ' active' : ''}" onclick="window.StrikeControlsConfig.setOpt('invertY',${so.invertY ? 'false' : 'true'});window._ewControlsRerender();">Invert Mouse Y: ${so.invertY ? 'ON' : 'OFF'}</button>
+                        <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetOpts();window._ewControlsRerender();">Reset Sliders</button>
+                        <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetBinds();window._ewControlsRerender();">Reset Keybinds</button>
+                    </div>
+                    <div class="pm-keybinds-grid">${rows}</div>
+                </div>`;
+                })()}
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">Keyboard &amp; Mouse (Turn-Based)</div>
                     <div class="pm-keybinds-grid">
                         <div class="pm-keybind"><span class="pm-keybind-action">Move / Cursor</span><kbd class="pm-kbd">WASD</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Confirm</span><kbd class="pm-kbd">ENTER</kbd></div>
@@ -7066,6 +7108,25 @@
                         <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC</kbd></div>
                     </div>
                 </div>`;
+        };
+        /* Strike Mode keybind capture: click a bind button, then the next key
+           press or mouse click becomes the new binding (ESC cancels). */
+        window._ewStrikeRebind = function(actionId) {
+            const cfg = window.StrikeControlsConfig;
+            if (!cfg) return;
+            if (window._ewToast) window._ewToast('PRESS A KEY OR MOUSE BUTTON… (ESC CANCELS)', 1800);
+            const done = (code) => {
+                window.removeEventListener('keydown', onKey, true);
+                window.removeEventListener('mousedown', onMouse, true);
+                if (code && code !== 'Escape') cfg.setBind(actionId, code);
+                window._ewControlsRerender();
+            };
+            const onKey = (e) => { e.preventDefault(); e.stopImmediatePropagation(); done(e.code); };
+            const onMouse = (e) => { e.preventDefault(); e.stopImmediatePropagation(); done('Mouse' + e.button); };
+            setTimeout(() => {   // skip the click that pressed the bind button itself
+                window.addEventListener('keydown', onKey, true);
+                window.addEventListener('mousedown', onMouse, true);
+            }, 60);
         };
         window._ewPadRebind = function(actionId) {
             if (!window.EWPad) return;

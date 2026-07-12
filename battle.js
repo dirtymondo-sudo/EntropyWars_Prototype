@@ -9641,8 +9641,100 @@
             let suppressClickUntil = 0;        // swallow the click that grabbed pointer lock
             let selSlot = 0;                   // hotbar cursor: 0 = basic attack, 1..n = abilities
             let reticleEl = null, hintEl = null, barEl = null, previewEl = null, barKey = '';
+            let fireHeld = false;              // RT: LMB held → auto-fire when ready
+            let adsHeld = false;               // RT: RMB held → aim-down-sights
+            let scoreHeld = false;             // RT: Tab held → scoreboard
+            let prevFov = 0;                   // FOV to restore when the mode releases
+            let _padRtPrev = false;            // RT: pad right-trigger edge detect
 
             function _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+            /* ── Strike Mode real-time gate: the full shooter game (no turns).
+               Everything below that forks on _rt() leaves the turn-based
+               control scheme byte-identical when this is false. ── */
+            function _rt() {
+                return typeof window._isStrikeRT === 'function' && window._isStrikeRT();
+            }
+
+            /* ── Player settings: mouse sensitivity / invert / FOV / keybinds.
+               Persisted in localStorage; the Settings→Controls UI (ui.js)
+               writes through window.StrikeControlsConfig. Binds use e.code
+               (layout-independent) plus 'Mouse0/1/2/3/4' for mouse buttons. ── */
+            const STRIKE_OPTS_KEY = 'ew_strikeOpts';
+            const STRIKE_BINDS_KEY = 'ew_strikeBinds';
+            const STRIKE_DEFAULT_OPTS = { sens: 0.16, adsSensMult: 0.6, invertY: false, fov: 55 };
+            const STRIKE_DEFAULT_BINDS = {
+                forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD',
+                sprint: 'ShiftLeft', jump: 'Space',
+                fire: 'Mouse0', aim: 'Mouse2', scoreboard: 'Tab',
+                slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4',
+                slot5: 'Digit5', slot6: 'Digit6', slot7: 'Digit7', slot8: 'Digit8', slot9: 'Digit9',
+            };
+            const STRIKE_BIND_LABELS = {
+                forward: 'Move Forward', back: 'Move Back', left: 'Strafe Left', right: 'Strafe Right',
+                sprint: 'Sprint', jump: 'Jump', fire: 'Fire / Cast', aim: 'Aim (ADS)', scoreboard: 'Scoreboard',
+                slot1: 'Ability 1', slot2: 'Ability 2', slot3: 'Ability 3', slot4: 'Ability 4',
+                slot5: 'Ability 5', slot6: 'Ability 6', slot7: 'Ability 7', slot8: 'Ability 8', slot9: 'Ability 9',
+            };
+            let _strikeOpts = null, _strikeBinds = null;
+            function _loadStrikeCfg() {
+                if (!_strikeOpts) {
+                    try { _strikeOpts = Object.assign({}, STRIKE_DEFAULT_OPTS, JSON.parse(localStorage.getItem(STRIKE_OPTS_KEY) || '{}')); }
+                    catch (e) { _strikeOpts = Object.assign({}, STRIKE_DEFAULT_OPTS); }
+                }
+                if (!_strikeBinds) {
+                    try { _strikeBinds = Object.assign({}, STRIKE_DEFAULT_BINDS, JSON.parse(localStorage.getItem(STRIKE_BINDS_KEY) || '{}')); }
+                    catch (e) { _strikeBinds = Object.assign({}, STRIKE_DEFAULT_BINDS); }
+                }
+            }
+            function _sOpt(k) { _loadStrikeCfg(); return _strikeOpts[k]; }
+            function _sBind(k) { _loadStrikeCfg(); return _strikeBinds[k]; }
+            /* action id for a KeyboardEvent.code / 'MouseN' string, or null */
+            function _bindAction(code) {
+                _loadStrikeCfg();
+                for (const a in _strikeBinds) { if (_strikeBinds[a] === code) return a; }
+                return null;
+            }
+            window.StrikeControlsConfig = {
+                labels: STRIKE_BIND_LABELS,
+                defaults: { opts: STRIKE_DEFAULT_OPTS, binds: STRIKE_DEFAULT_BINDS },
+                getOpts() { _loadStrikeCfg(); return Object.assign({}, _strikeOpts); },
+                setOpt(k, v) {
+                    _loadStrikeCfg();
+                    _strikeOpts[k] = v;
+                    try { localStorage.setItem(STRIKE_OPTS_KEY, JSON.stringify(_strikeOpts)); } catch (e) {}
+                    if (k === 'fov' && _owns() && _rt()) { try { ThreeCamera.setFOV(v); } catch (e) {} }
+                },
+                getBinds() { _loadStrikeCfg(); return Object.assign({}, _strikeBinds); },
+                setBind(action, code) {
+                    _loadStrikeCfg();
+                    /* steal the code from any action already using it */
+                    for (const a in _strikeBinds) { if (_strikeBinds[a] === code && a !== action) _strikeBinds[a] = ''; }
+                    _strikeBinds[action] = code;
+                    try { localStorage.setItem(STRIKE_BINDS_KEY, JSON.stringify(_strikeBinds)); } catch (e) {}
+                },
+                resetBinds() {
+                    _strikeBinds = Object.assign({}, STRIKE_DEFAULT_BINDS);
+                    try { localStorage.setItem(STRIKE_BINDS_KEY, JSON.stringify(_strikeBinds)); } catch (e) {}
+                },
+                resetOpts() {
+                    _strikeOpts = Object.assign({}, STRIKE_DEFAULT_OPTS);
+                    try { localStorage.setItem(STRIKE_OPTS_KEY, JSON.stringify(_strikeOpts)); } catch (e) {}
+                },
+                /* pretty label for a bind code shown on the buttons */
+                glyph(code) {
+                    if (!code) return '—';
+                    if (code === 'Mouse0') return 'LMB';
+                    if (code === 'Mouse1') return 'MMB';
+                    if (code === 'Mouse2') return 'RMB';
+                    if (code.indexOf('Mouse') === 0) return 'M' + code.slice(5);
+                    return code.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Arrow/, '')
+                        .replace('ShiftLeft', 'L-SHIFT').replace('ShiftRight', 'R-SHIFT')
+                        .replace('ControlLeft', 'L-CTRL').replace('ControlRight', 'R-CTRL')
+                        .replace('AltLeft', 'L-ALT').replace('AltRight', 'R-ALT')
+                        .toUpperCase();
+                },
+            };
 
             function _battleActive() {
                 if (state.phase !== 'battle' || state.winner) return false;
@@ -9669,6 +9761,13 @@
 
             function _localUnit() {
                 if (!_battleActive()) return null;
+                if (_rt()) {
+                    /* real-time: YOUR character is always the live unit — no
+                       blitz turn to wait for. Dead → null (respawn cam). */
+                    const pu = (typeof StrikeEngine !== 'undefined' && StrikeEngine.playerUnit)
+                        ? StrikeEngine.playerUnit() : null;
+                    return (pu && !pu.dead && !pu._dying) ? pu : null;
+                }
                 const id = state._blitzActiveUnitId;
                 if (id == null) return null;
                 const u = state.units.find(un => un.id === id && !un.dead);
@@ -9681,6 +9780,10 @@
             function _owns() {
                 if (state.cameraDisabled || state._fullMapOverview) return false;
                 if (_hubActive()) return true;
+                /* real-time: own the camera for the WHOLE match — including
+                   while dead (the respawn overlay counts down over the
+                   corpse-cam; stock framing never takes over mid-match) */
+                if (_rt() && _battleActive()) return true;
                 return !!_localUnit();
             }
             window._shooterCamOwns = _owns;
@@ -9706,11 +9809,13 @@
 
             function _zoom() {
                 /* ThreeCamera's orbit distance is baseDist/zoom — invert that
-                   so the boom is always DIST_TILES of world, map-independent */
+                   so the boom is always DIST_TILES of world, map-independent.
+                   ADS pulls the boom in for an over-the-shoulder tight aim. */
                 const ts = CONFIG.tileSize || BASE_TILE;
                 const base = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist)
                     ? ThreeCamera.getBaseDist() : 800;
-                return _clamp(base * zoomMult / (ts * DIST_TILES), 0.15, 10.0);
+                const dist = DIST_TILES * (adsHeld && _rt() ? 0.62 : 1);
+                return _clamp(base * zoomMult / (ts * dist), 0.15, 10.0);
             }
             /* board-space over-the-shoulder focal for a subject at t {x,y} */
             function _shoulderFocal(t) {
@@ -9744,6 +9849,11 @@
             function _camUnit() {
                 const u = _localUnit();
                 if (u) return u;
+                /* real-time death cam: anchor on the corpse until respawn */
+                if (_rt() && typeof StrikeEngine !== 'undefined' && StrikeEngine.playerUnit) {
+                    const pu = StrikeEngine.playerUnit();
+                    if (pu) return pu;
+                }
                 try {
                     const uid = ThreeRenderer.hubFreeRoam.uid && ThreeRenderer.hubFreeRoam.uid();
                     if (uid != null) return (state.units || []).find(x => x.id === uid) || null;
@@ -9764,7 +9874,13 @@
                     return p ? { x: p.x, y: p.y } : null;
                 }
                 const u = _localUnit();
-                return u ? { x: u.x, y: u.y } : null;
+                if (u) return { x: u.x, y: u.y };
+                /* real-time death cam: hold on where the player fell */
+                if (_rt() && typeof StrikeEngine !== 'undefined' && StrikeEngine.playerUnit) {
+                    const pu = StrikeEngine.playerUnit();
+                    if (pu) return { x: pu._dyingX != null ? pu._dyingX : pu.x, y: pu._dyingY != null ? pu._dyingY : pu.y };
+                }
+                return null;
             }
 
             /* ── ownership transitions ── */
@@ -9794,9 +9910,24 @@
                     state.thirdPersonCamera = true;
                     if (typeof camera !== 'undefined' && camera) camera._tpsCollide = true;
                     selSlot = 0;
+                    /* Strike real-time: apply the player's FOV setting for the
+                       whole match; remember the stock FOV to hand back. */
+                    if (_rt()) {
+                        try {
+                            if (typeof ThreeCamera !== 'undefined' && ThreeCamera.getFOV) {
+                                if (!prevFov) prevFov = ThreeCamera.getFOV();
+                                ThreeCamera.setFOV(_sOpt('fov') || 55);
+                            }
+                        } catch (e) {}
+                    }
                     _enterShot(_localUnit());
                 } else {
                     heldDirs = {}; padVec = null; runHeld = false;
+                    fireHeld = false; adsHeld = false;
+                    if (prevFov) {
+                        try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.setFOV) ThreeCamera.setFOV(prevFov); } catch (e) {}
+                        prevFov = 0;
+                    }
                     state.thirdPersonCamera = false;
                     if (!_hubActive()) _stopRoam();
                     /* hand the stock camera back exactly as we found it */
@@ -9826,15 +9957,18 @@
                 if (!locked) return;
                 e.stopImmediatePropagation();
                 if (!_owns()) return;
+                /* sensitivity: player-tunable (Settings → Controls → Strike
+                   Mode); ADS drags slower for precise aim. */
+                const sens = (_sOpt('sens') || LOOK_SENS) * (adsHeld ? (_sOpt('adsSensMult') || 0.6) : 1);
                 /* mouse-right must turn the view RIGHT. In this engine a larger
                    yaw rotates the gaze counter-clockwise (left), so mouse-right
                    DECREASES yaw — the old `+=` was the inverted feel. */
-                yaw -= e.movementX * LOOK_SENS;
+                yaw -= e.movementX * sens;
                 /* standard vertical: mouse up = look up (movementY is negative
-                   moving up, so subtracting raises pitch). EW_INVERT_LOOK_Y
-                   flips it for flight-style players. */
-                const inv = window.EW_INVERT_LOOK_Y ? -1 : 1;
-                pitch = _clamp(pitch - inv * e.movementY * LOOK_SENS, PITCH_MIN, PITCH_MAX);
+                   moving up, so subtracting raises pitch). Settings invert (or
+                   legacy EW_INVERT_LOOK_Y) flips it for flight-style players. */
+                const inv = (_sOpt('invertY') || window.EW_INVERT_LOOK_Y) ? -1 : 1;
+                pitch = _clamp(pitch - inv * e.movementY * sens, PITCH_MIN, PITCH_MAX);
             }, true);
 
             window.addEventListener('mousedown', (e) => {
@@ -9851,8 +9985,25 @@
                     return;
                 }
                 e.preventDefault(); e.stopImmediatePropagation();
+                if (_rt()) {
+                    /* rebindable mouse buttons: default LMB fire (held =
+                       auto-fire), RMB aim-down-sights */
+                    const act = _bindAction('Mouse' + e.button);
+                    if (act === 'fire') { fireHeld = true; _fire(); }
+                    else if (act === 'aim') { adsHeld = true; }
+                    else if (act && act.indexOf('slot') === 0) { _selectSlotRT(parseInt(act.slice(4), 10)); }
+                    else if (act === 'jump') { _rtJump(true); }
+                    return;
+                }
                 if (e.button === 0) _fire();
                 else if (e.button === 2) _cancelAim();
+            }, true);
+            window.addEventListener('mouseup', (e) => {
+                if (!_rt() || !_enabled()) return;
+                const act = _bindAction('Mouse' + e.button);
+                if (act === 'fire') fireHeld = false;
+                else if (act === 'aim') adsHeld = false;
+                else if (act === 'jump') _rtJump(false);
             }, true);
             window.addEventListener('click', (e) => {
                 if (locked || performance.now() < suppressClickUntil) {
@@ -9882,8 +10033,58 @@
                 const t = e.target?.tagName;
                 return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || e.target?.isContentEditable;
             }
+            /* RT jump channel (shared by keyboard + a rebound mouse button) */
+            function _rtJump(on) {
+                try {
+                    if (roamOn && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam.setJump) {
+                        ThreeRenderer.hubFreeRoam.setJump(!!on);
+                    }
+                } catch (er) {}
+            }
+            /* RT: which movement direction (if any) a KeyboardEvent maps to,
+               honouring the player's rebinds. Arrows always work as fallback. */
+            function _rtDirFor(e) {
+                const code = e.code || '';
+                if (code === _sBind('forward') || code === 'ArrowUp') return 'w';
+                if (code === _sBind('back') || code === 'ArrowDown') return 's';
+                if (code === _sBind('left') || code === 'ArrowLeft') return 'a';
+                if (code === _sBind('right') || code === 'ArrowRight') return 'd';
+                return null;
+            }
+
             window.addEventListener('keydown', (e) => {
                 if (!_battleActive() || _typing(e) || state.uiDialog) return;
+                if (_rt()) {
+                    /* ── REAL-TIME key layout (all rebindable) ──
+                       move / sprint / jump / abilities / scoreboard. No end
+                       turn, no aim-cancel — those concepts don't exist here. */
+                    const code = e.code || '';
+                    const dk2 = _rtDirFor(e);
+                    if (dk2) { e.preventDefault(); e.stopImmediatePropagation(); heldDirs[dk2] = true; return; }
+                    if (code === _sBind('sprint') || e.key === 'Shift') { runHeld = true; return; }
+                    if (code === _sBind('jump')) {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        _rtJump(true);
+                        return;
+                    }
+                    if (code === _sBind('scoreboard')) {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        if (!scoreHeld) {
+                            scoreHeld = true;
+                            try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(true); } catch (er) {}
+                        }
+                        return;
+                    }
+                    const act = _bindAction(code);
+                    if (act && act.indexOf('slot') === 0 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        e.preventDefault(); e.stopImmediatePropagation();
+                        _selectSlotRT(parseInt(act.slice(4), 10));
+                        return;
+                    }
+                    if (act === 'fire') { e.preventDefault(); e.stopImmediatePropagation(); fireHeld = true; _fire(); return; }
+                    if (act === 'aim') { e.preventDefault(); e.stopImmediatePropagation(); adsHeld = true; return; }
+                    return;   // everything else (ESC etc.) passes through to the stock handlers
+                }
                 const k = (e.key || '').toLowerCase();
                 const dk = DIR_ALIAS[k];
                 if (dk) {
@@ -9921,6 +10122,21 @@
                 if (k === 'q') { _cancelAim(); }
             }, true);
             window.addEventListener('keyup', (e) => {
+                if (_rt()) {
+                    const code = e.code || '';
+                    const dk2 = _rtDirFor(e);
+                    if (dk2) heldDirs[dk2] = false;
+                    if (code === _sBind('sprint') || e.key === 'Shift') runHeld = false;
+                    if (code === _sBind('jump')) _rtJump(false);
+                    if (code === _sBind('scoreboard') && scoreHeld) {
+                        scoreHeld = false;
+                        try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(false); } catch (er) {}
+                    }
+                    const act = _bindAction(code);
+                    if (act === 'fire') fireHeld = false;
+                    if (act === 'aim') adsHeld = false;
+                    return;
+                }
                 const k = (e.key || '').toLowerCase();
                 const dk = DIR_ALIAS[k];
                 if (dk) heldDirs[dk] = false;
@@ -9933,7 +10149,14 @@
                     } catch (er) {}
                 }
             }, true);
-            window.addEventListener('blur', () => { heldDirs = {}; runHeld = false; padVec = null; });
+            window.addEventListener('blur', () => {
+                heldDirs = {}; runHeld = false; padVec = null;
+                fireHeld = false; adsHeld = false;
+                if (scoreHeld) {
+                    scoreHeld = false;
+                    try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(false); } catch (er) {}
+                }
+            });
 
             /* ── abilities ── */
             function _abilityList(u) {
@@ -9991,11 +10214,24 @@
                 _cancelAim();                            // fists, or a dead slot: nothing armed
                 _refreshHud(true);
             }
+            /* RT: hotbar selection is a pure weapon switch — nothing arms, no
+               tools, no AP. LMB fires whatever is held. */
+            function _selectSlotRT(slot) {
+                const u = _localUnit();
+                if (!u) return;
+                const n = _abilityList(u).length + 1;
+                if (slot < 0 || slot >= n) { if (typeof playErrorSfx === 'function') playErrorSfx(); return; }
+                selSlot = slot;
+                try { playSfx('uiCursorMove', { volume: 0.5 }); } catch (e) {}
+                _refreshHud(true);
+            }
             function _scrollSelect(dir) {
                 const u = _localUnit();
-                if (!u || state._actionExecuting) return;
+                if (!u || (!_rt() && state._actionExecuting)) return;
                 const n = _abilityList(u).length + 1;
-                _selectSlot(u, ((_curSlot(u) + dir) % n + n) % n);
+                const next = ((_curSlot(u) + dir) % n + n) % n;
+                if (_rt()) { _selectSlotRT(next); return; }
+                _selectSlot(u, next);
             }
             function _hotkeySpell(idx) {
                 const u = _localUnit();
@@ -10032,9 +10268,20 @@
 
             function _fire() {
                 const u = _localUnit();
-                if (!u || state._actionExecuting) return;
+                if (!u || (!_rt() && state._actionExecuting)) return;
                 const aim = _aimClient();
                 if (!aim || typeof ThreeRenderer === 'undefined') return;
+                if (_rt()) {
+                    /* REAL-TIME: LMB fires the held hotbar slot at the reticle
+                       — basic attack (slot 0) or an ability. StrikeEngine
+                       owns cooldowns, targeting and resolution. */
+                    try {
+                        if (typeof StrikeEngine !== 'undefined' && StrikeEngine.playerFire) {
+                            StrikeEngine.playerFire(selSlot, aim);
+                        }
+                    } catch (e) {}
+                    return;
+                }
                 if (state.actionMode === 'spell' || state.actionMode === 'attack') {
                     /* the reticle IS the mouse: run the exact click pipeline */
                     if (ThreeRenderer.clickAtScreen) ThreeRenderer.clickAtScreen(aim.x, aim.y);
@@ -10094,6 +10341,39 @@
                 if (!ix && !iy && padVec) { ix = padVec.x; iy = padVec.y; }
                 return { ix: _clamp(ix, -1, 1), iy: _clamp(iy, -1, 1) };
             }
+            /* RT: the walker runs for the whole life — the WHOLE map is open
+               (unitCanTraverse still walls off chasms/towers), no move rings,
+               no provisional-move commits, no AP. Tile crossings write unit.x/y
+               directly (that IS the unit's position in real time). */
+            function _startRoamRT(u) {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return;
+                ThreeRenderer.hubFreeRoam.start(u.id, {
+                    noKeys: true,               // ShooterControls owns the keyboard
+                    onTile: (u2) => {
+                        try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.onPlayerTile) StrikeEngine.onPlayerTile(u2); } catch (e) {}
+                        if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                    },
+                });
+                roamOn = true;
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+            function _roamFrameRT(now) {
+                const u = _localUnit();
+                if (!u) { if (roamOn) _stopRoam(); return; }
+                const stunned = typeof unitHasStatus === 'function'
+                    && (unitHasStatus(u, 'stun') || unitHasStatus(u, 'root'));
+                if (state.uiDialog || stunned
+                    || (typeof isCinematicActive === 'function' && isCinematicActive())) {
+                    if (roamOn) _stopRoam();
+                    return;
+                }
+                if (!_roamActive()) { roamOn = false; _startRoamRT(u); return; }
+                const v = _inputVec();
+                try {
+                    ThreeRenderer.hubFreeRoam.setPadInput(v.ix, v.iy,
+                        runHeld || (padVec && Math.hypot(padVec.x, padVec.y) > 0.92));
+                } catch (e) {}
+            }
             function _startRoam(u) {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return;
                 if (typeof window._initWasdState !== 'function' || typeof posKey !== 'function') return;
@@ -10140,6 +10420,7 @@
                 } catch (e) {}
             }
             function _roamFrame(now) {
+                if (_rt()) { _roamFrameRT(now); return; }
                 const u = _localUnit();
                 const busy = !u || state._actionExecuting || state.uiDialog
                     || state._walkAnimActive
@@ -10252,7 +10533,9 @@
                 /* take-control hint (kb+mouse only — a pad needs no lock) */
                 if (_enabled() && !_aimActive() && own) {
                     const msg = inBattle
-                        ? '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · MOUSE LOOK · SPACE JUMP · SCROLL/1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · ENTER END TURN · ESC RELEASES</span>'
+                        ? (_rt()
+                            ? '🎯 CLICK TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · SHIFT SPRINT · SPACE JUMP · MOUSE AIM · LMB FIRE · RMB AIM · WHEEL/1-9 ABILITIES · TAB SCORES · ESC RELEASES</span>'
+                            : '🎯 CLICK THE BOARD TO TAKE CONTROL<br><span style="opacity:0.75;font-size:11px">WASD RUN · MOUSE LOOK · SPACE JUMP · SCROLL/1-9 SPELLS · LMB ATTACK/CAST · RMB CANCEL · ENTER END TURN · ESC RELEASES</span>')
                         : '🎯 CLICK TO TAKE CONTROL — WASD WALK · MOUSE LOOK · SHIFT RUN · SPACE HOP';
                     if (hintEl._ewMsg !== msg) { hintEl._ewMsg = msg; hintEl.innerHTML = msg; }
                     hintEl.style.display = 'block';
@@ -10260,10 +10543,97 @@
                     hintEl.style.display = 'none';
                 }
 
+                /* ── REAL-TIME hotbar: slot 0 = basic attack, then the
+                   abilities. Greyed = on cooldown / not enough MP, with a
+                   radial cooldown sweep. Selection is a pure weapon switch. ── */
+                if (inBattle && u && _rt()) {
+                    const list = _abilityList(u);
+                    const cur = _clamp(selSlot, 0, list.length);
+                    const eng = (typeof StrikeEngine !== 'undefined') ? StrikeEngine : null;
+                    const slotInfo = (i) => (eng && eng.slotState) ? eng.slotState(u, i) : { ready: true, cdFrac: 0, cdLeft: 0, reason: '' };
+                    let key = [u.id, u.hp, u.mp, cur, _aimActive() ? 1 : 0];
+                    const infos = [];
+                    for (let i = 0; i <= list.length; i++) {
+                        const inf = slotInfo(i);
+                        infos.push(inf);
+                        key.push(inf.ready ? 1 : 0, Math.ceil((inf.cdLeft || 0) / 100));
+                    }
+                    key = key.join('|');
+                    if (force || key !== barKey) {
+                        barKey = key;
+                        barEl.style.display = 'flex';
+                        barEl.innerHTML = '';
+                        let previewHtml = '';
+                        const mkSlotRT = (i, sel, inf, inner, onPick) => {
+                            const slot = document.createElement('div');
+                            const usable = inf.ready;
+                            slot.style.cssText =
+                                'position:relative;overflow:hidden;min-width:64px;padding:5px 8px;text-align:center;cursor:pointer;pointer-events:auto;' +
+                                'font-size:11px;letter-spacing:0.08em;color:' + (usable ? '#e8ecff' : 'rgba(160,168,196,0.55)') + ';' +
+                                'background:rgba(8,10,18,' + (sel ? '0.95' : '0.78') + ');' +
+                                'border:1px solid ' + (sel ? '#7fd4ff' : usable ? 'rgba(140,160,220,0.45)' : 'rgba(140,160,220,0.18)') + ';' +
+                                (sel ? 'box-shadow:0 0 10px rgba(127,212,255,0.4);transform:translateY(-4px);' : '') +
+                                (usable ? '' : 'filter:grayscale(0.8);') +
+                                'clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);';
+                            slot.innerHTML = inner;
+                            /* radial cooldown sweep — drains clockwise as the
+                               ability comes back up */
+                            if (!usable && inf.cdFrac > 0) {
+                                const sweep = document.createElement('div');
+                                sweep.style.cssText =
+                                    'position:absolute;inset:0;pointer-events:none;' +
+                                    'background:conic-gradient(rgba(10,14,26,0.85) ' + Math.round(inf.cdFrac * 360) + 'deg, transparent 0deg);';
+                                slot.appendChild(sweep);
+                                const cdTxt = document.createElement('div');
+                                cdTxt.textContent = (inf.cdLeft / 1000).toFixed(inf.cdLeft >= 10000 ? 0 : 1);
+                                cdTxt.style.cssText =
+                                    'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;' +
+                                    'pointer-events:none;font-size:15px;color:#aee6ff;text-shadow:0 1px 3px #000;';
+                                slot.appendChild(cdTxt);
+                            }
+                            slot.addEventListener('mousedown', (ev) => { ev.stopPropagation(); ev.preventDefault(); onPick(); });
+                            barEl.appendChild(slot);
+                        };
+                        {
+                            const sel = cur === 0;
+                            mkSlotRT(0, sel, infos[0],
+                                '<div style="font-size:14px">⚔</div>' +
+                                '<div style="white-space:nowrap;max-width:86px">ATTACK</div>' +
+                                '<div style="opacity:0.7;font-size:10px">LMB</div>',
+                                () => _selectSlotRT(0));
+                            if (sel) previewHtml = '⚔ BASIC ATTACK — hold LMB to keep firing';
+                        }
+                        list.forEach((sp, i) => {
+                            const inf = infos[i + 1];
+                            const sel = cur === i + 1;
+                            mkSlotRT(i + 1, sel, inf,
+                                '<div style="font-size:14px">' + (sp.icon || '✦') + ' <span style="opacity:0.7">' + (i < 9 ? (i + 1) : '') + '</span></div>' +
+                                '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:86px">' + (sp.name || '?') + '</div>' +
+                                '<div style="opacity:0.7;font-size:10px">' + (sp.cost ? sp.cost + 'MP' : 'FREE') + '</div>',
+                                () => _selectSlotRT(i + 1));
+                            if (sel) {
+                                const bits = [(sp.icon || '✦') + ' ' + String(sp.name || '?').toUpperCase(),
+                                    sp.cost ? sp.cost + ' MP' : '',
+                                    sp.range ? 'RANGE ' + sp.range : ''].filter(Boolean);
+                                let status = '';
+                                if (!inf.ready && inf.reason === 'mp') status = '<span style="color:#7fb0ff"> — NOT ENOUGH MANA</span>';
+                                else if (!inf.ready && inf.cdLeft > 0) status = '<span style="color:#ffb36a"> — RECHARGING ' + (inf.cdLeft / 1000).toFixed(1) + 's</span>';
+                                else if (!inf.ready && inf.reason === 'silence') status = '<span style="color:#ff8a8a"> — SILENCED</span>';
+                                previewHtml = bits.join(' · ') + status;
+                            }
+                        });
+                        if (previewHtml && _aimActive()) {
+                            previewEl.innerHTML = previewHtml;
+                            previewEl.style.display = 'block';
+                        } else {
+                            previewEl.style.display = 'none';
+                        }
+                    }
+                }
                 /* spell hotbar (battle only) — slot 0 = basic attack, then the
                    abilities. Greyed = unaffordable OR nothing in range from the
                    tile the player is standing on right now. */
-                if (inBattle && u) {
+                else if (inBattle && u) {
                     const list = _abilityList(u);
                     const cur = _curSlot(u);
                     const key = [u.id, u.ap, u.mp, u.x, u.y, cur, state.actionMode, state.selectedTool,
@@ -10369,15 +10739,18 @@
                     }
                 }
 
-                /* reticle hover + pick (pointer locked, or pad driving) */
+                /* reticle hover + pick (pointer locked, or pad driving).
+                   Real-time skips the hover pipeline entirely — no tile
+                   range/AoE previews in a shooter; the pick alone drives the
+                   reticle tint and StrikeEngine's aim resolution. */
                 if (_aimActive() && typeof ThreeRenderer !== 'undefined') {
                     const aim = _aimClient();
                     if (aim) {
-                        if (ThreeRenderer.hoverAtScreen && _battleActive()
+                        if (!_rt() && ThreeRenderer.hoverAtScreen && _battleActive()
                             && !state._actionExecuting && !state._walkAnimActive) {
                             ThreeRenderer.hoverAtScreen(aim.x, aim.y);
                         }
-                        if (now - lastPickT > 120) {
+                        if (now - lastPickT > (_rt() ? 60 : 120)) {
                             lastPickT = now;
                             lastPick = ThreeRenderer.pickAtScreen ? ThreeRenderer.pickAtScreen(aim.x, aim.y) : null;
                         }
@@ -10435,17 +10808,39 @@
                 const just = (id) => { const i = bind(id); return i >= 0 && !!pressed[i] && !prevPressed[i]; };
                 const val = (id) => { const i = bind(id); const b = i >= 0 ? gp.buttons[i] : null; return b ? (b.value || (b.pressed ? 1 : 0)) : 0; };
 
+                const held = (id) => { const i = bind(id); return i >= 0 && !!pressed[i]; };
+
                 if (just('confirm')) _fire();
-                if (just('cancel')) _cancelAim();
-                if (just('endTurn') && typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                if (_rt()) {
+                    /* modern TPS pad layout: RT (zoomIn trigger) = fire, held
+                       = auto-fire; LT (zoomOut trigger) = aim-down-sights;
+                       A also fires; B (cancel) = jump; X (endTurn) holds the
+                       scoreboard. Camera zoom stays on Ctrl+wheel / kb only. */
+                    const rtHeld = val('zoomIn') > 0.45;
+                    if (rtHeld && !_padRtPrev) _fire();
+                    _padRtPrev = rtHeld;
+                    fireHeld = rtHeld || held('confirm');
+                    adsHeld = val('zoomOut') > 0.45;
+                    _rtJump(held('cancel'));
+                    const sb = held('endTurn');
+                    if (sb !== scoreHeld) {
+                        scoreHeld = sb;
+                        try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(sb); } catch (e) {}
+                    }
+                } else {
+                    if (just('cancel')) _cancelAim();
+                    if (just('endTurn') && typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
+                }
                 if (just('pause') && typeof togglePauseMenu === 'function') togglePauseMenu();
-                if (just('overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
+                if (!_rt() && just('overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
                 if (just('targetPrev')) _scrollSelect(-1);
                 if (just('targetNext')) _scrollSelect(1);
 
-                const zi = val('zoomIn'), zo = val('zoomOut');
-                if (zi > 0.05 || zo > 0.05) {
-                    zoomMult = _clamp(zoomMult * (1 + (zi - zo) * 1.4 * dt), ZMULT_MIN, ZMULT_MAX);
+                if (!_rt()) {
+                    const zi = val('zoomIn'), zo = val('zoomOut');
+                    if (zi > 0.05 || zo > 0.05) {
+                        zoomMult = _clamp(zoomMult * (1 + (zi - zo) * 1.4 * dt), ZMULT_MIN, ZMULT_MAX);
+                    }
                 }
                 return true;
             };
@@ -10453,10 +10848,1294 @@
             return {
                 owns: _owns,
                 isLocked() { return locked; },
-                setSensitivity(mult) { /* future settings hook */ },
+                setSensitivity(mult) { /* superseded by StrikeControlsConfig */ },
+                /* ── StrikeEngine bridge (real-time mode) ── */
+                rtInput() {
+                    return {
+                        fireHeld: fireHeld,
+                        adsHeld: adsHeld,
+                        selSlot: selSlot,
+                        aim: _aimClient(),
+                        aimActive: _aimActive(),
+                        pick: lastPick,
+                        yaw: yaw,
+                        pitch: pitch,
+                        locked: locked,
+                    };
+                },
+                /* re-frame the camera behind the player (used on respawn) */
+                reenter() { const u = _localUnit(); if (u) _enterShot(u); },
+                refreshHud() { _refreshHud(true); },
             };
         })();
         window.ShooterControls = ShooterControls;
+
+        /* ═══════════════════════════════════════════════════════════════════
+           STRIKE ENGINE — the real-time match loop for Strike Mode.
+
+           No turns, no AP. Everyone (the player + every bot on both teams)
+           moves and acts simultaneously. Spells become cooldown abilities
+           AUTO-CONVERTED from their turn-based definitions (SPELL_LIBRARY is
+           read live — any spell added to the main game gets a real-time
+           equivalent for free). Rounds become clocks: zodiac rotation,
+           celestial events and weather run on a 30s "ambience pulse"; status
+           DoTs and durations tick on their own timers; kills score through
+           the stock applyDamageToUnit → defeatUnit → processKillStreak
+           pipeline so streaks / bounties / achievements all still work.
+
+           Gates: everything runs only while _isStrikeRT() && phase 'battle'.
+           The turn-based game never touches any of this. ═══ */
+        const StrikeEngine = (function () {
+            /* ── pacing knobs ── */
+            const GCD_MS = 450;                 // global cooldown between casts
+            const RESPAWN_BASE_MS = 6000;       // first death
+            const RESPAWN_PER_DEATH_MS = 1500;  // + per extra death
+            const RESPAWN_MAX_MS = 14000;
+            const MP_REGEN_FRAC = 0.014;        // of maxMp per second
+            const HP_REGEN_FRAC = 0.04;         // of maxHp per second, out of combat
+            const HP_REGEN_DELAY_MS = 8000;     // "out of combat" = unhit this long
+            const DOT_TICK_MS = 3000;           // burn/poison damage cadence
+            const DUR_TICK_MS = 8000;           // one "round" of status durations
+            const AMBIENCE_MS = 30000;          // one "round" of zodiac/sky/weather clocks
+            const TURRET_MS = 3500;             // deployed turret fire rate
+            const BOLT_SPEED = 12;              // spell projectile, tiles/sec
+            const ATK_SPEED = 17;               // basic-attack projectile, tiles/sec
+            const AIM_ASSIST_PX = 56;           // reticle soft-lock radius
+            const AUTOFIRE_MS = 140;            // held-LMB retrigger cadence
+
+            let started = false;
+            let playerUid = null;
+            let raf = 0, lastT = 0;
+            let endsAt = 0, pausedAt = 0;
+            let nextAmb = 0, nextDot = 0, nextDur = 0, nextTurretScan = 0, nextHudT = 0, nextAutoFire = 0;
+            let scoreLimit = 25;
+            let bots = new Map();          // uid -> bot brain
+            let pendingFx = [];            // scheduled impacts [{at, fn}]
+            let zones = [];                // field hazards / traps
+            let deadTimers = new Map();    // uid -> respawnAt (ms)
+            let hud = null;                // DOM refs
+            let sbVisible = false;
+            let denyAt = 0;
+            let _busHandler = null;
+
+            function _now() { return performance.now(); }
+            function _units() { return state.units || []; }
+            function _alive(u) { return !!u && !u.dead && !u._dying; }
+            function _findU(id) { return _units().find(x => x.id === id) || null; }
+            function playerUnit() { return playerUid != null ? _findU(playerUid) : null; }
+            function _enemiesOf(u) { return _units().filter(x => _alive(x) && x.player !== u.player); }
+
+            /* float position: the player rides the free-roam walker, bots ride
+               their brain's fx/fy, everyone else sits on their tile */
+            function _posOf(u) {
+                if (u.id === playerUid) {
+                    try {
+                        if (ThreeRenderer.hubFreeRoam.active() && ThreeRenderer.hubFreeRoam.uid() === u.id) {
+                            const p = ThreeRenderer.hubFreeRoam.pos();
+                            if (p) return { fx: p.x, fy: p.y };
+                        }
+                    } catch (e) {}
+                }
+                const b = bots.get(u.id);
+                if (b) return { fx: b.fx, fy: b.fy };
+                return { fx: u.x, fy: u.y };
+            }
+            function _dist(a, b) {
+                const pa = _posOf(a), pb = _posOf(b);
+                return Math.hypot(pa.fx - pb.fx, pa.fy - pb.fy);
+            }
+            function _los(a, b) {
+                try {
+                    if (typeof isRangeBlockedByTerrain !== 'function') return true;
+                    return !isRangeBlockedByTerrain(Math.round(a.x), Math.round(a.y), Math.round(b.x), Math.round(b.y), a.z || 0, b.z || 0);
+                } catch (e) { return true; }
+            }
+            function _tileOpen(u, tx, ty) {
+                try {
+                    if (typeof isInside === 'function' && !isInside(tx, ty)) return false;
+                    if (typeof unitCanTraverse === 'function') {
+                        const z = (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
+                        return !!unitCanTraverse(u, tx, ty, z);
+                    }
+                } catch (e) {}
+                return true;
+            }
+
+            /* ═══ SPELL → REAL-TIME ABILITY CONVERTER ═══
+               Reads the live spell object (data.js SPELL_LIBRARY entries are
+               cloned onto units), classifies its `kind` into a real-time
+               category and derives a cooldown from its turn-based costs.
+               Future spells fall through the category map by kind/type and
+               work automatically; `strikeCooldownSec` on a spell overrides
+               the derived cooldown if hand-tuning is ever wanted. */
+            const _descCache = new Map();
+            function _desc(sp) {
+                if (!sp) return null;
+                const key = sp.id || sp.name;
+                let d = _descCache.get(key);
+                if (d) return d;
+                const kind = sp.kind || 'damage';
+                const type = sp.type || 'damage';
+                let cat;
+                if (kind === 'heal' || kind === 'seedHeal') cat = 'heal';
+                else if (kind === 'healAll') cat = 'healAll';
+                else if (kind === 'manaRestoreAll') cat = 'manaAll';
+                else if (kind === 'revive') cat = 'revive';
+                else if (kind === 'cleanse') cat = 'cleanse';
+                else if (kind === 'encore') cat = 'encore';
+                else if (kind === 'shield' || kind === 'aoeShield' || kind === 'buff' || kind === 'warCry' || type === 'buff') cat = 'buff';
+                else if (kind === 'dash' || kind === 'displacement' || kind === 'teleport' || kind === 'chargeToTarget' || kind === 'grapple' || kind === 'leapStrike') cat = 'dash';
+                else if (kind === 'deployTurret') cat = 'turret';
+                else if (kind === 'aoe' || kind === 'bomb' || kind === 'line' || kind === 'linePush' || kind === 'cross'
+                    || kind === 'barrage' || kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'placeTrap'
+                    || kind === 'warpRune' || kind === 'buildStructure' || kind === 'plantTree' || kind === 'seedPoison'
+                    || kind === 'leechSeed') cat = 'ground';
+                else if ((type === 'debuff' || kind === 'debuff') && !sp.dmg) cat = 'debuff';
+                else if (type === 'utility' && !sp.dmg && !sp.heal) cat = 'selfUtility';
+                else cat = 'bolt';   // damage / multiHit / ricochet / lifeDrain / anything hostile
+
+                const apc = (typeof getSpellApCost === 'function') ? getSpellApCost(sp) : (sp.apCost || 2);
+                const power = Math.max(sp.dmg || 0, sp.heal || 0, sp.shield || 0, 60);
+                const cdMs = sp.strikeCooldownSec ? Math.round(sp.strikeCooldownSec * 1000)
+                    : (sp.cooldownRounds ? sp.cooldownRounds * 10000
+                        : Math.round(Math.min(28, Math.max(1.6, 1.2 + apc * 2.2 + (sp.cost || 0) * 0.05 + power * 0.016)) * 1000));
+                d = {
+                    sp, cat, kind,
+                    cdMs,
+                    mp: sp.cost || 0,
+                    range: Math.max(1, sp.range || 3),
+                    radius: sp.aoeRadius || sp.blastRadius
+                        || (kind === 'summonWeather' ? 2 : 0)
+                        || (kind === 'healAll' || kind === 'manaRestoreAll' || kind === 'warCry' || kind === 'aoeShield' ? 3 : 0)
+                        || (kind === 'terrainCreate' ? 1 : 0),
+                    dmg: sp.dmg || 0,
+                    heal: sp.heal || 0,
+                    shield: sp.shield || 0,
+                    statuses: (sp.statusEffects && sp.statusEffects.length) ? sp.statusEffects : null,
+                    statStage: sp.statStageBoost || null,
+                    zone: (kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'seedPoison' || kind === 'leechSeed' || kind === 'plantTree' || kind === 'buildStructure'),
+                    trap: (kind === 'placeTrap' || kind === 'warpRune' || kind === 'bomb'),
+                    dashDist: sp.displaceDistance || sp.teleportDistance || 3,
+                    blink: (kind === 'teleport'),
+                };
+                _descCache.set(key, d);
+                return d;
+            }
+            function _abilities(u) { return [...(u.spells || []), ...(u._raceAbilities || [])]; }
+            function _castSlots(sp) {
+                const k = sp.kind || '';
+                if (sp.damageType === 'physical') return ['castRanged', 'castMelee', 'cast'];
+                if (k === 'heal' || k === 'healAll' || k === 'revive') return ['castHeal', 'castSupport', 'cast'];
+                if (sp.type === 'buff' || k === 'cleanse' || k === 'encore') return ['castSupport', 'castMagic', 'cast'];
+                if (k === 'aoe' || k === 'summonWeather') return ['castAOE', 'castMagic', 'cast'];
+                return ['castMagic', 'cast'];
+            }
+            function _spellPower(u, sp) {
+                let p = u.spellPower || 0;
+                try { if (typeof getSpellStatBonus === 'function') p += (getSpellStatBonus(u, sp) || 0); } catch (e) {}
+                try { if (typeof getHourglassPower === 'function') p += (getHourglassPower(u) || 0); } catch (e) {}
+                return p;
+            }
+
+            /* ── cooldown / readiness bookkeeping ── */
+            function _cdKey(sp) { return sp.id || sp.name; }
+            function _slotReadyRaw(u, sp, d, now) {
+                const at = (u._rtCd || {})[_cdKey(sp)] || 0;
+                const cdLeft = Math.max(0, at - now);
+                if (cdLeft > 0) return { ready: false, cdFrac: Math.min(1, cdLeft / d.cdMs), cdLeft, reason: 'cd' };
+                if ((u.mp || 0) < d.mp) return { ready: false, cdFrac: 0, cdLeft: 0, reason: 'mp' };
+                if (typeof unitHasStatus === 'function' && sp.damageType !== 'physical'
+                    && unitHasStatus(u, 'silence')) return { ready: false, cdFrac: 0, cdLeft: 0, reason: 'silence' };
+                return { ready: true, cdFrac: 0, cdLeft: 0, reason: '' };
+            }
+            function slotState(u, i) {
+                const now = _now();
+                if (!u) return { ready: false, cdFrac: 0, cdLeft: 0, reason: '' };
+                if (i === 0) {
+                    const cdLeft = Math.max(0, (u._rtAtkAt || 0) - now);
+                    const total = u._rtAtkCdMs || 1000;
+                    return { ready: cdLeft <= 0 && _alive(u), cdFrac: Math.min(1, cdLeft / total), cdLeft, reason: '' };
+                }
+                const sp = _abilities(u)[i - 1];
+                if (!sp) return { ready: false, cdFrac: 0, cdLeft: 0, reason: '' };
+                return _slotReadyRaw(u, sp, _desc(sp), now);
+            }
+
+            /* ── damage plumbing: everything routes through the stock
+               applyDamageToUnit so the type chart / zodiac / armor / shields /
+               kill-credit pipeline stays identical to the main game ── */
+            function _dmg(tgt, amount, label, opts) {
+                if (!_alive(tgt)) return;
+                tgt._rtHurtAt = _now();
+                try { applyDamageToUnit(tgt, amount, label, opts || {}); } catch (e) {}
+                if (opts && opts.sourceUnit && opts.sourceUnit.id === playerUid) _hitmarker();
+            }
+            function _hitmarker() {
+                const r = document.getElementById('shooterReticle');
+                if (!r) return;
+                r.classList.remove('strike-hitmark');
+                void r.offsetWidth;   // restart the CSS animation
+                r.classList.add('strike-hitmark');
+            }
+
+            /* ── VFX helpers (all guarded — visuals must never break the sim) ── */
+            function _projVfx(sp, from, to, ms, fromU, toU) {
+                const fz = (fromU && fromU.z) || 0, tz = (toU && toU.z) || 0;
+                try {
+                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.projectile) {
+                        ThreeVFXEffects.projectile(from.fx, from.fy, to.fx, to.fy, sp.spellType, sp.id, sp.name, fz, tz, ms);
+                        return;
+                    }
+                } catch (e) {}
+                try {
+                    if (window.ThreeAnim && ThreeAnim.projectile) {
+                        ThreeAnim.projectile(from.fx, from.fy, to.fx, to.fy,
+                            sp.projectileOverride || (sp.damageType === 'physical' ? 'proj-knife' : 'proj-fire'), ms, fz, tz);
+                    }
+                } catch (e) {}
+            }
+            function _impactVfx(sp, tx, ty, z) {
+                try {
+                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.hasMapping
+                        && ThreeVFXEffects.hasMapping(sp.id, 'impact') && ThreeVFXEffects.fire) {
+                        ThreeVFXEffects.fire('impact', sp.id, { tx: tx, ty: ty });
+                        return;
+                    }
+                } catch (e) {}
+                try { if (window.ThreeAnim && ThreeAnim.hitEffect) ThreeAnim.hitEffect(Math.round(tx), Math.round(ty)); } catch (e) {}
+            }
+            function _aoeVfx(sp, gx, gy, z) {
+                try {
+                    if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.aoe) {
+                        ThreeVFXEffects.aoe(gx, gy, sp.spellType, sp.id, sp.name, z || 0);
+                        return;
+                    }
+                } catch (e) {}
+                _impactVfx(sp, gx, gy, z);
+            }
+            function _castFx(u, sp) {
+                try { ThreeRenderer.strikeRT.playAnim(u.id, _castSlots(sp)); } catch (e) {}
+                try { playSfx(spellLaunchSfx(sp), { volume: 0.75 }); } catch (e) {}
+            }
+
+            /* ═══ CASTING ═══ */
+            function _tryCast(u, sp, aim) {
+                const now = _now();
+                const d = _desc(sp);
+                if (!d) return { ok: false, why: 'bad' };
+                if (now < (u._rtGcdAt || 0)) return { ok: false, why: 'gcd' };
+                const rr = _slotReadyRaw(u, sp, d, now);
+                if (!rr.ready) return { ok: false, why: rr.reason };
+                const pos = _posOf(u);
+
+                /* resolve the target by category */
+                let exec = null;
+                if (d.cat === 'bolt' || (d.cat === 'debuff' && aim.enemy)) {
+                    const tgt = aim.enemy;
+                    if (!tgt) return { ok: false, why: 'target' };
+                    if (_dist(u, tgt) > d.range + 0.9) return { ok: false, why: 'range' };
+                    if (!_los(u, tgt)) return { ok: false, why: 'los' };
+                    exec = () => _launchBolt(u, sp, d, tgt);
+                } else if (d.cat === 'debuff') {
+                    return { ok: false, why: 'target' };
+                } else if (d.cat === 'heal') {
+                    const tgt = (aim.ally && _dist(u, aim.ally) <= d.range + 0.9) ? aim.ally : u;
+                    exec = () => _healUnit(u, sp, d, tgt);
+                } else if (d.cat === 'healAll' || d.cat === 'manaAll') {
+                    exec = () => _burstAllies(u, sp, d);
+                } else if (d.cat === 'buff') {
+                    const tgt = (aim.ally && _dist(u, aim.ally) <= d.range + 0.9) ? aim.ally : u;
+                    exec = () => _buffUnit(u, sp, d, tgt);
+                } else if (d.cat === 'cleanse') {
+                    const tgt = (aim.ally && _dist(u, aim.ally) <= d.range + 0.9) ? aim.ally : u;
+                    exec = () => _cleanseUnit(u, sp, tgt);
+                } else if (d.cat === 'encore') {
+                    exec = () => _encoreSelf(u, sp);
+                } else if (d.cat === 'revive') {
+                    if (!_units().some(x => x.player === u.player && x.dead && deadTimers.has(x.id))) return { ok: false, why: 'target' };
+                    exec = () => _reviveAllies(u, sp);
+                } else if (d.cat === 'dash') {
+                    exec = () => _doDash(u, sp, d, aim);
+                } else if (d.cat === 'turret' || d.cat === 'ground') {
+                    /* clamp the aimed ground point into range */
+                    let gx = aim.ground.x, gy = aim.ground.y;
+                    const dx = gx - pos.fx, dy = gy - pos.fy;
+                    const gd = Math.hypot(dx, dy);
+                    if (gd > d.range) { gx = pos.fx + dx / gd * d.range; gy = pos.fy + dy / gd * d.range; }
+                    if (d.cat === 'turret') exec = () => _placeTurret(u, sp, gx, gy);
+                    else exec = () => _launchGround(u, sp, d, gx, gy);
+                } else if (d.cat === 'selfUtility') {
+                    exec = () => _selfUtility(u, sp, d);
+                } else {
+                    return { ok: false, why: 'bad' };
+                }
+
+                /* commit: MP, cooldown, GCD, cast presentation */
+                u.mp = Math.max(0, (u.mp || 0) - d.mp);
+                if (!u._rtCd) u._rtCd = {};
+                u._rtCd[_cdKey(sp)] = now + d.cdMs;
+                u._rtGcdAt = now + GCD_MS;
+                _castFx(u, sp);
+                try { exec(); } catch (e) {}
+                if (u.id === playerUid) { try { ShooterControls.refreshHud(); } catch (e) {} }
+                return { ok: true };
+            }
+
+            function _launchBolt(caster, sp, d, target) {
+                const from = _posOf(caster), to = _posOf(target);
+                const ms = Math.max(130, _dist(caster, target) / BOLT_SPEED * 1000);
+                _projVfx(sp, from, to, ms, caster, target);
+                const tid = target.id, cid = caster.id;
+                pendingFx.push({
+                    at: _now() + ms,
+                    fn: () => {
+                        const tgt = _findU(tid), c = _findU(cid);
+                        if (!_alive(tgt) || !c) return;
+                        _spellHit(c, sp, d, tgt);
+                    },
+                });
+            }
+            function _spellHit(caster, sp, d, target) {
+                if (d.dmg) {
+                    const dmg = Math.max(32, d.dmg + _spellPower(caster, sp) + randInt(40) - 16);
+                    _dmg(target, dmg, sp.name, {
+                        sourceUnit: caster,
+                        damageType: sp.damageType || 'magic',
+                        spellType: sp.spellType,
+                        statusEffects: d.statuses || undefined,
+                    });
+                } else if (d.statuses) {
+                    try { if (typeof applyStatusEffects === 'function') applyStatusEffects(target, d.statuses, sp.name, caster); } catch (e) {}
+                    target._rtHurtAt = _now();
+                }
+                if (d.statStage) {
+                    try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(target, d.statStage, sp.name, caster); } catch (e) {}
+                }
+                _impactVfx(sp, target.x, target.y, target.z);
+            }
+            function _launchGround(caster, sp, d, gx, gy) {
+                const from = _posOf(caster);
+                const ms = Math.max(160, Math.hypot(gx - from.fx, gy - from.fy) / BOLT_SPEED * 1000);
+                _projVfx(sp, from, { fx: gx, fy: gy }, ms, caster, null);
+                const cid = caster.id;
+                pendingFx.push({
+                    at: _now() + ms,
+                    fn: () => { const c = _findU(cid); if (c) _groundImpact(c, sp, d, gx, gy); },
+                });
+            }
+            function _groundImpact(caster, sp, d, gx, gy) {
+                const z = (typeof getHeightAt === 'function') ? getHeightAt(Math.round(gx), Math.round(gy)) : 0;
+                _aoeVfx(sp, gx, gy, z);
+                try { playSfx(d.dmg >= 120 ? 'explosion' : 'spellDamage', { volume: 0.7 }); } catch (e) {}
+                if (d.dmg || d.statuses) {
+                    const radius = Math.max(0.8, (d.radius || 0) + 0.6);
+                    for (const t of _units()) {
+                        if (!_alive(t) || t.player === caster.player) continue;
+                        const tp = _posOf(t);
+                        if (Math.hypot(tp.fx - gx, tp.fy - gy) > radius) continue;
+                        if (d.dmg) {
+                            const dmg = Math.max(24, d.dmg + _spellPower(caster, sp) + randInt(32) - 16);
+                            _dmg(t, dmg, sp.name, {
+                                sourceUnit: caster, damageType: sp.damageType || 'magic',
+                                spellType: sp.spellType, statusEffects: d.statuses || undefined,
+                            });
+                        } else if (d.statuses) {
+                            try { if (typeof applyStatusEffects === 'function') applyStatusEffects(t, d.statuses, sp.name, caster); } catch (e) {}
+                        }
+                    }
+                }
+                if (d.trap) {
+                    zones.push({
+                        trap: true, x: gx, y: gy, r: 0.9, until: _now() + 45000, armAt: _now() + 900,
+                        dmg: Math.max(60, d.dmg || 120), statuses: d.statuses,
+                        owner: caster.id, player: caster.player, sp: sp,
+                    });
+                } else if (d.zone) {
+                    zones.push({
+                        x: gx, y: gy, r: Math.max(1, d.radius || 1), until: _now() + 12000,
+                        next: _now() + 900, every: 1200,
+                        dmg: Math.max(14, Math.round((d.dmg || 40) * 0.35)), statuses: d.statuses,
+                        owner: caster.id, player: caster.player, sp: sp,
+                    });
+                }
+            }
+            function _healUnit(caster, sp, d, target) {
+                let amount = d.heal + Math.floor(_spellPower(caster, sp) * 0.6) + (caster.healBonus || 0);
+                if (sp.lowHpBonus && target.hp < target.maxHp * 0.4) amount += sp.lowHpBonus;
+                try { applyHealingToUnit(target, amount, caster); } catch (e) {}
+                if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(target, d.statuses, sp.name, caster); } catch (e) {} }
+                try { playSfx('healRegen', { volume: 0.7 }); } catch (e) {}
+                _impactVfx(sp, target.x, target.y, target.z);
+            }
+            function _burstAllies(caster, sp, d) {
+                const radius = Math.max(2, d.radius || 3);
+                const cp = _posOf(caster);
+                for (const a of _units()) {
+                    if (!_alive(a) || a.player !== caster.player) continue;
+                    const ap2 = _posOf(a);
+                    if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > radius + 0.4) continue;
+                    if (d.cat === 'manaAll' || sp.kind === 'manaRestoreAll') {
+                        a.mp = Math.min(a.maxMp || 0, (a.mp || 0) + Math.max(20, Math.round((a.maxMp || 0) * 0.3)));
+                        try { showFloatingTextForUnit(a, '+MP', 'mana', { durationMs: 900 }); } catch (e) {}
+                    } else {
+                        _healUnit(caster, sp, d, a);
+                    }
+                }
+                try { playSfx('buff', { volume: 0.7 }); } catch (e) {}
+            }
+            function _buffUnit(caster, sp, d, target) {
+                if (d.shield) {
+                    const cap = Math.max(d.shield, Math.floor((target.maxHp || 0) * (sp.shieldCapPct || 0.5)));
+                    target.shield = Math.min((target.shield || 0) + d.shield, cap);
+                    try { showFloatingTextForUnit(target, '🛡 +' + d.shield, 'protect-block', { durationMs: 1000 }); } catch (e) {}
+                }
+                if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(target, d.statuses, sp.name, caster); } catch (e) {} }
+                if (d.statStage) { try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(target, d.statStage, sp.name, caster); } catch (e) {} }
+                if (sp.kind === 'warCry' || sp.kind === 'aoeShield') {
+                    /* radius versions splash the same payload on nearby allies */
+                    const cp = _posOf(caster);
+                    for (const a of _units()) {
+                        if (!_alive(a) || a.player !== caster.player || a.id === target.id) continue;
+                        const ap2 = _posOf(a);
+                        if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > (d.radius || 3) + 0.4) continue;
+                        if (d.shield) a.shield = Math.min((a.shield || 0) + d.shield, Math.max(d.shield, Math.floor((a.maxHp || 0) * (sp.shieldCapPct || 0.5))));
+                        if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(a, d.statuses, sp.name, caster); } catch (e) {} }
+                        if (d.statStage) { try { if (typeof applyStatStageBoost === 'function') applyStatStageBoost(a, d.statStage, sp.name, caster); } catch (e) {} }
+                    }
+                }
+                try { playSfx('buff', { volume: 0.7 }); } catch (e) {}
+                _impactVfx(sp, target.x, target.y, target.z);
+            }
+            function _cleanseUnit(caster, sp, target) {
+                try {
+                    if (target.status && typeof STATUS_DEFS !== 'undefined') {
+                        for (const k of Object.keys(target.status)) {
+                            if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') delete target.status[k];
+                        }
+                    }
+                } catch (e) {}
+                try { playSfx('healRegen', { volume: 0.7 }); } catch (e) {}
+                try { showFloatingTextForUnit(target, 'CLEANSED', 'heal', { durationMs: 1000 }); } catch (e) {}
+            }
+            function _encoreSelf(u, sp) {
+                /* Encore in real time: rewind 40% of every OTHER cooldown */
+                const now = _now();
+                if (u._rtCd) {
+                    for (const k of Object.keys(u._rtCd)) {
+                        if (k === _cdKey(sp)) continue;
+                        const left = u._rtCd[k] - now;
+                        if (left > 0) u._rtCd[k] = now + left * 0.6;
+                    }
+                }
+                u._rtAtkAt = 0;
+                try { playSfx('buff', { volume: 0.7 }); } catch (e) {}
+                try { showFloatingTextForUnit(u, '⏪ ENCORE', 'buff', { durationMs: 1100 }); } catch (e) {}
+            }
+            function _reviveAllies(caster, sp) {
+                /* real-time revive: massively shorten dead allies' respawns */
+                const now = _now();
+                let n = 0;
+                deadTimers.forEach((at, uid) => {
+                    const u = _findU(uid);
+                    if (!u || u.player !== caster.player) return;
+                    deadTimers.set(uid, Math.min(at, now + 1200));
+                    n++;
+                });
+                if (n) {
+                    addLog(`✨ ${unitDisplayName(caster)} calls fallen allies back to the fight!`);
+                    try { playSfx('levelUp', { volume: 0.8 }); } catch (e) {}
+                }
+            }
+            function _selfUtility(u, sp, d) {
+                if (d.statuses) { try { if (typeof applyStatusEffects === 'function') applyStatusEffects(u, d.statuses, sp.name, u); } catch (e) {} }
+                else {
+                    /* generic utility fallback: brief scanner (awareness) pulse */
+                    try { if (typeof applyStatusEffects === 'function') applyStatusEffects(u, [{ id: 'scanner', duration: 2 }], sp.name, u); } catch (e) {}
+                }
+                try { playSfx('buff', { volume: 0.6 }); } catch (e) {}
+            }
+            function _placeTurret(caster, sp, gx, gy) {
+                if (!state.turrets) state.turrets = [];
+                const tx = Math.round(gx), ty = Math.round(gy);
+                const mine = state.turrets.filter(t => t.casterUnitId === caster.id);
+                const cap = sp.maxActivePerCaster || 2;
+                while (mine.length >= cap) { const old = mine.shift(); state.turrets.splice(state.turrets.indexOf(old), 1); }
+                state.turrets.push({
+                    x: tx, y: ty,
+                    z: (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0,
+                    owner: caster.player, casterUnitId: caster.id,
+                    hp: sp.turretHp || 150, maxHp: sp.turretHp || 150,
+                    dmg: sp.turretDmg || 40, range: sp.turretRange || 4,
+                    spellId: sp.id, hitsToKill: sp.hitsToKill,
+                });
+                try { playSfx('turret', { volume: 0.7 }); } catch (e) {}
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+            function _doDash(u, sp, d, aim) {
+                const pos = _posOf(u);
+                const dir = aim.dir || { x: 0, y: 1 };
+                const maxDist = Math.min(d.blink ? d.dashDist + 1 : d.dashDist, 7);
+                let fx = pos.fx, fy = pos.fy, moved = 0;
+                const step = 0.25;
+                while (moved < maxDist) {
+                    const nx = fx + dir.x * step, ny = fy + dir.y * step;
+                    if (!_tileOpen(u, Math.round(nx), Math.round(ny))) break;
+                    fx = nx; fy = ny; moved += step;
+                }
+                const tX = Math.round(fx), tY = Math.round(fy);
+                u.x = tX; u.y = tY;
+                try { u.z = (typeof getHeightAt === 'function') ? getHeightAt(tX, tY) : u.z; } catch (e) {}
+                const b = bots.get(u.id);
+                if (b) { b.fx = fx; b.fy = fy; }
+                if (u.id === playerUid) {
+                    /* restart the walker on the landing tile */
+                    try { if (ThreeRenderer.hubFreeRoam.active()) ThreeRenderer.hubFreeRoam.stop(); } catch (e) {}
+                }
+                try { playSfx('teleport', { volume: 0.7 }); } catch (e) {}
+                _impactVfx(sp, tX, tY, u.z);
+                if (d.dmg && aim.enemy && _alive(aim.enemy) && _dist(u, aim.enemy) <= 1.8) {
+                    _spellHit(u, sp, d, aim.enemy);   // charge/leap spells hit on arrival
+                }
+            }
+
+            /* ═══ BASIC ATTACKS ═══ */
+            function _atkCdMs(u) { return Math.max(700, 1600 - (u.spd || 0) * 9); }
+            function _basicAttack(att, tgt, willHit, aimGround) {
+                const now = _now();
+                const cd = _atkCdMs(att);
+                att._rtAtkAt = now + cd;
+                att._rtAtkCdMs = cd;
+                const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(att) : (att.range || 1));
+                const melee = rng <= 1.5;
+                try {
+                    ThreeRenderer.strikeRT.playAnim(att.id, melee
+                        ? ['castMelee', 'castPunch', 'cast'] : ['castRanged', 'castArrow', 'cast']);
+                } catch (e) {}
+                try { playSfx(melee ? 'physicalAttack' : 'gun', { volume: 0.6 }); } catch (e) {}
+                if (melee) {
+                    if (tgt && willHit && _alive(tgt)) _hitBasic(att, tgt);
+                    return;
+                }
+                const from = _posOf(att);
+                const to = tgt ? _posOf(tgt) : (aimGround ? { fx: aimGround.x, fy: aimGround.y } : null);
+                if (!to) return;
+                const ms = Math.max(90, Math.hypot(to.fx - from.fx, to.fy - from.fy) / ATK_SPEED * 1000);
+                try {
+                    if (window.ThreeAnim && ThreeAnim.projectile) {
+                        ThreeAnim.projectile(from.fx, from.fy, to.fx + (willHit ? 0 : 0.7), to.fy + (willHit ? 0 : 0.5),
+                            'proj-bullet', ms, att.z || 0, (tgt && tgt.z) || 0);
+                    }
+                } catch (e) {}
+                if (tgt && willHit) {
+                    const tid = tgt.id, aid = att.id;
+                    pendingFx.push({
+                        at: now + ms,
+                        fn: () => { const t2 = _findU(tid), a2 = _findU(aid); if (_alive(t2) && a2) _hitBasic(a2, t2); },
+                    });
+                }
+            }
+            function _hitBasic(att, tgt) {
+                let dmg = Math.max(24, Math.floor((att.atk || 0) * 0.65) + randInt(40) - 16);
+                let isCrit = false;
+                try {
+                    if (typeof rollCrit === 'function' && rollCrit(att)) {
+                        isCrit = true;
+                        dmg = Math.floor(dmg * ((typeof getCritMultiplier === 'function') ? getCritMultiplier(att) : 1.8));
+                    }
+                } catch (e) {}
+                _dmg(tgt, dmg, 'Attack', { sourceUnit: att, damageType: 'physical', isCrit });
+            }
+
+            /* ═══ PLAYER INPUT RESOLUTION ═══ */
+            function _playerAim(u) {
+                const inp = (window.ShooterControls && ShooterControls.rtInput) ? ShooterControls.rtInput() : null;
+                const pick = inp && inp.pick;
+                const pos = _posOf(u);
+                let fwd = { x: 0, y: 1 };
+                try {
+                    const cam = ThreeCamera.getCamera();
+                    const dir = new THREE.Vector3();
+                    cam.getWorldDirection(dir);
+                    const len = Math.hypot(dir.x, dir.z);
+                    if (len > 0.001) fwd = { x: dir.x / len, y: dir.z / len };
+                } catch (e) {}
+                let enemy = null, ally = null;
+                if (pick && pick.unitId != null) {
+                    const t = _findU(pick.unitId);
+                    if (_alive(t)) {
+                        if (t.player !== u.player) enemy = t;
+                        else if (t.id !== u.id) ally = t;
+                    }
+                }
+                if (!enemy || !ally) {
+                    const soft = _softPick(u, inp && inp.aim);
+                    if (!enemy) enemy = soft.enemy;
+                    if (!ally) ally = soft.ally;
+                }
+                const ground = (pick && pick.tileX != null && pick.tileX >= 0)
+                    ? { x: pick.tileX, y: pick.tileY }
+                    : { x: pos.fx + fwd.x * 6, y: pos.fy + fwd.y * 6 };
+                return { enemy, ally, ground, dir: fwd, pos };
+            }
+            function _softPick(u, aim) {
+                const out = { enemy: null, ally: null };
+                if (!aim || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.worldToScreen) return out;
+                let rect = null;
+                try { const c = ThreeRenderer.getCanvas(); rect = c && c.getBoundingClientRect(); } catch (e) {}
+                if (!rect) return out;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                let bestE = AIM_ASSIST_PX + 1, bestA = AIM_ASSIST_PX + 1;
+                for (const t of _units()) {
+                    if (!_alive(t) || t.id === u.id) continue;
+                    let s = null;
+                    try { s = ThreeRenderer.worldToScreen(t.x, t.y, ts * 0.55); } catch (e) { continue; }
+                    if (!s) continue;
+                    const dpx = Math.hypot((rect.left + s.x) - aim.x, (rect.top + s.y) - aim.y);
+                    if (t.player !== u.player) { if (dpx < bestE) { bestE = dpx; out.enemy = t; } }
+                    else if (dpx < bestA) { bestA = dpx; out.ally = t; }
+                }
+                return out;
+            }
+            function playerFire(slot, aimClient) {
+                if (!started) return;
+                const u = playerUnit();
+                if (!_alive(u)) return;
+                if (typeof unitHasStatus === 'function' && unitHasStatus(u, 'stun')) return;
+                const aim = _playerAim(u);
+                const now = _now();
+                if (slot === 0) {
+                    if (now < (u._rtAtkAt || 0)) return;
+                    const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(u) : (u.range || 1));
+                    let tgt = aim.enemy;
+                    if (tgt && (_dist(u, tgt) > rng + 0.9 || !_los(u, tgt))) tgt = null;
+                    const pos = _posOf(u);
+                    const groundAt = { x: pos.fx + aim.dir.x * rng, y: pos.fy + aim.dir.y * rng };
+                    _basicAttack(u, tgt, !!tgt, groundAt);
+                    return;
+                }
+                const sp = _abilities(u)[slot - 1];
+                if (!sp) return;
+                const r = _tryCast(u, sp, aim);
+                if (!r.ok) _deny(r.why, sp);
+            }
+            function _deny(why, sp) {
+                const now = _now();
+                if (why === 'gcd' || now - denyAt < 700) return;
+                denyAt = now;
+                try { playErrorSfx(); } catch (e) {}
+                const msg = why === 'cd' ? 'RECHARGING'
+                    : why === 'mp' ? 'NOT ENOUGH MANA'
+                    : why === 'silence' ? 'SILENCED'
+                    : why === 'range' ? 'OUT OF RANGE'
+                    : why === 'los' ? 'NO LINE OF SIGHT'
+                    : why === 'target' ? 'NO TARGET — AIM AT AN ENEMY'
+                    : 'CANNOT CAST';
+                try { if (typeof window._ewToast === 'function') window._ewToast(msg + (sp ? ' — ' + String(sp.name || '').toUpperCase() : ''), 1100); } catch (e) {}
+            }
+
+            /* ═══ BOTS — every non-player unit on BOTH teams ═══ */
+            function _mkBot(u) {
+                return {
+                    uid: u.id, fx: u.x, fy: u.y,
+                    thinkAt: _now() + 400 + Math.random() * 800,
+                    castAt: _now() + 1200 + Math.random() * 1500,
+                    strafe: Math.random() < 0.5 ? 1 : -1,
+                    strafeAt: 0,
+                    target: null, desired: 3,
+                    retreatUntil: 0, wp: null,
+                };
+            }
+            function _botThink(b, u, now) {
+                let best = null, bestScore = -1e9;
+                for (const e of _enemiesOf(u)) {
+                    const dse = _dist(u, e);
+                    if (dse > 15) continue;
+                    let sc = 20 - dse;
+                    sc += (1 - e.hp / Math.max(1, e.maxHp)) * 8;
+                    if (e.id === playerUid) sc += 2;
+                    if (!_los(u, e)) sc -= 9;
+                    if (typeof isUnitConcealedFrom === 'function') {
+                        try { if (isUnitConcealedFrom(e, u)) sc -= 14; } catch (er) {}
+                    }
+                    if (sc > bestScore) { bestScore = sc; best = e; }
+                }
+                b.target = best ? best.id : null;
+                const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(u) : (u.range || 1));
+                /* ranged units keep a firing band; melee units close in */
+                b.desired = rng <= 1.5 ? 1.1 : Math.max(2, Math.min(rng * 0.85, 5.5));
+                if (u.hp < u.maxHp * 0.25 && Math.random() < 0.55) b.retreatUntil = now + 2600;
+            }
+            function _botSupportPick(u) {
+                /* wounded ally in range of any ready heal? */
+                let woundedBest = null;
+                for (const sp of _abilities(u)) {
+                    const d = _desc(sp);
+                    if (!d || (d.cat !== 'heal' && d.cat !== 'healAll')) continue;
+                    if (!_slotReadyRaw(u, sp, d, _now()).ready) continue;
+                    for (const a of _units()) {
+                        if (!_alive(a) || a.player !== u.player) continue;
+                        if (a.hp > a.maxHp * 0.55) continue;
+                        if (_dist(u, a) > (d.cat === 'healAll' ? (d.radius || 3) : d.range) + 0.5) continue;
+                        if (!woundedBest || a.hp / a.maxHp < woundedBest.a.hp / woundedBest.a.maxHp) woundedBest = { sp, a, d };
+                    }
+                }
+                return woundedBest;
+            }
+            function _botCombat(b, u, tgt, now) {
+                const dist = _dist(u, tgt);
+                if (now >= b.castAt) {
+                    b.castAt = now + 900 + Math.random() * 1100;
+                    /* healer duty first */
+                    const heal = _botSupportPick(u);
+                    if (heal) {
+                        _tryCast(u, heal.sp, { enemy: null, ally: heal.a, ground: { x: heal.a.x, y: heal.a.y }, dir: { x: 0, y: 1 }, pos: _posOf(u) });
+                        return;
+                    }
+                    /* best ready offensive ability that reaches */
+                    let pick = null, pickScore = -1;
+                    for (const sp of _abilities(u)) {
+                        const d = _desc(sp);
+                        if (!d) continue;
+                        if (!_slotReadyRaw(u, sp, d, now).ready) continue;
+                        let sc = -1;
+                        if ((d.cat === 'bolt' || d.cat === 'debuff') && dist <= d.range + 0.5 && _los(u, tgt)) sc = (d.dmg || 40) + 25;
+                        else if (d.cat === 'ground' && dist <= d.range + (d.radius || 0) + 0.5) sc = (d.dmg || 30) * (1 + (d.radius || 0) * 0.4);
+                        else if (d.cat === 'buff' && u.hp < u.maxHp * 0.6 && d.shield) sc = 50;
+                        else if (d.cat === 'dash' && dist > b.desired + 2 && !d.blink) sc = 8;
+                        if (sc > pickScore) { pickScore = sc; pick = sp; }
+                    }
+                    if (pick) {
+                        const tp = _posOf(tgt);
+                        const dirx = tp.fx - b.fx, diry = tp.fy - b.fy;
+                        const dl = Math.hypot(dirx, diry) || 1;
+                        _tryCast(u, pick, {
+                            enemy: tgt, ally: u, ground: { x: tp.fx, y: tp.fy },
+                            dir: { x: dirx / dl, y: diry / dl }, pos: _posOf(u),
+                        });
+                        return;
+                    }
+                }
+                /* basic attack between casts */
+                const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(u) : (u.range || 1));
+                if (now >= (u._rtAtkAt || 0) && dist <= rng + 0.6 && _los(u, tgt)) {
+                    const acc = 0.72 + Math.min(0.2, (u.awr || 0) * 0.008);
+                    _basicAttack(u, tgt, Math.random() <= acc, null);
+                }
+            }
+            function _randWaypoint(u) {
+                const bwv = (typeof bw === 'function') ? bw() : 12, bhv = (typeof bh === 'function') ? bh() : 12;
+                for (let i = 0; i < 12; i++) {
+                    const tx = randInt(bwv), ty = randInt(bhv);
+                    if (_tileOpen(u, tx, ty)) return { x: tx, y: ty };
+                }
+                return { x: u.x, y: u.y };
+            }
+            function _botFrame(b, dt, now) {
+                const u = _findU(b.uid);
+                if (!_alive(u)) return;
+                if (typeof unitHasStatus === 'function' && (unitHasStatus(u, 'stun') || unitHasStatus(u, 'root'))) {
+                    try { ThreeRenderer.strikeRT.drive(b.uid, b.fx, b.fy, 'idle', false); } catch (e) {}
+                    return;
+                }
+                if (now >= b.thinkAt) { _botThink(b, u, now); b.thinkAt = now + 380 + Math.random() * 340; }
+                const tgt = b.target != null ? _findU(b.target) : null;
+                let vx = 0, vy = 0, run = false;
+                if (tgt && _alive(tgt)) {
+                    const tp = _posOf(tgt);
+                    const dx = tp.fx - b.fx, dy = tp.fy - b.fy;
+                    const dist = Math.hypot(dx, dy) || 0.001;
+                    const ux = dx / dist, uy = dy / dist;
+                    if (b.retreatUntil > now) {
+                        vx = -ux; vy = -uy; run = true;
+                    } else {
+                        if (dist > b.desired + 0.4) { vx = ux; vy = uy; run = dist > b.desired + 3; }
+                        else if (dist < b.desired - 0.7) { vx = -ux; vy = -uy; }
+                        if (now >= b.strafeAt) { b.strafe = -b.strafe; b.strafeAt = now + 1400 + Math.random() * 1800; }
+                        vx += -uy * 0.55 * b.strafe;
+                        vy += ux * 0.55 * b.strafe;
+                    }
+                    u.facing = { dx: ux, dy: uy };
+                } else {
+                    if (!b.wp || Math.hypot(b.wp.x - b.fx, b.wp.y - b.fy) < 1.1) b.wp = _randWaypoint(u);
+                    const dx = b.wp.x - b.fx, dy = b.wp.y - b.fy;
+                    const dl = Math.hypot(dx, dy) || 1;
+                    vx = dx / dl; vy = dy / dl; run = true;
+                    if (vx || vy) u.facing = { dx: vx / (Math.hypot(vx, vy) || 1), dy: vy / (Math.hypot(vx, vy) || 1) };
+                }
+                /* ally separation so packs don't stack on one tile */
+                for (const a of _units()) {
+                    if (a.id === u.id || !_alive(a) || a.player !== u.player) continue;
+                    const ap2 = _posOf(a);
+                    const sx = b.fx - ap2.fx, sy = b.fy - ap2.fy;
+                    const sd = Math.hypot(sx, sy);
+                    if (sd > 0.01 && sd < 0.85) { vx += (sx / sd) * 0.6; vy += (sy / sd) * 0.6; }
+                }
+                const vl = Math.hypot(vx, vy);
+                const moving = vl > 0.05;
+                if (moving) {
+                    vx /= vl; vy /= vl;
+                    const spd = (2.3 + (u.move || 3) * 0.12) * (run ? 1.7 : 1);
+                    const pad = 0.32;
+                    const nx = b.fx + vx * spd * dt;
+                    const ny = b.fy + vy * spd * dt;
+                    if (_tileOpen(u, Math.round(nx + Math.sign(vx) * pad), Math.round(b.fy))) b.fx = nx;
+                    if (_tileOpen(u, Math.round(b.fx), Math.round(ny + Math.sign(vy) * pad))) b.fy = ny;
+                }
+                /* commit integer tile to game state (LoS / plates / targeting) */
+                const tX = Math.round(b.fx), tY = Math.round(b.fy);
+                if (u.x !== tX || u.y !== tY) {
+                    u.x = tX; u.y = tY;
+                    try { u.z = (state.boardHeights && state.boardHeights[tY]) ? (state.boardHeights[tY][tX] || 0) : u.z; } catch (e) {}
+                }
+                try { ThreeRenderer.strikeRT.drive(b.uid, b.fx, b.fy, moving ? (run ? 'run' : 'walk') : 'idle', run); } catch (e) {}
+                if (tgt && _alive(tgt)) _botCombat(b, u, tgt, now);
+            }
+
+            /* ═══ RESPAWNS ═══ */
+            function _spawnTile(u) {
+                const zonesFor = (state.spawnZones && state.spawnZones[u.player]) || [];
+                const candidates = zonesFor.concat((typeof SPAWNS !== 'undefined' && SPAWNS[u.player]) ? SPAWNS[u.player] : []);
+                for (const t of candidates) {
+                    if (!t) continue;
+                    if (!_tileOpen(u, t.x, t.y)) continue;
+                    const occupied = _units().some(x => _alive(x) && x.id !== u.id && Math.round(x.x) === t.x && Math.round(x.y) === t.y);
+                    if (!occupied) return { x: t.x, y: t.y };
+                }
+                if (candidates.length && candidates[0]) return { x: candidates[0].x, y: candidates[0].y };
+                return _randWaypoint(u);
+            }
+            function _respawn(uid) {
+                deadTimers.delete(uid);
+                const u = _findU(uid);
+                if (!u || !started) return;
+                if (!u.dead && !u._dying) return;
+                u.dead = false; u._dying = false;
+                u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
+                u.status = { spawnGuard: 1 };
+                u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                u._rtCd = {}; u._rtAtkAt = 0; u._rtGcdAt = 0; u._rtHurtAt = 0;
+                u._respawnIn = null;
+                const t = _spawnTile(u);
+                u.x = t.x; u.y = t.y;
+                try { u.z = (typeof getHeightAt === 'function') ? getHeightAt(t.x, t.y) : 0; } catch (e) {}
+                if (u.id === playerUid) {
+                    try { ShooterControls.reenter(); } catch (e) {}
+                    if (hud && hud.respawn) hud.respawn.style.display = 'none';
+                } else {
+                    const b = bots.get(uid) || _mkBot(u);
+                    b.fx = u.x; b.fy = u.y; b.target = null; b.wp = null;
+                    bots.set(uid, b);
+                }
+                try { playSfx('teleport', { volume: 0.6 }); } catch (e) {}
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+
+            /* ═══ AMBIENCE PULSE — zodiac / celestial / weather on a clock ═══ */
+            function _ambPulse() {
+                const zPrev = state.activeZodiac;
+                const sPrev = state.skyEvent ? (state.skyEvent.id || state.skyEvent.type) : null;
+                state.round = (state.round || 1) + 1;
+                try { if (typeof tickSkyEvent === 'function') tickSkyEvent(); } catch (e) {}
+                try { if (typeof checkZodiacRotation === 'function') checkZodiacRotation(); } catch (e) {}
+                try { if (typeof checkNewSkyEvent === 'function') checkNewSkyEvent(); } catch (e) {}
+                try { if (typeof tickWeather === 'function') tickWeather(); } catch (e) {}
+                try { if (typeof spawnWeather === 'function') spawnWeather(); } catch (e) {}
+                try { if (typeof tickBurningTiles === 'function') tickBurningTiles(); } catch (e) {}
+                /* the EOR announcer never runs in real time — surface changes
+                   with combat banners instead, and drop queued announcements */
+                if (state.activeZodiac !== zPrev) {
+                    const icon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[state.activeZodiac]) || '✦';
+                    try { showCombatBanner(icon + ' ZODIAC: ' + String(state.activeZodiac).toUpperCase(), String(state.activeZodiac) + ' units deal +10% damage', 'neutral'); } catch (e) {}
+                    try { playSfx('newRound', { volume: 0.6 }); } catch (e) {}
+                }
+                const sNow = state.skyEvent ? (state.skyEvent.id || state.skyEvent.type) : null;
+                if (sNow && sNow !== sPrev) {
+                    try { showCombatBanner('🌌 ' + String(state.skyEvent.label || sNow).toUpperCase(), 'A celestial event warps the battlefield!', 'neutral'); } catch (e) {}
+                }
+                state.announcementQueue = [];
+            }
+
+            /* ═══ STATUS TICKS (real-time DoT + duration decay) ═══ */
+            function _dotTick() {
+                if (typeof STATUS_DEFS === 'undefined') return;
+                for (const u of _units()) {
+                    if (!_alive(u) || !u.status) continue;
+                    for (const k of Object.keys(u.status)) {
+                        const def = STATUS_DEFS[k];
+                        if (!def || !def.dot) continue;
+                        /* half the per-round DoT, ~2.6× per "round" cadence →
+                           slightly hotter than turn-based, feels right live */
+                        _dmg(u, Math.max(6, Math.round(def.dot * 0.5)), def.label || k, { damageType: 'dot', ignoreArmor: true });
+                    }
+                }
+            }
+
+            /* ═══ HUD ═══ */
+            function _mkDiv(id, cls, parent) {
+                let el = document.getElementById(id);
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = id;
+                    (parent || document.body).appendChild(el);
+                }
+                el.className = cls || '';
+                return el;
+            }
+            function _buildHud() {
+                hud = {};
+                hud.top = _mkDiv('strikeTop', 'strike-top');
+                hud.top.innerHTML =
+                    '<div class="strike-score strike-score-p1"><span class="strike-score-num" id="strikeScoreP1">0</span></div>' +
+                    '<div class="strike-clock"><div id="strikeTimer">8:00</div><div class="strike-clock-sub" id="strikeClockSub">FIRST TO 25</div></div>' +
+                    '<div class="strike-score strike-score-p2"><span class="strike-score-num" id="strikeScoreP2">0</span></div>';
+                hud.scoreP1 = document.getElementById('strikeScoreP1');
+                hud.scoreP2 = document.getElementById('strikeScoreP2');
+                hud.timer = document.getElementById('strikeTimer');
+                hud.clockSub = document.getElementById('strikeClockSub');
+                hud.vitals = _mkDiv('strikeVitals', 'strike-vitals');
+                hud.vitals.innerHTML =
+                    '<div class="strike-vitals-name" id="strikeVName"></div>' +
+                    '<div class="strike-bar strike-bar-hp"><div class="strike-bar-fill" id="strikeHpFill"></div><div class="strike-bar-shield" id="strikeShieldFill"></div><span class="strike-bar-txt" id="strikeHpTxt"></span></div>' +
+                    '<div class="strike-bar strike-bar-mp"><div class="strike-bar-fill" id="strikeMpFill"></div><span class="strike-bar-txt" id="strikeMpTxt"></span></div>';
+                hud.vName = document.getElementById('strikeVName');
+                hud.hpFill = document.getElementById('strikeHpFill');
+                hud.shieldFill = document.getElementById('strikeShieldFill');
+                hud.hpTxt = document.getElementById('strikeHpTxt');
+                hud.mpFill = document.getElementById('strikeMpFill');
+                hud.mpTxt = document.getElementById('strikeMpTxt');
+                hud.feed = _mkDiv('strikeKillfeed', 'strike-killfeed');
+                hud.feed.innerHTML = '';
+                hud.respawn = _mkDiv('strikeRespawn', 'strike-respawn');
+                hud.respawn.style.display = 'none';
+                hud.sb = _mkDiv('strikeScoreboard', 'strike-scoreboard');
+                hud.sb.style.display = 'none';
+            }
+            function _teardownHud() {
+                for (const id of ['strikeTop', 'strikeVitals', 'strikeKillfeed', 'strikeRespawn', 'strikeScoreboard']) {
+                    const el = document.getElementById(id);
+                    if (el && el.parentNode) el.parentNode.removeChild(el);
+                }
+                hud = null;
+            }
+            function _feedPush(killer, victim) {
+                if (!hud || !hud.feed) return;
+                const row = document.createElement('div');
+                row.className = 'strike-feed-row';
+                const kName = killer ? unitDisplayName(killer) : '☠';
+                const kTeam = killer ? (killer.player === 1 ? 'p1' : 'p2') : '';
+                const vTeam = victim.player === 1 ? 'p1' : 'p2';
+                row.innerHTML = (killer ? '<span class="strike-feed-' + kTeam + '">' + kName + '</span> ⚔ ' : '☠ ')
+                    + '<span class="strike-feed-' + vTeam + '">' + unitDisplayName(victim) + '</span>';
+                hud.feed.prepend(row);
+                while (hud.feed.children.length > 6) hud.feed.removeChild(hud.feed.lastChild);
+                setTimeout(() => { try { if (row.parentNode) row.parentNode.removeChild(row); } catch (e) {} }, 5200);
+            }
+            function showScoreboard(on) {
+                sbVisible = !!on;
+                if (!hud || !hud.sb) return;
+                hud.sb.style.display = on ? 'block' : 'none';
+                if (on) _renderScoreboard();
+            }
+            function _renderScoreboard() {
+                if (!hud || !hud.sb) return;
+                const mk = state.matchKills || { 1: 0, 2: 0 };
+                const row = (u) => {
+                    const me = u.id === playerUid ? ' strike-sb-me' : '';
+                    return '<div class="strike-sb-row' + me + '"><span>' + unitDisplayName(u) + (u.dead || u._dying ? ' 💀' : '') + '</span>'
+                        + '<span>' + (u._matchKills || 0) + ' / ' + (u._matchDeaths || 0) + '</span></div>';
+                };
+                const team = (p) =>
+                    '<div class="strike-sb-team strike-sb-' + (p === 1 ? 'p1' : 'p2') + '">'
+                    + '<div class="strike-sb-head"><span>' + (p === 1 ? '🔵 YOUR TEAM' : '🔴 ENEMY TEAM') + '</span><span>' + (mk[p] || 0) + '</span></div>'
+                    + _units().filter(x => x.player === p).map(row).join('') + '</div>';
+                hud.sb.innerHTML = '<div class="strike-sb-title">SCOREBOARD — K / D</div>' + team(1) + team(2);
+            }
+            function _fmtClock(ms) {
+                const s = Math.max(0, Math.ceil(ms / 1000));
+                return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            }
+            function _hudTick(now) {
+                if (!hud) return;
+                const mk = state.matchKills || { 1: 0, 2: 0 };
+                if (hud.scoreP1) hud.scoreP1.textContent = mk[1] || 0;
+                if (hud.scoreP2) hud.scoreP2.textContent = mk[2] || 0;
+                if (hud.timer) hud.timer.textContent = state.suddenDeathActive ? '∞' : _fmtClock(endsAt - now);
+                if (hud.clockSub) {
+                    hud.clockSub.textContent = state.suddenDeathActive ? 'SUDDEN DEATH — NEXT KILL WINS'
+                        : 'FIRST TO ' + scoreLimit + (state.activeZodiac ? ' · ' + ((typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[state.activeZodiac]) || '') + ' ' + String(state.activeZodiac).toUpperCase() : '');
+                }
+                const u = playerUnit();
+                if (u && hud.hpFill) {
+                    hud.vName.textContent = unitDisplayName(u);
+                    const hpF = Math.max(0, Math.min(1, (u.hp || 0) / Math.max(1, u.maxHp)));
+                    hud.hpFill.style.width = (hpF * 100).toFixed(1) + '%';
+                    hud.hpFill.style.background = hpF > 0.5 ? '' : (hpF > 0.25 ? '#c9a23f' : '#b0413e');
+                    hud.shieldFill.style.width = Math.min(100, ((u.shield || 0) / Math.max(1, u.maxHp)) * 100).toFixed(1) + '%';
+                    hud.hpTxt.textContent = Math.max(0, Math.round(u.hp)) + ' / ' + u.maxHp + ((u.shield || 0) > 0 ? '  (+' + Math.round(u.shield) + ')' : '');
+                    hud.mpFill.style.width = (Math.max(0, Math.min(1, (u.mp || 0) / Math.max(1, u.maxMp))) * 100).toFixed(1) + '%';
+                    hud.mpTxt.textContent = Math.round(u.mp || 0) + ' / ' + (u.maxMp || 0);
+                }
+                /* respawn overlay */
+                if (u && (u.dead || u._dying) && deadTimers.has(u.id)) {
+                    const left = Math.max(0, deadTimers.get(u.id) - now);
+                    hud.respawn.style.display = 'flex';
+                    hud.respawn.innerHTML = '<div class="strike-respawn-inner">💀 YOU ARE DOWN<br><span class="strike-respawn-t">RESPAWN IN ' + (left / 1000).toFixed(1) + 's</span></div>';
+                } else if (hud.respawn.style.display !== 'none' && u && _alive(u)) {
+                    hud.respawn.style.display = 'none';
+                }
+                if (sbVisible) _renderScoreboard();
+                try { ShooterControls.refreshHud(); } catch (e) {}
+            }
+
+            /* ═══ MATCH CLOCK / WIN ═══ */
+            function _checkEnd(now) {
+                if (state.winner != null) return;
+                const mk = state.matchKills || { 1: 0, 2: 0 };
+                if (!state.suddenDeathActive) {
+                    if ((mk[1] || 0) >= scoreLimit || (mk[2] || 0) >= scoreLimit) {
+                        state.winner = (mk[1] || 0) >= scoreLimit ? 1 : 2;
+                        state._winCondition = 'most_kills';
+                        try { checkWin(); } catch (e) {}
+                        return;
+                    }
+                    if (now >= endsAt) {
+                        if ((mk[1] || 0) !== (mk[2] || 0)) {
+                            state.winner = (mk[1] || 0) > (mk[2] || 0) ? 1 : 2;
+                            state._winCondition = 'most_kills';
+                            try { checkWin(); } catch (e) {}
+                        } else {
+                            state.suddenDeathActive = true;
+                            try { showCombatBanner('⚡ SUDDEN DEATH!', 'Next kill wins the match!', 'neutral'); } catch (e) {}
+                            try { playSfx('levelUp'); } catch (e) {}
+                            addLog('⚡ TIME! Scores tied — SUDDEN DEATH, next kill wins!');
+                        }
+                    }
+                }
+            }
+
+            /* ═══ MAIN LOOP ═══ */
+            function _paused() {
+                const ov = document.getElementById('pauseOverlay');
+                return !!(ov && ov.classList.contains('active')) || !!state.uiDialog;
+            }
+            function _loop() {
+                if (!started) return;
+                raf = requestAnimationFrame(_loop);
+                const now = _now();
+                const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0.016;
+                lastT = now;
+                if (state.phase !== 'battle' || state.winner != null) {
+                    if (state.winner != null) { stop(); }
+                    else if (state.phase !== 'battle') { stop(); }
+                    return;
+                }
+                if (_paused()) {
+                    /* freeze the sim; keep the match clock honest */
+                    if (!pausedAt) pausedAt = now;
+                    return;
+                }
+                if (pausedAt) { endsAt += now - pausedAt; pausedAt = 0; }
+
+                /* scheduled impacts */
+                for (let i = pendingFx.length - 1; i >= 0; i--) {
+                    if (now >= pendingFx[i].at) {
+                        const f = pendingFx[i];
+                        pendingFx.splice(i, 1);
+                        try { f.fn(); } catch (e) {}
+                    }
+                }
+                /* bots */
+                bots.forEach(b => { try { _botFrame(b, dt, now); } catch (e) {} });
+                /* player held-fire auto-repeat */
+                try {
+                    const inp = ShooterControls.rtInput();
+                    if (inp && inp.fireHeld && inp.locked !== false && now >= nextAutoFire) {
+                        nextAutoFire = now + AUTOFIRE_MS;
+                        playerFire(inp.selSlot, inp.aim);
+                    }
+                } catch (e) {}
+                /* zones & traps */
+                for (let i = zones.length - 1; i >= 0; i--) {
+                    const z = zones[i];
+                    if (now >= z.until) { zones.splice(i, 1); continue; }
+                    if (z.trap) {
+                        if (now < (z.armAt || 0)) continue;
+                        const vic = _units().find(x => {
+                            if (!_alive(x) || x.player === z.player) return false;
+                            const xp = _posOf(x);
+                            return Math.hypot(xp.fx - z.x, xp.fy - z.y) <= z.r;
+                        });
+                        if (vic) {
+                            zones.splice(i, 1);
+                            _aoeVfx(z.sp, z.x, z.y, vic.z);
+                            try { playSfx('explosion', { volume: 0.75 }); } catch (e) {}
+                            _dmg(vic, z.dmg, (z.sp && z.sp.name) || 'Trap', {
+                                sourceUnit: _findU(z.owner) || undefined,
+                                damageType: (z.sp && z.sp.damageType) || 'physical',
+                                spellType: z.sp && z.sp.spellType,
+                                statusEffects: z.statuses || undefined,
+                            });
+                        }
+                        continue;
+                    }
+                    if (now >= z.next) {
+                        z.next = now + z.every;
+                        for (const x of _units()) {
+                            if (!_alive(x) || x.player === z.player) continue;
+                            const xp = _posOf(x);
+                            if (Math.hypot(xp.fx - z.x, xp.fy - z.y) <= z.r + 0.4) {
+                                _dmg(x, z.dmg, (z.sp && z.sp.name) || 'Hazard', {
+                                    sourceUnit: _findU(z.owner) || undefined,
+                                    damageType: (z.sp && z.sp.damageType) || 'magic',
+                                    spellType: z.sp && z.sp.spellType,
+                                    statusEffects: z.statuses || undefined,
+                                });
+                            }
+                        }
+                    }
+                }
+                /* deployed turrets fire on their own clock */
+                if (now >= nextTurretScan) {
+                    nextTurretScan = now + 700;
+                    for (const t of (state.turrets || [])) {
+                        if ((t._rtNext || 0) > now) continue;
+                        let best = null, bestD = 1e9;
+                        for (const x of _units()) {
+                            if (!_alive(x) || x.player === t.owner) continue;
+                            const dd = Math.hypot(x.x - t.x, x.y - t.y);
+                            if (dd <= (t.range || 4) && dd < bestD) { bestD = dd; best = x; }
+                        }
+                        if (!best) continue;
+                        t._rtNext = now + TURRET_MS;
+                        try { if (window.ThreeAnim && ThreeAnim.projectile) ThreeAnim.projectile(t.x, t.y, best.x, best.y, 'proj-bullet', 240, t.z || 0, best.z || 0); } catch (e) {}
+                        try { playSfx('turret', { volume: 0.45 }); } catch (e) {}
+                        const tid = best.id, dmgT = t.dmg || 40, ownerId = t.casterUnitId;
+                        pendingFx.push({
+                            at: now + 240,
+                            fn: () => {
+                                const tt = _findU(tid);
+                                if (_alive(tt)) _dmg(tt, dmgT, 'Turret', { sourceUnit: _findU(ownerId) || undefined, damageType: 'physical' });
+                            },
+                        });
+                    }
+                }
+                /* respawns */
+                deadTimers.forEach((at, uid) => { if (now >= at) _respawn(uid); });
+                /* regen: mana always trickles; health recovers out of combat.
+                   AP is meaningless in real time but the renderer greys models
+                   at 0 AP and stray legacy paths can zero it — keep it topped. */
+                for (const u of _units()) {
+                    if (!_alive(u)) continue;
+                    if ((u.ap || 0) <= 0) u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                    if ((u.mp || 0) < (u.maxMp || 0)) {
+                        u._rtMpAcc = (u._rtMpAcc || 0) + (u.maxMp || 0) * MP_REGEN_FRAC * dt;
+                        if (u._rtMpAcc >= 1) { const g = Math.floor(u._rtMpAcc); u._rtMpAcc -= g; u.mp = Math.min(u.maxMp, (u.mp || 0) + g); }
+                    }
+                    if ((u.hp || 0) < (u.maxHp || 0) && now - (u._rtHurtAt || 0) > HP_REGEN_DELAY_MS) {
+                        u._rtHpAcc = (u._rtHpAcc || 0) + (u.maxHp || 0) * HP_REGEN_FRAC * dt;
+                        if (u._rtHpAcc >= 1) { const g2 = Math.floor(u._rtHpAcc); u._rtHpAcc -= g2; u.hp = Math.min(u.maxHp, (u.hp || 0) + g2); }
+                    }
+                }
+                /* status DoTs + duration decay + ambience clocks */
+                if (now >= nextDot) { nextDot = now + DOT_TICK_MS; try { _dotTick(); } catch (e) {} }
+                if (now >= nextDur) {
+                    nextDur = now + DUR_TICK_MS;
+                    try { if (typeof _tickAllStatusDurations === 'function') _tickAllStatusDurations(); } catch (e) {}
+                }
+                if (now >= nextAmb) { nextAmb = now + AMBIENCE_MS; try { _ambPulse(); } catch (e) {} }
+                /* score/time win */
+                _checkEnd(now);
+                /* HUD */
+                if (now >= nextHudT) { nextHudT = now + 120; try { _hudTick(now); } catch (e) {} }
+            }
+
+            /* ═══ LIFECYCLE ═══ */
+            function start() {
+                if (started) return;
+                if (state.phase !== 'battle' || state.winner) return;
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) {
+                    /* the 3D renderer auto-activates within ~250ms of battle
+                       phase — retry until it's up (the mode needs it) */
+                    setTimeout(() => {
+                        if (!started && state.phase === 'battle' && typeof window._isStrikeRT === 'function' && window._isStrikeRT()) start();
+                    }, 300);
+                    return;
+                }
+                started = true;
+                const viewer = (typeof getViewerPlayer === 'function' && getViewerPlayer()) || 1;
+                const pu = _units().find(u => u.player === viewer && !u.dead && !u._isBoss) || _units()[0];
+                playerUid = pu ? pu.id : null;
+                /* legacy readers (HUD panels, plates, camera helpers) treat the
+                   blitz-active unit as "your unit" — point them at the player
+                   for the whole match. maybeAdvanceTurn never runs to clear it. */
+                state._blitzActiveUnitId = playerUid;
+                state.activePlayer = viewer;
+                state.aiThinking = false;
+                const mp = getActiveMultiplayerMode();
+                scoreLimit = mp.scoreLimit || 25;
+                const now = _now();
+                endsAt = now + (mp.timeLimitSec || 480) * 1000;
+                nextAmb = now + AMBIENCE_MS;
+                nextDot = now + DOT_TICK_MS;
+                nextDur = now + DUR_TICK_MS;
+                nextTurretScan = now; nextHudT = now; nextAutoFire = now;
+                pausedAt = 0;
+                pendingFx = []; zones = []; deadTimers.clear(); bots.clear();
+                _descCache.clear();
+                for (const u of _units()) {
+                    u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                    u._rtCd = {}; u._rtGcdAt = 0; u._rtAtkAt = 0; u._rtHurtAt = 0;
+                    u._rtHpAcc = 0; u._rtMpAcc = 0;
+                    if (u.id !== playerUid && !u.dead) bots.set(u.id, _mkBot(u));
+                }
+                try { ThreeRenderer.strikeRT.setMode(true); } catch (e) {}
+                _buildHud();
+                if (window.RenderBus) {
+                    _busHandler = (ev) => {
+                        if (!started || !ev || !ev.unit) return;
+                        const u = ev.unit;
+                        try { ThreeRenderer.strikeRT.release(u.id); } catch (e) {}
+                        const deaths = u._deathCount || 1;
+                        deadTimers.set(u.id, _now() + Math.min(RESPAWN_MAX_MS, RESPAWN_BASE_MS + (deaths - 1) * RESPAWN_PER_DEATH_MS));
+                        _feedPush(ev.killer || null, u);
+                    };
+                    RenderBus.on('unit:died', _busHandler);
+                }
+                try {
+                    showCombatBanner('🎯 STRIKE MODE', 'First to ' + scoreLimit + ' kills · '
+                        + Math.round((mp.timeLimitSec || 480) / 60) + ' minute clock · abilities on cooldown — good hunting!', 'neutral');
+                } catch (e) {}
+                addLog('🎯 STRIKE MODE — real-time deathmatch. First to ' + scoreLimit
+                    + ' kills, or best score when the clock runs out.');
+                /* frame the camera behind the player now that the unit exists
+                   (ownership flipped before playerUid was known) */
+                setTimeout(() => { try { if (started) ShooterControls.reenter(); } catch (e) {} }, 60);
+                lastT = 0;
+                raf = requestAnimationFrame(_loop);
+            }
+            function stop() {
+                if (!started) return;
+                started = false;
+                if (raf) { cancelAnimationFrame(raf); raf = 0; }
+                bots.clear(); pendingFx = []; zones = []; deadTimers.clear();
+                try { ThreeRenderer.strikeRT.setMode(false); } catch (e) {}
+                if (_busHandler && window.RenderBus) { RenderBus.off('unit:died', _busHandler); _busHandler = null; }
+                _teardownHud();
+                sbVisible = false;
+            }
+
+            return {
+                ensureStarted: start,
+                stop,
+                isActive: () => started,
+                playerUnit,
+                playerFire,
+                slotState,
+                showScoreboard,
+                onPlayerTile(u2) { /* reserved: trap/zone checks run in the loop */ },
+            };
+        })();
+        window.StrikeEngine = StrikeEngine;
 
         // Pull back to a high, near-top-down tactical view of the WHOLE
         // battlefield for the end-of-round resolution beats (status ticks,
@@ -20898,6 +22577,16 @@
 
         function maybeAdvanceTurn() {
 
+            /* ── STRIKE MODE (real-time): there ARE no turns. The StrikeEngine
+               runs the whole match (movement, cooldowns, bots, respawns,
+               ambience clocks) — the blitz engine must never advance. The
+               round-banner boot path lands here once at match start; hand off
+               to the engine and bail. ── */
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT() && state.phase === 'battle') {
+                if (typeof StrikeEngine !== 'undefined' && StrikeEngine.ensureStarted) StrikeEngine.ensureStarted();
+                return;
+            }
+
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
                 if (state.winner) return;
@@ -21524,6 +23213,9 @@
         }
 
         function maybeTriggerComputerTurn() {
+            /* Strike Mode real-time: bots are driven by StrikeEngine every
+               frame — the turn-based AI must never fire. */
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return;
             if (state.phase !== 'battle' || state.winner || state.aiThinking) return;
             if (_gauntletAwaitingHumanReplace()) return;
 
@@ -34282,7 +35974,8 @@
                 if (state.towers[1].hp <= 0 || state.towers[2].hp <= 0) return true;
             }
 
-            if (wcs.includes('wipeout') || wcs.includes('most_kills')) {
+            if ((wcs.includes('wipeout') || wcs.includes('most_kills'))
+                && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
                 const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
                 const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
                 if (p1Alive === 0 || p2Alive === 0) return true;
@@ -34315,7 +36008,11 @@
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
 
-            if (wcs.includes('wipeout') || wcs.includes('most_kills')) {
+            /* Strike Mode real-time: respawns are seconds away — a momentary
+               team-wipe must NOT end the match. StrikeEngine owns the win
+               conditions (score limit + real-time clock). */
+            const _strikeRTWin = typeof window._isStrikeRT === 'function' && window._isStrikeRT();
+            if ((wcs.includes('wipeout') || wcs.includes('most_kills')) && !_strikeRTWin) {
                 if (_isFFA()) {
 
                     const alive = state.units.filter(u => !u.dead && !u._dying);

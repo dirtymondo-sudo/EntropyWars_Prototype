@@ -1273,7 +1273,7 @@
         const MS_GAME_MODES = [
             { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win. 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
-            { id: 'shooter', icon: '🎯', label: 'Strike Mode', desc: 'EXPERIMENTAL third-person controls: WASD walks your unit, mouse-look aims, 1-9 picks spells, click casts at the reticle. Controller supported. TDM rules — most kills in 12 rounds.', tag: 'BETA', locked: false },
+            { id: 'shooter', icon: '🎯', label: 'Strike Mode', desc: 'REAL-TIME third-person shooter deathmatch — no turns, everyone fights at once. WASD runs, mouse aims, LMB shoots/casts, every spell on a cooldown. First to 25 kills or best score in 8:00. Controller supported.', tag: 'BETA', locked: false },
             { id: 'ffa', icon: '👤', label: 'Free For All', desc: 'Every player for themselves. Most kills in 15 rounds. No teams.', tag: null, locked: false },
             { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
             { id: 'hotspot', icon: '🔥', label: 'Hotspot', desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15 rounds.', tag: null, locked: false },
@@ -5699,7 +5699,11 @@
                 // Deaths land in slow motion: ~half a second at 40% speed while
                 // the knock-down/spin plays, then time snaps back. Killing hits
                 // skip the impact freeze so the two effects never fight.
-                if (window.ThreeAnim.slowMo && !(typeof _skipVisuals === 'function' && _skipVisuals())) {
+                /* Strike Mode real-time: no global slow-mo — with everyone
+                   fighting at once it would stutter the whole match every
+                   few seconds. Turn-based keeps the dramatic beat. */
+                if (window.ThreeAnim.slowMo && !(typeof _skipVisuals === 'function' && _skipVisuals())
+                    && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
                     window.ThreeAnim.slowMo(0.4, 550);
                 }
             }
@@ -5721,6 +5725,11 @@
                     addLog(unit.player === 1
                         ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
                         : `💀 ${unitDisplayName(unit)} is defeated!`);
+                    shakeBoard('normal');
+                } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
+                    /* Strike Mode: StrikeEngine respawns on a real-time clock,
+                       not rounds — it logs its own countdown. */
+                    addLog(`💀 ${unitDisplayName(unit)} is down!`);
                     shakeBoard('normal');
                 } else {
                     addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);

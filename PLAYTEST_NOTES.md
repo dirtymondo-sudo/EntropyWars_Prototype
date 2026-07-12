@@ -4,6 +4,95 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## STRIKE MODE round 3 — FULLY REAL-TIME SHOOTER (2026-07-12) — state.js, map.js, battle.js, three-renderer.js, ui.js, styles-hud.css, index.html
+Token `20260712d` → `20260712e`. Strike Mode is no longer a control scheme over
+blitz turns — it is a REAL-TIME third-person shooter TDM (Halo/MW2-style).
+Turn-based game untouched: every RT branch gates on **`_isStrikeRT()`**
+(state.js, next to `_isShooterMode`; false for online matches — RT has no
+netcode sync, VS-CPU/hotseat only, online strike falls back to the old
+turn-based scheme).
+
+- **Mode entry** (`MULTIPLAYER_MODES.shooter`, state.js): `isRealtime:true`,
+  `roundLimit:0` (no matchClock rounds), `timeLimitSec:480`, `scoreLimit:25`,
+  winConditions `['most_kills']` only (wipeout removed — respawns are seconds
+  away; checkWin/checkWinConditionOnly's wipeout branch is gated off in RT).
+- **Turn engine bypass**: `maybeAdvanceTurn` early-returns in RT (and boots
+  `StrikeEngine.ensureStarted()` — the round-banner boot path lands there
+  once); `maybeTriggerComputerTurn` early-returns. `state._blitzActiveUnitId`
+  is pinned to the player's unit for the whole match (legacy HUD readers).
+- **StrikeEngine** (battle.js, right after ShooterControls;
+  `window.StrikeEngine`): the real-time match loop (own RAF).
+  - **Spell auto-converter** `_desc(spell)`: classifies `spell.kind` into RT
+    categories (bolt/ground/heal/healAll/manaAll/buff/debuff/dash/turret/
+    revive/cleanse/encore/selfUtility) and derives a cooldown from AP+MP+power:
+    `1.2 + apCost*2.2 + cost*0.05 + power*0.016` s (clamped 1.6–28;
+    `spell.cooldownRounds`×10s wins; optional `spell.strikeCooldownSec`
+    overrides). NEW SPELLS ADDED TO data.js CONVERT AUTOMATICALLY.
+  - **Combat**: all hits route through the stock `applyDamageToUnit` (type
+    chart, zodiac, armor, shields, kill credit, streaks/bounties all live).
+    Basic attack: cooldown `1600 - spd*9`ms, melee vs ranged by
+    `getEffectiveRange`, crit via `rollCrit`. Projectiles resolve at fire time
+    and damage lands on arrival (`pendingFx`), visuals via
+    `ThreeVFXEffects.projectile` / `ThreeAnim.projectile`. Ground casts AoE at
+    the reticle tile clamped to range; terrainCreate/summonWeather/seeds →
+    damage ZONES (12s, ticking); placeTrap/bomb/warpRune → armed TRAPS;
+    deployTurret → real `state.turrets` entry, fired by the engine every 3.5s.
+    Revive = dead allies' respawn timers cut to 1.2s. Encore = rewind 40% of
+    own cooldowns. GCD 450ms.
+  - **Aiming**: reticle pick (`pickAtScreen`) + soft-lock aim assist
+    (`worldToScreen`, 56px) + camera-forward for ground/dash direction.
+    RMB = ADS (boom 4.2→2.6 tiles, sens ×adsSensMult). Held LMB auto-fires
+    every 140ms. Hitmarker = reticle pulse (`.strike-hitmark`).
+  - **Bots**: every non-player unit on BOTH teams (think ~400ms, steer every
+    frame via new renderer `strikeRT` driver): target scoring (near + low-HP +
+    LoS), range-band kiting + strafe flips, ally separation, retreat <25% HP,
+    healer duty (ally <55% in range of a ready heal), best-ready-ability
+    picking, basic-attack accuracy ~72%+awr.
+  - **Respawns**: on `RenderBus 'unit:died'` → 6s + 1.5s/death (cap 14s), at
+    spawn-zone tiles (`state.spawnZones` → SPAWNS fallback), spawnGuard on.
+    Player gets a death overlay countdown + `ShooterControls.reenter()`.
+  - **Rounds → clocks**: 30s "ambience pulse" = one round of
+    `checkZodiacRotation`/`tickSkyEvent`/`checkNewSkyEvent`/`tickWeather`/
+    `spawnWeather` (zodiac change ≈150s) with combat banners; status DoTs tick
+    every 3s (½ per-round dot), durations decay every 8s
+    (`_tickAllStatusDurations`); MP regen 1.4%/s always, HP regen 4%/s after
+    8s unhit. Match: first to 25 kills or best at 8:00; tie → sudden death
+    (stock `processKillStreak` sudden-death branch ends it). Pause overlay
+    freezes the sim and shifts the clock.
+  - **HUD** (styles-hud.css, z 3600): `.strike-top` scores+clock,
+    `.strike-vitals` HP/shield/MP, `.strike-killfeed`, `.strike-respawn`,
+    `.strike-scoreboard` (hold TAB / pad X). Hotbar reused (#shooterBar) with
+    RT cooldown sweeps (conic-gradient) + seconds countdown.
+- **ShooterControls RT fork** (`_rt()` inside the IIFE): `_localUnit` = the
+  player's unit always; `_owns()` = whole match incl. death cam; walker runs
+  unfenced (`_startRoamRT` — no rings, no `_initWasdState`, no AP commits,
+  crossings write unit.x/y); `_fire` → `StrikeEngine.playerFire(selSlot)`;
+  digits/wheel switch slots (pure selection, nothing arms); SPACE jump; no
+  Enter end-turn; TAB scoreboard; mouse binds via **`ew_strikeBinds`**
+  (e.code + 'MouseN'), opts via **`ew_strikeOpts`** {sens, adsSensMult,
+  invertY, fov} — exposed as `window.StrikeControlsConfig`, FOV applied on
+  ownership (restored after). Pad: RT=fire LT=ADS B=jump X=scoreboard.
+- **Renderer RT driver** (three-renderer.js `ThreeRenderer.strikeRT`):
+  `setMode(on)`, `drive(uid,fx,fy,want,run)`, `release(uid)`,
+  `playAnim(uid,slots)` (= `_maybeStartModelAnim`). `_rtTick` applies float
+  positions each frame after `_freeRoamTick`; `_updateUnitModels` takes
+  `want` from `_rtUnits`; run lean. In `_rtMode` the STRUCTURAL SERIAL
+  IGNORES x/y/z (bots crossing tiles must not churn rebuilds — deaths/spawns
+  still rebuild via alive-set membership) and the `_freeRoam` rebuild-defer is
+  waived (positions reapply next frame, snap invisible).
+- **Settings UI** (ui.js `_buildControlsSettingsHTML`): new "🎯 Strike Mode"
+  group — sensitivity/ADS/FOV sliders, invert-Y, reset buttons, full
+  click-to-rebind grid (`window._ewStrikeRebind` captures next key/mouse,
+  ESC cancels). Works in the pause menu Controls tab + main-menu Settings.
+- **defeatUnit (map.js)**: RT skips global slow-mo and logs "is down!"
+  (StrikeEngine owns respawn countdowns).
+- Syntax-checked only (RULE #1c), NOT playtested. Watch list: plates during
+  fast bot movement (positions patch via `_patchPlateStats` every frame in
+  RT), `ThreeVFXEffects.projectile` with fractional tile coords, bot pathing
+  around chasm maps (greedy steering, no A*), pause during in-flight
+  projectiles (pendingFx timestamps don't shift), first spawn tile if
+  spawnZones missing on a map.
+
 ## CINEMATIC CAMERA: FOLLOW / MULTI-TARGET / SUPPORT SHOTS + ×N HOLD (2026-07-12) — battle.js, index.html
 Token `20260712b` → `20260712c`. New camera vocabulary (all in battle.js, next
 to `_playCineActionShot`):

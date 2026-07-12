@@ -4222,3 +4222,235 @@
 .ew-entropy-ready-label {
     animation: ewEntropyReadyLabel 1s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STRIKE MODE (real-time shooter) HUD — battle.js StrikeEngine.
+   Sits in the shooter overlay band (z 3600) with the reticle/hotbar.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* top strip: team scores flanking the match clock */
+.strike-top {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3600;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    pointer-events: none;
+    font-family: 'DotGothic16', monospace;
+}
+.strike-score {
+    min-width: 74px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 10, 18, 0.82);
+    border: 1px solid rgba(140, 160, 220, 0.45);
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.strike-score-num {
+    font-size: 26px;
+    line-height: 1;
+    padding: 8px 10px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.strike-score-p1 { border-color: rgba(var(--p1-rgb), 0.85); }
+.strike-score-p1 .strike-score-num { color: rgb(var(--p1-rgb)); }
+.strike-score-p2 { border-color: rgba(var(--p2-rgb), 0.85); }
+.strike-score-p2 .strike-score-num { color: rgb(var(--p2-rgb)); }
+.strike-clock {
+    text-align: center;
+    padding: 6px 18px;
+    background: rgba(8, 10, 18, 0.86);
+    border: 1px solid rgba(140, 160, 220, 0.45);
+    color: #e8ecff;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.strike-clock > div:first-child {
+    font-size: 22px;
+    letter-spacing: 0.1em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.strike-clock-sub {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--muted, #706880);
+    white-space: nowrap;
+}
+
+/* bottom-left vitals: HP / shield / MP */
+.strike-vitals {
+    position: fixed;
+    left: 22px;
+    bottom: 24px;
+    z-index: 3600;
+    width: min(300px, 34vw);
+    pointer-events: none;
+    font-family: 'DotGothic16', monospace;
+}
+.strike-vitals-name {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: #e8ecff;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    margin-bottom: 4px;
+}
+.strike-bar {
+    position: relative;
+    height: 16px;
+    margin-bottom: 5px;
+    background: rgba(8, 10, 18, 0.82);
+    border: 1px solid rgba(140, 160, 220, 0.45);
+    clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+    overflow: hidden;
+}
+.strike-bar-mp { height: 10px; }
+.strike-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 100%;
+    background: #55bb70;
+    transition: width 0.18s ease;
+}
+.strike-bar-mp .strike-bar-fill { background: #5a88c8; }
+.strike-bar-shield {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background: rgba(180, 210, 255, 0.55);
+    mix-blend-mode: screen;
+    transition: width 0.18s ease;
+}
+.strike-bar-txt {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #eef2ff;
+    text-shadow: 0 1px 2px #000;
+}
+
+/* kill feed, top right */
+.strike-killfeed {
+    position: fixed;
+    top: 16px;
+    right: 18px;
+    z-index: 3600;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+    pointer-events: none;
+    font-family: 'DotGothic16', monospace;
+}
+.strike-feed-row {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #d8deee;
+    background: rgba(8, 10, 18, 0.8);
+    border: 1px solid rgba(140, 160, 220, 0.3);
+    padding: 4px 10px;
+    white-space: nowrap;
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+    animation: strikeFeedIn 0.18s ease-out;
+}
+@keyframes strikeFeedIn {
+    from { transform: translateX(24px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+.strike-feed-p1 { color: rgb(var(--p1-rgb)); }
+.strike-feed-p2 { color: rgb(var(--p2-rgb)); }
+
+/* death / respawn overlay */
+.strike-respawn {
+    position: fixed;
+    inset: 0;
+    z-index: 3620;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(60, 8, 12, 0.25), rgba(8, 4, 8, 0.55));
+    font-family: 'DotGothic16', monospace;
+}
+.strike-respawn-inner {
+    text-align: center;
+    font-size: 26px;
+    letter-spacing: 0.2em;
+    color: #ffb0b0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+    background: rgba(8, 10, 18, 0.85);
+    border: 1px solid rgba(255, 120, 120, 0.5);
+    padding: 22px 40px;
+    line-height: 1.7;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.strike-respawn-t {
+    font-size: 15px;
+    letter-spacing: 0.24em;
+    color: #e8ecff;
+}
+
+/* Tab scoreboard */
+.strike-scoreboard {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3640;
+    min-width: 340px;
+    max-width: 480px;
+    background: rgba(8, 10, 18, 0.94);
+    border: 1px solid rgba(140, 160, 220, 0.55);
+    padding: 16px 20px;
+    pointer-events: none;
+    font-family: 'DotGothic16', monospace;
+    color: #e8ecff;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.strike-sb-title {
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.24em;
+    margin-bottom: 10px;
+    color: var(--accent, #b0a068);
+}
+.strike-sb-team { margin-bottom: 10px; }
+.strike-sb-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    padding: 3px 6px;
+    margin-bottom: 3px;
+}
+.strike-sb-p1 .strike-sb-head { background: rgba(var(--p1-rgb), 0.22); color: rgb(var(--p1-rgb)); }
+.strike-sb-p2 .strike-sb-head { background: rgba(var(--p2-rgb), 0.22); color: rgb(var(--p2-rgb)); }
+.strike-sb-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    color: #ccd4e8;
+}
+.strike-sb-me {
+    background: rgba(127, 212, 255, 0.14);
+    color: #aee6ff;
+}
+
+/* reticle hit-marker pulse (StrikeEngine._hitmarker) */
+@keyframes strikeHitmark {
+    0%   { transform: scale(1);    filter: drop-shadow(0 0 6px rgba(255, 120, 90, 0.9)); }
+    35%  { transform: scale(1.45); filter: drop-shadow(0 0 10px rgba(255, 160, 90, 1)); }
+    100% { transform: scale(1);    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
+}
+#shooterReticle.strike-hitmark svg {
+    animation: strikeHitmark 0.22s ease-out;
+}

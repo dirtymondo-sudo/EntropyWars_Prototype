@@ -6659,7 +6659,11 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
             h = _hashVal(h, u.id);
-            h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
+            /* Strike real-time: tile positions change continuously (the RT
+               driver owns the group transforms) — hashing them would trigger
+               a full rebuild on every crossing of every bot. Deaths/respawns
+               still rebuild via the alive-set membership above. */
+            if (!_rtMode) { h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0); }
             h = _hashInt(h, u.player);
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
@@ -8041,6 +8045,11 @@ const ThreeRenderer = (function () {
                     else if (_strikeTweens.has(uid)) leanTarget = 0.15;
                     else if (_walkTweens.has(uid)) leanTarget = 0.09;
                     else if (_freeRoam && uid === _freeRoam.uid && _freeRoam.moving) leanTarget = _freeRoam.running ? 0.17 : 0.08;
+                    else if (_rtMode && _rtUnits.has(uid)) {
+                        var _rtE = _rtUnits.get(uid);
+                        if (_rtE.want === 'run') leanTarget = 0.17;
+                        else if (_rtE.want === 'walk') leanTarget = 0.08;
+                    }
                 }
                 var lean = entry.model._ew_lean || 0;
                 lean += (leanTarget - lean) * Math.min(1, dt * 10);
@@ -8077,6 +8086,7 @@ const ThreeRenderer = (function () {
             if (_deathTweens.has(uid)) want = 'death';
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             else if (_freeRoam && uid === _freeRoam.uid) want = _freeRoam.want || 'idle';   // hub free-roam owns this unit's clip
+            else if (_rtMode && _rtUnits.has(uid)) want = _rtUnits.get(uid).want || 'idle'; // Strike real-time driver owns it
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
             else if (_dodgeTweens.has(uid)) want = 'dodge'; // evade roll (lib) → idle
             else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
@@ -14337,9 +14347,54 @@ const ThreeRenderer = (function () {
         try { if (typeof window._mdFreeRoamCam === 'function') window._mdFreeRoamCam(fr.fx, fr.fy); } catch (e) {}
     }
 
+    /* ── Strike Mode REAL-TIME unit driver ───────────────────────────────
+       battle.js's StrikeEngine drives EVERY unit continuously (bots included)
+       — this is the renderer half. Each driven unit has a float tile position
+       applied to its wrapper group every frame (same math as the free-roam
+       walker), plus a locomotion clip request consumed by _updateUnitModels.
+       While _rtMode is on the structural serial ignores x/y/z (positions are
+       per-frame data, not structure), so tile crossings stop churning full
+       rebuilds; deaths/respawns still rebuild because the alive set changes. */
+    var _rtMode = false;
+    var _rtUnits = new Map();   // uid -> { fx, fy, want, run, jumpY }
+    function _rtSetMode(on) {
+        _rtMode = !!on;
+        if (!on) _rtUnits.clear();
+    }
+    function _rtDrive(uid, fx, fy, want, run, jumpY) {
+        var rt = _rtUnits.get(uid);
+        if (!rt) { rt = {}; _rtUnits.set(uid, rt); }
+        rt.fx = fx; rt.fy = fy;
+        rt.want = want || 'idle';
+        rt.run = !!run;
+        rt.jumpY = jumpY || 0;
+    }
+    function _rtRelease(uid) { _rtUnits.delete(uid); }
+    function _rtTick() {
+        if (!_rtMode || _rtUnits.size === 0) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        _rtUnits.forEach(function (rt, uid) {
+            var entry = _getUnitEntry(uid);
+            if (!entry || !entry.group) return;   // model loading / unit rebuilt away this frame
+            var tX = Math.round(rt.fx), tY = Math.round(rt.fy);
+            var sy = _tileSurfaceY(tX, tY, null);
+            var sink = entry.group._ew_subSink || 0;
+            entry.group.position.set(rt.fx * ts + ts / 2, sy - sink + (rt.jumpY || 0), rt.fy * ts + ts / 2);
+            entry.group._ew_spriteTopY = sy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+            /* facing lives on unit.facing (written by the engine) — the outer
+               group must stay unrotated (see the walker's moonwalk note) */
+            if (entry.group.rotation.y) entry.group.rotation.y = 0;
+            if (entry.actions && entry.actions.walk) {
+                entry.actions.walk.timeScale =
+                    ((entry.modelDef && entry.modelDef.moveTimeScale) || 1) * (rt.run ? 1.75 : 1);
+            }
+        });
+    }
+
     function _updateAnimations() {
         _tickAnimClock();
         _freeRoamTick();
+        _rtTick();
         _syncCombatAnims();
         _updateWalkTweens();
         _updateDisplaceTweens();
@@ -19875,7 +19930,12 @@ const ThreeRenderer = (function () {
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {
 
-            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0 || _freeRoam) {
+            /* Strike real-time: the player's walker (_freeRoam) is active for
+               essentially the whole match — it must NOT hold off structural
+               rebuilds (deaths/respawns need them), and the snap it guards
+               against is invisible anyway because _rtTick/_freeRoamTick
+               reapply float positions on the very next frame. */
+            if (_walkTweens.size > 0 || _jumpTweens.size > 0 || _displaceTweens.size > 0 || _deathTweens.size > 0 || _strikeTweens.size > 0 || (_freeRoam && !_rtMode)) {
                 /* Structural rebuilds must wait for tweens to settle (a rebuild
                    would snap positions), but plate stats are DOM-only — patch
                    them live so damage still drains the HP bar mid-animation.
@@ -20741,6 +20801,18 @@ const ThreeRenderer = (function () {
             setJump: function (on) { if (_freeRoam) _freeRoam.keys.space = !!on; },
             pos: function () { return _freeRoam ? { x: _freeRoam.fx, y: _freeRoam.fy } : null; },
             uid: function () { return _freeRoam ? _freeRoam.uid : null; },
+        },
+
+        /* Strike Mode REAL-TIME unit driver (battle.js StrikeEngine): float
+           tile positions + locomotion clips for every simultaneously-moving
+           unit (the bots — the player rides hubFreeRoam). playAnim fires the
+           one-shot cast/attack/hit clips with the stock fallback chains. */
+        strikeRT: {
+            setMode: _rtSetMode,
+            drive: _rtDrive,
+            release: _rtRelease,
+            active: function () { return _rtMode; },
+            playAnim: function (uid, slots) { return _maybeStartModelAnim(uid, slots); },
         },
 
         /* Third-person shooter controls (battle.js ShooterControls layer) */

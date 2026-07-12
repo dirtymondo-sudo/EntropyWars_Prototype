@@ -217,28 +217,35 @@
                 suddenDeath: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
-            /* EXPERIMENTAL third-person control scheme. Rules are a straight
-               TDM clone (scoringType 'kills' keeps every stock win/score branch
-               working) — the isShooter flag is what battle.js's ShooterControls
-               layer keys off to take over camera + input. Intended to graduate
-               into the default control scheme once it feels right. */
+            /* FULL REAL-TIME third-person shooter Team Deathmatch. No turns,
+               no AP: everyone moves and acts simultaneously; spells fire on
+               timed cooldowns auto-derived from their turn-based costs, and
+               the round-based ambience (zodiac / celestial events / weather /
+               status ticks) runs on real-time clocks instead of rounds.
+               isShooter drives battle.js's ShooterControls camera+input layer;
+               isRealtime drives the StrikeEngine (real-time combat loop, bots,
+               respawns, match clock). scoringType 'kills' keeps the stock
+               score/win plumbing working. The turn-based game is untouched —
+               every real-time branch gates on _isStrikeRT(). */
             shooter: {
                 id: 'shooter',
                 label: 'Strike Mode',
                 icon: '🎯',
-                desc: 'EXPERIMENTAL — Team Deathmatch with direct third-person controls. WASD walks your active unit, the mouse looks and aims, 1-9 picks spells, click casts at the reticle. Most kills in 12 rounds wins.',
-                roundLimit: 12,
-                timeLimitSec: 0,
+                desc: 'REAL-TIME third-person shooter deathmatch. WASD runs, mouse looks, LMB shoots/casts at the reticle, 1-9 / wheel picks abilities — every spell on a timed cooldown. First team to the score limit (or most kills at the horn) wins. Respawns are on.',
+                roundLimit: 0,            // no rounds — StrikeEngine owns the match clock
+                timeLimitSec: 480,        // 8:00 of real time
+                scoreLimit: 25,           // first team to 25 kills wins instantly
                 hasTowers: false,
                 hasNexus: false,
                 hasHourglasses: false,
                 hasFlags: false,
                 respawns: true,
-                winConditions: ['most_kills', 'wipeout'],
+                winConditions: ['most_kills'],
                 tiebreaker: 'sudden_death_kill',
                 scoringType: 'kills',
                 suddenDeath: true,
                 isShooter: true,
+                isRealtime: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
             ffa: {
@@ -411,6 +418,26 @@
                 && !!(MULTIPLAYER_MODES[activeMultiplayerMode] && MULTIPLAYER_MODES[activeMultiplayerMode].isShooter);
         }
         window._isShooterMode = _isShooterMode;
+
+        /* Strike Mode is FULLY REAL-TIME (no blitz turns at all): battle.js's
+           StrikeEngine runs the match loop, the turn engine early-returns, and
+           every turn-based system (AP, rounds, end-of-round ticks) is replaced
+           by real-time equivalents. Everything real-time gates on THIS flag so
+           the turn-based game stays 100% intact. */
+        function _isStrikeRT() {
+            if (typeof activeMultiplayerMode === 'undefined') return false;
+            const m = MULTIPLAYER_MODES[activeMultiplayerMode];
+            if (!m || !m.isRealtime) return false;
+            /* ONLINE matches fall back to the turn-based control scheme:
+               the real-time sim runs locally with no netcode sync — two
+               clients would desync instantly. VS CPU / hotseat only. */
+            try {
+                const c = state.controllers || {};
+                for (const k in c) { if (c[k] === 'remote') return false; }
+            } catch (e) {}
+            return true;
+        }
+        window._isStrikeRT = _isStrikeRT;
 
         /* Mystery Dungeon persistent progress (independent of the campaign and
            account wallets — mirrors how the challenge saves keep to themselves). */
