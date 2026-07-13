@@ -8640,6 +8640,22 @@ const STATUS_DEFS = {
             });
         }
     },
+    wet: {
+        icon: '💧',
+        glyph: '💧',
+        short: 'WET',
+        label: 'Soaked',
+        colorText: 'soaked',
+        // 'marker' (not 'debuff') — standing in water makes you wet, period;
+        // no resist roll, no Censer purge. Whether it helps or hurts depends
+        // on what hits you next: lightning ×1.5, fire ×0.75, frost = frozen
+        // solid, and a soaked unit can't be set on fire (see the elemental
+        // combo layer in battle.js applyDamageToUnit).
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('💧', '#0a2a45', '#d5ecff', '#5ab4ff')
+    },
     lava_burn: {
         icon: '🌋',
         glyph: '🌋',

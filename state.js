@@ -1433,7 +1433,8 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Chases the nearest unit (up to 2 tiles/round); batters and hurls anyone it catches. -10 DEF on the eye.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round); batters, soaks and hurls anyone it catches. -10 DEF on the eye.',
+                soaks: true,
                 statMod: {
                     def: -10
                 },
@@ -1450,7 +1451,8 @@
                 tiles: [5, 8],
                 roaming: true,
                 duration: [3, 5],
-                desc: 'Damages Divine, heals Unholy.',
+                desc: 'Damages Divine, heals Unholy. Soaks everyone in the downpour.',
+                soaks: true,
                 onTurnEffect(unit) {
                     const isDivine = (unit.types || []).includes('divine');
                     const isUnholy = (unit.types || []).includes('unholy');
@@ -1508,7 +1510,9 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Chases the nearest unit (up to 2 tiles/round); blasts anyone it catches with lightning. -5 DEF on the eye.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round); soaks and blasts anyone it catches with lightning — soaked (or swimming) victims fry, tech units supercharge. -5 DEF on the eye.',
+                element: 'lightning',
+                soaks: true,
                 statMod: {
                     def: -5
                 },
@@ -1557,7 +1561,8 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters non-Anomaly units it catches. -8 DEF on the eye.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters non-Anomaly units it catches — soaked victims freeze solid. -8 DEF on the eye.',
+                element: 'cold',
                 statMod: {
                     def: -8
                 },
@@ -2042,11 +2047,18 @@
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather).
                 if (def.homing) continue;
-                if (!def.onTurnEffect) continue;
+                if (!def.onTurnEffect && !def.soaks) continue;
                 const tileSet = new Set(weather.tiles.map(t => posKey(t.x, t.y)));
                 for (const unit of units) {
                     if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
-                    const eff = def.onTurnEffect(unit);
+                    // 🌧️ Rain-type weather soaks whoever stands in it (wet =
+                    // conducts lightning, resists fire, flash-freezable).
+                    if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                        const _wPrev = Number((unit.status && unit.status.wet) || 0);
+                        if (_wPrev > 0) unit.status.wet = Math.max(_wPrev, 2);
+                        else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
+                    }
+                    const eff = def.onTurnEffect ? def.onTurnEffect(unit) : null;
                     if (!eff) continue;
                     if (_bufferingRoundEvents) _reBeginGroup(`${def.icon} ${def.label} → ${unitDisplayName(unit)}`);
                     if (eff.type === 'damage') {
@@ -2247,12 +2259,24 @@
                     // Damage — and for tornado/hurricane, displace — everyone it caught.
                     for (const v of struck) {
                         if (!v || v.dead) continue;
+                        // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
+                        // drench whoever they sweep over — BEFORE the strike,
+                        // so a thunderstorm fries its own soaked victims.
+                        if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
+                            const _wPrev = Number((v.status && v.status.wet) || 0);
+                            if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
+                            else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
+                        }
                         const hit = def.homingDamage ? def.homingDamage(v) : null;
                         if (hit && hit.amount > 0) {
                             actedVisibly = true;
                             applyDamageToUnit(v, hit.amount, `${hit.text}`, {
                                 ignoreArmor: false,
                                 sourceUnit: caster || undefined,
+                                // Elemental storms ride the combo layer
+                                // (lightning fries the soaked / supercharges
+                                // tech; blizzard flash-freezes the wet).
+                                element: def.element || null,
                                 // Natural storms have no caster — scale by the
                                 // victim's level (see applyWeatherTurnEffects).
                                 scaleByTargetLevel: true

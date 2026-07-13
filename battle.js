@@ -1814,6 +1814,62 @@
             return t === 'water' || t === 'deep_water';
         }
 
+        // ── 💧 SOAKED (wet) — the glue status of the elemental combo layer ──
+        // Standing in (or being thrown into / rained on in) water leaves a unit
+        // Soaked for 2 rounds. Soaked units conduct lightning (×1.5 damage
+        // taken), resist fire (×0.75), can't be set on burn, and flash-freeze
+        // solid when hit by frost. See the combo layer in applyDamageToUnit.
+        const WET_ROUNDS = 2;
+
+        function _soakUnit(u, opts = {}) {
+            if (!u || u.dead || u._dying) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            const status = ensureUnitStatus(u);
+            const wasWet = Number(status.wet || 0) > 0;
+            status.wet = Math.max(Number(status.wet || 0), WET_ROUNDS);
+            if (!wasWet && !opts.quiet) {
+                showFloatingTextForUnit(u, '💧 Soaked', 'debuff', { durationMs: 900 });
+            }
+            return !wasWet;
+        }
+
+        // True when the next lightning bolt would find this unit dripping wet:
+        // carrying the Soaked status OR currently standing in the pool itself
+        // (covers "waded in this very turn" before the round-end soak tick).
+        function _unitIsSoaked(u) {
+            if (!u) return false;
+            if (unitHasStatus(u, 'wet')) return true;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            return _isWaterTile(u.x, u.y);
+        }
+
+        // Round-end tick (runs beside tickBurningTiles): everyone still standing
+        // in water is Soaked for the next rounds — set up the flood, then bolt it.
+        function tickWetUnits() {
+            for (const u of state.units) {
+                if (u.dead || u._dying) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (!_isWaterTile(u.x, u.y)) continue;
+                _soakUnit(u, { quiet: true });
+            }
+        }
+
+        // ── ★ ZODIAC ELEMENTAL RESONANCE ──────────────────────────────────
+        // The reigning sign's trine empowers its element for EVERYONE (both
+        // teams): fire signs boost fire spells, air signs boost lightning,
+        // water signs boost frost — time your big elemental turn to the stars.
+        // (The earth trine is reserved for a future terraforming resonance.)
+        const _ZODIAC_TRINE_ELEMENT = {
+            aries: 'fire', leo: 'fire', sagittarius: 'fire',
+            gemini: 'lightning', libra: 'lightning', aquarius: 'lightning',
+            cancer: 'cold', scorpio: 'cold', pisces: 'cold'
+        };
+        const ZODIAC_RESONANCE_MULT = 1.25;
+
+        function getZodiacResonanceElement() {
+            return _ZODIAC_TRINE_ELEMENT[state.activeZodiac] || null;
+        }
+
         function _isForestTile(x, y) {
             const t = getTerrainAt(x, y);
             if (t === 'tree' || t === 'forest' || t === 'forest_2') return true;
@@ -2034,7 +2090,11 @@
         // are spared, as is the unit on the origin tile (already hit by the spell).
         function _reactLightningWater(caster, spell, ox, oy, body) {
             if (!body || !body.length) return;
-            const tick = Math.max(40, Math.round((spell.dmg || 90) * 0.5));
+            // Electrocution is the PAYOFF of a real setup (flood the ground,
+            // herd them in, then bolt the pool) — it hits near full spell
+            // strength, and the combo layer stacks the ×1.5 Soaked multiplier
+            // on top since every victim is standing in the water.
+            const tick = Math.max(60, Math.round((spell.dmg || 90) * 0.75));
             // collect victims first so the arc visuals know where the charge
             // has to slam home
             const victims = [];
@@ -2054,6 +2114,7 @@
                     allowMarkBonus: false,
                     damageType: 'magic',
                     spellType: spell.spellType || null,
+                    element: 'lightning',
                     flashColor: 'shock'
                 });
                 if (!arcs3D) showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
@@ -2128,7 +2189,7 @@
         // This is the "build a steel tower, then call lightning onto it" combo.
         function _reactLightningMetal(caster, spell, ox, oy, sheet) {
             if (!sheet || !sheet.length) return;
-            const tick = Math.max(36, Math.round((spell.dmg || 90) * 0.5));
+            const tick = Math.max(50, Math.round((spell.dmg || 90) * 0.75));
             const victims = [];
             for (const t of sheet) {
                 const u = unitAt(t.x, t.y);
@@ -2146,6 +2207,7 @@
                     allowMarkBonus: false,
                     damageType: 'magic',
                     spellType: spell.spellType || null,
+                    element: 'lightning',
                     flashColor: 'shock'
                 });
                 if (!arcs3D) showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
@@ -2439,14 +2501,17 @@
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const terr = getTerrainAt(unit.x, unit.y);
             // 💧 Landing in water puts you out — burn and lingering lava-burn
-            // are doused the instant a unit is shoved into the drink.
-            if ((terr === 'water' || terr === 'deep_water') && unit.status
-                && (unit.status.burn || unit.status.lava_burn)) {
-                clearStatus(unit, 'burn');
-                clearStatus(unit, 'lava_burn');
-                unit._lavaBurnStacks = 0;
-                addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
-                showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
+            // are doused the instant a unit is shoved into the drink — and
+            // leaves them Soaked (conductive to the next lightning bolt).
+            if (terr === 'water' || terr === 'deep_water') {
+                if (unit.status && (unit.status.burn || unit.status.lava_burn)) {
+                    clearStatus(unit, 'burn');
+                    clearStatus(unit, 'lava_burn');
+                    unit._lavaBurnStacks = 0;
+                    addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
+                    showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
+                }
+                _soakUnit(unit);
             }
             if (terr === 'lava') {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
@@ -2825,6 +2890,7 @@
         // chain profiles, cinematic damage display, and post-effects.
         // ═══════════════════════════════════════════════════════════════════
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
+            const _spellEl = classifySpellElement(spell);
             if (spell.chainProfile?.length) {
                 // Chain damage path
                 const allEnemies = aliveUnitsFor(enemyOf(unit.player));
@@ -2869,7 +2935,8 @@
                                 ignoreArmor: !!spell.ignoreArmor,
                                 statusEffects: idx === 0 ? spell.statusEffects : null,
                                 damageType: spell.damageType || 'magic',
-                                spellType: spell.spellType || null
+                                spellType: spell.spellType || null,
+                                element: _spellEl
                             });
                     };
                     if (dmgDelay > 0) window.setTimeout(applyHit, dmgDelay);
@@ -2902,7 +2969,8 @@
                         ignoreArmor: !!spell.ignoreArmor,
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null,
+                        element: _spellEl
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
@@ -3029,7 +3097,8 @@
                         {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null
+                            spellType: spell.spellType || null,
+                            element: classifySpellElement(spell)
                         });
                     if (idx === 0 && _activeCinematic?.showDamage) {
                         _activeCinematic.showDamage(`-${dmg}`, false);
@@ -3070,7 +3139,8 @@
             applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
-                spellType: spell.spellType || null
+                spellType: spell.spellType || null,
+                element: classifySpellElement(spell)
             });
             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${dmg}`, false);
 
@@ -3140,7 +3210,8 @@
                         allowMarkBonus: false,
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || opts.damageType || 'magic',
-                        spellType: spell.spellType || opts.spellType || null
+                        spellType: spell.spellType || opts.spellType || null,
+                        element: classifySpellElement(spell)
                     });
 
                     // Cross-style push
@@ -3386,7 +3457,8 @@
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                     sourceUnit: unit,
                     damageType: spell.damageType || 'magic',
-                    spellType: spell.spellType || null
+                    spellType: spell.spellType || null,
+                    element: classifySpellElement(spell)
                 });
                 applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -3976,6 +4048,14 @@
             if (payload.id === 'invisible' && state.flags &&
                 [1, 2].some(p => state.flags[p] && state.flags[p].carriedBy === target.id)) {
                 addLog(`👁 ${unitDisplayName(target)} can't hide while carrying the flag!`);
+                return false;
+            }
+            // 💧 A soaked unit can't catch fire — the water flashes to steam
+            // instead. (Fire hits DO dry them out — see the combo layer — so
+            // the second fireball burns as usual.)
+            if (payload.id === 'burn' && unitHasStatus(target, 'wet')) {
+                addLog(`💧 ${unitDisplayName(target)} is too soaked to catch fire!`);
+                showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -11916,6 +11996,7 @@
                 try { if (typeof tickWeather === 'function') tickWeather(); } catch (e) {}
                 try { if (typeof spawnWeather === 'function') spawnWeather(); } catch (e) {}
                 try { if (typeof tickBurningTiles === 'function') tickBurningTiles(); } catch (e) {}
+                try { if (typeof tickWetUnits === 'function') tickWetUnits(); } catch (e) {}
                 /* the EOR announcer never runs in real time — surface changes
                    with combat banners instead, and drop queued announcements */
                 if (state.activeZodiac !== zPrev) {
@@ -13468,6 +13549,49 @@
                 finalDamage = Math.max(1, Math.round(finalDamage * _dtMult));
             }
 
+            // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
+            // Element-aware interactions between the incoming hit, the
+            // victim's condition and the reigning zodiac. Callers pass
+            // opts.element ('lightning'|'fire'|'cold') — spell resolvers get
+            // it from classifySpellElement, conduction and elemental weather
+            // pass theirs explicitly. Post-hit halves (Overclock grant,
+            // flash-freeze, drying out) resolve after the damage lands below.
+            const _comboEl = opts.element || null;
+            let _comboSupercharge = false;
+            if (_comboEl && finalDamage > 0) {
+                // ★ Zodiac resonance: the active sign's trine empowers its
+                // element for both teams (fire signs → fire, air → lightning,
+                // water → frost). Time the big elemental turn to the stars.
+                if (typeof getZodiacResonanceElement === 'function'
+                    && getZodiacResonanceElement() === _comboEl) {
+                    finalDamage = Math.max(1, Math.round(finalDamage * ZODIAC_RESONANCE_MULT));
+                    if (sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
+                        sourceUnit._zResCalloutRound = state.round;
+                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
+                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
+                    }
+                }
+                const _isSoaked = _unitIsSoaked(target);
+                if (_comboEl === 'lightning') {
+                    const _isTech = (target.types || []).includes('tech');
+                    if (_isSoaked) {
+                        // ⚡💧 Water conducts — a dripping-wet target fries.
+                        // (Soaked TECH shorts out instead of supercharging.)
+                        finalDamage = Math.round(finalDamage * 1.5);
+                        showFloatingTextForUnit(target, _isTech ? '⚡💧 ×1.5 SHORT CIRCUIT!' : '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
+                    } else if (_isTech) {
+                        // ⚙️ Dry tech runs on current: the surge half-hurts and
+                        // OVERCLOCKS the machine (bolting your own robot is a play).
+                        finalDamage = Math.max(1, Math.round(finalDamage * 0.5));
+                        _comboSupercharge = true;
+                    }
+                } else if (_comboEl === 'fire' && _isSoaked) {
+                    // 🔥💧 Soaked flesh chars poorly — the blast steams them dry.
+                    finalDamage = Math.max(1, Math.round(finalDamage * 0.75));
+                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
+                }
+            }
+
             if (target.shield > 0) {
                 const shieldIgnore = Math.max(0, Number(opts.shieldIgnore || 0));
                 const effectiveShield = Math.max(0, target.shield - shieldIgnore);
@@ -13653,6 +13777,33 @@
             }
 
             if (opts.statusEffects || opts.status) applyStatusEffects(target, opts.statusEffects || opts.status, '', sourceUnit);
+
+            // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
+            if (_comboEl && !target.dead && !target._dying) {
+                if (_comboSupercharge) {
+                    // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
+                    // +1 move, tech range bonus) and tops up its capacitors.
+                    applyStatusPayload(target, { id: 'overclock', duration: 2 }, '⚙️ Supercharged: ', null);
+                    const _scLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
+                        ? levelScale(getUnitLevel(target)) : 1;
+                    const _mpGain = Math.min(Math.round(25 * _scLs), Math.max(0, (target.maxMp || 0) - (target.mp || 0)));
+                    if (_mpGain > 0) {
+                        target.mp += _mpGain;
+                        showFloatingTextForUnit(target, `+${_mpGain} MP`, 'mp');
+                    }
+                    showFloatingTextForUnit(target, '⚙️ SUPERCHARGED!', 'buff', { durationMs: 1200 });
+                    addLog(`⚙️ The surge overloads ${unitDisplayName(target)}'s circuits — SUPERCHARGED (Overclock)!`);
+                } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'stun')) {
+                    // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
+                    // solid for a turn (soak them first, then bring the cold).
+                    applyStatusPayload(target, { id: 'stun', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
+                } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
+                    // 🔥💧 The blast steams a soaked unit dry — the NEXT fire
+                    // hit burns at full strength and can set them alight.
+                    clearStatus(target, 'wet');
+                    showFloatingTextForUnit(target, '♨️ Dried out', 'debuff', { durationMs: 900 });
+                }
+            }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
                 const seedIdx = state.plantedSeeds.findIndex(s => s.x === target.x && s.y === target.y && s.owner !== sourceUnit.player);
@@ -14859,6 +15010,19 @@
                 if (_tileIsBurning(x, y)) {
                     _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
                         `${unitDisplayName(unit)} steps into the flames: `);
+                }
+                // 💧 Wading into water soaks you — and puts out any fire on
+                // you (dive in the lake to stop burning; just don't stand in
+                // the pool when a bolt comes down).
+                if (_isWaterTile(x, y)) {
+                    if (unit.status && (unit.status.burn || unit.status.lava_burn)) {
+                        clearStatus(unit, 'burn');
+                        clearStatus(unit, 'lava_burn');
+                        unit._lavaBurnStacks = 0;
+                        addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
+                        showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
+                    }
+                    _soakUnit(unit);
                 }
                 const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
                 if (bombIndex >= 0) {
@@ -22986,6 +23150,7 @@
                     tickSkyEvent();
                     tickWeather();
                     tickBurningTiles();
+                    tickWetUnits();
                     state.round += 1;
                     tickMatchClock();
                     checkZodiacRotation();
