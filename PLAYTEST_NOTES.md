@@ -5181,3 +5181,31 @@ parks #sidebarPanel/#scorePanel/scoreboard/#css2dOverlay via visibility).
 - **Palette**: EW ink/panel + all hrlg surfaces de-blued to bone-on-black neutrals
   (#0c0c0a family); descbar chrome bone+blood-red instead of gold/holo-blue; crown red
   now #ff4a3c. Vitals bars 17/14px with 12px numbers (were 8px unreadable).
+
+## Targeting fixes — pick rings + AoE/zone team filtering (2026-07-13)
+- **"Can't click the enemy beneath my elevated unit" root cause**: the team
+  rings / facing wedge / selection halo / hover glow are wide HORIZONTAL discs
+  in the unit's pick group with no raycast guard. From an angled camera an
+  elevated unit's discs project down over the tile at its column base and
+  swallow clicks aimed at the unit standing there (screenToUnit in
+  three-camera.js is pure nearest-hit against unitGroup). Fixed with the same
+  `mesh.raycast = function(){}` no-op already used on silhouettes/shadow
+  proxies (three-renderer.js ~8425-8500 + `_hoverGlowMesh`). Any NEW
+  decorative mesh added to a unit group MUST get this guard.
+- **`spellTileTeam(spell)` → 'ally'|'enemy'|'both'** (battle.js, next to
+  `_kindMeta`, exported on window): payload-first judgment of who a
+  tile-targeted AoE/zone spell serves. Don't trust spell.type/classifySpell —
+  Sticky Bomb is type:'buff' with dmg:144, Plunder kind:'utility' dmg:70,
+  Smoke Screen kind:'zoneDebuff' but cloaks allies. leechSeed is 'both'.
+  Consumers: `_getSpellValidTargets` (target drum — beneficial zones list
+  allies only, hostile zones enemies only), `_computeTileActions` (hud.js —
+  ally-tile menu hides hostile zone casts; caster's OWN tile keeps them),
+  `_computeEnemyActions` (hud.js — hides ally-serving zones, un-hides
+  misclassified damage spells like Sticky Bomb), ui.js `_hlCache` utility +
+  generic branches (allies light 'heal' green under beneficial zones; enemies
+  no longer light red for them).
+- **`_getSpellValidTargets` range = engine parity**: was flat 2D Manhattan;
+  now `combatReach` (3D, gravity rule, sky-grabs horizontal-only) like
+  getSpellRangeTiles/doSpell — so an enemy directly beneath a flyer (same
+  column) measures ≥1 and shows in the drum, and far-above flyers no longer
+  get bogus in-range rows.

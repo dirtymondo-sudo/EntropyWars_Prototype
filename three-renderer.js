@@ -8428,6 +8428,12 @@ const ThreeRenderer = (function () {
         );
         innerRing.rotation.x = -Math.PI / 2;
         innerRing.position.y = SELECTED_RING_OFFSET;
+        /* Team rings / facing wedge / selection halo are decoration, not the
+           unit: they're wide horizontal discs at foot level, and from an
+           angled camera an ELEVATED unit's discs project down over the tile
+           at the base of its column — eating clicks aimed at a unit standing
+           beneath. Same no-op raycast guard as silhouettes/shadow proxies. */
+        innerRing.raycast = function () {};
         group.add(innerRing);
 
         var outerRing = new THREE.Mesh(
@@ -8436,6 +8442,7 @@ const ThreeRenderer = (function () {
         );
         outerRing.rotation.x = -Math.PI / 2;
         outerRing.position.y = SELECTED_RING_OFFSET - 0.1;
+        outerRing.raycast = function () {};
         group.add(outerRing);
 
         // Facing indicator: a wedge on the team ring pointing the way the
@@ -8454,6 +8461,7 @@ const ThreeRenderer = (function () {
             new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
         );
         facingWedge.rotation.x = Math.PI / 2;   // flatten; shape +Y → world +Z
+        facingWedge.raycast = function () {};   // never block unit picking
         var facingGroup = new THREE.Group();
         facingGroup.add(facingWedge);
         facingGroup.position.y = SELECTED_RING_OFFSET + 0.05;
@@ -8468,6 +8476,7 @@ const ThreeRenderer = (function () {
             );
             selGlow.rotation.x = -Math.PI / 2;
             selGlow.position.y = SELECTED_RING_OFFSET + 0.3;
+            selGlow.raycast = function () {};
             group.add(selGlow);
 
             var selHalo = new THREE.Mesh(
@@ -8476,6 +8485,7 @@ const ThreeRenderer = (function () {
             );
             selHalo.rotation.x = -Math.PI / 2;
             selHalo.position.y = SELECTED_RING_OFFSET + 0.2;
+            selHalo.raycast = function () {};
             group.add(selHalo);
         }
 
@@ -10423,6 +10433,7 @@ const ThreeRenderer = (function () {
         _hoverGlowMesh.rotation.x = -Math.PI / 2;
         _hoverGlowMesh.position.y = SELECTED_RING_OFFSET + 0.4;
         _hoverGlowMesh._ew_hoverGlow = true;
+        _hoverGlowMesh.raycast = function () {};   // decoration — never block unit picking
         entry.group.add(_hoverGlowMesh);
     }
     function _clearUnitHover() {

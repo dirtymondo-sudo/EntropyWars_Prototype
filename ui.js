@@ -3052,8 +3052,13 @@
                     if (_fogLimitUtil && !isInVision(_selectedForHl, cx, cy)) continue;
                     const pk = posKey(cx, cy);
                     const target = _liveUnitMap.get(pk);
-                    if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
+                    // Team-aware: an ally-serving utility zone must not paint
+                    // enemies as attack targets (spellTileTeam, battle.js).
+                    const _uTT = (typeof spellTileTeam === 'function') ? spellTileTeam(spell) : 'both';
+                    if (target && _uTT !== 'ally' && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                       _hlCache.set(pk, 'attack enemy');
+                    } else if (target && _uTT === 'ally' && isAllyUnit(target, _selectedForHl)) {
+                      _hlCache.set(pk, 'heal');
                     } else {
 
                       _hlCache.set(pk, 'spell-range');
@@ -3104,10 +3109,19 @@
                       _hlCache.set(posKey(cx, cy), 'spell-range');
                     } else {
                       const target = _liveUnitMap.get(posKey(cx, cy));
-                      if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
+                      // Team-aware tile zones (spellTileTeam, battle.js): a
+                      // healing/buff zone (zoneHeal, seedHeal, aoeShield,
+                      // Smoke Screen…) never paints enemies as attack targets —
+                      // its ALLIES light up as the valid drops instead. Hostile
+                      // zones (seedPoison, zoneDebuff, delayed…) keep marking
+                      // enemies only, exactly as before.
+                      const _gTT = (typeof spellTileTeam === 'function') ? spellTileTeam(spell) : 'both';
+                      if (target && _gTT !== 'ally' && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                         const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
                         const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
                         _hlCache.set(posKey(cx, cy), 'attack enemy' + typeClass);
+                      } else if (target && _gTT === 'ally' && isAllyUnit(target, _selectedForHl)) {
+                        _hlCache.set(posKey(cx, cy), 'heal');
                       } else if (state.actionMenuView !== 'spellTargets') {
 
                         _hlCache.set(posKey(cx, cy), 'spell-range');

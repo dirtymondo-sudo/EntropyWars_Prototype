@@ -432,6 +432,43 @@
             return SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
         }
 
+        /* Which TEAM does a tile-targeted AoE/zone spell actually serve?
+           Returns 'ally' | 'enemy' | 'both'. Used to keep suggested-target
+           lists and quick-cast menus honest: a healing/buff zone never lists
+           enemies, a damage/debuff burst never lists your own units. Free tile
+           aim is untouched — this only filters UNIT suggestions.
+           NOTE: spell.type / classifySpell can't be trusted for this — Sticky
+           Bomb is type:'buff' with dmg:144, Plunder is kind:'utility' with
+           dmg:70, Smoke Screen is kind:'zoneDebuff' but cloaks ALLIES. So the
+           judgment is payload-first (dmg/heal/shield/status fields), with the
+           kind as fallback. */
+        function spellTileTeam(spell) {
+            if (!spell) return 'both';
+            const k = spell.kind;
+            // Leech Seed damages enemies AND heals allies crossing it — dual.
+            if (k === 'leechSeed') return 'both';
+            if (k === 'zoneHeal' || k === 'seedHeal' || k === 'aoeShield') return 'ally';
+            const harm = !!(spell.dmg || spell.dotDamage || spell.blastDmg
+                || (spell.hitDamages && spell.hitDamages.length));
+            const help = !!(spell.heal || spell.healAmt || spell.healPerTurn
+                || spell.shieldHp || spell.shield || spell.auraHeal);
+            const enemyStatus = !!(spell.statusEffects && spell.statusEffects.length);
+            const allyStatus = !!(spell.allyStatusEffects && spell.allyStatusEffects.length);
+            if (harm) return 'enemy';
+            if (['aoe', 'cross', 'aoePull', 'barrage', 'line', 'linePush',
+                 'bomb', 'delayed', 'seedPoison', 'zoneDebuff'].includes(k)) {
+                // Debuff-only bursts (Demonic Roar, Meow) still aim at enemies —
+                // EXCEPT ally-cloaks like Smoke Screen (kind zoneDebuff, empty
+                // statusEffects, allyStatusEffects/smokeConcealment payload).
+                if (!enemyStatus && (allyStatus || spell.smokeConcealment || help)) return 'ally';
+                return 'enemy';
+            }
+            if (help || (allyStatus && !enemyStatus)) return 'ally';
+            if (enemyStatus && !allyStatus) return 'enemy';
+            return 'both';
+        }
+        window.spellTileTeam = spellTileTeam;
+
         // ═══════════════════════════════════════════════════════════════════
         // LONG-RANGE vs CLOSE-RANGE delivery — the VERTICAL reach rule.
         //
@@ -26246,18 +26283,39 @@
                     if (_casterStandH <= _uH) continue;
                 }
 
-                let d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
-                if (u._isBoss && u._bossSize === 2) {
-                    d = Math.min(d,
-                        Math.abs(u.x + 1 - unit.x) + Math.abs(u.y - unit.y),
-                        Math.abs(u.x - unit.x) + Math.abs(u.y + 1 - unit.y),
-                        Math.abs(u.x + 1 - unit.x) + Math.abs(u.y + 1 - unit.y)
-                    );
+                // Engine parity (getSpellRangeTiles/doSpell): range is 3D
+                // combatReach — vertical gaps count, long-range casts drop
+                // downward for free, and an enemy in the caster's OWN column
+                // (directly beneath a flyer) measures ≥1, not 0 — the flat
+                // Manhattan distance used before both over-offered casts on
+                // far-above flyers and hid same-column targets entirely.
+                // Sky grabs stay horizontal-only, matching doSpell.
+                const _skyGrabT = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+                const _longRangeT = typeof isLongRangeSpell === 'function' && isLongRangeSpell(spell);
+                const _tCorners = (u._isBoss && u._bossSize === 2)
+                    ? [[u.x, u.y], [u.x + 1, u.y], [u.x, u.y + 1], [u.x + 1, u.y + 1]]
+                    : [[u.x, u.y]];
+                let d = Infinity, dxy = Infinity;
+                for (const [ucx, ucy] of _tCorners) {
+                    const _dxy = Math.abs(ucx - unit.x) + Math.abs(ucy - unit.y);
+                    if (_dxy < dxy) dxy = _dxy;
+                    const _dd = _skyGrabT ? _dxy
+                        : combatReach(unit.x, unit.y, unitZ, ucx, ucy, u.z ?? 0, _longRangeT);
+                    if (_dd < d) d = _dd;
                 }
                 if (d < minRange || d > effRange) continue;
-                if (!skipLOS && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
+                if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
                 if (isOffensive && isAllyUnit(u, unit)) continue;
                 if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                // Tile-targeted AoE/zone spells: only suggest units the spell
+                // actually serves — no enemies in a healing/buff zone's target
+                // drum, no allies in a damage burst's. Free tile aim still
+                // accepts any legal tile; this trims the SUGGESTIONS only.
+                if (_skm.tileTargeted) {
+                    const _tt = spellTileTeam(spell);
+                    if (_tt === 'ally' && !isAllyUnit(u, unit)) continue;
+                    if (_tt === 'enemy' && isAllyUnit(u, unit)) continue;
+                }
                 // Universal per-target guard: a full-HP ally is not a heal
                 // target, a clean ally is not a cleanse target, and NOBODY is
                 // a pure-status target when they already carry the status —

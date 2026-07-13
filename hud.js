@@ -3953,7 +3953,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   ]);
   for (const sp of allSpells) {
     const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
-    if (cls === 'heal' || cls === 'buff') continue;
+    // Payload-based team check beats the coarse class: Sticky Bomb is
+    // type:'buff' but dmg:144 (belongs here), Smoke Screen is kind
+    // 'zoneDebuff' but cloaks ALLIES (does not belong on an enemy).
+    const _tt = typeof spellTileTeam === 'function' ? spellTileTeam(sp) : 'both';
+    if ((cls === 'heal' || cls === 'buff') && _tt !== 'enemy') continue;
+    if (_tt === 'ally') continue;
     if (nonEnemyTargetKinds.has(sp.kind)) continue;
     // Flight-gated grabs (Sky Drop / Sky Throw) are dead rows for grounded casters.
     if (sp.requiresFlight && !(typeof canFly === 'function' && canFly(actingUnit))) continue;
@@ -5186,8 +5191,25 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     && typeof G._elementalTileCastInfo === 'function'
     && !!G._elementalTileCastInfo(sp, tx, ty);
 
+  // Team sanity for the occupied-tile menu: clicking an ALLY must not offer
+  // damage/debuff zones aimed at them, and an enemy's tile must not offer
+  // healing/buff zones. The caster's OWN tile keeps offensive AoEs (centering
+  // a burst on yourself to catch adjacent enemies is a legit play), and empty
+  // tiles keep free aim untouched.
+  const _tileOcc = (typeof G.unitAt === 'function') ? G.unitAt(tx, ty) : null;
+  const _occLive = _tileOcc && !_tileOcc.dead;
+  const _occAlly = _occLive && (typeof isAllyUnit === 'function'
+    ? isAllyUnit(_tileOcc, actingUnit) : _tileOcc.player === actingUnit.player);
+  const _occEnemy = _occLive && (typeof isEnemyUnit === 'function'
+    ? isEnemyUnit(_tileOcc, actingUnit) : _tileOcc.player !== actingUnit.player);
+
   for (const sp of allSpells) {
     if (!tileTargetKinds.has(sp.kind) && !_elemTileOk(sp)) continue;
+    if (_occLive && typeof spellTileTeam === 'function') {
+      const _tt = spellTileTeam(sp);
+      if (_tt === 'enemy' && _occAlly && _tileOcc.id !== actingUnit.id) continue;
+      if (_tt === 'ally' && _occEnemy) continue;
+    }
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpCost = (sp.cost || 0) + mpPenalty;
     // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a
