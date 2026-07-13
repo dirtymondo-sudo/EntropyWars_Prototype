@@ -5005,14 +5005,12 @@
             const terrain = getTerrainAt(unit.x, unit.y);
 
             // 💧 Water puts you out (2026-07-10): wading in any water (or the
-            // healing spring) douses burn — and lingering lava-burn — on the
+            // healing spring) douses burn (lava-stoked or not) on the
             // spot. Runs on every move and on the round tick, so stepping into
             // the shallows is a real answer to being set on fire.
             if ((terrain === 'water' || terrain === 'deep_water' || terrain === 'healing_spring')
-                && unit.status && (unit.status.burn || unit.status.lava_burn)) {
+                && unit.status && unit.status.burn) {
                 clearStatus(unit, 'burn');
-                clearStatus(unit, 'lava_burn');
-                unit._lavaBurnStacks = 0;
                 const _dNm = (typeof unitDisplayName === 'function') ? unitDisplayName(unit) : (unit.name || 'Unit');
                 if (typeof addLog === 'function') addLog(`💧 ${_dNm} wades into the water — the flames are doused!`);
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
@@ -5026,8 +5024,9 @@
                 }
 
                 if (unit.terrainStay.lastTerrain === 'lava' && terrain !== 'lava') {
+                    // Out of the lava: the burn keeps ticking its remaining
+                    // duration, but drops back to normal (non-escalated) damage.
                     unit._lavaBurnStacks = 0;
-                    clearStatus(unit, 'lava_burn');
                 }
                 unit.terrainStay = {
                     lastTerrain: terrain,
