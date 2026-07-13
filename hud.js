@@ -3809,7 +3809,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       const gApCost = typeof getSpellApCost === 'function' ? getSpellApCost(grappleSp) : 1;
       const atkApCost = G.AP_COST_ACTION || 1;
       const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
-      const gMpCost = (grappleSp.cost || 0) + mpPenalty;
+      const gMpCost = (typeof getSpellMpCostFor === 'function')
+        ? getSpellMpCostFor(actingUnit, grappleSp) : (grappleSp.cost || 0) + mpPenalty;
       const gRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, grappleSp) : (grappleSp.range || 3);
       const silenced = typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence');
       const gTierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, grappleSp) : true;
@@ -3889,7 +3890,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
-    const mpCost = (sp.cost || 0) + mpPenalty;
+    const mpCost = (typeof getSpellMpCostFor === 'function')
+      ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     // canAffordSpell folds in cooldown + banked materials, so a quick-cast row
     // never lights up for a spell doSpell would reject.
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost
@@ -5043,7 +5045,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
   for (const sp of allSpells) {
     if (!movementKinds.has(sp.kind)) continue;
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
-    const mpCost = (sp.cost || 0) + mpPenalty;
+    const mpCost = (typeof getSpellMpCostFor === 'function')
+      ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced
       && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;

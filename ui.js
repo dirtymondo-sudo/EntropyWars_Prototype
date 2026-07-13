@@ -8354,7 +8354,10 @@
             }
 
             if (spell.kind === 'terrainCreate' && spell.orientable) {
-                const count = spell.tileCount || 3;
+                // Earth-sign bonus tile included (shared battle.js helper) so
+                // the hover preview matches what the handler will paint.
+                const count = (typeof _terrainSpellTileCount === 'function')
+                    ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
                 const orientation = state._spellOrientation || 'horizontal';
                 const half = Math.floor(count / 2);
                 const tiles = [];

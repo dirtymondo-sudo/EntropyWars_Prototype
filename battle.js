@@ -1870,6 +1870,59 @@
             return _ZODIAC_TRINE_ELEMENT[state.activeZodiac] || null;
         }
 
+        // ── ⛰ EARTH TRINE RESONANCE (the reserved slot, filled 2026-07-13) ──
+        // While an earth sign reigns (Taurus / Virgo / Capricorn) the ground
+        // itself cooperates: terraforming/building spells cost 25% less MP and
+        // flood/paint one extra tile, salvage yields DOUBLE materials, every
+        // fall hits ×1.5 (yours too — mind the ledges), and the crystal/metal
+        // terrain reactions amplify. Zodiac timing now matters to the builder
+        // and digger races, not just the elemental mages.
+        const _ZODIAC_EARTH_SIGNS = new Set(['taurus', 'virgo', 'capricorn']);
+        const EARTH_RESONANCE_COST_MULT = 0.75;
+        const EARTH_RESONANCE_FALL_MULT = 1.5;
+        const _TERRAFORM_SPELL_KINDS = new Set(['terrainCreate', 'placeBlock', 'buildStructure', 'plantTree']);
+
+        function isEarthZodiacActive() {
+            return _ZODIAC_EARTH_SIGNS.has(state.activeZodiac);
+        }
+
+        function isTerraformSpell(spell) {
+            return !!spell && _TERRAFORM_SPELL_KINDS.has(spell.kind);
+        }
+
+        // THE one MP-cost formula. The charge site, every menu-greying check
+        // and the hover/move-then-cast probes all read this, so the UI and the
+        // engine can never disagree about affordability: base cost, −25% for
+        // terraform spells under an earth sign, plus status deltas (Discord).
+        function getSpellMpCostFor(unit, spell) {
+            let base = Number((spell && spell.cost) || 0);
+            if (base > 0 && isEarthZodiacActive() && isTerraformSpell(spell)) {
+                base = Math.max(1, Math.round(base * EARTH_RESONANCE_COST_MULT));
+            }
+            const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
+            return Math.max(0, base + delta);
+        }
+        window.getSpellMpCostFor = getSpellMpCostFor;
+
+        // terrainCreate footprint — the handler AND the ghost preview both
+        // read THIS (never spell.tileCount directly), so the preview shows
+        // exactly what the earth-sign bonus tile will do before the click.
+        function _terrainSpellTileCount(spell) {
+            return (spell.tileCount || 3) + ((isEarthZodiacActive() && spell.kind === 'terrainCreate') ? 1 : 0);
+        }
+
+        // One-line "what does the sky do right now" blurb for the zodiac
+        // banners, so resonance is discoverable instead of hidden math.
+        function getZodiacResonanceDesc() {
+            const el = getZodiacResonanceElement();
+            if (el === 'fire') return '🔥 fire spells surge ×1.25';
+            if (el === 'lightning') return '⚡ lightning spells surge ×1.25';
+            if (el === 'cold') return '❄️ frost spells surge ×1.25';
+            if (isEarthZodiacActive()) return '⛰ earthworks empowered — terraforming −25% MP & +1 tile, double salvage, falls ×1.5, crystal/metal blasts amplified';
+            return '';
+        }
+        window.getZodiacResonanceDesc = getZodiacResonanceDesc;
+
         function _isForestTile(x, y) {
             const t = getTerrainAt(x, y);
             if (t === 'tree' || t === 'forest' || t === 'forest_2') return true;
@@ -2189,7 +2242,9 @@
         // This is the "build a steel tower, then call lightning onto it" combo.
         function _reactLightningMetal(caster, spell, ox, oy, sheet) {
             if (!sheet || !sheet.length) return;
-            const tick = Math.max(50, Math.round((spell.dmg || 90) * 0.75));
+            let tick = Math.max(50, Math.round((spell.dmg || 90) * 0.75));
+            // ⛰ Earth trine: the metal in the ground sings — conduction ×1.25.
+            if (isEarthZodiacActive()) tick = Math.round(tick * 1.25);
             const victims = [];
             for (const t of sheet) {
                 const u = unitAt(t.x, t.y);
@@ -2224,12 +2279,14 @@
         // vein is reduced to rubble (its MP-regen terrain perk is destroyed).
         function _reactCrystalShatter(caster, spell, ox, oy, vein) {
             if (!vein || !vein.length) return;
+            // ⛰ Earth trine: crystal detonations blow half again as hard.
+            const _shardDmg = Math.round(55 * (isEarthZodiacActive() ? 1.5 : 1));
             let cut = 0;
             for (const t of vein) {
                 setTerrainAt(t.x, t.y, 'rubble_2');
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
-                    applyDamageToUnit(u, 55, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
+                    applyDamageToUnit(u, _shardDmg, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
                         sourceUnit: caster,
                         allowMarkBonus: false,
                         damageType: 'magic',
@@ -2398,6 +2455,38 @@
             showFloatingTextForUnit(u, '🔥', 'damage', { durationMs: 900 });
             if (typeof playSfx === 'function') playSfx('burningDamage');
             return true;
+        }
+
+        // 💨 FANNED FLAMES (2026-07-13): wind and fire finally talk to each
+        // other. When a unit is shoved/blown THROUGH ground fire, embers ride
+        // the gust — the victim catches fire even if they didn't STOP in the
+        // flames, and every burning tile the shove crossed spreads 1 tile
+        // downwind (the push direction). Knock someone across your wall of
+        // fire and the wall grows toward them. Called from the displacement
+        // sites with the tiles the shove swept and its direction.
+        function _fanFlamesAlongPush(unit, steps, dx, dy, byUnit) {
+            if (!unit || !steps || !steps.length) return;
+            if (!state.burningTiles || !Object.keys(state.burningTiles).length) return;
+            const crossed = steps.filter(s => s && _tileIsBurning(s.x, s.y));
+            if (!crossed.length) return;
+            let spread = 0;
+            if (dx || dy) {
+                for (const c of crossed) {
+                    const nx = c.x + dx, ny = c.y + dy;
+                    if (isInside(nx, ny) && !_tileIsBurning(nx, ny)
+                        && igniteTile(nx, ny, 2, byUnit || null)) spread++;
+                }
+            }
+            // Ember catch: covers being hurled THROUGH the flames. Skipped
+            // when the victim is already burning (e.g. the knock-in hazard
+            // just bit them on the landing tile) so nothing double-dips.
+            if (!unit.dead && !unit._dying && !unitHasStatus(unit, 'burn')) {
+                _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
+                    `${unitDisplayName(unit)} is hurled through the flames: `);
+            }
+            addLog(`💨 The blast fans the flames${spread ? ` — the fire leaps ${spread} tile${spread !== 1 ? 's' : ''} downwind` : ''}!`);
+            _invalidateBoardGrid();
+            scheduleBoardRender();
         }
 
         // Once per round (end-of-round pipeline): flames bite whoever stands in
@@ -2840,10 +2929,14 @@
 
         function gainMaterial(player, kind, n = 1, opts = {}) {
             if (!player || !MAT_KINDS.includes(kind) || n <= 0) return;
+            // ⛰ Earth trine: the ground gives generously — all salvage doubles
+            // while an earth sign reigns. Chop, smash and wreck under Taurus.
+            const _earthBoon = (typeof isEarthZodiacActive === 'function') && isEarthZodiacActive();
+            if (_earthBoon) n *= 2;
             const m = _matFor(player);
             m[kind] = (m[kind] || 0) + n;
             if (opts.log !== false) {
-                addLog(`${MAT_ICONS[kind]} Team ${player} salvages ${n} ${kind} (${m[kind]} banked).`);
+                addLog(`${MAT_ICONS[kind]} Team ${player} salvages ${n} ${kind}${_earthBoon ? ' (⛰ doubled by the earth sign)' : ''} (${m[kind]} banked).`);
             }
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
         }
@@ -3233,6 +3326,7 @@
                         if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
                         if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
                         if (_crSteps.length > 0) _applyKnockbackHazard(target);
+                        if (_crSteps.length > 0) _fanFlamesAlongPush(target, _crSteps, pdx, pdy, unit);
                     }
 
                     // AoePull-style pull toward center
@@ -3478,6 +3572,7 @@
                     if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `, { byEnemy: true });
                     if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
                     if (_lpSteps.length > 0) _applyKnockbackHazard(hit);
+                    if (_lpSteps.length > 0) _fanFlamesAlongPush(hit, _lpSteps, dx, dy, unit);
                 }
             }
             triggerTerrainSpellReaction(unit, spell, _lineCells);
@@ -12001,7 +12096,8 @@
                    with combat banners instead, and drop queued announcements */
                 if (state.activeZodiac !== zPrev) {
                     const icon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[state.activeZodiac]) || '✦';
-                    try { showCombatBanner(icon + ' ZODIAC: ' + String(state.activeZodiac).toUpperCase(), String(state.activeZodiac) + ' units deal +10% damage', 'neutral'); } catch (e) {}
+                    const _resDesc = (typeof getZodiacResonanceDesc === 'function') ? getZodiacResonanceDesc() : '';
+                    try { showCombatBanner(icon + ' ZODIAC: ' + String(state.activeZodiac).toUpperCase(), String(state.activeZodiac) + ' units deal +10% damage' + (_resDesc ? ' · ' + _resDesc : ''), 'neutral'); } catch (e) {}
                     try { playSfx('newRound', { volume: 0.6 }); } catch (e) {}
                 }
                 const sNow = state.skyEvent ? (state.skyEvent.id || state.skyEvent.type) : null;
@@ -16884,8 +16980,7 @@
             // MP is deliberately checked LAST: canAffordSpell() treats a bare
             // 'No MP' as passable (its callers gate MP themselves), so no
             // other block may hide behind it.
-            const mpDelta = (typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
-            if ((unit.mp || 0) < (spell.cost || 0) + mpDelta) return 'No MP';
+            if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) return 'No MP';
             return null;
         }
         window.getSpellBlockReason = getSpellBlockReason;
@@ -17352,9 +17447,8 @@
         window._gauntletDeployReserve = _gauntletDeployReserve;
 
         function canCastAnySpell(unit) {
-            const mpPenalty = getStatusMpCostDelta(unit);
             const allSpells = (unit.spells || []);
-            return allSpells.some(s => canAffordSpell(unit, s) && unit.mp >= (s.cost + mpPenalty) && !unitHasStatus(unit, 'silence'));
+            return allSpells.some(s => canAffordSpell(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitHasStatus(unit, 'silence'));
         }
 
         function hasSpellTargetInRange(unit, spell) {
@@ -17464,12 +17558,11 @@
         }
 
         function canCastAnySpellWithTargets(unit) {
-            const mpPenalty = getStatusMpCostDelta(unit);
             const silenced = unitHasStatus(unit, 'silence');
             if (silenced) return false;
             const allSpells = (unit.spells || []);
             return allSpells.some(s =>
-                s && canAffordSpell(unit, s) && unit.mp >= (s.cost + mpPenalty) && hasSpellTargetInRange(unit, s)
+                s && canAffordSpell(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && hasSpellTargetInRange(unit, s)
             );
         }
 
@@ -17798,8 +17891,7 @@
             if (!spell || isSpellSelfCast(spell)) return false;
             if (unitHasStatus(actingUnit, 'silence')) return false;
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
-            const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
-            if ((actingUnit.mp || 0) < (spell.cost || 0) + mpPenalty) return false;
+            if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
             const approach = findSpellApproachTile(actingUnit, spell, x, y, z != null ? z : clickedUnit.z);
             if (!approach) return false;
             _moveThenCast(actingUnit, approach, spell.name, x, y, z != null ? z : clickedUnit.z);
@@ -18278,10 +18370,9 @@
             if (state._spellApproachKey === k) return !!state._spellApproachTile;
             state._spellApproachKey = k;
             state._spellApproachTile = null;
-            const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(unit) : 0;
             if (unitHasStatus(unit, 'silence')
                 || (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell))
-                || (unit.mp || 0) < (spell.cost || 0) + mpPenalty) {
+                || (unit.mp || 0) < getSpellMpCostFor(unit, spell)) {
                 _clearSpellApproachPreview(); state._spellApproachKey = k; return false;
             }
             const approach = findSpellApproachTile(unit, spell, x, y, enemy.z);
@@ -31294,7 +31385,7 @@
             };
 
             if (spell.kind === 'terrainCreate') {
-                const count = spell.tileCount || 3;
+                const count = _terrainSpellTileCount(spell);
                 if (spell.elevationFlood) {
                     // basin-fill preview — mirrors the handler's rising-waterline
                     // algorithm so the ghost shows exactly what will flood
@@ -32509,7 +32600,9 @@
                 return 0;
             }
             const discordPenalty = getStatusMpCostDelta(unit);
-            const effectiveSpellCost = spell.cost + discordPenalty;
+            // Shared formula (earth-sign terraform discount + status deltas) —
+            // the same number every menu used to light the row up.
+            const effectiveSpellCost = getSpellMpCostFor(unit, spell);
             if (unit.mp < effectiveSpellCost) {
                 addLog(discordPenalty > 0 ? `Not enough MP. Discord increases spell cost by ${discordPenalty}.` : 'Not enough MP.');
                 state._teleportingUnit = null;
@@ -33607,13 +33700,15 @@
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null,
+                        element: classifySpellElement(spell)
                     });
                     if (hitObstacle) {
                         addLog(`${unitDisplayName(target)} slams into an obstacle for bonus damage!`);
                         showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
                     }
                     if (flung > 0) _applyKnockbackHazard(target);
+                    if (flung > 0) _fanFlamesAlongPush(target, _displaceSteps, dx, dy, unit);
 
                     if (_displaceSteps.length > 0) {
                         const flingAnimMs = spell.arcThrow
@@ -34534,7 +34629,7 @@
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
                 const terrainType = spell.terrainType || 'water';
-                const count = spell.tileCount || 3;
+                const count = _terrainSpellTileCount(spell);
 
                 const _castOrientation = state._spellOrientation || 'horizontal';
 

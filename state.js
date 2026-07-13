@@ -1185,7 +1185,8 @@
                 const icon = ZODIAC_ICONS[newSign] || '✦';
                 const label = newSign.charAt(0).toUpperCase() + newSign.slice(1);
                 addLog(`The stars shift — the constellation ${label} ${icon} now rules the sky.`);
-                queueAnnouncement(`${icon} ${label}`, 'The stars have shifted', 'zodiac');
+                const _resDesc = (typeof getZodiacResonanceDesc === 'function') ? getZodiacResonanceDesc() : '';
+                queueAnnouncement(`${icon} ${label}`, 'The stars have shifted' + (_resDesc ? ' — ' + _resDesc : ''), 'zodiac');
             }
         }
 
@@ -1711,9 +1712,14 @@
             // drifts down at half damage; a golem craters at ×1.25; a kaiju
             // hits like a falling building (×1.5). Flyers stay exempt above.
             const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
-            const dmg = Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult));
+            // ⛰ Earth trine: gravity sides with the reigning earth sign — every
+            // fall hits ×1.5 (yours too; mind the ledges under Taurus). Dig a
+            // pit or shove someone off a tower while the earth signs rule.
+            const _zEarthMult = (typeof isEarthZodiacActive === 'function' && isEarthZodiacActive()) ? 1.5 : 1;
+            const dmg = Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult));
             const prefix = logPrefix || '';
-            const _wNote = _wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : '');
+            const _wNote = (_wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : ''))
+                + (_zEarthMult > 1 ? ' ⛰ The earth sign drags them down hard!' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
             // Enemy-caused falls (knockbacks, pulls, tremor pits — callers tag
@@ -1793,6 +1799,12 @@
                     }
 
                     applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+
+                    // 💨 Blown across/into ground fire: embers catch, and the
+                    // gust fans the blaze a tile downwind (battle.js helper).
+                    if (typeof _fanFlamesAlongPush === 'function') {
+                        _fanFlamesAlongPush(unit, [{ x: c.x, y: c.y }], c.x - fromX, c.y - fromY, null);
+                    }
 
                     if (typeof animateDisplacement === 'function') {
                         animateDisplacement(unit, fromX, fromY, c.x, c.y, 200);
