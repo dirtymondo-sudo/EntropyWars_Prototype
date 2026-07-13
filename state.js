@@ -2661,13 +2661,14 @@
 
         function getTypeCombatNote(sourceUnit, targetUnit, spellType) {
             if (!sourceUnit || !targetUnit) return '';
+            // STAB is a silent same-type bonus — the note only ever speaks
+            // about the actual weak/resist matchup, so back STAB out first.
             const mult = getTypeDamageMultiplier(sourceUnit, targetUnit, spellType);
             const hasStab = spellType && (sourceUnit.types || []).includes(spellType);
-            if (mult > 1.3) return hasStab ? "STAB! It's super effective!" : "It's super effective!";
-            if (mult > 1.0 && mult <= 1.3) return hasStab ? "STAB!" : "It's super effective!";
-            if (mult < 1.0 && mult >= 0.75) return "It wasn't very effective...";
-            if (mult < 0.75) return "STAB, but not very effective...";
-            if (hasStab) return "STAB!";
+            const stabMult = hasStab ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+            const effMult = mult / stabMult;
+            if (effMult > 1.001) return "It's super effective!";
+            if (effMult < 0.999) return "It wasn't very effective...";
             return '';
         }
 

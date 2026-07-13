@@ -8497,7 +8497,7 @@ const STATUS_DEFS = {
         dot: 32,
         spriteName: 'poison',
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/poison.png',
-        iconSrc: createStatusIconDataUri('☠', '#1c3421', '#d8ffd7', '#68d36f'),
+        iconSrc: createStatusIconDataUri('☠', '#2a1c34', '#efdcff', '#b06ad3'),
         onRoundEnd(unit) {
             applyDamageToUnit(unit, 32, `Poison harms ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,

@@ -13379,6 +13379,15 @@
                 // the visual load across both tiles.
                 const _multCallout = (u, txt, ms) => {
                     if (damageType === 'dot' || _skipVisuals()) return;
+                    // AOE / multi-target / barrage spam guard: applyDamage runs once
+                    // per hit, so a 3-target spell would pop the same "⛰ HIGH
+                    // GROUND!" (etc.) three times over the caster. One identical
+                    // callout per unit per 1.5s is plenty (covers barrage pacing).
+                    const _now = Date.now();
+                    const _seen = (window._ewMultCalloutSeen = window._ewMultCalloutSeen || new Map());
+                    const _key = u.id + '|' + txt;
+                    if (_now - (_seen.get(_key) || 0) < 1500) return;
+                    _seen.set(_key, _now);
                     showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
                 };
                 // Clean 2-decimal multiplier, trailing zeros stripped:
@@ -13386,11 +13395,10 @@
                 const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
                 // STAB and the type matchup are TWO SEPARATE mechanics that
                 // happen to multiply together — never show their blended
-                // product (a "×0.94 RESIST" reads as nonsense). Decompose:
-                // the type matchup (weak/resist) is the ENEMY'S property → pops
-                // on the target; STAB (your own same-type +25%) is YOUR bonus →
-                // pops on the caster. So a resisted same-type spell shows
-                // "×0.75 RESIST" on them AND "×1.25 STAB" on you.
+                // product (a "×0.94 RESIST" reads as nonsense). The type
+                // matchup (weak/resist) is the ENEMY'S property → pops on the
+                // target. STAB stays a silent bonus (no callout — it's your
+                // own passive, not news).
                 if (!typeEffectOverride) {
                     const _spellType = opts.spellType || null;
                     const _hasStab = _spellType && (sourceUnit.types || []).includes(_spellType);
@@ -13401,7 +13409,6 @@
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
                     if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
                     else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
-                    if (_hasStab) _multCallout(sourceUnit, `${_fmtMult(_stabMult)} STAB`, 900);
                 }
                 // Zodiac is a whole-match buff — call it out once per round
                 // per unit, not on every single swing.

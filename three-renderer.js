@@ -8947,7 +8947,7 @@ const ThreeRenderer = (function () {
         var statusHtml = '';
         if (typeof getActiveStatusKeys === 'function' && typeof _STATUS_EFFECT_IDS !== 'undefined') {
             var _SB_COLORS = {
-                burn:'#c0392b',poison:'#27ae60',silence:'#7f8c8d',stun:'#f39c12',
+                burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
                 stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
                 lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
                 invisible:'#1a7a4a',regen:'#2ecc71'
@@ -10204,9 +10204,8 @@ const ThreeRenderer = (function () {
                 '.ti-status.ti-debuff { color: #ff8844; border-color: rgba(255,120,40,0.4); }',
                 '.ti-status.ti-buff { color: #55ccff; border-color: rgba(80,180,255,0.4); }',
                 '.ti-type-eff { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,0.65); }',
-                '.ti-type-eff.super-effective { color: #ff6644; border: 1px solid rgba(255,80,40,0.5); }',
+                '.ti-type-eff.super-effective { color: #2ecc71; border: 1px solid rgba(46,204,113,0.55); display: inline-flex; align-items: center; }',
                 '.ti-type-eff.not-effective { color: #7799bb; border: 1px solid rgba(100,140,180,0.4); }',
-                '.ti-type-eff.stab { color: #ffdd55; border: 1px solid rgba(255,200,60,0.4); }',
                 '.ti-kill { font-size: 12px; font-weight: 900; color: #ff3333; text-shadow: 0 0 8px rgba(255,0,0,0.8), 0 0 16px rgba(255,0,0,0.4); }',
                 '@keyframes tiBadgeFadeIn { from { opacity: 0; } to { opacity: 1; } }'
             ].join('\n');

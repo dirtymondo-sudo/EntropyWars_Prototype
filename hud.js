@@ -1626,6 +1626,11 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
   if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
+  // the right-hand chips so it reads first on quick-menu and target rows.
+  if (b.superEff) right.unshift(h('span', {
+    key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
+  }, '!'));
   // THE CONFIRM BUTTON rides the END of the pending (✓) row itself — a green
   // seal right where the player's eye already is, instead of floating on top
   // of the panel. stopPropagation: the row's own click ALSO confirms, and
@@ -1683,6 +1688,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
       + (port ? ' trow' : '')
+      + (badgeRow && !port ? ' two' : '')
       + (sel ? ' sel' : '')
       + (muted ? ' muted' : '')
       + (catVars ? ' catc' : '')
@@ -1717,12 +1723,14 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
             right,
           )
         : badgeRow
-        ? h(React.Fragment, null,
-            // the TYPE badge never clips — the name ellipsizes first instead
-            h('span', { className: 'hrlg-blabel', style: { flex: '0 1 auto', maxWidth: 170 } }, b.label),
-            badgeRow,
-            h('span', { className: 'hrlg-spacer' }),
-            right,
+        ? h('span', { className: 'hrlg-lblcol', style: { gap: 4 } },
+            // Two lines: the name + TYPE badge own the top row (so neither is
+            // ever cut off), damage/MP/AP/reason chips read underneath.
+            h('span', { className: 'hrlg-brow1' },
+              h('span', { className: 'hrlg-blabel', style: { flex: '0 1 auto' } }, b.label),
+              badgeRow,
+            ),
+            h('span', { className: 'hrlg-brow2' }, right),
           )
         : (b.subBelow && b.sub)
         ? h(React.Fragment, null,
@@ -2547,10 +2555,18 @@ function _hrlgTargetBlades(unit, st, mode) {
       hpVal = t.building.hp; hpMax = t.building.maxHp || t.building.hp;
     } else { label = typeof coordLabel === 'function' ? coordLabel(t.x, t.y) : (t.x + ',' + t.y); }
 
-    let typeAdv = '';
-    if (tUnit && isOffensive && typeof getTypeEffectSummary === 'function') {
-      const adv = getTypeEffectSummary(unit.types || [], tUnit.types || []);
-      typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
+    // Type matchup vs THIS target — judged by the spell's own type when a
+    // spell is being aimed (not the caster's types), STAB factored out so
+    // "super effective" always means the actual weak/resist matchup.
+    let superEff = false, typeAdv = '';
+    if (tUnit && isOffensive && typeof getTypeDamageMultiplier === 'function'
+        && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
+      const _spType = spell ? (spell.spellType || null) : null;
+      const _stab = (_spType && (unit.types || []).includes(_spType))
+        ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+      const _eff = getTypeDamageMultiplier(unit, tUnit, _spType) / _stab;
+      if (_eff > 1.001) superEff = true;
+      else if (_eff < 0.999) typeAdv = '▼';
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -2562,10 +2578,11 @@ function _hrlgTargetBlades(unit, st, mode) {
     return {
       id: 'tg:' + i + ':' + t.x + ',' + t.y,
       icon: typeAdv || '⌖',
-      iconColor: typeAdv === '▲' ? EW.good : typeAdv === '▼' ? EW.bad : undefined,
+      iconColor: typeAdv === '▼' ? EW.bad : undefined,
       label: label,
       available: true,
       check: !!isPending,
+      superEff: superEff,
       portrait: portrait,
       meta: portrait
         ? { text: t.dist + 't' }
@@ -4822,8 +4839,9 @@ function _hrlgEnemyBlades(actingUnit, st) {
 
     let typeAdv = '';
     if (a.typeNote) {
-      if (a.typeNote.includes('Strong') || a.typeNote.includes('strong') || a.typeNote.includes('super effective')) typeAdv = '▲';
-      else if (a.typeNote.includes('Weak') || a.typeNote.includes('weak') || a.typeNote.includes('not very')) typeAdv = '▼';
+      const _tn = a.typeNote.toLowerCase();
+      if (_tn.includes('strong') || _tn.includes('super effective')) typeAdv = '▲';
+      else if (_tn.includes('weak') || _tn.includes('not very')) typeAdv = '▼';
     }
 
     return {
@@ -4836,7 +4854,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
-      meta: typeAdv ? { text: typeAdv, color: typeAdv === '▲' ? EW.good : EW.bad } : null,
+      superEff: typeAdv === '▲',
+      meta: typeAdv === '▼' ? { text: '▼', color: EW.bad } : null,
       note: isMove
         ? (a.id === 'moveTowards'
           // "Move Towards" chains the whole approach — name the tile the
@@ -6562,6 +6581,19 @@ function _injectHudHideStyles() {
     /* type badges NEVER clip — they're the matchup intel; the name
        ellipsizes first instead (see the flex settings on hrlg-blabel) */
     .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: none; }
+    /* two-line ability/quick-menu rows: name + TYPE badge on top,
+       damage/MP/AP/reason chips underneath — nothing ever cut off */
+    .hrlg-blade.two { height: 56px; }
+    .hrlg-brow1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .hrlg-brow2 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+    /* green !-circle = super effective vs this target */
+    .hrlg-supereff {
+      flex: none; width: 16px; height: 16px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #2ecc71; color: #06130a;
+      font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: 12px; line-height: 1;
+      box-shadow: 0 0 8px rgba(46,204,113,0.75);
+    }
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     /* AP cost diamonds — always gold, matching the big AP row */

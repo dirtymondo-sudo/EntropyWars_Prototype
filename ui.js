@@ -3631,7 +3631,7 @@
 
         const _PLATE_STATUS_COLORS = {
             burn:      { bg: '#c0392b', color: '#fff' },
-            poison:    { bg: '#27ae60', color: '#fff' },
+            poison:    { bg: '#9b59b6', color: '#fff' },
             silence:   { bg: '#7f8c8d', color: '#fff' },
             stun:      { bg: '#f39c12', color: '#1a1a1a' },
             stagger:   { bg: '#e67e22', color: '#fff' },
@@ -8602,15 +8602,22 @@
             return 0;
         }
 
+        // Green !-circle marking a super-effective hit (inline-styled so it
+        // renders identically through the 3D intent badges and the DOM path).
+        const _SE_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
+            + 'width:14px;height:14px;border-radius:50%;background:#2ecc71;color:#06130a;'
+            + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
+            + 'box-shadow:0 0 6px rgba(46,204,113,0.8)">!</span>';
+
         function _getTypeEffLabel(caster, target, spell) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
+            // STAB is a silent bonus — the label only speaks about the actual
+            // weak/resist matchup, so back the STAB factor out first.
             const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
             const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
-            if (mult > 1.3) return { text: hasStab ? 'STAB! SUPER EFF.' : 'SUPER EFFECTIVE', cls: 'super-effective' };
-            if (mult > 1.0 && mult <= 1.3) return { text: hasStab ? 'STAB!' : 'SUPER EFFECTIVE', cls: hasStab ? 'stab' : 'super-effective' };
-            if (mult < 1.0 && mult >= 0.75) return { text: 'RESISTED', cls: 'not-effective' };
-            if (mult < 0.75) return { text: 'RESISTED', cls: 'not-effective' };
-            if (hasStab) return { text: 'STAB!', cls: 'stab' };
+            const effMult = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
+            if (effMult > 1.001) return { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' };
+            if (effMult < 0.999) return { text: 'RESISTED', cls: 'not-effective' };
             return null;
         }
 

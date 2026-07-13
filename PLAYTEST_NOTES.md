@@ -241,6 +241,20 @@ item model / builders (`_hrlgSpellBlades` etc.) unchanged.
   (`_hrlgSpellBadges` now type-only). Target chip (⟳ SELF/♥ ALLY/⬚ TILE/
   ◎ ENEMY) + PHYSICAL/MAGIC/UTILITY + ⚔ MELEE/⤢ RANGED chips moved into the
   bottom description bar (`_renderSpellDescBar`).
+- **Two-line spell rows** (2026-07-13, user request — names were getting cut
+  off): any blade with `badges` renders TWO lines (`.hrlg-blade.two`, 56px):
+  line 1 = name + TYPE badge (never clipped), line 2 (`.hrlg-brow2`) = the
+  `right` chips (damage, MP, AP pips, MOVE→CAST note, grey-out reason).
+  Do NOT restore the old single-line `maxWidth:170` layout.
+- **Super effective = green !-circle** (2026-07-13): `.hrlg-supereff` chip on
+  quick-menu + target-picker rows (blade prop `superEff`), and an inline-styled
+  circle in the map intent badge (`_getTypeEffLabel`, ui.js). ▲ is gone; ▼ stays
+  for weak. STAB badges/floating text removed EVERYWHERE (mechanic unchanged —
+  notes/labels back the STAB factor out and only speak about the matchup).
+  `_multCallout` (battle.js applyDamage) dedupes identical callouts per unit
+  within 1.5s so AOE/multi-target/barrage casts don't spam "⛰ HIGH GROUND!" ×3.
+  Poison badge/icon is PURPLE now (#9b59b6) — ui.js plate colors, three-renderer
+  nameplate `_SB_COLORS`, data.js `iconSrc`.
 - **BUILD + pushers** (CHANNEL/DETONATE/ENTROPY/ENTER): full-width
   `.hrlg-push` rows at the bottom of the identity column (root view only) —
   the old `.hrlg-buildbtn` / `.hrlg-pusher` bezel studs are gone.
