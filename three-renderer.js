@@ -6662,6 +6662,18 @@ const ThreeRenderer = (function () {
                 var sk = getActiveStatusKeys(u);
                 for (var si = 0; si < sk.length; si++) h = _hashStr(h, sk[si]);
             }
+            /* Badge-visible modifiers beyond the status keys: stat stages
+               (re-casting a buff changes the count but not the carrier key),
+               hourglass power and killstreak heat. Without these a pure
+               stage/streak change never dirtied the serial, so the plate's
+               badge row sat stale until the unit next moved. */
+            if (u.statStages) {
+                h = _hashInt(h, u.statStages.atk || 0); h = _hashInt(h, u.statStages.def || 0);
+                h = _hashInt(h, u.statStages.mdef || 0); h = _hashInt(h, u.statStages.spd || 0);
+                h = _hashInt(h, u.statStages.int || 0);
+            }
+            h = _hashInt(h, u.hourglassBuff || 0);
+            h = _hashInt(h, u._killStreak || 0);
             if (u.race === 'vampire') h = _hashInt(h, _isVampireBatForm(u) ? 2 : 1);
             if (u._spriteOverride) h = _hashStr(h, u._spriteOverride);
             if (u._spriteFlipX) h = _hashInt(h, 5);
@@ -6696,6 +6708,65 @@ const ThreeRenderer = (function () {
         return h;
     }
     var _lastStructuralSerial = '';
+
+    /* ── Status-badge row (shared by _createPlate + _patchPlateStats) ──
+       Returns the row's inner HTML ('' when the unit is clean) so the patch
+       path can live-update badges the moment a status/stat change lands or
+       wears off, instead of waiting for the next full plate rebuild. */
+    var _TP_SB_COLORS = {
+        burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
+        stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
+        lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
+        invisible:'#1a7a4a',regen:'#2ecc71'
+    };
+    function _plateStatusBadgesHtml(unit) {
+        if (typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return '';
+        var badges = [];
+        var activeKeys = getActiveStatusKeys(unit);
+        for (var si = 0; si < activeKeys.length; si++) {
+            var sk = activeKeys[si];
+            /* 'invisible' isn't in the shared status-tick whitelist (changing that
+               set would alter game logic), so surface it as a badge explicitly.
+               Concealed enemies aren't drawn, so this only ever shows on units
+               the viewer can legitimately see (i.e. their own cloaked units). */
+            if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
+            var sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
+            if (!sDef) continue;
+            badges.push('<span class="tp-sbadge" style="background:' + (_TP_SB_COLORS[sk] || '#555') + '">' + (sDef.short || sk) + '</span>');
+        }
+
+        /* Stat modifiers read in STAGES (max ±5) — "+2 ATK" means two ATK
+           stages, exactly the unit the stage math stacks in. Raw point
+           totals ("ATK+24") lied about stacking and are gone. Point-based
+           extras from special sources (hourglass pickups, killstreak,
+           last-stand) are NOT folded in as fake stages — hourglass gets
+           its own badge here, the killstreak badge already exists below. */
+        if (typeof getStatStageCount === 'function') {
+            var _STG = [['atk', 'ATK'], ['def', 'DEF'], ['int', 'INT'], ['mdef', 'MDEF'], ['spd', 'SPD']];
+            for (var gi = 0; gi < _STG.length; gi++) {
+                var _stgN = getStatStageCount(unit, _STG[gi][0]);
+                if (_stgN > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN > 1 ? 's' : '') + ' (max 5)">+' + _stgN + ' ' + _STG[gi][1] + '</span>');
+                else if (_stgN < 0) badges.push('<span class="tp-sbadge tp-stat-dn" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN < -1 ? 's' : '') + ' (max -5)">' + _stgN + ' ' + _STG[gi][1] + '</span>');
+            }
+        }
+        var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
+        var hgBuff = unit.hourglassBuff || 0;
+        var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
+        if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Hourglass power: +' + hgBuff + ' ATK/DEF points">⏳+' + hgBuff + '</span>');
+        if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
+        else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
+
+        /* 🔥 Killstreak heat: HEATING UP at 2 kills, ON FIRE (+ bounty) at 3+. */
+        var _ks = unit._killStreak || 0;
+        if (_ks >= 3) {
+            var _bg = (typeof window.getUnitBountyGold === 'function') ? window.getUnitBountyGold(unit) : 0;
+            badges.push('<span class="tp-sbadge tp-onfire" title="ON FIRE — ' + _ks + ' kill streak. Bounty: +' + _bg + 'g to whoever kills this unit">🔥 ON FIRE</span>');
+            if (_bg > 0) badges.push('<span class="tp-sbadge tp-bounty" title="Kill this unit to claim +' + _bg + 'g">💰' + _bg + 'g</span>');
+        } else if (_ks === 2) {
+            badges.push('<span class="tp-sbadge tp-heatup" title="HEATING UP — 2 kill streak">♨️ HOT</span>');
+        }
+        return badges.join('');
+    }
 
     /* Patch plate HP/MP/shield bars + status badges in-place so CSS transitions animate smoothly. */
     /* §4.8: element refs are resolved once per plate and cached on the plate
@@ -6766,6 +6837,27 @@ const ThreeRenderer = (function () {
             if (hpNum) hpNum.textContent = u.hp + '/' + u.maxHp;
             var mpNum = refs.mpNum;
             if (mpNum) mpNum.textContent = u.mp + '/' + u.maxMp;
+
+            // Status / stat-stage badges — rebuilt in place the moment a hit
+            // applies (or removes) a status, buff or debuff, instead of
+            // waiting for the next structural plate rebuild. Compare-guarded
+            // so quiet frames don't touch the DOM.
+            var sbHtml = _plateStatusBadgesHtml(u);
+            if (sbHtml !== po.statusBadgesHtml) {
+                po.statusBadgesHtml = sbHtml;
+                var rowEl = po.el.querySelector('.tp-status-row');
+                if (!sbHtml) {
+                    if (rowEl) rowEl.remove();
+                } else {
+                    if (!rowEl) {
+                        rowEl = document.createElement('div');
+                        rowEl.className = 'tp-status-row';
+                        var mainEl = po.el.querySelector('.tp-main');
+                        (mainEl || po.el).appendChild(rowEl);
+                    }
+                    rowEl.innerHTML = sbHtml;
+                }
+            }
 
             // Vision eye: open when any enemy can see this unit, closed/slashed
             // when hidden. Recomputed each frame so it tracks movement/fog live.
@@ -8944,60 +9036,8 @@ const ThreeRenderer = (function () {
             typeHtml = '<div class="tp-types">' + tParts.join('') + '</div>';
         }
 
-        var statusHtml = '';
-        if (typeof getActiveStatusKeys === 'function' && typeof _STATUS_EFFECT_IDS !== 'undefined') {
-            var _SB_COLORS = {
-                burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
-                stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
-                lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
-                invisible:'#1a7a4a',regen:'#2ecc71'
-            };
-            var badges = [];
-            var activeKeys = getActiveStatusKeys(unit);
-            for (var si = 0; si < activeKeys.length; si++) {
-                var sk = activeKeys[si];
-                /* 'invisible' isn't in the shared status-tick whitelist (changing that
-                   set would alter game logic), so surface it as a badge explicitly.
-                   Concealed enemies aren't drawn, so this only ever shows on units
-                   the viewer can legitimately see (i.e. their own cloaked units). */
-                if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
-                var sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
-                if (!sDef) continue;
-                badges.push('<span class="tp-sbadge" style="background:' + (_SB_COLORS[sk] || '#555') + '">' + (sDef.short || sk) + '</span>');
-            }
-
-            /* Stat modifiers read in STAGES (max ±5) — "+2 ATK" means two ATK
-               stages, exactly the unit the stage math stacks in. Raw point
-               totals ("ATK+24") lied about stacking and are gone. Point-based
-               extras from special sources (hourglass pickups, killstreak,
-               last-stand) are NOT folded in as fake stages — hourglass gets
-               its own badge here, the killstreak badge already exists below. */
-            if (typeof getStatStageCount === 'function') {
-                var _STG = [['atk', 'ATK'], ['def', 'DEF'], ['int', 'INT'], ['mdef', 'MDEF'], ['spd', 'SPD']];
-                for (var gi = 0; gi < _STG.length; gi++) {
-                    var _stgN = getStatStageCount(unit, _STG[gi][0]);
-                    if (_stgN > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN > 1 ? 's' : '') + ' (max 5)">+' + _stgN + ' ' + _STG[gi][1] + '</span>');
-                    else if (_stgN < 0) badges.push('<span class="tp-sbadge tp-stat-dn" title="' + _stgN + ' ' + _STG[gi][1] + ' stage' + (_stgN < -1 ? 's' : '') + ' (max -5)">' + _stgN + ' ' + _STG[gi][1] + '</span>');
-                }
-            }
-            var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-            var hgBuff = unit.hourglassBuff || 0;
-            var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
-            if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Hourglass power: +' + hgBuff + ' ATK/DEF points">⏳+' + hgBuff + '</span>');
-            if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
-            else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
-
-            /* 🔥 Killstreak heat: HEATING UP at 2 kills, ON FIRE (+ bounty) at 3+. */
-            var _ks = unit._killStreak || 0;
-            if (_ks >= 3) {
-                var _bg = (typeof window.getUnitBountyGold === 'function') ? window.getUnitBountyGold(unit) : 0;
-                badges.push('<span class="tp-sbadge tp-onfire" title="ON FIRE — ' + _ks + ' kill streak. Bounty: +' + _bg + 'g to whoever kills this unit">🔥 ON FIRE</span>');
-                if (_bg > 0) badges.push('<span class="tp-sbadge tp-bounty" title="Kill this unit to claim +' + _bg + 'g">💰' + _bg + 'g</span>');
-            } else if (_ks === 2) {
-                badges.push('<span class="tp-sbadge tp-heatup" title="HEATING UP — 2 kill streak">♨️ HOT</span>');
-            }
-            if (badges.length) statusHtml = '<div class="tp-status-row">' + badges.join('') + '</div>';
-        }
+        var _sbInner = _plateStatusBadgesHtml(unit);
+        var statusHtml = _sbInner ? '<div class="tp-status-row">' + _sbInner + '</div>' : '';
 
         /* Vision eye — only on the viewer's own units: open when at least one
            enemy can see this unit, closed/slashed when out of all enemy vision.
@@ -9056,7 +9096,7 @@ const ThreeRenderer = (function () {
             ue.group.add(css2d);
         }
 
-        _plateObjs.set(unit.id, { css2d: css2d, el: wrap });
+        _plateObjs.set(unit.id, { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner });
 
         /* The fill was rendered at its previous width (hpStartPct/mpStartPct). On the
            next frame, set it to the real value so the CSS width-transition animates the

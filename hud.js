@@ -115,7 +115,22 @@ function useGameState() {
       });
     }
     window.addEventListener('ew-state-change', handler);
-    return () => { window.removeEventListener('ew-state-change', handler); };
+    // Status effects / stat stages can land or wear off outside a markDirty()
+    // (DoT ticks, duration expiry, censer purges) — battle.js announces those
+    // on the RenderBus, so listen there too and repaint the same frame. The
+    // handler is rAF-coalesced above, so bursts cost one render.
+    const bus = window.RenderBus;
+    if (bus) {
+      bus.on('unit:statusChanged', handler);
+      bus.on('unit:damaged', handler);
+    }
+    return () => {
+      window.removeEventListener('ew-state-change', handler);
+      if (bus) {
+        bus.off('unit:statusChanged', handler);
+        bus.off('unit:damaged', handler);
+      }
+    };
   }, []);
 
   const G = window.GAME;
@@ -1765,7 +1780,56 @@ function _HrlgRmbIcon() {
 // (as a stack of panels) and hands it to this component, which owns HOW it
 // looks and moves. (Separate component so its hooks never sit behind
 // ActionMenu's early returns.)
-function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
+/* ── Status / stat-change chips for the Horologe's portrait column ──
+   The same read the nameplate badge row gives, mirrored under the watch so
+   the active unit's afflictions and buffs are visible without hunting the
+   board. Recomputed on every HUD render (which 'unit:statusChanged' /
+   'unit:damaged' RenderBus events force immediately). */
+const _HRLG_SB_COLORS = {
+  burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
+  stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
+  lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
+  invisible:'#1a7a4a',regen:'#2ecc71'
+};
+function _hrlgStatusChips(unit) {
+  const chips = [];
+  if (!unit || typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return chips;
+  for (const sk of getActiveStatusKeys(unit)) {
+    if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
+    const sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
+    if (!sDef) continue;
+    const turns = (typeof getStatusValue === 'function') ? getStatusValue(unit, sk) : 0;
+    chips.push({
+      key: 'st-' + sk, label: sDef.short || sk, bg: _HRLG_SB_COLORS[sk] || '#555',
+      title: (sDef.label || sk) + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
+    });
+  }
+  // Stat stages — same ±5 stage read as the nameplate badges.
+  if (typeof getStatStageCount === 'function') {
+    for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','INT'],['mdef','MDEF'],['spd','SPD']]) {
+      const n = getStatStageCount(unit, stat);
+      if (!n) continue;
+      chips.push({
+        key: 'stg-' + stat, label: (n > 0 ? '+' : '') + n + ' ' + lbl, kind: n > 0 ? 'up' : 'dn',
+        title: n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : '') + ' (max ±5)',
+      });
+    }
+  }
+  const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
+  const hgBuff = unit.hourglassBuff || 0;
+  const totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
+  if (hgBuff > 0) chips.push({ key: 'hg', label: '⏳+' + hgBuff, kind: 'up', title: 'Hourglass power: +' + hgBuff + ' ATK/DEF points' });
+  if (totalMov) chips.push({
+    key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
+    title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects',
+  });
+  const ks = unit._killStreak || 0;
+  if (ks >= 3) chips.push({ key: 'ks', label: '🔥 ON FIRE', kind: 'fire', title: 'ON FIRE — ' + ks + ' kill streak' });
+  else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
+  return chips;
+}
+
+function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
@@ -2049,6 +2113,16 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       h('div', { className: 'hrlg-hubwrap' },
         h(HorologeHub, { factionKey: factionKey, api: clockApi, portraitUrl: portraitUrl, unitKey: unitKey, burning: burning, poisoned: poisoned }),
       ),
+      /* status / stat-change chips — right under the watch portrait, the
+         same read as the unit's nameplate badge row */
+      (statusChips && statusChips.length) ? h('div', { className: 'hrlg-status-row' },
+        statusChips.map(c => h('span', {
+          key: c.key,
+          className: 'hrlg-schip' + (c.kind ? ' ' + c.kind : ''),
+          style: c.bg ? { background: c.bg } : undefined,
+          title: c.title || undefined,
+        }, c.label)),
+      ) : null,
       h('div', { className: 'hrlg-core' },
         h('span', { className: 'hrlg-roman' }, roman + ' · '),
         h('span', { className: 'hrlg-name' }, unitName),
@@ -3382,6 +3456,7 @@ function ActionMenu({ st, hidden }) {
     portraitUrl: typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null,
     burning: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'burn'),
     poisoned: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'poison'),
+    statusChips: _hrlgStatusChips(unit),
     ap: unit.ap || 0, maxAP: maxAP,
     mats: (typeof getMaterials === 'function' && typeof BUILD_MATERIALS !== 'undefined')
       ? (() => { const _m = getMaterials(unit.player); return Object.keys(BUILD_MATERIALS).map(k => ({ k, icon: BUILD_MATERIALS[k].icon, n: _m[k] || 0 })); })()
@@ -6322,6 +6397,25 @@ function _injectHudHideStyles() {
       50%      { box-shadow: 0 0 16px var(--pc-soft); }
     }
     /* unit name + identity under the watch — real flow, no overlaps */
+    /* status / stat-change chips under the watch — nameplate badge palette */
+    .hrlg-status-row {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 3px;
+      margin-top: -4px; pointer-events: auto;
+    }
+    .hrlg-schip {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.06em; line-height: 1;
+      padding: 3px 5px; border-radius: 3px; color: #fff; white-space: nowrap;
+      background: #555; border: 1px solid rgba(255,255,255,0.22);
+      text-shadow: 0 1px 1px rgba(0,0,0,0.85); box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+      animation: hrlgChipIn 0.22s cubic-bezier(0.2,1.4,0.36,1) both;
+    }
+    .hrlg-schip.up { background: rgba(34,140,60,0.92); border-color: rgba(110,226,168,0.55); }
+    .hrlg-schip.dn { background: rgba(165,45,45,0.92); border-color: rgba(255,122,138,0.55); }
+    .hrlg-schip.fire { background: rgba(120,50,10,0.92); border-color: rgba(255,150,60,0.6); }
+    @keyframes hrlgChipIn {
+      0% { opacity: 0; transform: scale(0.6); }
+      100% { opacity: 1; transform: scale(1); }
+    }
     .hrlg-core {
       text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.15; pointer-events: none; margin-top: -2px;
