@@ -25114,6 +25114,10 @@
                 jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
                 builds: {},
                 spellUse: {},
+                // BUILD-verb telemetry (2026-07-13): the universal place/dig
+                // action was invisible to every prior dataset — no way to tell
+                // if terrain-craft is a real strategic axis or dead weight.
+                buildUse: { tools: {}, jobs: {} },
                 matchLog: [],
                 updatedAt: 0,
             };
@@ -25125,6 +25129,9 @@
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
+            if (!_balanceStats.buildUse) _balanceStats.buildUse = { tools: {}, jobs: {} };
+            if (!_balanceStats.buildUse.tools) _balanceStats.buildUse.tools = {};
+            if (!_balanceStats.buildUse.jobs) _balanceStats.buildUse.jobs = {};
             if (_balanceStats.noContests == null) _balanceStats.noContests = 0;
             if (_balanceStats.totalMatches == null) _balanceStats.totalMatches = 0;
             if (_balanceStats.roundsTotal == null) _balanceStats.roundsTotal = 0;
@@ -25184,6 +25191,19 @@
             // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
             // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
             if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+        }
+
+        // Tally one successful BUILD op (dig / tree chop / block place) so
+        // exports can answer "does anyone actually terraform?" — keyed by tool
+        // and by the digger's job.
+        function _balRecordBuildOp(unit, tool, isTree) {
+            if (!_balanceSimMode) return;
+            ensureBalanceStats();
+            const bu = _balanceStats.buildUse;
+            const toolKey = (tool === 'dig' && isTree) ? 'chopTree' : (tool || 'dig');
+            bu.tools[toolKey] = (bu.tools[toolKey] || 0) + 1;
+            const jobKey = unit && (unit.cls || unit.job);
+            if (jobKey) bu.jobs[jobKey] = (bu.jobs[jobKey] || 0) + 1;
         }
 
         async function loadBalanceStats() {
@@ -25540,6 +25560,9 @@
                 };
             }
             const decisive = (s.totalMatches || 0) - (s.noContests || 0);
+            const bu = s.buildUse || { tools: {}, jobs: {} };
+            let buildOps = 0;
+            for (const k of Object.keys(bu.tools || {})) buildOps += bu.tools[k];
             return {
                 decisiveMatches: decisive,
                 avgRounds: decisive > 0 ? Number(((s.roundsTotal || 0) / decisive).toFixed(2)) : null,
@@ -25548,6 +25571,12 @@
                 jobs: jobRows,
                 races: raceRows,
                 spellEfficiency: spellEff,
+                building: {
+                    totalOps: buildOps,
+                    opsPerMatch: decisive > 0 ? Number((buildOps / decisive).toFixed(2)) : null,
+                    byTool: bu.tools || {},
+                    byJob: bu.jobs || {},
+                },
             };
         }
 
@@ -31270,6 +31299,7 @@
                     showFloatingTextForUnit(unit, '🧤 +1 FREE BLOCK', 'buff', { durationMs: 900 });
                 }
             }
+            if (typeof _balRecordBuildOp === 'function') _balRecordBuildOp(unit, tool, !!info.isTree);
 
             if (tool === 'dig') {
                 // Both dig ops read as axe/pick work on rigged models.

@@ -2662,22 +2662,22 @@ const RACE_BASE_STATS = {
 
     'giant':         { hp: 635, mp: 60,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
     'robot':         { hp: 620, mp: 65,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
-    'mech':          { hp: 630, mp: 68,  atk: 38, def: 50, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
+    'mech':          { hp: 605, mp: 68,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
     'gargoyle':      { hp: 585, mp: 90,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
-    'zombie':        { hp: 660, mp: 50,  atk: 36, def: 44, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
+    'zombie':        { hp: 660, mp: 50,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
     'cyclops':       { hp: 630, mp: 62,  atk: 48, def: 45, mdef: 14, move: 2, awr: 3, int: 8,  spd: 6 },
 
     'skeleton':      { hp: 570, mp: 95,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
     'demon':         { hp: 580, mp: 90,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
     'bigfoot':       { hp: 605, mp: 78,  atk: 64, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
     'antperson':     { hp: 565, mp: 105, atk: 64, def: 28, mdef: 24, move: 2, awr: 3, int: 26, spd: 7 },
-    'werewolf':      { hp: 575, mp: 95,  atk: 70, def: 24, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
+    'werewolf':      { hp: 575, mp: 95,  atk: 70, def: 30, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
 
     'angel':         { hp: 480, mp: 195, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
     'ghost':         { hp: 485, mp: 192, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
 
     'nordic':        { hp: 560, mp: 142, atk: 48, def: 44, mdef: 29, move: 2, awr: 3, int: 44, spd: 5 },
-    'fairy':         { hp: 466, mp: 208, atk: 24, def: 22, mdef: 44, move: 4, awr: 5, int: 62, spd: 8 },
+    'fairy':         { hp: 466, mp: 208, atk: 24, def: 22, mdef: 44, move: 3, awr: 5, int: 62, spd: 8 },
     'scarecrow':     { hp: 530, mp: 152, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
     'grey':          { hp: 465, mp: 208, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
     'succubus':      { hp: 492, mp: 182, atk: 32, def: 26, mdef: 40, move: 2, awr: 3, int: 55, spd: 8 },
@@ -2686,10 +2686,10 @@ const RACE_BASE_STATS = {
     'siren':         { hp: 488, mp: 190, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
 
     'android':       { hp: 518, mp: 142, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
-    'shadow entity': { hp: 496, mp: 162, atk: 58, def: 20, mdef: 35, move: 4, awr: 5, int: 45, spd: 10 },
+    'shadow entity': { hp: 496, mp: 162, atk: 58, def: 20, mdef: 35, move: 3, awr: 5, int: 45, spd: 10 },
     'reptilian':     { hp: 535, mp: 128, atk: 68, def: 26, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
-    'catgirl':       { hp: 496, mp: 152, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
-    'mantid':        { hp: 490, mp: 168, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
+    'catgirl':       { hp: 508, mp: 152, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
+    'mantid':        { hp: 510, mp: 168, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
     'skinwalker':    { hp: 508, mp: 152, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
 
     'seraphim':      { hp: 445, mp: 228, atk: 22, def: 22, mdef: 48, move: 2, awr: 4, int: 69, spd: 8 },
@@ -2712,8 +2712,8 @@ const RACE_BASE_STATS = {
     'mad scientist': { hp: 480, mp: 185, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
     'cowboy':        { hp: 540, mp: 125, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
     'men in black':  { hp: 520, mp: 140, atk: 54, def: 28, mdef: 31, move: 3, awr: 5, int: 38, spd: 9 },
-    'telepath':      { hp: 465, mp: 210, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 68, spd: 7 },
-    'marksman':      { hp: 505, mp: 130, atk: 66, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
+    'telepath':      { hp: 490, mp: 210, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 68, spd: 7 },
+    'marksman':      { hp: 505, mp: 130, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
     'priest':        { hp: 490, mp: 195, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
     'wizard':        { hp: 455, mp: 220, atk: 22, def: 22, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
     'fortune teller':{ hp: 515, mp: 178, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
@@ -2729,14 +2729,14 @@ const RACE_BASE_STATS = {
     'dreameater':    { hp: 490, mp: 190, atk: 22, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 7 },
 
     'halfdemon':     { hp: 515, mp: 145, atk: 61, def: 24, mdef: 30, move: 3, awr: 4, int: 36, spd: 9 },
-    'vampire':       { hp: 495, mp: 158, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
+    'vampire':       { hp: 480, mp: 158, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
 
     'fallen angel':  { hp: 452, mp: 218, atk: 24, def: 24, mdef: 47, move: 2, awr: 4, int: 68, spd: 8 },
     'voidweaver':    { hp: 505, mp: 155, atk: 64, def: 22, mdef: 31, move: 3, awr: 5, int: 38, spd: 8 },
 
     'cosmic wraith': { hp: 498, mp: 162, atk: 60, def: 26, mdef: 32, move: 2, awr: 4, int: 40, spd: 8 },
 
-    'cyborg':        { hp: 575, mp: 90,  atk: 70, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
+    'cyborg':        { hp: 575, mp: 90,  atk: 65, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
 
     'superhero':     { hp: 538, mp: 136, atk: 52, def: 34, mdef: 25, move: 3, awr: 3, int: 28, spd: 6 },
 
@@ -2889,12 +2889,12 @@ const RACE_PHYSIQUE = {
 
 const JOB_MODIFIERS = {
     'Warrior': {
-        hp: 135,
+        hp: 120,
         mp: -15,
         atk: 24,
         def: 22,
         mdef: 12,
-        move: 2,
+        move: 1,
         awr: -1,
         int: -10,
         spd: 0,
@@ -2902,9 +2902,9 @@ const JOB_MODIFIERS = {
         inspect: 1
     },
     'Gunslinger': {
-        hp: 30,
+        hp: 20,
         mp: -10,
-        atk: 18,
+        atk: 14,
         def: 5,
         mdef: 2,
         move: 0,
@@ -2915,7 +2915,7 @@ const JOB_MODIFIERS = {
         inspect: 1
     },
     'Black Mage': {
-        hp: -80,
+        hp: -60,
         mp: 60,
         atk: -24,
         def: -10,
@@ -2954,22 +2954,22 @@ const JOB_MODIFIERS = {
         inspect: 2
     },
     'Psychic': {
-        hp: -10,
+        hp: 15,
         mp: 70,
         atk: -16,
         def: -5,
         mdef: 14,
         move: 0,
         awr: +1,
-        int: 26,
+        int: 32,
         spd: 0,
         range: 2,
         inspect: 1
     },
     'Harvester': {
         hp: 105,
-        mp: 20,
-        atk: 20,
+        mp: 30,
+        atk: 26,
         def: 10,
         mdef: 6,
         move: 0,
@@ -3071,7 +3071,10 @@ function computeUnitStats(race, cls) {
         atk: Math.max(8, base.atk + job.atk),
         def: Math.max(0, base.def + job.def),
         mdef: Math.max(0, (base.mdef || 0) + (job.mdef || 0)),
-        move: Math.max(1, base.move + job.move),
+        // Movement is hard-capped at 3 (2026-07-13 balance pass): with 1 AP
+        // double-moves (plus jump), move 4+ crossed an entire 8x8 map in one
+        // turn, which trivialized positioning and made teleports pointless.
+        move: Math.max(1, Math.min(3, base.move + job.move)),
         awr: Math.max(1, base.awr + job.awr),
         int: Math.max(0, base.int + job.int),
         spd: Math.max(1, (base.spd || 5) + (job.spd || 0)),
@@ -3290,7 +3293,7 @@ const CLASS_TEMPLATES = {
         def: 42,
         mdef: 28,
         range: 1,
-        move: 4,
+        move: 3,
         inspect: 1,
         awr: 4,
         int: 26
@@ -3796,7 +3799,7 @@ const SPELL_LIBRARY = [
         element: 'lightning',
         name: 'Thunderbolt',
         type: 'damage',
-        cost: 40,
+        cost: 30,
         equipCost: 15,
         dmg: 110,
         range: 3,
@@ -3833,7 +3836,7 @@ const SPELL_LIBRARY = [
         element: 'fire',
         name: 'Wall of Fire',
         type: 'damage',
-        cost: 50,
+        cost: 35,
         equipCost: 20,
         dmg: 100,
         range: 3,
@@ -3920,7 +3923,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 40,
         equipCost: 20,
-        dmg: 80,
+        dmg: 70,
         range: 3,
         kind: 'aoe',
         aoeRadius: 1,
@@ -3936,7 +3939,7 @@ const SPELL_LIBRARY = [
         spellType: 'human',
         name: 'Pistol Whip',
         type: 'damage',
-        cost: 10,
+        cost: 14,
         equipCost: 10,
         dmg: 144,
         range: 1,
@@ -4027,9 +4030,9 @@ const SPELL_LIBRARY = [
         element: 'arcane',
         name: 'Teleport',
         type: 'utility',
-        cost: 40,
+        cost: 25,
         equipCost: 15,
-        range: 3,
+        range: 4,
         kind: 'teleport',
         teleportAnyUnit: true,
         tier: 'II',
@@ -4478,7 +4481,7 @@ const SPELL_LIBRARY = [
         spellType: 'unholy',
         name: 'Skull Crack',
         type: 'damage',
-        cost: 30,
+        cost: 26,
         equipCost: 15,
         dmg: 104,
         range: 1,
@@ -4918,7 +4921,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 25,
         equipCost: 15,
-        dmg: 72,
+        dmg: 80,
         range: 3,
         kind: 'dash',
         damageType: 'physical',
@@ -4981,7 +4984,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 35,
         equipCost: 20,
-        dmg: 160,
+        dmg: 150,
         range: 3,
         kind: 'damage',
         damageType: 'magic',
@@ -4998,9 +5001,9 @@ const SPELL_LIBRARY = [
         element: 'metal',
         name: 'Kneecap Shot',
         type: 'damage',
-        cost: 25,
+        cost: 32,
         equipCost: 15,
-        dmg: 108,
+        dmg: 96,
         range: 6,
         kind: 'damage',
         damageType: 'physical',
@@ -5019,7 +5022,7 @@ const SPELL_LIBRARY = [
         element: 'psychic',
         name: 'Kinetic Hurl',
         type: 'damage',
-        cost: 30,
+        cost: 24,
         equipCost: 15,
         dmg: 148,
         range: 3,
@@ -5448,7 +5451,7 @@ const SHARED_BULWARK_RING = {
 
 const SHARED_FLASH_FREEZE = {
     id: 'sharedFlashFreeze', spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
-    type: 'damage', cost: 25, dmg: 70, range: 4, apCost: 1,
+    type: 'damage', cost: 25, dmg: 90, range: 4, apCost: 1,
     kind: 'terrainCreate', terrainType: 'ice', tileCount: 3, orientable: true,
     damageType: 'magic',
     statusEffects: [{ id: 'slow', duration: 1 }],
@@ -5511,7 +5514,7 @@ const SHARED_SCORCHED_EARTH = {
 
 const SHARED_POISON_SWAMP = {
     id: 'sharedPoisonSwamp', spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
-    type: 'damage', cost: 25, dmg: 60, range: 3, apCost: 1,
+    type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
     kind: 'terrainCreate', terrainType: 'poison', tileCount: 3, orientable: true,
     damageType: 'magic',
     desc: 'Spread 3 poison tiles in a line. Enemies caught take damage. Toxic terrain poisons anyone who walks through.'
@@ -5919,7 +5922,7 @@ const RACE_ABILITIES = {
     ],
     'antperson': [
         { id: 'raceFormicAcid', spellType: 'anomaly', name: 'Formic Acid',
-          type: 'damage', cost: 30, dmg: 96, range: 4,
+          type: 'damage', cost: 22, dmg: 96, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statStageBoost: { def: -1 },
           leaveTerrain: 'poison',
@@ -5938,7 +5941,7 @@ const RACE_ABILITIES = {
     ],
     'scarecrow': [
         { id: 'raceHarvestHook', spellType: 'anomaly', name: 'Harvest Hook',
-          type: 'damage', cost: 25, dmg: 64, range: 4,
+          type: 'damage', cost: 25, dmg: 84, range: 4,
           kind: 'pull', damageType: 'physical',
           pullDistance: 4, pullThroughHazards: true,
           desc: 'Hook an enemy and drag them through hazard tiles toward you.' },
@@ -6358,7 +6361,7 @@ const RACE_ABILITIES = {
     ],
     'wizard': [
         { id: 'raceArcaneBlast', spellType: 'unholy', element: 'arcane', name: 'Arcane Blast',
-          type: 'damage', cost: 38, dmg: 90, range: 4,
+          type: 'damage', cost: 38, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           desc: 'Unleash raw arcane energy. 3×3 area magic damage.' },
         { id: 'raceSpellsteal', spellType: 'unholy', element: 'arcane', name: 'Spellsteal',
@@ -6398,7 +6401,7 @@ const RACE_ABILITIES = {
 
     'martian': [
         { id: 'raceHeatRay', spellType: 'alien', element: 'fire', name: 'Heat Ray',
-          type: 'damage', cost: 30, dmg: 150, range: 5,
+          type: 'damage', cost: 30, dmg: 130, range: 5,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           leaveTerrain: 'scorched',
           desc: 'The tripod\'s heat ray — a weapon, not a spell. Scales with ATK. Damages all units in a straight line and scorches the ground.' },

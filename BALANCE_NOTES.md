@@ -319,3 +319,87 @@ real INT instead.
   that retype was lore-correct.
 Watch: ki fighter got both the hybrid INT and this pass's earlier kit
 attention — if it lands >55% pull int 50→42 first.
+
+# Balance Pass — 2026-07-13 (341-match ewbalancestats12, arena/rotate)
+
+Health: avgRounds 15.6, comebackRate 30.5%, firstKillWinRate 65.7% — pacing
+and momentum are fine; the problem is WHO wins, not how.
+
+## The emerging meta: ranged kiting
+Jobs: Gunslinger 60.8 / Sniper 57.9 / Warrior 57.3 top; Psychic 40.3 /
+Harvester 42.0 / Black Mage 44.7 bottom. Every top-6 race is a gun/bow race
+(mech 68.3, martian 66.1, marksman 65.1, cowboy 61.1, robinhood 61.0) and
+their kpg (2.2–2.8) dwarfs the field. The engine of it: **Kneecap Shot** —
+1608 casts, the most-used spell in the game by 2× — a 25 MP, range-6 root.
+Root the melee unit, walk back, repeat. Psychic-locked races (telepath 31.8,
+mantid 32.9, grey 46.8) and melee-locked ones sank with their jobs.
+Last pass's Sniper/Warrior buffs + Heat Ray physical retype all overshot
+(martian 37.7→66.1); wizard/werewolf/bigfoot nerfs overshot the other way.
+
+## Movement rework (user direction: move ∈ [1,3])
+With 1-AP double-moves + jump, move 4 crossed an entire 8×8 map in one turn —
+positioning stopped mattering and teleports looked pointless next to legs.
+- `computeUnitStats`: final move now **clamped to [1,3]**.
+- fairy & shadow entity base move 4→3; CLASS_TEMPLATES Swordmaster 4→3.
+- Warrior job move +2→+1 (was pure clamp-waste; +1 still hits the cap from
+  any base-2 chassis).
+Side effect to watch: slower melee makes kiting stronger — hence the hard
+Kneecap/Gunslinger nerfs landing in the same pass.
+
+## Teleports (user direction: they were underpicked, movement was the reason)
+- **Teleport** (Psychic): cost 40→25, range 3→4. At 40 MP it competed with
+  Mind Shatter and lost; under the move cap repositioning is worth a slot.
+- Shadow Step / Instant Transmission / Mirror Blink left alone — already
+  cheap; the cap itself is their buff.
+
+## Jobs (JOB_MODIFIERS)
+- Gunslinger (60.8): hp 30→20, atk 18→14.
+- Warrior (57.3): hp 135→120 (plus the move change above).
+- Sniper (57.9): chassis untouched — the spam engine was the spell:
+  Kneecap Shot 25→32 MP, dmg 108→96.
+- Psychic (40.3, third failing pass): hp −10→+15, int 26→32, plus Teleport
+  and Kinetic Hurl 30→24 MP. Spell + chassis together this time.
+- Harvester (42.0): atk 20→26, mp 20→30.
+- Black Mage (44.7): hp −80→−60; Thunderbolt 40→30 MP (was 3.4 dmg/MP,
+  bottom-decile), Wall of Fire 50→35 MP (1.1 dmg/MP, worst in game).
+
+## Job spells (cast-efficiency league)
+Nerfs (only on winning jobs): Bullet Rain 80→70, Pistol Whip 10→14 MP
+(11.4 dmg/MP), Exorcism 160→150 (10.4 dmg/MP @ 286 casts).
+Buffs (high-volume losers): Shadow Lunge 72→80 (2.1 dmg/MP @ 257 casts,
+partial revert), Skull Crack 30→26 MP, Poison Swamp 60→80, Flash Freeze
+70→90. NOT touched: Cross Slash/Zantetsuken/Dragon Slash (Swordmaster 51.6),
+Fractal Needle (mantid's one good spell), Devour Soul (demon 45.6),
+Assassinate (dmg/MP misleading for an execute).
+
+## Race residuals (only |resid| > ~7 with CI support)
+Nerfs: cyborg (+12.0) atk 70→65; vampire (+10.3) hp 495→480; mech (+7.5,
+68.3%) hp 630→605 def 50→47; marksman (+7.2, kpg 2.76) atk 66→62;
+martian (+5.2) Heat Ray 150→130 (watchlist confirmed — the retype overshot).
+Buffs (mostly reverting last pass's overshoots): catgirl (−11.6) hp 496→508;
+wizard (−10.4) Arcane Blast 90→100; werewolf (−8.8, survival .587 worst)
+def 24→30; telepath (−8.5) hp 465→490; zombie (−8.3) def 44→50; mantid
+(−7.5) hp 490→510; antperson Formic Acid 30→22 MP.
+Left alone: shaman/bigfoot/scarecrow (the Harvester chassis buff carries
+them), annunaki/quarterback (ride the Sniper spell nerf down first),
+homosapien (Freelancer expectation is a 7-game sample — garbage baseline).
+
+## NEW: build-verb telemetry (battle.js)
+Answer to "are there any building stats?": **there were none** — the
+universal BUILD action (dig / chop / place block) was completely invisible
+to the tracker; only spell casts were recorded. Added `buildUse`
+{tools, jobs} to the stats object, recorded per successful op in
+doBuildAction, and a `building` block (totalOps, opsPerMatch, byTool,
+byJob) in the export analysis. Next dataset tells us whether terraforming
+is a real strategic axis or dead weight the AI ignores.
+
+## Watchlist for next dataset
+- Kneecap Shot cast count (expect it to fall from 1608 toward ~600) and
+  whether Sniper lands 50–54 without a chassis touch.
+- Psychic: chassis + Teleport + Kinetic Hurl all at once — if >55, walk
+  back int 32→28 first.
+- Melee jobs under the move cap: if Warrior/Raider/Swordmaster all sag,
+  the cap needs a melee gap-closer compensation, not a stat buff.
+- building.opsPerMatch — if ~0, the AI never builds and the whole material
+  economy needs an AI pass, not a balance pass.
+- Teleport pick/cast rate at 25 MP.
