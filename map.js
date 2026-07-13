@@ -407,7 +407,8 @@
             'Freelancer': 'Wanderer', 'Warrior': 'Sentinel', 'Black Mage': 'Arcanist',
             'White Mage': 'Cleric', 'Gunslinger': 'Ranger', 'Agent': 'Shadow',
             'Psychic': 'Psion', 'Harvester': 'Warden', 'Engineer': 'Tinker',
-            'Harbinger': 'Herald', 'Raider': 'Corsair', 'Sniper': 'Hawk'
+            'Harbinger': 'Herald', 'Raider': 'Corsair', 'Sniper': 'Hawk',
+            'Swordmaster': 'Blade'
         };
 
         window._goToCampaign = function() {

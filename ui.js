@@ -5782,7 +5782,8 @@
                 const jobIcons = {
                     'Warrior': '🛡', 'Gunslinger': '🔫', 'Black Mage': '🔥', 'White Mage': '✝',
                     'Agent': '🗡', 'Psychic': '🔮', 'Harvester': '🌿', 'Engineer': '🔧',
-                    'Harbinger': '🎵', 'Freelancer': '🃏', 'Raider': '☠', 'Sniper': '🎯'
+                    'Harbinger': '🎵', 'Freelancer': '🃏', 'Raider': '☠', 'Sniper': '🎯',
+                    'Swordmaster': '⚔'
                 };
 
                 const jobCards = eligible.map(job => {

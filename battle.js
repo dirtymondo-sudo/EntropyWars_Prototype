@@ -5694,7 +5694,8 @@
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
             let base = 0.12;
-            if (unit.cls === 'Warrior') base = 0.30;
+            if (unit.cls === 'Swordmaster') base = 0.35;   // Riposte passive
+            else if (unit.cls === 'Warrior') base = 0.30;
             else if ((unit.def || 0) >= 12) base = 0.20;
 
             if (unit._guardCounterBonus) base += unit._guardCounterBonus;
@@ -5707,7 +5708,9 @@
         }
 
         function getCounterDamage(unit) {
-            return Math.max(24, Math.floor((unit.atk || 0) * 0.4) + randInt(24));
+            // Riposte passive: Swordmaster counters swing at full sword strength.
+            const atkPct = unit && unit.cls === 'Swordmaster' ? 0.6 : 0.4;
+            return Math.max(24, Math.floor((unit.atk || 0) * atkPct) + randInt(24));
         }
 
         /* ── Unit Facing ─────────────────────────────────────────────────
@@ -15474,6 +15477,7 @@
                         'Black Mage': ['flair', 'binoculars'],
                         'White Mage': ['walkie_talkie', 'ward'],
                         'Warrior': ['ward', 'flair'],
+                        'Swordmaster': ['flair', 'ward'],
                         'Psychic': ['walkie_talkie', 'ward'],
                         'Harvester': ['masons_gauntlets', 'ward'],
                         'Engineer': ['masons_gauntlets', 'binoculars']
@@ -15493,14 +15497,15 @@
                     const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
                     const preferred = {
-                        'Agent': ['empBurst', 'shadowLunge', 'placeBomb', 'sneakSlash', 'knifeThrow'],
+                        'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'poisonDart', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                         'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
                         'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
+                        'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
                         'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                        'Engineer': ['fiveGTower', 'overclock', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
+                        'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                         'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
                         'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
@@ -15615,6 +15620,7 @@
                 'Black Mage': ['flair', 'binoculars'],
                 'White Mage': ['walkie_talkie', 'ward'],
                 'Warrior': ['ward', 'flair'],
+                        'Swordmaster': ['flair', 'ward'],
                 'Psychic': ['walkie_talkie', 'ward'],
                 'Harvester': ['ward', 'walkie_talkie']
             } [cls] || ['ward', 'binoculars']).slice();
@@ -15632,14 +15638,15 @@
             const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
             const preferred = {
-                'Agent': ['empBurst', 'shadowLunge', 'placeBomb', 'sneakSlash', 'knifeThrow'],
+                'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'poisonDart', 'knifeThrow'],
                 'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                 'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
                 'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
+                        'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
                 'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
                 'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                 'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                'Engineer': ['fiveGTower', 'overclock', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
+                'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                 'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
                 'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                 'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
@@ -16573,7 +16580,7 @@
             const tanks = ['Warrior', 'Engineer'];
             const ranged = ['Gunslinger', 'Sniper', 'Black Mage'];
             const support = ['Harbinger', 'Psychic', 'White Mage'];
-            const melee = ['Warrior', 'Raider', 'Agent', 'Freelancer'];
+            const melee = ['Warrior', 'Raider', 'Agent', 'Freelancer', 'Swordmaster'];
 
             const scores = eligible.map(job => {
                 let score = 10;

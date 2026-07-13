@@ -1872,6 +1872,16 @@ const JOB_ARCHETYPES = {
         sleepPreference: 'none',
         terrainPreference: 'grass',
         weatherPreference: 'none'
+    },
+    'Swordmaster': {
+        race: 'swordfighter',
+        faction: 'time',
+        types: ['human'],
+        gender: 'other',
+        zodiac: 'leo',
+        sleepPreference: 'none',
+        terrainPreference: 'grass',
+        weatherPreference: 'none'
     }
 };
 
@@ -1884,6 +1894,11 @@ const RACE_PROFILES = {
     pirate: {
         label: 'Pirate',
         faction: 'chaos',
+        types: ['human']
+    },
+    swordfighter: {
+        label: 'Swordfighter',
+        faction: 'time',
         types: ['human']
     },
     giant: {
@@ -2232,9 +2247,9 @@ const RACE_PROFILES = {
     'men in black': {
         label: 'Men in Black',
         labelMale: 'Man in Black',
-        // A woman can't very well be a Man in Black — she's a Glowie
-        // (slang for a CIA/fed agent). Portrait art follows suit.
-        labelFemale: 'Glowie',
+        // A woman can't very well be a Man in Black — she's an Intel Spy.
+        // (Portrait art file is still named "glowie" on R2 — path only.)
+        labelFemale: 'Intel Spy',
         faction: 'space',
         types: ['human', 'tech']
     },
@@ -2369,11 +2384,13 @@ const RACE_PROFILES = {
     }
 };
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher'];
 
 const RACE_DEFAULT_JOBS = {
+    // NOTE (2026-07-13): 'Warrior' displays as "Tank" and 'Agent' as
+    // "Assassin" (JOB_DISPLAY_NAMES) — the internal ids here are unchanged.
     'giant': 'Warrior',
-    'skeleton': 'Warrior',
+    'skeleton': 'Swordmaster',
     'robot': 'Warrior',
     'nordic': 'Harbinger',
     'angel': 'White Mage',
@@ -2405,7 +2422,8 @@ const RACE_DEFAULT_JOBS = {
     'mothman': 'Harbinger',
     'siren': 'Harbinger',
     'homosapien': 'Freelancer',
-    'pirate': 'Raider',
+    'pirate': 'Swordmaster',
+    'swordfighter': 'Swordmaster',
     'knight': 'Warrior',
     'shaman': 'Harvester',
     'mad scientist': 'Engineer',
@@ -2418,7 +2436,7 @@ const RACE_DEFAULT_JOBS = {
     'fortune teller': 'Harbinger',
     'zombie': 'Raider',
     'werewolf': 'Raider',
-    'cyclops': 'Raider',
+    'cyclops': 'Warrior',
     'cyborg': 'Raider',
     'demon prince': 'Black Mage',
     'demon princess': 'Harbinger',
@@ -2454,9 +2472,9 @@ const RACE_DEFAULT_JOBS = {
     'golem': 'Warrior',
     'honda civic': 'Engineer',
     'ice queen': 'Black Mage',
-    'juggernaut': 'Raider',
+    'juggernaut': 'Warrior',
     'ki fighter': 'Raider',
-    'king arthur': 'Warrior',
+    'king arthur': 'Swordmaster',
     'king kong': 'Harvester',
     'minotaur': 'Raider',
     'necromancer': 'Black Mage',
@@ -2464,9 +2482,9 @@ const RACE_DEFAULT_JOBS = {
     'quarterback': 'Sniper',
     'robinhood': 'Sniper',
     'santa clause': 'White Mage',
-    'super sentai': 'Warrior',
+    'super sentai': 'Freelancer',
     'symbiote': 'Agent',
-    'valkraye': 'Warrior',
+    'valkraye': 'Swordmaster',
     'watcher': 'Harbinger'
 };
 
@@ -2508,6 +2526,7 @@ const RACE_CLASS = {
     'glitch': 'specialist',
     'homosapien': 'hybrid',
     'pirate': 'bruiser',
+    'swordfighter': 'bruiser',
     'knight': 'tank',
     'shaman': 'support',
     'mad scientist': 'specialist',
@@ -2553,7 +2572,7 @@ const RACE_CLASS = {
     'golem': 'tank',
     'honda civic': 'specialist',
     'ice queen': 'caster',
-    'juggernaut': 'bruiser',
+    'juggernaut': 'tank',
     'ki fighter': 'bruiser',
     'king arthur': 'tank',
     'king kong': 'bruiser',
@@ -2666,6 +2685,7 @@ const RACE_BASE_STATS = {
 
     'homosapien':    { hp: 545, mp: 148, atk: 52, def: 32, mdef: 30, move: 2, awr: 3, int: 36, spd: 6 },
     'pirate':        { hp: 560, mp: 120, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
+    'swordfighter':  { hp: 550, mp: 118, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
 
     'knight':        { hp: 575, mp: 80,  atk: 52, def: 42, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
     'shaman':        { hp: 545, mp: 165, atk: 38, def: 30, mdef: 36, move: 2, awr: 3, int: 54, spd: 5 },
@@ -2751,6 +2771,7 @@ const RACE_BASE_STATS = {
 const RACE_PHYSIQUE = {
     'homosapien':          { h: 1.75, w: 75 },
     'pirate':              { h: 1.80, w: 85 },
+    'swordfighter':        { h: 1.68, w: 58 },   // pop-idol duelist, light on her feet
     'knight':              { h: 1.90, w: 140 },   // full plate included
     'shaman':              { h: 1.70, w: 70 },
     'mad scientist':       { h: 1.75, w: 72 },
@@ -3005,6 +3026,19 @@ const JOB_MODIFIERS = {
         spd: +1,
         range: 3,
         inspect: 2
+    },
+    'Swordmaster': {
+        hp: 45,
+        mp: 0,
+        atk: 24,
+        def: 10,
+        mdef: 4,
+        move: 1,
+        awr: +1,
+        int: 0,
+        spd: +2,
+        range: 1,
+        inspect: 1
     }
 };
 
@@ -3227,6 +3261,20 @@ const CLASS_TEMPLATES = {
         awr: 6,
         int: 30
     },
+    Swordmaster: {
+        cls: 'Swordmaster',
+        job: 'Swordmaster',
+        hp: 595,
+        mp: 118,
+        atk: 88,
+        def: 42,
+        mdef: 28,
+        range: 1,
+        move: 4,
+        inspect: 1,
+        awr: 4,
+        int: 26
+    },
 };
 
 let DEFAULT_BUILDS = {
@@ -3236,7 +3284,7 @@ let DEFAULT_BUILDS = {
 
 const DEFAULT_PARTY_NAMES = {
     1: ['P1 Gunslinger', 'P1 Knight', 'P1 Black Mage', 'P1 White Mage'],
-    2: ['P2 Gunslinger', 'P2 Knight', 'P2 Agent', 'P2 White Mage']
+    2: ['P2 Gunslinger', 'P2 Knight', 'P2 Assassin', 'P2 White Mage']
 };
 
 const ITEM_RULES = {
@@ -3460,6 +3508,7 @@ const JOB_PASSIVES = {
     Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip spells from ANY job pool. A blank slate that borrows every playstyle.' },
     Raider:      { id: 'bruteForce',     name: 'Brute Force',     desc: 'Basic attacks deal +20% damage. Gains +8 DEF while below 50% HP.' },
     Sniper:      { id: 'bulletDrop',     name: 'Bullet Drop',     desc: 'Attacks, abilities and spells scale with range to the target: −40% at point-blank, climbing to +20% from 5+ tiles away. Reward the long shot; never get cornered.' },
+    Swordmaster: { id: 'riposte',        name: 'Riposte',         desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
 };
 // Back-compat: some older lookups expect a flat "Name: desc" string map.
 const CLASS_PASSIVES = Object.fromEntries(
@@ -3468,7 +3517,14 @@ const CLASS_PASSIVES = Object.fromEntries(
 function getJobPassive(job) { return JOB_PASSIVES[job] || null; }
 
 const JOB_DISPLAY_NAMES = {
-    'Raider': 'Bruiser'
+    // Display-only renames (2026-07-13). Internal ids ('Warrior', 'Agent',
+    // 'Raider') are load-bearing — saves, the online protocol, AI role tables
+    // and battle.js cls checks all key on them — so renames happen HERE, the
+    // same way Raider→Bruiser did. Everything player-facing routes through
+    // getJobDisplayName().
+    'Raider': 'Bruiser',
+    'Warrior': 'Tank',
+    'Agent': 'Assassin'
 };
 function getJobDisplayName(job) { return JOB_DISPLAY_NAMES[job] || job; }
 
@@ -3890,7 +3946,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Agent',
         maxActivePerCaster: 3,
         blastRadius: 1,
-        desc: 'Place a bomb on any tile without allies (1 AP). Each Agent can maintain up to 3. Use Detonate to trigger them.'
+        desc: 'Place a bomb on any tile without allies (1 AP). Each Assassin can maintain up to 3. Use Detonate to trigger them.'
     },
     {
         id: 'glare',
@@ -4260,7 +4316,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
         auraRadius: 3,
-        desc: 'Rally all allies within 3 tiles: +2 ATK/+1 DEF stages each. The Warrior himself gains +1 ATK stage.'
+        desc: 'Rally all allies within 3 tiles: +2 ATK/+1 DEF stages each. The Tank himself gains +1 ATK stage.'
     },
     {
         id: 'discordance',
@@ -4662,8 +4718,10 @@ const SPELL_LIBRARY = [
         kind: 'aoe',
         damageType: 'magic',
         tier: 'III',
-        school: 'Agent',
-        classRestriction: 'Agent',
+        // 2026-07-13: moved out of the shared Assassin pool (a vampire with an
+        // EMP made no sense) — now Engineer school + a racial for tech races.
+        school: 'Engineer',
+        classRestriction: 'Engineer',
         aoeRadius: 2,
         aoeOriginSelf: true,
         statusEffects: [{
@@ -5135,9 +5193,171 @@ const SPELL_LIBRARY = [
         dmg: 55,
         maxActivePerCaster: 2,
         tier: 'II',
-        school: 'Agent',
-        classRestrictions: ['Agent', 'Engineer'],
+        // 2026-07-13: tech gadget — Engineer-only now (was shared with Agent).
+        school: 'Engineer',
+        classRestrictions: ['Engineer'],
         desc: 'Conceal a magnetic pulse charge in any EMPTY tile in range (max 2 active). The trigger shocks its victim and DRAGS every unit within 2 tiles one step toward the mine — bunch them up, then drop the follow-up on the pile.'
+    },
+
+    /* ── Assassin (job id 'Agent') kit fillers (2026-07-13) — replace the two
+       tech spells (EMP Burst / Magnet Mine) that moved to Engineer. ── */
+    {
+        id: 'poisonDart',
+        spellType: 'human',
+        element: 'poison',
+        name: 'Poison Dart',
+        type: 'damage',
+        cost: 25,
+        equipCost: 12,
+        dmg: 66,
+        range: 3,
+        kind: 'damage',
+        damageType: 'physical',
+        projectileOverride: 'proj-knife',
+        tier: 'II',
+        school: 'Agent',
+        classRestriction: 'Agent',
+        statusEffects: [{
+            id: 'poison',
+            duration: 3
+        }],
+        desc: 'Spit a coated dart at a distant enemy. Modest damage, but the venom eats at them for 3 turns.'
+    },
+    {
+        id: 'assassinate',
+        spellType: 'human',
+        element: 'shadow',
+        name: 'Assassinate',
+        type: 'damage',
+        cost: 50,
+        equipCost: 25,
+        dmg: 185,
+        range: 1,
+        kind: 'damage',
+        damageType: 'physical',
+        tier: 'III',
+        school: 'Agent',
+        classRestriction: 'Agent',
+        sneakBonus: true,
+        statusEffects: [],
+        desc: 'One clean strike to end the contract. Heavy melee damage, +50% when cast while invisible.'
+    },
+
+    /* ── Swordmaster kit (2026-07-13) — new job. Duelists: Swordfighter,
+       Pirate, King Arthur, Skeleton, Valkraye. ── */
+    {
+        id: 'crossSlash',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Cross Slash',
+        type: 'damage',
+        cost: 20,
+        equipCost: 12,
+        dmg: 140,
+        range: 1,
+        kind: 'damage',
+        damageType: 'physical',
+        tier: 'I',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        jobPreference: ['Swordmaster'],
+        desc: 'Two blindingly fast cuts in the shape of an X. Reliable single-target sword damage.'
+    },
+    {
+        id: 'swordBeam',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Sword Beam',
+        type: 'damage',
+        cost: 25,
+        equipCost: 15,
+        dmg: 68,
+        range: 3,
+        kind: 'line',
+        damageType: 'physical',
+        lineWidth: 1,
+        tier: 'I',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        desc: 'Loose a crescent of sword energy that carves through everything in a 3-tile line.'
+    },
+    {
+        id: 'parryStance',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Parry Stance',
+        type: 'buff',
+        cost: 25,
+        equipCost: 15,
+        apCost: 1,
+        range: 0,
+        kind: 'buff',
+        tier: 'II',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        jobPreference: ['Swordmaster'],
+        shield: 110,
+        statStageBoost: { def: 1 },
+        desc: 'Settle into a perfect guard. Gain a 110 HP shield and +1 DEF for 3 turns — blades turn on steel, not skin.'
+    },
+    {
+        id: 'bladeWaltz',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Blade Waltz',
+        type: 'damage',
+        cost: 30,
+        equipCost: 18,
+        dmg: 126,
+        range: 0,
+        kind: 'aoe',
+        damageType: 'physical',
+        aoeRadius: 1,
+        aoeOriginSelf: true,
+        tier: 'II',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        desc: 'A spinning dance of steel around the wielder. Physical damage to every adjacent enemy.'
+    },
+    {
+        id: 'lungingStrike',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Lunging Strike',
+        type: 'damage',
+        cost: 30,
+        equipCost: 18,
+        dmg: 152,
+        range: 3,
+        kind: 'damage',
+        damageType: 'physical',
+        chargeToTarget: true,
+        tier: 'II',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        statusEffects: [{
+            id: 'stagger',
+            duration: 1
+        }],
+        desc: 'Dash up to 3 tiles and run the target through, landing adjacent. Staggers on hit.'
+    },
+    {
+        id: 'zantetsuken',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Zantetsuken',
+        type: 'damage',
+        cost: 50,
+        equipCost: 25,
+        dmg: 205,
+        range: 1,
+        kind: 'damage',
+        damageType: 'physical',
+        ignoreArmor: true,
+        tier: 'III',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        desc: 'The iron-cutting stroke. A single flawless draw-cut that ignores armor entirely. Sheathe. Walk away.'
     }
 ];
 const SPELL_BY_ID = Object.fromEntries(SPELL_LIBRARY.map(spell => [spell.id, spell]));
@@ -5344,6 +5564,17 @@ const SHARED_SMOKE_SCREEN = {
     statusEffects: [],
     allyStatusEffects: [{ id: 'invisible', duration: 1 }],
     desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden and stay invisible only while they remain in the cloud.'
+};
+
+// 2026-07-13: EMP Burst left the shared Assassin spell pool (data: empBurst is
+// Engineer-school now) and lives on as a RACIAL for the machine races — it's
+// their hardware, not spy-school tradecraft.
+const SHARED_EMP_PULSE = {
+    id: 'raceEmpPulse', spellType: 'tech', element: 'lightning', name: 'EMP Burst',
+    type: 'damage', cost: 40, dmg: 84, range: 0,
+    kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
+    statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 1 }],
+    desc: 'Vent a massive electromagnetic pulse from your own chassis. Damages all enemies within 2 tiles and silences + jams them for 1 turn.'
 };
 
 
@@ -5806,6 +6037,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
           desc: 'Launch a detachable fist. 110 damage, pushes target 2 tiles. Reusable.' },
+        SHARED_EMP_PULSE,
     ],
     'android': [
         { id: 'raceNeuralHack', spellType: 'tech', name: 'Neural Hack',
@@ -5821,6 +6053,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statStageBoost: { def: -1 },
           desc: 'Precision melee strike faster than human reflexes. Shreds DEF for 2 turns.' },
+        SHARED_EMP_PULSE,
         SHARED_SMOKE_SCREEN,
     ],
 
@@ -5908,6 +6141,29 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 20, apCost: 1, range: 3,
           kind: 'utility',
           desc: 'Fire a grappling hook. Pull target enemy 2 tiles toward you and reel them in for a hit, or pull yourself toward a wall.' },
+    ],
+    // Swordfighter (2026-07-13, new race) — a pop-idol duelist. Half stage
+    // presence, half sword saint; the Swordmaster job's flagship vessel.
+    'swordfighter': [
+        { id: 'raceIdolEncore', spellType: 'human', element: 'sonic', name: 'Idol Encore',
+          type: 'buff', cost: 25, range: 0, apCost: 1,
+          kind: 'warCry', auraRadius: 3,
+          statStageBoost: { atk: 1, spd: 1 },
+          desc: 'Strike a pose the crowd goes wild for. Allies within 3 tiles gain +1 ATK and +1 SPD — the show must go on.' },
+        { id: 'raceCrescentCut', spellType: 'human', element: 'metal', name: 'Crescent Cut',
+          type: 'damage', cost: 25, dmg: 118, range: 1,
+          kind: 'aoe', damageType: 'physical', aoeRadius: 1,
+          desc: 'A sweeping crescent slash across the front line. Physical damage in a 3×3 arc around the target tile.' },
+        { id: 'raceFlashStep', spellType: 'human', element: 'wind', name: 'Flash Step',
+          type: 'utility', cost: 15, apCost: 1, range: 0,
+          kind: 'escape', teleportDistance: 3,
+          desc: 'A burst of footwork too fast to follow. Reposition 3 tiles in any direction.' },
+        { id: 'raceSpotlight', spellType: 'human', element: 'light', name: 'Spotlight',
+          type: 'debuff', cost: 20, range: 4, apCost: 1,
+          kind: 'debuff',
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
+          statStageBoost: { def: -1 },
+          desc: 'Drag an enemy centre-stage under the spotlight. Marked for +30 bonus damage and -1 DEF for 2 turns — everyone\'s watching now.' },
     ],
 
     'knight': [
@@ -6650,6 +6906,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Quick electric bolt. 90 damage, staggers target. Bzzt.' },
+        SHARED_EMP_PULSE,
     ],
     'antihero': [
         { id: 'raceCosmicSlam', spellType: 'human', name: 'Cosmic Slam',
@@ -8763,8 +9020,11 @@ const ACCT_STARTER_UNITS = [
   'minotaur',       // Raider (3D)
   'mothman',        // Harbinger (3D)
   'reptilian',      // Agent (3D)
-  'robot',          // Warrior (3D)
+  'robot',          // Warrior/Tank (3D)
   'cyborg',         // Raider (3D — female only)
+  'swordfighter',   // Swordmaster (3D — female only, 2026-07-13 batch)
+  'zombie',         // Raider (3D — female only, 2026-07-13 batch)
+  'fallen angel',   // Harbinger (3D — female only, 2026-07-13 batch)
   // 'priest' + 'marksman' were already starters — their female models
   // shipping in this same batch is what unlocks them via the 3D-only gate.
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
@@ -10981,7 +11241,8 @@ if (typeof window !== 'undefined') {
    Helpers: EW_racesForBiome('forest'), EW_mapsForRace('bigfoot').          */
 
 const EW_RACE_BIOMES = {
-    'homosapien': ['urban', 'stadium'], 'pirate': ['deep_sea'], 'giant': ['ancient', 'divine'],
+    'homosapien': ['urban', 'stadium'], 'pirate': ['deep_sea'], 'swordfighter': ['stadium', 'neon_city'],
+    'giant': ['ancient', 'divine'],
     'fairy': ['forest', 'astral'], 'martian': ['space'], 'nordic': ['space', 'clandestine'],
     'grey': ['space', 'clandestine'], 'bigfoot': ['forest'], 'shadow entity': ['forest', 'astral'],
     'reptilian': ['inner_earth', 'clandestine'], 'ai': ['underground_base', 'neon_city'],
@@ -11197,14 +11458,15 @@ const CLASS_SPELL_LEARN_ORDER = {
     'Warrior':      ['fortify', 'guardSlash', 'warCry', 'shieldBash', 'dragonSlash', 'judgment'],
     'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
-    'Agent':       ['knifeThrow', 'placeBomb', 'snareTrap', 'sneakSlash', 'shadowLunge', 'magnetMine', 'empBurst'],
+    'Agent':       ['knifeThrow', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
     'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock', 'magnetMine', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],
     'Sniper':      ['kneecapShot', 'spotter', 'steadyAim', 'precisionShot', 'headshot'],
+    'Swordmaster': ['crossSlash', 'swordBeam', 'parryStance', 'bladeWaltz', 'lungingStrike', 'zantetsuken'],
 };
 
 const SPELL_SHOP_PRICES = {
@@ -11338,6 +11600,7 @@ const CAMPAIGN_RACE_PRICES = {
   'seraphim': 500, 'cyborg': 500, 'mermaid': 500,
   'vampire': 500, 'dreameater': 500, 'fallen angel': 550,
 
+  'swordfighter': 450,
   'annunaki': 700, 'demon prince': 700, 'demon princess': 700,
   'nephilim': 800, 'voidweaver': 800, 'cosmic wraith': 900,
   'superhero': 1000,

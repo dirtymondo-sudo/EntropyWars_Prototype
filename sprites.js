@@ -48,6 +48,7 @@ const RACE_PATH_RULES = {
 const RACE_SPRITE_GENDERS = {
   'homosapien': 'both',
   'pirate': 'both',
+  'swordfighter': 'female',
   'knight': 'both',
   'shaman': 'both',
   'mad scientist': 'both',
@@ -180,6 +181,9 @@ const JOB_FOLDER_MAP = {
   'Harvester': 'harvester',
   'Engineer': 'engineer',
   'Freelancer': 'freelancer',
+  // No homosapien swordmaster sprite set on R2 yet — the knight art is the
+  // closest sword-and-armor stand-in for homosapiens who take the job.
+  'Swordmaster': 'knight',
 };
 
 const _HERO_RACE_SPRITES = {
@@ -1213,6 +1217,34 @@ const RACE_MODELS_3D = {
     female: _mkUAL('cyborg/female', 'hot_girl_futuristic_', {
       heightRatio: 0.97,
       basicAttackKind: 'punch',
+    }),
+  },
+  // ── 2026-07-13 batch ──
+  // Zombie (Raider/Bruiser, tank archetype) — shambles with the undead gait,
+  // rakes with rotten nails.
+  'zombie': {
+    female: _mkUAL('zombie/female', 'female_zombie_pretty', {
+      heightRatio: 0.96,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+             walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
+             castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
+    }),
+  },
+  // Swordfighter (Swordmaster, new race 2026-07-13) — pop-idol duelist:
+  // fencer ready stance, real sword combos for melee strikes.
+  'swordfighter': {
+    female: _mkUAL('swordfighter/female', 'hot_girl_pop_idol_s', {
+      heightRatio: 0.94,
+      lib: { idle: { clip: 'Sword_Idle' },
+             castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } },
+    }),
+  },
+  // Fallen Angel (Harbinger, caster) — corrupted grace, magic zaps.
+  'fallen angel': {
+    female: _mkUAL('fallenangel/female', 'fallen_angel_r', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
     }),
   },
 };

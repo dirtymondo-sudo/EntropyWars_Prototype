@@ -4,7 +4,40 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Level 100 REBALANCE — classic magnitude restored (2026-07-12, LATEST) — data.js/battle.js
+## JOB/RACE REWORK: Swordmaster + Tank/Assassin renames + 3D batch (2026-07-13, LATEST) — data.js, battle.js, ai.js, ui.js, map.js, sprites.js, index.html
+Token `20260712m` → `20260713a`.
+- **Display renames, NOT id renames**: job 'Warrior' displays "Tank" and
+  'Agent' displays "Assassin" via `JOB_DISPLAY_NAMES` (data.js) — same
+  mechanism that shows Raider as "Bruiser". Internal ids unchanged everywhere
+  (saves, online protocol, `unit.cls` checks, AI tables) — never rename the
+  ids themselves. 'men in black' `labelFemale` = "Intel Spy" (was "Glowie";
+  R2 portrait file is still glowie.png — path only).
+- **New job `Swordmaster`** (melee duelist, move 4 / spd +2 / range 1): wired
+  in JOB_ARCHETYPES/JOB_MODIFIERS/CLASS_TEMPLATES/JOB_PASSIVES/
+  CLASS_SPELL_LEARN_ORDER (data.js), frontline flag (ai.js), '⚔' icon
+  (ui.js), _CCC_JOB_NAMES 'Blade' (map.js), JOB_FOLDER_MAP → knight art
+  (sprites.js), accessory/spell prefs in BOTH optimizeLoadout blocks
+  (battle.js). Passive **Riposte** (35% counter, counters at 60% ATK) is live
+  in battle.js getCounterChance/getCounterDamage. Kit (new spells, school
+  'Swordmaster'): crossSlash I, swordBeam I (line), parryStance II
+  (shield+DEF), bladeWaltz II (self-AoE), lungingStrike II (chargeToTarget),
+  zantetsuken III (ignoreArmor).
+- **Swordmaster races**: new race `swordfighter` (human, female-only pop-idol
+  duelist; full table wiring + 4 racials incl. Idol Encore warCry and
+  Spotlight mark), plus pirate, king arthur, skeleton, valkraye.
+- **Tech spells left the Assassin pool**: empBurst + magnetMine are Engineer
+  school/classRestriction now (appended to Engineer learn order); machine
+  races robot/android/droid got a shared `SHARED_EMP_PULSE` racial instead
+  (cyborg already had EMP Grenade). Assassin kit backfilled with new
+  poisonDart II + assassinate III (sneakBonus finisher).
+- **Other job moves**: cyclops + juggernaut → Tank (juggernaut RACE_CLASS →
+  'tank'), super sentai → Freelancer.
+- **3D batch (RACE_MODELS_3D female entries)**: zombie (Zombie_Idle/Walk lib-1
+  gait + Zombie_Scratch, claw basics), swordfighter (Sword_Idle +
+  Sword_Regular_Combo), fallen angel (magic basics). All three races added to
+  ACCT_STARTER_UNITS (3D-only gate unlocks them).
+
+## Level 100 REBALANCE — classic magnitude restored (2026-07-12) — data.js/battle.js
 Token `20260712l` → `20260712m`. Owner rollback of the ×24 magnitude: MP was
 effectively free in PvP (pools ×24, spell costs flat) and spell cards showed
 base numbers while dealing thousands. New model (WYSIWYG):

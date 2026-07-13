@@ -38,6 +38,7 @@
         'Warrior':    { frontline: true },
         'Raider':     { frontline: true },
         'Agent':      { frontline: true },
+        'Swordmaster':{ frontline: true },
     };
     const SUPPORT_KINDS_T = ['heal', 'healAll', 'selfHeal', 'revive', 'cleanse', 'buff', 'shield', 'warCry', 'encore', 'manaRestoreAll'];
     const CONTROL_KINDS_T = ['debuff', 'zoneDebuff'];
