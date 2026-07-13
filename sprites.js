@@ -1861,6 +1861,7 @@ const TERRAIN_SPRITES = {
     flesh:            [`${_T}/flesh.png`],
     flesh_2:          [`${_T}/flesh_2.png`],
     flesh_3:          [`${_T}/flesh_3.png`],
+    plague_flesh:     [`${_T}/flesh_2.png`],   // necromancer Plaguefield — spell-made pestilent meat
     drywall:          [`${_T}/drywall.png`],
     drywall_2:        [`${_T}/drywall_2.png`],
     drywall_3:        [`${_T}/drywall_3.png`],

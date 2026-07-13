@@ -2319,6 +2319,9 @@ function spellTargetChip(sp) {
     return { label: '⟳ SELF', color: '#9aa4b0', title: 'Casts on/around the caster — no aiming needed' };
   }
   const k = sp.kind || '';
+  if (k === 'raiseDead') {
+    return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
+  }
   if (['heal', 'shield', 'buff', 'cleanse', 'revive', 'guard', 'healAll', 'manaRestoreAll', 'warCry', 'encore'].includes(k)) {
     return { label: '♥ ALLY', color: '#57d98a', title: 'Select an allied unit' };
   }
@@ -3512,6 +3515,8 @@ function spellTagline(sp) {
   else if (k === 'skyThrow' || k === 'skyDrop' || k === 'skySlam') parts.push('Aerial');
   else if (k === 'encore') parts.push('Copy');
   else if (k === 'revive') parts.push('Revive');
+  else if (k === 'raiseDead') parts.push('Raise zombie');
+  else if (k === 'rallyPull') parts.push('Rally allies');
   else if (k === 'cleanse') parts.push('Cleanse');
   else parts.push('Single target');
 

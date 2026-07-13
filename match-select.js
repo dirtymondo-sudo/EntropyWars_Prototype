@@ -188,6 +188,7 @@ const _TERRAIN_COLORS_FALLBACK = {
   rocks_3:'rgba(100,95,90,0.4)', rocks_4:'rgba(95,90,85,0.4)', rocks_5:'rgba(90,85,80,0.4)',
   dungeon:'rgba(85,80,75,0.5)', dungeon_2:'rgba(80,75,70,0.5)', dungeon_3:'rgba(75,70,68,0.5)', dungeon_4:'rgba(70,66,64,0.5)',
   flesh:'rgba(170,70,80,0.45)', flesh_2:'rgba(160,65,75,0.45)', flesh_3:'rgba(150,60,70,0.45)',
+  plague_flesh:'rgba(150,140,55,0.5)',
   drywall:'rgba(200,195,185,0.4)', drywall_2:'rgba(195,190,180,0.4)', drywall_3:'rgba(190,185,175,0.4)', drywall_4:'rgba(185,180,170,0.4)',
   metal_3:'rgba(120,125,130,0.45)',
 };

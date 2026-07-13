@@ -199,7 +199,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     // ── Dungeon / flesh ──
     dungeon:'rgba(85,80,75,0.5)', dungeon_2:'rgba(80,75,70,0.5)', dungeon_3:'rgba(75,70,68,0.5)',
     dungeon_4:'rgba(70,66,64,0.5)', flesh:'rgba(170,70,80,0.46)', flesh_2:'rgba(160,65,75,0.46)',
-    flesh_3:'rgba(150,60,70,0.46)',
+    flesh_3:'rgba(150,60,70,0.46)', plague_flesh:'rgba(150,140,55,0.5)',
     // ── Sky ──
     cloud:'rgba(200,210,230,0.35)', cloud_2:'rgba(190,200,222,0.35)', cloud_thick:'rgba(210,218,235,0.46)',
     cloud_gap:'rgba(170,185,210,0.22)', sky_open:'rgba(120,170,230,0.26)', sky_ruin:'rgba(150,160,190,0.42)',
@@ -1123,6 +1123,23 @@ const TERRAIN_RULES = {
     flesh:      { label: 'Flesh',       short: 'FLS', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     flesh_2:    { label: 'Flesh II',    short: 'FL2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     flesh_3:    { label: 'Flesh III',   short: 'FL3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    /* Spell-made pestilent meat (necromancer's Plaguefield). A PERMANENT
+       plague mass: ending a turn on it poisons anyone but a necromancer —
+       the plague does not bite its master. */
+    plague_flesh: {
+        label: 'Plague Flesh',
+        short: 'PLF',
+        passable: true,
+        moveCost: 1,
+        blocksRanged: false,
+        healMultiplier: 0.5,
+        endTurn(unit) {
+            if (!unit || unit.race === 'necromancer') return null;
+            const status = ensureUnitStatus(unit);
+            if (!status.poison || status.poison < 2) status.poison = 2;
+            return null;
+        }
+    },
     drywall:    { label: 'Drywall',     short: 'DRY', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_2:  { label: 'Drywall II',  short: 'DY2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     drywall_3:  { label: 'Drywall III', short: 'DY3', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
@@ -7438,19 +7455,14 @@ const RACE_ABILITIES = {
           desc: 'Issue a royal decree. All allies within 2 tiles gain +3 ATK/+2 DEF stages.' },
         { id: 'raceShieldWall', spellType: 'human', name: 'Walls of Camelot',
           type: 'utility', cost: 25, apCost: 1, range: 3,
-          kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
+          kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
           dmg: 40, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          desc: 'Raise the walls of Camelot — a 3-tile brick rampart of fortress stone. Impassable wall that takes damage on enemies caught in it.' },
-        { id: 'raceHolyAvenger', spellType: 'divine', name: 'Holy Avenger',
-          type: 'damage', cost: 35, dmg: 120, range: 3, apCost: 2,
-          kind: 'cross', damageType: 'magic', crossRadius: 2,
-          desc: 'Call upon divine judgment. Cross-shaped holy blast in cardinal directions.' },
-        SHARED_TERRAFORM,
-        { id: 'raceKnightsOath', spellType: 'divine', name: "Knight's Oath",
-          type: 'utility', cost: 20, range: 3, apCost: 1,
-          kind: 'swap',
-          desc: 'Swap positions with an ally. A king protects his people.' }
+          desc: 'Raise the walls of Camelot — a 3-tile rampart of brick masonry (castle wall stone). Enemies caught in the rising wall take damage.' },
+        { id: 'raceKnightsOfRound', spellType: 'divine', name: 'Knights of Round',
+          type: 'utility', cost: 30, range: 0, apCost: 1,
+          kind: 'rallyPull',
+          desc: 'Convene the Round Table — every ally on the field is pulled to the King\'s side. Rooted knights cannot answer the call.' }
     ],
 
     'king kong': [
@@ -7522,12 +7534,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statStageBoost: { def: -1 },
           desc: 'Summon a rain of bone shards over 3x3. Damages and shreds DEF.' },
-        { id: 'raceCurseOfDecay', spellType: 'unholy', name: 'Curse of Decay',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'poison', duration: 3 }],
-          statStageBoost: { def: -2, atk: -1 },
-          desc: 'Wither the target with necrotic energy. -2 DEF, -1 ATK stages, and poison for 3 turns.' },
+        { id: 'raceRigormortis', spellType: 'unholy', name: 'Rigormortis',
+          type: 'damage', cost: 25, range: 4, dmg: 40,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Death stiffness seizes a 3x3 area — light necrotic damage, and every enemy caught is ROOTED in place for 2 turns.' },
         { id: 'raceDeathPact', spellType: 'unholy', name: 'Death Pact',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
@@ -7535,13 +7546,12 @@ const RACE_ABILITIES = {
           desc: 'Sacrifice vitality for power. +4 ATK/+1 DEF stages. The dead demand their due.' },
         { id: 'racePlaguefield', spellType: 'unholy', name: 'Plaguefield',
           type: 'utility', cost: 30, range: 4, apCost: 1,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 3,
-          statusEffects: [{ id: 'poison', duration: 1 }],
-          desc: 'Curse a 3x3 area with pestilence for 3 turns. Enemies inside are continually poisoned.' },
-        { id: 'raceDarkResurrection', spellType: 'unholy', name: 'Dark Resurrection',
-          type: 'heal', cost: 40, range: 4, apCost: 2,
-          kind: 'revive', reviveHpPct: 0.50, oneRevivePerUnitPerMatch: true,
-          desc: 'Raise a fallen ally from death with 50% HP. Each ally can only be raised once per match — even the necromancer cannot cheat death twice.' }
+          kind: 'terrainCreate', terrainType: 'plague_flesh', squareFlood: true, aoeRadius: 1,
+          desc: 'Corrupt a 3x3 area into a PERMANENT mass of plague-ridden flesh. Anyone (except the necromancer) who ends their turn standing on it is poisoned.' },
+        { id: 'raceRaiseDead', spellType: 'unholy', name: 'Raise the Dead',
+          type: 'utility', cost: 40, range: 4, apCost: 2,
+          kind: 'raiseDead', zombieDmg: 60,
+          desc: 'Reanimate the remains of the fallen — target an ally\'s gravestone or an enemy\'s pile of bones to raise a mindless flesh abomination. At the end of every round it attacks the nearest unit, friend or foe, until destroyed (3 hits). The consumed corpse can never be revived.' }
     ],
 
     'occulus': [

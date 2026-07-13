@@ -1262,6 +1262,29 @@ EFFECTS['shootout_impact_center'] = {
 
 SPELL_MAP['shootout'] = { descent: 'shootout_descent' };
 
+/* ─── KING ARTHUR + NECROMANCER REWORK (2026-07-13) ──────────────────────
+   • Plaguefield is now kind:terrainCreate (permanent plague-flesh tiles):
+     route it through the wall pipeline so every converted tile gets a
+     pestilent splash and the flesh-mound signature still erupts at center.
+   • Raise the Dead inherits Dark Resurrection's aura; the sig table keys
+     the flesh mound to the new id.
+   • Rigormortis (replaces Curse of Decay) is a 3×3 root nova — poison-green
+     tile bursts under the laughing skull.
+   • Knights of Round wears the Royal Decree aura while the knights arrive.
+   • Bone Barrage keeps its missile aoe but now also rains REAL 3D bones and
+     skulls (enamel-textured) over the area — _sigBoneRain3D.            */
+SPELL_MAP['racePlaguefield'] = Object.assign({}, SPELL_MAP['racePlaguefield'],
+    { wall: 'sharedPoisonSwamp_tile' });
+SPELL_MAP['raceRaiseDead'] = { aura: 'raceDarkResurrection_aura' };
+SPELL_MAP['raceKnightsOfRound'] = { aura: 'raceRoyalDecree_aura' };
+EFFECTS['raceRigormortis_aoe'] = {
+    shape: 'square',
+    aoeRadius: 1,
+    impactTileEffect: '_poison_impact_tile',
+    impactCenterEffect: '_dark_shadow_impact',
+};
+SPELL_MAP['raceRigormortis'] = { aoe: 'raceRigormortis_aoe' };
+
 /* ─── 2026-07-07 BALANCE PASS — VFX wiring for reworked / new spells ─────
    Every spell touched by the character balance pass gets a real mapping so
    nothing falls through to the bare element-tint default. New ids inherit
@@ -10190,6 +10213,101 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── BONE RAIN — real 3D bones and skulls (enamel-textured, like the
+       battlefield bone piles) hail down over the blast area, clatter to the
+       ground, settle, and crumble away. Necromancer's Bone Barrage. ────── */
+    function _sigBoneRain3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = ts * ((opts.radiusTiles != null ? opts.radiusTiles : 1) + 0.45);
+        var boneMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('enamel.png', 1, 1),
+            color: new THREE.Color(opts.boneColor != null ? opts.boneColor : 0xe8e0ca),
+            transparent: true, opacity: 0.95, depthWrite: false,
+        });
+        var sockMat = new THREE.MeshBasicMaterial({
+            color: 0x181410, transparent: true, opacity: 0.95, depthWrite: false });
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+
+        var pieces = [];
+        var n = opts.count != null ? opts.count : 14;
+        var skulls = opts.skulls != null ? opts.skulls : 3;
+        for (var i = 0; i < n; i++) {
+            var piece = new THREE.Group();
+            if (i < skulls) {
+                /* mini skull: cranium + jaw + eye sockets */
+                var sR = ts * (0.09 + Math.random() * 0.05);
+                piece.add(new THREE.Mesh(new THREE.SphereGeometry(sR, 8, 6), boneMat));
+                var jaw = new THREE.Mesh(new THREE.BoxGeometry(sR * 1.1, sR * 0.7, sR * 1.0), boneMat);
+                jaw.position.set(0, -sR * 0.55, sR * 0.2);
+                piece.add(jaw);
+                for (var e2 = -1; e2 <= 1; e2 += 2) {
+                    var sock = new THREE.Mesh(new THREE.SphereGeometry(sR * 0.24, 5, 4), sockMat);
+                    sock.position.set(e2 * sR * 0.38, sR * 0.02, sR * 0.8);
+                    piece.add(sock);
+                }
+            } else {
+                /* knuckled bone rod */
+                var len = ts * (0.18 + Math.random() * 0.16);
+                var rad = ts * (0.024 + Math.random() * 0.012);
+                piece.add(new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 6), boneMat));
+                for (var k = -1; k <= 1; k += 2) {
+                    var knob = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.7, 6, 5), boneMat);
+                    knob.position.y = k * len / 2;
+                    piece.add(knob);
+                }
+            }
+            var ang = Math.random() * Math.PI * 2;
+            var rr = Math.sqrt(Math.random()) * R;
+            var p = {
+                m: piece,
+                px: Math.cos(ang) * rr, pz: Math.sin(ang) * rr,
+                restY: ts * (0.03 + Math.random() * 0.05),
+                drop: ts * (2.0 + Math.random() * 1.5),
+                delay: Math.random() * 280,
+                fallMs: 300 + Math.random() * 180,
+                spinX: (Math.random() - 0.5) * 0.35,
+                spinZ: (Math.random() - 0.5) * 0.35,
+            };
+            piece.position.set(p.px, p.drop, p.pz);
+            piece.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+            piece.visible = false;
+            g.add(piece);
+            pieces.push(p);
+        }
+
+        var settleMs = 520;              // last delay + fall comfortably inside
+        var holdMs = opts.holdMs != null ? opts.holdMs : 650;
+        var fadeMs = 420;
+        var totalMs = settleMs + holdMs + fadeMs;
+        _sigRun(g, totalMs, function (el) {
+            var op = (el > settleMs + holdMs)
+                ? 1 - (el - settleMs - holdMs) / fadeMs : 1;
+            boneMat.opacity = op * 0.95;
+            sockMat.opacity = op * 0.95;
+            for (var j = 0; j < pieces.length; j++) {
+                var p2 = pieces[j];
+                var t = (el - p2.delay) / p2.fallMs;
+                if (t < 0) { p2.m.visible = false; continue; }
+                p2.m.visible = true;
+                if (t < 1) {
+                    /* gravity fall with tumbling */
+                    p2.m.position.y = p2.restY + p2.drop * (1 - t * t);
+                    p2.m.rotation.x += p2.spinX;
+                    p2.m.rotation.z += p2.spinZ;
+                } else if (t < 1.35) {
+                    /* one small clattering bounce */
+                    var bt = (t - 1) / 0.35;
+                    p2.m.position.y = p2.restY + Math.sin(bt * Math.PI) * p2.drop * 0.045;
+                } else {
+                    p2.m.position.y = p2.restY;
+                }
+            }
+        });
+    }
+
     /* ── FLESH MOUND — a mass of living meat erupts from the tile, watches,
        and sinks back under. Necromancer / zombie / unholy ground spells. ── */
     function _sigFleshMound3D(tx, ty, opts) {
@@ -11807,9 +11925,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSoulDrain: function(tx, ty) {
             _sigSkull3D(tx, ty, { eyeColor: 0x88ff66, boneColor: 0xcfe6d2, holdMs: 800 });
         },
-        raceCurseOfDecay: function(tx, ty) {
-            /* the curse laughs at you */
+        raceRigormortis: function(tx, ty) {
+            /* death stiffness — the skull laughs while the joints lock */
             _sigSkull3D(tx, ty, { laugh: true, eyeColor: 0xb06fff, boneColor: 0xd8cfe6 });
+        },
+        raceBoneBarrage: function(tx, ty, r) {
+            /* real 3D bones + skulls hail down over the 3×3 */
+            _sigBoneRain3D(tx, ty, { radiusTiles: r || 1 });
         },
         raceDeathPact: function(tx, ty) {
             _sigSkull3D(tx, ty, { laugh: true, eyeColor: 0xff5544, boneColor: 0xe6d8d2, scale: 0.85, hover: 1.6 });
@@ -11828,7 +11950,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 radiusTiles: (r || 1) + 0.5, count: 10, ms: 1600,
             });
         },
-        raceDarkResurrection: function(tx, ty) {
+        raceRaiseDead: function(tx, ty) {
             _sigFleshMound3D(tx, ty, { scale: 1.1, holdMs: 1100 });
             _sigMagicCircle3D(tx, ty, { color: 0x66ff88, radiusPx: (_cfg().tileSize || 128) * 1.2, holdMs: 1000, spin: 0.002 });
         },

@@ -881,6 +881,9 @@ const RACE_TRAITS = {
     { icon: '🔧', name: 'Overclocked Contraptions', desc: 'Deployed turrets gain +50% HP.' },                         // DESIGN
     { icon: '⚗️', name: 'Volatile Mixtures', desc: 'Thrown items splash to adjacent tiles.' },                        // DESIGN
   ],
+  'necromancer': [
+    { icon: '💀', name: 'Deathfeed', desc: 'Intelligence swells with every unit currently dead on the field (+8 INT per corpse, both sides) — all magic spell power grows with the body count.' }, // CODED
+  ],
   'men in black': [
     { icon: '🕶️', name: 'Redacted', desc: 'Cannot be scanned or revealed.' },                                         // DESIGN
     { icon: '🌐', name: 'Clearance', desc: 'Ignores enemy ward vision — wards do not see him.' },                     // DESIGN

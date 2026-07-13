@@ -5209,3 +5209,59 @@ parks #sidebarPanel/#scorePanel/scoreboard/#css2dOverlay via visibility).
   getSpellRangeTiles/doSpell — so an enemy directly beneath a flyer (same
   column) measures ≥1 and shows in the drum, and far-above flyers no longer
   get bogus in-range rows.
+
+## King Arthur + Necromancer rework (2026-07-13)
+**King Arthur**
+- `raceShieldWall` (Walls of Camelot): terrainType `mountain` → `castle_wall`
+  (wears the R2 `bricks_2.png` "Brick Floor Alt" texture; wall-ness still comes
+  from the +2 `terrainDeform` height raise, same as knight's Castle Fortress).
+- `raceKnightsOath` (swap) REPLACED by `raceKnightsOfRound` — new kind
+  **`rallyPull`** (battle.js, right after the warCry handler): self-cast, every
+  living non-rooted ally is pulled to the nearest free tile around the King
+  (ring-by-ring BFS, closest knights claim closest tiles, `_applyKnockbackHazard`
+  runs on arrival). Meta: selfCast/fogExempt. AI: score = scattered-ally count
+  (ai.js scoreSpell/pickTarget). VFX: reuses `raceRoyalDecree_aura`.
+- Excalibur Strike / Royal Decree kept; Holy Avenger and the shared terraform were REMOVED (2026-07-13 follow-up) — the kit is exactly the 4 spec spells. Deathfeed passive surfaced in party-builder RACE_TRAITS.
+
+**Necromancer**
+- `raceCurseOfDecay` REPLACED by `raceRigormortis`: kind `aoe`, range 4, 3×3,
+  dmg 40 magic + **root 2 turns**. VFX: `raceRigormortis_aoe` effect (poison
+  tile bursts + `_dark_shadow_impact` center) + the laughing-skull sig.
+- `racePlaguefield`: was zoneDebuff — now kind `terrainCreate` with
+  `squareFlood`, painting a PERMANENT 3×3 of new terrain **`plague_flesh`**
+  (data.js TERRAIN_RULES near the flesh trio; sprite = `flesh_2.png` via
+  sprites.js; minimap colors in data.js + match-select.js). Its `endTurn`
+  poisons (2 turns) anyone ending a turn on it EXCEPT race 'necromancer'.
+  healMultiplier 0.5. VFX: wall-intent mapping to `sharedPoisonSwamp_tile`
+  fires per tile + the flesh-mound sig at center.
+- `raceDarkResurrection` REPLACED by `raceRaiseDead` — new kind **`raiseDead`**:
+  targets ANY dead unit's tile in range 4 (ally gravestone or enemy bone pile,
+  gated on `!u._corpseConsumed`). Consumes the corpse (`_corpseConsumed` +
+  `reviveLocked`; renderer skips its grave marker & hashes the flag out of the
+  deployable serial) and pushes a **zombie** into `state.turrets`:
+  `{ zombie:true, hitsToKill:true, hp:3 }` — 3 hits to destroy, inherits the
+  whole turret pipeline (attackable, fogged, rebuilt on serial). End-of-round
+  (processTurretVolleys): shambles up to 2 tiles toward the NEAREST unit of
+  EITHER side and mauls it (melee, ~60 + half caster spellpower, no sourceUnit).
+  Real-time mode: shambles 1 tile / attacks adjacent on the turret clock.
+  Model: `_buildZombie3D` (three-renderer, above `_buildTurret`) — flesh-terrain-
+  textured meat hunch + enamel skull/claws/bone spurs, seeded from its id.
+- Bone Barrage: kept mechanics; added `_sigBoneRain3D` (three-vfx-effects, after
+  `_sigSkull3D`) — real 3D enamel-textured bones + mini skulls hail over the
+  3×3, bounce, settle, fade. Fired from the existing `raceBoneBarrage_aoe`
+  mapping via `_spell3DGeometry`.
+- **Racial passive "Deathfeed"** (battle.js `getNecroDeathPower`, folded into
+  `getSpellStatBonus`): +8 effective INT per unit CURRENTLY dead on the board
+  (both sides) feeding all magic spell power. Not shown in HUD stat panels.
+
+Gotchas learned:
+- New spell `kind`s must be registered in FOUR places: SPELL_KIND_META
+  (battle.js ~246), hasSpellTargetInRange, `_desc` real-time cat map (give
+  turn-only kinds their own cat so the exec switch refuses cleanly), and
+  ai.js scoreSpell + pickTarget. `_getSpellValidTargets` needs explicit
+  handling for corpse-targeted kinds (dead units are filtered by default).
+- data.js TERRAIN_RULES endTurn hooks CAN call battle.js helpers like
+  `ensureUnitStatus` — every gameplay file's functions are top-level/global
+  (the deep_water hook already does this).
+- Spell-made terrains (castle_wall, plague_flesh) do NOT need MF_TID /
+  ME_TERRAIN_IDS entries — those arrays only serialize editor-placed maps.

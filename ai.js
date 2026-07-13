@@ -1657,6 +1657,25 @@
 
         if (kind === 'revive') return target ? 60 : 0;
 
+        // Raise the Dead: any corpse in range is a free round-after-round
+        // damage engine — grab it. Slightly better when enemies are nearby
+        // for the zombie to chew on.
+        if (kind === 'raiseDead') {
+            if (!target) return 0;
+            const nearEnemy = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 4);
+            return nearEnemy ? 55 : 35;
+        }
+
+        // Knights of Round: worth it when the King is safe-ish and the army is
+        // scattered — pulling everyone in re-forms the battle line.
+        if (kind === 'rallyPull') {
+            const far = g.aliveUnitsFor(unit.player).filter(a =>
+                a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 3);
+            if (far.length < 2) return 0;
+            const enemiesOnTop = v.visibleEnemies.filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 2).length;
+            return 10 + far.length * 8 - enemiesOnTop * 6;
+        }
+
         if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
             const nearEnemy = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 5);
             if (!nearEnemy && kind !== 'seedHeal') return 0;
@@ -4039,6 +4058,17 @@
                 });
             return dead[0] || null;
         }
+
+        if (kind === 'raiseDead') {
+            // Any unconsumed corpse in range — either side's remains will do.
+            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+                .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
+                              - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+            return remains[0] || null;
+        }
+
+        if (kind === 'rallyPull') return { x: unit.x, y: unit.y };
 
         if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
             const terrain = g.getTerrainAt(unit.x, unit.y);

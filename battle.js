@@ -259,6 +259,10 @@
             splitBeam:    { minRange: 1, offensive: true,  directional: true },
 
             // ── Ally support ──
+            // rallyPull (Knights of Round): self-cast, drags every ally to the caster.
+            rallyPull:    { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
+            // raiseDead (necromancer): targets a corpse tile — ally grave or enemy bones.
+            raiseDead:    { minRange: 1, offensive: false, noStrikeLeap: true },
             heal:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             shield:       { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
             buff:         { minRange: 0, offensive: false, allyOnly: true, fogExempt: true },
@@ -11260,6 +11264,10 @@
                 else if (kind === 'healAll') cat = 'healAll';
                 else if (kind === 'manaRestoreAll') cat = 'manaAll';
                 else if (kind === 'revive') cat = 'revive';
+                /* rallyPull / raiseDead are turn-model spells (corpse tiles /
+                   board-wide repositioning don't exist in real-time) — give
+                   them their own cat so the exec switch politely refuses. */
+                else if (kind === 'rallyPull' || kind === 'raiseDead') cat = kind;
                 else if (kind === 'cleanse') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
                 else if (kind === 'shield' || kind === 'aoeShield' || kind === 'buff' || kind === 'warCry' || type === 'buff') cat = 'buff';
@@ -12394,11 +12402,43 @@
                         if ((t._rtNext || 0) > now) continue;
                         let best = null, bestD = 1e9;
                         for (const x of _units()) {
-                            if (!_alive(x) || x.player === t.owner) continue;
+                            /* zombies are mindless — the NEAREST unit of EITHER side */
+                            if (!_alive(x) || (!t.zombie && x.player === t.owner)) continue;
                             const dd = Math.hypot(x.x - t.x, x.y - t.y);
-                            if (dd <= (t.range || 4) && dd < bestD) { bestD = dd; best = x; }
+                            if (dd < bestD && (t.zombie || dd <= (t.range || 4))) { bestD = dd; best = x; }
                         }
                         if (!best) continue;
+                        if (t.zombie) {
+                            /* shamble one tile toward prey; maul only when adjacent */
+                            if (bestD > 1.5) {
+                                const sx = Math.sign(best.x - t.x), sy = Math.sign(best.y - t.y);
+                                const cand = Math.abs(best.x - t.x) >= Math.abs(best.y - t.y)
+                                    ? [{ x: t.x + sx, y: t.y }, { x: t.x, y: t.y + sy }]
+                                    : [{ x: t.x, y: t.y + sy }, { x: t.x + sx, y: t.y }];
+                                for (const c of cand) {
+                                    if (!isInside(c.x, c.y)) continue;
+                                    if (typeof isTerrainPassable === 'function' && !isTerrainPassable(c.x, c.y)) continue;
+                                    if (_units().some(uu => _alive(uu) && Math.round(uu.x) === c.x && Math.round(uu.y) === c.y)) continue;
+                                    if ((state.turrets || []).some(t2 => t2 !== t && t2.hp > 0 && t2.x === c.x && t2.y === c.y)) continue;
+                                    t.x = c.x; t.y = c.y;
+                                    break;
+                                }
+                                t._rtNext = now + Math.round(TURRET_MS * 0.6);
+                                scheduleBoardRender();
+                                continue;
+                            }
+                            t._rtNext = now + TURRET_MS;
+                            try { playSfx('basicAttack', { volume: 0.6 }); } catch (e) {}
+                            const ztid = best.id, zdmg = t.dmg || 60;
+                            pendingFx.push({
+                                at: now + 160,
+                                fn: () => {
+                                    const tt = _findU(ztid);
+                                    if (_alive(tt)) _dmg(tt, zdmg, 'Zombie', { damageType: 'physical' });
+                                },
+                            });
+                            continue;
+                        }
                         t._rtNext = now + TURRET_MS;
                         try { if (window.ThreeAnim && ThreeAnim.projectile) ThreeAnim.projectile(t.x, t.y, best.x, best.y, 'proj-bullet', 240, t.z || 0, best.z || 0); } catch (e) {}
                         try { playSfx('turret', { volume: 0.45 }); } catch (e) {}
@@ -14056,6 +14096,51 @@
             if (state.turrets && state.turrets.length) {
                 for (const turret of state.turrets) {
                     if (turret.hp <= 0 || turret.auraDebuff) continue;   // 5G towers don't shoot
+                    if (turret.zombie) {
+                        // 🧟 Raised abomination: mindless — hunts the NEAREST unit,
+                        // friend or foe. Shambles up to 2 tiles toward it, then
+                        // mauls if it can reach (melee, range 1).
+                        const prey = state.units
+                            .filter(u => !u.dead && !u._dying
+                                && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'))
+                            .sort((a, b) => {
+                                const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
+                                const db = Math.abs(b.x - turret.x) + Math.abs(b.y - turret.y);
+                                return (da - db) || (a.hp - b.hp);
+                            })[0];
+                        if (!prey) continue;
+                        const _zBlocked = (nx, ny) => {
+                            if (!isInside(nx, ny)) return true;
+                            if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) return true;
+                            if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) return true;
+                            if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
+                            return false;
+                        };
+                        let moved = false;
+                        for (let step = 0; step < 2; step++) {
+                            let d0 = Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y);
+                            if (d0 <= (turret.range || 1)) break;
+                            let best = null, bestD = d0;
+                            for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                                const nx = turret.x + ddx, ny = turret.y + ddy;
+                                if (_zBlocked(nx, ny)) continue;
+                                const nd = Math.abs(prey.x - nx) + Math.abs(prey.y - ny);
+                                if (nd < bestD) { bestD = nd; best = { x: nx, y: ny }; }
+                            }
+                            if (!best) break;
+                            turret.x = best.x; turret.y = best.y;
+                            moved = true;
+                        }
+                        if (moved) {
+                            addLog(`🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
+                            scheduleBoardRender();
+                        }
+                        if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)) {
+                            turret.facingAngle = Math.atan2(prey.y - turret.y, prey.x - turret.x);
+                            shots.push({ turret, target: prey, zombie: true, dmg: Math.max(24, turret.dmg + randInt(24) - 8) });
+                        }
+                        continue;
+                    }
                     const inRange = getHostileUnits(turret.owner)
                         .filter(u => (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
                             && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range)
@@ -14075,6 +14160,18 @@
             function applyShot(s) {
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
+                if (s.zombie) {
+                    addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                    applyDamageToUnit(s.target, s.dmg, `🧟 Zombie maul: `, {
+                        ignoreArmor: false,
+                        damageType: 'physical',
+                        // Deliberately NO sourceUnit: the risen dead serve no one —
+                        // target-level scaling keeps orphan zombies relevant.
+                        scaleByTargetLevel: true,
+                        flashColor: 'hit'
+                    });
+                    return;
+                }
                 addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
                 applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
                     ignoreArmor: false,
@@ -14129,8 +14226,8 @@
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
-                    playSfx('turret');
-                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    playSfx(s.zombie ? 'basicAttack' : 'turret');
+                    if (!s.zombie && typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
                         && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
                         const _tdx = s.target.x - s.turret.x;
@@ -14167,7 +14264,7 @@
             if (turret.hitsToKill) {
 
                 turret.hp = Math.max(0, turret.hp - 1);
-                addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'} at ${coordLabel(x, y)} takes a hit! (${turret.hp}/${turret.maxHp} hits remaining)`);
+                addLog(`${turret.zombie ? '🧟 The flesh abomination' : `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`} at ${coordLabel(x, y)} takes a hit! (${turret.hp}/${turret.maxHp} hits remaining)`);
                 showFloatingTextAtTile(x, y, `-1 HIT`, 'damage', {
                     durationMs: 700
                 });
@@ -14179,11 +14276,13 @@
                 });
             }
             if (turret.hp <= 0) {
-                addLog(`🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
+                addLog(turret.zombie
+                    ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
+                    : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
-                // Wrecked machinery is a metal mine for the wrecker's team.
-                if (attackerUnit) gainMaterial(attackerUnit.player, 'metal', 2);
+                // Wrecked machinery is a metal mine for the wrecker's team (meat isn't).
+                if (attackerUnit && !turret.zombie) gainMaterial(attackerUnit.player, 'metal', 2);
                 scheduleBoardRender();
             }
             return true;
@@ -16260,6 +16359,7 @@
                 case 'buff':          return 'Select an ally to empower with ' + nm + '.';
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
+                case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'swap':          return nm + ': select a unit to swap places with.';
                 case 'pull':          return nm + ': select an enemy to pull in.';
                 case 'teleport':      return nm + ': select a destination tile.';
@@ -17585,6 +17685,18 @@
                 // map, lighting the spell up with nothing to click).
                 return state.units.some(u => u.player === unit.player && u.dead && !u.reviveLocked &&
                     Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
+            }
+
+            if (kind === 'raiseDead') {
+                // Any corpse (either side) whose remains haven't been consumed yet.
+                return state.units.some(u => u.dead && !u._corpseConsumed &&
+                    Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
+            }
+
+            if (kind === 'rallyPull') {
+                // Castable when at least one living ally isn't already at the King's side.
+                return state.units.some(u => !u.dead && u.player === unit.player && u.id !== unit.id &&
+                    Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) > 1);
             }
 
             if (kind === 'teleport') {
@@ -26271,10 +26383,15 @@
                 : 0;
             for (const u of state.units) {
                 // Dead units are invisible to targeting EXCEPT for revive, whose
-                // whole job is targeting a fallen ally's gravestone.
+                // whole job is targeting a fallen ally's gravestone — and raiseDead,
+                // which reanimates ANY unconsumed remains (ally grave or enemy bones).
                 if (u.dead) {
-                    if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
+                    if (spell.kind === 'raiseDead') {
+                        if (u._corpseConsumed) continue;
+                    } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
+                // raiseDead only ever targets the dead.
+                if (!u.dead && spell.kind === 'raiseDead') continue;
                 // Above-target spells: an enemy not below the caster isn't a valid
                 // target from here. Clicking it instead routes to the jump-then-cast
                 // approach, which leaps up to clear the target first.
@@ -31406,6 +31523,7 @@
             if (t === 'wood_planks' || t === 'wood' || t === 'bridge') return 0xd8a86a;
             if (t.indexOf('metal') === 0 || t === 'aluminium') return 0xb8c4d0;
             if (t === 'mountain' || t === 'castle_wall' || t.indexOf('bricks') === 0 || t.indexOf('cobblestone') === 0) return 0xd8c9a8;
+            if (t.indexOf('flesh') === 0 || t === 'plague_flesh') return 0xd06a6a;
             return 0x9fd8ff;
         }
 
@@ -32281,7 +32399,19 @@
                 return Math.floor((unit.atk || 0) * 0.35);
             }
 
-            return Math.floor((unit.intStat || 0) * 0.35);
+            return Math.floor(((unit.intStat || 0) + getNecroDeathPower(unit)) * 0.35);
+        }
+
+        // ── Necromancer racial PASSIVE: Deathfeed ───────────────────────────
+        // The necromancer's Intelligence swells with every unit CURRENTLY dead
+        // on the field (both sides — death is death). +8 effective INT per
+        // corpse, feeding all magic spell power. Revives/respawns shrink it
+        // again: only the presently dead count.
+        const NECRO_DEATH_INT_PER_CORPSE = 8;
+        function getNecroDeathPower(unit) {
+            if (!unit || unit.race !== 'necromancer' || !state.units) return 0;
+            const corpses = state.units.filter(u => u.dead).length;
+            return corpses * NECRO_DEATH_INT_PER_CORPSE;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -33112,6 +33242,43 @@
                 }
                 showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
                 addLog(`${unitDisplayName(unit)} revives ${unitDisplayName(target)} with ${target.hp} HP.`);
+            } else if (spell.kind === 'raiseDead') {
+                // Necromancer: reanimate ANY unconsumed remains (ally gravestone or
+                // enemy bone pile) into an uncontrolled zombie flesh abomination.
+                // It lives in state.turrets (zombie: true) so it inherits the whole
+                // siege-engine pipeline: it can be attacked (3 hits), is fogged and
+                // rendered like a deployable, and acts in the end-of-round phase.
+                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                if (!corpse) {
+                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                corpse._corpseConsumed = true;
+                corpse.reviveLocked = true;   // the raised meat leaves nothing to revive
+                if (!state.turrets) state.turrets = [];
+                const _zHits = spell.zombieHits || 3;
+                state.turrets.push({
+                    id: `zombie_${state.round || 0}_${unit.id}_${randInt(99999)}`,
+                    x, y, owner: unit.player, casterUnitId: unit.id,
+                    spellId: spell.id, spellName: 'Zombie',
+                    zombie: true, hitsToKill: true, hp: _zHits, maxHp: _zHits,
+                    dmg: (spell.zombieDmg || 60) + Math.floor(spellPower * 0.5),
+                    range: 1,
+                });
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                    }
+                }
+                showFloatingTextAtTile(x, y, '🧟 RISE', 'damage', { durationMs: 1200 });
+                addLog(`${unitDisplayName(unit)} raises the remains of ${unitDisplayName(corpse)} — a flesh abomination claws out of the ground! It mauls the nearest unit, friend or foe, at the end of every round (${_zHits} hits to destroy).`, unit.player);
+                scheduleBoardRender();
+                completionDelay = actionMs(900);
             } else if (spell.kind === 'bomb') {
                 const _bombOccupant = (unitAt(x, y, z) || unitAt(x, y));
                 if (_bombOccupant && _bombOccupant.player === unit.player) {
@@ -35794,6 +35961,61 @@
                     addLog(`${unitDisplayName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
                 }
                 completionDelay = actionMs(400);
+            }
+
+            else if (spell.kind === 'rallyPull') {
+                // Knights of Round: every living ally is pulled to the King's side.
+                // Ring-by-ring BFS from the caster hands the nearest free passable
+                // tiles to the nearest knights first; rooted allies cannot answer.
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const _rpVFX = window.ThreeVFXEffects;
+                if (_rpVFX && _rpVFX.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) _rpVFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: 2 });
+                } else { _vfxBuff(unit.x, unit.y); }
+                const knights = aliveUnitsFor(unit.player)
+                    .filter(a => a.id !== unit.id
+                        && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1
+                        && !unitHasStatus(a, 'root'))
+                    .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
+                                  - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+                const _rpTaken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
+                const _rpFree = [];
+                const _rpSeen = new Set([unit.x + ',' + unit.y]);
+                const _rpQueue = [{ x: unit.x, y: unit.y }];
+                while (_rpQueue.length && _rpFree.length < knights.length + 4) {
+                    const t = _rpQueue.shift();
+                    for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                        const nx = t.x + ddx, ny = t.y + ddy, nk = nx + ',' + ny;
+                        if (_rpSeen.has(nk)) continue;
+                        _rpSeen.add(nk);
+                        if (!isInside(nx, ny)) continue;
+                        _rpQueue.push({ x: nx, y: ny });
+                        if (_rpTaken.has(nk)) continue;
+                        if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) continue;
+                        if (state.turrets && state.turrets.some(tt => tt.x === nx && tt.y === ny && tt.hp > 0)) continue;
+                        _rpFree.push({ x: nx, y: ny });
+                    }
+                }
+                let _rpSummoned = 0;
+                for (const knight of knights) {
+                    const dest = _rpFree.shift();
+                    if (!dest) break;
+                    knight.x = dest.x; knight.y = dest.y;
+                    if (typeof nearestWalkableZ === 'function' && state.boardColumns?.length) {
+                        knight.z = nearestWalkableZ(dest.x, dest.y, unit.z ?? 0);
+                    }
+                    _rpTaken.add(dest.x + ',' + dest.y);
+                    _vfxBuff(knight.x, knight.y);
+                    showFloatingTextForUnit(knight, '⚔ Summoned', 'buff', { durationMs: 900 });
+                    if (typeof _applyKnockbackHazard === 'function') _applyKnockbackHazard(knight);
+                    _rpSummoned++;
+                }
+                showFloatingTextForUnit(unit, '👑 Knights of Round', 'buff');
+                addLog(`${unitDisplayName(unit)} convenes the Round Table — ${_rpSummoned} all${_rpSummoned === 1 ? 'y answers' : 'ies answer'} the King's call!`, unit.player);
+                scheduleBoardRender();
+                completionDelay = actionMs(700);
             }
 
             else if (spell.kind === 'trickRoom') {

@@ -3144,7 +3144,103 @@ const ThreeRenderer = (function () {
         g._ew_turretId = turret.id; return g;
     }
 
+    /* ── ZOMBIE FLESH ABOMINATION (necromancer's Raise the Dead) ─────────
+       A hunched mass of raw meat wearing the flesh terrain texture, with an
+       enamel-boned skull face, claw arms and bone spurs breaking the skin.
+       Lives in state.turrets (zombie: true) so it rides the whole turret
+       pipeline: build/rebuild on the serial, fog visibility, damage. Layout
+       is seeded from the zombie's id so rebuilds don't reshuffle the meat. */
+    function _buildZombie3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var rng = _graveRng(_graveSeed(turret.id));
+        var g = new THREE.Group();
+
+        var fleshTex = _turretMetalTex('plague_flesh', 1, 1) || _turretMetalTex('flesh', 1, 1);
+        var fleshMat = fleshTex
+            ? new THREE.MeshLambertMaterial({ map: fleshTex, color: 0xd8a8a0 })
+            : new THREE.MeshLambertMaterial({ color: 0x9a4a4a });
+        var boneTex = _getBoneTexture();
+        var boneMat = boneTex
+            ? new THREE.MeshLambertMaterial({ map: boneTex })
+            : new THREE.MeshLambertMaterial({ color: 0xe8e2d0 });
+
+        /* hunched torso — a squashed flesh boulder with lumpy growths */
+        var torsoR = ts * 0.26;
+        var torso = new THREE.Mesh(new THREE.SphereGeometry(torsoR, 10, 8), fleshMat);
+        torso.scale.set(1.15, 0.95, 0.9);
+        torso.position.set(0, torsoR * 0.95, ts * 0.03);
+        g.add(torso);
+        var lumps = 3 + Math.floor(rng() * 3);
+        for (var i = 0; i < lumps; i++) {
+            var lr = torsoR * (0.28 + rng() * 0.3);
+            var lump = new THREE.Mesh(new THREE.SphereGeometry(lr, 7, 6), fleshMat);
+            var la = rng() * Math.PI * 2;
+            lump.position.set(Math.cos(la) * torsoR * 0.8, torsoR * (0.5 + rng() * 0.9), Math.sin(la) * torsoR * 0.7);
+            g.add(lump);
+        }
+
+        /* skull head thrust forward from the shoulders */
+        var headR = ts * 0.11;
+        var head = new THREE.Group();
+        head.position.set(0, torsoR * 1.75, -torsoR * 0.85);
+        head.add(new THREE.Mesh(new THREE.SphereGeometry(headR, 8, 7), boneMat));
+        var jaw = new THREE.Mesh(new THREE.BoxGeometry(headR * 1.1, headR * 0.7, headR * 1.0), boneMat);
+        jaw.position.set(0, -headR * 0.55, -headR * 0.25);
+        head.add(jaw);
+        for (var s = -1; s <= 1; s += 2) {
+            var socket = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.26, 5, 4),
+                new THREE.MeshBasicMaterial({ color: 0x140f0a }));
+            socket.position.set(s * headR * 0.38, headR * 0.05, -headR * 0.8);
+            head.add(socket);
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.12, 5, 4),
+                new THREE.MeshBasicMaterial({ color: 0x66ff44, fog: false }));
+            eye.position.set(s * headR * 0.38, headR * 0.05, -headR * 0.9);
+            head.add(eye);
+        }
+        g.add(head);
+
+        /* claw arms reaching forward */
+        for (var a = -1; a <= 1; a += 2) {
+            var armLen = ts * 0.34;
+            var arm = new THREE.Group();
+            var limb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.05, armLen, 6), fleshMat);
+            limb.position.y = -armLen / 2;
+            arm.add(limb);
+            var claw = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.055, 6, 5), boneMat);
+            claw.position.y = -armLen;
+            arm.add(claw);
+            arm.position.set(a * torsoR * 0.95, torsoR * 1.45, -torsoR * 0.35);
+            arm.rotation.x = -1.1 - rng() * 0.3;
+            arm.rotation.z = a * (0.25 + rng() * 0.2);
+            g.add(arm);
+        }
+
+        /* bone spurs erupting from the back */
+        var spurs = 3 + Math.floor(rng() * 2);
+        for (var sp = 0; sp < spurs; sp++) {
+            var spur = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.028, ts * (0.1 + rng() * 0.12), 5), boneMat);
+            spur.position.set((rng() - 0.5) * torsoR * 1.1, torsoR * (0.9 + rng() * 0.7), torsoR * (0.55 + rng() * 0.25));
+            spur.rotation.x = 0.5 + rng() * 0.5;
+            g.add(spur);
+        }
+
+        /* gore pad where it tore out of the grave */
+        var pad = new THREE.Mesh(new THREE.CircleGeometry(torsoR * 1.5, 12),
+            new THREE.MeshBasicMaterial({ color: 0x3a0f10 }));
+        pad.rotation.x = -Math.PI / 2;
+        pad.position.y = 0.6;
+        g.add(pad);
+
+        /* face the way it last attacked (facingAngle is set by the volley) */
+        if (turret.facingAngle != null) g.rotation.y = -turret.facingAngle + Math.PI / 2;
+
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
 
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
@@ -5079,7 +5175,7 @@ const ThreeRenderer = (function () {
         if (state.units) {
             for (var gi = 0; gi < state.units.length; gi++) {
                 var gu = state.units[gi];
-                if (gu && gu.dead && !gu._dying) {
+                if (gu && gu.dead && !gu._dying && !gu._corpseConsumed) {
                     h = _hashInt(h, 6); h = _hashInt(h, gu.x); h = _hashInt(h, gu.y);
                     h = _hashVal(h, gu.player); h = _hashStr(h, String(gu.id));
                 }
@@ -5979,6 +6075,7 @@ const ThreeRenderer = (function () {
             for (var ug = 0; ug < state.units.length; ug++) {
                 var du = state.units[ug];
                 if (!du || !du.dead || du._dying) continue;
+                if (du._corpseConsumed) continue;   // remains raised as a zombie — nothing left to mark
                 var gx = (du._dyingX != null ? du._dyingX : du.x);
                 var gy = (du._dyingY != null ? du._dyingY : du.y);
                 if (gx == null || gy == null) continue;
