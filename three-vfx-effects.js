@@ -1816,10 +1816,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                    impactTileEffect: 'guardSlash_impact' };
     SPELL_MAP['swordBeam']     = { beam: 'swordBeam_beam' };
     SPELL_MAP['parryStance']   = { aura: 'fortify_aura' };
-    EFFECTS['raceCrescentCut_aoe'] = { aoeRadius: 1, impactTileEffect: 'guardSlash_impact' };
-    SPELL_MAP['raceCrescentCut']   = { aoe: 'raceCrescentCut_aoe' };
-    SPELL_MAP['raceIdolEncore']    = { aura: 'warCry_aura' };
-    SPELL_MAP['raceSpotlight']     = { impact: 'raceStunRay_impact' };
+    EFFECTS['raceBlessedBlade_aoe'] = { aoeRadius: 1, impactTileEffect: 'guardSlash_impact' };
+    SPELL_MAP['raceBlessedBlade']  = { aoe: 'raceBlessedBlade_aoe' };
+    SPELL_MAP['raceSadBackstory']  = { aura: 'warCry_aura' };
+    SPELL_MAP['racePlotArmor']     = { aura: 'fortify_aura' };
+    /* To Be Continued detonates through the delayed-mark pipeline: the impact
+       intent fires dragonSlash particles AND the raceToBeContinued signature
+       geometry (iai cut + flashback) at the marked unit. */
+    SPELL_MAP['raceToBeContinued'] = { impact: 'dragonSlash_impact' };
+    /* Naughty List: the curse bolt now lands on an actual parchment scroll
+       (impact intent → _sigNaughtyList3D). */
+    if (!SPELL_MAP['raceNaughtyList']) SPELL_MAP['raceNaughtyList'] = {};
+    SPELL_MAP['raceNaughtyList'].impact = 'raceCurseOfDecay_impact';
     /* the MIB plasma gun rig hooks in on the bolt intent */
     if (!SPELL_MAP['raceStunRay']) SPELL_MAP['raceStunRay'] = {};
     SPELL_MAP['raceStunRay'].bolt = '_bolt_elec';
@@ -11412,6 +11420,292 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
+    /* ── THE NAUGHTY LIST — Santa's parchment of judgement (2026-07-13).
+       A rolled scroll materialises over the victim and unfurls to reveal the
+       list — real parchment (terrain/parchment.png) on wooden rollers. Ink
+       lines burn in as the sheet opens, then a blazing red ✗ is stamped
+       beside the newest name in a spray of embers. ───────────────────────── */
+    function _sigNaughtyList3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var W = ts * 0.72, L = ts * 1.05;
+        var g = new THREE.Group();
+        var hoverY = wp.y + ts * (opts.hover != null ? opts.hover : 1.55);
+        g.position.set(wp.x, hoverY, wp.z);
+
+        /* rollers: two wooden dowels, top and bottom */
+        var rollMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('leather.png', 1, 1), color: new THREE.Color(0x6b4326),
+            transparent: true, opacity: 0,
+        });
+        var rGeo = new THREE.CylinderGeometry(ts * 0.038, ts * 0.038, W * 1.18, 8);
+        var topRoll = new THREE.Mesh(rGeo, rollMat);
+        topRoll.rotation.z = Math.PI / 2;
+        g.add(topRoll);
+        var botRoll = new THREE.Mesh(rGeo, rollMat);
+        botRoll.rotation.z = Math.PI / 2;
+        g.add(botRoll);
+
+        /* the parchment sheet — unrolls downward from the top roller */
+        var sheetMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('parchment.png', 1, 1), color: new THREE.Color(0xf5e7c0),
+            transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+        });
+        var sheetPivot = new THREE.Group();
+        var sheet = new THREE.Mesh(new THREE.PlaneGeometry(W, L), sheetMat);
+        sheet.position.y = -L / 2;         /* top edge stays at the pivot */
+        sheet.renderOrder = 158;
+        sheetPivot.add(sheet);
+        g.add(sheetPivot);
+
+        /* ink lines — the names of the naughty */
+        var inkMat = new THREE.MeshBasicMaterial({ color: 0x3a2a18, transparent: true, opacity: 0, depthWrite: false });
+        for (var li = 0; li < 5; li++) {
+            var lw = W * rn(0.42, 0.6);
+            var line = new THREE.Mesh(new THREE.PlaneGeometry(lw, L * 0.028), inkMat);
+            line.position.set(-W * 0.28 + lw * 0.5, -L * (0.18 + li * 0.16), 0.6);
+            line.renderOrder = 159;
+            sheetPivot.add(line);
+        }
+        /* the blazing red ✗ stamped beside the newest name */
+        var xMat = _sigMat(0xff2b2b);
+        xMat.opacity = 0;
+        var xGrp = new THREE.Group();
+        for (var xi = -1; xi <= 1; xi += 2) {
+            var stroke = new THREE.Mesh(new THREE.PlaneGeometry(L * 0.11, L * 0.024), xMat);
+            stroke.rotation.z = xi * 0.78;
+            xGrp.add(stroke);
+        }
+        xGrp.position.set(W * 0.3, -L * 0.18, 1.2);
+        sheetPivot.add(xGrp);
+
+        /* unholy glow beneath + orbiting coal-red / holly-green motes */
+        var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0xdd3344, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * 3.0, W * 3.0), glowMat);
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = -L * 1.05;
+        glow.renderOrder = 157;
+        g.add(glow);
+        var motes = [];
+        for (var m = 0; m < 4; m++) {
+            var mm = _sigMat(m % 2 ? 0xff5533 : 0x44dd66);
+            var mote = new THREE.Mesh(new THREE.OctahedronGeometry(ts * 0.03, 0), mm);
+            mote.renderOrder = 161;
+            g.add(mote);
+            motes.push({ mesh: mote, mat: mm, phase: m * 1.57 });
+        }
+
+        var inMs = 200, unrollMs = 420, holdMs = opts.holdMs != null ? opts.holdMs : 1050, fadeMs = 340;
+        var totalMs = inMs + unrollMs + holdMs + fadeMs;
+        var stamped = false;
+        _sigRun(g, totalMs, function (el) {
+            var op, roll;
+            if (el < inMs) {
+                op = el / inMs; roll = 0.06;
+                g.position.y = hoverY + ts * 0.35 * (1 - op);
+            } else if (el < inMs + unrollMs) {
+                op = 1; roll = 0.06 + 0.94 * _sigEaseOutCubic((el - inMs) / unrollMs);
+            } else if (el < inMs + unrollMs + holdMs) {
+                op = 1; roll = 1;
+                g.position.y = hoverY + Math.sin((el - inMs) * 0.0028) * ts * 0.05;
+                if (!stamped) {
+                    stamped = true;
+                    _sigSparks(tx, ty, 'ember', 10, { vxy: 90, vz0: 30, vz1: 150, gravity: 120 });
+                }
+            } else {
+                op = 1 - (el - inMs - unrollMs - holdMs) / fadeMs; roll = 1;
+            }
+            /* sheet unrolls: pivot scale + the bottom roller rides the edge */
+            sheetPivot.scale.y = Math.max(0.001, roll);
+            botRoll.position.y = -L * roll;
+            g.rotation.y = Math.sin(el * 0.0012) * 0.35;
+            rollMat.opacity = op;
+            sheetMat.opacity = op * 0.96;
+            inkMat.opacity = op * (roll > 0.55 ? (roll - 0.55) / 0.45 : 0) * 0.9;
+            xMat.opacity = stamped ? op * (0.75 + Math.sin(el * 0.02) * 0.25) : 0;
+            glowMat.opacity = op * 0.35;
+            for (var r = 0; r < motes.length; r++) {
+                var mo = motes[r];
+                var ang = el * 0.0018 + mo.phase;
+                mo.mesh.position.set(Math.cos(ang) * W * 1.05, -L * 0.5 + Math.sin(el * 0.0035 + mo.phase) * ts * 0.16, Math.sin(ang) * W * 1.05);
+                mo.mesh.rotation.y += 0.045;
+                mo.mat.opacity = op * 0.75;
+            }
+        });
+    }
+
+    /* ── BLIZZARD PRESENT — the gift box itself (2026-07-13). A wrapped 3D
+       present drops onto the tile, bounces with a squash, rattles ominously,
+       then blows its lid — the blizzard erupts from inside (the existing
+       shard system fires alongside from the registry entry). ─────────────── */
+    function _sigPresent3D(tx, ty, opts) {
+        opts = opts || {};
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var S = ts * (opts.size != null ? opts.size : 0.52);
+        var boxCol = opts.color != null ? opts.color : 0xc22637;
+        var ribbonCol = opts.ribbonColor != null ? opts.ribbonColor : 0xffd875;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+
+        var boxMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('leather.png', 1, 1), color: new THREE.Color(boxCol),
+            transparent: true, opacity: 0,
+        });
+        var ribbonMat = new THREE.MeshBasicMaterial({ color: ribbonCol, transparent: true, opacity: 0 });
+        var body = new THREE.Group();
+        var box = new THREE.Mesh(new THREE.BoxGeometry(S, S * 0.82, S), boxMat);
+        box.position.y = S * 0.41;
+        body.add(box);
+        /* ribbon: two bands wrapped around the box */
+        var band1 = new THREE.Mesh(new THREE.BoxGeometry(S * 0.16, S * 0.86, S * 1.03), ribbonMat);
+        band1.position.y = S * 0.41;
+        body.add(band1);
+        var band2 = new THREE.Mesh(new THREE.BoxGeometry(S * 1.03, S * 0.86, S * 0.16), ribbonMat);
+        band2.position.y = S * 0.41;
+        body.add(band2);
+        g.add(body);
+        /* lid: oversized cap + bow knot — pops off spinning at the burst */
+        var lid = new THREE.Group();
+        lid.add(new THREE.Mesh(new THREE.BoxGeometry(S * 1.12, S * 0.2, S * 1.12), boxMat));
+        var knot = new THREE.Mesh(new THREE.SphereGeometry(S * 0.14, 8, 6), ribbonMat);
+        knot.position.y = S * 0.16;
+        lid.add(knot);
+        var lidY = S * 0.92;
+        lid.position.y = lidY;
+        g.add(lid);
+        /* icy light spilling out of the open box */
+        var coreMat = _sigMat(opts.burstColor != null ? opts.burstColor : 0x9adfff, { map: _sigGlowTex() });
+        var core = new THREE.Mesh(new THREE.PlaneGeometry(S * 2.6, S * 2.6), coreMat);
+        core.rotation.x = -Math.PI / 2;
+        core.position.y = S * 0.9;
+        core.renderOrder = 160;
+        g.add(core);
+
+        var dropMs = 300, settleMs = 180, rattleMs = 420, burstMs = 520;
+        var totalMs = dropMs + settleMs + rattleMs + burstMs;
+        var dropH = ts * 2.6;
+        var popped = false;
+        var lidVy = 0;
+        _sigRun(g, totalMs, function (el) {
+            if (el < dropMs) {
+                var t0 = _sigEaseInCubic(el / dropMs);
+                g.position.y = wp.y + dropH * (1 - t0);
+                boxMat.opacity = Math.min(1, el / 120);
+                ribbonMat.opacity = boxMat.opacity;
+            } else if (el < dropMs + settleMs) {
+                var t1 = (el - dropMs) / settleMs;
+                g.position.y = wp.y;
+                var sq = 1 + Math.sin(t1 * Math.PI) * 0.18;
+                body.scale.set(sq, 2 - sq, sq);
+                lid.position.y = lidY * (2 - sq);
+                boxMat.opacity = 1; ribbonMat.opacity = 1;
+            } else if (el < dropMs + settleMs + rattleMs) {
+                var t2 = (el - dropMs - settleMs) / rattleMs;
+                body.scale.set(1, 1, 1);
+                lid.position.y = lidY;
+                g.rotation.y = Math.sin(el * 0.06) * 0.12 * t2;
+                g.position.x = wp.x + Math.sin(el * 0.09) * ts * 0.02 * t2;
+                coreMat.opacity = t2 * 0.25;
+            } else {
+                if (!popped) {
+                    popped = true;
+                    lidVy = ts * 0.014;
+                    _sigSparks(tx, ty, 'ice-shard', 16, { vxy: 220, vz0: 120, vz1: 380, gravity: 300, z: S });
+                    _sigSparks(tx, ty, 'frost-mist', 8, { vxy: 90, vz0: 40, vz1: 140, gravity: -20, z: S });
+                    _sigScreenFlash('#cfeaff', 140, 0.16);
+                }
+                var t3 = (el - dropMs - settleMs - rattleMs) / burstMs;
+                lid.position.y += lidVy;
+                lidVy -= ts * 0.0007;
+                lid.rotation.z += 0.09;
+                lid.rotation.x += 0.05;
+                coreMat.opacity = (1 - t3) * 0.85;
+                var fade = 1 - Math.max(0, (t3 - 0.45) / 0.55);
+                boxMat.opacity = fade;
+                ribbonMat.opacity = fade;
+            }
+        });
+    }
+
+    /* ── FLASHBACK TINT — the whole battlefield drains to a black-and-white /
+       sepia memory (2026-07-13, Swordfighter rework). Animates a CSS filter
+       on the 3D canvas (fade in → grade with old-film flicker → fade out)
+       plus a soft vignette overlay. One at a time; skips cleanly when the
+       canvas isn't there (2D renderer). ──────────────────────────────────── */
+    var _sigFlashbackActive = false;
+    function _sigFlashbackTint(opts) {
+        opts = opts || {};
+        try {
+            if (typeof document === 'undefined') return;
+            if (_catOff('spells')) return;
+            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            if (_sigFlashbackActive) return;
+            var cv = document.getElementById('threeCanvas');
+            if (!cv) return;
+            _sigFlashbackActive = true;
+            var sepia = opts.sepia != null ? opts.sepia : 0.55;   /* 0 = pure B&W */
+            var inMs = opts.inMs != null ? opts.inMs : 350;
+            var holdMs = opts.holdMs != null ? opts.holdMs : 1500;
+            var outMs = opts.outMs != null ? opts.outMs : 550;
+            var total = inMs + holdMs + outMs;
+            var vig = document.createElement('div');
+            vig.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:8998;opacity:0;'
+                + 'background:radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.55) 100%);';
+            document.body.appendChild(vig);
+            var t0 = performance.now();
+            function frame() {
+                var el = performance.now() - t0;
+                if (el >= total) {
+                    cv.style.filter = '';
+                    if (vig.parentNode) vig.parentNode.removeChild(vig);
+                    _sigFlashbackActive = false;
+                    return;
+                }
+                var k;
+                if (el < inMs) k = _sigEaseOutCubic(el / inMs);
+                else if (el < inMs + holdMs) k = 1;
+                else k = 1 - (el - inMs - holdMs) / outMs;
+                /* old-film brightness flicker while fully inside the memory */
+                var flick = (k >= 1) ? (0.94 + Math.random() * 0.06) : 1;
+                cv.style.filter = 'grayscale(' + k.toFixed(3) + ') sepia(' + (k * sepia).toFixed(3)
+                    + ') contrast(' + (1 + k * 0.08).toFixed(3) + ') brightness(' + ((1 - k * 0.08) * flick).toFixed(3) + ')';
+                vig.style.opacity = (k * 0.9).toFixed(3);
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        } catch (e) { _sigFlashbackActive = false; }
+    }
+
+    /* the manga end-card: an arrow banner slides in from the left, holds,
+       and slides back out. Pure DOM — sits above the flashback tint. */
+    function _sigToBeContinuedBanner(holdMs) {
+        try {
+            if (typeof document === 'undefined') return;
+            if (_catOff('spells')) return;
+            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            var el = document.createElement('div');
+            el.textContent = '⬅ To Be Continued';
+            el.style.cssText = 'position:fixed;left:0;bottom:13%;pointer-events:none;z-index:9002;'
+                + "font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:bold;"
+                + 'font-size:clamp(22px,4vw,42px);color:#f5f0e6;background:rgba(22,17,12,0.85);'
+                + 'padding:6px 28px 8px 18px;border-radius:0 10px 10px 0;letter-spacing:1px;'
+                + 'text-shadow:2px 2px 0 #000;transform:translateX(-105%);'
+                + 'transition:transform 360ms cubic-bezier(0.22,1,0.36,1);';
+            document.body.appendChild(el);
+            requestAnimationFrame(function () { requestAnimationFrame(function () {
+                el.style.transform = 'translateX(0)';
+            }); });
+            window.setTimeout(function () {
+                el.style.transition = 'transform 300ms ease-in, opacity 300ms ease-in';
+                el.style.transform = 'translateX(-105%)';
+                el.style.opacity = '0';
+                window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 340);
+            }, holdMs || 1500);
+        } catch (e) {}
+    }
+
     var _spell3DGeometry = {
 
         /* Nordic Federation kit (2026-07-10 rework) — see the SPELL_MAP
@@ -11511,7 +11805,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceDustDevil:       function(tx, ty, r) { _spawnDustDevil3D(tx, ty, r); },
 
         raceDiamondDust:        function(tx, ty, r) { _spawnBlizzardShards3D(tx, ty, r); },
-        raceBlizzardPresent:    function(tx, ty, r) { _spawnBlizzardShards3D(tx, ty, r); },
+        raceBlizzardPresent:    function(tx, ty, r) {
+            /* the wrapped gift drops and blows its lid; the blizzard erupts
+               out of the open box a beat later */
+            _sigPresent3D(tx, ty, {});
+            window.setTimeout(function () { _spawnBlizzardShards3D(tx, ty, r); }, 620);
+        },
         sharedSummonBlizzard:   function(tx, ty, r) { _spawnBlizzardShards3D(tx, ty, r); },
 
         raceAbsoluteZero:    function(tx, ty) { _spawnAbsoluteZero3D(tx, ty); },
@@ -12023,29 +12322,54 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigParryBlade3D(tx, ty);
         },
 
-        /* ── SWORDFIGHTER — the pop-idol duelist ── */
-        raceCrescentCut: function(tx, ty) { _sigSlashCombo3D(tx, ty, {
-            glowColor: 0xff88cc, circleColor: 0xff66bb,
-            bladeTex: 'metal.png', bladeColor: 0xffe0f0,
-            guardTex: 'metal.png', guardColor: 0xdd6699,
-            sparkSprite: 'spark-pink', moteSprite: 'spark-pink',
-            len: (_cfg().tileSize || 128) * 1.5,
-            slashes: [
-                { dYaw: 0.6, dir: 1, tilt: 0.5 },
-                { dYaw: -0.6, dir: -1, tilt: -0.5, heavy: true },
-            ],
-            flashPeak: 0.18,
-        }); },
-        raceIdolEncore: function(tx, ty) {
-            _sigSpotlight3D(tx, ty, { color: 0xff88dd, count: 2, height: (_cfg().tileSize || 128) * 3.6 });
-            _sigSonicBoom3D(tx, ty, {
-                gentle: true, color: 0xff77cc, rings: 3, ringGapMs: 190,
-                radiusTiles: 2.2, notes: 5, noteColor: 0xffaadd,
+        /* ── SWORDFIGHTER — the anime-protagonist duelist (2026-07-13 rework) ── */
+        raceBlessedBlade: function(tx, ty) {
+            _sigSlashCombo3D(tx, ty, {
+                glowColor: 0xffe9a8, circleColor: 0xffd875,
+                bladeTex: 'metal.png', bladeColor: 0xfff6dd,
+                guardTex: 'metal.png', guardColor: 0xc9a86a,
+                sparkSprite: 'divine-sparkle', moteSprite: 'divine-sparkle',
+                len: (_cfg().tileSize || 128) * 1.5,
+                slashes: [
+                    { dYaw: 0.6, dir: 1, tilt: 0.5 },
+                    { dYaw: -0.6, dir: -1, tilt: -0.5, heavy: true },
+                ],
+                flashPeak: 0.22,
             });
+            _sigSacredRings3D(tx, ty, { color: 0xffe9a8, holdMs: 650, radiusTiles: 1.1 });
         },
-        raceSpotlight: function(tx, ty) {
-            _sigSpotlight3D(tx, ty, { color: 0xfff2aa, count: 1 });
-            _sigSparks(tx, ty, 'divine-sparkle', 10);
+        raceSadBackstory: function(tx, ty) {
+            /* the rain-soaked flashback: the world drains of colour while a
+               single pale spotlight holds on her */
+            _sigFlashbackTint({ sepia: 0.6, inMs: 380, holdMs: 1600, outMs: 620 });
+            _sigSpotlight3D(tx, ty, { color: 0xcfd8e8, count: 1, height: (_cfg().tileSize || 128) * 3.8 });
+            _sigSparks(tx, ty, 'divine-sparkle', 8, { vxy: 60, vz0: 30, vz1: 120, gravity: -30 });
+        },
+        racePlotArmor: function(tx, ty) {
+            _sigShieldRing3D(tx, ty, { glowColor: 0xffd875, count: 4, holdMs: 800, radiusTiles: 0.75 });
+            _sigSacredRings3D(tx, ty, { color: 0xffe9a8, holdMs: 800, radiusTiles: 0.9 });
+        },
+        /* cast beat: freeze-frame on the victim + the manga end-card */
+        'raceToBeContinued:mark': function(tx, ty) {
+            _sigFlashbackTint({ sepia: 0.7, inMs: 260, holdMs: 1150, outMs: 480 });
+            _sigSpotlight3D(tx, ty, { color: 0xf5e9c8, count: 1 });
+            _sigToBeContinuedBanner(1500);
+        },
+        /* detonation beat: the episode resumes — one devastating iai cut */
+        raceToBeContinued: function(tx, ty) {
+            _sigFlashbackTint({ sepia: 0.5, inMs: 120, holdMs: 700, outMs: 380 });
+            _sigIaiCut3D(tx, ty);
+        },
+
+        /* ── SANTA CLAUSE (2026-07-13 rework) ── */
+        raceNaughtyList: function(tx, ty) { _sigNaughtyList3D(tx, ty); },
+        'raceSleighDash:dash': function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigSpeedBurst3D(tx, ty, { color: 0xbfe6ff });
+            _sigShockRing3D(tx, ty, { color: 0x99ddff, r1: ts0 * 1.3, ms: 380 });
+            _sigSparks(tx, ty, 'ice-shard', 14, { vxy: 180 });
+            _sigSparks(tx, ty, 'divine-sparkle', 10, { vxy: 120, vz0: 40, vz1: 200 });
+            _sigScreenFlash('#cfeaff', 130, 0.14);
         },
     };
 

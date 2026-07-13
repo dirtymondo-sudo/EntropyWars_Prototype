@@ -900,7 +900,7 @@
                             ? ds.spellId
                             : (window.ThreeVFXEffects.hasMapping('headshot', 'impact') ? 'headshot' : null);
                         if (_impactId) window.ThreeVFXEffects.fire('impact', _impactId, { tx: mark.x, ty: mark.y });
-                        if (typeof playSfx === 'function') playSfx('gun');
+                        if (typeof playSfx === 'function') playSfx(ds.impactSfx || 'gun');
                     } catch (e) {  }
                 }
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {

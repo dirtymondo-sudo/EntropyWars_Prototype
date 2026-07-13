@@ -58,9 +58,9 @@ owner uploaded to R2 **`Assets/weapons/`** are now real spell props.
     `_sigBladeWaltz3D` 3 orbiting hologram greatswords, parryStance →
     shield ring + `_sigParryBlade3D`, zantetsuken → `_sigIaiCut3D` master-sword
     iai draw-cut with the DELAYED cut (flash/shock fires after the sheathe).
-  - **Swordfighter race** (was 100% generic): raceCrescentCut pink slash
-    combo, raceIdolEncore stage `_sigSpotlight3D` ×2 + broken-note sonic boom,
-    raceSpotlight single spotlight cone + mark ring.
+  - **Swordfighter race**: REWORKED 2026-07-13 (see the "SANTA + SWORDFIGHTER
+    REWORK" section below) — the old raceCrescentCut/raceIdolEncore/
+    raceSpotlight kit and its wiring are gone.
 - **Future 3D models that would slot right in** (wishlist for the owner):
   longbow (replace the procedural spectral bow), shotgun + sniper rifle
   (finish the firearm set), witch broom, cannon (replace procedural pirate
@@ -70,6 +70,48 @@ owner uploaded to R2 **`Assets/weapons/`** are now real spell props.
   syringe (mad scientist), UFO saucer (replace procedural `_sigBuildUFO`),
   tomahawk missile (artillery descents), treasure chest (pirate plunder),
   hourglass (machine elves), voodoo doll (curse kits).
+
+## SANTA + SWORDFIGHTER REWORK (2026-07-13) — data.js, battle.js, state.js, three-vfx-effects.js, index.html
+Token `20260713k-arthur-necro` → `20260713l-santa-sword`.
+- **Santa Clause** (RACE_ABILITIES, data.js): DELETED raceGiftOfHealing +
+  raceChristmasSpirit (no more support kit). raceSleighDash is now a DAMAGE
+  spell — `kind:'dash'` (existing charge mechanic: 70 path damage, 120 on the
+  landing tile, destination occupant knocked aside), range 4, cost 25.
+  raceLumpOfCoal + raceNaughtyList + raceBlizzardPresent mechanics unchanged.
+- **Swordfighter** (RACE_ABILITIES): DELETED raceIdolEncore, raceFlashStep,
+  raceSpotlight, raceCrescentCut. New kit: raceSadBackstory (self buff, +2 ATK
+  stages), racePlotArmor (self buff, +2 DEF stages), raceBlessedBlade (holy
+  3×3 melee aoe, replaces Crescent Cut), raceToBeContinued (range-3 unit mark,
+  190 dmg, rides the Headshot `delayedMark` pipeline with
+  `requireVision:false` + `markDelayRounds:1` → strike auto-lands at
+  end-of-round detonation phase, tracks the target wherever they move).
+- **Generic delayed-mark flavor hooks** (battle.js `_castLaserMark`): new
+  optional spell fields `markFloatText` (floating text over the target),
+  `markLogText` ('{target}' placeholder), `impactSfx` (state.js
+  `_detonateDelayedSpell` plays it instead of the hardcoded 'gun').
+  `_castLaserMark` also fires `_spell3DGeometry['<id>:mark']` at cast, and the
+  dash kind fires `_spell3DGeometry['<id>:dash']` at the landing tile — both
+  via `ThreeVFXEffects.fireGeometry`, no-ops when unregistered.
+- **New signature VFX** (three-vfx-effects.js):
+  - `_sigNaughtyList3D` — parchment scroll (REAL `terrain/parchment.png`
+    texture) on wooden rollers unfurls over the victim, ink lines, blazing
+    red ✗ stamp + ember spray. Fires on raceNaughtyList impact intent (new
+    `raceCurseOfDecay_impact` mapping on top of its `_bolt_unholy` bolt).
+  - `_sigPresent3D` — 3D wrapped gift (box + gold ribbon + lid + bow knot)
+    drops, squash-bounces, rattles, blows its lid; blizzard shards erupt
+    620ms later (raceBlizzardPresent aoe geometry).
+  - `_sigFlashbackTint` — full-screen B&W/sepia memory grade: animates a CSS
+    `filter` on `#threeCanvas` (fade→hold with old-film flicker→fade) + DOM
+    vignette. One at a time (`_sigFlashbackActive`); no-op in 2D renderer /
+    devAutoSim. Used by raceSadBackstory (spotlight + rising motes) and both
+    To Be Continued beats.
+  - `_sigToBeContinuedBanner` — the manga end-card "⬅ To Be Continued" DOM
+    banner slides in bottom-left on mark cast. Detonation beat = flashback +
+    `_sigIaiCut3D`, impact mapping `dragonSlash_impact`, sfx
+    'physicalAbility'. Sleigh Dash landing: speed burst + ice shock ring +
+    ice-shard/sparkle spray + pale screen flash (`raceSleighDash:dash`).
+- AI needed NO changes: 'dash' and 'buff' kinds already scored, and
+  delayedMark rides `kind:'damage'` exactly like Assassinate.
 
 ## JOB/RACE REWORK: Swordmaster + Tank/Assassin renames + 3D batch (2026-07-13) — data.js, battle.js, ai.js, ui.js, map.js, sprites.js, index.html
 Token `20260712m` → `20260713a`.

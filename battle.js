@@ -3153,7 +3153,15 @@
             // in three-renderer.js). The beam vanishes if line of sight breaks.
             const delayRounds = spell.markDelayRounds || 1;
             if (typeof showFloatingTextForUnit === 'function') {
-                showFloatingTextForUnit(target, '🔴 PAINTED', 'streak', { durationMs: 1100 });
+                showFloatingTextForUnit(target, spell.markFloatText || '🔴 PAINTED', 'streak', { durationMs: 1100 });
+            }
+
+            // Spell-specific mark theatrics (freeze-frame, banners…) — keyed
+            // '<id>:mark' so the same spell's detonation geometry stays separate.
+            if (state.phase === 'battle' && !_skipVisuals()
+                && typeof window !== 'undefined' && window.ThreeVFXEffects
+                && typeof window.ThreeVFXEffects.fireGeometry === 'function') {
+                try { window.ThreeVFXEffects.fireGeometry(spell.id + ':mark', target.x, target.y, 0); } catch (e) {}
             }
 
             const dmg = Math.max(32, (spell.dmg || 180) + (spellPower || 0));
@@ -3171,11 +3179,16 @@
                 spellType: spell.spellType,
                 damageType: spell.damageType || 'physical',
                 spellName: spell.name,
+                impactSfx: spell.impactSfx || null,
                 roundsLeft: delayRounds,
                 statusEffects: spell.statusEffects || []
             });
 
-            addLog(`🔴 ${unitDisplayName(unit)} paints ${unitDisplayName(target)} with ${spell.name} — the shot lands at the end of the round unless they break the laser's line of sight.`, unit.player);
+            if (spell.markLogText) {
+                addLog(`⚔ ${unitDisplayName(unit)} ${spell.markLogText.replace('{target}', unitDisplayName(target))}`, unit.player);
+            } else {
+                addLog(`🔴 ${unitDisplayName(unit)} paints ${unitDisplayName(target)} with ${spell.name} — the shot lands at the end of the round unless they break the laser's line of sight.`, unit.player);
+            }
             scheduleBoardRender();
 
             return Math.max(cam?.totalMs ?? actionMs(900), projectileDelay + actionMs(400));
@@ -36118,6 +36131,12 @@
                 pushUndoSnapshot(true);
                 playSfx(spellLaunchSfx(spell));
                 _vfxDash(unit.x, unit.y, x, y);
+                // Spell-specific dash signature (Sleigh Dash snowburst…) —
+                // keyed '<id>:dash' in the _spell3DGeometry registry.
+                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                    && typeof ThreeVFXEffects.fireGeometry === 'function') {
+                    try { ThreeVFXEffects.fireGeometry(spell.id + ':dash', x, y, dist); } catch (e) {}
+                }
                 unit.mp -= effectiveSpellCost;
 
                 const dashPath = getLinePoints(unit.x, unit.y, x, y);
