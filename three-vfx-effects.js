@@ -7030,18 +7030,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        is kept upright as authored (Meshy exports Y-up) and scaled by its
        HEIGHT (sword, cauldron, crystal ball). */
     var _WPN_MODELS = {
-        revolver:    { file: 'Meshy_AI_Revolver_0713030235_texture.glb',          axis: 'z' },
-        pistol:      { file: 'Meshy_AI_pistol_0713030139_texture.glb',            axis: 'z' },
-        plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',        axis: 'z' },
+        /* the Meshy gun exports come in muzzle-BACKWARD — the baked ry flip
+           turns the barrel onto +Z, where the rig's muzzle/flash/tracer sit */
+        revolver:    { file: 'Meshy_AI_Revolver_0713030235_texture.glb',          axis: 'z',
+                       tweak: { ry: Math.PI } },
+        pistol:      { file: 'Meshy_AI_pistol_0713030139_texture.glb',            axis: 'z',
+                       tweak: { ry: Math.PI } },
+        plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',        axis: 'z',
+                       tweak: { ry: Math.PI } },
         football:    { file: 'Meshy_AI_american_football_0713030210_texture.glb', axis: 'z' },
         arrow:       { file: 'Meshy_AI_arrow_0713025846_texture.glb',             axis: 'z' },
         cauldron:    { file: 'Meshy_AI_black_cauldron_0713025916_texture.glb',    axis: 'y' },
         crystalBall: { file: 'Meshy_AI_crystal_ball_0713025648_texture.glb',      axis: 'y' },
         jet:         { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',  axis: 'z' },
-        /* blade assumed authored tip-UP; effects that plunge it flip the
-           wrapper. If the export is tip-down, fix from the console:
-           EW_WPN_TWEAK = { sword: { rx: Math.PI } } */
-        sword:       { file: 'Meshy_AI_master_sword_0713025949_texture.glb',      axis: 'y' },
+        /* the Meshy export is authored tip-DOWN — the baked rx flip makes
+           the normalized instance tip-UP, which is what every sword effect
+           assumes (Excalibur/iai flip/lay it themselves from there) */
+        sword:       { file: 'Meshy_AI_master_sword_0713025949_texture.glb',      axis: 'y',
+                       tweak: { rx: Math.PI } },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
