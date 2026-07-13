@@ -6,7 +6,7 @@
            the nameplate status badges. 'regen' was defined with a heal tick but
            missing here, so it never actually ticked (dead code bug — fixed);
            'charm' is hard CC (blockMove) and belongs on the nameplate. */
-        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','lava_burn','protect','regen','charm']);
+        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','protect','regen','charm']);
 
         const GAME_MODES = {
             normal: {

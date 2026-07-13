@@ -339,16 +339,19 @@ const TERRAIN_RULES = {
             if (unitIsLavaAdapted(unit)) {
                 if (unit._lavaBurnStacks) {
                     unit._lavaBurnStacks = 0;
-                    clearStatus(unit, 'lava_burn');
+                    clearStatus(unit, 'burn');
                 }
                 return null;
             }
 
             if (canFly(unit)) return null;
 
+            // Lava applies the ONE burn status (there is no separate "lava
+            // burn"); standing in it stacks up _lavaBurnStacks, which escalates
+            // the burn tick damage (see burn.onRoundEnd).
             unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
             const status = ensureUnitStatus(unit);
-            status.lava_burn = 3;
+            status.burn = Math.max(status.burn || 0, 3);
             return null;
         }
     },
@@ -7943,7 +7946,7 @@ const MANA_FORMULA = {
 
 const _MF_HARD_CC = { stun:13, freeze:13, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, sirenSong:11 };
 const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6 };
-const _MF_DOT     = { burn:7, poison:7, bleed:7, lava_burn:7 };
+const _MF_DOT     = { burn:7, poison:7, bleed:7 };
 const _MF_DEBUFF  = { marked:5, discord:6, vulnerable:5, weak:5 };
 const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12, regen:6,
                       guarding:6, guard:6, steadyAim:6, overclock:8, encore:9, warpRune:5, scanner:3,
@@ -8486,7 +8489,16 @@ const STATUS_DEFS = {
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
         iconSrc: createStatusIconDataUri('🔥', '#4a1f16', '#ffd3a8', '#ff7b4d'),
         onRoundEnd(unit) {
-            applyDamageToUnit(unit, 24, `Burn sears ${unitDisplayName(unit)}: `, {
+            // One burn status for everything. A burn picked up from lava
+            // escalates with the rounds spent standing in it (_lavaBurnStacks,
+            // set by the lava terrain endTurn); a spell burn ticks flat 24.
+            const stacks = unit._lavaBurnStacks || 0;
+            if (stacks > 0 && typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
+            const dmg = stacks > 0 ? Math.min(200, 32 + stacks * 32) : 24;
+            const label = stacks > 0
+                ? `${unitDisplayName(unit)} is burning in lava (×${stacks}): `
+                : `Burn sears ${unitDisplayName(unit)}: `;
+            applyDamageToUnit(unit, dmg, label, {
                 ignoreArmor: true,
                 damageType: 'dot',
                 consumeMarked: false,
@@ -8567,13 +8579,11 @@ const STATUS_DEFS = {
         apDrain: 1,
         spriteName: 'stagger',
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/stagger.png',
-        iconSrc: createStatusIconDataUri('💫', '#3e2e18', '#fff2da', '#ffb871'),
-        onRoundEnd(unit) {
-            const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : (unit.maxAp || 2);
-            const newAP = Math.max(0, (unit.ap || 0) - 1);
-            unit.ap = newAP;
-            if (typeof addLog === 'function') addLog(`${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'Unit'} is staggered! (-1 AP)`);
-        }
+        iconSrc: createStatusIconDataUri('💫', '#3e2e18', '#fff2da', '#ffb871')
+        // The -1 AP happens the moment the status lands (see applyStatusPayload
+        // in battle.js). Draining here in onRoundEnd never worked: the
+        // round-start loop refills every unit to max AP right after the
+        // end-of-round ticks, silently undoing the drain.
     },
     marked: {
         icon: '🎯',
@@ -8665,31 +8675,8 @@ const STATUS_DEFS = {
         stack: 'max',
         iconSrc: createStatusIconDataUri('💧', '#0a2a45', '#d5ecff', '#5ab4ff')
     },
-    lava_burn: {
-        icon: '🌋',
-        glyph: '🌋',
-        short: 'LVB',
-        label: 'Lava Burn',
-        colorText: 'burning in lava',
-        kind: 'debuff',
-        category: 'status',
-        stack: 'replace',
-        moveDelta: -1,
-        spriteName: 'burn',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
-        iconSrc: createStatusIconDataUri('🌋', '#4a1f16', '#ffd3a8', '#ff4500'),
-        onRoundEnd(unit) {
-            if (unitIsLavaAdapted(unit)) return;
-            const stacks = unit._lavaBurnStacks || 1;
-            const dmg = Math.min(200, 32 + stacks * 32);
-            applyDamageToUnit(unit, dmg, `${typeof unitDisplayName === 'function' ? unitDisplayName(unit) : 'Unit'} is burning in lava (×${stacks}): `, {
-                ignoreArmor: true,
-                damageType: 'dot',
-                consumeMarked: false,
-                flashColor: 'burn'
-            });
-        }
-    },
+    // (lava_burn was merged into plain 'burn' — one burn status; lava just
+    // escalates its tick via _lavaBurnStacks.)
     protect: {
         icon: '🛡️',
         glyph: '🛡',

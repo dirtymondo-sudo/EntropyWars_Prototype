@@ -2630,14 +2630,12 @@
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const terr = getTerrainAt(unit.x, unit.y);
-            // 💧 Landing in water puts you out — burn and lingering lava-burn
-            // are doused the instant a unit is shoved into the drink — and
+            // 💧 Landing in water puts you out — burn (lava-stoked or not) is
+            // doused the instant a unit is shoved into the drink — and
             // leaves them Soaked (conductive to the next lightning bolt).
             if (terr === 'water' || terr === 'deep_water') {
-                if (unit.status && (unit.status.burn || unit.status.lava_burn)) {
+                if (unit.status && unit.status.burn) {
                     clearStatus(unit, 'burn');
-                    clearStatus(unit, 'lava_burn');
-                    unit._lavaBurnStacks = 0;
                     addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
                     showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
                 }
@@ -2645,7 +2643,7 @@
             }
             if (terr === 'lava') {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
-                ensureUnitStatus(unit).lava_burn = 3;
+                ensureUnitStatus(unit).burn = 3;
                 unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
                 applyDamageToUnit(unit, 60, `${unitDisplayName(unit)} is hurled into molten lava: `, {
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn'
@@ -3933,6 +3931,9 @@
             if (!unit?.status) return;
             if (!(key in unit.status)) return;
             delete unit.status[key];
+            // Burn is the one status lava escalates — when it ends (expiry,
+            // douse, cleanse), the lava escalation resets with it.
+            if (key === 'burn') unit._lavaBurnStacks = 0;
             // Every removal path (tick expiry, cleanse, censer purge, …) funnels
             // through here — announce it so the HUD repaints the very same frame.
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
@@ -4297,6 +4298,23 @@
                 }
             }
 
+            // 💫 Stagger takes its AP the moment it lands. If the target already
+            // spent everything this round, the loss carries over as a debt the
+            // round-start refill honors (refilling to max minus the debt) —
+            // draining in onRoundEnd never worked because the refill ran after
+            // it and overwrote the AP anyway.
+            if (payload.id === 'stagger' && unitHasStatus(target, 'stagger')) {
+                if ((target.ap || 0) > 0) {
+                    target.ap -= 1;
+                    addLog(`💫 ${unitDisplayName(target)} is staggered and loses 1 AP!`);
+                    showFloatingTextForUnit(target, '💫 -1 AP', 'debuff', { durationMs: 1000 });
+                } else {
+                    target._staggerApDebt = (target._staggerApDebt || 0) + 1;
+                    addLog(`💫 ${unitDisplayName(target)} is staggered — starts next round with 1 less AP!`);
+                    showFloatingTextForUnit(target, '💫 -1 AP next round', 'debuff', { durationMs: 1000 });
+                }
+            }
+
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
@@ -4410,7 +4428,7 @@
                             // which shows the floating "-N". Don't show a second one here.
                             triggerStatusWiggle(unit);
 
-                            const _dotSfxMap = { poison: 'poisonDamage', burn: 'burningDamage', drowning: 'drowningDamage', lava_burn: 'burningDamage' };
+                            const _dotSfxMap = { poison: 'poisonDamage', burn: 'burningDamage', drowning: 'drowningDamage' };
                             playSfx(_dotSfxMap[key] || 'damage');
                         }
                     } else if (hpLost < 0) {
@@ -4501,6 +4519,7 @@
                                     for (const eff of zone.allyStatusEffects) {
                                         applyStatusPayload(ally, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `);
                                     }
+                                    if (zone.smokeConcealment && unitHasStatus(ally, 'invisible')) ally._smokeCloaked = true;
                                 }
                             }
                         }
@@ -15190,6 +15209,39 @@
             return { revealedHourglasses: 0, revealedItems: 0 };
         }
 
+        /* ── Smoke Screen entry/exit cloaking ──────────────────────────────
+           Stepping INTO a friendly smoke zone cloaks you on the spot — not
+           just the units that happened to be inside at cast time or at the
+           end-of-round refresh. Stepping OUT drops a smoke-granted cloak
+           immediately (the spell reads "invisible only while they remain in
+           the cloud"); invisibility from other sources (Vanish, Blurry
+           Photo…) is never touched — only cloaks tagged _smokeCloaked. */
+        function updateSmokeZoneCloak(unit) {
+            if (!unit || unit.dead || !state._activeZones || !state._activeZones.length) return;
+            let inFriendlySmoke = false;
+            for (const zone of state._activeZones) {
+                if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
+                const r = zone.radius || 1;
+                if (Math.abs(unit.x - zone.x) > r || Math.abs(unit.y - zone.y) > r) continue;
+                inFriendlySmoke = true;
+                if (!unitHasStatus(unit, 'invisible')) {
+                    for (const eff of (zone.allyStatusEffects || [])) {
+                        applyStatusPayload(unit, { id: eff.id, duration: eff.duration || 1 }, `${zone.spellName} → `);
+                    }
+                    if (unitHasStatus(unit, 'invisible')) unit._smokeCloaked = true;
+                }
+                break;
+            }
+            if (!inFriendlySmoke && unit._smokeCloaked) {
+                unit._smokeCloaked = false;
+                if (unitHasStatus(unit, 'invisible')) {
+                    clearStatus(unit, 'invisible');
+                    addLog(`👁 ${unitDisplayName(unit)} steps out of the smoke and is revealed!`);
+                    showFloatingTextForUnit(unit, '👁 Revealed', 'debuff', { durationMs: 1000 });
+                }
+            }
+        }
+
         function finishMoveAt(unit, x, y, opts = {}) {
             const stopReason = opts.stopReason || null;
             const moveLabel = opts.destinationLabel || coordLabel(x, y);
@@ -15254,6 +15306,10 @@
 
             checkOpportunityAttack(unit, _originX, _originY);
 
+            // Walking into (or out of) a friendly smoke cloud toggles the cloak
+            // immediately — no waiting for the end-of-round zone refresh.
+            updateSmokeZoneCloak(unit);
+
             if (!_wasAirborne) {
                 // Walking into ground fire hurts NOW (and sets you burning).
                 if (_tileIsBurning(x, y)) {
@@ -15264,10 +15320,8 @@
                 // you (dive in the lake to stop burning; just don't stand in
                 // the pool when a bolt comes down).
                 if (_isWaterTile(x, y)) {
-                    if (unit.status && (unit.status.burn || unit.status.lava_burn)) {
+                    if (unit.status && unit.status.burn) {
                         clearStatus(unit, 'burn');
-                        clearStatus(unit, 'lava_burn');
-                        unit._lavaBurnStacks = 0;
                         addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
                         showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
                     }
@@ -21172,6 +21226,7 @@
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
                 u.ap = getUnitMaxAP(u);
+                u._staggerApDebt = 0;
                 u._aiFailedSpells = null;
                 u._aiFailedCombos = null;
                 u._aiSkipAttack = false;
@@ -21288,6 +21343,7 @@
             for (const u of state.units) {
                 if (!u.dead) {
                     u.ap = getUnitMaxAP(u);
+                    u._staggerApDebt = 0;
                     u.movesThisTurn = 0;
                     u._reshapeThisTurn = 0;
                     u._buildCharges = 0;
@@ -23462,7 +23518,13 @@
                     for (const u of state.units) {
                         if (!u.dead) {
                             if (u._justRespawned) { u._justRespawned = false; continue; }
-                            u.ap = getUnitMaxAP(u);
+                            // Stagger landed after this unit had already spent its
+                            // AP → the loss was banked as a debt; settle it here.
+                            u.ap = Math.max(0, getUnitMaxAP(u) - (u._staggerApDebt || 0));
+                            if (u._staggerApDebt) {
+                                addLog(`💫 ${unitDisplayName(u)} starts the round staggered (-${u._staggerApDebt} AP).`);
+                                u._staggerApDebt = 0;
+                            }
                             u.movesThisTurn = 0;
                             u._reshapeThisTurn = 0;
                             u._buildCharges = 0;
@@ -34701,6 +34763,7 @@
                             for (const eff of spell.allyStatusEffects) {
                                 applyStatusPayload(ally, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${spell.name} → `);
                             }
+                            if (spell.smokeConcealment && unitHasStatus(ally, 'invisible')) ally._smokeCloaked = true;
                         }
                     }
                 }
