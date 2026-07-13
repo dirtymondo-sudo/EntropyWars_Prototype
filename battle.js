@@ -3877,7 +3877,11 @@
 
         function clearStatus(unit, key) {
             if (!unit?.status) return;
+            if (!(key in unit.status)) return;
             delete unit.status[key];
+            // Every removal path (tick expiry, cleanse, censer purge, …) funnels
+            // through here — announce it so the HUD repaints the very same frame.
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
 
         // ── DEF/MDEF & ATK/INT axis split ─────────────────────────────────────
