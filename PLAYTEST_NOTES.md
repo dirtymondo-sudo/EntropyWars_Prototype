@@ -4,7 +4,74 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## JOB/RACE REWORK: Swordmaster + Tank/Assassin renames + 3D batch (2026-07-13, LATEST) — data.js, battle.js, ai.js, ui.js, map.js, sprites.js, index.html
+## WEAPON GLB SPELL PROPS + sword/idol cinematics (2026-07-13, LATEST) — three-vfx-effects.js, three-renderer.js, index.html
+Token `20260713a-lvl100` → `20260713b-weapons3d`. Nine Meshy prop GLBs the
+owner uploaded to R2 **`Assets/weapons/`** are now real spell props.
+- **Loader** (three-vfx-effects.js, above `_sigBuildSword`): `_WPN_MODELS`
+  registry + `_wpnLoad/_wpnReady/_wpnInstance(key, targetLen, opts)`. Loads
+  once via `THREE.GLTFLoader`, caches, clones per cast; clone geometry is
+  SHARED (`geometry._ew_shared = true` — `_sigRun`'s disposer and the
+  renderer's projectile teardown skip it), materials cloned per instance so
+  `setFade(f)` works. Models are normalized by bounding box: axis `'z'` = long
+  axis swung onto +Z (guns/jet/arrow/football), `'y'` = kept upright, scaled
+  by height (sword/cauldron/crystal ball). The scene is LIT (three-post sun/
+  hemi/ambient) so GLTF PBR materials render as-is, like unit models.
+  Cache pre-warms 3.5s after boot. NOT covered by the `?v=` token — to change
+  a weapon GLB in place, rename the file (auto cache-bust).
+  - Kill-switch: `window.EW_DISABLE_WEAPON_GLB = true` (both files).
+  - Orientation fix-ups WITHOUT a code edit (Meshy exports vary; I could not
+    open the GLBs from this sandbox — cdn is proxy-blocked — so long-axis
+    detection is a heuristic): `window.EW_WPN_TWEAK = { sword: { rx: Math.PI,
+    ry: 0, rz: 0, s: 1.2 } }` per key, or bake a `tweak:{}` into _WPN_MODELS.
+    Verify in-game: jet nose forward? sword tip down during the plunge?
+    arrow head forward? If a model flies backwards set `ry: Math.PI`.
+- **Swapped to GLB (procedural/sprite kept as loading fallback)**:
+  - Jet flyover (`_fireDescent` `fo.sprite==='f22'` → GLB flyby with bank
+    roll + twin afterburner glows): nuke / sharedNuke / raceArtilleryStrike.
+  - Crystal ball (`_sigCrystalBall3D` — GLB orb, procedural stand+glass only
+    as fallback; vision fog/spark layers unchanged).
+  - Guns (`_sigBuildGun`): revolver + NEW kinds `pistol`/`plasma` are GLBs;
+    **sniper & shotgun stay procedural** (owner call). New `_SIG_GUN_FOR`:
+    mark1 + raceSuppressingFire → pistol; raceClassifiedWeapon (MIB) +
+    raceStunRay (barbarella, got a new `_bolt_elec` wiring) → plasma.
+  - Football: three-renderer.js `startProjectileTween` supports `_PROJ_MODELS`
+    GLB projectiles ('proj-football': spiral spin around the flight axis, nose
+    follows the lob arc). First throw of a session may still be the PNG (GLB
+    warms on boot + first use). All QB spells ride this via the existing
+    `projectileOverride`/UNIT_ANIM_OVERRIDES — no data.js change.
+- **New signature cinematics** (`_spell3DGeometry` + SPELL_MAP wiring block
+  next to the raceCannonball arsenal wiring):
+  - **King Arthur**: raceExcaliburStrike → `_sigExcalibur3D` (master-sword GLB
+    rises blade-down from lady-of-the-lake circles, hangs, slams: gold pillar,
+    crescents, shock ring; fallback = gold `_sigStandSword3D`). raceRoyalDecree
+    → `_sigCrown3D` gold crown + sacred rings.
+  - **Robin Hood**: racePrecisionShot/raceSplittingArrow (bolt hook
+    `_SIG_BOW_FOR` in `_fireBoltMapped`) → `_sigBowShot3D` spectral longbow
+    draws + looses the REAL arrow GLB; raceArrowRain → `_sigArrowRain3D`
+    GLB-arrow volley raining into the diamond.
+  - **Shaman/Witch**: raceHerbalRemedy + raceAyahuascaRetreat →
+    `_sigCauldron3D` cauldron GLB bubbles then boils over into a gas cloud
+    (green herbal / violet ayahuasca palettes).
+  - **Swordmaster class** (was 100% generic): crossSlash X-combo, swordBeam →
+    `_sigSwordWave3D` traveling crescent (hooked inside `_fireBeamMapped`,
+    new `swordBeam_beam` def), lungingStrike burst, bladeWaltz →
+    `_sigBladeWaltz3D` 3 orbiting hologram greatswords, parryStance →
+    shield ring + `_sigParryBlade3D`, zantetsuken → `_sigIaiCut3D` master-sword
+    iai draw-cut with the DELAYED cut (flash/shock fires after the sheathe).
+  - **Swordfighter race** (was 100% generic): raceCrescentCut pink slash
+    combo, raceIdolEncore stage `_sigSpotlight3D` ×2 + broken-note sonic boom,
+    raceSpotlight single spotlight cone + mark ring.
+- **Future 3D models that would slot right in** (wishlist for the owner):
+  longbow (replace the procedural spectral bow), shotgun + sniper rifle
+  (finish the firearm set), witch broom, cannon (replace procedural pirate
+  carronade), shield/heater shield (knight kits), spear/trident (valkyrie,
+  mermaid, poseidon beats), scythe (necromancer/reaper), boomerang, katana +
+  saya (zantetsuken deserves its own blade + sheathe), guitar (bard/idol),
+  syringe (mad scientist), UFO saucer (replace procedural `_sigBuildUFO`),
+  tomahawk missile (artillery descents), treasure chest (pirate plunder),
+  hourglass (machine elves), voodoo doll (curse kits).
+
+## JOB/RACE REWORK: Swordmaster + Tank/Assassin renames + 3D batch (2026-07-13) — data.js, battle.js, ai.js, ui.js, map.js, sprites.js, index.html
 Token `20260712m` → `20260713a`.
 - **Display renames, NOT id renames**: job 'Warrior' displays "Tank" and
   'Agent' displays "Assassin" via `JOB_DISPLAY_NAMES` (data.js) — same

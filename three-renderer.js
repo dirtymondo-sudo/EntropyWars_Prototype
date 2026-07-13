@@ -1255,6 +1255,27 @@ const ThreeRenderer = (function () {
         'proj-football':    { url: 'https://cdn.entropywars.net/Assets/Sprites/football.png',    glow: 0x8b5e3c },
     };
 
+    /* Real 3D models for select projectiles — Meshy GLBs on R2
+       /Assets/weapons (2026-07-13). The PNG in _PROJ_SPRITES above stays as
+       the fallback while the GLB loads (first throw of a session may still
+       be the sprite; the cache is warmed below and on first use).
+       lenTiles = model length along the flight axis in tile units;
+       spin = spiral rate (rad/s) around the flight axis.
+       Kill-switch: window.EW_DISABLE_WEAPON_GLB = true. */
+    var _PROJ_MODELS = {
+        'proj-football': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
+            lenTiles: 0.42, spin: 9.0,
+        },
+    };
+    /* warm the projectile GLBs shortly after boot (tiny next to unit models) */
+    window.setTimeout(function () {
+        if (window.EW_DISABLE_WEAPON_GLB) return;
+        for (var k in _PROJ_MODELS) {
+            try { _loadMiscModel(_PROJ_MODELS[k].url, true, function () {}); } catch (e) {}
+        }
+    }, 4000);
+
     var floatTextGroup = null;
     var _floatTweens = [];
     var _floatIdCounter = 0;
@@ -12813,14 +12834,53 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = _getProjSpriteInfo(projClass);
 
-        var tex = getTexture(info.url);
-        var mat = new THREE.MeshBasicMaterial({
-            map: tex, transparent: true, alphaTest: 0.05,
-            side: THREE.DoubleSide, depthWrite: false
-        });
-        var sz = PROJ_SIZE;
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), mat);
-        mesh._ew_billboard = true;
+        /* GLB projectile (football, …): use the real model when its GLB is
+           already cached; otherwise warm the cache and fly the sprite. */
+        var mesh = null, isModel = false, spinner = null, fadeMats = null;
+        var modelDef = _PROJ_MODELS[projClass];
+        if (modelDef && !window.EW_DISABLE_WEAPON_GLB) {
+            var me = _miscModelCache[modelDef.url];
+            if (me && me.root && me.root._ew_bbox) {
+                var root = me.root;
+                var bb = root._ew_bbox;
+                var sx = (bb.max.x - bb.min.x) || 1, sy = (bb.max.y - bb.min.y) || 1, szz = (bb.max.z - bb.min.z) || 1;
+                var inner = root.clone(true);
+                fadeMats = [];
+                inner.traverse(function (n) {
+                    if (!n.isMesh) return;
+                    n.material = Array.isArray(n.material)
+                        ? n.material.map(function (mm) { var c = mm.clone(); c.transparent = true; fadeMats.push(c); return c; })
+                        : (function () { var c = n.material.clone(); c.transparent = true; fadeMats.push(c); return c; })();
+                });
+                /* center, swing the long axis onto +Z, scale to lenTiles */
+                inner.position.set(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
+                var wrap = new THREE.Group();
+                wrap.add(inner);
+                var longLen = Math.max(sx, sy, szz);
+                if (sx >= sy && sx >= szz) wrap.rotation.y = -Math.PI / 2;
+                else if (sy >= szz && sy > sx) wrap.rotation.x = Math.PI / 2;
+                wrap.scale.setScalar((ts * (modelDef.lenTiles || 0.4)) / longLen);
+                spinner = new THREE.Group();      /* spiral around the flight axis */
+                spinner.add(wrap);
+                mesh = new THREE.Group();         /* oriented along the flight */
+                mesh.rotation.order = 'YXZ';
+                mesh.add(spinner);
+                isModel = true;
+            } else {
+                try { _loadMiscModel(modelDef.url, true, function () {}); } catch (e) {}
+            }
+        }
+
+        if (!mesh) {
+            var tex = getTexture(info.url);
+            var mat = new THREE.MeshBasicMaterial({
+                map: tex, transparent: true, alphaTest: 0.05,
+                side: THREE.DoubleSide, depthWrite: false
+            });
+            var sz = PROJ_SIZE;
+            mesh = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), mat);
+            mesh._ew_billboard = true;
+        }
 
         var fZ = (fromZ !== undefined && fromZ !== null) ? fromZ : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(fromX), Math.round(fromY)) : 0);
         var tZ = (toZ !== undefined && toZ !== null) ? toZ : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(toX), Math.round(toY)) : 0);
@@ -12840,16 +12900,20 @@ const ThreeRenderer = (function () {
         mesh.position.set(startX, startY, startZ);
         projectileGroup.add(mesh);
 
-        var needsDirRot = (projClass === 'proj-bullet' || projClass === 'proj-football');
+        var needsDirRot = !isModel && (projClass === 'proj-bullet' || projClass === 'proj-football');
 
         var tw = {
             id: ++_projIdCounter,
             mesh: mesh,
+            isModel: isModel,
+            spinner: spinner,
+            fadeMats: fadeMats,
             startX: startX, startY: startY, startZ: startZ,
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
-            spinSpeed: (projClass === 'proj-spiderweb') ? 10.5
+            spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || 0)
+                     : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
@@ -12877,6 +12941,32 @@ const ThreeRenderer = (function () {
 
             if (tw.arcHeight) wy += tw.arcHeight * 4 * t * (1 - t);
             tw.mesh.position.set(wx, wy, wz);
+
+            if (tw.isModel) {
+                /* orient the model along its instantaneous velocity (the arc
+                   derivative included, so the nose follows the lob) and
+                   spiral it around the flight axis */
+                var mvx = tw.travelDX, mvz = tw.travelDZ;
+                var mvy = tw.travelDY + (tw.arcHeight ? tw.arcHeight * 4 * (1 - 2 * t) : 0);
+                var mh = Math.sqrt(mvx * mvx + mvz * mvz) || 1;
+                tw.mesh.rotation.y = Math.atan2(mvx, mvz);
+                tw.mesh.rotation.x = -Math.atan2(mvy, mh);
+                if (tw.spinSpeed && tw.spinner) {
+                    tw.spinner.rotation.z = ((now - tw.startTime) / 1000) * tw.spinSpeed;
+                }
+                if (t > 0.85 && tw.fadeMats) {
+                    var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
+                    for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
+                }
+                var msc = 1 - 0.15 * t;
+                tw.mesh.scale.set(msc, msc, msc);
+                if (t >= 1) {
+                    projectileGroup.remove(tw.mesh);
+                    _disposeProjModel(tw);
+                    _projTweens.splice(i, 1);
+                }
+                continue;
+            }
 
             if (cam) {
                 tw.mesh.rotation.y = Math.atan2(
@@ -12918,13 +13008,27 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* GLB projectile teardown: cloned materials die, shared geometry lives */
+    function _disposeProjModel(tw) {
+        tw.mesh.traverse(function (n) {
+            if (n.isMesh && n.geometry && !n.geometry._ew_shared) n.geometry.dispose();
+        });
+        if (tw.fadeMats) {
+            for (var i = 0; i < tw.fadeMats.length; i++) tw.fadeMats[i].dispose();
+        }
+    }
+
     function _clearProjectileTweens() {
         for (var i = 0; i < _projTweens.length; i++) {
             var tw = _projTweens[i];
             if (tw.mesh) {
                 projectileGroup.remove(tw.mesh);
-                tw.mesh.geometry.dispose();
-                tw.mesh.material.dispose();
+                if (tw.isModel) {
+                    _disposeProjModel(tw);
+                } else {
+                    tw.mesh.geometry.dispose();
+                    tw.mesh.material.dispose();
+                }
             }
         }
         _projTweens.length = 0;
