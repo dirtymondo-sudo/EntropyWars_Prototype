@@ -467,21 +467,21 @@
         };
 
         const _origDoItem = doItem;
-        doItem = function(unit, x, y) {
-            if (!_isOnline() || state._remoteAction) return _origDoItem(unit, x, y);
-            if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y]);
+        doItem = function(unit, x, y, z) {
+            if (!_isOnline() || state._remoteAction) return _origDoItem(unit, x, y, z);
+            if (_isHost()) return _hostRunAndSync(_origDoItem, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return;
             _guestActionFeedback('item', unit, x, y);
-            _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, tool: state.selectedTool });
+            _emit('game-action', { type: 'engine', fn: 'doItem', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
         };
 
         const _origDoComboAttack = doComboAttack;
-        doComboAttack = function(initiator, partner, targetX, targetY) {
-            if (!_isOnline() || state._remoteAction) return _origDoComboAttack(initiator, partner, targetX, targetY);
-            if (_isHost()) return _hostRunAndSync(_origDoComboAttack, [initiator, partner, targetX, targetY]);
+        doComboAttack = function(initiator, partner, targetX, targetY, targetZ) {
+            if (!_isOnline() || state._remoteAction) return _origDoComboAttack(initiator, partner, targetX, targetY, targetZ);
+            if (_isHost()) return _hostRunAndSync(_origDoComboAttack, [initiator, partner, targetX, targetY, targetZ]);
             if (!_guestOwnsAction(initiator)) return;
             _guestActionFeedback('attack', initiator, targetX, targetY);
-            _emit('game-action', { type: 'engine', fn: 'doComboAttack', unitId: initiator.id, partnerId: partner ? partner.id : null, x: targetX, y: targetY });
+            _emit('game-action', { type: 'engine', fn: 'doComboAttack', unitId: initiator.id, partnerId: partner ? partner.id : null, x: targetX, y: targetY, z: targetZ });
         };
 
         const _origDoBuildAction = (typeof doBuildAction === 'function') ? doBuildAction : null;
@@ -1077,10 +1077,10 @@
                             case 'doSpell': doSpell(engUnit, data.x, data.y, data.z); break;
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
                             case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
-                            case 'doItem': doItem(engUnit, data.x, data.y); break;
+                            case 'doItem': doItem(engUnit, data.x, data.y, data.z); break;
                             case 'doComboAttack': {
                                 var engPartner = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
-                                if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y);
+                                if (engPartner) doComboAttack(engUnit, engPartner, data.x, data.y, data.z);
                                 break;
                             }
                             case 'doBuildAction':

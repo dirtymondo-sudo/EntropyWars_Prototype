@@ -15635,12 +15635,14 @@
             renderIfDirty();
         }
 
-        function doTrade(unit, x, y) {
+        function doTrade(unit, x, y, z) {
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return 0;
             }
-            const target = unitAt(x, y);
+            // Exact-z first so trading with a flyer stacked over an ally (or
+            // vice versa) resolves to the unit actually clicked.
+            const target = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
             if (!target || !canTradeWithUnit(unit, target)) {
                 addLog('Choose a nearby living ally to trade with.');
                 playErrorSfx();
@@ -26906,11 +26908,13 @@
            self-cast and directional kinds aim at tiles/lines, so any occupant is
            legitimate splash — they pass through untouched. Empty tiles also pass:
            the existing range / approach logic decides those. */
-        function _spellTargetTeamOk(unit, spell, x, y) {
+        function _spellTargetTeamOk(unit, spell, x, y, z) {
             if (!unit || !spell) return true;
             const km = _kindMeta(spell);
             if (isSpellTileTargeted(spell) || isSpellSelfCast(spell) || km.directional) return true;
-            const tu = unitAt(x, y);
+            // Exact-z first: gating on the ground unit of a stack would block
+            // (or wrongly allow) a cast aimed at the flyer above it.
+            const tu = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
             if (!tu || tu.dead) return true;
             if (km.offensive && isAllyUnit(tu, unit)) return false;
             if (!km.offensive && km.allyOnly && !isAllyUnit(tu, unit)) return false;
@@ -26919,9 +26923,9 @@
 
         /* Same idea for targeted items: potions only land on living allies,
            bane strips only on living enemies. Other items keep free aim. */
-        function _itemTargetTeamOk(unit, tool, x, y) {
+        function _itemTargetTeamOk(unit, tool, x, y, z) {
             if (!unit || !tool) return true;
-            const tu = unitAt(x, y);
+            const tu = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
             if (tool === 'healPotion' || tool === 'manaPotion') {
                 if (!tu || tu.dead || isEnemyUnit(tu, unit)) return false;
                 // A full-up ally is not a potion target (doItem refuses it) —
@@ -27405,7 +27409,7 @@
                     // Items don't own the executing latch the way attacks/spells
                     // do (board clicks call doItem directly) — release it here.
                     state._actionExecuting = false;
-                    doItem(unit, x, y);
+                    doItem(unit, x, y, execZ);
                 }
                 scheduleBoardRender();
                 return;
@@ -27860,7 +27864,7 @@
                             }
                         }
                         // Wrong-team occupant → no confirm target on hover.
-                        if (!_spellTargetTeamOk(unit, spell, x, y)) {
+                        if (!_spellTargetTeamOk(unit, spell, x, y, state._hoverZ)) {
                             clearAoePreview();
                             return false;
                         }
@@ -27872,7 +27876,7 @@
             // not arm a confirm — potions aim at allies, banes at enemies.
             if (state.actionMode === 'item' && !_stHoverGrab) {
                 const _itmUnit = getSelectedUnit();
-                if (_itmUnit && !_itemTargetTeamOk(_itmUnit, state.selectedTool, x, y)) {
+                if (_itmUnit && !_itemTargetTeamOk(_itmUnit, state.selectedTool, x, y, state._hoverZ)) {
                     clearAoePreview();
                     return false;
                 }
@@ -28260,7 +28264,7 @@
                     // Team gate (mirrors the hover path): clicking a wrong-team
                     // unit never arms a confirm — error out with guidance and
                     // fall back to inspecting the clicked unit.
-                    if (!_spellTargetTeamOk(actingUnit, spell, x, y)) {
+                    if (!_spellTargetTeamOk(actingUnit, spell, x, y, state._clickedZ)) {
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                         addLog(_kindMeta(spell).offensive ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
                         playErrorSfx();
@@ -28278,7 +28282,7 @@
             // ally, a bane strip on a living enemy — reject anything else
             // before the confirm step instead of erroring after two clicks.
             if (needsConfirm && state.actionMode === 'item'
-                && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y)) {
+                && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y, state._clickedZ)) {
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
                 playErrorSfx();
@@ -28292,7 +28296,10 @@
 
             let _confRepeatN = 1;
             if (needsConfirm) {
-                let sameTarget = state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool;
+                // z must match too (when both clicks resolved one): a stacked
+                // column (flyer over ground unit) is TWO different targets.
+                let sameTarget = state.pendingTarget && state.pendingTarget.x === x && state.pendingTarget.y === y && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool
+                    && (state.pendingTarget.z === undefined || state.pendingTarget.z === null || state._clickedZ === undefined || state._clickedZ === null || state.pendingTarget.z === state._clickedZ);
                 if (!sameTarget && state.pendingTarget && state.pendingTarget.mode === state.actionMode && state.pendingTarget.tool === state.selectedTool) {
                     const prevUnit = unitAt(state.pendingTarget.x, state.pendingTarget.y);
                     if (prevUnit && prevUnit._isBoss && prevUnit._bossSize === 2 && clickedUnit === prevUnit) {
@@ -28303,6 +28310,7 @@
                     state.pendingTarget = {
                         x,
                         y,
+                        z: state._clickedZ,
                         mode: state.actionMode,
                         tool: state.selectedTool,
                         viaHover: false
@@ -28663,8 +28671,8 @@
             }
             if (state.actionMode === 'inspect') return _execAction(() => doInspect(actingUnit, x, y));
             if (state.actionMode === 'ping') return _execAction(() => doPing(actingUnit, x, y));
-            if (state.actionMode === 'trade') return _execAction(() => doTrade(actingUnit, x, y));
-            if (state.actionMode === 'item') return _execAction(() => doItem(actingUnit, x, y));
+            if (state.actionMode === 'trade') return _execAction(() => doTrade(actingUnit, x, y, state._clickedZ));
+            if (state.actionMode === 'item') return _execAction(() => doItem(actingUnit, x, y, state._clickedZ));
             if (state.actionMode === 'warpStone') return _execAction(() => executeWarpStone(actingUnit, x, y));
             if (state.actionMode === 'ward') return _execAction(() => doWard(actingUnit, x, y));
             if (state.actionMode === 'flair') return _execAction(() => doFlair(actingUnit, x, y));
@@ -28674,7 +28682,9 @@
                 if (!state.comboPartner) {
 
                     state._actionExecuting = false;
-                    const clickedUnit = unitAt(x, y);
+                    // Use the outer sprite-aware clickedUnit (clickTile top):
+                    // a bare unitAt(x,y) here resolved a flying partner to the
+                    // ground unit stacked beneath it.
                     if (clickedUnit && clickedUnit.player === actingUnit.player && !clickedUnit.dead) {
                         const partners = getComboPartners(actingUnit);
                         if (partners.some(p => p.id === clickedUnit.id)) {
@@ -28693,7 +28703,7 @@
                     return;
                 } else {
 
-                    return _execAction(() => doComboAttack(actingUnit, state.comboPartner, x, y));
+                    return _execAction(() => doComboAttack(actingUnit, state.comboPartner, x, y, state._clickedZ));
                 }
             }
         }
@@ -32158,7 +32168,7 @@
             return actionMs(600);
         }
 
-        function doComboAttack(initiator, partner, targetX, targetY) {
+        function doComboAttack(initiator, partner, targetX, targetY, targetZ) {
             if (!initiator || !partner || initiator.dead || partner.dead) return 0;
             if ((initiator.ap || 0) < COMBO_AP_COST_INITIATOR || (partner.ap || 0) < COMBO_AP_COST_PARTNER) {
                 addLog('Combo requires 3 AP total (2 from initiator, 1 from partner).');
@@ -32174,7 +32184,9 @@
                 return 0;
             }
 
-            const target = unitAt(targetX, targetY);
+            // Exact-z first: a combo aimed at a flyer must not resolve to the
+            // ground unit stacked beneath it (unitAt(x,y) prefers ground).
+            const target = ((targetZ !== undefined && targetZ !== null) ? unitAt(targetX, targetY, targetZ) : null) || unitAt(targetX, targetY);
             const isOffensive = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
             const _comboTargetZ = target ? (target.z ?? 0) : 0;
             const d = combatDist(initiator.x, initiator.y, initiator.z ?? 0, targetX, targetY, _comboTargetZ);
@@ -32447,13 +32459,16 @@
             return completionDelay;
         }
 
-        function doItem(unit, x, y) {
+        function doItem(unit, x, y, z) {
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return;
             }
 
-            const target = unitAt(x, y);
+            // Resolve by z FIRST: unitAt(x,y) prefers the GROUND unit of a
+            // stack, so a flyer using a potion on itself (or a bane aimed at
+            // an airborne enemy) used to land on whoever stood beneath it.
+            const target = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
             let chebyshev = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
 
             if (target && target._isBoss && target._bossSize === 2) {

@@ -4639,7 +4639,7 @@
             case 'item':
                 g.state.actionMode = 'item';
                 g.state.selectedTool = action.item;
-                g.doItem(unit, unit.x, unit.y);
+                g.doItem(unit, unit.x, unit.y, unit.z);
                 g.finishComputerAction();
                 break;
 
@@ -4647,7 +4647,7 @@
                 const prevCount = unit.items?.[action.item] || 0;
                 g.state.actionMode = 'item';
                 g.state.selectedTool = action.item;
-                g.doItem(unit, action.target.x, action.target.y);
+                g.doItem(unit, action.target.x, action.target.y, action.target.z);
                 const newCount = unit.items?.[action.item] || 0;
                 if (newCount >= prevCount) {
                     _failedItems.add(action.item);
@@ -4869,6 +4869,7 @@
                 const cp = action.partner;
                 const tx = ct ? ct.x : unit.x;
                 const ty = ct ? ct.y : unit.y;
+                const tz = ct ? ct.z : unit.z;
 
                 g.queueComputerAction(() => {
                     const valid = cp && !cp.dead && (cp.ap || 0) >= g.COMBO_AP_COST_PARTNER &&
@@ -4881,7 +4882,7 @@
                         g.maybeTriggerComputerTurn();
                         return;
                     }
-                    const delay = g.doComboAttack(unit, cp, tx, ty) || 0;
+                    const delay = g.doComboAttack(unit, cp, tx, ty, tz) || 0;
                     if (delay > 0) {
                         window.setTimeout(() => g.finishComputerAction(), Math.max(delay, g.actionMs(400)));
                     } else {

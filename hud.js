@@ -2856,7 +2856,7 @@ function _hrlgComboBlades(unit, st) {
         if (st._actionExecuting) return;
         if (typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
         state.pendingTarget = null;
-        if (typeof doComboAttack === 'function') doComboAttack(unit, partner, t.u.x, t.u.y);
+        if (typeof doComboAttack === 'function') doComboAttack(unit, partner, t.u.x, t.u.y, t.u.z);
         _refresh();
       },
     };
@@ -4780,14 +4780,14 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       const _itemKey = actionId.substring(5);
       state.selectedTool = _itemKey;
       state.actionMode = 'item';
-      if (typeof doItem === 'function') doItem(actingUnit, tx, ty);
+      if (typeof doItem === 'function') doItem(actingUnit, tx, ty, tz);
     } else if (actionId === 'combo') {
       if (typeof setActionMode === 'function') setActionMode('combo');
 
       const partners = typeof getComboPartners === 'function' ? getComboPartners(actingUnit) : [];
       if (partners.length > 0) {
         state.comboPartner = partners[0];
-        if (typeof doComboAttack === 'function') doComboAttack(actingUnit, partners[0], tx, ty);
+        if (typeof doComboAttack === 'function') doComboAttack(actingUnit, partners[0], tx, ty, tz);
       }
     }
 

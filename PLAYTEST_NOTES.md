@@ -3212,6 +3212,25 @@ files must go to R2 together):
   and the quick-menu target to the FLYER. Probe gotcha: doAttack/doSpell return a
   DELAY and land damage on a timer — assert HP after ~2.5s, never synchronously.
 
+## Items/trade/combo were still z-blind (2026-07-14) — battle.js, online.js, hud.js, ui.js, ai.js
+User bug: a flyer hovering over an ally used a potion "on itself" and it healed the
+ally underneath. Same root cause as the 2026-07-03 spell fixes (`unitAt(x,y)` column
+fallback prefers the GROUND unit) — the sweep just never covered the non-spell actions:
+- `doItem(unit,x,y,→z)`, `doTrade(→z)`, `doComboAttack(→targetZ)` now resolve
+  `unitAt(x,y,z) || unitAt(x,y)`. Fixes potions/banes, trade partner, combo target
+  landing on the wrong unit of a stack.
+- Team gates `_itemTargetTeamOk`/`_spellTargetTeamOk` take z too (click path passes
+  `state._clickedZ`, hover path `state._hoverZ`) — before, hover/click over the
+  column gated on the ground unit's team, blocking or mis-arming confirms.
+- `clickTile` confirm: `pendingTarget` now stores `z` and the sameTarget compare
+  includes it (null z = wildcard, same convention as selectTargetFromMenu) — two
+  clicks on different FLOORS of one column no longer read as click-then-confirm.
+- Combo partner pick in clickTile reuses the outer sprite-aware `clickedUnit`
+  instead of a shadowing `unitAt(x,y)` (flying partner resolved to ground unit).
+- Online parity: doItem/doComboAttack wrappers + relay dispatcher pass z through.
+- Callers updated: hud quick-menu (`tz`, `t.u.z`), ui scanner self-use (`unit.z`),
+  ai item/item_targeted/combo (`unit.z` / `action.target.z` / `ct.z`).
+
 ## Quick-action menu now offers target-focused UTILITY moves (2026-07-03, hud.js)
 `_computeEnemyActions` (hud.js ~2340) used to whitelist only damage/debuff kinds
 (`offensiveKinds`), so poison seeds, terrain walls/floods, summoned weather,

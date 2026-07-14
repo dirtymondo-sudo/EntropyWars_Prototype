@@ -4637,7 +4637,7 @@
             if (unit && itemKey === 'scanner') {
                 state.actionMode = 'item';
                 state.selectedTool = itemKey;
-                doItem(unit, unit.x, unit.y);
+                doItem(unit, unit.x, unit.y, unit.z);
                 return;
             }
 
