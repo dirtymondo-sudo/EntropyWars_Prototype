@@ -1855,6 +1855,35 @@
             return t === 'water' || t === 'deep_water';
         }
 
+        // 💧 Real water OR the shallow spread-flow at a pool's edge (map.js
+        // getLiquidFlowAt — Minecraft-style 3-tile flow). Wet is wet: the flow
+        // soaks units and conducts lightning exactly like the pool it came from.
+        function _isWetTile(x, y) {
+            if (_isWaterTile(x, y)) return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'water');
+        }
+
+        // 🛢️ Black ooze / oil — source terrain or its spread-flow. The whole
+        // connected slick DETONATES when fire or lightning touches it
+        // (_reactFireOil), the flammable mirror of lightning-through-water.
+        const _OIL_TERRAIN = new Set(['swamp', 'oil']);
+        function _isOilTile(x, y) {
+            if (_OIL_TERRAIN.has(getTerrainAt(x, y))) return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'oil');
+        }
+
+        // 🌋 Lava source terrain OR its (2-tile) molten spread-flow — being
+        // knocked into either one burns (see _applyKnockbackHazard), and
+        // ending a turn in the flow ticks the full lava rule (map.js
+        // applyTerrainTurnEffects).
+        function _isLavaTile(x, y) {
+            if (getTerrainAt(x, y) === 'lava') return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'lava');
+        }
+
         // ── 💧 SOAKED (wet) — the glue status of the elemental combo layer ──
         // Standing in (or being thrown into / rained on in) water leaves a unit
         // Soaked for 2 rounds. Soaked units conduct lightning (×1.5 damage
@@ -1881,7 +1910,7 @@
             if (!u) return false;
             if (unitHasStatus(u, 'wet')) return true;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
-            return _isWaterTile(u.x, u.y);
+            return _isWetTile(u.x, u.y);
         }
 
         // Round-end tick (runs beside tickBurningTiles): everyone still standing
@@ -1890,7 +1919,7 @@
             for (const u of state.units) {
                 if (u.dead || u._dying) continue;
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
-                if (!_isWaterTile(u.x, u.y)) continue;
+                if (!_isWetTile(u.x, u.y)) continue;
                 _soakUnit(u, { quiet: true });
             }
         }
@@ -2277,6 +2306,54 @@
             if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType, 450);
         }
 
+        // 💥🛢️ Fire ignites the slick: the WHOLE connected body of black ooze /
+        // oil goes up in one explosive blast — the flammable mirror of the
+        // lightning-through-water conduction (same "payoff of a setup" math).
+        // Every grounded unit standing in the slick takes near-full spell
+        // damage and starts burning; source tiles char to scorched ground and
+        // keep burning for a couple of rounds. Lightning sparks it off too.
+        function _reactFireOil(caster, spell, ox, oy, slick) {
+            if (!slick || !slick.length) return;
+            const boom = Math.max(70, Math.round((spell.dmg || 90) * 0.9));
+            const victims = [];
+            for (const t of slick) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying) continue;
+                if (u.id === caster.id) continue;
+                if (t.x === ox && t.y === oy) continue;     // origin already hit by the spell itself
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                victims.push({ t, u });
+            }
+            // consume the slick FIRST (oil terrain → scorched) so igniteTile
+            // sees ground it's allowed to burn on, then light the whole area
+            for (const t of slick) {
+                if (_OIL_TERRAIN.has(getTerrainAt(t.x, t.y))) setTerrainAt(t.x, t.y, 'scorched');
+                igniteTile(t.x, t.y, 2, caster);
+            }
+            for (const { u } of victims) {
+                applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
+                    sourceUnit: caster,
+                    allowMarkBonus: false,
+                    damageType: 'magic',
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                    element: 'fire',
+                    flashColor: 'burn'
+                });
+                if (!u.dead && !u._dying) {
+                    applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} firestorm: `, caster);
+                }
+                showFloatingTextForUnit(u, '💥 IGNITED!', 'damage', { durationMs: 1100 });
+            }
+            if (!_skipVisuals()) {
+                shakeBoard('heavy');
+                if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 550);
+            }
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`💥 ${spell.name} ignites the oil — the whole slick detonates (${slick.length} tile${slick.length !== 1 ? 's' : ''})${victims.length ? `, engulfing ${victims.length} unit${victims.length !== 1 ? 's' : ''}` : ''}!`);
+            if (typeof playSfx === 'function') playSfx('burningDamage');
+        }
+
         // ⚡🔩 Metal conducts: a lightning strike on metal flooring (or player-
         // placed steel blocks) arcs across the whole connected sheet and zaps
         // every grounded unit standing on it — friend or foe, caster excluded.
@@ -2357,11 +2434,23 @@
             for (const tile of tiles) {
                 if (!tile || !isInside(tile.x, tile.y)) continue;
                 if (handled.has(tile.x + ',' + tile.y)) continue;
-                if ((el === 'lightning' || el === 'cold') && _isWaterTile(tile.x, tile.y)) {
+                if (el === 'lightning' && _isWetTile(tile.x, tile.y)) {
+                    // wet is wet: the charge also races through the shallow
+                    // spread-flow at a pool's edge (Minecraft-style flow tiles)
+                    const body = _floodConnectedTiles(tile.x, tile.y, _isWetTile, 80);
+                    body.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactLightningWater(caster, spell, tile.x, tile.y, body);
+                } else if (el === 'cold' && _isWaterTile(tile.x, tile.y)) {
+                    // frost only freezes REAL water solid (flow is too shallow)
                     const body = _floodConnectedTiles(tile.x, tile.y, _isWaterTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
-                    if (el === 'lightning') _reactLightningWater(caster, spell, tile.x, tile.y, body);
-                    else _reactColdWater(caster, spell, tile.x, tile.y, body);
+                    _reactColdWater(caster, spell, tile.x, tile.y, body);
+                } else if ((el === 'fire' || el === 'lightning') && _isOilTile(tile.x, tile.y)) {
+                    // 💥 fire (or a stray spark of lightning) touches the black
+                    // ooze / oil slick → the whole connected body detonates
+                    const slick = _floodConnectedTiles(tile.x, tile.y, _isOilTile, 40);
+                    slick.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactFireOil(caster, spell, tile.x, tile.y, slick);
                 } else if ((el === 'fire' || el === 'lightning') && _isForestTile(tile.x, tile.y)) {
                     // 🔥 fire torches the woods directly; ⚡ a lightning strike on a
                     // tree sets it (and the connected forest) ablaze all the same.
@@ -2448,7 +2537,10 @@
         // Wet/frozen ground smothers any fire instantly.
         function _tileSmothersFire(x, y) {
             const t = getTerrainAt(x, y);
-            return t === 'water' || t === 'deep_water' || t === 'ice';
+            if (t === 'water' || t === 'deep_water' || t === 'ice') return true;
+            // shallow water spread-flow smothers too (oil flow does NOT — it burns)
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'water');
         }
 
         function igniteTile(x, y, rounds, byUnit) {
@@ -2604,11 +2696,13 @@
             const el = classifySpellElement(spell);
             if (!el) return null;
             if (el === 'lightning') {
-                if (_isWaterTile(x, y)) return { el, hint: 'electrifies the water' };
+                if (_isWetTile(x, y)) return { el, hint: 'electrifies the water' };
+                if (_isOilTile(x, y)) return { el, hint: 'detonates the oil slick' };
                 if (_isMetalTile(x, y)) return { el, hint: 'electrifies the metal' };
                 if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
                 if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
             } else if (el === 'fire') {
+                if (_isOilTile(x, y)) return { el, hint: 'detonates the oil slick' };
                 if (_isIceTile(x, y)) return { el, hint: 'melts the ice' };
                 if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
                 if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
@@ -2633,7 +2727,7 @@
             // 💧 Landing in water puts you out — burn (lava-stoked or not) is
             // doused the instant a unit is shoved into the drink — and
             // leaves them Soaked (conductive to the next lightning bolt).
-            if (terr === 'water' || terr === 'deep_water') {
+            if (terr === 'water' || terr === 'deep_water' || _isWetTile(unit.x, unit.y)) {
                 if (unit.status && unit.status.burn) {
                     clearStatus(unit, 'burn');
                     addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
@@ -2641,7 +2735,7 @@
                 }
                 _soakUnit(unit);
             }
-            if (terr === 'lava') {
+            if (_isLavaTile(unit.x, unit.y)) {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
                 ensureUnitStatus(unit).burn = 3;
                 unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
@@ -25899,7 +25993,7 @@
             // 🔥 burning tiles + 🗺️ elemental tile casts (shared by HUD / AI)
             _elementalTileCastInfo, classifySpellElement,
             igniteTile, extinguishTile, tickBurningTiles,
-            _isFlammableTile, _isWaterTile, _floodConnectedTiles,
+            _isFlammableTile, _isWaterTile, _isWetTile, _isOilTile, _isLavaTile, _floodConnectedTiles,
             // ⚖️ physique (RACE_PHYSIQUE height/weight → displacement physics)
             getUnitPhysique, getUnitWeightClass, getUnitPushDistance, getUnitFallDamageMult,
             settleWaterAround, checkTrapTrigger,
@@ -31640,7 +31734,8 @@
             if (t === 'ice') return 0xbfeaff;
             if (t === 'water') return 0x4fa8ff;
             if (t === 'deep_water') return 0x2f6fe0;
-            if (t.indexOf('poison') === 0 || t === 'swamp' || t === 'purple_bog') return 0x8fd44f;
+            if (t === 'swamp' || t === 'oil') return 0x3c3c48;
+            if (t.indexOf('poison') === 0 || t === 'purple_bog') return 0xb45fe0;
             if (t === 'grass' || t === 'healing_spring') return 0x59e08d;
             if (t === 'crystal') return 0xc98fff;
             if (t === 'chasm' || t === 'void') return 0xff7a5c;

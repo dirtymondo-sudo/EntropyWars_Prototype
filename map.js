@@ -2505,6 +2505,109 @@
             }
         }
 
+        /* ── 🌊 LIQUID SPREAD — Minecraft-style flow (2026-07-14) ────────────
+           A liquid tile only spreads DOWNHILL: neighbours must sit STRICTLY
+           BELOW the source block's level (a pool level with its surroundings
+           is contained by its basin — existing flat lakes/lava rivers do NOT
+           grow flow, matching how they already read with the shoreline
+           inset). Once the runoff has dropped a level it fans out across the
+           lower ground, up to LIQUID_SPREAD_RANGE tiles from the source
+           (Minecraft does 7; our boards are small so we do 3) — but it never
+           climbs back up. The flow is DERIVED state:
+           recomputed lazily whenever terrain / heights change, never written
+           into boardTerrain — so both online clients derive the identical flow
+           from the synced terrain for free. three-renderer draws flow tiles as
+           thin animated fluid slabs (~1/3 block at the source edge, thinning
+           with distance). Gameplay hooks: water-family flow soaks units and
+           conducts lightning (battle.js _isWetTile), oil-family flow detonates
+           with the slick (_isOilTile), lava flow burns like the lava it came
+           from (applyTerrainTurnEffects / battle.js _isLavaTile), and ANY
+           liquid — source or flow — breaks a fall (state.js applyFallDamage).
+           Lava spreads SHORTER than water (2 vs 3), same ratio Minecraft uses
+           (4 vs 8). */
+        const LIQUID_SPREAD_RANGE = 3;
+
+        function liquidFamilyOf(t) {
+            if (t === 'water' || t === 'deep_water') return 'water';
+            if (t === 'poison' || t === 'poison_bog' || t === 'purple_bog') return 'poison';
+            if (t === 'swamp' || t === 'oil') return 'oil';
+            if (t === 'lava') return 'lava';
+            return null;
+        }
+        // per-family spread range (tiles from source)
+        const _LIQUID_SPREADS = { water: LIQUID_SPREAD_RANGE, poison: LIQUID_SPREAD_RANGE, oil: LIQUID_SPREAD_RANGE, lava: 2 };
+
+        let _liquidFlowMap = {};
+        let _liquidFlowKey = '';
+
+        function _liquidFlowCanEnter(x, y) {
+            if (!isInside(x, y)) return false;
+            const t = getTerrainAt(x, y);
+            if (liquidFamilyOf(t)) return false;               // already liquid
+            if (getTerrainRule(t).passable === false) return false;
+            // holes and standing structure the flow can't pool on/against
+            if (t === 'chasm' || t === 'void' || t === 'cloud_gap' || t === 'sky_open' ||
+                t === 'mountain' || t === 'mountain_2' || t === 'castle_wall' || t === 'ice') return false;
+            const o = getObjectAt(x, y);
+            if (o) {
+                const rule = getObjectRule(o);
+                if (rule && rule.passable === false && !rule.cosmetic) return false;
+            }
+            return true;
+        }
+
+        function _recomputeLiquidFlow() {
+            _liquidFlowMap = {};
+            if (!state || !state.boardTerrain) return;
+            const W = bw(), H = bh();
+            if (!W || !H) return;
+            // multi-source BFS; queue order keeps d nondecreasing, so the first
+            // assignment a tile gets is its minimal distance (nearest source wins)
+            const queue = [];
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    const fam = liquidFamilyOf(getTerrainAt(x, y));
+                    if (fam && _LIQUID_SPREADS[fam]) {
+                        const sh = getBaseHeightAt(x, y);
+                        queue.push({ x, y, d: 0, fam, srcH: sh, h: sh });
+                    }
+                }
+            }
+            let qi = 0;
+            while (qi < queue.length) {
+                const c = queue[qi++];
+                if (c.d >= (_LIQUID_SPREADS[c.fam] || 0)) continue;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = c.x + dx, ny = c.y + dy;
+                    if (!_liquidFlowCanEnter(nx, ny)) continue;
+                    const nh = getBaseHeightAt(nx, ny);
+                    // DOWNHILL ONLY: the runoff must end up strictly below the
+                    // source block's level (level ground = contained pool, no
+                    // flow) — and it can never climb back up along the path.
+                    if (nh >= c.srcH) continue;
+                    if (nh > c.h) continue;
+                    const k = nx + ',' + ny;
+                    const prev = _liquidFlowMap[k];
+                    if (prev && prev.d <= c.d + 1) continue;
+                    _liquidFlowMap[k] = { t: c.fam, d: c.d + 1 };
+                    // carry the LOWEST height seen along the path so a flow that
+                    // ran downhill can't creep back up a ledge
+                    queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH, h: Math.min(c.h, nh) });
+                }
+            }
+        }
+
+        // {t: 'water'|'poison'|'oil'|'lava', d: 1..family range} or null.
+        function getLiquidFlowAt(x, y) {
+            const vKey = (state._terrainVersion || 0) + '|' + (state._heightVersion || 0) + '|' +
+                (state.boardTerrain ? bw() + 'x' + bh() : 'none');
+            if (vKey !== _liquidFlowKey) {
+                _liquidFlowKey = vKey;
+                _recomputeLiquidFlow();
+            }
+            return _liquidFlowMap[x + ',' + y] || null;
+        }
+
         function getUnitStandingHeight(unit) {
             if (!unit) return 0;
 
@@ -5047,7 +5150,15 @@
                 const _ovrRule = getObjectRule(_ovrObj);
                 if (_ovrRule && _ovrRule.overridesGround) return;
             }
-            const rule = getTerrainRule(terrain);
+            let rule = getTerrainRule(terrain);
+            // 🌋 Shallow lava FLOW burns like the lava it spread from — a unit
+            // ending its turn in the molten runoff takes the full lava rule
+            // (burn stacks, adaptation/flying exemptions all apply). Water /
+            // poison / oil flow stays mild (soak & detonation handled elsewhere).
+            if (!liquidFamilyOf(terrain)) {
+                const _fl = getLiquidFlowAt(unit.x, unit.y);
+                if (_fl && _fl.t === 'lava') rule = getTerrainRule('lava');
+            }
             const result = typeof rule.endTurn === 'function' ? rule.endTurn(unit) : null;
             if (!result) return;
             if (result.type === 'damage') {
@@ -6495,6 +6606,9 @@
             'tigerfur_2',
             'tilefloor',
             'tilefloor_2',
+            // 2026-07-14 — append-only: black liquid family (tinted water)
+            'swamp',
+            'oil',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -6573,7 +6687,7 @@
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
 
         const ME_PALETTE_CATS = [
-            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','well'] },
+            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','swamp','oil','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rocks_dark_fantasy','rubble_1','rubble_2','rubble_3','rubble_4'] },
             { label: 'Urban', keys: ['bricks_1','bricks_2','bricks_3','marble','marble_2','marble_light','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4','drywall_5'] },
             { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','checkerboard_2','checkerboard_3','latticegarden','igloo'] },

@@ -4,7 +4,52 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## WEAPON GLB SPELL PROPS + sword/idol cinematics (2026-07-13, LATEST) — three-vfx-effects.js, three-renderer.js, index.html
+## LIQUID PASS: tinted-water bogs/ooze + Minecraft flow + oil detonation (2026-07-14, LATEST) — data.js, sprites.js, map.js, state.js, battle.js, three-renderer.js, ai.js, index.html
+Token `20260714a-status-fixes` → `20260714b-liquids`.
+- **Tinted water rendering**: `poison`/`poison_bog`/`purple_bog` render as
+  PURPLE water, `swamp`/`oil` as BLACK water — same animated fluid pipeline
+  as water/deep_water (waves, caustics, glints, shoreline inset). No new art:
+  they ride the water textures with a material tint. Registry:
+  three-renderer.js `_LIQUID_STYLES` (base texture + tint + per-liquid
+  caustic/glint GLSL colors) + entries in `_FLUID_TERRAIN_SET` /
+  `_FLUID_DRIFT_3D`; `_buildFluidTopMat` also tints the scrolling wave layers
+  (`uWaveTint`) so ripples don't wash the tint back toward blue.
+- **New terrain rules (data.js)**: `swamp` ("Black Ooze", was RULE-LESS —
+  the Ooze Trail spell created it but it fell back to grass rules/no sprite)
+  and `oil` ("Oil Slick"), both moveCost 2. Both are in the map-editor
+  Ground palette and appended (append-only!) to the saved-map grid-id list.
+- **Minecraft-style liquid spread** (map.js `getLiquidFlowAt(x,y)`, beside
+  getHeightAt): DOWNHILL ONLY — a liquid tile spreads runoff onto ground
+  STRICTLY BELOW its own level; a pool level with its surroundings is
+  contained (existing flat lakes / lava rivers grow NOTHING). Once dropped a
+  level the runoff fans across the lower ground but never climbs back up.
+  Range from source: water/poison/oil 3 tiles, LAVA 2 (Minecraft's shorter-
+  lava ratio; per-family in `_LIQUID_SPREADS`). Lava flow
+  BURNS: end-of-turn it ticks the full lava rule (map.js
+  applyTerrainTurnEffects swaps the rule; adaptation/flying exempt) and
+  knock-ins ignite via battle.js `_isLavaTile` in `_applyKnockbackHazard`.
+  DERIVED state — recomputed lazily off `_terrainVersion`/
+  `_heightVersion`, never written to boardTerrain, so online clients derive
+  identical flow. Renderer: thin fluid slabs (~1/3 step at d=1, thinning to
+  ~1/7 at d=3) built at the end of `rebuildTerrain` into `_liquidFlowGroup`
+  (removed+rebuilt each pass — rebuilds are incremental), raycast-disabled.
+- **Gameplay hooks (battle.js)**: `_isWetTile` (water OR water-family flow)
+  now drives soaking (tickWetUnits/_unitIsSoaked), lightning conduction
+  flood, knock-in dousing, and `_tileSmothersFire`; frost still only freezes
+  REAL water. `_isOilTile` (swamp/oil terrain OR oil flow): fire OR lightning
+  → `_reactFireOil` — the whole connected slick (flood cap 40) DETONATES:
+  0.9× spell dmg (min 70) to grounded units in it (caster + origin tile
+  spared, mirrors conduction), burn 2, oil terrain → scorched + burning
+  tiles for 2 rounds. `_elementalTileCastInfo` lets fire/lightning target
+  the slick tile directly ("detonates the oil slick").
+- **Fall-break (state.js applyFallDamage)**: landing on ANY liquid — source
+  or flow, lava included — negates fall damage entirely (`💦 SPLASH!`);
+  lava/deep-water hazards still bite via their own effects.
+- AI: shove-into scoring counts purple_bog/swamp/oil like poison (+12).
+- 2D fallback renderer draws swamp/oil with the plain water sprite
+  (untinted) — known cosmetic limitation; flow slabs are 3D-only.
+
+## WEAPON GLB SPELL PROPS + sword/idol cinematics (2026-07-13) — three-vfx-effects.js, three-renderer.js, index.html
 Token `20260713a-lvl100` → `20260713b-weapons3d`. Nine Meshy prop GLBs the
 owner uploaded to R2 **`Assets/weapons/`** are now real spell props.
 - **Loader** (three-vfx-effects.js, above `_sigBuildSword`): `_WPN_MODELS`

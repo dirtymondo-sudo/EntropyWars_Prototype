@@ -1705,6 +1705,29 @@
             const FALL_THRESHOLD = (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3;
             const drop = (fromZ ?? 0) - (toZ ?? 0);
             if (drop < FALL_THRESHOLD) return 0;
+            // 💦 Liquid landing (2026-07-14): splashing down into ANY liquid —
+            // water, deep water, a poison bog, black ooze/oil, lava, or even the
+            // shallow spread-flow at a pool's edge (map.js getLiquidFlowAt) —
+            // breaks the fall completely. Lava/deep-water hazards still bite via
+            // their own terrain effects; this only negates the impact damage.
+            let _splash = null;
+            if (typeof liquidFamilyOf === 'function' && typeof getTerrainAt === 'function') {
+                _splash = liquidFamilyOf(getTerrainAt(unit.x, unit.y));
+            }
+            if (!_splash && typeof getLiquidFlowAt === 'function') {
+                const _fl = getLiquidFlowAt(unit.x, unit.y);
+                if (_fl) _splash = _fl.t;
+            }
+            if (_splash) {
+                const _splashName = _splash === 'lava' ? 'molten lava'
+                    : _splash === 'oil' ? 'black ooze'
+                    : _splash === 'poison' ? 'bog' : 'water';
+                addLog(`💦 ${unitDisplayName(unit)} falls ${drop} levels — but the ${_splashName} breaks the fall!`);
+                if (typeof showFloatingTextForUnit === 'function') {
+                    showFloatingTextForUnit(unit, '💦 SPLASH!', 'heal', { durationMs: 900 });
+                }
+                return 0;
+            }
             // Level 100: fall damage is percent-of-max-HP (5% per level fallen
             // beyond the grace threshold — same knob as battle.js
             // FALL_DAMAGE_PCT_PER_LEVEL), so a 3-level drop stings identically

@@ -1818,7 +1818,7 @@
                 if (info.shoveTo) {
                     const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
                     if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 30;
-                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog') s += 12;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'swamp' || lt === 'oil') s += 12;
                     if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 25;
                 }
             }
@@ -4182,7 +4182,7 @@
                 if (info.shoveTo) {
                     const lt = g.getTerrainAt(info.shoveTo.x, info.shoveTo.y);
                     if (lt === 'lava' || lt === 'deep_water' || lt === 'chasm' || lt === 'void') s += 30;
-                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog') s += 12;
+                    else if (lt === 'water' || lt === 'poison' || lt === 'poison_bog' || lt === 'purple_bog' || lt === 'swamp' || lt === 'oil') s += 12;
                     if ((g.state.traps || []).some(tr => tr.x === info.shoveTo.x && tr.y === info.shoveTo.y && tr.owner === unit.player)) s += 25;
                 }
                 if (s > bestShoveS) { bestShoveS = s; bestShove = { x: e.x, y: e.y }; }

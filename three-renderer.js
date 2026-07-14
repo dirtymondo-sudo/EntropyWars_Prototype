@@ -1009,7 +1009,36 @@ const ThreeRenderer = (function () {
     // full rebuild the instant the size changes. -1 = nothing built yet.
     var _lastBuiltTileSize = -1;
 
-    var _FLUID_TERRAIN_SET = { water: true, deep_water: true, lava: true };
+    var _FLUID_TERRAIN_SET = {
+        water: true, deep_water: true, lava: true,
+        /* 2026-07-14: the poison bogs render as PURPLE WATER and the black
+           ooze / oil family as BLACK WATER — full animated fluid pipeline
+           (waves, caustics, glints, shoreline inset), tinted per key below. */
+        poison: true, poison_bog: true, purple_bog: true, swamp: true, oil: true
+    };
+
+    /* Tinted-water styles: these liquids reuse the WATER textures (base map +
+       scrolling wave layers) with a per-liquid material tint and their own
+       caustic/glint colors — no new art. Keys absent here (water, deep_water,
+       lava) keep their original untinted pipeline. */
+    var _LIQUID_STYLES = {
+        poison:     { base: 'water', tint: 0xb058e8,
+                      caustDiff: 'vec3(0.55, 0.30, 0.75)', caustEmis: 'vec3(0.35, 0.16, 0.50)',
+                      glintCol: 'vec3(0.95, 0.75, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
+        poison_bog: { base: 'water', tint: 0x9a48d8,
+                      caustDiff: 'vec3(0.50, 0.26, 0.70)', caustEmis: 'vec3(0.30, 0.14, 0.46)',
+                      glintCol: 'vec3(0.92, 0.72, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
+        purple_bog: { base: 'water', tint: 0x8a3cc8,
+                      caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
+                      glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
+        /* black goo / oil: near-black water with a faint iridescent sheen */
+        swamp:      { base: 'water', tint: 0x17171c,
+                      caustDiff: 'vec3(0.10, 0.11, 0.13)', caustEmis: 'vec3(0.06, 0.07, 0.09)',
+                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
+        oil:        { base: 'water', tint: 0x121216,
+                      caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
+                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' }
+    };
 
     /* Water surfaces sit slightly below the top of their block so every
        shoreline reads as a little ridge/edge (Minecraft-style). Fraction of
@@ -1028,7 +1057,13 @@ const ThreeRenderer = (function () {
     var _FLUID_DRIFT_3D = {
         water:      { l1dx: 0.15, l1dy: 0.15, l2dx: -0.11, l2dy: 0.11 },
         deep_water: { l1dx: 0.15, l1dy: 0.15, l2dx: -0.11, l2dy: 0.11 },
-        lava:       { l1dx: 0.09, l1dy: 0.09, l2dx: -0.07, l2dy: -0.07 }
+        lava:       { l1dx: 0.09, l1dy: 0.09, l2dx: -0.07, l2dy: -0.07 },
+        /* bogs drift lazily, the ooze/oil barely creeps */
+        poison:     { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        poison_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        purple_bog: { l1dx: 0.10, l1dy: 0.10, l2dx: -0.08, l2dy: 0.08 },
+        swamp:      { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 },
+        oil:        { l1dx: 0.05, l1dy: 0.05, l2dx: -0.04, l2dy: -0.04 }
     };
 
     var objectMeshes = new Map();
@@ -1039,6 +1074,9 @@ const ThreeRenderer = (function () {
 
     /* Tower cubes — floating spinning cubes for tower_cube objects */
     var _towerCubes = [];
+
+    /* 🌊 Liquid-spread flow slabs (Minecraft-style) — rebuilt with the terrain */
+    var _liquidFlowGroup = null;
 
     /* Terrain decorations — rock clusters, crystal clusters spawned per-terrain */
     var _terrainDecoGroup = null;
@@ -1568,7 +1606,11 @@ const ThreeRenderer = (function () {
     }
 
     function _buildFluidTopMat(terrainKey) {
-        var baseTex = getTerrainTexture(terrainKey);
+        /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
+           textures with a material tint — see _LIQUID_STYLES. */
+        var style = _LIQUID_STYLES[terrainKey] || null;
+        var texKey = style ? style.base : terrainKey;
+        var baseTex = getTerrainTexture(texKey);
         var isLava = (terrainKey === 'lava');
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var isNight = (cycle === 'night');
@@ -1576,6 +1618,7 @@ const ThreeRenderer = (function () {
         var matOpts = {};
         if (baseTex) matOpts.map = baseTex;
         else matOpts.color = new THREE.Color(isLava ? 0x883311 : 0x556655);
+        if (style) matOpts.color = new THREE.Color(style.tint);   // multiplies the water map
         if (isLava) {
             matOpts.emissive = new THREE.Color(0xff4411);
             matOpts.emissiveIntensity = isNight ? 0.7 : 0.25;
@@ -1583,8 +1626,8 @@ const ThreeRenderer = (function () {
 
         var mat = _evTintMat(new THREE.MeshLambertMaterial(matOpts), terrainKey);
 
-        var waveTex1 = _getFluidTex(terrainKey, 1);
-        var waveTex2 = _getFluidTex(terrainKey, 2);
+        var waveTex1 = _getFluidTex(texKey, 1);
+        var waveTex2 = _getFluidTex(texKey, 2);
 
         var waveOp = (terrainKey === 'deep_water')
             ? { op1: 0.25, op2: 0.18 }
@@ -1606,13 +1649,21 @@ const ThreeRenderer = (function () {
            continuous sheet. Fragment-only — box tops have no vertex resolution
            for displacement. All math is a handful of sin/cos, no extra texture
            fetches, and the time/tile uniforms are shared module-level objects. */
-        var isWater = (terrainKey === 'water' || terrainKey === 'deep_water');
+        var isWater = (terrainKey === 'water' || terrainKey === 'deep_water' || !!style);
         var isDeep = (terrainKey === 'deep_water');
         /* deep_water: dimmer caustics + darker saturated deep-blue tint so
            depth reads clearly against shallow water. */
         var caustStr = isDeep ? '0.22' : '0.48';
         var caustEmis = isDeep ? '0.12' : '0.26';
         var glintStr = isDeep ? '0.35' : '0.55';
+        /* per-liquid caustic / glint / hue-swell colors (tinted liquids) */
+        var caustDiffC = (style && style.caustDiff) || 'vec3(0.42, 0.72, 0.68)';
+        var caustEmisC = (style && style.caustEmis) || 'vec3(0.25, 0.55, 0.55)';
+        var glintColC  = (style && style.glintCol)  || 'vec3(0.85, 0.95, 1.0)';
+        var hueShiftC  = (style && style.hueShift)  || 'vec3(0.92, 1.0, 1.1)';
+        /* wave layers get tinted too, else the untinted blue ripples would
+           wash the purple/black back toward plain water */
+        var waveTint = style ? new THREE.Color(style.tint) : new THREE.Color(1, 1, 1);
 
         mat.onBeforeCompile = function(shader) {
             shader.uniforms.uWave1 = { value: waveTex1 };
@@ -1621,6 +1672,7 @@ const ThreeRenderer = (function () {
             shader.uniforms.uWaveOff2 = { value: off2 };
             shader.uniforms.uWaveOp1 = { value: waveOp.op1 };
             shader.uniforms.uWaveOp2 = { value: waveOp.op2 };
+            shader.uniforms.uWaveTint = { value: waveTint };
 
             shader.fragmentShader = shader.fragmentShader.replace(
                 'void main() {',
@@ -1630,6 +1682,7 @@ const ThreeRenderer = (function () {
                 'uniform vec2 uWaveOff2;\n' +
                 'uniform float uWaveOp1;\n' +
                 'uniform float uWaveOp2;\n' +
+                'uniform vec3 uWaveTint;\n' +
                 'void main() {'
             );
 
@@ -1639,8 +1692,8 @@ const ThreeRenderer = (function () {
                 '{\n' +
                 '  vec4 w1 = texture2D(uWave1, vUv + uWaveOff1);\n' +
                 '  vec4 w2 = texture2D(uWave2, vUv + uWaveOff2);\n' +
-                '  diffuseColor.rgb = mix(diffuseColor.rgb, w1.rgb, uWaveOp1 * w1.a);\n' +
-                '  diffuseColor.rgb = mix(diffuseColor.rgb, w2.rgb, uWaveOp2 * w2.a);\n' +
+                '  diffuseColor.rgb = mix(diffuseColor.rgb, w1.rgb * uWaveTint, uWaveOp1 * w1.a);\n' +
+                '  diffuseColor.rgb = mix(diffuseColor.rgb, w2.rgb * uWaveTint, uWaveOp2 * w2.a);\n' +
                 '}\n'
             );
 
@@ -1696,17 +1749,17 @@ const ThreeRenderer = (function () {
                     '  ewCa /= 4.0;\n' +
                     '  ewCa = 1.17 - pow(ewCa, 1.4);\n' +
                     '  float ewCaust = pow(clamp(abs(ewCa), 0.0, 1.0), 8.0);\n' +
-                    '  diffuseColor.rgb += vec3(0.42, 0.72, 0.68) * (ewCaust * ' + caustStr + ');\n' +
-                    '  totalEmissiveRadiance += vec3(0.25, 0.55, 0.55) * (ewCaust * ' + caustEmis + ');\n' +
+                    '  diffuseColor.rgb += ' + caustDiffC + ' * (ewCaust * ' + caustStr + ');\n' +
+                    '  totalEmissiveRadiance += ' + caustEmisC + ' * (ewCaust * ' + caustEmis + ');\n' +
                     /* Sparkle glints: much rarer + pixel-fine (the old wide
                        threshold read as floating blobs). */
                     '  float ewG = sin(ewP.x * 23.0 + ewT * 3.1) * sin(ewP.y * 19.0 - ewT * 2.7) * sin((ewP.x + ewP.y) * 31.0 + ewT * 4.3);\n' +
                     '  float ewGlint = smoothstep(0.992, 0.999, ewG);\n' +
-                    '  totalEmissiveRadiance += vec3(0.85, 0.95, 1.0) * (ewGlint * ' + glintStr + ');\n' +
+                    '  totalEmissiveRadiance += ' + glintColC + ' * (ewGlint * ' + glintStr + ');\n' +
                     /* Gentle living brightness/hue swell across the sheet. */
                     '  float ewSwell = 0.5 + 0.5 * sin(ewT * 0.7 + (ewP.x + ewP.y) * 0.4);\n' +
                     '  diffuseColor.rgb *= 0.95 + 0.09 * ewSwell;\n' +
-                    '  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.92, 1.0, 1.1), 0.25 + 0.2 * sin(ewT * 0.45));\n' +
+                    '  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * ' + hueShiftC + ', 0.25 + 0.2 * sin(ewT * 0.45));\n' +
                     (isDeep
                         ? '  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.45, 0.62, 1.25), 0.5);\n'
                         : '') +
@@ -1727,7 +1780,10 @@ const ThreeRenderer = (function () {
     }
 
     function buildFluidBoxMaterials(topKey, sideKey) {
-        var sideTex = getTerrainTexture(sideKey || topKey);
+        /* Tinted liquids use the water texture on their SIDES too, tinted the
+           same as the top, so the block reads as one body of colored liquid. */
+        var style = _LIQUID_STYLES[topKey] || null;
+        var sideTex = getTerrainTexture(style ? style.base : (sideKey || topKey));
         if (sideTex) {
             sideTex.wrapS = THREE.RepeatWrapping;
             sideTex.wrapT = THREE.RepeatWrapping;
@@ -1749,6 +1805,7 @@ const ThreeRenderer = (function () {
                 }
                 if (sideTex) matOpts.map = sideTex;
                 else matOpts.color = new THREE.Color(isLava ? 0x661100 : 0x443322);
+                if (style) matOpts.color = new THREE.Color(style.tint);
                 mats.push(_evTintMat(new THREE.MeshLambertMaterial(matOpts), sideKey || topKey));
             }
         }
@@ -2502,6 +2559,47 @@ const ThreeRenderer = (function () {
                 terrainGroup.add(m); tileMeshes.set(k, m);
             }
         }
+
+        /* ── 🌊 Liquid-spread flow slabs (2026-07-14) ───────────────────────
+           Minecraft-style flow: map.js getLiquidFlowAt derives which dry tiles
+           a neighbouring liquid spreads onto (up to 3 tiles, level-or-lower
+           ground). Each flow tile gets a thin animated fluid box laid on its
+           surface — ~1/3 of a block at the source's edge, thinning with
+           distance — using the same fluid materials as the source (water /
+           purple bog water / black ooze / glowing lava). Rebuilt with the terrain
+           (terrain or height changes recompute the flow), excluded from the
+           static merge (fluid materials), and transparent to tile picking. */
+        /* rebuildTerrain is INCREMENTAL — always drop the previous flow group
+           first or partial rebuilds would stack duplicate slabs. */
+        if (_liquidFlowGroup) {
+            terrainGroup.remove(_liquidFlowGroup);
+            _clearGroup(_liquidFlowGroup);
+            _liquidFlowGroup = null;
+        }
+        if (typeof getLiquidFlowAt === 'function') {
+            var _flowGroup = new THREE.Group();
+            var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            var _noRaycast = function() {};
+            for (var fy = 0; fy < _bh; fy++) {
+                for (var fx = 0; fx < _bw; fx++) {
+                    var _fl = getLiquidFlowAt(fx, fy);
+                    if (!_fl) continue;
+                    /* d=1 → ~1/3 step, d=2 → ~1/4, d=3 → ~1/7 */
+                    var _fh = elevStep * Math.max(0.12, 0.42 - 0.09 * _fl.d);
+                    var _fMats = buildFluidBoxMaterials(_FLOW_TERRAIN_FOR[_fl.t] || 'water', null);
+                    var _fMesh = new THREE.Mesh(_getBoxGeo(ts, _fh), _fMats);
+                    _fMesh.position.set(fx * ts + ts / 2, tileTopY(fx, fy) + _fh / 2, fy * ts + ts / 2);
+                    _fMesh.raycast = _noRaycast;   // clicks land on the ground tile below
+                    _fMesh._ew_liquidFlow = true;
+                    _flowGroup.add(_fMesh);
+                }
+            }
+            if (_flowGroup.children.length) {
+                terrainGroup.add(_flowGroup);
+                _liquidFlowGroup = _flowGroup;
+            }
+        }
+
         _lastBoardW = _bw; _lastBoardH = _bh;
         _lastBuiltTileSize = ts;
         _lastTerrainVersion = state._terrainVersion || 0;
@@ -19114,7 +19212,7 @@ const ThreeRenderer = (function () {
            one write here animates all tiles (caustics/glints/swell). */
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = (_lastBuiltTileSize > 0) ? _lastBuiltTileSize : 1;
-        var types = ['water', 'deep_water', 'lava'];
+        var types = Object.keys(_FLUID_DRIFT_3D);   // all liquids, tinted ones included
         for (var ti = 0; ti < types.length; ti++) {
             var fKey = types[ti];
             var drift = _FLUID_DRIFT_3D[fKey];

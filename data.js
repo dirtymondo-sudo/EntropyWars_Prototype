@@ -179,7 +179,10 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     rubble_4:'rgba(105,96,82,0.42)', ruins:'rgba(140,130,110,0.42)',
     // ── Volcanic ──
     lava:'rgba(220,80,20,0.58)', scorched:'rgba(62,52,42,0.5)', obsidian:'rgba(40,35,50,0.55)',
-    crystal:'rgba(160,120,220,0.46)', poison:'rgba(95,170,70,0.46)', poison_bog:'rgba(70,140,80,0.5)',
+    /* poison bogs read as PURPLE WATER, ooze/oil as BLACK WATER (2026-07-14 —
+       matches the tinted-water fluid rendering in three-renderer.js) */
+    crystal:'rgba(160,120,220,0.46)', poison:'rgba(150,70,205,0.52)', poison_bog:'rgba(130,58,190,0.54)',
+    purple_bog:'rgba(112,50,175,0.54)', swamp:'rgba(30,28,38,0.64)', oil:'rgba(22,22,28,0.64)',
     // ── Cave ──
     cave_floor:'rgba(80,70,60,0.46)', cave_wall:'rgba(60,50,45,0.56)', cave_entrance:'rgba(70,60,50,0.5)',
     // ── Built / urban ──
@@ -915,6 +918,28 @@ const TERRAIN_RULES = {
         moveCost: 2,
         blocksRanged: false,
         healMultiplier: 0.7,
+        endTurn(unit) { return null; }
+    },
+    /* Black liquid family (2026-07-14): 'swamp' is the Black Goo Ooze Trail's
+       toxic slick (it previously had NO rule and fell back to grass), 'oil' is
+       the paintable oil slick. Both render as black tinted water and DETONATE
+       when hit by fire/lightning (see battle.js _reactFireOil). */
+    swamp: {
+        label: 'Black Ooze',
+        short: 'OOZ',
+        passable: true,
+        moveCost: 2,
+        blocksRanged: false,
+        healMultiplier: 0.7,
+        endTurn(unit) { return null; }
+    },
+    oil: {
+        label: 'Oil Slick',
+        short: 'OIL',
+        passable: true,
+        moveCost: 2,
+        blocksRanged: false,
+        healMultiplier: 1,
         endTurn(unit) { return null; }
     },
 

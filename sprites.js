@@ -1811,6 +1811,11 @@ const TERRAIN_SPRITES = {
     urban_wall:       [`${_T}/urban_wall.png`],
     grass_rocky:      [`${_T}/grass_rocky.png`],
     purple_bog:       [`${_T}/purple_bog.png`],
+    /* Black liquid family (2026-07-14): no bespoke art — they reuse the water
+       sprite; the 3D fluid pipeline tints them black (see three-renderer.js
+       _LIQUID_STYLES). 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. */
+    swamp:            [`${_T}/water.png`],
+    oil:              [`${_T}/water.png`],
     urban_street:     [`${_T}/urban_street.png`],
 
     // New terrain sprites (Moon / Backrooms / Heaven map set)
