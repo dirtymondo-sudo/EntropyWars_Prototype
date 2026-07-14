@@ -140,6 +140,22 @@ const ThreeCamera = (function () {
         const dirY = -Math.cos(tiltRad);
         const dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
 
+        /* ── Gimbal-safe UP vector ──
+           lookAt() with the default world-up (0,1,0) degenerates when the
+           view direction runs (anti)parallel to it — i.e. the straight-down
+           top-down gaze (tilt→0). THREE then falls back to an arbitrary
+           basis, so panning while directly above the board made the view
+           wiggle and snap-flip 180°. Derive up analytically from tilt/yaw
+           instead: for any tilt in (0°,180°) this is EXACTLY the vector
+           lookAt would pick anyway (world-up projected perpendicular to the
+           gaze), and at the vertical poles it stays yaw-continuous — no
+           wiggle, no flip, no behavior change at normal pitches. */
+        threeCamera.up.set(
+            -Math.cos(tiltRad) * Math.sin(yawRad),
+             Math.sin(tiltRad),
+            -Math.cos(tiltRad) * Math.cos(yawRad)
+        );
+
         /* Ideal orbit eye: the focal point pushed back along -dir by `dist`.
            (Algebraically identical to the old focal + dist·sin/cos rig.) */
         let targetPosX = focalX - dist * dirX;

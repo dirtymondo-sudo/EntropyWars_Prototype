@@ -3438,6 +3438,7 @@
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
+            const _groundedThisBlast = [];
             for (const tile of tiles) {
                 const target = opts.findTarget
                     ? opts.findTarget(tile)
@@ -3496,6 +3497,7 @@
                         target.z = (_landedZ === null) ? _gz : _landedZ;
                         showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                         addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                        _groundedThisBlast.push(target);
                     }
                     hitCount++;
                 }
@@ -3561,6 +3563,13 @@
                 scheduleBoardRender();
             }
             triggerTerrainSpellReaction(unit, spell, tiles);
+            /* Camera rides the drop when the blast yanked exactly ONE unit
+               out of the sky — with several grounded at once the wide group
+               framing already has them all, and hopping between victims
+               would thrash the shot. */
+            if (_groundedThisBlast.length === 1 && typeof followUnitFall === 'function') {
+                followUnitFall(_groundedThisBlast[0]);
+            }
             return hitCount;
         }
 
@@ -9010,7 +9019,12 @@
                     this.moveTo({
                         tilt: _setTilt, yaw: _setYaw,
                         ...(_pull ? {
-                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                            // Compute the restore zoom for the pitch this move
+                            // is HEADING TO — the live tilt is still the shot's
+                            // craned angle at fire time, and framing for it
+                            // resolved ~2× too tight (the "camera zooms IN on
+                            // the remains instead of back out" bug).
+                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoomAtTilt(_setTilt),
                             _allowZoomChange: true, _bypassCap: true,
                             ...(_px !== undefined ? { x: _px, y: _py } : {})
                         } : {}),
@@ -9710,7 +9724,18 @@
         // tilt (no shot active) still drives the auto-zoom normally.
         function _zoomRefTilt() {
             if (camera._preCineView) return camera._preCineView.tilt;
-            return state.dioramaTiltDeg ?? DEFAULT_BOARD_TILT;
+            const live = state.dioramaTiltDeg ?? DEFAULT_BOARD_TILT;
+            /* Mid-return the SMOOTHED live tilt is still transiently craned
+               from an action shot while the tween is already heading back
+               down — computing a zoom from it inflates the framing ~2×
+               (cos(80°) floors at 0.35 vs ~0.64 at the resting 50°). That
+               was the "camera suddenly zooms way in right after a kill"
+               bug: the next activation pan / reset fired during the un-tilt
+               and framed for the dramatic pitch. Frame for wherever the
+               camera is HEADING when that's lower; a sustained manual crane
+               (live == target) still drives the auto-zoom normally. */
+            const heading = Number.isFinite(camera._tt) ? camera._tt : live;
+            return Math.min(live, heading);
         }
         function _zoomMemoRefreshKey() {
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -9742,6 +9767,30 @@
             const zoom = Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
             _zoomMemo.set(targetRows, zoom);
             return zoom;
+        }
+        /* Zoom for a framing that is MOVING to a known pitch: compute against
+           that TARGET tilt, not the live (possibly cinematically craned) one.
+           The post-kill pull-back settle fired while the shot's pitch was
+           still ~2× steeper than the resting angle, so getDefaultZoom()
+           resolved ~2× too tight and the "reset" ZOOMED IN on the corpse
+           instead of back out to the tactical view. No memo — callers are
+           rare one-shots and the tilt argument would poison the cache key. */
+        function _zoomForVisibleTilesAtTilt(targetRows, tiltDeg) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const gap = CONFIG.tileGap ?? 0;
+            const parentH = _layoutCache.valid ? _layoutCache.parentH
+                : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+            const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
+            return Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
+        }
+        function getDefaultZoomAtTilt(tiltDeg) {
+            const rows = bh() || 10;
+            const cols = bw() || 10;
+            const targetTiles = Math.max(rows, cols) + 4;
+            const z = Math.max(_zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, tiltDeg),
+                Math.min(10.0, _zoomForVisibleTilesAtTilt(targetTiles, tiltDeg)));
+            const _pm = (typeof getCameraPreset === 'function') ? getCameraPreset().zoomMult : 1;
+            return Math.max(0.15, Math.min(10.0, z * _pm));
         }
         function getMaxAutoZoomOut() { return computeZoomForVisibleTiles(MAX_AUTO_ZOOM_OUT_TILES); }
         function clampAutoZoom(zoom, bypassCap) {
@@ -13385,6 +13434,34 @@
                 _bypassCap: true, _fogAllowed: true
             });
             return true;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // followUnitFall() — the camera FOLLOWS a body dropping out of the
+        // sky: grounded flyers (Anchor / Lasso / Gravity Well & co, the
+        // wounded crash) and units knocked down a level. Without this the
+        // focal height stayed parked at the altitude the shot framed, so the
+        // victim simply fell out of the bottom of the frame. Rides the live
+        // cinematic shot down when one owns the camera (_cineRetargetShot
+        // re-derives the focal height from the unit's NEW z); otherwise
+        // eases the tactical camera onto the landing tile — leaving elevZ
+        // unset there releases any focal-height override, so the height
+        // tweens down to the ground under the unit (moveTo's natural-elev
+        // hand-off). Fog/concealment-gated per viewer so the dive never
+        // traces a unit the screen can't see; online.js relays it so the
+        // guest's camera dives too.
+        // ═══════════════════════════════════════════════════════════════════
+        function followUnitFall(unit, opts = {}) {
+            if (!unit || state.phase !== 'battle' || state.winner) return;
+            if (state.cameraDisabled || _skipVisuals()) return;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return;
+            if (!_shouldCameraFollowUnit(unit)) return;
+            const ms = Math.max(actionMs(260), opts.duration ?? actionMs(520));
+            if (_cineRetargetShot({ x: unit.x, y: unit.y }, unit, { duration: ms })) return;
+            camera.moveTo({
+                x: unit.x, y: unit.y,
+                duration: ms, easing: 'easeInOut', _fogAllowed: true
+            });
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -29201,7 +29278,23 @@
 
         let _displaceAnimUnitIds = new Set();
 
+        /* A body flung AFTER the killing blow (push/knockback resolved while
+           the 800ms death animation still plays — `dead` isn't set yet, only
+           `_dying`) must leave its remains on the LANDING tile. The grave /
+           bone-pile prop reads _dyingX/_dyingY, which defeatUnit latched on
+           the tile the unit was struck on — re-latch it to wherever the
+           corpse actually ends up so the bones don't appear on the tile they
+           were thrown OFF of. Called by every displacement animation entry
+           point (each site updates unit.x/y just before animating). */
+        function _relatchCorpseTile(unit, toX, toY) {
+            if (unit && (unit.dead || unit._dying)) {
+                unit._dyingX = toX;
+                unit._dyingY = toY;
+            }
+        }
+
         function animateDisplacement(unit, fromX, fromY, toX, toY, durationMs) {
+            _relatchCorpseTile(unit, toX, toY);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs);
@@ -29269,6 +29362,9 @@
         }
 
         function animateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts) {
+            if (steps && steps.length) {
+                _relatchCorpseTile(unit, steps[steps.length - 1].x, steps[steps.length - 1].y);
+            }
 
             if (window.ThreeAnim && window.ThreeAnim.isActive() && steps && steps.length) {
                 var last = steps[steps.length - 1];
@@ -29348,6 +29444,7 @@
         }
 
         function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+            _relatchCorpseTile(unit, toX, toY);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
@@ -30019,6 +30116,7 @@
             unit.z = (landedZ === null) ? groundZ : landedZ;
             if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'out');
             triggerFallAnim(unit);   // rigged models flail on the way down
+            followUnitFall(unit);    // camera rides the drop to the ground
             if (opts.reason === 'wounded') {
                 showFloatingTextForUnit(unit, '💥 CRASH!', 'debuff', { durationMs: 1100 });
                 addLog(`${unitDisplayName(unit)} is too wounded to stay airborne and crashes to the ground!`);
@@ -34538,6 +34636,7 @@
                     target.z = _pullGroundZ;
                     showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                     addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                    followUnitFall(target);   // camera rides the drop
                 }
                 if (spell.dmg) {
                     const dmg = Math.max(16, (spell.dmg || 0) + spellPower);
@@ -35535,6 +35634,7 @@
                                 target.z = _grGroundZ;
                                 showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                                 addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                                followUnitFall(target);   // camera rides the drop
                             }
 
                             const grappleDmg = Math.max(16, Math.floor(unit.atk * 0.3) + spellPower);

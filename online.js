@@ -884,6 +884,25 @@
             }
         };
 
+        /* Fall/grounding camera dive (battle.js followUnitFall): engine-side
+           beat — a grounded flyer / knocked-down unit drops and the camera
+           rides down with them. Runs only on the HOST online, so relay it;
+           the guest re-runs it locally where its OWN fog/concealment gate
+           (_shouldCameraFollowUnit inside the function) decides visibility. */
+        const _origFollowUnitFall = followUnitFall;
+        followUnitFall = function(unit, opts) {
+            _origFollowUnitFall(unit, opts);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && unit && state.phase === 'battle') {
+                _emit('relay', {
+                    type: 'unit-fall-follow',
+                    unitId: unit.id,
+                    duration: (opts && opts.duration) || 0
+                });
+            }
+        };
+        window.followUnitFall = followUnitFall;
+
         _postRenderHook = function() {
             _injectTurnBanner();
             _fixPerspectiveLabels();
@@ -2410,6 +2429,18 @@
                         }
                         if (_ftVisible && typeof window.showFloatingTextAtTile === 'function') {
                             window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind);
+                        }
+                    }
+
+                    if (data.type === 'unit-fall-follow' && NET.role === 'guest') {
+                        /* Camera dives with a falling/grounded unit. The
+                           function itself fog-gates on the GUEST's viewer
+                           (_shouldCameraFollowUnit), so a hidden enemy's
+                           crash never pans the guest's camera. */
+                        var _fallU = st && st.units
+                            ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (_fallU && typeof window.followUnitFall === 'function') {
+                            window.followUnitFall(_fallU, data.duration ? { duration: data.duration } : {});
                         }
                     }
 
